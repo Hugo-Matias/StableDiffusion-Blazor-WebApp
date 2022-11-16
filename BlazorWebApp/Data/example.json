@@ -1,0 +1,33 @@
+{
+	"title": "ROOT",
+	"items": [
+		{
+			"title": "Danbooru",
+			"items": [
+				{
+					"title": "Body",
+					"items": [
+						{
+							"title": "Head",
+							"tags": [ "Face", "Eyes" ]
+						}
+					]
+				}
+			]
+		},
+		{
+			"title": "Dreambooth",
+			"items": [
+				{
+					"title": "Persons",
+					"tags": [
+						"hugolm",
+						"janelop",
+						"jacimae",
+						"zecapai"
+					]
+				}
+			]
+		}
+	]
+}

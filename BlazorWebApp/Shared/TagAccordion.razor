@@ -1,0 +1,44 @@
+﻿@inject RandomService RandomService
+
+<div class="accordion-item">
+	<h2 class="accordion-header" id="header-@(id)"> 
+		<button class="accordion-button"  type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(id)" aria-expanded="true" aria-controls="collapse-@(id)">
+			@Tag.Title
+		</button>
+	</h2>
+	<div id="collapse-@(id)" class="accordion-collapse collapse" data-bs-parent="#@DataParent" aria-labelledby="header-@(id)">
+		<div class="accordion-body">
+			@if(Tag.Items != null)
+			{
+				<div class="accordion" id="@id">
+					@foreach (var item in Tag.Items)
+					{
+						<TagAccordion Tag="@item" DataParent="@id"/>
+					}
+				</div>
+			}
+			else if(Tag.Tags != null)
+			{
+				foreach (var tag in Tag.Tags)
+				{
+					<button class="btn btn-outline-light m-2">@tag</button>
+				}
+			}
+		</div>
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public PromptButtonModel Tag { get; set; }
+
+	[Parameter]
+	public string DataParent { get; set; }
+
+	private string id;
+
+	protected override void OnInitialized()
+	{
+		id = $"accordion-{RandomService.GetRandomId()}";
+	}
+}

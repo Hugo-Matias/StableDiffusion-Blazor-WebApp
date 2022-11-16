@@ -1,0 +1,105 @@
+﻿@page "/txt2img"
+@using System.Text.Json;
+@using System.Diagnostics;
+@inject SDAPIService SDAPIService
+@inject JSConsole JSConsole
+@inject PromptButtonService PromptButtonService
+
+<!-- Carousel Tabs-->
+<nav>
+	<div class="nav nav-tabs" id="nav-tabs" role="tablist">
+		<button class="nav-link active" id="nav-gen-tab" data-bs-toggle="tab" data-bs-target="#nav-gen" type="button" role="tab" aria-controls="nav-gen" aria-selected="true">Generated</button>
+		<button class="nav-link" id="nav-progress-tab" data-bs-toggle="tab" data-bs-target="#nav-progress" type="button" role="tab" aria-controls="nav-progress" aria-selected="false">Progress</button>
+		<button class="btn btn-primary mx-2 my-1" @onclick="@Test">TEST</button>
+	</div>
+</nav>
+<div class="tab-content" id="nav-tabContent">
+	<div class="tab-pane fade show active" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
+		@if (GeneratedImages.Images != null)
+		{
+			<ImageCarousel Images="GeneratedImages.Images" />
+			<span><small>@Info.InfoTexts[0]</small></span>
+		}
+	</div>
+	<div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
+		@if (Progress.State != null)
+		{
+			<ProgressBar Value="Progress.State.SamplingStep" MaxValue="Progress.State.SamplingSteps" />
+
+			if (Progress.CurrentImage != null)
+			{
+				string[] imageAsArray = { Progress.CurrentImage };
+				<ImageCarousel Images="imageAsArray" />
+			}
+		}
+	</div>
+</div>
+
+<div class="accordion" id="tagsAccordion">
+	@foreach (var item in PromptButtonService.Tags.Items)
+	{
+		<TagAccordion Tag="@item" DataParent="tagsAccordion" />
+	}
+</div>
+
+@*<Dropdown TItem="SDModelModel" OnSelected="@OnSelected">
+	<InitialTip>@_initialTip</InitialTip>
+	<ChildContent>
+		@if (Models != null)
+		{
+			@foreach (var model in Models)
+			{
+				<DropdownListItem Item="@model">@model.Title</DropdownListItem>
+			}
+		}
+	</ChildContent>
+</Dropdown>
+*@
+
+@code {
+	private string _initialTip = "Loading...";
+	private PeriodicTimer? _timer;
+
+	public List<SDModelModel> Models { get; private set; }
+	public GeneratedImagesModel GeneratedImages { get; set; } = new();
+	public GeneratedImagesInfoModel Info { get; set; }
+	public ProgressModel Progress { get; set; } = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await GetSDModels();
+		_initialTip = "SD Models";
+	}
+
+	protected async Task GetSDModels() => Models = await SDAPIService.GetSDModels();
+
+	//private async void OnSelected(SDModelModel selection) => await JSConsole.LogAsync(selection);
+
+	private async void ProgressChecker()
+	{
+		_timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+		while (await _timer.WaitForNextTickAsync())
+		{
+			Progress = await SDAPIService.GetProgress();
+			StateHasChanged();
+			//await JSConsole.LogAsync($"Progress: {Progress.Progress} - Job Count: {Progress.State.JobCount} - Sampling Setp: {Progress.State.SamplingStep}");
+		}
+	}
+
+	private void DisposeTimer() => _timer?.Dispose();
+
+	private async void Test()
+	{
+		ProgressChecker();
+
+		GeneratedImages = await SDAPIService.PostTxt2Img(new Txt2ImgParametersModel() { Prompt = "cute witch with long black hair, big hat", Styles = new[] { "Cinematic Painting", "NAI - Add Quality Tags", "NAI - Low Quality + Bad Anatomy" }, Steps = 20, NIter = 2 });
+
+		DisposeTimer();
+		Progress = new();
+
+		Info = JsonSerializer.Deserialize<GeneratedImagesInfoModel>(GeneratedImages.Info);
+
+		StateHasChanged();
+	}
+}

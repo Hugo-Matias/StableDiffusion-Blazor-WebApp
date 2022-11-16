@@ -1,0 +1,30 @@
+﻿<div class="progress my-4">
+  <div class="progress-bar" role="progressbar" style="width: @_width.ToString("0")%" aria-label="Progress" aria-valuenow="@Value" aria-valuemin="0" aria-valuemax="@MaxValue">
+		@if (_width > 25)
+		{
+			<span><strong>@Value</strong> / @MaxValue <small>steps</small></span>
+		}
+		else
+		{
+			<span><strong>@Value</strong></span>
+		}
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public int Value { get; set; }
+	[Parameter]
+	public int MaxValue { get; set; }
+
+	private int _width;
+
+	private int CalculateWidth() => _width = (int)(100 * Value / MaxValue);
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		base.OnAfterRender(firstRender);
+
+		CalculateWidth();
+	}
+}
