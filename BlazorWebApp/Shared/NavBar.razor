@@ -1,4 +1,8 @@
-﻿<nav class="navbar navbar-expand-lg bg-dark">
+﻿@inject AppState AppState
+@inject JSConsole JSConsole
+@implements IDisposable
+
+<nav class="navbar navbar-expand-lg bg-dark">
 	<div class="container-fluid">
 		<NavLink class="navbar-brand" href="/" Match="NavLinkMatch.All">Blazor Web App</NavLink>
 		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -17,14 +21,65 @@
 					</NavLink>
 				</li>
 			</ul>
-			<form class="d-flex" role="search">
-				<input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-				<button class="btn btn-outline-success" type="submit">Search</button>
-			</form>
+			<Dropdown ButtonText="@DropdownSelected" OnSelected="@HandleDropdownSelected">
+				<Items>
+					@if (Models != null)
+					{
+						@foreach (var model in Models)
+						{
+							<DropdownItem Text="@model.Title"></DropdownItem>
+						}
+					}
+				</Items>
+			</Dropdown>
 		</div>
 	</div>
 </nav>
 
 @code {
+	public List<SDModelModel> Models { get; set; }
+	public string DropdownSelected { get; set; } = "Loading...";
 
+	protected override void OnInitialized()
+	{
+		base.OnInitializedAsync();
+
+		AppState.OnOptionsChange += Refresh;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await AppState.GetOptions();
+			await GetModels();
+		}
+	}
+
+	private async Task GetModels()
+	{
+		await AppState.GetSDModels();
+
+		Models = AppState.SDModels;
+		DropdownSelected = AppState.Options.SDModelCheckpoint;
+		Refresh();
+	}
+
+	private async void HandleDropdownSelected(string selected)
+	{
+		// TODO
+
+		//var test = await AppState.PostOptions(new OptionsModel() { FilterNsfw = !AppState.Options.FilterNsfw });
+
+		//await JSConsole.LogAsync(test);
+		DropdownSelected = selected;
+		Refresh();
+	}
+
+	public void Dispose()
+	{
+		AppState.OnOptionsChange -= Refresh;
+	}
+
+	void Refresh() => InvokeAsync(StateHasChanged);
 }

@@ -11,6 +11,8 @@ builder.Services.AddScoped<JSConsole>();
 builder.Services.AddSingleton<IOService>();
 builder.Services.AddSingleton<PromptButtonService>();
 builder.Services.AddSingleton<RandomService>();
+builder.Services.AddSingleton<ImageState>();
+builder.Services.AddSingleton<AppState>();
 
 var app = builder.Build();
 

@@ -1,0 +1,33 @@
+﻿<div class="dropdown">
+	<button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+		@if (ButtonText == "Loading...")
+		{
+			<span class="spinner-border spinner-border-sm me-2" role="status"></span> @ButtonText
+		}
+		else
+		{
+			<span>@ButtonText</span>
+		}
+	</button>
+	<CascadingValue Name="Dropdown" Value="@this">
+		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+			@Items
+		</ul>
+	</CascadingValue>
+</div>
+
+@code {
+	[Parameter]
+	public string ButtonText { get; set; }
+
+	[Parameter]
+	public RenderFragment Items { get; set; }
+
+	[Parameter]
+	public EventCallback<string> OnSelected { get; set; }
+
+	public async Task HandleSelected(string selected)
+	{
+		await this.OnSelected.InvokeAsync(selected);
+	}
+}

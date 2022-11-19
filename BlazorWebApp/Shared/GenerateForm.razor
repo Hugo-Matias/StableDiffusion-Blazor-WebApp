@@ -1,0 +1,43 @@
+﻿@*<form>
+	<div class="mb-3">
+		<label for="prompt" class="form-label">Prompt</label>
+		<input type="text" class="form-control" id="prompt" @bind="Parameters.Prompt"/>
+		<div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
+	</div>
+	<div class="mb-3">
+		<label for="negativePrompt" class="form-label">Negative Prompt</label>
+		<input type="text" class="form-control" id="negativePrompt" @bind="Parameters.NegativePrompt" />
+	</div>
+	<div class="mb-3 form-check">
+		<input type="checkbox" class="form-check-input" id="exampleCheck1">
+		<label class="form-check-label" for="exampleCheck1">Check me out</label>
+	</div>
+	<button type="button" class="btn btn-success" @onclick="Generate">Generate</button>
+</form>
+*@
+
+<EditForm Model="@Parameters" OnValidSubmit="@Generate">
+	<InputText class="form-control mb-3" id="prompt" @bind-Value="Parameters.Prompt" />
+	<InputText class="form-control mb-3" id="negativePrompt" @bind-Value="Parameters.NegativePrompt" />
+	<button class="btn btn-success" type="submit">Generate</button>
+</EditForm>
+
+@code {
+	public Txt2ImgParametersModel Parameters { get; set; }
+
+	[Parameter]
+	public EventCallback<Txt2ImgParametersModel> OnGenerate { get; set; }
+
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+
+		Parameters = new();
+	}
+
+	public async void Generate()
+	{
+		await OnGenerate.InvokeAsync(Parameters);
+		//Parameters = new();
+	}
+}

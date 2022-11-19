@@ -25,6 +25,7 @@
 	{
 		base.OnAfterRender(firstRender);
 
-		CalculateWidth();
+		if(Value != null && Value > 0)
+			CalculateWidth();
 	}
 }

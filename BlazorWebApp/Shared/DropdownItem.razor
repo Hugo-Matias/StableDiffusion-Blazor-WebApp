@@ -1,0 +1,9 @@
+﻿<li><button class="dropdown-item @(Parent.ButtonText == Text ? "active" : "")" @onclick="e => Parent.HandleSelected(Text)">@Text</button></li>
+
+@code {
+	[CascadingParameter(Name = "Dropdown")]
+	public Dropdown Parent { get; set; }
+
+	[Parameter]
+	public string Text { get; set; }
+}
