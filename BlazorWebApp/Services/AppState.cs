@@ -11,10 +11,15 @@ namespace BlazorWebApp.Services
 
 		public List<SDModelModel> SDModels { get; set; }
 		public OptionsModel Options { get; set; }
+		public AppSettingsModel Settings { get; set; }
+		public Txt2ImgParametersModel Parameters { get; set; }
 
 		public AppState(SDAPIService api)
 		{
 			_api = api;
+
+			Settings = new();
+			Parameters = new() { Steps = Settings.StepsDefaultValue };
 		}
 
 		public async Task GetSDModels()

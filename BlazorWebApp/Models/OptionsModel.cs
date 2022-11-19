@@ -19,7 +19,14 @@ namespace BlazorWebApp.Models
 		[JsonPropertyName("sd_model_checkpoint")]
 		public string SDModelCheckpoint { get; set; }
 
-		[JsonPropertyName("filter_nsfw")]
-		public bool FilterNsfw { get; set; }
+		// DEPRECATED
+		//[JsonPropertyName("txt2img/Sampling Steps/value")]
+		//public float StepsValue { get; set; }
+		//[JsonPropertyName("txt2img/Sampling Steps/minimum")]
+		//public float StepsMin { get; set; }
+		//[JsonPropertyName("txt2img/Sampling Steps/maximum")]
+		//public float StepsMax { get; set; }
+		//[JsonPropertyName("txt2img/Sampling Steps/step")]
+		//public float StepsStep { get; set; }
 	}
 }

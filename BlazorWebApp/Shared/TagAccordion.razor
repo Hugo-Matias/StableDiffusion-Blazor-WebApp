@@ -13,15 +13,16 @@
 				<div class="accordion" id="@id">
 					@foreach (var item in Tag.Items)
 					{
-						<TagAccordion Tag="@item" DataParent="@id"/>
+						<TagAccordion Tag="@item" DataParent="@id" OnButtonClicked="HandleButtonClicked"/>
 					}
 				</div>
 			}
-			else if(Tag.Tags != null)
+
+			@if(Tag.Tags != null)
 			{
 				foreach (var tag in Tag.Tags)
 				{
-					<button class="btn btn-outline-light m-2">@tag</button>
+					<button class="btn btn-outline-light m-2" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
 				}
 			}
 		</div>
@@ -35,10 +36,15 @@
 	[Parameter]
 	public string DataParent { get; set; }
 
+	[Parameter]
+	public EventCallback<string> OnButtonClicked { get; set; }
+
 	private string id;
 
 	protected override void OnInitialized()
 	{
 		id = $"accordion-{RandomService.GetRandomId()}";
 	}
+
+	private void HandleButtonClicked(string tag) => OnButtonClicked.InvokeAsync(tag);
 }

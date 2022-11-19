@@ -1,0 +1,17 @@
+﻿<EditForm Model="Parameters">
+	<div class="col">
+		<label class="form-label" for="prompt">Prompt</label>
+		<InputText class="form-control mb-3"  id="prompt" @bind-Value="@Parameters.Prompt" />
+
+		<label class="form-label" for="negativePrompt">Negative Prompt</label>
+		<InputText class="form-control mb-3" id="negativePrompt" @bind-Value="@Parameters.NegativePrompt" />
+	</div>
+</EditForm>
+
+@code {
+	[Parameter]
+	public Txt2ImgParametersModel Parameters { get; set; }
+
+	[Parameter]
+	public EventCallback<Txt2ImgParametersModel> ParametersChanged { get; set; }
+}

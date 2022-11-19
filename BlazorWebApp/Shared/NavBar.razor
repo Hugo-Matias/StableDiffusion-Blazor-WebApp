@@ -47,19 +47,16 @@
 		AppState.OnOptionsChange += Refresh;
 	}
 
-	protected override async Task OnAfterRenderAsync(bool firstRender)
+	protected override void OnAfterRender(bool firstRender)
 	{
 		if (firstRender)
 		{
-			await AppState.GetOptions();
-			await GetModels();
+			GetModels();
 		}
 	}
 
-	private async Task GetModels()
+	private void GetModels()
 	{
-		await AppState.GetSDModels();
-
 		Models = AppState.SDModels;
 		DropdownSelected = AppState.Options.SDModelCheckpoint;
 		Refresh();

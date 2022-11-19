@@ -2,17 +2,20 @@
 @inject SDAPIService SDAPIService
 @inject JSConsole JSConsole
 @inject PromptButtonService PromptButtonService
+@inject AppState AppState
 @inject ImageState ImageState
 @implements IDisposable
 
+<PromptFields @bind-Parameters="Parameters" />
+
 <div class="row">
 	<div class="col">
-		<GenerateForm OnGenerate="Generate"></GenerateForm>
+		<GenerateForm Parameters="@Parameters" OnGenerate="Generate"></GenerateForm>
 		<div class="accordion" id="tagsAccordion">
-			@foreach (var item in PromptButtonService.Tags.Items)
-			{
-				<TagAccordion Tag="@item" DataParent="tagsAccordion" />
-			}
+				@foreach (var item in PromptButtonService.Tags.Items)
+				{
+					<TagAccordion Tag="@item" DataParent="tagsAccordion" OnButtonClicked="TagClicked"/>
+				}
 		</div>
 	</div>
 	<!-- Carousel Tabs-->
@@ -25,57 +28,51 @@
 		</nav>
 		<div class="tab-content" id="nav-tabContent">
 			<div class="tab-pane fade show active" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
-				@if (ImageState.Images.Images != null)
-				{
-					<ImageCarousel Images="ImageState.Images.Images" />
-					<ImageParametersInfo Text="@ImageState.ImagesInfo.InfoTexts[0]" />
-				}
+					@if (ImageState.Images.Images != null)
+					{
+						<ImageCarousel Images="ImageState.Images.Images" />
+						<ImageParametersInfo Text="@ImageState.ImagesInfo.InfoTexts[0]" />
+					}
 			</div>
 			<div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
-				@if (ImageState.Progress.State != null)
-				{
-					<ProgressBar Value="ImageState.Progress.State.SamplingStep" MaxValue="ImageState.Progress.State.SamplingSteps" />
-
-					if (ImageState.Progress.CurrentImage != null)
+					@if (ImageState.Progress.State != null)
 					{
-						string[] imageAsArray = { ImageState.Progress.CurrentImage };
-						<ImageCarousel Images="imageAsArray" />
+						<ProgressBar Value="ImageState.Progress.State.SamplingStep" MaxValue="ImageState.Progress.State.SamplingSteps" />
+
+						if (ImageState.Progress.CurrentImage != null)
+						{
+							string[] imageAsArray = { ImageState.Progress.CurrentImage };
+								<ImageCarousel Images="imageAsArray" />
+						}
 					}
-				}
 			</div>
 		</div>
 	</div>
 </div>
-@*<Dropdown TItem="SDModelModel" OnSelected="@OnSelected">
-	<InitialTip>@_initialTip</InitialTip>
-	<ChildContent>
-		@if (Models != null)
+
+	@code {
+		public Txt2ImgParametersModel Parameters { get; set; }
+
+		protected override void OnInitialized()
 		{
-			@foreach (var model in Models)
-			{
-				<DropdownListItem Item="@model">@model.Title</DropdownListItem>
-			}
+			base.OnInitialized();
+
+			ImageState.OnChange += Refresh;
+			Parameters = AppState.Parameters;
 		}
-	</ChildContent>
-</Dropdown>
-*@
 
-@code {
-	protected override void OnInitialized()
-	{
-		base.OnInitialized();
+		private async void Generate()
+		{
+			//await JSConsole.LogAsync(Parameters);
+			await ImageState.GetTxt2Images(Parameters);
+		}
 
-		ImageState.OnChange += Refresh;
-	}
+		private void TagClicked(string tag)
+		{
+			Parameters.Prompt += $", {tag}";
+		}
 
-	private async void Generate(Txt2ImgParametersModel param)
-	{
-		param.Steps = 10;
-		param.NIter = 1;
-		await ImageState.GetTxt2Images(param);
-	}
+		public void Dispose() => ImageState.OnChange -= Refresh;
 
-	public void Dispose() => ImageState.OnChange -= Refresh;
-
-	void Refresh() => InvokeAsync(StateHasChanged);
+		void Refresh() => InvokeAsync(StateHasChanged);
 }

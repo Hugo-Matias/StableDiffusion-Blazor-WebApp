@@ -16,6 +16,16 @@
 			]
 		},
 		{
+			"title": "Test",
+			"items": [
+				{
+					"title": "Another Test",
+					"tags": ["another tag"]
+				}
+			],
+			"tags": [ "test" ]
+		},
+		{
 			"title": "Dreambooth",
 			"items": [
 				{
