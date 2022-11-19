@@ -1,0 +1,7 @@
+﻿label {
+	color: var(--app-color-light);
+}
+
+input {
+	background-color: var(--app-color-dark);
+}

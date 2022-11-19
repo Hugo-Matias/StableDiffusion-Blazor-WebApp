@@ -20,7 +20,11 @@ namespace BlazorWebApp.Services
 			_api = api;
 
 			Settings = new();
-			Parameters = new() { Steps = Settings.StepsDefaultValue };
+			Parameters = new()
+			{
+				Steps = Settings.StepsDefaultValue,
+				SamplerIndex = Settings.SamplerDefault
+			};
 		}
 
 		public async Task GetSDModels()

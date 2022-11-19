@@ -1,7 +1,19 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
+:root {
+    --app-color-black: #111;
+    --app-color-dark: #222;
+    --app-color-dark-light: #333;
+    --app-color-light: #ddd;
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: var(--app-color-dark);
+}
+
+nav {
+    background-color: var(--app-color-black);
 }
 
 h1:focus {

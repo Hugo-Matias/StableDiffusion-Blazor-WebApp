@@ -1,5 +1,5 @@
 ﻿<div class="dropdown">
-	<button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+	<button class="btn btn-secondary dropdown-toggle" style="background-color:var(--app-color-dark); border: 1px solid var(--bs-primary);" type="button" data-bs-toggle="dropdown" aria-expanded="false">
 		@if (ButtonText == "Loading...")
 		{
 			<span class="spinner-border spinner-border-sm me-2" role="status"></span> @ButtonText
@@ -8,9 +8,10 @@
 		{
 			<span>@ButtonText</span>
 		}
+		<span class="oi oi-beaker ms-3"></span>
 	</button>
 	<CascadingValue Name="Dropdown" Value="@this">
-		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" style="background-color: var(--app-color-dark); border: 1px solid var(--app-color-black);">
 			@Items
 		</ul>
 	</CascadingValue>
