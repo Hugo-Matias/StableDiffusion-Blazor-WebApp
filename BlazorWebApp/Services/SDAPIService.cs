@@ -21,6 +21,8 @@ namespace BlazorWebApp.Services
 
 		public async Task<List<SDModelModel>> GetSDModels() => await _httpClient.GetFromJsonAsync<List<SDModelModel>>("sd-models");
 
+		public async Task<List<SamplerModel>> GetSamplers() => await _httpClient.GetFromJsonAsync<List<SamplerModel>>("samplers");
+
 		public async Task<ProgressModel> GetProgress() => await _httpClient.GetFromJsonAsync<ProgressModel>("progress");
 
 		public async Task<OptionsModel> GetOptions() => await _httpClient.GetFromJsonAsync<OptionsModel>("options");

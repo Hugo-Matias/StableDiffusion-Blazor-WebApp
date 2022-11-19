@@ -10,6 +10,7 @@ namespace BlazorWebApp.Services
 		public event Action OnOptionsChange;
 
 		public List<SDModelModel> SDModels { get; set; }
+		public List<SamplerModel> Samplers { get; set; }
 		public OptionsModel Options { get; set; }
 		public AppSettingsModel Settings { get; set; }
 		public Txt2ImgParametersModel Parameters { get; set; }
@@ -35,6 +36,8 @@ namespace BlazorWebApp.Services
 
 			OnOptionsChange?.Invoke();
 		}
+
+		public async Task GetSamplers() => Samplers = await _api.GetSamplers();
 
 		public async Task<string> PostOptions(OptionsModel options) => await _api.PostOptions(options);
 	}
