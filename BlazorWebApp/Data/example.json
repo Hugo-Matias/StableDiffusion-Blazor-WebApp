@@ -10,9 +10,12 @@
 						{
 							"title": "Head",
 							"tags": [ "Face", "Eyes" ]
-						}
+						},
+						{"title":  "Torso"}
 					]
-				}
+				},
+				{"title":  "Clothing"},
+				{"title": "Other"}
 			]
 		},
 		{

@@ -1,0 +1,11 @@
+﻿button {
+	width: 100%;
+	overflow:hidden;
+	background-color: var(--app-dark-2);
+	border: 1px solid var(--app-blue-5);
+}
+
+ul {
+	background-color: var(--app-dark-2);
+	border: 1px solid var(--app-dark-1);
+}

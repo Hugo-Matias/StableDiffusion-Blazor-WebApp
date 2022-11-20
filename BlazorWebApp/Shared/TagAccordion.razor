@@ -1,28 +1,28 @@
 ﻿@inject RandomService RandomService
 
 <div class="accordion-item">
-	<h2 class="accordion-header" id="header-@(id)"> 
-		<button class="accordion-button"  type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(id)" aria-expanded="true" aria-controls="collapse-@(id)">
+	<h2 class="accordion-header" id="header-@(id)">
+		<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(id)" aria-expanded="true" aria-controls="collapse-@(id)">
 			@Tag.Title
 		</button>
 	</h2>
 	<div id="collapse-@(id)" class="accordion-collapse collapse" data-bs-parent="#@DataParent" aria-labelledby="header-@(id)">
 		<div class="accordion-body">
-			@if(Tag.Items != null)
+			@if (Tag.Items != null)
 			{
 				<div class="accordion" id="@id">
 					@foreach (var item in Tag.Items)
 					{
-						<TagAccordion Tag="@item" DataParent="@id" OnButtonClicked="HandleButtonClicked"/>
+						<TagAccordion Tag="@item" DataParent="@id" OnButtonClicked="HandleButtonClicked" />
 					}
 				</div>
 			}
 
-			@if(Tag.Tags != null)
+			@if (Tag.Tags != null)
 			{
 				foreach (var tag in Tag.Tags)
 				{
-					<button class="btn btn-outline-light m-2" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
+					<button class="btn btn-outline-primary m-2" style="color: var(--app-light-1)" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
 				}
 			}
 		</div>

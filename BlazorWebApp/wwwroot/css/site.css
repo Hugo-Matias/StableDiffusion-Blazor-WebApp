@@ -1,19 +1,47 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Mono');
 
 :root {
-    --app-color-black: #111;
-    --app-color-dark: #222;
-    --app-color-dark-light: #333;
-    --app-color-light: #ddd;
+    --app-dark-1: #111;
+    --app-dark-2: #222;
+    --app-dark-3: #333;
+    --app-dark-4: #444;
+    --app-dark-5: #555;
+    --app-dark-6: #666;
+    --app-dark-7: #777;
+    --app-light-1: #eee;
+    --app-light-2: #ddd;
+    --app-light-3: #ccc;
+    --app-light-4: #bbb;
+    --app-light-5: #aaa;
+    --app-light-6: #999;
+    --app-light-7: #888;
+    --app-blue-1: #cfe2ff;
+    --app-blue-2: #9ec5fe;
+    --app-blue-3: #6ea8fe;
+    --app-blue-4: #3d8bfd;
+    --app-blue-5: #0d6efd;
+    --app-blue-6: #0a58ca;
+    --app-blue-7: #084298;
+    --app-blue-8: #052c65;
+    --app-blue-9: #031633;
+    --app-font-sans: 'Fira Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --app-font-mono: 'Fira Mono';
+    --app-bg: var(--app-dark-2);
 }
 
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    background-color: var(--app-color-dark);
+    background-color: var(--app-bg);
 }
 
 nav {
-    background-color: var(--app-color-black);
+    background-color: var(--app-dark-1);
+}
+
+label {
+    font-family: var(--app-font-sans);
 }
 
 h1:focus {

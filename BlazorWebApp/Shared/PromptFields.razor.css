@@ -1,7 +1,25 @@
 ﻿label {
-	color: var(--app-color-light);
+	color: var(--app-light-1);
 }
 
-input {
-	background-color: var(--app-color-dark);
+#prompt {
+	color: greenyellow;
 }
+
+#negativePrompt {
+	color: var(--bs-danger);
+}
+
+.form-control {
+	background: var(--app-dark-1);
+	border: 1px solid var(--app-dark-1);
+	color: var(--app-light-1);
+	padding: 1rem;
+	font-family: var(--app-font-mono);
+}
+
+	.form-control:focus {
+		background: var(--app-dark-4);
+		color: var(--app-light-1);
+		border: var(--app-blue-5);
+	}

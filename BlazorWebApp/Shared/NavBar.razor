@@ -22,6 +22,17 @@
 				</li>
 			</ul>
 			<Dropdown ButtonText="@DropdownSelected" OnSelected="@HandleDropdownSelected">
+				<Button>
+					@if (DropdownSelected == "Loading...")
+					{
+						<span class="spinner-border spinner-border-sm me-2" role="status"></span> @DropdownSelected
+					}
+					else
+					{
+						<span>@DropdownSelected</span>
+					}
+					<span class="oi oi-beaker ms-3"></span>
+				</Button>
 				<Items>
 					@if (Models != null)
 					{

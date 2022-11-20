@@ -1,10 +1,10 @@
 ﻿<EditForm Model="Parameters">
 	<div class="col">
 		<label class="form-label" for="prompt">Prompt</label>
-		<InputText class="form-control mb-3" id="prompt" @bind-Value="@Parameters.Prompt" />
+		<input class="form-control mb-3" placeholder="Enter your prompt here..." id="prompt" @bind-value="@Parameters.Prompt" />
 
 		<label class="form-label" for="negativePrompt">Negative Prompt</label>
-		<InputText class="form-control mb-3" id="negativePrompt" @bind-Value="@Parameters.NegativePrompt" />
+		<input class="form-control mb-3" placeholder="Prompt for things you don't want to generate..." id="negativePrompt" @bind-value="@Parameters.NegativePrompt" />
 	</div>
 </EditForm>
 

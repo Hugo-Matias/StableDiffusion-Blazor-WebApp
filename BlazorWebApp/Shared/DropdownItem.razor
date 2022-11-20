@@ -1,4 +1,4 @@
-﻿<li><button class="dropdown-item @(Parent.ButtonText == Text ? "active" : "")" @onclick="e => Parent.HandleSelected(Text)">@Text</button></li>
+﻿<li><button type="button" class="dropdown-item @(Parent.ButtonText == Text ? "active" : "")" @onkeypress:preventDefault @onclick="e => Parent.HandleSelected(Text)">@Text</button></li>
 
 @code {
 	[CascadingParameter(Name = "Dropdown")]

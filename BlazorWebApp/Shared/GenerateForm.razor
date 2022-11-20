@@ -1,41 +1,28 @@
 ﻿@inject AppState AppState
 
-@*<form>
-	<div class="mb-3">
-		<label for="prompt" class="form-label">Prompt</label>
-		<input type="text" class="form-control" id="prompt" @bind="Parameters.Prompt"/>
-		<div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
-	</div>
-	<div class="mb-3">
-		<label for="negativePrompt" class="form-label">Negative Prompt</label>
-		<input type="text" class="form-control" id="negativePrompt" @bind="Parameters.NegativePrompt" />
-	</div>
-	<div class="mb-3 form-check">
-		<input type="checkbox" class="form-check-input" id="exampleCheck1">
-		<label class="form-check-label" for="exampleCheck1">Check me out</label>
-	</div>
-	<button type="button" class="btn btn-success" @onclick="Generate">Generate</button>
-</form>
-*@
-
-<EditForm Model="@Parameters" OnValidSubmit="@Generate">
+<EditForm Model="@Parameters" OnSubmit="@Generate">
 	<div class="generate-form col m-4">
 		<button class="btn btn-success p-3 mb-3 w-50 d-flex m-auto justify-content-center fw-bold" type="submit">Generate</button>
-		<div class="col">
-			<label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
-			<input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.StepsMin" max="@AppState.Settings.StepsMax" step="@AppState.Settings.StepsStep" />
+		<div class="row">
+			<div class="col-8">
+				<label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
+				<input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.StepsMin" max="@AppState.Settings.StepsMax" step="@AppState.Settings.StepsStep" />
+			</div>
+			<div class="col-4">
+				<label class="form-label" for="samplerGroup">Sampler</label> <br />
+				<Dropdown ButtonText="@Parameters.SamplerIndex" OnSelected="SamplerSelected">
+					<Button>
+						@Parameters.SamplerIndex
+					</Button>
+					<Items>
+						@foreach (var sampler in AppState.Samplers)
+						{
+							<DropdownItem Text="@sampler.Name" />
+						}
+					</Items>
+				</Dropdown>
+			</div>
 		</div>
-		<div class="col">
-			<label class="form-label" for="samplerGroup">Sampler</label> <br />
-			<InputRadioGroup @bind-Value="@Parameters.SamplerIndex" class="d-flex" id="samplerGroup">
-				@foreach (var sampler in AppState.Samplers)
-				{
-					<InputRadio class="btn-check" id="@sampler.Name" Value="@sampler.Name"></InputRadio>
-					<label class="btn btn-outline-primary m-1" for="@sampler.Name">@sampler.Name</label>
-				}
-			</InputRadioGroup>
-		</div>
-		@*<InputNumber @bind-Value="Parameters.NIter" />*@
 	</div>
 </EditForm>
 
@@ -54,6 +41,8 @@
 
 		_options = AppState.Options;
 	}
+
+	private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;
 
 	public async void Generate()
 	{

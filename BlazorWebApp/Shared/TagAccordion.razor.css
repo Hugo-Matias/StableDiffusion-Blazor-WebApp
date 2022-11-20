@@ -1,0 +1,17 @@
+﻿.accordion-item {
+	--bs-accordion-bg: var(--app-dark-2);
+	--bs-accordion-color: var(--app-light-1);
+	--bs-accordion-border-color: var(--app-dark-3);
+	--bs-accordion-active-bg: linear-gradient(
+		90deg, 
+		var(--app-dark-1) 30%,
+		var(--app-blue-5) 100%
+	);
+	--bs-accordion-active-color: var(--app-light-1);
+	--bs-accordion-btn-bg: var(--app-dark-1);
+	--bs-accordion-btn-color: var(--app-light-1);
+}
+
+.accordion-button:not(.collapsed) {
+	background: var(--bs-accordion-active-bg);
+}

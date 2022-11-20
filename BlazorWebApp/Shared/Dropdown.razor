@@ -1,23 +1,18 @@
 ﻿<div class="dropdown">
-	<button class="btn btn-secondary dropdown-toggle" style="background-color:var(--app-color-dark); border: 1px solid var(--bs-primary);" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-		@if (ButtonText == "Loading...")
-		{
-			<span class="spinner-border spinner-border-sm me-2" role="status"></span> @ButtonText
-		}
-		else
-		{
-			<span>@ButtonText</span>
-		}
-		<span class="oi oi-beaker ms-3"></span>
+	<button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+		@Button
 	</button>
 	<CascadingValue Name="Dropdown" Value="@this">
-		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" style="background-color: var(--app-color-dark); border: 1px solid var(--app-color-black);">
+		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
 			@Items
 		</ul>
 	</CascadingValue>
 </div>
 
 @code {
+	[Parameter]
+	public RenderFragment Button { get; set; }
+
 	[Parameter]
 	public string ButtonText { get; set; }
 
