@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpClient<SDAPIService>();
-builder.Services.AddScoped<JSConsole>();
+builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddSingleton<IOService>();
 builder.Services.AddSingleton<PromptButtonService>();
 builder.Services.AddSingleton<RandomService>();
