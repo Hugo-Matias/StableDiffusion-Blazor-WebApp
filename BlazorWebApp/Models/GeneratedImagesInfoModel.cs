@@ -24,7 +24,7 @@ namespace BlazorWebApp.Models
 		[JsonPropertyName("clip_skip")]
 		public int ClipSkip { get; set; }
 		[JsonPropertyName("seed")]
-		public long Seed { get; set; }
+		public long? Seed { get; set; }
 
 		// Other unused fields
 

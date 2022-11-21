@@ -1,9 +1,11 @@
-﻿@inject AppState AppState
+﻿@using System.Globalization;
+@inject AppState AppState
+@inject ImageState ImageState
 
 <EditForm Model="@Parameters" OnSubmit="@Generate">
-	<div class="generate-form col m-4">
-		<button class="btn btn-success p-3 mb-3 w-50 d-flex m-auto justify-content-center fw-bold" type="submit">Generate</button>
-		<div class="row">
+	<div class="generate-form card p-4 col mb-3">
+		<button id="generate-btn" class="btn btn-outline-success p-3 mb-3 w-50 d-flex m-auto justify-content-center fw-bold" type="submit">Generate</button>
+		<div class="row mb-3">
 			<div class="col-8">
 				<label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
 				<input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.StepsMin" max="@AppState.Settings.StepsMax" step="@AppState.Settings.StepsStep" />
@@ -23,6 +25,64 @@
 				</Dropdown>
 			</div>
 		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="cfg-scale">CFG Scale: <strong class="ms-2">@Parameters.CfgScale</strong></label>
+				<input type="range" class="form-range" id="cfg-scale" @bind-value="Parameters.CfgScale" @bind-value:event="oninput" min="@AppState.Settings.CfgScaleMin" max="@AppState.Settings.CfgScaleMax" step="@AppState.Settings.CfgScaleStep" />
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="seed">Seed</label>
+				<div class="row me-0">
+					<div class="col-8 pe-0">
+						<div class="input-group">
+							<button type="button" class="btn btn-outline-secondary" @onclick="DecrementSeed"><span class="oi oi-minus"></span></button>
+							<input type="number" class="form-control" style="font-size:@(Parameters.Seed < 999999999 ? "1rem" : "0.7rem")" id="seed" min="-1" @bind-value="@Parameters.Seed" @bind-value:event="oninput" />
+							<button type="button" class="btn btn-outline-secondary" @onclick="IncrementSeed"><span class="oi oi-plus"></span></button>
+						</div>
+					</div>
+					<div class="col-2">
+						<button type="button" class="btn btn-outline-secondary" @onclick="SetRandomSeed"><span class="oi oi-random"></span></button>
+					</div>
+					<div class="col-2">
+						<button type="button" class="btn btn-outline-secondary" @onclick="RestoreSeed"><span class="oi oi-action-undo"></span></button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="width">Width: <strong class="ms-2">@Parameters.Width</strong></label>
+				<input type="range" class="form-range" id="width" @bind-value="@Parameters.Width" @bind-value:event="oninput" min="@AppState.Settings.ResolutionMin" max="@AppState.Settings.ResolutionMax" step="@AppState.Settings.ResolutionStep" />
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="height">Height: <strong class="ms-2">@Parameters.Height</strong></label>
+				<input type="range" class="form-range" id="height" @bind-value="@Parameters.Height" @bind-value:event="oninput" min="@AppState.Settings.ResolutionMin" max="@AppState.Settings.ResolutionMax" step="@AppState.Settings.ResolutionStep" />
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="batch-count">Batch Count: <strong class="ms-2">@Parameters.NIter</strong></label>
+				<input type="range" class="form-range" id="batch-count" @bind-value="@Parameters.NIter" @bind-value:event="oninput" min="@AppState.Settings.BatchCountMin" max="@AppState.Settings.BatchCountMax" step="@AppState.Settings.BatchCountStep" />
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="batch-size">Batch Size: <strong class="ms-2">@Parameters.BatchSize</strong></label>
+				<input type="range" class="form-range" id="batch-size" @bind-value="@Parameters.BatchSize" @bind-value:event="oninput" min="@AppState.Settings.BatchSizeMin" max="@AppState.Settings.BatchSizeMax" step="@AppState.Settings.BatchSizeStep" />
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-4">
+				<input type="checkbox" class="btn-check" id="restore-faces" autocomplete="off" @bind-value="@Parameters.RestoreFaces" checked="@Parameters.RestoreFaces" />
+				<label class="btn btn-outline-secondary expand-btn" for="restore-faces">Restore Faces</label>
+			</div>
+			<div class="col-4">
+				<input type="checkbox" class="btn-check" id="tiling" autocomplete="off" @bind-value="@Parameters.Tiling" checked="@Parameters.Tiling" />
+				<label class="btn btn-outline-secondary expand-btn" for="tiling">Tiling</label>
+			</div>
+			<div class="col-4">
+				<input type="checkbox" class="btn-check" id="highres-fix" autocomplete="off" @bind-value="@Parameters.EnableHR" checked="@Parameters.EnableHR" />
+				<label class="btn btn-outline-secondary expand-btn" for="highres-fix">HighRes Fix</label>
+			</div>
+		</div>
 	</div>
 </EditForm>
 
@@ -40,6 +100,20 @@
 		base.OnInitialized();
 
 		_options = AppState.Options;
+	}
+
+	private void IncrementSeed() => Parameters.Seed++;
+	private void DecrementSeed()
+	{
+		if (Parameters.Seed > -1)
+			Parameters.Seed--;
+	}
+	private void SetRandomSeed() => Parameters.Seed = -1;
+
+	private void RestoreSeed()
+	{
+		if(ImageState.ImagesInfo != null && ImageState.ImagesInfo.Seed != null)
+			Parameters.Seed = ImageState.ImagesInfo.Seed;
 	}
 
 	private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;

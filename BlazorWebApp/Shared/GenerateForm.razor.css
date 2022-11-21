@@ -1,3 +1,77 @@
-﻿.generate-form {
+﻿label {
+	color: var(--app-light-4);
+}
+
+.card {
+	--bs-card-bg: var(--app-dark-1);
+	--bs-card-border-color: var(--app-dark-3);
+}
+
+.generate-form {
 	color: var(--app-light-1);
+}
+
+#generate-btn {
+	--bs-btn-hover-bg: lime;
+	--bs-btn-hover-color: var(--app-dark-1);
+	--bs-btn-hover-border-color: var(--app-dark-2);
+}
+
+.expand-btn {
+	display: flex;
+	margin: auto;
+	justify-content: center;
+}
+
+.form-control {
+	color: var(--app-light-2);
+	background: var(--app-dark-1);
+	border: 1px solid var(--app-dark-3);
+}
+
+.btn-outline-secondary {
+	border: 1px solid var(--app-dark-3);
+}
+
+.btn-check:checked + .btn {
+	--bs-btn-active-color: var(--app-blue-5);
+	--bs-btn-active-bg: var(--app-blue-9);
+	--bs-btn-active-border-color: var(--app-blue-5);
+}
+
+.form-range {
+	margin-top: 9px;
+}
+
+input[type="range"]::-moz-range-thumb {
+	height: 30px;
+	width: 12px;
+	background: var(--app-dark-2);
+	border: 2px solid var(--app-dark-3);
+	cursor: pointer;
+	box-shadow: 2px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+	transition: all .2s ease-in-out;
+}
+
+	input[type="range"]::-moz-range-thumb:hover,
+	input[type="range"]::-moz-range-thumb:active {
+		background: var(--app-dark-3);
+		border: 2px solid var(--app-blue-5);
+	}
+
+input[type="range"]::-moz-range-track {
+	background: var(--app-dark-2);
+	border: none;
+	height: 4px;
+}
+
+input[type="number"] {
+	-webkit-appearance: textfield;
+	-moz-appearance: textfield;
+	appearance: textfield;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+	-webkit-appearance: none;
 }

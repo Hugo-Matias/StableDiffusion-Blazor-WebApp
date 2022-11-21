@@ -17,9 +17,9 @@ namespace BlazorWebApp.Models
 		[JsonPropertyName("styles")]
 		public string[]? Styles { get; set; }
 		[JsonPropertyName("seed")]
-		public int? Seed { get; set; }
+		public long? Seed { get; set; }
 		[JsonPropertyName("subseed")]
-		public int? Subseed { get; set; }
+		public long? Subseed { get; set; }
 		[JsonPropertyName("subseed_strength")]
 		public float? SubseedStrength { get; set; }
 		[JsonPropertyName("seed_resize_from_h")]

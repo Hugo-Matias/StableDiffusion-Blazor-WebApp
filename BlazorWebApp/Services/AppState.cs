@@ -18,7 +18,7 @@ namespace BlazorWebApp.Services
 		public OptionsModel Options { get; set; }
 		public AppSettingsModel Settings { get; set; }
 		public Txt2ImgParametersModel Parameters { get; set; }
-		public long CurrentSeed { get; set; }
+		public long? CurrentSeed { get; set; }
 
 		public AppState(SDAPIService api, IOService io)
 		{
@@ -29,7 +29,13 @@ namespace BlazorWebApp.Services
 			Parameters = new()
 			{
 				Steps = Settings.StepsDefaultValue,
-				SamplerIndex = Settings.SamplerDefault
+				SamplerIndex = Settings.SamplerDefault,
+				Seed = Settings.SeedDefaultValue,
+				CfgScale = Settings.CfgScaleDefaultValue,
+				Width = Settings.ResolutionDefaultValue,
+				Height = Settings.ResolutionDefaultValue,
+				NIter = Settings.BatchCountDefaultValue,
+				BatchSize = Settings.BatchSizeDefaultValue,
 			};
 		}
 
