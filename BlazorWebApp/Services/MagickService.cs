@@ -9,6 +9,25 @@ namespace BlazorWebApp.Services
 			MagickNET.Initialize();
 		}
 
+		public void SaveGrid(string[] data, string path)
+		{
+			using (var images = new MagickImageCollection())
+			{
+				foreach (var image in data)
+				{
+					images.Add(new MagickImage(Convert.FromBase64String(image)));
+				}
+
+				var width = images[0].Width;
+				var height = images[0].Height;
+
+				using (var result = images.Montage(new MontageSettings() { Geometry = new MagickGeometry(width, height), BackgroundColor = MagickColors.Black }))
+				{
+					result.Write(path);
+				}
+			}
+		}
+
 		#region Examples
 		public MagickImageInfo ReadInfoFromBytes(byte[] bytes) => new MagickImageInfo(bytes);
 

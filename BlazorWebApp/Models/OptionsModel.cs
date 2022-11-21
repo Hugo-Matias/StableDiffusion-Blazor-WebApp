@@ -26,11 +26,13 @@ namespace BlazorWebApp.Models
 		public bool SamplesSave { get; set; }
 		[JsonPropertyName("save_txt")]
 		public bool SaveTxt { get; set; }
-		//[JsonPropertyName("samples_save")]
-		//[JsonPropertyName("grid_save")]
+		[JsonPropertyName("grid_format")]
+		public string GridFormat { get; set; }
+		[JsonPropertyName("grid_save")]
+		public bool GridSave { get; set; }
+		[JsonPropertyName("grid_only_if_multiple")]
+		public bool GridOnlyIfMultiple { get; set; }
 		//[JsonPropertyName("return_grid")]
-		//[JsonPropertyName("grid_only_if_multiple")]
-		//[JsonPropertyName("grid_format")]
 
 
 		// DEPRECATED

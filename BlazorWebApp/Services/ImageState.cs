@@ -39,9 +39,9 @@ namespace BlazorWebApp.Services
 			SerializeInfo();
 			NotifyStateChanged();
 		}
-		public void SaveImages(Outdir outdir)
+		public void SaveImages(Outdir outdirSamples, Outdir? outdirGrid = null)
 		{
-			DirectoryInfo saveDir = _io.CreateDirectory(_appState.GetCurrentSaveFolder(outdir));
+			DirectoryInfo saveDir = _io.CreateDirectory(_appState.GetCurrentSaveFolder(outdirSamples));
 
 			int fileIndex = _appState.GetFileIndex(saveDir.FullName);
 			_appState.CurrentSeed = ImagesInfo.Seed;
@@ -61,6 +61,21 @@ namespace BlazorWebApp.Services
 				}
 
 				_appState.CurrentSeed++;
+			}
+
+			if (outdirGrid != null && _appState.Options.GridSave && (Images.Images.Length > 1 && _appState.Options.GridOnlyIfMultiple))
+			{
+				saveDir = _io.CreateDirectory(_appState.GetCurrentSaveFolder(outdirGrid));
+				fileIndex = _appState.GetFileIndex(saveDir.FullName) + 1;
+				string fullpath = Path.Combine(saveDir.FullName, $"grid-{fileIndex.ToString().PadLeft(4, '0')}");
+				string extension = _appState.Options.GridFormat.ToLowerInvariant();
+
+				_magick.SaveGrid(Images.Images, $"{fullpath}.{extension}");
+
+				if (_appState.Options.SaveTxt)
+				{
+					_io.SaveTextToDisk($"{fullpath}.txt", ImagesInfo.InfoTexts[0]);
+				}
 			}
 		}
 

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
-	public enum Outdir { Txt2Img, Img2Img, Extras }
+	public enum Outdir { Txt2ImgSamples, Txt2ImgGrid, Img2ImgSamples, Img2ImgGrid, Extras }
 
 	public class AppState
 	{
@@ -54,8 +54,18 @@ namespace BlazorWebApp.Services
 
 			if (lastFile != null)
 			{
-				Regex rg = new Regex(@"(\d+)-");
-				fileIndex = int.Parse(rg.Match(lastFile).Groups[1].Value);
+				string pattern;
+
+				if (lastFile.StartsWith("grid"))
+				{
+					pattern = @"-(\d+)";
+				}
+				else
+				{
+					pattern = @"(\d+)-";
+				}
+
+				fileIndex = int.Parse(Regex.Match(lastFile, pattern).Groups[1].Value);
 			}
 			else
 			{
@@ -67,18 +77,26 @@ namespace BlazorWebApp.Services
 
 		private string? GetLastSavedFile(string path) => _io.GetFilesFromPath(path).LastOrDefault();
 
-		public string GetCurrentSaveFolder(Outdir outdir)
+		public string GetCurrentSaveFolder(Outdir? outdir)
 		{
 			string path;
 
 			switch (outdir)
 			{
-				case Outdir.Txt2Img:
+				case Outdir.Txt2ImgSamples:
 					path = Options.OutdirSamplesTxt2Img;
 					break;
 
-				case Outdir.Img2Img:
+				case Outdir.Txt2ImgGrid:
+					path = Options.OutdirGridTxt2Img;
+					break;
+
+				case Outdir.Img2ImgSamples:
 					path = Options.OutdirSamplesImg2Img;
+					break;
+
+				case Outdir.Img2ImgGrid:
+					path = Options.OutdirGridImg2Img;
 					break;
 
 				case Outdir.Extras:

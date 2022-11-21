@@ -64,13 +64,13 @@
 	private async void Generate()
 	{
 		//await JSConsole.LogAsync(Parameters);
-		//Parameters.CfgScale = 7.0f;
-		Parameters.NIter = 2;
+		Parameters.CfgScale = 7.0f;
+		Parameters.NIter = 5;
 		await ImageState.GetTxt2Images(Parameters);
 
 		if (AppState.Options.SamplesSave)
 		{
-			ImageState.SaveImages(Outdir.Txt2Img);
+			ImageState.SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
 			//ImageState.GetImageInfoList();
 		}
 
