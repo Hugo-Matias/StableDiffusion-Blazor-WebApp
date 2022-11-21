@@ -9,3 +9,8 @@ ul {
 	background-color: var(--app-dark-2);
 	border: 1px solid var(--app-dark-1);
 }
+
+.dropdown-menu {
+	max-height: 400px;
+	overflow: scroll;
+}

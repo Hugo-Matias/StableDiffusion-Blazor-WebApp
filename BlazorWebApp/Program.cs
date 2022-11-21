@@ -13,6 +13,7 @@ builder.Services.AddSingleton<PromptButtonService>();
 builder.Services.AddSingleton<RandomService>();
 builder.Services.AddSingleton<ImageState>();
 builder.Services.AddSingleton<AppState>();
+builder.Services.AddSingleton<MagickService>();
 
 var app = builder.Build();
 

@@ -8,6 +8,7 @@ namespace BlazorWebApp.Services
 		private readonly SDAPIService _api;
 		private readonly IOService _io;
 		private readonly AppState _appState;
+		private readonly MagickService _magick;
 		private PeriodicTimer? _timer;
 
 		public event Action OnChange;
@@ -16,11 +17,12 @@ namespace BlazorWebApp.Services
 		public GeneratedImagesInfoModel ImagesInfo { get; set; }
 		public ProgressModel Progress { get; set; }
 
-		public ImageState(SDAPIService api, IOService io, AppState appState)
+		public ImageState(SDAPIService api, IOService io, AppState appState, MagickService magick)
 		{
 			_api = api;
 			_io = io;
 			_appState = appState;
+			_magick = magick;
 
 			Images = new();
 			Progress = new();
@@ -67,11 +69,6 @@ namespace BlazorWebApp.Services
 			string infoname = _appState.ConvertPathPattern(_appState.Options.FilenamePatternSamples);
 			string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
 			return Path.Combine(path, filename);
-		}
-
-		private void WriteInfoTxt()
-		{
-
 		}
 
 		private void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfoModel>(Images.Info);

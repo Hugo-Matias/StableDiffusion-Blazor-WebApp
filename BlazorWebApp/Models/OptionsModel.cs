@@ -22,6 +22,8 @@ namespace BlazorWebApp.Models
 		public string FilenamePatternDir { get; set; }
 		[JsonPropertyName("samples_format")]
 		public string SamplesFormat { get; set; }
+		[JsonPropertyName("samples_save")]
+		public bool SamplesSave { get; set; }
 		[JsonPropertyName("save_txt")]
 		public bool SaveTxt { get; set; }
 		//[JsonPropertyName("samples_save")]

@@ -64,10 +64,16 @@
 	private async void Generate()
 	{
 		//await JSConsole.LogAsync(Parameters);
-		Parameters.CfgScale = 7.0f;
+		//Parameters.CfgScale = 7.0f;
 		Parameters.NIter = 2;
 		await ImageState.GetTxt2Images(Parameters);
-		ImageState.SaveImages(Outdir.Txt2Img);
+
+		if (AppState.Options.SamplesSave)
+		{
+			ImageState.SaveImages(Outdir.Txt2Img);
+			//ImageState.GetImageInfoList();
+		}
+
 		//await JSConsole.LogAsync(AppState.GetLastSavedFile(Outdir.Txt2Img));
 	}
 
