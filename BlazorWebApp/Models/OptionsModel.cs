@@ -20,11 +20,14 @@ namespace BlazorWebApp.Models
 		public string FilenamePatternSamples { get; set; }
 		[JsonPropertyName("directories_filename_pattern")]
 		public string FilenamePatternDir { get; set; }
+		[JsonPropertyName("samples_format")]
+		public string SamplesFormat { get; set; }
+		[JsonPropertyName("save_txt")]
+		public bool SaveTxt { get; set; }
 		//[JsonPropertyName("samples_save")]
 		//[JsonPropertyName("grid_save")]
 		//[JsonPropertyName("return_grid")]
 		//[JsonPropertyName("grid_only_if_multiple")]
-		//[JsonPropertyName("samples_format")]
 		//[JsonPropertyName("grid_format")]
 
 

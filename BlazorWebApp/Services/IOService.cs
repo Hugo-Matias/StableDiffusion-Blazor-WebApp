@@ -34,5 +34,10 @@
 				throw new Exception($"Couldn't read files from directory: {path}", e);
 			}
 		}
+
+		public void SaveFileToDisk(string path, byte[] data) => File.WriteAllBytes(path, data);
+		public void SaveTextToDisk(string path, string content) => File.WriteAllText(path, content);
+
+		public DirectoryInfo CreateDirectory(string path) => Directory.CreateDirectory(path);
 	}
 }

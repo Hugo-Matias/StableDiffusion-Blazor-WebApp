@@ -23,12 +23,13 @@ namespace BlazorWebApp.Models
 		public string JobTimestamp { get; set; }
 		[JsonPropertyName("clip_skip")]
 		public int ClipSkip { get; set; }
+		[JsonPropertyName("seed")]
+		public long Seed { get; set; }
 
 		// Other unused fields
 
 		//public string prompt { get; set; }
 		//public string negative_prompt { get; set; }
-		//public int seed { get; set; }
 		//public long subseed { get; set; }
 		//public int subseed_strength { get; set; }
 		//public int width { get; set; }

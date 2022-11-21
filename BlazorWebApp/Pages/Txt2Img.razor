@@ -64,8 +64,11 @@
 	private async void Generate()
 	{
 		//await JSConsole.LogAsync(Parameters);
-		//await ImageState.GetTxt2Images(Parameters);
-		await JSConsole.LogAsync(AppState.GetLastSavedFile(Outdir.Txt2Img));
+		Parameters.CfgScale = 7.0f;
+		Parameters.NIter = 2;
+		await ImageState.GetTxt2Images(Parameters);
+		ImageState.SaveImages(Outdir.Txt2Img);
+		//await JSConsole.LogAsync(AppState.GetLastSavedFile(Outdir.Txt2Img));
 	}
 
 	private void TagClicked(string tag)

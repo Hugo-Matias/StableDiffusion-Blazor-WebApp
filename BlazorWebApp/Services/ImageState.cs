@@ -6,6 +6,8 @@ namespace BlazorWebApp.Services
 	public class ImageState
 	{
 		private readonly SDAPIService _api;
+		private readonly IOService _io;
+		private readonly AppState _appState;
 		private PeriodicTimer? _timer;
 
 		public event Action OnChange;
@@ -14,9 +16,12 @@ namespace BlazorWebApp.Services
 		public GeneratedImagesInfoModel ImagesInfo { get; set; }
 		public ProgressModel Progress { get; set; }
 
-		public ImageState(SDAPIService api)
+		public ImageState(SDAPIService api, IOService io, AppState appState)
 		{
 			_api = api;
+			_io = io;
+			_appState = appState;
+
 			Images = new();
 			Progress = new();
 		}
@@ -31,6 +36,42 @@ namespace BlazorWebApp.Services
 
 			SerializeInfo();
 			NotifyStateChanged();
+		}
+		public void SaveImages(Outdir outdir)
+		{
+			DirectoryInfo saveDir = _io.CreateDirectory(_appState.GetCurrentSaveFolder(outdir));
+
+			int fileIndex = _appState.GetFileIndex(saveDir.FullName);
+			_appState.CurrentSeed = ImagesInfo.Seed;
+
+			for (int i = 0; i < Images.Images.Length; i++)
+			{
+				fileIndex++;
+
+				string fullpath = GetImagePath(saveDir.FullName, fileIndex);
+				string extension = _appState.Options.SamplesFormat.ToLowerInvariant();
+
+				_io.SaveFileToDisk($"{fullpath}.{extension}", Convert.FromBase64String(Images.Images[i]));
+
+				if (_appState.Options.SaveTxt)
+				{
+					_io.SaveTextToDisk($"{fullpath}.txt", ImagesInfo.InfoTexts[i]);
+				}
+
+				_appState.CurrentSeed++;
+			}
+		}
+
+		private string GetImagePath(string path, int fileIndex)
+		{
+			string infoname = _appState.ConvertPathPattern(_appState.Options.FilenamePatternSamples);
+			string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
+			return Path.Combine(path, filename);
+		}
+
+		private void WriteInfoTxt()
+		{
+
 		}
 
 		private void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfoModel>(Images.Info);

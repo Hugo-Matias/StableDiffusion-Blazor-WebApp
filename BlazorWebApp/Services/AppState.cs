@@ -18,6 +18,7 @@ namespace BlazorWebApp.Services
 		public OptionsModel Options { get; set; }
 		public AppSettingsModel Settings { get; set; }
 		public Txt2ImgParametersModel Parameters { get; set; }
+		public long CurrentSeed { get; set; }
 
 		public AppState(SDAPIService api, IOService io)
 		{
@@ -46,9 +47,27 @@ namespace BlazorWebApp.Services
 			OnOptionsChange?.Invoke();
 		}
 
-		public string? GetLastSavedFile(Outdir outdir) => _io.GetFilesFromPath(GetCurrentSaveFolder(outdir)).LastOrDefault();
+		public int GetFileIndex(string path)
+		{
+			string? lastFile = GetLastSavedFile(path);
+			int fileIndex;
 
-		private string GetCurrentSaveFolder(Outdir outdir)
+			if (lastFile != null)
+			{
+				Regex rg = new Regex(@"(\d+)-");
+				fileIndex = int.Parse(rg.Match(lastFile).Groups[1].Value);
+			}
+			else
+			{
+				fileIndex = 0;
+			}
+
+			return fileIndex;
+		}
+
+		private string? GetLastSavedFile(string path) => _io.GetFilesFromPath(path).LastOrDefault();
+
+		public string GetCurrentSaveFolder(Outdir outdir)
 		{
 			string path;
 
@@ -74,7 +93,7 @@ namespace BlazorWebApp.Services
 			return Path.Combine(path, ConvertPathPattern(Options.FilenamePatternDir));
 		}
 
-		private string ConvertPathPattern(string pattern)
+		public string ConvertPathPattern(string pattern)
 		{
 			var rg = new Regex(@"(\[.+?\])");
 
@@ -92,7 +111,7 @@ namespace BlazorWebApp.Services
 					return Parameters.SamplerIndex;
 
 				case "[seed]":
-					return Parameters.Seed.ToString();
+					return CurrentSeed.ToString();
 
 				case "[steps]":
 					return Parameters.Steps.ToString();
