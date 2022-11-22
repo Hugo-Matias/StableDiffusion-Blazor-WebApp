@@ -47,6 +47,7 @@ nav {
 }
 
 label {
+    color: var(--app-dark-7);
     font-family: var(--app-font-sans);
 }
 

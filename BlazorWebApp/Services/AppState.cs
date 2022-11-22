@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Models;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
@@ -12,19 +13,28 @@ namespace BlazorWebApp.Services
 
 		public event Action OnSDModelsChange;
 		public event Action OnOptionsChange;
+		public event Action OnStyleChange;
 
+		public GeneratedImagesModel Images { get; set; }
+		public GeneratedImagesInfoModel ImagesInfo { get; set; }
+		public ProgressModel Progress { get; set; }
 		public List<SDModelModel> SDModels { get; set; }
 		public List<SamplerModel> Samplers { get; set; }
+		public List<PromptStyleModel> Styles { get; set; }
 		public OptionsModel Options { get; set; }
 		public AppSettingsModel Settings { get; set; }
 		public Txt2ImgParametersModel Parameters { get; set; }
 		public long? CurrentSeed { get; set; }
+		public string? Style1 { get; set; }
+		public string? Style2 { get; set; }
 
 		public AppState(SDAPIService api, IOService io)
 		{
 			_api = api;
 			_io = io;
 
+			Images = new();
+			Progress = new();
 			Settings = new();
 			Parameters = new()
 			{
@@ -53,35 +63,22 @@ namespace BlazorWebApp.Services
 			OnOptionsChange?.Invoke();
 		}
 
-		public int GetFileIndex(string path)
+		public async Task GetStyles()
 		{
-			string? lastFile = GetLastSavedFile(path);
-			int fileIndex;
+			Styles = await _api.GetStyles();
 
-			if (lastFile != null)
-			{
-				string pattern;
-
-				if (lastFile.StartsWith("grid"))
-				{
-					pattern = @"-(\d+)";
-				}
-				else
-				{
-					pattern = @"(\d+)-";
-				}
-
-				fileIndex = int.Parse(Regex.Match(lastFile, pattern).Groups[1].Value);
-			}
-			else
-			{
-				fileIndex = 0;
-			}
-
-			return fileIndex;
+			Style1 = Styles[0].Name;
+			Style2 = Styles[0].Name;
 		}
 
-		private string? GetLastSavedFile(string path) => _io.GetFilesFromPath(path).LastOrDefault();
+		public void ResetStyles()
+		{
+			Style1 = "None";
+			Style2 = "None";
+			OnStyleChange?.Invoke();
+		}
+
+		public async Task GetSamplers() => Samplers = await _api.GetSamplers();
 
 		public string GetCurrentSaveFolder(Outdir? outdir)
 		{
@@ -161,8 +158,8 @@ namespace BlazorWebApp.Services
 			return string.Empty;
 		}
 
-		public async Task GetSamplers() => Samplers = await _api.GetSamplers();
-
 		public async Task<string> PostOptions(OptionsModel options) => await _api.PostOptions(options);
+
+		public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfoModel>(Images.Info);
 	}
 }

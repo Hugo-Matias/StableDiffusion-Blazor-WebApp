@@ -11,9 +11,10 @@ builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddSingleton<IOService>();
 builder.Services.AddSingleton<PromptButtonService>();
 builder.Services.AddSingleton<RandomService>();
-builder.Services.AddSingleton<ImageState>();
+builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<AppState>();
 builder.Services.AddSingleton<MagickService>();
+builder.Services.AddSingleton<ParsingService>();
 
 var app = builder.Build();
 

@@ -1,6 +1,5 @@
 ﻿@using System.Globalization;
 @inject AppState AppState
-@inject ImageState ImageState
 
 <EditForm Model="@Parameters" OnSubmit="@Generate">
 	<div class="generate-form card p-4 col mb-3">
@@ -112,8 +111,8 @@
 
 	private void RestoreSeed()
 	{
-		if(ImageState.ImagesInfo != null && ImageState.ImagesInfo.Seed != null)
-			Parameters.Seed = ImageState.ImagesInfo.Seed;
+		if(AppState.ImagesInfo != null && AppState.ImagesInfo.Seed != null)
+			Parameters.Seed = AppState.ImagesInfo.Seed;
 	}
 
 	private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;

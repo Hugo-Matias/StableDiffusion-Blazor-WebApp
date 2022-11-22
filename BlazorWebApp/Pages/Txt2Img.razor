@@ -3,7 +3,8 @@
 @inject JavascriptService JSConsole
 @inject PromptButtonService PromptButtonService
 @inject AppState AppState
-@inject ImageState ImageState
+@inject ImageService ImageService
+@inject ParsingService Parser
 @implements IDisposable
 
 <PromptFields @bind-Parameters="Parameters" />
@@ -28,20 +29,20 @@
 		</nav>
 		<div class="tab-content" id="nav-tabContent">
 			<div class="tab-pane fade show active" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
-				@if (ImageState.Images.Images != null)
+				@if (AppState.Images.Images != null)
 				{
-					<ImageCarousel Images="ImageState.Images.Images" />
-					<ImageParametersInfo Text="@ImageState.ImagesInfo.InfoTexts[0]" />
+					<ImageCarousel Images="AppState.Images.Images" />
+					<ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
 				}
 			</div>
 			<div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
-				@if (ImageState.Progress.State != null)
+				@if (AppState.Progress.State != null)
 				{
-					<ProgressBar Value="ImageState.Progress.State.SamplingStep" MaxValue="ImageState.Progress.State.SamplingSteps" />
+					<ProgressBar Value="AppState.Progress.State.SamplingStep" MaxValue="AppState.Progress.State.SamplingSteps" />
 
-					if (ImageState.Progress.CurrentImage != null)
+					if (AppState.Progress.CurrentImage != null)
 					{
-						string[] imageAsArray = { ImageState.Progress.CurrentImage };
+						string[] imageAsArray = { AppState.Progress.CurrentImage };
 						<ImageCarousel Images="imageAsArray" />
 					}
 				}
@@ -57,19 +58,21 @@
 	{
 		base.OnInitialized();
 
-		ImageState.OnChange += Refresh;
+		ImageService.OnChange += Refresh;
 		Parameters = AppState.Parameters;
 	}
 
 	private async void Generate()
 	{
-		//await JSConsole.LogAsync(Parameters);
-		await ImageState.GetTxt2Images(Parameters);
+		await JSConsole.LogAsync(Parser.ParseParameters(new Txt2ImgParametersModel(Parameters)));
+		//await ImageState.GetTxt2Images(Parameters);
 
 		if (AppState.Options.SamplesSave)
 		{
-			ImageState.SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
+			//ImageState.SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
 		}
+
+		Refresh();
 	}
 
 	private void TagClicked(string tag)
@@ -77,7 +80,7 @@
 		Parameters.Prompt += $", {tag}";
 	}
 
-	public void Dispose() => ImageState.OnChange -= Refresh;
+	public void Dispose() => ImageService.OnChange -= Refresh;
 
 	void Refresh() => InvokeAsync(StateHasChanged);
 }

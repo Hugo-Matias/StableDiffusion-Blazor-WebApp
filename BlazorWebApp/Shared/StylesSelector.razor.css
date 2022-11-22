@@ -1,0 +1,4 @@
+﻿::deep .dropdown button {
+	--dropdown-btn-font-size: 0.8rem;
+	--dropdown-btn-padding: 18px;
+}

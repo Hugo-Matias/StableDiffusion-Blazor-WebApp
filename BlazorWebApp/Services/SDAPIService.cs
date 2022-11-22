@@ -15,6 +15,7 @@ namespace BlazorWebApp.Services
 			_httpClient = httpClient;
 
 			_httpClient.BaseAddress = new Uri("http://localhost:7860/sdapi/v1/");
+			_httpClient.Timeout = TimeSpan.FromDays(1);
 
 			_jsonIgnoreNull = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 		}
@@ -22,6 +23,8 @@ namespace BlazorWebApp.Services
 		public async Task<List<SDModelModel>> GetSDModels() => await _httpClient.GetFromJsonAsync<List<SDModelModel>>("sd-models");
 
 		public async Task<List<SamplerModel>> GetSamplers() => await _httpClient.GetFromJsonAsync<List<SamplerModel>>("samplers");
+
+		public async Task<List<PromptStyleModel>> GetStyles() => await _httpClient.GetFromJsonAsync<List<PromptStyleModel>>("prompt-styles");
 
 		public async Task<ProgressModel> GetProgress() => await _httpClient.GetFromJsonAsync<ProgressModel>("progress");
 

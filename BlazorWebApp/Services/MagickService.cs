@@ -9,7 +9,7 @@ namespace BlazorWebApp.Services
 			MagickNET.Initialize();
 		}
 
-		public void SaveGrid(string[] data, string path)
+		public async Task SaveGrid(string[] data, string path)
 		{
 			using (var images = new MagickImageCollection())
 			{
@@ -23,7 +23,7 @@ namespace BlazorWebApp.Services
 
 				using (var result = images.Montage(new MontageSettings() { Geometry = new MagickGeometry(width, height), BackgroundColor = MagickColors.Black }))
 				{
-					result.Write(path);
+					await result.WriteAsync(path);
 				}
 			}
 		}

@@ -56,5 +56,36 @@ namespace BlazorWebApp.Models
 		public float? SNoise { get; set; }
 		[JsonPropertyName("sampler_index")]
 		public string? SamplerIndex { get; set; }
+
+		public Txt2ImgParametersModel() { }
+		public Txt2ImgParametersModel(Txt2ImgParametersModel clone)
+		{
+			EnableHR = clone.EnableHR;
+			DenoisingStrength = clone.DenoisingStrength;
+			FirstphaseWidth = clone.FirstphaseWidth;
+			FirstphaseHeight = clone.FirstphaseHeight;
+			Prompt = clone.Prompt;
+			Styles = clone.Styles;
+			Seed = clone.Seed;
+			Subseed = clone.Subseed;
+			SubseedStrength = clone.SubseedStrength;
+			SeedResizeFromH = clone.SeedResizeFromH;
+			SeedResizeFromW = clone.SeedResizeFromW;
+			BatchSize = clone.BatchSize;
+			NIter = clone.NIter;
+			Steps = clone.Steps;
+			CfgScale = clone.CfgScale;
+			Width = clone.Width;
+			Height = clone.Height;
+			RestoreFaces = clone.RestoreFaces;
+			Tiling = clone.Tiling;
+			NegativePrompt = clone.NegativePrompt;
+			Eta = clone.Eta;
+			SChurn = clone.SChurn;
+			STmax = clone.STmax;
+			STmin = clone.STmin;
+			SNoise = clone.SNoise;
+			SamplerIndex = clone.SamplerIndex;
+		}
 	}
 }

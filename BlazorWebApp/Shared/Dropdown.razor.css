@@ -1,4 +1,6 @@
 ﻿button {
+	--dropdown-btn-padding: 10px;
+	--dropdown-btn-font-size: 1rem;
 	width: 100%;
 	overflow: hidden;
 	--bs-btn-color: var(--app-light-5);
@@ -10,6 +12,11 @@
 	--bs-btn-active-color: var(--app-blue-5);
 	--bs-btn-active-border-color: var(--app-blue-5);
 	--bs-btn-active-bg: var(--app-dark-1);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	padding: var(--dropdown-btn-padding);
+	font-size: var(--dropdown-btn-font-size);
 }
 
 ul {
