@@ -1,25 +1,53 @@
-﻿label {
-	color: var(--app-light-1);
-}
-
-#prompt {
-	color: greenyellow;
-}
-
-#negativePrompt {
-	color: var(--bs-danger);
-}
-
-.form-control {
+﻿.form-control {
+	--positive: greenyellow;
+	--negative: var(--app-red);
 	background: var(--app-dark-1);
-	border: 1px solid var(--app-dark-1);
+	border: 1px solid var(--app-dark-3);
 	color: var(--app-light-1);
 	padding: 1rem;
 	font-family: var(--app-font-mono);
 }
 
 	.form-control:focus {
-		background: var(--app-dark-4);
+		background: var(--app-dark-1);
 		color: var(--app-light-1);
-		border: var(--app-blue-5);
+		border: 1px solid var(--app-blue-5);
+		box-shadow: none;
 	}
+
+label {
+	color: var(--app-dark-7);
+}
+
+
+#prompt {
+	color: var(--app-light-2);
+}
+
+	#prompt:focus {
+		color: var(--positive);
+		border-color: var(--positive);
+	}
+
+	#prompt::-moz-selection {
+		color: var(--app-dark-1);
+		background-color: var(--positive);
+	}
+
+#negativePrompt {
+	color: var(--app-light-2);
+}
+
+	#negativePrompt:focus {
+		color: var(--negative);
+		border-color: var(--negative);
+	}
+
+	#negativePrompt::-moz-selection {
+		color: var(--app-dark-1);
+		background-color: var(--negative);
+	}
+
+::placeholder {
+	color: var(--app-dark-4);
+}

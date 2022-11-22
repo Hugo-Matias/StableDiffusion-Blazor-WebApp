@@ -1,6 +1,11 @@
 ﻿label {
-	color: var(--app-light-4);
+	color: var(--app-dark-5);
 }
+
+	label strong {
+		color: var(--app-light-4);
+		font-family: var(--app-font-mono);
+	}
 
 .card {
 	--bs-card-bg: var(--app-dark-1);
@@ -17,20 +22,36 @@
 	--bs-btn-hover-border-color: var(--app-dark-2);
 }
 
-.expand-btn {
-	display: flex;
-	margin: auto;
-	justify-content: center;
-}
-
 .form-control {
 	color: var(--app-light-2);
 	background: var(--app-dark-1);
 	border: 1px solid var(--app-dark-3);
 }
 
+/* Sampler dropdown */
+::deep .dropdown button {
+	--bs-btn-color: var(--app-light-4);
+	--bs-btn-border-color: var(--app-dark-3);
+	--bs-btn-hover-border-color: var(--app-dark-5);
+}
+/**/
+
 .btn-outline-secondary {
-	border: 1px solid var(--app-dark-3);
+	--bs-btn-color: var(--app-dark-4);
+	--bs-btn-border-color: var(--app-dark-3);
+	--bs-btn-hover-color: var(--app-dark-7);
+	--bs-btn-hover-border-color: var(--app-dark-5);
+	--bs-btn-hover-bg: var(--app-dark-1);
+	--bs-btn-active-color: var(--app-blue-5);
+	--bs-btn-active-border-color: var(--app-blue-5);
+	--bs-btn-active-bg: var(--app-dark-1);
+}
+
+/* Check buttons */
+.btn-check + .btn:hover {
+	--bs-btn-color: var(--app-dark-7);
+	--bs-btn-border-color: var(--app-dark-5);
+	--bs-btn-bg: var(--app-dark-1);
 }
 
 .btn-check:checked + .btn {
@@ -38,6 +59,13 @@
 	--bs-btn-active-bg: var(--app-blue-9);
 	--bs-btn-active-border-color: var(--app-blue-5);
 }
+
+.expand-btn {
+	display: flex;
+	margin: auto;
+	justify-content: center;
+}
+/**/
 
 .form-range {
 	margin-top: 9px;
@@ -65,6 +93,7 @@ input[type="range"]::-moz-range-track {
 	height: 4px;
 }
 
+/* Disables input number field buttons */
 input[type="number"] {
 	-webkit-appearance: textfield;
 	-moz-appearance: textfield;
@@ -75,3 +104,4 @@ input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
 	-webkit-appearance: none;
 }
+/**/

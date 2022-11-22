@@ -3,6 +3,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Mono');
 
 :root {
+    --app-dark: #1A1826;
+    --app-light: #323859;
+    --app-primary: #3084F2;
+    --app-secondary-1: #85D982;
+    --app-secondary-2: #F2A766;
     --app-dark-1: #111;
     --app-dark-2: #222;
     --app-dark-3: #333;
@@ -26,6 +31,7 @@
     --app-blue-7: #084298;
     --app-blue-8: #052c65;
     --app-blue-9: #031633;
+    --app-red: #E72F3A;
     --app-font-sans: 'Fira Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     --app-font-mono: 'Fira Mono';
     --app-bg: var(--app-dark-2);

@@ -37,11 +37,11 @@
 						<div class="input-group">
 							<button type="button" class="btn btn-outline-secondary" @onclick="DecrementSeed"><span class="oi oi-minus"></span></button>
 							<input type="number" class="form-control" style="font-size:@(Parameters.Seed < 999999999 ? "1rem" : "0.7rem")" id="seed" min="-1" @bind-value="@Parameters.Seed" @bind-value:event="oninput" />
-							<button type="button" class="btn btn-outline-secondary" @onclick="IncrementSeed"><span class="oi oi-plus"></span></button>
+							<button type="button" class="btn btn-outline-secondary"  @onclick="IncrementSeed"><span class="oi oi-plus"></span></button>
 						</div>
 					</div>
 					<div class="col-2">
-						<button type="button" class="btn btn-outline-secondary" @onclick="SetRandomSeed"><span class="oi oi-random"></span></button>
+						<button type="button" class="btn btn-outline-secondary"  @onclick="SetRandomSeed"><span class="oi oi-random"></span></button>
 					</div>
 					<div class="col-2">
 						<button type="button" class="btn btn-outline-secondary" @onclick="RestoreSeed"><span class="oi oi-action-undo"></span></button>

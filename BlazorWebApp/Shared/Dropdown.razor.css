@@ -1,13 +1,21 @@
 ﻿button {
 	width: 100%;
-	overflow:hidden;
-	background-color: var(--app-dark-2);
-	border: 1px solid var(--app-blue-5);
+	overflow: hidden;
+	--bs-btn-color: var(--app-light-5);
+	--bs-btn-bg: var(--app-dark-1);
+	--bs-btn-border-color: var(--app-blue-7);
+	--bs-btn-hover-color: var(--app-light-2);
+	--bs-btn-hover-border-color: var(--app-blue-5);
+	--bs-btn-hover-bg: var(--app-dark-1);
+	--bs-btn-active-color: var(--app-blue-5);
+	--bs-btn-active-border-color: var(--app-blue-5);
+	--bs-btn-active-bg: var(--app-dark-1);
 }
 
 ul {
-	background-color: var(--app-dark-2);
-	border: 1px solid var(--app-dark-1);
+	--bs-dropdown-bg: var(--app-dark-1);
+	--bs-dropdown-border-color: var(--app-dark-3);
+	--bs-dropdown-link-active-bg: var(--app-blue-5);
 }
 
 .dropdown-menu {
