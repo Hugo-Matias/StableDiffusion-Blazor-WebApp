@@ -1,5 +1,5 @@
 ﻿button {
-	--dropdown-btn-padding: 10px;
+	--dropdown-btn-padding: 0.5rem;
 	--dropdown-btn-font-size: 1rem;
 	width: 100%;
 	overflow: hidden;

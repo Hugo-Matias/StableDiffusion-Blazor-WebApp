@@ -1,0 +1,23 @@
+﻿.row {
+	margin-top: 50px;
+}
+
+button {
+	display: flex;
+	margin: auto;
+	width: 100%;
+	justify-content: center;
+	align-items: center;
+	height: 42px;
+}
+
+#generate-btn {
+	--bs-success: var(--app-green);
+	--bs-btn-color: var(--bs-success);
+	--bs-btn-border-color: var(--bs-success);
+	--bs-btn-hover-bg: var(--bs-success);
+	--bs-btn-hover-color: var(--bs-dark-1);
+	--bs-btn-hover-border-color: var(--bs-success);
+	--bs-btn-active-bg: var(--bs-success);
+	--bs-btn-active-border-color: var(--bs-success);
+}

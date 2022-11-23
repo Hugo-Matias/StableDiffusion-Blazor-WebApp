@@ -7,11 +7,11 @@
 @inject ParsingService Parser
 @implements IDisposable
 
-<PromptFields @bind-Parameters="Parameters" />
+<PromptFields @bind-Parameters="Parameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt"/>
 
 <div class="row">
 	<div class="col">
-		<GenerateForm Parameters="@Parameters" OnGenerate="Generate"></GenerateForm>
+		<GenerateForm Parameters="@Parameters" />
 		<div class="accordion" id="tagsAccordion">
 			@foreach (var item in PromptButtonService.Tags.Items)
 			{
@@ -29,7 +29,7 @@
 		</nav>
 		<div class="tab-content" id="nav-tabContent">
 			<div class="tab-pane fade show active" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
-				@if (AppState.Images.Images != null && !AppState.IsConverging)
+				@if (AppState.Images.Images != null) 
 				{
 					List<string> generatedImages = new();
 
@@ -83,6 +83,10 @@
 		await ImageService.GetTxt2Images();
 		Refresh();
 	}
+
+	private async void Skip() => await SDAPIService.PostSkip();
+
+	private async void Interrupt() => await SDAPIService.PostInterrupt();
 
 	private void TagClicked(string tag)
 	{

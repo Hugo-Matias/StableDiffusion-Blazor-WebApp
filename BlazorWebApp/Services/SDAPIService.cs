@@ -46,5 +46,22 @@ namespace BlazorWebApp.Services
 			return await response.Content.ReadFromJsonAsync<GeneratedImagesModel>();
 		}
 
+		public async Task<string> PostInterrupt()
+		{
+			using var response = await _httpClient.PostAsync("interrupt", null);
+
+			response.EnsureSuccessStatusCode();
+
+			return await response.Content.ReadAsStringAsync();
+		}
+
+		public async Task<string> PostSkip()
+		{
+			using var response = await _httpClient.PostAsync("skip", null);
+
+			response.EnsureSuccessStatusCode();
+
+			return await response.Content.ReadAsStringAsync();
+		}
 	}
 }

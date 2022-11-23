@@ -33,6 +33,7 @@
 	--bs-btn-color: var(--app-light-4);
 	--bs-btn-border-color: var(--app-dark-3);
 	--bs-btn-hover-border-color: var(--app-dark-5);
+	--dropdown-btn-padding: 0.4rem;
 }
 /**/
 
@@ -68,7 +69,7 @@
 /**/
 
 .form-range {
-	margin-top: 9px;
+	margin-top: 7px;
 }
 
 input[type="range"]::-moz-range-thumb {

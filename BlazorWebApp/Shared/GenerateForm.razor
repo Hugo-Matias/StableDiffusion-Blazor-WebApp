@@ -1,9 +1,8 @@
 ﻿@using System.Globalization;
 @inject AppState AppState
 
-<EditForm Model="@Parameters" OnSubmit="@Generate">
+<EditForm Model="@Parameters">
 	<div class="generate-form card p-4 col mb-3">
-		<button id="generate-btn" class="btn btn-outline-success p-3 mb-3 w-50 d-flex m-auto justify-content-center fw-bold" type="submit">Generate</button>
 		<div class="row mb-3">
 			<div class="col-8">
 				<label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
@@ -86,13 +85,9 @@
 </EditForm>
 
 @code {
-	[Parameter]
-	public Txt2ImgParametersModel Parameters { get; set; }
+	[Parameter] public Txt2ImgParametersModel Parameters { get; set; }
 
 	private OptionsModel _options;
-
-	[Parameter]
-	public EventCallback<Txt2ImgParametersModel> OnGenerate { get; set; }
 
 	protected override void OnInitialized()
 	{
@@ -117,8 +112,4 @@
 
 	private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;
 
-	public async void Generate()
-	{
-		await OnGenerate.InvokeAsync(Parameters);
-	}
 }

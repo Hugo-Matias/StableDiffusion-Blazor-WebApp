@@ -1,22 +1,26 @@
 ﻿.form-control {
 	--positive: greenyellow;
 	--negative: var(--app-red);
-	background: var(--app-dark-1);
+	background: var(--app-dark-2);
 	border: 1px solid var(--app-dark-3);
 	color: var(--app-light-1);
-	padding: 1rem;
+	padding: 0.6rem;
 	font-family: var(--app-font-mono);
 }
 
 	.form-control:focus {
-		background: var(--app-dark-1);
 		color: var(--app-light-1);
 		border: 1px solid var(--app-blue-5);
 		box-shadow: none;
 	}
 
+.card {
+    --bs-card-bg: var(--app-dark-1);
+    --bs-card-border-color: var(--app-dark-3);
+}
+
 label {
-	color: var(--app-dark-7);
+	color: var(--app-dark-5);
 }
 
 
