@@ -1,31 +1,24 @@
 ﻿<div class="progress my-4">
-  <div class="progress-bar" role="progressbar" style="width: @_width.ToString("0")%" aria-label="Progress" aria-valuenow="@Value" aria-valuemin="0" aria-valuemax="@MaxValue">
-		@if (_width > 25)
-		{
-			<span><strong>@Value</strong> / @MaxValue <small>steps</small></span>
-		}
-		else
-		{
-			<span><strong>@Value</strong></span>
-		}
+	<div class="progress-bar" role="progressbar" style="width: @_width.ToString("0")%" aria-label="Progress" aria-valuenow="@Value" aria-valuemin="0" aria-valuemax="@MaxValue">
+		@(_width > 25 ? Expanded : Compact)
 	</div>
 </div>
 
 @code {
-	[Parameter]
-	public int Value { get; set; }
-	[Parameter]
-	public int MaxValue { get; set; }
+	[Parameter] public float Value { get; set; }
+	[Parameter] public float MaxValue { get; set; }
+	[Parameter] public RenderFragment Expanded { get; set; }
+	[Parameter] public RenderFragment Compact { get; set; }
 
-	private int _width;
+	private float _width;
 
-	private int CalculateWidth() => _width = (int)(100 * Value / MaxValue);
+	private float CalculateWidth() => _width = 100.0f * Value;
 
 	protected override void OnAfterRender(bool firstRender)
 	{
 		base.OnAfterRender(firstRender);
 
-		if(Value != null && Value > 0)
+		if (Value != null && Value > 0)
 			CalculateWidth();
 	}
 }

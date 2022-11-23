@@ -27,6 +27,8 @@ namespace BlazorWebApp.Services
 			}
 		}
 
+		public byte[] LoadBytesFromFile(string file) => File.ReadAllBytes(file);
+
 		public int GetFileIndex(string path)
 		{
 			string? lastFile = GetLastSavedFile(path);

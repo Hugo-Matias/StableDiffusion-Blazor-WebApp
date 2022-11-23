@@ -1,4 +1,7 @@
 ﻿.progress {
-	height: 25px;
-	font-size: large;
+	--bs-progress-height: 1.5rem;
+	--bs-progress-font-size: 1rem;
+	--bs-progress-bg: var(--app-dark-1);
+	--bs-progress-bar-color: var(--app-light-1);
+	--bs-progress-bar-bg: var(--app-blue-5);
 }

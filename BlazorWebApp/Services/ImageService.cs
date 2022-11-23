@@ -24,16 +24,25 @@ namespace BlazorWebApp.Services
 
 		public async Task GetTxt2Images()
 		{
+			_app.IsConverging = true;
 			StartProgressChecker();
 
-			var newParams = new Txt2ImgParametersModel(_app.Parameters);
-			_app.Images = await _api.PostTxt2Img(_parser.ParseParameters(newParams));
-
-			StopProgressChecker();
+			var parsingParams = new Txt2ImgParametersModel(_app.Parameters);
+			_app.Images = await _api.PostTxt2Img(_parser.ParseParameters(parsingParams));
 
 			_app.SerializeInfo();
+
+			if (_app.Options.SamplesSave)
+			{
+				await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
+			}
+
+			StopProgressChecker();
+			_app.IsConverging = false;
+
 			NotifyStateChanged();
 		}
+
 		public async Task SaveImages(Outdir outdirSamples, Outdir? outdirGrid = null)
 		{
 			DirectoryInfo saveDir = _io.CreateDirectory(_app.GetCurrentSaveFolder(outdirSamples));
@@ -41,14 +50,16 @@ namespace BlazorWebApp.Services
 			int fileIndex = _io.GetFileIndex(saveDir.FullName);
 			_app.CurrentSeed = _app.ImagesInfo.Seed;
 
-			for (int i = 0; i < _app.Images.Images.Length; i++)
+			for (int i = 0; i < _app.Images.Images.Count; i++)
 			{
 				fileIndex++;
 
 				string fullpath = GetImagePath(saveDir.FullName, fileIndex);
 				string extension = _app.Options.SamplesFormat.ToLowerInvariant();
+				string imagePath = $"{fullpath}.{extension}";
 
-				await _io.SaveFileToDisk($"{fullpath}.{extension}", Convert.FromBase64String(_app.Images.Images[i]));
+				await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_app.Images.Images[i]));
+
 
 				if (_app.Options.SaveTxt)
 				{
@@ -58,14 +69,15 @@ namespace BlazorWebApp.Services
 				_app.CurrentSeed++;
 			}
 
-			if (outdirGrid != null && _app.Options.GridSave && (_app.Images.Images.Length > 1 && _app.Options.GridOnlyIfMultiple))
+			if (outdirGrid != null && _app.Options.GridSave && (_app.Images.Images.Count > 1 && _app.Options.GridOnlyIfMultiple))
 			{
 				saveDir = _io.CreateDirectory(_app.GetCurrentSaveFolder(outdirGrid));
 				fileIndex = _io.GetFileIndex(saveDir.FullName) + 1;
 				string fullpath = Path.Combine(saveDir.FullName, $"grid-{fileIndex.ToString().PadLeft(4, '0')}");
 				string extension = _app.Options.GridFormat.ToLowerInvariant();
+				string gridPath = $"{fullpath}.{extension}";
 
-				await _magick.SaveGrid(_app.Images.Images, $"{fullpath}.{extension}");
+				_app.GridImage = await _magick.SaveGrid(_app.Images.Images, gridPath);
 
 				if (_app.Options.SaveTxt)
 				{

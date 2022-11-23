@@ -4,12 +4,15 @@ namespace BlazorWebApp.Services
 {
 	public class MagickService
 	{
-		public MagickService()
+		private readonly AppState _app;
+
+		public MagickService(AppState app)
 		{
 			MagickNET.Initialize();
+			_app = app;
 		}
 
-		public async Task SaveGrid(string[] data, string path)
+		public async Task<string> SaveGrid(List<string> data, string path)
 		{
 			using (var images = new MagickImageCollection())
 			{
@@ -24,6 +27,8 @@ namespace BlazorWebApp.Services
 				using (var result = images.Montage(new MontageSettings() { Geometry = new MagickGeometry(width, height), BackgroundColor = MagickColors.Black }))
 				{
 					await result.WriteAsync(path);
+
+					return result.ToBase64(MagickFormat.Png);
 				}
 			}
 		}

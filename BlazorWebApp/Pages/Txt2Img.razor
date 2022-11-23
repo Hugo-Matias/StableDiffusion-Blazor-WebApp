@@ -29,21 +29,36 @@
 		</nav>
 		<div class="tab-content" id="nav-tabContent">
 			<div class="tab-pane fade show active" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
-				@if (AppState.Images.Images != null)
+				@if (AppState.Images.Images != null && !AppState.IsConverging)
 				{
-					<ImageCarousel Images="AppState.Images.Images" />
+					List<string> generatedImages = new();
+
+					if (AppState.GridImage != null) generatedImages.Add(AppState.GridImage);
+
+					generatedImages.AddRange(AppState.Images.Images);
+
+					<ImageCarousel Images="generatedImages" />
+
 					<ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
 				}
 			</div>
 			<div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
 				@if (AppState.Progress.State != null)
 				{
-					<ProgressBar Value="AppState.Progress.State.SamplingStep" MaxValue="AppState.Progress.State.SamplingSteps" />
+					var value = AppState.Progress.Progress;
+					<ProgressBar Value="@value" MaxValue=1>
+						<Compact>
+							<span><strong>@(Convert.ToInt32(value * 100))%</strong></span>
+						</Compact>
+						<Expanded>
+							<span><strong>@(Convert.ToInt32(value * 100))%</strong> | <small>@AppState.Progress.State.Job</small></span>
+						</Expanded>
+					</ProgressBar>
 
 					if (AppState.Progress.CurrentImage != null)
 					{
-						string[] imageAsArray = { AppState.Progress.CurrentImage };
-						<ImageCarousel Images="imageAsArray" />
+						List<string> imageAsList = new List<string> { AppState.Progress.CurrentImage };
+						<ImageCarousel Images="imageAsList" />
 					}
 				}
 			</div>
@@ -64,14 +79,8 @@
 
 	private async void Generate()
 	{
-		await JSConsole.LogAsync(Parser.ParseParameters(new Txt2ImgParametersModel(Parameters)));
-		//await ImageState.GetTxt2Images(Parameters);
-
-		if (AppState.Options.SamplesSave)
-		{
-			//ImageState.SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
-		}
-
+		//await JSConsole.LogAsync(Parser.ParseParameters(new Txt2ImgParametersModel(Parameters)));
+		await ImageService.GetTxt2Images();
 		Refresh();
 	}
 

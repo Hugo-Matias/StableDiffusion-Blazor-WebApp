@@ -17,7 +17,7 @@ namespace BlazorWebApp.Services
 			if (_app.Style1 != "None" || _app.Style2 != "None")
 			{
 				ParsePromptStyles(param);
-				_app.ResetStyles();
+				//_app.ResetStyles();
 			}
 
 			return param;

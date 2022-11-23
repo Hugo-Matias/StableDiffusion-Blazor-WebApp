@@ -17,6 +17,7 @@ namespace BlazorWebApp.Services
 
 		public GeneratedImagesModel Images { get; set; }
 		public GeneratedImagesInfoModel ImagesInfo { get; set; }
+		public string? GridImage { get; set; }
 		public ProgressModel Progress { get; set; }
 		public List<SDModelModel> SDModels { get; set; }
 		public List<SamplerModel> Samplers { get; set; }
@@ -27,6 +28,7 @@ namespace BlazorWebApp.Services
 		public long? CurrentSeed { get; set; }
 		public string? Style1 { get; set; }
 		public string? Style2 { get; set; }
+		public bool IsConverging { get; set; }
 
 		public AppState(SDAPIService api, IOService io)
 		{

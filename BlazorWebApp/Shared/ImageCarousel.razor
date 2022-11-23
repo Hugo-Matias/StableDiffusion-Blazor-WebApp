@@ -2,12 +2,12 @@
 	<div class="carousel-inner">
 		@foreach (var image in Images)
 		{
-			<div class="carousel-item active" data-bs-interval="10000">
+			<div class="carousel-item @(image == Images[0] ? "active" : "")" data-bs-interval="10000">
 				<img src="data:image/png;base64,@image" class="d-block w-100">
 			</div>
 		}
 	</div>
-	@if (Images.Count() > 1)
+	@if (Images.Count > 1)
 	{
 		<button class="carousel-control-prev" type="button" data-bs-target="#generatedImagesCarousel" data-bs-slide="prev">
 			<span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -21,6 +21,5 @@
 </div>
 
 @code {
-	[Parameter]
-	public string[] Images { get; set; }
+	[Parameter] public List<string> Images { get; set; }
 }
