@@ -5,14 +5,20 @@
 		<div class="row">
 			<div class="col-9">
 				<label class="form-label" for="prompt">Prompt</label>
-				<input class="form-control mb-3" placeholder="Enter your prompt here..." id="prompt" @bind-value="@Parameters.Prompt" />
+				<div class="input-group">
+					<input class="form-control mb-3" placeholder="Enter your prompt here..." id="prompt" @bind-value="@Parameters.Prompt" />
+					<button class="btn btn-outline-secondary" @onclick="() => Parameters.Prompt = string.Empty"><span class="fa-solid fa-delete-left"></span></button>
+				</div>
 
 				<label class="form-label" for="negativePrompt">Negative Prompt</label>
-				<input class="form-control mb-3" placeholder="Prompt for things you don't want to generate..." id="negativePrompt" @bind-value="@Parameters.NegativePrompt" />
+				<div class="input-group">
+					<input class="form-control mb-3" placeholder="Prompt for things you don't want to generate..." id="negativePrompt" @bind-value="@Parameters.NegativePrompt" />
+					<button class="btn btn-outline-secondary" @onclick="() => Parameters.NegativePrompt = string.Empty"><span class="fa-solid fa-delete-left"></span></button>
+				</div>
 			</div>
 			<div class="col-3">
 				<StylesSelector />
-				<GenerateButton Parameters="Parameters" OnGenerate="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt"/>
+				<GenerateButton Parameters="Parameters" OnGenerate="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" />
 			</div>
 		</div>
 	</div>

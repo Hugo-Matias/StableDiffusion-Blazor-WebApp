@@ -2,16 +2,30 @@
 	--bs-accordion-bg: var(--app-dark-2);
 	--bs-accordion-color: var(--app-light-1);
 	--bs-accordion-border-color: var(--app-dark-3);
-	--bs-accordion-active-bg: linear-gradient(
+	/*	--bs-accordion-active-bg: linear-gradient(
 		90deg, 
 		var(--app-dark-1) 30%,
 		var(--app-blue-5) 100%
-	);
+	);*/
+	--bs-accordion-active-bg: var(--app-blue-9);
 	--bs-accordion-active-color: var(--app-light-1);
+	--bs-accordion-active-border-color: var(--app-blue-5);
 	--bs-accordion-btn-bg: var(--app-dark-1);
 	--bs-accordion-btn-color: var(--app-light-1);
 }
 
-.accordion-button:not(.collapsed) {
-	background: var(--bs-accordion-active-bg);
+.accordion-button {
+	--bs-accordion-btn-focus-box-shadow: none;
+}
+
+	.accordion-button:not(.collapsed) {
+		background: var(--bs-accordion-active-bg);
+		border: 1px solid var(--bs-accordion-active-border-color);
+	}
+
+button {
+	--bs-btn-color: var(--app-light-4);
+	--bs-btn-border-color: var(--app-dark-5);
+/*	--bs-btn-bg: var(--app-dark-2);*/
+	--bs-btn-hover-bg: var(--app-dark-1);
 }

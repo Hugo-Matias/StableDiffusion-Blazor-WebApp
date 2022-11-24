@@ -4,7 +4,7 @@
 <div class="row">
 	<div class="col-6">
 		<label class="form-label">Style 1</label>
-		<Dropdown ButtonText="@AppState.Style1" OnSelected="(s) => HandleSelected(s, 1)">
+		<Dropdown ButtonText="@AppState.Style1" Modifier="@(AppState.Style1 == "None" ? "" : "using")" OnSelected="(s) => HandleSelected(s, 1)">
 			<Button>@AppState.Style1</Button>
 			<Items>
 				@foreach (var style in AppState.Styles)
@@ -16,7 +16,7 @@
 	</div>
 	<div class="col-6">
 		<label class="form-label">Style 2</label>
-		<Dropdown ButtonText="@AppState.Style2" OnSelected="(s) => HandleSelected(s, 2)">
+		<Dropdown ButtonText="@AppState.Style2" Modifier="@(AppState.Style2 == "None" ? "" : "using")" OnSelected="(s) => HandleSelected(s, 2)">
 			<Button>@AppState.Style2</Button>
 			<Items>
 				@foreach (var style in AppState.Styles)

@@ -6,6 +6,8 @@
 	color: var(--app-light-1);
 	padding: 0.6rem;
 	font-family: var(--app-font-mono);
+	max-height: 2.8rem;
+	min-height: 2.8rem;
 }
 
 	.form-control:focus {
@@ -55,3 +57,16 @@ label {
 ::placeholder {
 	color: var(--app-dark-4);
 }
+
+.input-group button {
+	--bs-btn-color: var(--app-dark-3);
+	--bs-btn-bg: var(--app-dark-2);
+	--bs-btn-border-color: var(--app-dark-3);
+	--bs-btn-hover-color: var(--app-light-5);
+	--bs-btn-hover-bg: var(--app-dark-2);
+	--bs-btn-hover-border-color: var(--app-dark-3);
+	--bs-btn-active-bg: var(--app-dark-3);
+
+	height: 2.8rem;
+	width: 4rem;
+}	

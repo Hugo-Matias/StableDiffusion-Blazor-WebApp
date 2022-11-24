@@ -23,7 +23,7 @@
 			</ul>
 			<Dropdown ButtonText="@DropdownSelected" OnSelected="@HandleDropdownSelected">
 				<Button>
-					@if (DropdownSelected == "Loading...")
+					@if (DropdownSelected == "Loading..." || AppState.IsConverging)
 					{
 						<span class="spinner-border spinner-border-sm me-2" role="status"></span> @DropdownSelected
 					}
@@ -31,7 +31,7 @@
 					{
 						<span>@DropdownSelected</span>
 					}
-					<span class="oi oi-beaker ms-3"></span>
+					<span class="fa-solid fa-flask ms-3"></span>
 				</Button>
 				<Items>
 					@if (Models != null)

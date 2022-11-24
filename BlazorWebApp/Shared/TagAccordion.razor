@@ -22,7 +22,7 @@
 			{
 				foreach (var tag in Tag.Tags)
 				{
-					<button class="btn btn-outline-primary m-2" style="color: var(--app-light-1)" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
+					<button class="btn btn-outline-primary m-2" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
 				}
 			}
 		</div>
