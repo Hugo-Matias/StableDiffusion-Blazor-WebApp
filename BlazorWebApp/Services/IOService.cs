@@ -27,7 +27,45 @@ namespace BlazorWebApp.Services
 			}
 		}
 
-		public byte[] LoadBytesFromFile(string file) => File.ReadAllBytes(file);
+		public async Task<string?> GetBase64FromFile(string path)
+		{
+			if (!File.Exists(path)) return null;
+
+			var bytes = await GetByteArray(path);
+
+			return Convert.ToBase64String(bytes);
+		}
+
+		public async Task<string[]?> GetStringFromTxt(string path)
+		{
+			if (!File.Exists(path)) return null;
+
+			return File.ReadAllLines(path);
+
+			//using (var reader = new StreamReader(path))
+			//{
+			//	return await reader.ReadToEndAsync();
+			//}
+
+			//var bytes = await GetByteArray(path);
+
+			//return Convert.ToString(bytes);
+		}
+
+		private async Task<byte[]?> GetByteArray(string path)
+		{
+			using Stream stream = File.OpenRead(path);
+			using StreamReader reader = new StreamReader(stream);
+
+			var bytes = default(byte[]);
+			using (var ms = new MemoryStream())
+			{
+				await reader.BaseStream.CopyToAsync(ms);
+				bytes = ms.ToArray();
+			}
+
+			return bytes;
+		}
 
 		public int GetFileIndex(string path)
 		{

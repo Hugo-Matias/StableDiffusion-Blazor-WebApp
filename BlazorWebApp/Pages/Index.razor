@@ -1,5 +1,22 @@
-﻿@page "/"
+﻿@inject ParsingService parser;
+@inject IOService io;
+@page "/"
 
 <PageTitle>Index</PageTitle>
 
 <h3 style="color: var(--app-light-1)">Stable Diffusion WebApp</h3>
+
+<ImageCard Image="@image" Info="@info" />
+
+@code {
+	private string? image;
+	private TextInfoModel info = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		image = await io.GetBase64FromFile(@"E:\Downloads\test.png");
+		var text = await io.GetStringFromTxt(@"E:\Downloads\test.txt");
+		info = parser.ParseImageInfo(text);
+	}
+
+}

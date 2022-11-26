@@ -1,0 +1,84 @@
+﻿@inject AppState AppState
+@inject ParsingService Parser
+
+<div class="card" style="width: 12rem;">
+	<div class="card-body p-2">
+		<span class="sampler-badge rounded-pill" style="@SetSamplerBadgeColor() border: 2px solid var(--app-dark-1);">@infoParams.SamplerIndex</span>
+		<img src="data:image/png;base64,@Image" class="card-img mb-3" alt="image">
+		<h1><strong>@infoParams.Seed</strong> <span>|</span> @infoParams.Steps <span>|</span> @infoParams.CfgScale</h1>
+		<div class="text-card">
+			<h2 class="lead">@infoParams.Prompt</h2>
+			<h3 class="lead">@infoParams.NegativePrompt</h3>
+		</div>
+		<button @onclick="LoadParameters" class="btn btn-primary">Generate</button>
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public string Image { get; set; }
+	[Parameter]
+	public TextInfoModel Info { get; set; }
+
+	Txt2ImgParametersModel infoParams { get; set; } = new();
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		base.OnAfterRender(firstRender);
+
+		if (firstRender)
+			infoParams = Parser.ParseInfoToParameters(Info, infoParams);
+
+		StateHasChanged();
+	}
+
+	private void LoadParameters()
+	{
+		AppState.Parameters = Parser.ParseInfoToParameters(Info, AppState.Parameters);
+	}
+
+	private string SetSamplerBadgeColor()
+	{
+		switch (infoParams.SamplerIndex)
+		{
+			case "Euler":
+				return "background: #59b32d; color: var(--app-dark-1);";
+
+			case "Euler a":
+				return "background: #156948; color: var(--app-light-1);";
+
+			case "LMS":
+				return "background: #db6e53; color: var(--app-dark-1);";
+
+			case "PLMS":
+				return "background: #853e33; color: var(--app-light-1);";
+
+			case "DDIM":
+				return "background: #f07508; color: var(--app-dark-1);";
+
+			case "Heun":
+				return "background: #b52d1b; color: var(--app-light-1);";
+
+			case "DPM2":
+				return "background: #ee6283; color: var(--app-dark-1);";
+
+			case "DPM2 a":
+				return "background: #981e82; color: var(--app-light-1);";
+
+			case "DPM++ 2S a":
+				return "background: #214aa7; color: var(--app-light-1);";
+
+			case "DPM++ 2M":
+				return "background: #0a98d8; color: var(--app-dark-1);";
+
+			case "DPM fast":
+				return "background: #b0a28d; color: var(--app-dark-1);";
+
+			case "DPM adaptive":
+				return "background: #6d5d5b; color: var(--app-light-1);";
+
+			default:
+				return "background: #7eaea3; color: var(--app-dark-1);";
+		}
+	}
+}

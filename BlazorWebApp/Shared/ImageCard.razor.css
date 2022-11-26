@@ -1,0 +1,70 @@
+﻿.card {
+	--bs-card-bg: var(--app-dark-1);
+	--bs-card-color: var(--app-dark-5);
+}
+
+	.card .sampler-badge {
+		position: absolute;
+		top: 0.2rem;
+		left: 0.2rem;
+		color: var(--app-light-2);
+		font-size: 0.8rem;
+		padding: 0.1rem 0.8rem;
+	}
+
+	.card h1 {
+		font-size: 1rem;
+		text-align: center;
+		color: var(--app-light-7);
+	}
+
+		.card h1 span {
+			color: var(--app-dark-4);
+		}
+
+	.card .text-card {
+		position: absolute;
+		top: 0;
+		left: 0;
+		padding: 1rem;
+		background: #111111dd;
+		width: fit-content;
+		height: fit-content;
+		min-height: 14rem;
+		max-height: 14rem;
+		color: var(--app-dark-6);
+		opacity: 0;
+		transition: opacity 0.3s ease-in-out;
+	}
+
+	.card:hover .text-card {
+		opacity: 1;
+	}
+
+	.card h2 {
+		font-size: 0.7rem;
+		text-align: center;
+		color: var(--app-light-6);
+	}
+
+	.card h3 {
+		font-size: 0.5rem;
+		text-align: center;
+		opacity: 0.5;
+		color: var(--app-light-7);
+	}
+
+	.card button {
+		position: absolute;
+		margin: auto;
+		left: 1.2rem;
+		width: 80%;
+		opacity: 0;
+		bottom: -0.6rem;
+		transition: all 0.3s ease-in-out;
+	}
+
+	.card:hover button {
+		bottom: 2.5rem;
+		opacity: 1;
+	}

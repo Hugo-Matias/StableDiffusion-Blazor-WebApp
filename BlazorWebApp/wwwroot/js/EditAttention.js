@@ -1,8 +1,4 @@
-﻿function getSelectedText(elem) {
-  return elem.value.substring(elem.selectionStart, elem.selectionEnd);
-}
-
-addEventListener("keydown", (event) => {
+﻿addEventListener("keydown", (event) => {
   let target = event.originalTarget;
   const positive = "ArrowUp";
   const negative = "ArrowDown";
