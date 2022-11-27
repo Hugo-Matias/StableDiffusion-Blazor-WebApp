@@ -82,6 +82,18 @@ namespace BlazorWebApp.Services
 
 		public async Task GetSamplers() => Samplers = await _api.GetSamplers();
 
+		public void LoadImageInfoParameters(ImageInfoModel image)
+		{
+			Parameters.Prompt = image.Prompt;
+			Parameters.NegativePrompt = image.NegativePrompt;
+			Parameters.SamplerIndex = image.Sampler;
+			Parameters.Steps = image.Steps;
+			Parameters.Seed = image.Seed;
+			Parameters.CfgScale = image.CfgScale;
+			Parameters.Width = image.Width;
+			Parameters.Height = image.Height;
+		}
+
 		public string GetCurrentSaveFolder(Outdir? outdir)
 		{
 			string path;

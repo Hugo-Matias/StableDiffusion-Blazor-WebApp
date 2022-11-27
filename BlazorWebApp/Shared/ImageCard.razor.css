@@ -1,6 +1,22 @@
-﻿.card {
+﻿button {
+	--bs-btn-bg: var(--app-blue-9);
+	--bs-btn-color: var(--app-blue-4);
+	--bs-btn-border-color: var(--app-blue-7);
+	--bs-btn-hover-bg: var(--app-blue-8);
+	--bs-btn-hover-color: var(--app-light-2);
+	--bs-btn-hover-border-color: var(--app-blue-5);
+	--bs-btn-active-bg: var(--app-blue-8);
+	--bs-btn-active-color: var(--app-blue-5);
+	--bs-btn-active-border-color: var(--app-blue-3);
+}
+
+.card {
 	--bs-card-bg: var(--app-dark-1);
 	--bs-card-color: var(--app-dark-5);
+	--card-size: 16rem;
+	max-width: var(--card-size);
+	cursor: default;
+	overflow: hidden;
 }
 
 	.card .sampler-badge {
@@ -20,6 +36,8 @@
 
 		.card h1 span {
 			color: var(--app-dark-4);
+			font-size: 0.8rem;
+			margin-right: 0.3rem;
 		}
 
 	.card .text-card {
@@ -28,10 +46,8 @@
 		left: 0;
 		padding: 1rem;
 		background: #111111dd;
-		width: fit-content;
-		height: fit-content;
-		min-height: 14rem;
-		max-height: 14rem;
+		min-width: calc(var(--card-size) - 1rem);
+		min-height: calc(var(--card-size) - 1rem);
 		color: var(--app-dark-6);
 		opacity: 0;
 		transition: opacity 0.3s ease-in-out;
@@ -42,29 +58,37 @@
 	}
 
 	.card h2 {
-		font-size: 0.7rem;
+		font-size: 0.75rem;
 		text-align: center;
 		color: var(--app-light-6);
 	}
 
 	.card h3 {
-		font-size: 0.5rem;
+		font-size: 0.6rem;
 		text-align: center;
 		opacity: 0.5;
 		color: var(--app-light-7);
 	}
 
-	.card button {
+	.card .btn-container {
+		justify-content: center;
+		align-items: center;
 		position: absolute;
-		margin: auto;
-		left: 1.2rem;
-		width: 80%;
+		left: 0;
 		opacity: 0;
 		bottom: -0.6rem;
+		width: 100%;
+		margin: auto;
 		transition: all 0.3s ease-in-out;
 	}
 
-	.card:hover button {
-		bottom: 2.5rem;
+		.card .btn-container button {
+			margin: auto;
+			width: 100%;
+		}
+
+	.card:hover .btn-container {
+		bottom: 3.5rem;
 		opacity: 1;
 	}
+

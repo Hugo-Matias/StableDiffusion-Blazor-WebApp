@@ -1,45 +1,44 @@
 ﻿@inject AppState AppState
-@inject ParsingService Parser
 
-<div class="card" style="width: 12rem;">
+<div class="card m-1">
 	<div class="card-body p-2">
-		<span class="sampler-badge rounded-pill" style="@SetSamplerBadgeColor() border: 2px solid var(--app-dark-1);">@infoParams.SamplerIndex</span>
-		<img src="data:image/png;base64,@Image" class="card-img mb-3" alt="image">
-		<h1><strong>@infoParams.Seed</strong> <span>|</span> @infoParams.Steps <span>|</span> @infoParams.CfgScale</h1>
+		<span class="sampler-badge rounded-pill" style="@SetSamplerBadgeColor() border: 2px solid var(--app-dark-1);">@Image.Sampler</span>
+		<img src="data:image/png;base64,@Image.Image" class="card-img mb-3" alt="image">
+		<h1><span class="fa-solid fa-seedling" /><strong>@Image.Seed</strong><br /> <span class="fa-solid fa-stairs" /> @Image.Steps <span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale</h1>
 		<div class="text-card">
-			<h2 class="lead">@infoParams.Prompt</h2>
-			<h3 class="lead">@infoParams.NegativePrompt</h3>
+			<h2 class="lead">@Image.Prompt</h2>
+			<h3 class="lead">@Image.NegativePrompt</h3>
 		</div>
-		<button @onclick="LoadParameters" class="btn btn-primary">Generate</button>
+		<div class="row btn-container">
+			<div class="col-6">
+				<button @onclick="LoadParameters" class="btn btn-primary">Load</button>
+			</div>
+			<div class="col-6">
+				<button data-bs-toggle="modal" data-bs-target="#@Target" class="btn btn-primary" @onclick="@(() => OnSelectImage.InvokeAsync(Image))">Show</button>
+			</div>
+		</div>
 	</div>
 </div>
 
 @code {
 	[Parameter]
-	public string Image { get; set; }
+	public ImageInfoModel Image { get; set; }
+
 	[Parameter]
-	public TextInfoModel Info { get; set; }
+	public string Target { get; set; }
 
-	Txt2ImgParametersModel infoParams { get; set; } = new();
-
-	protected override void OnAfterRender(bool firstRender)
-	{
-		base.OnAfterRender(firstRender);
-
-		if (firstRender)
-			infoParams = Parser.ParseInfoToParameters(Info, infoParams);
-
-		StateHasChanged();
-	}
+	[Parameter]
+	public EventCallback<ImageInfoModel> OnSelectImage { get; set; }
 
 	private void LoadParameters()
 	{
-		AppState.Parameters = Parser.ParseInfoToParameters(Info, AppState.Parameters);
+		// TODO: Image Width and Height
+		AppState.LoadImageInfoParameters(Image);
 	}
 
 	private string SetSamplerBadgeColor()
 	{
-		switch (infoParams.SamplerIndex)
+		switch (Image.Sampler)
 		{
 			case "Euler":
 				return "background: #59b32d; color: var(--app-dark-1);";

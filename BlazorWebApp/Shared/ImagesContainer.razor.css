@@ -1,0 +1,23 @@
+﻿.modal-dialog {
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.modal-dialog-centered {
+	align-items: center;
+	justify-content: center;
+}
+
+.modal-controls {
+	position: absolute;
+	top: 5rem;
+	right: 2rem;
+	margin: auto;
+	opacity: 0;
+	transition: opacity 0.3s ease-in-out;
+	z-index: 2000;
+}
+
+	.modal-controls.show {
+		opacity:1;
+	}

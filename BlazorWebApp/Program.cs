@@ -7,14 +7,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpClient<SDAPIService>();
-builder.Services.AddScoped<JavascriptService>();
-builder.Services.AddSingleton<IOService>();
-builder.Services.AddSingleton<PromptButtonService>();
-builder.Services.AddSingleton<RandomService>();
-builder.Services.AddSingleton<ImageService>();
+
 builder.Services.AddSingleton<AppState>();
-builder.Services.AddSingleton<MagickService>();
-builder.Services.AddSingleton<ParsingService>();
+builder.Services.AddSingleton<ImageService>();
+builder.Services.AddSingleton<PromptButtonService>();
+
+builder.Services.AddScoped<JavascriptService>();
+
+builder.Services.AddTransient<RandomService>();
+builder.Services.AddTransient<MagickService>();
+builder.Services.AddTransient<IOService>();
+builder.Services.AddTransient<ParsingService>();
 
 var app = builder.Build();
 

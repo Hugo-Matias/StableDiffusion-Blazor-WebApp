@@ -1,22 +1,21 @@
-﻿@inject ParsingService parser;
-@inject IOService io;
+﻿@inject ImageService ImageService
 @page "/"
 
 <PageTitle>Index</PageTitle>
 
 <h3 style="color: var(--app-light-1)">Stable Diffusion WebApp</h3>
 
-<ImageCard Image="@image" Info="@info" />
+<ImagesContainer Images="@images" Title="This is a test!"/>
 
 @code {
-	private string? image;
-	private TextInfoModel info = new();
+	private List<ImageInfoModel?> images = new();
 
 	protected override async Task OnInitializedAsync()
 	{
-		image = await io.GetBase64FromFile(@"E:\Downloads\test.png");
-		var text = await io.GetStringFromTxt(@"E:\Downloads\test.txt");
-		info = parser.ParseImageInfo(text);
-	}
+		//image.Image = await io.GetBase64FromFile(@"E:\Downloads\test.png");
+		//var text = await io.GetStringFromTxt(@"E:\Downloads\test.txt");
+		//parser.ParseImageInfo(image, text);
 
+		images = await ImageService.GetImageInfoFromPath(@"H:\O meu disco\Vault\j7ip64ns2b0bbl4esvurdrl7n4\zoiwettonçzxbioqaanpfosdgin\StableDiffusion\Text-2-Image\_samples\110d33ce\Heun");
+	}
 }

@@ -1,0 +1,51 @@
+﻿<div class="container">
+	<div class="row justify-content-center">
+		@if (!string.IsNullOrWhiteSpace(Title))
+		{
+			<div class="col-12">
+				<h2 class="mb-3 text-center">@Title</h2>
+			</div>
+		}
+
+		@if (Images is not null && Images.Count > 0)
+		{
+			@foreach (var image in Images)
+			{
+				<ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowFullscreen" />
+			}
+		}
+	</div>
+</div>
+
+<!-- Fullscreen Viewer Modal -->
+<div class="modal fade" id="fullscreen-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered" style="max-width: @(selectedImage.Width)px; max-height: @(selectedImage.Height)px;">
+		<div class="modal-content">
+			<img src="data:image/png;base64,@selectedImage.Image" class="full-img" />
+		</div>
+	</div>
+</div>
+
+<div class="row modal-controls @(IsShowingModal?"show":"")">
+	<div class="col">
+		<button class="btn btn-outline-danger close-btn">X</button>
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public List<ImageInfoModel?> Images { get; set; }
+
+	[Parameter]
+	public string? Title { get; set; } = string.Empty;
+
+	ImageInfoModel selectedImage = new();
+	bool IsShowingModal;
+
+	private void ShowFullscreen(ImageInfoModel image)
+	{
+		selectedImage = image;
+		IsShowingModal = true;
+		StateHasChanged();
+	}
+}

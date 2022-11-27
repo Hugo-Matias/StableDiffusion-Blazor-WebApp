@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using BlazorWebApp.Models;
+using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -6,25 +7,68 @@ namespace BlazorWebApp.Services
 	{
 		public string GetJsonAsString(string path) => new string(File.ReadAllText(path));
 
-		public List<string> GetFilesFromPath(string path)
+		public IOrderedEnumerable<FileInfo>? GetFilesFromPath(string path)
 		{
-			if (!Directory.Exists(path)) return new List<string>();
+			if (!Directory.Exists(path)) return null;
 
 			try
 			{
 				var di = new DirectoryInfo(path);
 
+				// Order by name is important to get txt/img file pairs
 				var files = from file in di.GetFiles()
 							orderby file.Name
-							select file.Name;
+							select file;
 
-				return files.ToList();
+				return files;
 			}
 			catch (Exception e)
 			{
 
-				throw new Exception($"Couldn't read files from directory: {path}", e);
+				throw new Exception($"Couldn't read files from directory: {path}\n", e);
 			}
+		}
+
+		public async Task<List<ImageInfoModel>?> GetImagesFromPath(string path)
+		{
+			if (!Directory.Exists(path)) return null;
+
+			var files = GetFilesFromPath(path);
+			var images = new List<ImageInfoModel>();
+			var currentFileName = string.Empty;
+			ImageInfoModel currentImage = null;
+
+			foreach (var file in files)
+			{
+				var fileName = file.Name.Replace(file.Extension, "");
+
+				if (currentFileName != fileName)
+				{
+					currentFileName = fileName;
+					currentImage = new();
+				}
+
+				if (file.Extension == ".txt")
+				{
+					currentImage.InfoString = await GetStringFromTxt(file.FullName);
+				}
+				else
+				{
+					try
+					{
+						currentImage.Image = await GetBase64FromFile(file.FullName);
+					}
+					catch (Exception e)
+					{
+						throw new Exception($"Couldn't get file: {file.Name}\n", e);
+					}
+				}
+
+				if (currentImage.Image != null && currentImage.InfoString != null)
+					images.Add(currentImage);
+			}
+
+			return images;
 		}
 
 		public async Task<string?> GetBase64FromFile(string path)
@@ -69,14 +113,14 @@ namespace BlazorWebApp.Services
 
 		public int GetFileIndex(string path)
 		{
-			string? lastFile = GetLastSavedFile(path);
+			FileInfo? lastFile = GetLastSavedFile(path);
 			int fileIndex;
 
 			if (lastFile != null)
 			{
 				string pattern;
 
-				if (lastFile.StartsWith("grid"))
+				if (lastFile.Name.StartsWith("grid"))
 				{
 					pattern = @"-(\d+)";
 				}
@@ -85,7 +129,7 @@ namespace BlazorWebApp.Services
 					pattern = @"(\d+)-";
 				}
 
-				fileIndex = int.Parse(Regex.Match(lastFile, pattern).Groups[1].Value);
+				fileIndex = int.Parse(Regex.Match(lastFile.Name, pattern).Groups[1].Value);
 			}
 			else
 			{
@@ -95,7 +139,7 @@ namespace BlazorWebApp.Services
 			return fileIndex;
 		}
 
-		private string? GetLastSavedFile(string path) => GetFilesFromPath(path).LastOrDefault();
+		private FileInfo? GetLastSavedFile(string path) => GetFilesFromPath(path).LastOrDefault();
 
 		public async Task SaveFileToDisk(string path, byte[] data) => await File.WriteAllBytesAsync(path, data);
 

@@ -43,6 +43,22 @@ namespace BlazorWebApp.Services
 			NotifyStateChanged();
 		}
 
+		public async Task<List<ImageInfoModel>?> GetImageInfoFromPath(string path)
+		{
+
+			var images = new List<ImageInfoModel>();
+			var raw_images = await _io.GetImagesFromPath(path);
+
+			if (raw_images == null) return null;
+
+			foreach (var image in raw_images)
+			{
+				images.Add(_parser.ParseImageInfoString(image));
+			}
+
+			return images;
+		}
+
 		public async Task SaveImages(Outdir outdirSamples, Outdir? outdirGrid = null)
 		{
 			DirectoryInfo saveDir = _io.CreateDirectory(_app.GetCurrentSaveFolder(outdirSamples));

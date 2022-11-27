@@ -45,37 +45,34 @@ namespace BlazorWebApp.Services
             return $"{prompt}{style}";
         }
 
-        public TextInfoModel ParseImageInfo(string[] info)
+        public ImageInfoModel ParseImageInfoString(ImageInfoModel image)
         {
-            var infoModel = new TextInfoModel();
-
-            foreach (var line in info)
+            foreach (var line in image.InfoString)
             {
                 if (line.StartsWith("Negative prompt:"))
-                    infoModel.NegativePrompt = line;
+                    image.NegativePrompt = line.Replace("Negative prompt: ", "");
 
                 else if (line.StartsWith("Steps:"))
-                    infoModel.Parameters = line;
+                    ParseImageInfoParameters(image, line);
 
                 else
-                    infoModel.Prompt = line;
+                    image.Prompt = line;
             }
 
-            return infoModel;
+            return image;
         }
 
-        public Txt2ImgParametersModel ParseInfoToParameters(TextInfoModel info, Txt2ImgParametersModel param)
+        public ImageInfoModel ParseImageInfoParameters(ImageInfoModel image, string info)
         {
-            param.Prompt = info.Prompt ?? "";
-            param.NegativePrompt = info.NegativePrompt.Replace("Negative prompt: ", "") ?? "";
-            param.Steps = int.Parse(Regex.Match(info.Parameters, @"(Steps: )(\d+)").Groups[2].Value);
-            param.SamplerIndex = Regex.Match(info.Parameters, @"(Sampler: )(.+?),").Groups[2].Value;
-            param.CfgScale = float.Parse(Regex.Match(info.Parameters, @"(CFG scale: )(.+?),").Groups[2].Value);
-            param.Seed = long.Parse(Regex.Match(info.Parameters, @"(Seed: )(\d+)").Groups[2].Value);
-            var size = Regex.Match(info.Parameters, @"(Size: )(\d+)x(\d+)");
-            param.Width = int.Parse(size.Groups[2].Value);
-            param.Height = int.Parse(size.Groups[3].Value);
-            return param;
+            image.Steps = int.Parse(Regex.Match(info, @"(Steps: )(\d+)").Groups[2].Value);
+            image.Sampler = Regex.Match(info, @"(Sampler: )(.+?),").Groups[2].Value;
+            image.CfgScale = float.Parse(Regex.Match(info, @"(CFG scale: )(.+?),").Groups[2].Value);
+            image.Seed = long.Parse(Regex.Match(info, @"(Seed: )(\d+)").Groups[2].Value);
+            var size = Regex.Match(info, @"(Size: )(\d+)x(\d+)");
+            image.Width = int.Parse(size.Groups[2].Value);
+            image.Height = int.Parse(size.Groups[3].Value);
+
+            return image;
         }
     }
 }
