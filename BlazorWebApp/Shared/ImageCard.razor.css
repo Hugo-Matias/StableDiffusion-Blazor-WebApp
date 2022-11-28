@@ -45,7 +45,7 @@
 		top: 0;
 		left: 0;
 		padding: 1rem;
-		background: #111111dd;
+		background: #111111bb;
 		min-width: calc(var(--card-size) - 1rem);
 		min-height: calc(var(--card-size) - 1rem);
 		color: var(--app-dark-6);
@@ -78,8 +78,10 @@
 		opacity: 0;
 		bottom: -0.6rem;
 		width: 100%;
+		height: 10rem;
 		margin: auto;
 		transition: all 0.3s ease-in-out;
+		background: linear-gradient(0deg, black 0%, transparent 100%);
 	}
 
 		.card .btn-container button {
@@ -88,7 +90,7 @@
 		}
 
 	.card:hover .btn-container {
-		bottom: 3.5rem;
+		bottom: 0;
 		opacity: 1;
 	}
 

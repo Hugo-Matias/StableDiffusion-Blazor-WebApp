@@ -1,12 +1,23 @@
 ﻿.modal-dialog {
 	margin-left: auto;
 	margin-right: auto;
+	transition: all 0.3s ease-in;
 }
+
+.modal-dialog.expanded {
+	max-width: 60vw !important;
+}
+
 
 .modal-dialog-centered {
 	align-items: center;
 	justify-content: center;
 }
+
+.modal-content {
+	z-index:1500;
+}
+
 
 .modal-controls {
 	position: absolute;
