@@ -23,7 +23,7 @@
 <div class="modal fade" id="fullscreen-modal" @onclick="HideFullscreen" tabindex="-1" aria-hidden="true">
 	<div id="fullscreen-modal-dialog" class="modal-dialog modal-dialog-centered @(modalMaxMinIcon == "fa-minimize" ? "expanded" : "")" style="max-width: @(selectedImage.Width)px; max-height: @(selectedImage.Height)px;">
 		<div class="modal-content"> 
-			<img src="data:image/png;base64,@selectedImage.Image" class="full-img" />
+			<img src="data:image/png;base64,@selectedImage.Image" />
 		</div>
 	</div>
 </div>
@@ -61,7 +61,7 @@
 		selectedImage = new();
 	}
 
-	private async void ToggleMaximize()
+	private void ToggleMaximize()
 	{
 		modalMaxMinIcon = modalMaxMinIcon == "fa-maximize" ? "fa-minimize" : "fa-maximize";
 		StateHasChanged();

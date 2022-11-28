@@ -1,7 +1,7 @@
 ﻿@inject AppState AppState
 
 <div class="card m-1">
-	<div class="card-body p-2">
+	<div class="card-body p-1 pt-2">
 		<span class="sampler-badge rounded-pill" style="@SetSamplerBadgeColor() border: 2px solid var(--app-dark-1);">@Image.Sampler</span>
 		<img src="data:image/png;base64,@Image.Image" class="card-img mb-3" alt="image">
 		<h1><span class="fa-solid fa-seedling" /><strong>@Image.Seed</strong><br /> <span class="fa-solid fa-stairs" /> @Image.Steps <span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale</h1>

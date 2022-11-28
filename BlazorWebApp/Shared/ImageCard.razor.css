@@ -15,10 +15,15 @@
 	--bs-card-color: var(--app-dark-5);
 	--card-size: 16rem;
 	max-width: var(--card-size);
+	height: fit-content;
 	cursor: default;
 	overflow: hidden;
 }
-
+	.card .card-img {
+		object-fit: cover;
+		width: calc(var(--card-size) - 2rem);
+		height: calc(var(--card-size) - 2rem);
+	}
 	.card .sampler-badge {
 		position: absolute;
 		top: 0.2rem;
@@ -45,9 +50,10 @@
 		top: 0;
 		left: 0;
 		padding: 1rem;
+		padding-top: 2rem;
 		background: #111111bb;
 		min-width: calc(var(--card-size) - 1rem);
-		min-height: calc(var(--card-size) - 1rem);
+		min-height: 100%;
 		color: var(--app-dark-6);
 		opacity: 0;
 		transition: opacity 0.3s ease-in-out;
