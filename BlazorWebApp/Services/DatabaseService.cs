@@ -79,7 +79,9 @@ namespace BlazorWebApp.Services
 			{
 				Images = images,
 				CurrentPage = page,
-				PageCount = (int)pageCount
+				PageCount = (int)pageCount,
+				HasNext = (int)pageCount > 1 && page < (int)pageCount,
+				HasPrev = page > 1
 			};
 		}
 
@@ -101,7 +103,9 @@ namespace BlazorWebApp.Services
 			{
 				Images = images,
 				CurrentPage = page,
-				PageCount = (int)pageCount
+				PageCount = (int)pageCount,
+				HasNext = (int)pageCount > 1 && page < (int)pageCount,
+				HasPrev = page > 1
 			};
 		}
 

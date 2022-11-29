@@ -95,7 +95,9 @@ namespace BlazorWebApp.Services
 			}
 		}
 
-		public async Task<string> LoadImage(string imagePath) => await _io.GetBase64FromFile(imagePath);
+		public string LoadImage(string imagePath) => _io.GetBase64FromFile(imagePath);
+
+		public async Task<string> LoadImageAsync(string imagePath) => await _io.GetBase64FromFileAsync(imagePath);
 
 		//public async Task<List<ImageInfoModel>> LoadImages(ImagesDto imagesDto)
 		//{

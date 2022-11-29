@@ -1,0 +1,23 @@
+﻿nav {
+	background: transparent;
+}
+
+.pagination {
+	--bs-pagination-color: var(--app-light-4);
+	--bs-pagination-bg: var(--app-dark-3);
+	--bs-pagination-border-color: var(--app-dark-1);
+	--bs-pagination-hover-color: var(--app-blue-5);
+	--bs-pagination-hover-bg: var(--app-dark-1);
+	--bs-pagination-hover-border-color: var(--app-dark-1);
+	--bs-pagination-active-color: var(--app-light-1);
+	--bs-pagination-active-bg: var(--app-blue-8);
+	--bs-pagination-active-border-color: var(--app-blue-5);
+	--bs-pagination-disabled-color: var(--app-dark-4);
+	--bs-pagination-disabled-bg: var(--app-dark-2);
+	--bs-pagination-disabled-border-color: var(--app-dark-3);
+	--bs-pagination-focus-color: var(--app-light-1);
+	--bs-pagination-focus-bg: var(--app-blue-5);
+	--bs-pagination-focus-box-shadow: none;
+	margin: 1.6rem 0;
+}
+

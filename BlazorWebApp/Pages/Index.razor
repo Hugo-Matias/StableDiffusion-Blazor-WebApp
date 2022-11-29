@@ -24,7 +24,7 @@
 }
 else
 {
-	<ImagesContainer Images="@images" Title="This is a test!"/>
+	<ImagesContainer Images="@images" OnPageSelected="LoadImages"/>
 }
 
 @code {
@@ -42,20 +42,20 @@ else
 	protected override async Task OnInitializedAsync()
 	{
 		_projects = await DB.GetProjects();
-		await LoadImages();
+		await LoadImages(1);
 
 		//images = await ImageService.GetImageInfoFromPath(@"H:\O meu disco\Vault\j7ip64ns2b0bbl4esvurdrl7n4\zoiwettonçzxbioqaanpfosdgin\StableDiffusion\Text-2-Image\_samples\110d33ce\DPM++ 2M");
 	}
 
-	private async Task LoadImages()
+	private async Task LoadImages(int page)
 	{
-		images = await DB.GetImages(1, AppState.CurrentProjectId);
+		images = await DB.GetImages(page, AppState.CurrentProjectId);
 		await InvokeAsync(StateHasChanged);
 	}
 
 	private async Task HandleProjectChanged()
 	{
-		await LoadImages();
+		await LoadImages(1);
 	}
 
 	public void Dispose() => AppState.OnProjectChange -= HandleProjectChanged;

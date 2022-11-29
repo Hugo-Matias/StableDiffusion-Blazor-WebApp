@@ -15,12 +15,12 @@ builder.Services.AddSingleton<AppState>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<PromptButtonService>();
 builder.Services.AddSingleton<DatabaseService>();
+builder.Services.AddSingleton<IOService>();
 
 builder.Services.AddScoped<JavascriptService>();
 
 builder.Services.AddTransient<RandomService>();
 builder.Services.AddTransient<MagickService>();
-builder.Services.AddTransient<IOService>();
 builder.Services.AddTransient<ParsingService>();
 
 var app = builder.Build();

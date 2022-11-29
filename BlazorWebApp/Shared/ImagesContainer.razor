@@ -3,20 +3,17 @@
 
 <div class="container">
 	<div class="row justify-content-center">
-		@if (!string.IsNullOrWhiteSpace(Title))
-		{
-			<div class="col-12">
-				<h2 class="mb-3 text-center">@Title</h2>
-			</div>
-		}
+		<PaginationNav Pagination="Images" OnPageSelected="(p) => OnPageSelected.InvokeAsync(p)" />
 
 		@if (Images.Images is not null && Images.Images.Count > 0)
 		{
 			@foreach (var image in Images.Images)
 			{
-				<ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowFullscreen" />
+				<ImageCard Image="@image" ImageData="@LoadCardImage(image.Path)" Target="fullscreen-modal" OnSelectImage="ShowFullscreen" />
 			}
 		}
+
+		<PaginationNav Pagination="Images" OnPageSelected="(p) => OnPageSelected.InvokeAsync(p)" />
 	</div>
 </div>
 
@@ -41,18 +38,20 @@
 	public ImagesDto Images { get; set; }
 
 	[Parameter]
-	public string? Title { get; set; } = string.Empty;
+	public EventCallback<int> OnPageSelected { get; set; }
 
 	Image selectedImage = new();
 	bool IsShowingModal;
 	string modalMaxMinIcon = "fa-maximize";
 	string imageData = string.Empty;
 
+	private string LoadCardImage(string path) => ImageService.LoadImage(path);
+
 	private async void ShowFullscreen(Image image)
 	{
 		selectedImage = image;
 		IsShowingModal = true;
-		imageData = await ImageService.LoadImage(selectedImage.Path);
+		imageData = await ImageService.LoadImageAsync(selectedImage.Path);
 		StateHasChanged();
 	}
 

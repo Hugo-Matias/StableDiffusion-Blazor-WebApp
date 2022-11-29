@@ -56,7 +56,7 @@ namespace BlazorWebApp.Services
 				{
 					try
 					{
-						currentImage.Image = await GetBase64FromFile(file.FullName);
+						currentImage.Image = await GetBase64FromFileAsync(file.FullName);
 					}
 					catch (Exception e)
 					{
@@ -71,11 +71,21 @@ namespace BlazorWebApp.Services
 			return images;
 		}
 
-		public async Task<string?> GetBase64FromFile(string path)
+		public string GetBase64FromFile(string path)
+		{
+			if (!File.Exists(path)) return string.Empty;
+
+			var bytes = File.ReadAllBytes(path);
+
+			return Convert.ToBase64String(bytes);
+		}
+
+		public async Task<string?> GetBase64FromFileAsync(string path)
 		{
 			if (!File.Exists(path)) return null;
 
-			var bytes = await GetByteArray(path);
+			//var bytes = await GetByteArray(path);
+			var bytes = await File.ReadAllBytesAsync(path);
 
 			return Convert.ToBase64String(bytes);
 		}
@@ -97,6 +107,7 @@ namespace BlazorWebApp.Services
 			{
 				await reader.BaseStream.CopyToAsync(ms);
 				bytes = ms.ToArray();
+				ms.Close();
 			}
 
 			return bytes;
