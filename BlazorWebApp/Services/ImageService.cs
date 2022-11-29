@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
 {
@@ -9,17 +10,20 @@ namespace BlazorWebApp.Services
 		private readonly AppState _app;
 		private readonly MagickService _magick;
 		private readonly ParsingService _parser;
+		private readonly DatabaseService _db;
 		private PeriodicTimer? _timer;
+		private Txt2ImgParametersModel _parsingParams;
 
 		public event Action OnChange;
 
-		public ImageService(SDAPIService api, IOService io, AppState app, MagickService magick, ParsingService parser)
+		public ImageService(SDAPIService api, IOService io, AppState app, MagickService magick, ParsingService parser, DatabaseService db)
 		{
 			_api = api;
 			_io = io;
 			_app = app;
 			_magick = magick;
 			_parser = parser;
+			_db = db;
 		}
 
 		public async Task GetTxt2Images()
@@ -27,8 +31,9 @@ namespace BlazorWebApp.Services
 			_app.IsConverging = true;
 			StartProgressChecker();
 
-			var parsingParams = new Txt2ImgParametersModel(_app.Parameters);
-			_app.Images = await _api.PostTxt2Img(_parser.ParseParameters(parsingParams));
+			_parsingParams = new Txt2ImgParametersModel(_app.Parameters);
+			_app.GridImage = string.Empty;
+			_app.Images = await _api.PostTxt2Img(_parser.ParseParameters(_parsingParams));
 
 			_app.SerializeInfo();
 
@@ -41,22 +46,6 @@ namespace BlazorWebApp.Services
 			_app.IsConverging = false;
 
 			NotifyStateChanged();
-		}
-
-		public async Task<List<ImageInfoModel>?> GetImageInfoFromPath(string path)
-		{
-
-			var images = new List<ImageInfoModel>();
-			var raw_images = await _io.GetImagesFromPath(path);
-
-			if (raw_images == null) return null;
-
-			foreach (var image in raw_images)
-			{
-				images.Add(_parser.ParseImageInfoString(image));
-			}
-
-			return images;
 		}
 
 		public async Task SaveImages(Outdir outdirSamples, Outdir? outdirGrid = null)
@@ -79,8 +68,12 @@ namespace BlazorWebApp.Services
 
 				if (_app.Options.SaveTxt)
 				{
-					await _io.SaveTextToDisk($"{fullpath}.txt", _app.ImagesInfo.InfoTexts[i]);
+					var infoPath = $"{fullpath}.txt";
+					await _io.SaveTextToDisk(infoPath, _app.ImagesInfo.InfoTexts[i]);
+					await AddImageToDb(imagePath, infoPath);
 				}
+				else
+					await AddImageToDb(imagePath);
 
 				_app.CurrentSeed++;
 			}
@@ -100,6 +93,58 @@ namespace BlazorWebApp.Services
 					await _io.SaveTextToDisk($"{fullpath}.txt", _app.ImagesInfo.InfoTexts[0]);
 				}
 			}
+		}
+
+		public async Task<string> LoadImage(string imagePath) => await _io.GetBase64FromFile(imagePath);
+
+		//public async Task<List<ImageInfoModel>> LoadImages(ImagesDto imagesDto)
+		//{
+		//	var images = new List<ImageInfoModel>();
+
+		//	foreach (var image in imagesDto.Images)
+		//	{
+		//		images.Add(new ImageInfoModel
+		//		{
+
+		//		});
+		//	}
+
+		//	return images;
+		//}
+
+		public async Task<List<ImageInfoModel>?> GetImageInfoFromPath(string path)
+		{
+
+			var images = new List<ImageInfoModel>();
+			var raw_images = await _io.GetImagesFromPath(path);
+
+			if (raw_images == null) return null;
+
+			foreach (var image in raw_images)
+			{
+				images.Add(_parser.ParseImageInfoString(image));
+			}
+
+			return images;
+		}
+
+		private async Task AddImageToDb(string path, string infoPath = null)
+		{
+			Image image = new();
+
+			image.Path = path;
+			if (infoPath != null) { image.InfoPath = infoPath; }
+			image.Prompt = _parsingParams.Prompt;
+			image.NegativePrompt = _parsingParams.NegativePrompt;
+			image.SamplerId = _db.GetSampler(_parsingParams.SamplerIndex);
+			image.Steps = (int)_parsingParams.Steps;
+			image.Seed = (long)_app.CurrentSeed;
+			image.CfgScale = (float)_parsingParams.CfgScale;
+			image.Width = (int)_parsingParams.Width;
+			image.Height = (int)_parsingParams.Height;
+			image.ProjectId = _app.CurrentProjectId;
+
+			await _db.AddImage(image);
 		}
 
 		private string GetImagePath(string path, int fileIndex)

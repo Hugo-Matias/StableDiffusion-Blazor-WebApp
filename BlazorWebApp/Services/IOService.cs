@@ -85,15 +85,6 @@ namespace BlazorWebApp.Services
 			if (!File.Exists(path)) return null;
 
 			return File.ReadAllLines(path);
-
-			//using (var reader = new StreamReader(path))
-			//{
-			//	return await reader.ReadToEndAsync();
-			//}
-
-			//var bytes = await GetByteArray(path);
-
-			//return Convert.ToString(bytes);
 		}
 
 		private async Task<byte[]?> GetByteArray(string path)

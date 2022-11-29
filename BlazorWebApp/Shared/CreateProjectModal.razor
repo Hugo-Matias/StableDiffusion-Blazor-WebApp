@@ -1,0 +1,42 @@
+﻿@inject DatabaseService DB
+@inject JavascriptService JS
+@inject AppState AppState
+
+<button type="button" id="create-project-btn" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#create-project-modal">@ButtonText</button>
+
+<div class="modal fade" id="create-project-modal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h1 class="modal-title fs-5">Create a Project</h1>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form class="modal-body">
+				<label for="create-project-input" class="form-label">Name:</label>
+				<input class="form-control" @bind="_newProject.Name" @bind:event="oninput" placeholder="Enter the name for your new project" id="create-project-input" required></input>
+			</form>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+				<button type="submit" class="btn btn-outline-primary" @onclick="CreateProject">Create</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public RenderFragment ButtonText { get; set; }
+
+	private Project _newProject = new();
+
+	private async Task CreateProject()
+	{
+		if (string.IsNullOrWhiteSpace(_newProject.Name)) return;
+
+		_newProject.CreationTime = DateTime.Now;
+		await DB.CreateProject(_newProject);
+		await JS.RunScript("HideModal", "#create-project-modal");
+		AppState.Projects = await DB.GetProjects();
+		await InvokeAsync(StateHasChanged);
+	}
+}

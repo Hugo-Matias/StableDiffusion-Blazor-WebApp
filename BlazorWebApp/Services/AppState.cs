@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -9,11 +10,12 @@ namespace BlazorWebApp.Services
 	public class AppState
 	{
 		private readonly SDAPIService _api;
-		private readonly IOService _io;
+		private readonly DatabaseService _db;
 
 		public event Action OnSDModelsChange;
 		public event Action OnOptionsChange;
 		public event Action OnStyleChange;
+		public event Func<Task> OnProjectChange;
 
 		public GeneratedImagesModel Images { get; set; }
 		public GeneratedImagesInfoModel ImagesInfo { get; set; }
@@ -29,15 +31,18 @@ namespace BlazorWebApp.Services
 		public string? Style1 { get; set; }
 		public string? Style2 { get; set; }
 		public bool IsConverging { get; set; }
+		public int CurrentProjectId { get; set; }
+		public List<Project>? Projects { get; set; }
 
-		public AppState(SDAPIService api, IOService io)
+		public AppState(SDAPIService api, DatabaseService db)
 		{
 			_api = api;
-			_io = io;
+			_db = db;
 
 			Images = new();
 			Progress = new();
 			Settings = new();
+			Projects = new();
 			Parameters = new()
 			{
 				Steps = Settings.StepsDefaultValue,
@@ -73,6 +78,12 @@ namespace BlazorWebApp.Services
 			Style2 = Styles[0].Name;
 		}
 
+		public void SetCurrentProjectId(int id)
+		{
+			CurrentProjectId = id;
+			OnProjectChange?.Invoke();
+		}
+
 		public void ResetStyles()
 		{
 			Style1 = "None";
@@ -82,11 +93,11 @@ namespace BlazorWebApp.Services
 
 		public async Task GetSamplers() => Samplers = await _api.GetSamplers();
 
-		public void LoadImageInfoParameters(ImageInfoModel image)
+		public void LoadImageInfoParameters(Image image)
 		{
 			Parameters.Prompt = image.Prompt;
 			Parameters.NegativePrompt = image.NegativePrompt;
-			Parameters.SamplerIndex = image.Sampler;
+			Parameters.SamplerIndex = _db.GetSampler(image.SamplerId);
 			Parameters.Steps = image.Steps;
 			Parameters.Seed = image.Seed;
 			Parameters.CfgScale = image.CfgScale;

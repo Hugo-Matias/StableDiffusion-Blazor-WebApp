@@ -1,21 +1,62 @@
-﻿@inject ImageService ImageService
+﻿@inject DatabaseService DB
+@inject ImageService ImageService
+@inject JavascriptService JS
+@inject AppState AppState
+@implements IDisposable
 @page "/"
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Blazor Diffusion</PageTitle>
 
-<h3 style="color: var(--app-light-1)">Stable Diffusion WebApp</h3>
+@if(_projects == null || _projects.Count() == 0)
+{
+	<div class="row" style="color: var(--app-light-2);">
+		<div class="col">
+			<h2>
+				Looks like you haven't created any project yet.<br/>
+				<small>Create a new project to store your images.</small>
+			</h2>
+			<CreateProjectModal>
+				<ButtonText>Create Project</ButtonText>
+			</CreateProjectModal>
+		</div>
+	</div>
 
-<ImagesContainer Images="@images" Title="This is a test!"/>
+}
+else
+{
+	<ImagesContainer Images="@images" Title="This is a test!"/>
+}
 
 @code {
-	private List<ImageInfoModel?> images = new();
+	private ImagesDto images = new();
+	private List<Project>? _projects;
+	private Project _newProject = new();
+
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+		AppState.OnProjectChange += HandleProjectChanged;
+	}
+
 
 	protected override async Task OnInitializedAsync()
 	{
-		//image.Image = await io.GetBase64FromFile(@"E:\Downloads\test.png");
-		//var text = await io.GetStringFromTxt(@"E:\Downloads\test.txt");
-		//parser.ParseImageInfo(image, text);
+		_projects = await DB.GetProjects();
+		await LoadImages();
 
-		images = await ImageService.GetImageInfoFromPath(@"H:\O meu disco\Vault\j7ip64ns2b0bbl4esvurdrl7n4\zoiwettonçzxbioqaanpfosdgin\StableDiffusion\Text-2-Image\_samples\110d33ce\Heun");
+		//images = await ImageService.GetImageInfoFromPath(@"H:\O meu disco\Vault\j7ip64ns2b0bbl4esvurdrl7n4\zoiwettonçzxbioqaanpfosdgin\StableDiffusion\Text-2-Image\_samples\110d33ce\DPM++ 2M");
 	}
+
+	private async Task LoadImages()
+	{
+		images = await DB.GetImages(1, AppState.CurrentProjectId);
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private async Task HandleProjectChanged()
+	{
+		await LoadImages();
+	}
+
+	public void Dispose() => AppState.OnProjectChange -= HandleProjectChanged;
 }

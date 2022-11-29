@@ -1,5 +1,6 @@
 ﻿@inject AppState AppState
-@inject JavascriptService JSConsole
+@inject DatabaseService DB
+@inject JavascriptService JS
 @implements IDisposable
 
 <nav class="navbar navbar-dark navbar-expand-lg">
@@ -21,22 +22,41 @@
 					</NavLink>
 				</li>
 			</ul>
-			<Dropdown ButtonText="@DropdownSelected" OnSelected="@HandleDropdownSelected">
-				<Button>
-					@if (DropdownSelected == "Loading..." || AppState.IsConverging)
+			<Dropdown ButtonText="@ProjectSelected" OnSelected="@HandleProjectSelected" ButtonId="navbar-project-dropdown">
+				<Button>@ProjectSelected</Button>
+				<Items>
+					@if (AppState.Projects.Count > 0)
 					{
-						<span class="spinner-border spinner-border-sm me-2" role="status"></span> @DropdownSelected
+						@foreach (var project in AppState.Projects)
+						{
+							<DropdownItem Text="@project.Name"></DropdownItem>
+						}
+					}
+				</Items>
+			</Dropdown>
+
+			<CreateProjectModal>
+				<ButtonText>
+					<span class="fa-solid fa-add"></span>
+				</ButtonText>
+			</CreateProjectModal>
+
+			<Dropdown ButtonText="@ModelSelected" OnSelected="@HandleModelSelected">
+				<Button>
+					@if (ModelSelected == "Loading..." || AppState.IsConverging)
+					{
+						<span class="spinner-border spinner-border-sm me-2" role="status"></span> @ModelSelected
 					}
 					else
 					{
-						<span>@DropdownSelected</span>
+						<span>@ModelSelected</span>
 					}
 					<span class="fa-solid fa-flask ms-3"></span>
 				</Button>
 				<Items>
-					@if (Models != null)
+					@if (AppState.SDModels != null)
 					{
-						@foreach (var model in Models)
+						@foreach (var model in AppState.SDModels)
 						{
 							<DropdownItem Text="@model.Title"></DropdownItem>
 						}
@@ -48,46 +68,52 @@
 </nav>
 
 @code {
-	public List<SDModelModel> Models { get; set; }
-	public string DropdownSelected { get; set; } = "Loading...";
+	public string ModelSelected { get; set; } = "Loading...";
+	public string ProjectSelected { get; set; }
 
-	protected override void OnInitialized()
+	protected async override Task OnInitializedAsync()
 	{
-		base.OnInitializedAsync();
+		await base.OnInitializedAsync();
+
+		await AppState.GetOptions();
+		await AppState.GetSDModels();
+		await AppState.GetSamplers();
+		await AppState.GetStyles();
 
 		AppState.OnOptionsChange += Refresh;
+		AppState.SetCurrentProjectId(1);
+
+		PopulateProjects();
+
+		ModelSelected = AppState.Options.SDModelCheckpoint;
+		ProjectSelected = (AppState != null && AppState.Projects.Count > 0) ? AppState.Projects[0].Name : "Create New Project...";
 	}
 
-	protected override void OnAfterRender(bool firstRender)
-	{
-		if (firstRender)
-		{
-			GetModels();
-		}
-	}
-
-	private void GetModels()
-	{
-		Models = AppState.SDModels;
-		DropdownSelected = AppState.Options.SDModelCheckpoint;
-		Refresh();
-	}
-
-	private async void HandleDropdownSelected(string selected)
+	private async void HandleModelSelected(string selected)
 	{
 		// TODO
 
 		//var test = await AppState.PostOptions(new OptionsModel() { FilterNsfw = !AppState.Options.FilterNsfw });
 
 		//await JSConsole.LogAsync(test);
-		DropdownSelected = selected;
+		ModelSelected = selected;
 		Refresh();
 	}
 
-	public void Dispose()
+	private async void PopulateProjects()
 	{
-		AppState.OnOptionsChange -= Refresh;
+		AppState.Projects = await DB.GetProjects();
+		Refresh();
 	}
 
-	void Refresh() => InvokeAsync(StateHasChanged);
+	private async void HandleProjectSelected(string selected)
+	{
+		AppState.SetCurrentProjectId(DB.GetProject(selected).Result.Id);
+		ProjectSelected = selected;
+		Refresh();
+	}
+
+	public void Dispose() => AppState.OnOptionsChange -= Refresh;
+
+	private void Refresh() => InvokeAsync(StateHasChanged);
 }

@@ -1,4 +1,5 @@
 ﻿@inject JavascriptService JS
+@inject ImageService ImageService
 
 <div class="container">
 	<div class="row justify-content-center">
@@ -9,9 +10,9 @@
 			</div>
 		}
 
-		@if (Images is not null && Images.Count > 0)
+		@if (Images.Images is not null && Images.Images.Count > 0)
 		{
-			@foreach (var image in Images)
+			@foreach (var image in Images.Images)
 			{
 				<ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowFullscreen" />
 			}
@@ -23,7 +24,7 @@
 <div class="modal fade" id="fullscreen-modal" @onclick="HideFullscreen" tabindex="-1" aria-hidden="true">
 	<div id="fullscreen-modal-dialog" class="modal-dialog modal-dialog-centered @(modalMaxMinIcon == "fa-minimize" ? "expanded" : "")" style="max-width: @(selectedImage.Width)px; max-height: @(selectedImage.Height)px;">
 		<div class="modal-content"> 
-			<img src="data:image/png;base64,@selectedImage.Image" />
+			<img src="data:image/png;base64,@imageData" />
 		</div>
 	</div>
 </div>
@@ -37,25 +38,27 @@
 
 @code {
 	[Parameter]
-	public List<ImageInfoModel?> Images { get; set; }
+	public ImagesDto Images { get; set; }
 
 	[Parameter]
 	public string? Title { get; set; } = string.Empty;
 
-	ImageInfoModel selectedImage = new();
+	Image selectedImage = new();
 	bool IsShowingModal;
 	string modalMaxMinIcon = "fa-maximize";
+	string imageData = string.Empty;
 
-	private void ShowFullscreen(ImageInfoModel image)
+	private async void ShowFullscreen(Image image)
 	{
 		selectedImage = image;
 		IsShowingModal = true;
+		imageData = await ImageService.LoadImage(selectedImage.Path);
 		StateHasChanged();
 	}
 
 	private async void HideFullscreen()
 	{
-		await JS.RunScript("HideModal", null);
+		await JS.RunScript("HideModal", "#fullscreen-modal");
 		IsShowingModal = false;
 		StateHasChanged();
 		selectedImage = new();

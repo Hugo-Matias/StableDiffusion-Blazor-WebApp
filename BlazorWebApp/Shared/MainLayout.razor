@@ -14,11 +14,4 @@
 </div>
 
 @code {
-	protected async override Task OnInitializedAsync()
-	{
-		await AppState.GetOptions();
-		await AppState.GetSDModels();
-		await AppState.GetSamplers();
-		await AppState.GetStyles();
-	}
 }

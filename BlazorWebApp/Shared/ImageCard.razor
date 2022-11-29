@@ -1,9 +1,11 @@
 ﻿@inject AppState AppState
+@inject ImageService ImageService
+@inject DatabaseService DB
 
 <div class="card m-1">
 	<div class="card-body p-1 pt-2">
-		<span class="sampler-badge rounded-pill" style="@SetSamplerBadgeColor() border: 2px solid var(--app-dark-1);">@Image.Sampler</span>
-		<img src="data:image/png;base64,@Image.Image" class="card-img mb-3" alt="image">
+		<span class="sampler-badge rounded-pill" style="@SetSamplerBadgeColor() border: 2px solid var(--app-dark-1);">@(DB.GetSampler(Image.SamplerId))</span>
+		<img src="data:image/png;base64,@imageData" class="card-img mb-3" alt="image">
 		<h1><span class="fa-solid fa-seedling" /><strong>@Image.Seed</strong><br /> <span class="fa-solid fa-stairs" /> @Image.Steps <span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale</h1>
 		<div class="text-card">
 			<h2 class="lead">@Image.Prompt</h2>
@@ -22,23 +24,33 @@
 
 @code {
 	[Parameter]
-	public ImageInfoModel Image { get; set; }
-
+	public Image Image { get; set; }
 	[Parameter]
 	public string Target { get; set; }
-
 	[Parameter]
-	public EventCallback<ImageInfoModel> OnSelectImage { get; set; }
+	public EventCallback<Image> OnSelectImage { get; set; }
+
+	private string imageData;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		await LoadImage();
+	}
 
 	private void LoadParameters()
 	{
-		// TODO: Image Width and Height
 		AppState.LoadImageInfoParameters(Image);
+	}
+
+	private async Task LoadImage()
+	{
+		imageData = await ImageService.LoadImage(Image.Path);
+		await InvokeAsync(StateHasChanged);
 	}
 
 	private string SetSamplerBadgeColor()
 	{
-		switch (Image.Sampler)
+		switch (DB.GetSampler(Image.SamplerId))
 		{
 			case "Euler":
 				return "background: #59b32d; color: var(--app-dark-1);";

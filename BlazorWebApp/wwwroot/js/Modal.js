@@ -1,3 +1,3 @@
-﻿function HideModal() {
-	$('#fullscreen-modal').modal('hide');
+﻿function HideModal(id) {
+	$(id).modal('hide');
 }

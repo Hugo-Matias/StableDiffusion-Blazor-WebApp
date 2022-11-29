@@ -5,6 +5,11 @@
 
 _backup/
 
+# SQLite DB
+*.db
+*.db-shm
+*.db-wal
+
 # User-specific files
 *.rsuser
 *.suo
