@@ -99,37 +99,6 @@ namespace BlazorWebApp.Services
 
 		public async Task<string> LoadImageAsync(string imagePath) => await _io.GetBase64FromFileAsync(imagePath);
 
-		//public async Task<List<ImageInfoModel>> LoadImages(ImagesDto imagesDto)
-		//{
-		//	var images = new List<ImageInfoModel>();
-
-		//	foreach (var image in imagesDto.Images)
-		//	{
-		//		images.Add(new ImageInfoModel
-		//		{
-
-		//		});
-		//	}
-
-		//	return images;
-		//}
-
-		public async Task<List<ImageInfoModel>?> GetImageInfoFromPath(string path)
-		{
-
-			var images = new List<ImageInfoModel>();
-			var raw_images = await _io.GetImagesFromPath(path);
-
-			if (raw_images == null) return null;
-
-			foreach (var image in raw_images)
-			{
-				images.Add(_parser.ParseImageInfoString(image));
-			}
-
-			return images;
-		}
-
 		private async Task AddImageToDb(string path, string infoPath = null)
 		{
 			Image image = new();

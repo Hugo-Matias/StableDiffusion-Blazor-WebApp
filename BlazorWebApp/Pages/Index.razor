@@ -24,13 +24,14 @@
 }
 else
 {
-	<ImagesContainer Images="@images" OnPageSelected="LoadImages"/>
+	<ImagesContainer Images="@images" OnPageSelected="LoadPage" OnDeleteImage="LoadImages"/>
 }
 
 @code {
 	private ImagesDto images = new();
 	private List<Project>? _projects;
 	private Project _newProject = new();
+	private int currentPage;
 
 	protected override void OnInitialized()
 	{
@@ -42,20 +43,26 @@ else
 	protected override async Task OnInitializedAsync()
 	{
 		_projects = await DB.GetProjects();
-		await LoadImages(1);
-
-		//images = await ImageService.GetImageInfoFromPath(@"H:\O meu disco\Vault\j7ip64ns2b0bbl4esvurdrl7n4\zoiwettonçzxbioqaanpfosdgin\StableDiffusion\Text-2-Image\_samples\110d33ce\DPM++ 2M");
+		currentPage = 1;
+		await LoadImages();
 	}
 
-	private async Task LoadImages(int page)
+	private async void LoadPage(int page)
 	{
-		images = await DB.GetImages(page, AppState.CurrentProjectId);
+		currentPage = page;
+		await LoadImages();
+	}
+
+	private async Task LoadImages()
+	{
+		images = await DB.GetImages(currentPage, AppState.CurrentProjectId);
 		await InvokeAsync(StateHasChanged);
 	}
 
 	private async Task HandleProjectChanged()
 	{
-		await LoadImages(1);
+		currentPage = 1;
+		await LoadImages();
 	}
 
 	public void Dispose() => AppState.OnProjectChange -= HandleProjectChanged;

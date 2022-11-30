@@ -109,6 +109,28 @@ namespace BlazorWebApp.Services
 			};
 		}
 
+		public async Task<Image> UpdateImage(Image image)
+		{
+			using var context = _factory.CreateDbContext();
+
+			var response = context.Update(image);
+
+			await context.SaveChangesAsync();
+
+			return response.Entity;
+		}
+
+		public async Task<Image> DeleteImage(Image image)
+		{
+			using var context = _factory.CreateDbContext();
+
+			var response = context.Remove(image);
+
+			await context.SaveChangesAsync();
+
+			return response.Entity;
+		}
+
 		public string GetSampler(int id)
 		{
 			using var context = _factory.CreateDbContext();

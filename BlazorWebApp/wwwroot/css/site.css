@@ -33,6 +33,10 @@
     --app-blue-9: #031633;
     --app-red: #E72F3A;
     --app-green: #99ef20;
+    --app-h-green: 80;
+    --app-h-yellow: 50;
+    --app-h-red: 15;
+    --app-h-blue: 215;
     --app-font-sans: 'Fira Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     --app-font-mono: 'Fira Mono';
     --app-bg: var(--app-dark-2);

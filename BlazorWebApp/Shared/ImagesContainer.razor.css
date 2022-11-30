@@ -5,13 +5,13 @@
 .modal-dialog {
 	margin-left: auto;
 	margin-right: auto;
-	overflow: scroll;
+	overflow: visible;
 	transition: all 0.3s ease-in;
 }
 
-.modal-dialog.expanded {
-	max-width: 60vw !important;
-}
+	.modal-dialog.expanded {
+		max-width: 60vw !important;
+	}
 
 
 .modal-dialog-centered {
@@ -20,8 +20,12 @@
 }
 
 .modal-content {
-	z-index:1500;
+	z-index: 1500;
 }
+
+	.modal-content img {
+		box-shadow: 0 0 10rem 1rem black;
+	}
 
 
 .modal-controls {
@@ -35,5 +39,5 @@
 }
 
 	.modal-controls.show {
-		opacity:1;
+		opacity: 1;
 	}

@@ -1,13 +1,29 @@
 ﻿button {
-	--bs-btn-bg: var(--app-blue-9);
-	--bs-btn-color: var(--app-blue-4);
-	--bs-btn-border-color: var(--app-blue-7);
-	--bs-btn-hover-bg: var(--app-blue-8);
+	--bs-btn-bg: var(--app-dark-1);
+	--bs-btn-color: var(--app-light-3);
 	--bs-btn-hover-color: var(--app-light-2);
-	--bs-btn-hover-border-color: var(--app-blue-5);
-	--bs-btn-active-bg: var(--app-blue-8);
-	--bs-btn-active-color: var(--app-blue-5);
-	--bs-btn-active-border-color: var(--app-blue-3);
+	--bs-btn-border-color: hsl(var(--btn-hue), 100%, 17%);
+	--bs-btn-hover-bg: hsl(var(--btn-hue), 100%, 17%);
+	--bs-btn-hover-border-color: hsl(var(--btn-hue), 100%, 50%);
+	--bs-btn-active-bg: hsl(var(--btn-hue), 100%, 17%);
+	--bs-btn-active-color: hsl(var(--btn-hue), 100%, 50%);
+	--bs-btn-active-border-color: hsl(var(--btn-hue), 100%, 65%);
+}
+
+.btn-load {
+	--btn-hue: var(--app-h-green);
+}
+
+.btn-show {
+	--btn-hue: var(--app-h-blue);
+}
+
+.btn-favorite {
+	--btn-hue: var(--app-h-yellow);
+}
+
+.btn-delete {
+	--btn-hue: var(--app-h-red);
 }
 
 .card {
@@ -19,11 +35,13 @@
 	cursor: default;
 	overflow: hidden;
 }
+
 	.card .card-img {
 		object-fit: cover;
 		width: calc(var(--card-size) - 2rem);
 		height: calc(var(--card-size) - 2rem);
 	}
+
 	.card .sampler-badge {
 		position: absolute;
 		top: 0.2rem;
@@ -32,6 +50,19 @@
 		font-size: 0.8rem;
 		padding: 0.1rem 0.8rem;
 	}
+
+	.card .favorite-icon {
+		position: absolute;
+		top: 0.2rem;
+		right: 0.4rem;
+		color: var(--bs-warning);
+		text-shadow: 0 0 10px black;
+		opacity: 0;
+	}
+
+		.card .favorite-icon.active {
+			opacity: 1;
+		}
 
 	.card h1 {
 		font-size: 1rem;
@@ -77,26 +108,30 @@
 	}
 
 	.card .btn-container {
-		justify-content: center;
-		align-items: center;
+		--bs-gutter-x: 0.5rem;
 		position: absolute;
+		padding: 0.9rem;
 		left: 0;
 		opacity: 0;
 		bottom: -0.6rem;
 		width: 100%;
-		height: 10rem;
+		height: 7rem;
 		margin: auto;
 		transition: all 0.3s ease-in-out;
 		background: linear-gradient(0deg, black 0%, transparent 100%);
 	}
 
 		.card .btn-container button {
-			margin: auto;
 			width: 100%;
+			font-size: 0.8rem;
+		}
+
+		.card .btn-container .btn-icon {
+			margin-right: 0.7rem;
+			font-size: 1rem;
 		}
 
 	.card:hover .btn-container {
 		bottom: 0;
 		opacity: 1;
 	}
-
