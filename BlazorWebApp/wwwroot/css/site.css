@@ -37,6 +37,7 @@
     --app-h-yellow: 50;
     --app-h-red: 15;
     --app-h-blue: 215;
+    --app-h-purple: 255;
     --app-font-sans: 'Fira Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     --app-font-mono: 'Fira Mono';
     --app-bg: var(--app-dark-2);

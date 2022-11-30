@@ -1,4 +1,5 @@
-﻿@inject AppState AppState
+﻿@using System.Diagnostics;
+@inject AppState AppState
 @inject DatabaseService DB
 
 <div class="card m-1">
@@ -23,6 +24,9 @@
 			</div>
 			<div class="col-6">
 				<button class="btn btn-delete" @onclick="@(() => OnDeleteImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-trash-can"></span>Delete</button>
+			</div>
+			<div class="col">
+				<button class="btn btn-open" @onclick="OpenFileInExplorer"><span class="btn-icon fa-regular fa-folder-open"></span>Open in Explorer</button>
 			</div>
 		</div>
 	</div>
@@ -53,6 +57,8 @@
 
 		await InvokeAsync(StateHasChanged);
 	}
+
+	private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path}");
 
 	private string SetSamplerBadgeColor()
 	{

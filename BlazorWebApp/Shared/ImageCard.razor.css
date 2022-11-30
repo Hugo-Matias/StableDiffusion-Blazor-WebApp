@@ -26,6 +26,10 @@
 	--btn-hue: var(--app-h-red);
 }
 
+.btn-open {
+	--btn-hue: var(--app-h-purple);
+}
+
 .card {
 	--bs-card-bg: var(--app-dark-1);
 	--bs-card-color: var(--app-dark-5);
@@ -115,7 +119,7 @@
 		opacity: 0;
 		bottom: -0.6rem;
 		width: 100%;
-		height: 7rem;
+		height: 8.5rem;
 		margin: auto;
 		transition: all 0.3s ease-in-out;
 		background: linear-gradient(0deg, black 0%, transparent 100%);

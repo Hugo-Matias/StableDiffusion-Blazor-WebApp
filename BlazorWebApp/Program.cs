@@ -18,8 +18,8 @@ builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<IOService>();
 
 builder.Services.AddScoped<JavascriptService>();
+builder.Services.AddScoped<RandomService>();
 
-builder.Services.AddTransient<RandomService>();
 builder.Services.AddTransient<MagickService>();
 builder.Services.AddTransient<ParsingService>();
 
