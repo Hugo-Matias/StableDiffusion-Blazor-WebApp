@@ -18,9 +18,8 @@ namespace BlazorWebApp.Services
 
 			_pageSize = 10;
 
-			using var context = _factory.CreateDbContext();
-
-			if (context.Samplers.Count() == 0) { PopulateSamplers(); }
+			PopulateModes();
+			PopulateSamplers();
 		}
 
 		public async Task<List<Project>> GetProjects()
@@ -151,9 +150,36 @@ namespace BlazorWebApp.Services
 
 			using var context = _factory.CreateDbContext();
 
-			foreach (var sampler in samplers)
+			if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
+
+				foreach (var sampler in samplers)
+				{
+					var currentSampler = context.Samplers.SingleOrDefault(s => s.Name == sampler.Name);
+
+					if (currentSampler == null)
+						await context.Samplers.AddAsync(new Sampler { Name = sampler.Name });
+				}
+
+			await context.SaveChangesAsync();
+		}
+
+		public int GetMode(ModeType mode)
+		{
+			using var context = _factory.CreateDbContext();
+
+			return context.Modes.SingleOrDefault(m => m.Type == mode).Id;
+		}
+
+		private async void PopulateModes()
+		{
+			using var context = _factory.CreateDbContext();
+
+			if (context.Modes.Count() == 0)
 			{
-				await context.Samplers.AddAsync(new Sampler { Name = sampler.Name });
+				foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
+				{
+					await context.Modes.AddAsync(new Mode { Type = mode });
+				}
 			}
 
 			await context.SaveChangesAsync();

@@ -3,6 +3,7 @@ using System;
 using BlazorWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorWebApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20221130190256_Add Modes table")]
+    partial class AddModestable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.11");
@@ -34,9 +36,6 @@ namespace BlazorWebApp.Migrations
 
                     b.Property<string>("InfoPath")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("ModeId")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("NegativePrompt")
                         .HasColumnType("TEXT");
@@ -64,8 +63,6 @@ namespace BlazorWebApp.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ModeId");
 
                     b.HasIndex("ProjectId");
 
@@ -121,22 +118,11 @@ namespace BlazorWebApp.Migrations
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Image", b =>
                 {
-                    b.HasOne("BlazorWebApp.Data.Entities.Mode", null)
-                        .WithMany("Images")
-                        .HasForeignKey("ModeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("BlazorWebApp.Data.Entities.Project", null)
                         .WithMany("Images")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("BlazorWebApp.Data.Entities.Mode", b =>
-                {
-                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Project", b =>

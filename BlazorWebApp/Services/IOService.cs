@@ -50,7 +50,7 @@ namespace BlazorWebApp.Services
 
 				if (file.Extension == ".txt")
 				{
-					currentImage.InfoString = await GetStringFromTxt(file.FullName);
+					currentImage.InfoString = await LoadTextLines(file.FullName);
 				}
 				else
 				{
@@ -90,29 +90,6 @@ namespace BlazorWebApp.Services
 			return Convert.ToBase64String(bytes);
 		}
 
-		public async Task<string[]?> GetStringFromTxt(string path)
-		{
-			if (!File.Exists(path)) return null;
-
-			return File.ReadAllLines(path);
-		}
-
-		private async Task<byte[]?> GetByteArray(string path)
-		{
-			using Stream stream = File.OpenRead(path);
-			using StreamReader reader = new StreamReader(stream);
-
-			var bytes = default(byte[]);
-			using (var ms = new MemoryStream())
-			{
-				await reader.BaseStream.CopyToAsync(ms);
-				bytes = ms.ToArray();
-				ms.Close();
-			}
-
-			return bytes;
-		}
-
 		public int GetFileIndex(string path)
 		{
 			FileInfo? lastFile = GetLastSavedFile(path);
@@ -145,7 +122,21 @@ namespace BlazorWebApp.Services
 
 		public async Task SaveFileToDisk(string path, byte[] data) => await File.WriteAllBytesAsync(path, data);
 
-		public async Task SaveTextToDisk(string path, string content) => await File.WriteAllTextAsync(path, content);
+		public async Task<string[]?> LoadTextLines(string path)
+		{
+			if (!File.Exists(path)) return null;
+
+			return File.ReadAllLines(path);
+		}
+
+		public async Task<string?> LoadText(string path)
+		{
+			if (!File.Exists(path)) return null;
+
+			return File.ReadAllText(path);
+		}
+
+		public async Task SaveText(string path, string content) => await File.WriteAllTextAsync(path, content);
 
 		public DirectoryInfo CreateDirectory(string path) => Directory.CreateDirectory(path);
 	}

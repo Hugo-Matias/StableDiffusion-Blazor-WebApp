@@ -12,6 +12,9 @@
 	--bs-btn-active-color: var(--app-blue-5);
 	--bs-btn-active-border-color: var(--app-blue-5);
 	--bs-btn-active-bg: var(--app-dark-1);
+	--bs-btn-disabled-bg: var(--app-dark-1);
+	--bs-btn-disabled-color: var(--app-dark-4);
+	--bs-btn-disabled-border-color: var(--app-dark-4);
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;

@@ -69,11 +69,11 @@ namespace BlazorWebApp.Services
 				if (_app.Options.SaveTxt)
 				{
 					var infoPath = $"{fullpath}.txt";
-					await _io.SaveTextToDisk(infoPath, _app.ImagesInfo.InfoTexts[i]);
-					await AddImageToDb(imagePath, infoPath);
+					await _io.SaveText(infoPath, _app.ImagesInfo.InfoTexts[i]);
+					await AddImageToDb(imagePath, outdirSamples, infoPath);
 				}
 				else
-					await AddImageToDb(imagePath);
+					await AddImageToDb(imagePath, outdirSamples);
 
 				_app.CurrentSeed++;
 			}
@@ -90,7 +90,7 @@ namespace BlazorWebApp.Services
 
 				if (_app.Options.SaveTxt)
 				{
-					await _io.SaveTextToDisk($"{fullpath}.txt", _app.ImagesInfo.InfoTexts[0]);
+					await _io.SaveText($"{fullpath}.txt", _app.ImagesInfo.InfoTexts[0]);
 				}
 			}
 		}
@@ -99,7 +99,7 @@ namespace BlazorWebApp.Services
 
 		public async Task<string> LoadImageAsync(string imagePath) => await _io.GetBase64FromFileAsync(imagePath);
 
-		private async Task AddImageToDb(string path, string infoPath = null)
+		private async Task AddImageToDb(string path, Outdir outdir, string infoPath = null)
 		{
 			Image image = new();
 
@@ -114,6 +114,27 @@ namespace BlazorWebApp.Services
 			image.Width = (int)_parsingParams.Width;
 			image.Height = (int)_parsingParams.Height;
 			image.ProjectId = _app.CurrentProjectId;
+
+			ModeType mode;
+			switch (outdir)
+			{
+				case Outdir.Txt2ImgSamples:
+					mode = ModeType.Txt2Img;
+					break;
+
+				case Outdir.Img2ImgSamples:
+					mode = ModeType.Img2Img;
+					break;
+
+				case Outdir.Extras:
+					mode = ModeType.Extras;
+					break;
+
+				default:
+					mode = ModeType.Txt2Img;
+					break;
+			}
+			image.ModeId = _db.GetMode(mode);
 
 			await _db.AddImage(image);
 		}

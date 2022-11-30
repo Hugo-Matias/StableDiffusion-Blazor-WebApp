@@ -9,12 +9,16 @@ namespace BlazorWebApp.Services
 
 	public class AppState
 	{
+		private readonly string _settingsFile = "BlazorDiffusion.json";
 		private readonly SDAPIService _api;
 		private readonly DatabaseService _db;
+		private readonly IOService _io;
+		private bool _isConverging;
 
 		public event Action OnSDModelsChange;
 		public event Action OnOptionsChange;
 		public event Action OnStyleChange;
+		public event Action OnConverging;
 		public event Func<Task> OnProjectChange;
 
 		public GeneratedImagesModel Images { get; set; }
@@ -30,18 +34,27 @@ namespace BlazorWebApp.Services
 		public long? CurrentSeed { get; set; }
 		public string? Style1 { get; set; }
 		public string? Style2 { get; set; }
-		public bool IsConverging { get; set; }
 		public int CurrentProjectId { get; set; }
 		public List<Project>? Projects { get; set; }
+		public bool IsConverging
+		{
+			get => _isConverging; set
+			{
+				_isConverging = value;
+				OnConverging?.Invoke();
+			}
+		}
 
-		public AppState(SDAPIService api, DatabaseService db)
+		public AppState(SDAPIService api, DatabaseService db, IOService io)
 		{
 			_api = api;
 			_db = db;
+			_io = io;
+
+			LoadSettings();
 
 			Images = new();
 			Progress = new();
-			Settings = new();
 			Projects = new();
 			Parameters = new()
 			{
@@ -54,6 +67,7 @@ namespace BlazorWebApp.Services
 				NIter = Settings.BatchCountDefaultValue,
 				BatchSize = Settings.BatchSizeDefaultValue,
 			};
+
 		}
 
 		public async Task GetSDModels()
@@ -186,5 +200,19 @@ namespace BlazorWebApp.Services
 		public async Task<string> PostOptions(OptionsModel options) => await _api.PostOptions(options);
 
 		public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfoModel>(Images.Info);
+
+		public async void LoadSettings()
+		{
+			var json = await _io.LoadText(_settingsFile);
+
+			if (json != null) { Settings = JsonSerializer.Deserialize<AppSettingsModel>(json); }
+			else { Settings = new(); SaveSettings(); }
+		}
+
+		public async void SaveSettings()
+		{
+			var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions() { WriteIndented = true });
+			await _io.SaveText(_settingsFile, json);
+		}
 	}
 }

@@ -1,6 +1,6 @@
 ﻿<CascadingValue Name="Dropdown" Value="@this">
 	<div class="dropdown">
-		<button class="btn btn-secondary dropdown-toggle @Modifier" id="@ButtonId" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+		<button class="btn btn-secondary dropdown-toggle @Modifier" id="@ButtonId" type="button" data-bs-toggle="dropdown" aria-expanded="false" disabled="@IsDisabled">
 			@Button
 		</button>
 		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
@@ -24,6 +24,9 @@
 
 	[Parameter] 
 	public string Modifier { get; set; }
+
+	[Parameter]
+	public bool IsDisabled { get; set; }
 
 	[Parameter] 
 	public EventCallback<string> OnSelected { get; set; }
