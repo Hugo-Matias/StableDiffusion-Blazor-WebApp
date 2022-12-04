@@ -7,7 +7,7 @@ namespace BlazorWebApp.Models
 		[JsonPropertyName("images")]
 		public List<string> Images { get; set; }
 		[JsonPropertyName("parameters")]
-		public Txt2ImgParametersModel Parameters { get; set; }
+		public SharedParametersModel Parameters { get; set; }
 		[JsonPropertyName("info")]
 		public string Info { get; set; }
 	}

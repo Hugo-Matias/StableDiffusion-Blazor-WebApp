@@ -1,18 +1,10 @@
-﻿using System.Text.Json.Serialization;
-
-namespace BlazorWebApp.Models
+﻿namespace BlazorWebApp.Models
 {
-	public class Txt2ImgParametersModel : SharedParametersModel
+	public class Img2ImgParametersModel : SharedParametersModel
 	{
-		[JsonPropertyName("enable_hr")]
-		public bool? EnableHR { get; set; }
-		[JsonPropertyName("firstphase_width")]
-		public int? FirstphaseWidth { get; set; }
-		[JsonPropertyName("firstphase_height")]
-		public int? FirstphaseHeight { get; set; }
 
-		public Txt2ImgParametersModel() { }
-		public Txt2ImgParametersModel(SharedParametersModel clone)
+		public Img2ImgParametersModel() { }
+		public Img2ImgParametersModel(SharedParametersModel clone)
 		{
 			DenoisingStrength = clone.DenoisingStrength;
 			Prompt = clone.Prompt;

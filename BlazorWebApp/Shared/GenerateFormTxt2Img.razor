@@ -77,15 +77,30 @@
 				<label class="btn btn-outline-secondary expand-btn" for="tiling">Tiling</label>
 			</div>
 			<div class="col-4">
-				<input type="checkbox" class="btn-check" id="highres-fix" autocomplete="off" @bind-value="@Parameters.EnableHR" checked="@Parameters.EnableHR" />
+				<input type="checkbox" class="btn-check" id="highres-fix" autocomplete="off" data-bs-toggle="collapse" data-bs-target="#highres-options" @bind-value="@Parameters.EnableHR" checked="@Parameters.EnableHR" />
 				<label class="btn btn-outline-secondary expand-btn" for="highres-fix">HighRes Fix</label>
+			</div>
+		</div>
+		<div class="row mb-3 collapse @(Parameters.EnableHR == true ? "show" : "")" id="highres-options">
+			<div class="col-4">
+				<label class="form-label" for="highres-width">First Pass Width: <strong class="ms-2">@Parameters.FirstphaseWidth</strong></label>
+				<input type="range" class="form-range" id="highres-width" @bind-value="@Parameters.FirstphaseWidth" @bind-value:event="oninput" min="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthMin" max="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthMax" step="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthStep" />
+			</div>
+			<div class="col-4">
+				<label class="form-label" for="highres-height">First Pass Height: <strong class="ms-2">@Parameters.FirstphaseHeight</strong></label>
+				<input type="range" class="form-range" id="highres-height" @bind-value="@Parameters.FirstphaseHeight" @bind-value:event="oninput" min="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightMin" max="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightMax" step="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightStep" />
+			</div>
+			<div class="col-4">
+				<label class="form-label" for="highres-denoising">Denoising: <strong class="ms-2">@Parameters.DenoisingStrength</strong></label>
+				<input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.Txt2ImgSettings.HighresSettings.DenoisingMin" max="@AppState.Settings.Txt2ImgSettings.HighresSettings.DenoisingMax" step="@AppState.Settings.Txt2ImgSettings.HighresSettings.DenoisingStep" />
 			</div>
 		</div>
 	</div>
 </EditForm>
 
 @code {
-	[Parameter] public Txt2ImgParametersModel Parameters { get; set; }
+	[Parameter] 
+	public Txt2ImgParametersModel Parameters { get; set; }
 
 	private OptionsModel _options;
 

@@ -1,4 +1,4 @@
-﻿@page "/txt2img"
+﻿@page "/img2img"
 @inject SDAPIService SDAPIService
 @inject JavascriptService JSConsole
 @inject PromptButtonService PromptButtonService
@@ -10,7 +10,7 @@
 
 <div class="row">
 	<div class="col">
-		<GenerateFormTxt2Img Parameters="@Parameters" />
+		<GenerateFormImg2Img Parameters="@Parameters" />
 		<div class="accordion" id="tagsAccordion">
 			@foreach (var item in PromptButtonService.Tags.Items)
 			{
@@ -66,7 +66,7 @@
 </div>
 
 @code {
-	public Txt2ImgParametersModel Parameters { get; set; }
+	public Img2ImgParametersModel Parameters { get; set; }
 	public SharedParametersModel SharedParameters { get; set; }
 
 	protected override void OnInitialized()
@@ -74,14 +74,14 @@
 		base.OnInitialized();
 
 		ImageService.OnChange += Refresh;
-		Parameters = AppState.ParametersTxt2Img;
-		SharedParameters = AppState.ParametersTxt2Img;
+		Parameters = AppState.ParametersImg2Img;
+		SharedParameters = AppState.ParametersImg2Img;
 	}
 
 	private async void Generate()
 	{
 		//await JSConsole.LogAsync(Parser.ParseParameters(new Txt2ImgParametersModel(Parameters)));
-		await ImageService.GetImages();
+		await ImageService.GetImages(isImg2Img: true);
 		Refresh();
 	}
 

@@ -12,7 +12,7 @@ namespace BlazorWebApp.Services
             _app = app;
         }
 
-        public Txt2ImgParametersModel ParseParameters(Txt2ImgParametersModel param)
+        public SharedParametersModel ParseParameters(SharedParametersModel param)
         {
             if (_app.Style1 != "None" || _app.Style2 != "None")
             {
@@ -23,7 +23,7 @@ namespace BlazorWebApp.Services
             return param;
         }
 
-        private void ParsePromptStyles(Txt2ImgParametersModel param)
+        private void ParsePromptStyles(SharedParametersModel param)
         {
             foreach (var style in _app.Styles)
             {

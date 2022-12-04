@@ -12,7 +12,7 @@ namespace BlazorWebApp.Services
 		private readonly ParsingService _parser;
 		private readonly DatabaseService _db;
 		private PeriodicTimer? _timer;
-		private Txt2ImgParametersModel _parsingParams;
+		private SharedParametersModel _parsingParams;
 
 		public event Action OnChange;
 
@@ -26,20 +26,40 @@ namespace BlazorWebApp.Services
 			_db = db;
 		}
 
-		public async Task GetTxt2Images()
+		public async Task GetImages(bool isImg2Img = false)
 		{
 			_app.IsConverging = true;
 			StartProgressChecker();
 
-			_parsingParams = new Txt2ImgParametersModel(_app.Parameters);
 			_app.GridImage = string.Empty;
-			_app.Images = await _api.PostTxt2Img(_parser.ParseParameters(_parsingParams));
+
+			// Using a temporary parameters model to parse selected dropdown Styles without writing them to the input fields
+			if (isImg2Img)
+			{
+				_parsingParams = new SharedParametersModel(_app.ParametersImg2Img);
+			}
+			else
+			{
+				_parsingParams = _parser.ParseParameters(new SharedParametersModel(_app.ParametersTxt2Img));
+				var newParameters = new Txt2ImgParametersModel(_parsingParams);
+				newParameters.FirstphaseWidth = _app.ParametersTxt2Img.FirstphaseWidth;
+				newParameters.FirstphaseHeight = _app.ParametersTxt2Img.FirstphaseHeight;
+				newParameters.DenoisingStrength = _app.ParametersTxt2Img.DenoisingStrength;
+				_app.Images = await _api.PostTxt2Img(newParameters);
+			}
 
 			_app.SerializeInfo();
 
 			if (_app.Options.SamplesSave)
 			{
-				await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
+				if (isImg2Img)
+				{
+					await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid);
+				}
+				else
+				{
+					await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
+				}
 			}
 
 			StopProgressChecker();

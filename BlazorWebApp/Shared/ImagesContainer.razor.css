@@ -29,7 +29,7 @@
 
 
 .modal-controls {
-	position: absolute;
+	position: fixed;
 	top: 5rem;
 	right: 2rem;
 	margin: auto;

@@ -30,7 +30,8 @@ namespace BlazorWebApp.Services
 		public List<PromptStyleModel> Styles { get; set; }
 		public OptionsModel Options { get; set; }
 		public AppSettingsModel Settings { get; set; }
-		public Txt2ImgParametersModel Parameters { get; set; }
+		public Txt2ImgParametersModel ParametersTxt2Img { get; set; }
+		public Img2ImgParametersModel ParametersImg2Img { get; set; }
 		public long? CurrentSeed { get; set; }
 		public string? Style1 { get; set; }
 		public string? Style2 { get; set; }
@@ -56,7 +57,8 @@ namespace BlazorWebApp.Services
 			Images = new();
 			Progress = new();
 			Projects = new();
-			Parameters = new()
+
+			var defaultParameters = new SharedParametersModel()
 			{
 				Steps = Settings.StepsDefaultValue,
 				SamplerIndex = Settings.SamplerDefault,
@@ -68,6 +70,14 @@ namespace BlazorWebApp.Services
 				BatchSize = Settings.BatchSizeDefaultValue,
 			};
 
+			ParametersTxt2Img = new Txt2ImgParametersModel(defaultParameters)
+			{
+				FirstphaseWidth = Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthDefaultValue,
+				FirstphaseHeight = Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightDefaultValue,
+				DenoisingStrength = Settings.Txt2ImgSettings.HighresSettings.DenoisingDefaultValue,
+			};
+
+			ParametersImg2Img = new Img2ImgParametersModel(defaultParameters);
 		}
 
 		public async Task GetSDModels()
@@ -109,14 +119,14 @@ namespace BlazorWebApp.Services
 
 		public void LoadImageInfoParameters(Image image)
 		{
-			Parameters.Prompt = image.Prompt;
-			Parameters.NegativePrompt = image.NegativePrompt;
-			Parameters.SamplerIndex = _db.GetSampler(image.SamplerId);
-			Parameters.Steps = image.Steps;
-			Parameters.Seed = image.Seed;
-			Parameters.CfgScale = image.CfgScale;
-			Parameters.Width = image.Width;
-			Parameters.Height = image.Height;
+			ParametersTxt2Img.Prompt = image.Prompt;
+			ParametersTxt2Img.NegativePrompt = image.NegativePrompt;
+			ParametersTxt2Img.SamplerIndex = _db.GetSampler(image.SamplerId);
+			ParametersTxt2Img.Steps = image.Steps;
+			ParametersTxt2Img.Seed = image.Seed;
+			ParametersTxt2Img.CfgScale = image.CfgScale;
+			ParametersTxt2Img.Width = image.Width;
+			ParametersTxt2Img.Height = image.Height;
 		}
 
 		public string GetCurrentSaveFolder(Outdir? outdir)
@@ -168,16 +178,16 @@ namespace BlazorWebApp.Services
 					return GetModelHash(Options.SDModelCheckpoint);
 
 				case "[sampler]":
-					return Parameters.SamplerIndex;
+					return ParametersTxt2Img.SamplerIndex;
 
 				case "[seed]":
 					return CurrentSeed.ToString();
 
 				case "[steps]":
-					return Parameters.Steps.ToString();
+					return ParametersTxt2Img.Steps.ToString();
 
 				case "[cfg]":
-					return Parameters.CfgScale.ToString();
+					return ParametersTxt2Img.CfgScale.ToString();
 
 				default:
 					return "";

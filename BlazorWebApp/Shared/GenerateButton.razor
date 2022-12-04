@@ -23,8 +23,8 @@
 </EditForm>
 
 @code {
-	[Parameter] public Txt2ImgParametersModel Parameters { get; set; }
-	[Parameter] public EventCallback<Txt2ImgParametersModel> OnGenerate { get; set; }
+	[Parameter] public SharedParametersModel Parameters { get; set; }
+	[Parameter] public EventCallback<SharedParametersModel> OnGenerate { get; set; }
 	[Parameter] public EventCallback OnSkip { get; set; }
 	[Parameter] public EventCallback OnInterrupt { get; set; }
 
