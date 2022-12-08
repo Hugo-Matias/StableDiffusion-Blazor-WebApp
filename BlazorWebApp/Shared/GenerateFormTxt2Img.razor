@@ -92,7 +92,7 @@
 			</div>
 			<div class="col-4">
 				<label class="form-label" for="highres-denoising">Denoising: <strong class="ms-2">@Parameters.DenoisingStrength</strong></label>
-				<input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.Txt2ImgSettings.HighresSettings.DenoisingMin" max="@AppState.Settings.Txt2ImgSettings.HighresSettings.DenoisingMax" step="@AppState.Settings.Txt2ImgSettings.HighresSettings.DenoisingStep" />
+				<input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.DenoisingMin" max="@AppState.Settings.DenoisingMax" step="@AppState.Settings.DenoisingStep" />
 			</div>
 		</div>
 	</div>

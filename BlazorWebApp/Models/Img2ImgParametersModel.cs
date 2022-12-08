@@ -1,7 +1,25 @@
-﻿namespace BlazorWebApp.Models
+﻿using System.Text.Json.Serialization;
+
+namespace BlazorWebApp.Models
 {
 	public class Img2ImgParametersModel : SharedParametersModel
 	{
+		[JsonPropertyName("init_images")]
+		public List<string> InitImages { get; set; }
+		[JsonPropertyName("mask")]
+		public string Mask { get; set; }
+		[JsonPropertyName("mask_blur")]
+		public int MaskBlur { get; set; }
+		[JsonPropertyName("resize_mode")]
+		public int ResizeMode { get; set; }
+		[JsonPropertyName("inpainting_fill")]
+		public int InpaintingFill { get; set; }
+		[JsonPropertyName("inpaint_full_res")]
+		public bool InpaintFullRes { get; set; }
+		[JsonPropertyName("inpaint_full_res_padding")]
+		public int InpaintFullResPadding { get; set; }
+		[JsonPropertyName("inpainting_mask_invert")]
+		public int InpaintingMaskInvert { get; set; }
 
 		public Img2ImgParametersModel() { }
 		public Img2ImgParametersModel(SharedParametersModel clone)

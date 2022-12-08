@@ -1,6 +1,6 @@
 ﻿@page "/img2img"
 @inject SDAPIService SDAPIService
-@inject JavascriptService JSConsole
+@inject JavascriptService JS
 @inject PromptButtonService PromptButtonService
 @inject AppState AppState
 @inject ImageService ImageService
@@ -10,7 +10,8 @@
 
 <div class="row">
 	<div class="col">
-		<GenerateFormImg2Img Parameters="@Parameters" />
+		<Img2ImgCanvas @ref="canvasRef"/>
+		<GenerateFormImg2Img Parameters="@Parameters" OnClear="OnClear" OnUndo="OnUndo"/>
 		<div class="accordion" id="tagsAccordion">
 			@foreach (var item in PromptButtonService.Tags.Items)
 			{
@@ -66,6 +67,8 @@
 </div>
 
 @code {
+	private Img2ImgCanvas? canvasRef;
+
 	public Img2ImgParametersModel Parameters { get; set; }
 	public SharedParametersModel SharedParameters { get; set; }
 
@@ -78,10 +81,16 @@
 		SharedParameters = AppState.ParametersImg2Img;
 	}
 
+	private async Task OnClear() => await canvasRef.Clear();
+	private async Task OnUndo() => await canvasRef.Undo();
+
 	private async void Generate()
 	{
-		//await JSConsole.LogAsync(Parser.ParseParameters(new Txt2ImgParametersModel(Parameters)));
+		await canvasRef.Generate();
+		Parameters.InitImages = new() { AppState.CanvasImageData };
+		Parameters.Mask = AppState.CanvasMaskData is not null ? AppState.CanvasMaskData : "";
 		await ImageService.GetImages(isImg2Img: true);
+		await JS.LogAsync(Parameters);
 		Refresh();
 	}
 

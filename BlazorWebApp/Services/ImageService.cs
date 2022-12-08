@@ -37,6 +37,16 @@ namespace BlazorWebApp.Services
 			if (isImg2Img)
 			{
 				_parsingParams = new SharedParametersModel(_app.ParametersImg2Img);
+				var newParameters = new Img2ImgParametersModel(_parsingParams);
+				newParameters.InitImages = _app.ParametersImg2Img.InitImages;
+				newParameters.Mask = _app.ParametersImg2Img.Mask;
+				newParameters.MaskBlur = _app.ParametersImg2Img.MaskBlur;
+				newParameters.ResizeMode = _app.ParametersImg2Img.ResizeMode;
+				newParameters.InpaintingFill = _app.ParametersImg2Img.InpaintingFill;
+				newParameters.InpaintFullRes = _app.ParametersImg2Img.InpaintFullRes;
+				newParameters.InpaintFullResPadding = _app.ParametersImg2Img.InpaintFullResPadding;
+				newParameters.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
+				_app.Images = await _api.PostImg2Img(newParameters);
 			}
 			else
 			{

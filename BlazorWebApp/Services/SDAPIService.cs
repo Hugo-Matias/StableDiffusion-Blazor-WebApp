@@ -46,6 +46,15 @@ namespace BlazorWebApp.Services
 			return await response.Content.ReadFromJsonAsync<GeneratedImagesModel>();
 		}
 
+		public async Task<GeneratedImagesModel> PostImg2Img(Img2ImgParametersModel param)
+		{
+			using var response = await _httpClient.PostAsJsonAsync("img2img", param, _jsonIgnoreNull);
+
+			response.EnsureSuccessStatusCode();
+
+			return await response.Content.ReadFromJsonAsync<GeneratedImagesModel>();
+		}
+
 		public async Task<string> PostInterrupt()
 		{
 			using var response = await _httpClient.PostAsync("interrupt", null);

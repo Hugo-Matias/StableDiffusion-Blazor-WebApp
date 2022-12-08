@@ -14,11 +14,15 @@ namespace BlazorWebApp.Services
 		private readonly DatabaseService _db;
 		private readonly IOService _io;
 		private bool _isConverging;
+		private int _currentBrushSize;
+		private string _currentBrushColor;
 
 		public event Action OnSDModelsChange;
 		public event Action OnOptionsChange;
 		public event Action OnStyleChange;
 		public event Action OnConverging;
+		public event Action OnBrushSizeChange;
+		public event Action OnBrushColorChange;
 		public event Func<Task> OnProjectChange;
 
 		public GeneratedImagesModel Images { get; set; }
@@ -28,18 +32,39 @@ namespace BlazorWebApp.Services
 		public List<SDModelModel> SDModels { get; set; }
 		public List<SamplerModel> Samplers { get; set; }
 		public List<PromptStyleModel> Styles { get; set; }
+		public List<Project>? Projects { get; set; }
 		public OptionsModel Options { get; set; }
 		public AppSettingsModel Settings { get; set; }
 		public Txt2ImgParametersModel ParametersTxt2Img { get; set; }
 		public Img2ImgParametersModel ParametersImg2Img { get; set; }
 		public long? CurrentSeed { get; set; }
+		public int CurrentProjectId { get; set; }
+		public int CurrentBrushSize
+		{
+			get => _currentBrushSize; set
+			{
+				_currentBrushSize = value;
+				OnBrushSizeChange?.Invoke();
+			}
+		}
+		public string CurrentBrushColor
+		{
+			get => _currentBrushColor; set
+			{
+				_currentBrushColor = value;
+				OnBrushColorChange?.Invoke();
+			}
+		}
+		public List<string> CanvasStates { get; set; } = new();
+		public string CanvasImageData { get; set; }
+		public string CanvasMaskData { get; set; }
+
 		public string? Style1 { get; set; }
 		public string? Style2 { get; set; }
-		public int CurrentProjectId { get; set; }
-		public List<Project>? Projects { get; set; }
 		public bool IsConverging
 		{
-			get => _isConverging; set
+			get => _isConverging;
+			set
 			{
 				_isConverging = value;
 				OnConverging?.Invoke();
@@ -58,6 +83,14 @@ namespace BlazorWebApp.Services
 			Progress = new();
 			Projects = new();
 
+			CreateParameters();
+
+			CurrentBrushSize = Settings.Img2ImgSettings.BrushSetttings.DefaultValue;
+			CurrentBrushColor = Settings.Img2ImgSettings.BrushSetttings.Color;
+		}
+
+		private void CreateParameters()
+		{
 			var defaultParameters = new SharedParametersModel()
 			{
 				Steps = Settings.StepsDefaultValue,
@@ -68,16 +101,24 @@ namespace BlazorWebApp.Services
 				Height = Settings.ResolutionDefaultValue,
 				NIter = Settings.BatchCountDefaultValue,
 				BatchSize = Settings.BatchSizeDefaultValue,
+				DenoisingStrength = Settings.DenoisingDefaultValue,
 			};
 
 			ParametersTxt2Img = new Txt2ImgParametersModel(defaultParameters)
 			{
 				FirstphaseWidth = Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthDefaultValue,
 				FirstphaseHeight = Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightDefaultValue,
-				DenoisingStrength = Settings.Txt2ImgSettings.HighresSettings.DenoisingDefaultValue,
 			};
 
-			ParametersImg2Img = new Img2ImgParametersModel(defaultParameters);
+			ParametersImg2Img = new Img2ImgParametersModel(defaultParameters)
+			{
+				MaskBlur = Settings.Img2ImgSettings.MaskBlurSettings.DefaultValue,
+				ResizeMode = Settings.Img2ImgSettings.ResizeModeDefaultValue,
+				InpaintingFill = Settings.Img2ImgSettings.InpaintingFillDefaultValue,
+				InpaintFullRes = Settings.Img2ImgSettings.InpaintingFullResDefaultValue,
+				InpaintFullResPadding = Settings.Img2ImgSettings.InpaintingFullResPaddingSettings.DefaultValue,
+				InpaintingMaskInvert = Settings.Img2ImgSettings.InpaintingMaskInvertDefaultValue,
+			};
 		}
 
 		public async Task GetSDModels()
@@ -215,7 +256,12 @@ namespace BlazorWebApp.Services
 		{
 			var json = await _io.LoadText(_settingsFile);
 
-			if (json != null) { Settings = JsonSerializer.Deserialize<AppSettingsModel>(json); }
+			if (json != null)
+			{
+				Settings = new();
+				Settings = JsonSerializer.Deserialize<AppSettingsModel>(json);
+				SaveSettings();
+			}
 			else { Settings = new(); SaveSettings(); }
 		}
 

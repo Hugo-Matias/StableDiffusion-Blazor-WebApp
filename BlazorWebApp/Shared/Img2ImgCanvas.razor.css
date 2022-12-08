@@ -1,0 +1,66 @@
+﻿div {
+  --w: 40rem;
+  --h: 40rem;
+}
+
+#img-canvas {
+  width: var(--w);
+  height: var(--h);
+  object-fit: contain;
+}
+
+#img-work {
+  display: none;
+}
+
+#canvas-container {
+  display: flex;
+  border: 2px solid black;
+  width: var(--w);
+  height: var(--h);
+  margin-bottom: 1rem;
+}
+
+::deep canvas {
+  position: absolute;
+  cursor: none;
+  background: transparent;
+  pointer-events: none;
+  width: var(--w);
+  height: var(--h);
+  object-fit: contain;
+}
+
+::deep canvas.disable {
+  display: none;
+}
+
+::deep #canvas-bg {
+  border: 1px solid red;
+}
+
+::deep #canvas-drawing {
+  border: 1px solid green;
+}
+
+::deep #canvas-pointer {
+  pointer-events: auto;
+  border: 1px solid blue;
+}
+
+::deep #canvas-work {
+  display: none;
+}
+
+.dropzone {
+  display: none;
+  position: absolute;
+  width: var(--w);
+  height: var(--h);
+}
+
+.dropzone.hover {
+  display: block;
+  border: 2px solid greenyellow;
+  border-radius: 5px;
+}

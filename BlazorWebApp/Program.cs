@@ -3,13 +3,15 @@ using BlazorWebApp.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var maxBufferSize = 100 * 1024 * 1024;
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+
+builder.Services.AddServerSideBlazor().AddHubOptions(opt => { opt.MaximumReceiveMessageSize = maxBufferSize; });
+
 builder.Services.AddHttpClient<SDAPIService>();
-builder.Services.AddDbContextFactory<AppDbContext>(opt =>
-opt.UseSqlite("Data Source=BlazorWebApp.db"));
+builder.Services.AddDbContextFactory<AppDbContext>(opt => opt.UseSqlite("Data Source=BlazorWebApp.db"));
 
 builder.Services.AddSingleton<AppState>();
 builder.Services.AddSingleton<ImageService>();
@@ -40,6 +42,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.MapBlazorHub();
+
 app.MapFallbackToPage("/_Host");
 
 app.Run();
