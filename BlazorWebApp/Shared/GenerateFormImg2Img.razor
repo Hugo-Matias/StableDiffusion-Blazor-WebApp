@@ -5,7 +5,7 @@
 <EditForm Model="@Parameters">
 	<div class="generate-form card p-4 col mb-3">
 		<div class="row mb-3">
-			<div class="col-3">
+			<div class="col-6">
 				<label class="form-label" for="img-mode">Mode</label>
 				<InputRadioGroup id="img-mode" @bind-Value="@AppState.Settings.Img2ImgSettings.Mode">
 					<div class="row">
@@ -19,17 +19,27 @@
 					</div>
 				</InputRadioGroup>
 			</div>
-			<div class="col-3">
+			<div class="col-3 d-flex flex-column px-3">
+				<button @onclick="OnPaste" class="btn btn-outline-secondary mb-1" type="button"><span class="fa-regular fa-paste me-2" />Paste</button>
+				<button @onclick="OnDelete" class="btn btn-outline-secondary mt-1" type="button"><span class="fa-solid fa-trash-can me-2" />Delete</button>
+			</div>
+			<div class="col-3 d-flex flex-column px-3">
+				<button @onclick="OnClear" class="btn btn-outline-secondary mb-1" type="button"><span class="fa-solid fa-fill-drip me-2" />Clear</button>
+				<button @onclick="OnUndo" class="btn btn-outline-secondary mt-1" type="button"><span class="fa-solid fa-spray-can me-2" />Undo</button>
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-4">
+				<label class="form-label" for="mask-blur">Mask Blur: <strong class="ms-2">@Parameters.MaskBlur</strong></label>
+				<input type="range" class="form-range" id="mask-blur" @bind-value="@Parameters.MaskBlur" @bind-value:event="oninput" min="@AppState.Settings.Img2ImgSettings.MaskBlurSettings.Min" max="@AppState.Settings.Img2ImgSettings.MaskBlurSettings.Max" step="@AppState.Settings.Img2ImgSettings.MaskBlurSettings.Step" />
+			</div>
+			<div class="col-4">
 				<label class="form-label" for="brush-size">Brush Size: <strong class="ms-2">@AppState.CurrentBrushSize</strong></label>
 				<input type="range" id="brush-size" class="form-range" @bind-value="@AppState.CurrentBrushSize" @bind-value:event="oninput" min="@AppState.Settings.Img2ImgSettings.BrushSetttings.Min" max="@AppState.Settings.Img2ImgSettings.BrushSetttings.Max" step="1" />
 			</div>
-			<div class="col-3">
+			<div class="col-4">
 				<label class="form-label" for="brush-color">Brush Color</label>
 				<input type="color" id="brush-size" class="form-control form-control-color w-100" @bind-value="@AppState.CurrentBrushColor" @bind-value:event="oninput" />
-			</div>
-			<div class="col-3 d-flex flex-column px-3">
-				<button @onclick="OnClear" class="btn btn-outline-secondary mb-1" type="button"><span class="fa-solid fa-fill-drip me-1" />Clear</button>
-				<button @onclick="OnUndo" class="btn btn-outline-secondary mt-1" type="button"><span class="fa-solid fa-spray-can me-1" />Undo</button>
 			</div>
 		</div>
 		<div class="row mb-3">
@@ -65,18 +75,14 @@
 			</div>
 		</div>
 		<div class="row mb-3">
-			<div class="col-3">
-				<label class="form-label" for="mask-blur">Mask Blur: <strong class="ms-2">@Parameters.MaskBlur</strong></label>
-				<input type="range" class="form-range" id="mask-blur" @bind-value="@Parameters.MaskBlur" @bind-value:event="oninput" min="@AppState.Settings.Img2ImgSettings.MaskBlurSettings.Min" max="@AppState.Settings.Img2ImgSettings.MaskBlurSettings.Max" step="@AppState.Settings.Img2ImgSettings.MaskBlurSettings.Step" />
-			</div>
-			<div class="col-5">
+			<div class="col-6">
 				<label class="form-label px-1" for="inpainting">Inpainting</label><br/>
 				<input type="checkbox" class="btn-check" id="inpaint-full-res" autocomplete="off" @bind-value="@Parameters.InpaintFullRes" checked="@Parameters.InpaintFullRes" />
 				<label class="btn btn-outline-secondary me-2" for="inpaint-full-res">Full Res</label>
 				<input type="checkbox" class="btn-check" id="invert-mask" autocomplete="off" @bind-value="@Parameters.InpaintingMaskInvert" checked="@(Parameters.InpaintingMaskInvert == 1 ? true : false)" />
 				<label class="btn btn-outline-secondary" for="invert-mask">Invert Mask</label>
 			</div>
-			<div class="col-4">
+			<div class="col-6">
 				<label class="form-label" for="full-res-padding">Full Res Padding: <strong class="ms-2">@Parameters.InpaintFullResPadding</strong></label>
 				<input type="range" class="form-range" id="full-res-padding" @bind-value="@Parameters.InpaintFullResPadding" @bind-value:event="oninput" min="@AppState.Settings.Img2ImgSettings.InpaintingFullResPaddingSettings.Min" max="@AppState.Settings.Img2ImgSettings.InpaintingFullResPaddingSettings.Max" step="@AppState.Settings.Img2ImgSettings.InpaintingFullResPaddingSettings.Step" />
 			</div>
@@ -168,6 +174,10 @@
 	[Parameter, EditorRequired]
 	public Img2ImgParametersModel Parameters { get; set; }
 
+	[Parameter, EditorRequired]
+	public EventCallback OnPaste { get; set; }
+	[Parameter, EditorRequired]
+	public EventCallback OnDelete { get; set; }
 	[Parameter, EditorRequired]
 	public EventCallback OnClear { get; set; }
 	[Parameter, EditorRequired]

@@ -1,0 +1,25 @@
+﻿@inject PromptButtonService PromptButtonService
+
+<button class="btn btn-outline-secondary tags-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#@OffscreenId" aria-controls="tag-offcanvas"><span class="fa-solid fa-tags"></span></button>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="@OffscreenId" aria-labelledby="tag-offcanvas-label">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="tag-offcanvas-label">Token Tags</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="accordion" id="tagsAccordion">
+            @foreach (var item in PromptButtonService.Tags.Items)
+            {
+                <TagAccordion Tag="@item" DataParent="tagsAccordion" OnButtonClicked="OnTagClicked" />
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<string> OnTagClicked { get; set; }
+    [Parameter]
+    public string OffscreenId { get; set; }
+}

@@ -141,6 +141,21 @@ export function init(
     imgCanvas.src = data;
   }
 
+  async function pasteImage() {
+    const data = await navigator.clipboard.read();
+    if (!item.types.includes("image/png")) {
+      throw new Error("Clipboard contains no image/png data!");
+    }
+    console.log(item);
+    const blob = await item.getType("image/png");
+    console.log(blob);
+    imgCanvas.src = URL.createObjectURL(blob);
+  }
+
+  function deleteImage(imgSource) {
+    imgCanvas.src = imgSource;
+  }
+
   window.dotnetObject = instance;
   const canvasDrawElem = document.getElementById(
     canvasDraw.additionalAttributes.id
@@ -158,6 +173,8 @@ export function init(
 
   return {
     loadImage,
+    pasteImage,
+    deleteImage,
     saveMask,
     saveInpaint,
     clearData,

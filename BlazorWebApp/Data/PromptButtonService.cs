@@ -18,7 +18,7 @@ namespace BlazorWebApp.Data
 
 		public void GetPromptButtons()
 		{
-			Tags = JsonSerializer.Deserialize<PromptButtonModel>(_ioService.GetJsonAsString("Data/example.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+			Tags = JsonSerializer.Deserialize<PromptButtonModel>(_ioService.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
 		}
 	}
 }

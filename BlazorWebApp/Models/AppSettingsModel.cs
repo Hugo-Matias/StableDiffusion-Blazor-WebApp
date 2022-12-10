@@ -2,6 +2,7 @@
 {
 	public class AppSettingsModel
 	{
+		public GallerySettingsModel GallerySettings { get; set; } = new();
 		public int StepsDefaultValue { get; set; } = 20;
 		public int StepsMin { get; set; } = 1;
 		public int StepsMax { get; set; } = 150;
@@ -62,9 +63,9 @@
 
 	public class BrushSettingsModel
 	{
-		public int DefaultValue { get; set; } = 10;
-		public int Min { get; set; } = 2;
-		public int Max { get; set; } = 40;
+		public int DefaultValue { get; set; } = 30;
+		public int Min { get; set; } = 5;
+		public int Max { get; set; } = 70;
 		public string Color { get; set; } = "black";
 		public string PointerOutline { get; set; } = "white";
 	}
@@ -83,6 +84,12 @@
 		public int Min { get; set; } = 0;
 		public int Max { get; set; } = 40;
 		public int Step { get; set; } = 1;
+	}
+
+	public class GallerySettingsModel
+	{
+		public int MaxImageWidth { get; set; } = 2048;
+		public int MaxImageHeight { get; set; } = 2048;
 	}
 
 }

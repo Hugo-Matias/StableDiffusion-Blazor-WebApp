@@ -33,6 +33,21 @@ namespace BlazorWebApp.Services
 			}
 		}
 
+		public async Task<string> LoadImage(string path)
+		{
+			using (var image = new MagickImage(path))
+			{
+				if (image.Width > _app.Settings.GallerySettings.MaxImageWidth || image.Height > _app.Settings.GallerySettings.MaxImageHeight)
+				{
+					var size = new MagickGeometry(_app.Settings.GallerySettings.MaxImageWidth, _app.Settings.GallerySettings.MaxImageHeight);
+
+					image.Resize(size);
+				}
+
+				return image.ToBase64(MagickFormat.Png);
+			}
+		}
+
 		#region Examples
 		public MagickImageInfo ReadInfoFromBytes(byte[] bytes) => new MagickImageInfo(bytes);
 

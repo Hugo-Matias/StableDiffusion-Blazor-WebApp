@@ -1,0 +1,6 @@
+﻿div {
+	--bs-offcanvas-width: 45vw;
+	--bs-offcanvas-color: var(--app-light-4);
+	--bs-offcanvas-bg: var(--app-dark-2);
+	--bs-offcanvas-border-color: var(--app-dark-3);
+}

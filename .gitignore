@@ -5,6 +5,7 @@
 
 _backup/
 BlazorDiffusion.json
+Data/*.json
 
 # SQLite DB
 *.db

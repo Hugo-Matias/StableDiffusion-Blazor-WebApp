@@ -37,7 +37,12 @@
 <ConfirmationDialogModal Id="delete-image-modal" Title="Delete Image" OkButton="Yes" CancelButton="No" OnConfirm="DeleteImage">
 	<div class="text-center">
 		<span class="lead">Are you sure you want to <strong class="text-danger">delete</strong> this image?<br /></span>
-		@if(deleteImage.Favorite){<span class="text-warning">It's one of your favorites!</span><br/>}
+		@if (deleteImage.Favorite)
+		{
+			<span class="text-warning">It's one of your favorites!</span>
+
+			<br />
+		}
 		<small>This action is irreversible!</small>
 	</div>
 </ConfirmationDialogModal>

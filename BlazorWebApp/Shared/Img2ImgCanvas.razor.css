@@ -1,6 +1,6 @@
 ﻿div {
-  --w: 40rem;
-  --h: 40rem;
+  --w: 45rem;
+  --h: 45rem;
 }
 
 #img-canvas {
@@ -15,10 +15,12 @@
 
 #canvas-container {
   display: flex;
-  border: 2px solid black;
+  border: 1px solid var(--app-dark-3);
+  border-radius: 0.375rem;
   width: var(--w);
   height: var(--h);
   margin-bottom: 1rem;
+  background: var(--app-dark-1);
 }
 
 ::deep canvas {
@@ -35,17 +37,8 @@
   display: none;
 }
 
-::deep #canvas-bg {
-  border: 1px solid red;
-}
-
-::deep #canvas-drawing {
-  border: 1px solid green;
-}
-
 ::deep #canvas-pointer {
   pointer-events: auto;
-  border: 1px solid blue;
 }
 
 ::deep #canvas-work {
@@ -54,13 +47,23 @@
 
 .dropzone {
   display: none;
+  justify-content: center;
   position: absolute;
   width: var(--w);
   height: var(--h);
 }
 
+	.dropzone h1 {
+		color: var(--app-light-5);
+		margin-top: 5rem;
+	}
+
 .dropzone.hover {
-  display: block;
-  border: 2px solid greenyellow;
+  display: flex;
+  border: 2px solid var(--app-green);
   border-radius: 5px;
+}
+
+::deep input[type="file"] {
+	display: none;
 }

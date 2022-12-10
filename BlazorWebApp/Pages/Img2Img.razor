@@ -6,18 +6,12 @@
 @inject ImageService ImageService
 @implements IDisposable
 
-<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" />
+<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagClicked="PromptTagClicked" OnNegativePromptTagClicked="NegativePromptTagClicked"/>
 
 <div class="row">
 	<div class="col">
 		<Img2ImgCanvas @ref="canvasRef"/>
-		<GenerateFormImg2Img Parameters="@Parameters" OnClear="OnClear" OnUndo="OnUndo"/>
-		<div class="accordion" id="tagsAccordion">
-			@foreach (var item in PromptButtonService.Tags.Items)
-			{
-				<TagAccordion Tag="@item" DataParent="tagsAccordion" OnButtonClicked="TagClicked" />
-			}
-		</div>
+		<GenerateFormImg2Img Parameters="@Parameters" OnDelete="OnDelete" OnPaste="OnPaste" OnClear="OnClear" OnUndo="OnUndo"/>
 	</div>
 	<!-- Carousel Tabs-->
 	<div class="col">
@@ -33,7 +27,7 @@
 				{
 					List<string> generatedImages = new();
 
-					if (AppState.GridImage != null) generatedImages.Add(AppState.GridImage);
+					if (!string.IsNullOrWhiteSpace(AppState.GridImage)) generatedImages.Add(AppState.GridImage);
 
 					generatedImages.AddRange(AppState.Images.Images);
 
@@ -81,6 +75,8 @@
 		SharedParameters = AppState.ParametersImg2Img;
 	}
 
+	private async Task OnPaste() => await canvasRef.Paste();
+	private async Task OnDelete() => await canvasRef.Delete();
 	private async Task OnClear() => await canvasRef.Clear();
 	private async Task OnUndo() => await canvasRef.Undo();
 
@@ -90,7 +86,6 @@
 		Parameters.InitImages = new() { AppState.CanvasImageData };
 		Parameters.Mask = AppState.CanvasMaskData is not null ? AppState.CanvasMaskData : "";
 		await ImageService.GetImages(isImg2Img: true);
-		await JS.LogAsync(Parameters);
 		Refresh();
 	}
 
@@ -98,10 +93,9 @@
 
 	private async void Interrupt() => await SDAPIService.PostInterrupt();
 
-	private void TagClicked(string tag)
-	{
-		Parameters.Prompt += $", {tag}";
-	}
+	private void PromptTagClicked(string tag) => Parameters.Prompt += $"{tag}, ";
+
+	private void NegativePromptTagClicked(string tag) => Parameters.NegativePrompt += $"{tag}, ";
 
 	public void Dispose() => ImageService.OnChange -= Refresh;
 

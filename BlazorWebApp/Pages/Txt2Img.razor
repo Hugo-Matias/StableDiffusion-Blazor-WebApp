@@ -1,22 +1,15 @@
 ﻿@page "/txt2img"
 @inject SDAPIService SDAPIService
 @inject JavascriptService JSConsole
-@inject PromptButtonService PromptButtonService
 @inject AppState AppState
 @inject ImageService ImageService
 @implements IDisposable
 
-<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" />
+<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagClicked="PromptTagClicked" OnNegativePromptTagClicked="NegativePromptTagClicked"/>
 
 <div class="row">
 	<div class="col">
 		<GenerateFormTxt2Img Parameters="@Parameters" />
-		<div class="accordion" id="tagsAccordion">
-			@foreach (var item in PromptButtonService.Tags.Items)
-			{
-				<TagAccordion Tag="@item" DataParent="tagsAccordion" OnButtonClicked="TagClicked" />
-			}
-		</div>
 	</div>
 	<!-- Carousel Tabs-->
 	<div class="col">
@@ -32,7 +25,7 @@
 				{
 					List<string> generatedImages = new();
 
-					if (AppState.GridImage != null) generatedImages.Add(AppState.GridImage);
+					if (!string.IsNullOrWhiteSpace(AppState.GridImage)) generatedImages.Add(AppState.GridImage);
 
 					generatedImages.AddRange(AppState.Images.Images);
 
@@ -89,10 +82,9 @@
 
 	private async void Interrupt() => await SDAPIService.PostInterrupt();
 
-	private void TagClicked(string tag)
-	{
-		Parameters.Prompt += $", {tag}";
-	}
+	private void PromptTagClicked(string tag) => Parameters.Prompt += $"{tag}, ";
+
+	private void NegativePromptTagClicked(string tag) => Parameters.NegativePrompt += $"{tag}, ";
 
 	public void Dispose() => ImageService.OnChange -= Refresh;
 

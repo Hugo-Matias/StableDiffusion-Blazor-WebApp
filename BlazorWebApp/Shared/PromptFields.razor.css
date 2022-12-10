@@ -58,6 +58,7 @@ label {
 	color: var(--app-dark-4);
 }
 
+::deep .tags-btn,
 .input-group button {
 	--bs-btn-color: var(--app-dark-3);
 	--bs-btn-bg: var(--app-dark-2);
