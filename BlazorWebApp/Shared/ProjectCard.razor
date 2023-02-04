@@ -1,0 +1,50 @@
+﻿@inject AppState AppState
+@inject DatabaseService DB
+@inject ImageService IM
+
+<div class="card project-card m-1@(AppState.CurrentProjectId == ProjectId ? " selected":"")">
+    <div class="card-body p-1 pt-2">
+        <img src="@Image" class="card-img mb-3" alt="image">
+        <h1>@Name</h1>
+        <div class="text-card">
+        </div>
+        <div class="row btn-container">
+            <div class="col-12">
+                <button class="btn btn-load" @onclick="@(() => OnSelected.InvokeAsync(ProjectId))"><span class="btn-icon fa-solid fa-check"></span>Load</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-delete" @onclick="@(() => OnDeleted.InvokeAsync(ProjectId))"><span class="btn-icon fa-solid fa-trash-can"></span>Delete</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-rename" @onclick="@(() => OnRename.InvokeAsync(ProjectId))"><span class="btn-icon fa-solid fa-pen"></span>Rename</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int ProjectId { get; set; }
+    [Parameter]
+    public string Name { get; set; }
+    [Parameter]
+    public EventCallback<int> OnDeleted { get; set; }
+    [Parameter]
+    public EventCallback<int> OnSelected { get; set; }
+    [Parameter]
+    public EventCallback<int> OnRename { get; set; }
+
+    public string Image { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Image = await GetRandomProjectImage(ProjectId);
+    }
+
+    private async Task<string> GetRandomProjectImage(int projectId)
+    {
+        var image = await DB.GetRandomFavorite(projectId);
+        if (image != null) return $"data:image/png;base64,{await IM.LoadImageAsync(image.Path)}";
+        else return "./no_image.png";
+    }
+}

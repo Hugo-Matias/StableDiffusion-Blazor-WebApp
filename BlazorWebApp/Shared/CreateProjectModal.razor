@@ -34,9 +34,9 @@
 		if (string.IsNullOrWhiteSpace(_newProject.Name)) return;
 
 		_newProject.CreationTime = DateTime.Now;
-		await DB.CreateProject(_newProject);
+		await DB.CreateProject(new() { Name = _newProject.Name, CreationTime = _newProject.CreationTime });
 		await JS.RunScript("HideModal", "#create-project-modal");
-		AppState.Projects = await DB.GetProjects();
+		await AppState.GetProjects();
 		await InvokeAsync(StateHasChanged);
 	}
 }

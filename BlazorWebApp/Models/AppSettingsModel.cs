@@ -3,11 +3,11 @@
 	public class AppSettingsModel
 	{
 		public GallerySettingsModel GallerySettings { get; set; } = new();
-		public int StepsDefaultValue { get; set; } = 20;
+		public int StepsDefaultValue { get; set; } = 40;
 		public int StepsMin { get; set; } = 1;
 		public int StepsMax { get; set; } = 150;
 		public int StepsStep { get; set; } = 1;
-		public string SamplerDefault { get; set; } = "Euler";
+		public string SamplerDefault { get; set; } = "DPM++ 2M Karras";
 		public int SeedDefaultValue { get; set; } = -1;
 		public int ResolutionMin { get; set; } = 64;
 		public int ResolutionMax { get; set; } = 2048;
@@ -28,7 +28,7 @@
 		public double DenoisingMin { get; set; } = 0;
 		public double DenoisingMax { get; set; } = 1;
 		public double DenoisingStep { get; set; } = 0.01;
-		public double DenoisingDefaultValue { get; set; } = 0.35;
+		public double DenoisingDefaultValue { get; set; } = 0.52;
 		public Txt2ImgSettingsModel Txt2ImgSettings { get; set; } = new();
 		public Img2ImgSettingsModel Img2ImgSettings { get; set; } = new();
 	}
@@ -63,7 +63,7 @@
 
 	public class BrushSettingsModel
 	{
-		public int DefaultValue { get; set; } = 30;
+		public int DefaultValue { get; set; } = 50;
 		public int Min { get; set; } = 5;
 		public int Max { get; set; } = 70;
 		public string Color { get; set; } = "black";
@@ -72,7 +72,7 @@
 
 	public class MaskBlurModel
 	{
-		public int DefaultValue { get; set; } = 4;
+		public int DefaultValue { get; set; } = 2;
 		public int Min { get; set; } = 0;
 		public int Max { get; set; } = 64;
 		public int Step { get; set; } = 1;

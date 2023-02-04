@@ -163,7 +163,7 @@
 		}
 	}
 
-	public ValueTask Paste() => _canvasInstance.InvokeVoidAsync("pasteImage");
+	public async Task SetInpaint() { await _canvasInstance.InvokeVoidAsync("setInpaint"); await Clear(); }
 
 	public ValueTask Delete() => _canvasInstance.InvokeVoidAsync("deleteImage", "./no_image.png");
 

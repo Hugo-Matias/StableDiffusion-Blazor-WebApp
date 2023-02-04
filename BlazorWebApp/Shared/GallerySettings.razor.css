@@ -1,0 +1,23 @@
+﻿.card {
+    --bs-card-bg: var(--app-dark-1);
+    --bs-card-color: var(--app-light-4);
+    --bs-card-border-color: var(--app-dark-3);
+    align-items: center;
+}
+
+    .card h3 {
+        color: var(--bs-card-color);
+    }
+
+h1 {
+    font-size: 1.7rem;
+    color: var(--app-light-4);
+}
+
+.projects-container {
+    max-width: 90vw;
+    overflow: scroll;
+    flex-wrap: nowrap;
+    margin-bottom: 1.5rem;
+}
+

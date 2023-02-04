@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Data.Entities;
+﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -23,10 +24,12 @@ namespace BlazorWebApp.Services
 		public event Action OnConverging;
 		public event Action OnBrushSizeChange;
 		public event Action OnBrushColorChange;
-		public event Func<Task> OnProjectChange;
+		public event Action OnProjectChange;
+		public event Func<Task> OnProjectChangeTask;
 
 		public GeneratedImagesModel Images { get; set; }
 		public GeneratedImagesInfoModel ImagesInfo { get; set; }
+		public ImagesDto GeneratedImageEntities { get; set; }
 		public string? GridImage { get; set; }
 		public ProgressModel Progress { get; set; }
 		public List<SDModelModel> SDModels { get; set; }
@@ -39,6 +42,7 @@ namespace BlazorWebApp.Services
 		public Img2ImgParametersModel ParametersImg2Img { get; set; }
 		public long? CurrentSeed { get; set; }
 		public int CurrentProjectId { get; set; }
+		public string CurrentProjectName { get; set; }
 		public int CurrentBrushSize
 		{
 			get => _currentBrushSize; set
@@ -82,6 +86,7 @@ namespace BlazorWebApp.Services
 			Images = new();
 			Progress = new();
 			Projects = new();
+			GetProjects();
 
 			CreateParameters();
 
@@ -143,10 +148,17 @@ namespace BlazorWebApp.Services
 			Style2 = Styles[0].Name;
 		}
 
-		public void SetCurrentProjectId(int id)
+		public async Task GetProjects()
+		{
+			Projects = await _db.GetProjects();
+		}
+
+		public void SetCurrentProject(int id)
 		{
 			CurrentProjectId = id;
+			CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)!.Name;
 			OnProjectChange?.Invoke();
+			OnProjectChangeTask?.Invoke();
 		}
 
 		public void ResetStyles()

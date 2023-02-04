@@ -1,68 +1,65 @@
 ﻿@inject DatabaseService DB
-@inject ImageService ImageService
-@inject JavascriptService JS
 @inject AppState AppState
 @implements IDisposable
 @page "/"
 
 <PageTitle>Blazor Diffusion</PageTitle>
 
-@if(_projects == null || _projects.Count() == 0)
+@if (_projects == null || _projects.Count() == 0)
 {
-	<div class="row" style="color: var(--app-light-2);">
-		<div class="col">
-			<h2>
-				Looks like you haven't created any project yet.<br/>
-				<small>Create a new project to store your images.</small>
-			</h2>
-			<CreateProjectModal>
-				<ButtonText>Create Project</ButtonText>
-			</CreateProjectModal>
-		</div>
-	</div>
+    <div class="row" style="color: var(--app-light-2);">
+        <div class="col">
+            <h2>
+                Looks like you haven't created any project yet.<br />
+                <small>Create a new project to store your images.</small>
+            </h2>
+            <CreateProjectModal>
+                <ButtonText>Create Project</ButtonText>
+            </CreateProjectModal>
+        </div>
+    </div>
 
 }
 else
 {
-	<ImagesContainer Images="@images" OnPageSelected="LoadPage" OnDeleteImage="LoadImages"/>
+    <GallerySettings></GallerySettings>
+    if (images.Images.Count > 0)
+    {
+        <ImagesContainer Images="@images" OnPageSelected="(page) => LoadPage(page)" OnDeleteImage="LoadImages" />
+    }
 }
 
 @code {
-	private ImagesDto images = new();
-	private List<Project>? _projects;
-	private int currentPage;
+    private ImagesDto images = new();
+    private List<Project>? _projects;
+    private int currentImgPage;
 
-	protected override void OnInitialized()
-	{
-		base.OnInitialized();
-		AppState.OnProjectChange += HandleProjectChanged;
-	}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        AppState.OnProjectChangeTask += HandleProjectChanged;
+        _projects = await DB.GetProjects();
+        currentImgPage = 1;
+        await LoadImages();
+    }
 
+    private async void LoadPage(int page)
+    {
+        currentImgPage = page;
+        await LoadImages();
+    }
 
-	protected override async Task OnInitializedAsync()
-	{
-		_projects = await DB.GetProjects();
-		currentPage = 1;
-		await LoadImages();
-	}
+    private async Task LoadImages()
+    {
+        images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
+        await InvokeAsync(StateHasChanged);
+    }
 
-	private async void LoadPage(int page)
-	{
-		currentPage = page;
-		await LoadImages();
-	}
+    private async Task HandleProjectChanged()
+    {
+        currentImgPage = 1;
+        await LoadImages();
+    }
 
-	private async Task LoadImages()
-	{
-		images = await DB.GetImages(currentPage, AppState.CurrentProjectId);
-		await InvokeAsync(StateHasChanged);
-	}
-
-	private async Task HandleProjectChanged()
-	{
-		currentPage = 1;
-		await LoadImages();
-	}
-
-	public void Dispose() => AppState.OnProjectChange -= HandleProjectChanged;
+    public void Dispose() => AppState.OnProjectChangeTask -= HandleProjectChanged;
 }

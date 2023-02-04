@@ -50,7 +50,7 @@ namespace BlazorWebApp.Services
 			await context.SaveChangesAsync();
 		}
 
-		public async Task AddImage(Image image)
+		public async Task<Image> AddImage(Image image)
 		{
 			using var context = _factory.CreateDbContext();
 
@@ -59,6 +59,8 @@ namespace BlazorWebApp.Services
 				var result = await context.Images.AddAsync(image);
 				if (result != null) { await context.SaveChangesAsync(); }
 			}
+
+			return await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path);
 		}
 
 		public async Task<ImagesDto> GetImages(int page)
@@ -94,6 +96,7 @@ namespace BlazorWebApp.Services
 
 			var images = await context.Images
 				.Where(i => i.ProjectId == projectId)
+				.OrderByDescending(i => i.Id)
 				.Skip((page - 1) * _pageSize)
 				.Take(_pageSize)
 				.ToListAsync();
@@ -106,6 +109,13 @@ namespace BlazorWebApp.Services
 				HasNext = (int)pageCount > 1 && page < (int)pageCount,
 				HasPrev = page > 1
 			};
+		}
+
+		public async Task<Image> GetRandomFavorite(int projectId)
+		{
+			using var context = _factory.CreateDbContext();
+			if (context.Images == null) return null;
+			return context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefault();
 		}
 
 		public async Task<Image> UpdateImage(Image image)

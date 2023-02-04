@@ -15,12 +15,13 @@
 	<div class="col">
 		<nav>
 			<div class="nav nav-tabs" id="nav-tabs" role="tablist">
-				<button class="nav-link active" id="nav-gen-tab" data-bs-toggle="tab" data-bs-target="#nav-gen" type="button" role="tab" aria-controls="nav-gen" aria-selected="true">Generated</button>
+				<button class="nav-link active" id="nav-gallery-tab" data-bs-toggle="tab" data-bs-target="#nav-gallery" type="button" role="tab" aria-controls="nav-gallery" aria-selected="true">Gallery</button>
+				<button class="nav-link" id="nav-gen-tab" data-bs-toggle="tab" data-bs-target="#nav-gen" type="button" role="tab" aria-controls="nav-gen" aria-selected="false">Generated</button>
 				<button class="nav-link" id="nav-progress-tab" data-bs-toggle="tab" data-bs-target="#nav-progress" type="button" role="tab" aria-controls="nav-progress" aria-selected="false">Progress</button>
 			</div>
 		</nav>
 		<div class="tab-content" id="nav-tabContent">
-			<div class="tab-pane fade show active" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
+			<div class="tab-pane fade show active" id="nav-gallery" role="tabpanel" aria-labelledby="nav-gallery-tab" tabindex="0">
 				@if (AppState.Images.Images != null)
 				{
 					List<string> generatedImages = new();
@@ -34,6 +35,12 @@
 					<ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
 				}
 			</div>
+            <div class="tab-pane fade" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
+                @if (AppState.GeneratedImageEntities != null)
+                {
+                    <ImagesContainer Images="AppState.GeneratedImageEntities"></ImagesContainer>
+                }
+            </div>
 			<div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
 				@if (AppState.Progress.State != null)
 				{
@@ -74,7 +81,7 @@
 	private async void Generate()
 	{
 		//await JSConsole.LogAsync(Parser.ParseParameters(new Txt2ImgParametersModel(Parameters)));
-		await ImageService.GetImages();
+		AppState.GeneratedImageEntities = await ImageService.GetImages();
 		Refresh();
 	}
 

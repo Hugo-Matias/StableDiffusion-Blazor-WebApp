@@ -49,6 +49,12 @@ export function init(
     ctxWork.putImageData(workData, 0, 0);
   }
 
+  function setInpaint() {
+    convertInpaintPixels();
+    saveImageData();
+    imgCanvas.src = imgWork.src;
+  }
+
   function saveInpaint() {
     convertInpaintPixels();
     saveImageData();
@@ -173,7 +179,7 @@ export function init(
 
   return {
     loadImage,
-    pasteImage,
+    setInpaint,
     deleteImage,
     saveMask,
     saveInpaint,

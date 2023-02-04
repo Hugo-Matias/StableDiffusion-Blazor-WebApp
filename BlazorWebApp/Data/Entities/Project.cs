@@ -6,5 +6,6 @@
 		public string Name { get; set; }
 		public List<Image> Images { get; set; }
 		public DateTime CreationTime { get; set; }
+		public string SampleImagePath { get; set; }
 	}
 }

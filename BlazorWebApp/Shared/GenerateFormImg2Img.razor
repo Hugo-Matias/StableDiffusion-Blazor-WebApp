@@ -20,7 +20,7 @@
 				</InputRadioGroup>
 			</div>
 			<div class="col-3 d-flex flex-column px-3">
-				<button @onclick="OnPaste" class="btn btn-outline-secondary mb-1" type="button"><span class="fa-regular fa-paste me-2" />Paste</button>
+				<button @onclick="OnSet" class="btn btn-outline-secondary mb-1" type="button"><span class="fa-regular fa-file-image me-2" />Set</button>
 				<button @onclick="OnDelete" class="btn btn-outline-secondary mt-1" type="button"><span class="fa-solid fa-trash-can me-2" />Delete</button>
 			</div>
 			<div class="col-3 d-flex flex-column px-3">
@@ -175,7 +175,7 @@
 	public Img2ImgParametersModel Parameters { get; set; }
 
 	[Parameter, EditorRequired]
-	public EventCallback OnPaste { get; set; }
+	public EventCallback OnSet { get; set; }
 	[Parameter, EditorRequired]
 	public EventCallback OnDelete { get; set; }
 	[Parameter, EditorRequired]

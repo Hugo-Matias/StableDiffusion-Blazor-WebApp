@@ -1,0 +1,139 @@
+﻿button {
+	--bs-btn-bg: var(--app-dark-1);
+	--bs-btn-color: var(--app-light-3);
+	--bs-btn-hover-color: var(--app-light-2);
+	--bs-btn-border-color: hsl(var(--btn-hue), 100%, 17%);
+	--bs-btn-hover-bg: hsl(var(--btn-hue), 100%, 17%);
+	--bs-btn-hover-border-color: hsl(var(--btn-hue), 100%, 50%);
+	--bs-btn-active-bg: hsl(var(--btn-hue), 100%, 17%);
+	--bs-btn-active-color: hsl(var(--btn-hue), 100%, 50%);
+	--bs-btn-active-border-color: hsl(var(--btn-hue), 100%, 65%);
+}
+
+.btn-load {
+	--btn-hue: var(--app-h-green);
+}
+
+.btn-delete {
+	--btn-hue: var(--app-h-red);
+}
+
+.btn-rename {
+	--btn-hue: var(--app-h-blue);
+}
+
+.project-card {
+	--bs-card-bg: var(--app-dark-1);
+	--bs-card-color: var(--app-dark-5);
+	--bs-card-border-color: var(--app-dark-2);
+	--bs-card-border-width: 2px;
+	--card-size: 16rem;
+	max-width: var(--card-size);
+	height: fit-content;
+	cursor: default;
+	overflow: hidden;
+}
+
+	.project-card.selected {
+		--bs-card-border-color: var(--app-blue-5);
+	}
+
+	.project-card .card-img {
+		object-fit: cover;
+		width: calc(var(--card-size) - 2rem);
+		height: calc(var(--card-size) - 2rem);
+	}
+
+	.project-card .sampler-badge {
+		position: absolute;
+		top: 0.2rem;
+		left: 0.2rem;
+		color: var(--app-light-2);
+		font-size: 0.8rem;
+		padding: 0.1rem 0.8rem;
+	}
+
+	.project-card .favorite-icon {
+		position: absolute;
+		top: 0.2rem;
+		right: 0.4rem;
+		color: var(--bs-warning);
+		text-shadow: 0 0 10px black;
+		opacity: 0;
+	}
+
+		.project-card .favorite-icon.active {
+			opacity: 1;
+		}
+
+	.project-card h1 {
+		font-size: 1rem;
+		text-align: center;
+		color: var(--app-light-7);
+	}
+
+		.project-card h1 span {
+			color: var(--app-dark-4);
+			font-size: 0.8rem;
+			margin-right: 0.3rem;
+		}
+
+	.project-card .text-card {
+		position: absolute;
+		top: 0;
+		left: 0;
+		padding: 1rem;
+		padding-top: 2rem;
+		background: #111111bb;
+		min-width: calc(var(--card-size) - 1rem);
+		min-height: 100%;
+		color: var(--app-dark-6);
+		opacity: 0;
+		transition: opacity 0.3s ease-in-out;
+	}
+
+	.project-card:hover .text-card {
+		opacity: 1;
+	}
+
+	.project-card h2 {
+		font-size: 0.75rem;
+		text-align: center;
+		color: var(--app-light-6);
+	}
+
+	.project-card h3 {
+		font-size: 0.6rem;
+		text-align: center;
+		opacity: 0.5;
+		color: var(--app-light-7);
+	}
+
+	.project-card .btn-container {
+		--bs-gutter-x: 0.5rem;
+		position: absolute;
+		padding: 0.9rem;
+		left: 0;
+		opacity: 0;
+		bottom: -0.6rem;
+		width: 100%;
+		height: 8.5rem;
+		margin: auto;
+		transition: all 0.3s ease-in-out;
+		background: linear-gradient(0deg, black 0%, transparent 100%);
+	}
+
+		.project-card .btn-container button {
+			width: 100%;
+			font-size: 0.8rem;
+		}
+
+		.project-card .btn-container .btn-icon {
+			margin-right: 0.7rem;
+			font-size: 1rem;
+		}
+
+	.project-card:hover .btn-container {
+		bottom: 0;
+		opacity: 1;
+	}

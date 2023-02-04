@@ -1,0 +1,24 @@
+﻿@inject AppState AppState
+
+<div class="card p-3 mb-3">
+    @if (AppState.Projects != null && AppState.Projects.Count > 0)
+    {
+        <h1>Projects</h1>
+        <div class="projects-container row">
+            @foreach (var project in AppState.Projects)
+            {
+                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected"></ProjectCard>
+            }
+        </div>
+        <div class="gallery-settings row">
+        </div>
+    }
+</div>
+
+@code {
+    private void HandleProjectSelected(int projectId)
+    {
+        AppState.SetCurrentProject(projectId);
+        StateHasChanged();
+    }
+}

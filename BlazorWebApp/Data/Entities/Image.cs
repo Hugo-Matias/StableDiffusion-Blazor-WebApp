@@ -16,5 +16,6 @@
 		public bool Favorite { get; set; }
 		public int ProjectId { get; set; }
 		public int ModeId { get; set; }
+		public double? DenoisingStrength { get; set; }
 	}
 }

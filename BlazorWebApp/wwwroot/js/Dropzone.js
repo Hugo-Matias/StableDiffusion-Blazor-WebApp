@@ -37,7 +37,6 @@ export function init(dropzoneElement, inputFile) {
 
   function onPaste(e) {
     inputFile.files = e.clipboardData.files;
-    console.log(e.clipboardData.files);
     const event = new Event("change", { bubbles: true });
     inputFile.dispatchEvent(event);
   }

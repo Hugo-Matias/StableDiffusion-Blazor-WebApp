@@ -37,6 +37,12 @@ namespace BlazorWebApp.Services
 			return await response.Content.ReadAsStringAsync();
 		}
 
+		public async Task<string> PostRefreshModels()
+		{
+			using var response = await _httpClient.PostAsync("refresh-checkpoints", null);
+			return await response.Content.ReadAsStringAsync();
+		}
+
 		public async Task<GeneratedImagesModel> PostTxt2Img(Txt2ImgParametersModel param)
 		{
 			using var response = await _httpClient.PostAsJsonAsync("txt2img", param, _jsonIgnoreNull);

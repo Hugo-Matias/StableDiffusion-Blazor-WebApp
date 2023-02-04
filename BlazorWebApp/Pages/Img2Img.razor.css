@@ -6,9 +6,11 @@
 	--bs-nav-tabs-link-hover-border-color: var(--app-blue-5);
 	background-color: var(--app-bg);
 	border-bottom-color: var(--app-blue-5);
+	display:flex;
+	justify-content: center;
 }
 
 	.nav-tabs button {
-		width: 49%;
-		margin: 0px 3px;
+		width: 25%;
+		margin: 0px 5px;
 	}

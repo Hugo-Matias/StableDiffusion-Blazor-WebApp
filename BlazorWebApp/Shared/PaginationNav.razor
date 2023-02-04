@@ -1,34 +1,37 @@
 ﻿@if (Pagination.HasPrev || Pagination.HasNext)
 {
-	<nav>
-		<ul class="pagination justify-content-center">
-			<li class="page-item @(Pagination.HasPrev ? "" : "disabled")">
-				<button type="button" class="page-link" @onclick="() => OnPageSelected.InvokeAsync(Pagination.CurrentPage - 1)">
-					<span class="fa-solid fa-angles-left"></span>
-				</button>
-			</li>
-			@for (int i = 1; i <= Pagination.PageCount; i++)
-			{
-				var thisPage = i;
-				<li class="page-item @(Pagination.CurrentPage == i ? "active" : "")">
-					<button type="button" class="page-link" @onclick="() => OnPageSelected.InvokeAsync(thisPage)">
-						@thisPage
-					</button>
-				</li>
-			}
-			<li class="page-item @(Pagination.HasNext ? "" : "disabled")">
-				<button type="button" class="page-link" @onclick="() => OnPageSelected.InvokeAsync(Pagination.CurrentPage + 1)">
-					<span class="fa-solid fa-angles-right"></span>
-				</button>
-			</li>
-		</ul>
-	</nav>
+    <nav>
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Pagination.HasPrev ? "" : "disabled")">
+                <button type="button" class="page-link" @onclick="() => OnPageSelected.InvokeAsync(Pagination.CurrentPage - 1)">
+                    <span class="fa-solid fa-angles-left"></span>
+                </button>
+            </li>
+            @for (int i = 1; i <= Pagination.PageCount; i++)
+            {
+                if (i >= Pagination.CurrentPage - 5 && i <= Pagination.CurrentPage + 5)
+                {
+                    var thisPage = i;
+                    <li class="page-item @(Pagination.CurrentPage == i ? "active" : "")">
+                        <button type="button" class="page-link" @onclick="() => OnPageSelected.InvokeAsync(thisPage)">
+                            @thisPage
+                        </button>
+                    </li>
+                }
+            }
+            <li class="page-item @(Pagination.HasNext ? "" : "disabled")">
+                <button type="button" class="page-link" @onclick="() => OnPageSelected.InvokeAsync(Pagination.CurrentPage + 1)">
+                    <span class="fa-solid fa-angles-right"></span>
+                </button>
+            </li>
+        </ul>
+    </nav>
 }
 
 @code {
-	[Parameter]
-	public PaginatedDto Pagination { get; set; }
+    [Parameter]
+    public PaginatedDto Pagination { get; set; }
 
-	[Parameter]
-	public EventCallback<int> OnPageSelected { get; set; }
+    [Parameter]
+    public EventCallback<int> OnPageSelected { get; set; }
 }
