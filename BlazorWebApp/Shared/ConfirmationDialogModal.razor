@@ -1,42 +1,44 @@
 ﻿<div class="modal fade" id="@Id" tabindex="-1" aria-hidden="true">
-	<div class="modal-dialog modal-dialog-centered">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h1 class="modal-title fs-5">@Title</h1>
-				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-				@ChildContent
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@CancelButton</button>
-				<button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal" @onclick="OnConfirm">@OkButton</button>
-			</div>
-		</div>
-	</div>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5">@Title</h1>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    @ChildContent
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@CancelButton</button>
+                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal" @onclick="OnConfirm">@OkButton</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
-	[EditorRequired]
-	[Parameter]
-	public string Id { get; set; }
+    [EditorRequired]
+    [Parameter]
+    public string Id { get; set; }
 
-	[EditorRequired]
-	[Parameter]
-	public string Title { get; set; }
+    [EditorRequired]
+    [Parameter]
+    public string Title { get; set; }
 
-	[Parameter]
-	public string CancelButton { get; set; } = "Cancel";
+    [Parameter]
+    public string CancelButton { get; set; } = "Cancel";
 
-	[Parameter]
-	public string OkButton { get; set; } = "Ok";
+    [Parameter]
+    public string OkButton { get; set; } = "Ok";
 
-	[EditorRequired]
-	[Parameter]
-	public RenderFragment ChildContent { get; set; }
+    [EditorRequired]
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
 
-	[EditorRequired]
-	[Parameter]
-	public EventCallback OnConfirm { get; set; }
+    [EditorRequired]
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
 
 }

@@ -3,103 +3,101 @@
 @inject ImageService ImageService
 
 <div class="container">
-	<div class="row justify-content-center">
-		<PaginationNav Pagination="Images" OnPageSelected="(p) => OnPageSelected.InvokeAsync(p)" />
+    <div class="row justify-content-center">
+        <PaginationNav Pagination="Images" OnPageSelected="(p) => OnPageSelected.InvokeAsync(p)" />
 
-		@if (Images.Images is not null && Images.Images.Count > 0)
-		{
-			@foreach (var image in Images.Images)
-			{
-				<ImageCard Image="@image" ImageData="@LoadCardImage(image.Path)" Target="fullscreen-modal" OnSelectImage="ShowFullscreen" OnDeleteImage="ShowDeleteImageModal" />
-			}
-		}
+        @if (Images.Images is not null && Images.Images.Count > 0)
+        {
+            @foreach (var image in Images.Images)
+            {
+                <ImageCard Image="@image" ImageData="@LoadCardImage(image.Path)" Target="fullscreen-modal" OnSelectImage="ShowFullscreen" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()"/>
+            }
+        }
 
-		<PaginationNav Pagination="Images" OnPageSelected="(p) => OnPageSelected.InvokeAsync(p)" />
-	</div>
+        <PaginationNav Pagination="Images" OnPageSelected="(p) => OnPageSelected.InvokeAsync(p)" />
+    </div>
 </div>
 
 <!-- Fullscreen Viewer Modal -->
 <div class="modal fade" id="fullscreen-modal" @onclick="HideFullscreen" tabindex="-1" aria-hidden="true">
-	<div id="fullscreen-modal-dialog" class="modal-dialog modal-dialog-centered @(modalMaxMinIcon == "fa-minimize" ? "expanded" : "")" style="max-width: @(selectedImage.Width)px; max-height: @(selectedImage.Height)px;">
-		<div class="modal-content">
-			<img src="data:image/png;base64,@imageData" />
-		</div>
-	</div>
+    <div id="fullscreen-modal-dialog" class="modal-dialog modal-dialog-centered @(modalMaxMinIcon == "fa-minimize" ? "expanded" : "")" style="max-width: @(selectedImage.Width)px; max-height: @(selectedImage.Height)px;">
+        <div class="modal-content">
+            <img src="data:image/png;base64,@imageData" />
+        </div>
+    </div>
 </div>
 <div class="row modal-controls @(IsShowingModal?"show":"")">
-	<div class="col">
-		<button class="btn btn-outline-warning" @onclick="ToggleMaximize"><span class="fa-solid @modalMaxMinIcon"></span></button>
-		<button class="btn btn-outline-danger" @onclick="HideFullscreen"><span class="fa-solid fa-xmark"></span></button>
-	</div>
+    <div class="col">
+        <button class="btn btn-outline-warning" @onclick="ToggleMaximize"><span class="fa-solid @modalMaxMinIcon"></span></button>
+        <button class="btn btn-outline-danger" @onclick="HideFullscreen"><span class="fa-solid fa-xmark"></span></button>
+    </div>
 </div>
 
 <!-- Delete Image Confirmation Modal -->
 <ConfirmationDialogModal Id="delete-image-modal" Title="Delete Image" OkButton="Yes" CancelButton="No" OnConfirm="DeleteImage">
-	<div class="text-center">
-		<span class="lead">Are you sure you want to <strong class="text-danger">delete</strong> this image?<br /></span>
-		@if (deleteImage.Favorite)
-		{
-			<span class="text-warning">It's one of your favorites!</span>
+    <span class="lead">Are you sure you want to <strong class="text-danger">delete</strong> this image?<br /></span>
+    @if (deleteImage.Favorite)
+    {
+        <span class="text-warning">It's one of your favorites!</span>
 
-			<br />
-		}
-		<small>This action is irreversible!</small>
-	</div>
+        <br />
+    }
+    <small>This action is irreversible!</small>
 </ConfirmationDialogModal>
 
 
 @code {
-	[Parameter]
-	public ImagesDto Images { get; set; }
+    [Parameter]
+    public ImagesDto Images { get; set; }
+    [Parameter]
+    public EventCallback<int> OnPageSelected { get; set; }
+    [Parameter]
+    public EventCallback OnDeleteImage { get; set; }
+    [Parameter]
+    public EventCallback OnCoverChanged { get; set; }
 
-	[Parameter]
-	public EventCallback<int> OnPageSelected { get; set; }
+    Image selectedImage = new();
+    Image deleteImage = new();
+    bool IsShowingModal;
+    string modalMaxMinIcon = "fa-maximize";
+    string imageData = string.Empty;
 
-	[Parameter]
-	public EventCallback OnDeleteImage { get; set; }
+    private string LoadCardImage(string path) => ImageService.LoadImage(path);
 
-	Image selectedImage = new();
-	Image deleteImage = new();
-	bool IsShowingModal;
-	string modalMaxMinIcon = "fa-maximize";
-	string imageData = string.Empty;
+    private async Task ShowFullscreen(Image image)
+    {
+        selectedImage = image;
+        IsShowingModal = true;
+        imageData = await ImageService.LoadImageAsync(selectedImage.Path);
+        Refresh();
+    }
 
-	private string LoadCardImage(string path) => ImageService.LoadImage(path);
+    private async Task HideFullscreen()
+    {
+        await JS.RunScript("HideModal", "#fullscreen-modal");
+        IsShowingModal = false;
+        Refresh();
+        selectedImage = new();
+    }
 
-	private async void ShowFullscreen(Image image)
-	{
-		selectedImage = image;
-		IsShowingModal = true;
-		imageData = await ImageService.LoadImageAsync(selectedImage.Path);
-		Refresh();
-	}
+    private void ToggleMaximize()
+    {
+        modalMaxMinIcon = modalMaxMinIcon == "fa-maximize" ? "fa-minimize" : "fa-maximize";
+        Refresh();
+    }
 
-	private async void HideFullscreen()
-	{
-		await JS.RunScript("HideModal", "#fullscreen-modal");
-		IsShowingModal = false;
-		Refresh();
-		selectedImage = new();
-	}
+    private async Task ShowDeleteImageModal(Image image)
+    {
+        deleteImage = image;
+        await JS.RunScript("ShowModal", "#delete-image-modal");
+    }
 
-	private void ToggleMaximize()
-	{
-		modalMaxMinIcon = modalMaxMinIcon == "fa-maximize" ? "fa-minimize" : "fa-maximize";
-		Refresh();
-	}
+    private async Task DeleteImage()
+    {
+        var response = await DB.DeleteImage(deleteImage);
+        deleteImage = new();
+        await OnDeleteImage.InvokeAsync();
+    }
 
-	private async void ShowDeleteImageModal(Image image)
-	{
-		deleteImage = image;
-		await JS.RunScript("ShowModal", "#delete-image-modal");
-	}
-
-	private async void DeleteImage()
-	{
-		var response = await DB.DeleteImage(deleteImage);
-		deleteImage = new();
-		await OnDeleteImage.InvokeAsync();
-	}
-
-	private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async Task Refresh() => await InvokeAsync(StateHasChanged);
 }

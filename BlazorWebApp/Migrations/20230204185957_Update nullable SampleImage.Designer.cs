@@ -3,6 +3,7 @@ using System;
 using BlazorWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorWebApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230204185957_Update nullable SampleImage")]
+    partial class UpdatenullableSampleImage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.11");
@@ -25,9 +27,6 @@ namespace BlazorWebApp.Migrations
 
                     b.Property<float>("CfgScale")
                         .HasColumnType("REAL");
-
-                    b.Property<DateTime>("DateCreated")
-                        .HasColumnType("TEXT");
 
                     b.Property<double?>("DenoisingStrength")
                         .HasColumnType("REAL");

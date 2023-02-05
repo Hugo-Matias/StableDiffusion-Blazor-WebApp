@@ -38,13 +38,18 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        Image = await GetRandomProjectImage(ProjectId);
+        Image = await SetProjectSampleImage(ProjectId);
     }
 
-    private async Task<string> GetRandomProjectImage(int projectId)
+    private async Task<string> SetProjectSampleImage(int projectId)
     {
-        var image = await DB.GetRandomFavorite(projectId);
-        if (image != null) return $"data:image/png;base64,{await IM.LoadImageAsync(image.Path)}";
+        var image = await DB.GetSampleImage(projectId);
+        if (string.IsNullOrWhiteSpace(image))
+        {
+            var imageEntity = await DB.GetRandomFavorite(projectId);
+            image ??= imageEntity.Path;
+        }
+        if (!string.IsNullOrWhiteSpace(image)) return $"data:image/png;base64,{await IM.LoadImageAsync(image)}";
         else return "./no_image.png";
     }
 }

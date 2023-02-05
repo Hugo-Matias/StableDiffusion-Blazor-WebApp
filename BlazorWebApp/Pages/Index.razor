@@ -5,7 +5,13 @@
 
 <PageTitle>Blazor Diffusion</PageTitle>
 
-@if (_projects == null || _projects.Count() == 0)
+@if (_projects == null)
+{
+    <div style="margin-top: 15rem;">
+        <Blazorise.SpinKit.SpinKit Type="Blazorise.SpinKit.SpinKitType.Grid" Color="#0d6efd" Centered />
+    </div>
+}
+else if (_projects.Count() == 0)
 {
     <div class="row" style="color: var(--app-light-2);">
         <div class="col">
@@ -18,14 +24,13 @@
             </CreateProjectModal>
         </div>
     </div>
-
 }
 else
 {
-    <GallerySettings></GallerySettings>
+    <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
     if (images.Images.Count > 0)
     {
-        <ImagesContainer Images="@images" OnPageSelected="(page) => LoadPage(page)" OnDeleteImage="LoadImages" />
+        <ImagesContainer Images="@images" OnPageSelected="(page) => LoadPage(page)" OnDeleteImage="LoadImages" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
     }
 }
 
@@ -43,15 +48,23 @@ else
         await LoadImages();
     }
 
-    private async void LoadPage(int page)
+    private async Task FilterImages(bool resetFilter)
     {
+        AppState.IsGalleryFiltered = !resetFilter;
+        await LoadImages();
+    }
+
+    private async Task LoadPage(int page)
+    {
+        Console.WriteLine(page);
         currentImgPage = page;
         await LoadImages();
     }
 
     private async Task LoadImages()
     {
-        images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
+        if (AppState.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, AppState.CurrentProjectId, AppState.Settings.GallerySettings);
+        else images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
         await InvokeAsync(StateHasChanged);
     }
 

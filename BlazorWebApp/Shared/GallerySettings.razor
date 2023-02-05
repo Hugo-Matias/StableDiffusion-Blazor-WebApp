@@ -1,4 +1,6 @@
 ﻿@inject AppState AppState
+@inject DatabaseService DB
+@inject JavascriptService JS
 
 <div class="card p-3 mb-3">
     @if (AppState.Projects != null && AppState.Projects.Count > 0)
@@ -7,18 +9,125 @@
         <div class="projects-container row">
             @foreach (var project in AppState.Projects)
             {
-                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected"></ProjectCard>
+                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnRename="ShowRenameProjectModal"></ProjectCard>
             }
         </div>
         <div class="gallery-settings row">
+            <div class="col-7">
+                <label for="search-prompt" class="form-label">Search Prompt:</label>
+                <input type="text" class="form-control" id="search-prompt" @bind-value="AppState.Settings.GallerySettings.SearchPrompt" />
+                <label for="search-negative-prompt" class="form-label mt-2">Search Negative Prompt:</label>
+                <input type="text" class="form-control" id="search-negative-prompt" @bind-value="AppState.Settings.GallerySettings.SearchNegativePrompt" />
+            </div>
+            <div class="col-2">
+                <label class="form-label">Order By:</label>
+                <Dropdown ButtonText="@AppState.Settings.GallerySettings.OrderBy.ToString()" ButtonId="gallery-order-by" OnSelected="HandleOrderBySelected">
+                    <Button>@AppState.Settings.GallerySettings.OrderBy</Button>
+                    <Items>
+                        @foreach (var order in Enum.GetValues(typeof(GalleryOrderBy)))
+                        {
+                            <DropdownItem Text="@order.ToString()" />
+                        }
+                    </Items>
+                </Dropdown>
+                <label class="form-label mt-2">Order Direction:</label>
+                <Dropdown ButtonText="@AppState.Settings.GallerySettings.OrderDirection.ToString()" ButtonId="gallery-order-direction" OnSelected="HandleOrderDirectionSelected">
+                    <Button>@AppState.Settings.GallerySettings.OrderDirection</Button>
+                    <Items>
+                        @foreach (var order in Enum.GetValues(typeof(GalleryOrderDirection)))
+                        {
+                            <DropdownItem Text="@order.ToString()" />
+                        }
+                    </Items>
+                </Dropdown>
+            </div>
+            <div class="col-3 d-flex flex-column align-items-center justify-content-center">
+                <button class="btn btn-outline-warning w-100 p-2 m-2" @onclick="async () => await OnFilterImages.InvokeAsync()">Filter</button>
+                <button class="btn btn-outline-danger w-100 p-2 m-2" @onclick="async () => await OnResetFilters.InvokeAsync()">Reset</button>
+            </div>
         </div>
     }
 </div>
 
+<!-- Delete Project Confirmation Modal -->
+<ConfirmationDialogModal Id="delete-project-modal" Title="Delete Project" OkButton="Yes" CancelButton="No" OnConfirm="DeleteProject">
+    <span class="lead">Are you sure you want to <strong class="text-danger">delete</strong> this project?<br /></span>
+    <small>This action is irreversible!</small>
+</ConfirmationDialogModal>
+
+<!-- Rename Project Modal -->
+<div class="modal fade" id="rename-project-modal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h1 class="modal-title fs-5">Rename Project</h1>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form class="modal-body">
+				<label for="rename-project-input" class="form-label">Name:</label>
+				<input class="form-control" @bind="_renameProjectName" @bind:event="oninput" placeholder="New name for this project" id="rename-project-input" required></input>
+			</form>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+				<button type="submit" class="btn btn-outline-primary" @onclick="RenameProject" disabled="@string.IsNullOrWhiteSpace(_renameProjectName)">Ok</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 @code {
-    private void HandleProjectSelected(int projectId)
+    [Parameter]
+    public EventCallback OnFilterImages { get; set; }
+    [Parameter]
+    public EventCallback OnResetFilters { get; set; }
+
+    int _deleteProjectId;
+    int _renameProjectId;
+    string _renameProjectName;
+
+    private async Task HandleProjectSelected(int projectId)
     {
-        AppState.SetCurrentProject(projectId);
+        await AppState.SetCurrentProject(projectId);
         StateHasChanged();
     }
+
+    private async Task ShowDeleteProjectModal(int projectId)
+    {
+        _deleteProjectId = projectId;
+        await JS.RunScript("ShowModal", "#delete-project-modal");
+    }
+
+    private async Task ShowRenameProjectModal(int projectId)
+    {
+        _renameProjectId = projectId;
+        _renameProjectName = AppState.Projects.FirstOrDefault(p => p.Id == projectId).Name;
+        await JS.RunScript("ShowModal", "#rename-project-modal");
+    }
+
+    private async Task RenameProject()
+    {
+        await DB.RenameProject(_renameProjectId, _renameProjectName);
+        await JS.RunScript("HideModal", "#rename-project-modal");
+        // Re-sets current project to refresh the relevant ui components
+        await AppState.SetCurrentProject(AppState.CurrentProjectId);
+        _renameProjectId = 0;
+        _renameProjectName = string.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DeleteProject()
+    {
+        var firstProject = await DB.DeleteProject(_deleteProjectId);
+        _deleteProjectId = 0;
+        await AppState.GetProjects();
+        if (firstProject != null)
+            await AppState.SetCurrentProject(firstProject.Id);
+        else
+            await AppState.SetCurrentProject(0);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleOrderBySelected(string selection) => AppState.Settings.GallerySettings.OrderBy = (GalleryOrderBy)Enum.Parse(typeof(GalleryOrderBy), selection, true);
+
+    private void HandleOrderDirectionSelected(string selection) => AppState.Settings.GallerySettings.OrderDirection = (GalleryOrderDirection)Enum.Parse(typeof(GalleryOrderDirection), selection, true);
 }

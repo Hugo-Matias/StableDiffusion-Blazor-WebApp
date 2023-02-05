@@ -62,6 +62,7 @@ namespace BlazorWebApp.Services
 		public List<string> CanvasStates { get; set; } = new();
 		public string CanvasImageData { get; set; }
 		public string CanvasMaskData { get; set; }
+		public bool IsGalleryFiltered { get; set; }
 
 		public string? Style1 { get; set; }
 		public string? Style2 { get; set; }
@@ -82,6 +83,7 @@ namespace BlazorWebApp.Services
 			_io = io;
 
 			LoadSettings();
+			_db.PageSize = Settings.GallerySettings.PageSize;
 
 			Images = new();
 			Progress = new();
@@ -153,9 +155,10 @@ namespace BlazorWebApp.Services
 			Projects = await _db.GetProjects();
 		}
 
-		public void SetCurrentProject(int id)
+		public async Task SetCurrentProject(int id)
 		{
 			CurrentProjectId = id;
+			await GetProjects();
 			CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)!.Name;
 			OnProjectChange?.Invoke();
 			OnProjectChangeTask?.Invoke();

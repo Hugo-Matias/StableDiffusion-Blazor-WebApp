@@ -25,16 +25,19 @@
                 <button @onclick="LoadParameters" class="btn btn-load"><span class="btn-icon fa-solid fa-pen-to-square"></span>Load</button>
             </div>
             <div class="col-6">
-                <button data-bs-toggle="modal" data-bs-target="#@Target" class="btn btn-show" @onclick="@(() => OnSelectImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-expand"></span>Show</button>
-            </div>
-            <div class="col-6">
                 <button class="btn btn-favorite" @onclick="ToggleFavorite"><span class="btn-icon fa-solid fa-star"></span>Favorite</button>
             </div>
             <div class="col-6">
-                <button class="btn btn-delete" @onclick="@(() => OnDeleteImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-trash-can"></span>Delete</button>
+                <button data-bs-toggle="modal" data-bs-target="#@Target" class="btn btn-show" @onclick="@(() => OnSelectImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-expand"></span>Show</button>
             </div>
-            <div class="col">
-                <button class="btn btn-open" @onclick="OpenFileInExplorer"><span class="btn-icon fa-regular fa-folder-open"></span>Open in Explorer</button>
+            <div class="col-6">
+                <button class="btn btn-cover" @onclick="SetProjectCover"><span class="btn-icon fa-solid fa-image-portrait"></span>Cover</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-open" @onclick="OpenFileInExplorer"><span class="btn-icon fa-regular fa-folder-open"></span>File</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-delete" @onclick="@(() => OnDeleteImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-trash-can"></span>Delete</button>
             </div>
         </div>
     </div>
@@ -51,6 +54,8 @@
     public EventCallback<Image> OnSelectImage { get; set; }
     [Parameter]
     public EventCallback<Image> OnDeleteImage { get; set; }
+    [Parameter]
+    public EventCallback OnCoverChanged { get; set; }
 
     private void LoadParameters()
     {
@@ -60,13 +65,17 @@
     private async Task ToggleFavorite()
     {
         Image.Favorite = !Image.Favorite;
-
         await DB.UpdateImage(Image);
-
         await InvokeAsync(StateHasChanged);
     }
 
     private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path}");
+
+    private async Task SetProjectCover()
+    {
+        await DB.SetProjectCover(AppState.CurrentProjectId, Image.Path);
+        await OnCoverChanged.InvokeAsync();
+    }
 
     private string SetSamplerBadgeColor()
     {

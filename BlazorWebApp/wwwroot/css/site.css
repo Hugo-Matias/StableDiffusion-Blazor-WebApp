@@ -43,9 +43,29 @@
     --app-bg: var(--app-dark-2);
 }
 
+.form-control {
+	--positive: greenyellow;
+	--negative: var(--app-red);
+	background: var(--app-dark-2);
+	border: 1px solid var(--app-dark-3);
+	color: var(--app-light-1);
+	padding: 0.6rem;
+	font-family: var(--app-font-mono);
+	max-height: 2.8rem;
+	min-height: 2.8rem;
+}
+
+	.form-control:focus {
+	    background: var(--app-dark-2);
+		color: var(--app-light-1);
+		border: 1px solid var(--app-blue-5);
+		box-shadow: none;
+	}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     background-color: var(--app-bg);
+    height: 100vh;
 }
 
 nav {

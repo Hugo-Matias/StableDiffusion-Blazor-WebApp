@@ -1,198 +1,286 @@
 ﻿using BlazorWebApp.Data;
 using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlazorWebApp.Services
 {
-	public class DatabaseService
-	{
-		private readonly IDbContextFactory<AppDbContext> _factory;
-		private readonly SDAPIService _api;
-		private readonly int _pageSize;
+    public class DatabaseService
+    {
+        private readonly IDbContextFactory<AppDbContext> _factory;
+        private readonly SDAPIService _api;
+        public int PageSize { get; set; }
 
-		public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api)
-		{
-			_factory = factory;
-			_api = api;
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api)
+        {
+            _factory = factory;
+            _api = api;
 
-			_pageSize = 10;
+            PageSize = 5;
 
-			PopulateModes();
-			PopulateSamplers();
-		}
+            PopulateModes();
+            PopulateSamplers();
+        }
 
-		public async Task<List<Project>> GetProjects()
-		{
-			using var context = _factory.CreateDbContext();
+        public async Task<List<Project>> GetProjects()
+        {
+            using var context = _factory.CreateDbContext();
 
-			return await context.Projects.ToListAsync();
-		}
+            return await context.Projects.ToListAsync();
+        }
 
-		public async Task<Project> GetProject(int id)
-		{
-			using var context = _factory.CreateDbContext();
-			return await context.Projects.SingleOrDefaultAsync(p => p.Id == id);
-		}
+        public async Task<Project> GetProject(int id)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Projects.SingleOrDefaultAsync(p => p.Id == id);
+        }
 
-		public async Task<Project> GetProject(string name)
-		{
-			using var context = _factory.CreateDbContext();
-			return await context.Projects.FirstOrDefaultAsync(p => p.Name == name);
-		}
+        public async Task<Project> GetProject(string name)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Projects.FirstOrDefaultAsync(p => p.Name == name);
+        }
 
-		public async Task CreateProject(Project project)
-		{
-			using var context = _factory.CreateDbContext();
+        public async Task CreateProject(Project project)
+        {
+            using var context = _factory.CreateDbContext();
 
-			var result = await context.Projects.AddAsync(project);
+            var result = await context.Projects.AddAsync(project);
 
-			await context.SaveChangesAsync();
-		}
+            await context.SaveChangesAsync();
+        }
 
-		public async Task<Image> AddImage(Image image)
-		{
-			using var context = _factory.CreateDbContext();
+        public async Task<Project?> DeleteProject(int projectId)
+        {
+            using var context = _factory.CreateDbContext();
+            var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            context.Projects.Remove(project);
+            await context.SaveChangesAsync();
+            return await context.Projects.FirstOrDefaultAsync();
+        }
 
-			if (context.Images != null)
-			{
-				var result = await context.Images.AddAsync(image);
-				if (result != null) { await context.SaveChangesAsync(); }
-			}
+        public async Task RenameProject(int projectId, string name)
+        {
+            using var context = _factory.CreateDbContext();
+            var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            project.Name = name;
+            await context.SaveChangesAsync();
+        }
 
-			return await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path);
-		}
+        public async Task SetProjectCover(int projectId, string imagePath)
+        {
+            using var context = _factory.CreateDbContext();
+            var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            project.SampleImagePath = imagePath;
+            await context.SaveChangesAsync();
+        }
 
-		public async Task<ImagesDto> GetImages(int page)
-		{
-			using var context = _factory.CreateDbContext();
+        public async Task<Image> AddImage(Image image)
+        {
+            using var context = _factory.CreateDbContext();
 
-			if (context.Images == null) return null;
+            if (context.Images != null)
+            {
+                var result = await context.Images.AddAsync(image);
+                if (result != null) { await context.SaveChangesAsync(); }
+            }
 
-			var pageCount = Math.Ceiling(context.Images.Count() / (float)_pageSize);
+            return await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path);
+        }
 
-			var images = await context.Images
-				.Skip((page - 1) * _pageSize)
-				.Take(_pageSize)
-				.ToListAsync();
+        public async Task<ImagesDto> GetImages(int page)
+        {
+            using var context = _factory.CreateDbContext();
 
-			return new ImagesDto
-			{
-				Images = images,
-				CurrentPage = page,
-				PageCount = (int)pageCount,
-				HasNext = (int)pageCount > 1 && page < (int)pageCount,
-				HasPrev = page > 1
-			};
-		}
+            if (context.Images == null) return null;
 
-		public async Task<ImagesDto> GetImages(int page, int projectId)
-		{
-			using var context = _factory.CreateDbContext();
+            var pageCount = Math.Ceiling(context.Images.Count() / (float)PageSize);
 
-			if (context.Images == null) return null;
+            var images = await context.Images
+                .Skip((page - 1) * PageSize)
+                .Take(PageSize)
+                .ToListAsync();
 
-			var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)_pageSize);
+            return new ImagesDto
+            {
+                Images = images,
+                CurrentPage = page,
+                PageCount = (int)pageCount,
+                HasNext = (int)pageCount > 1 && page < (int)pageCount,
+                HasPrev = page > 1
+            };
+        }
 
-			var images = await context.Images
-				.Where(i => i.ProjectId == projectId)
-				.OrderByDescending(i => i.Id)
-				.Skip((page - 1) * _pageSize)
-				.Take(_pageSize)
-				.ToListAsync();
+        public async Task<ImagesDto> GetImages(int page, int projectId)
+        {
+            using var context = _factory.CreateDbContext();
 
-			return new ImagesDto
-			{
-				Images = images,
-				CurrentPage = page,
-				PageCount = (int)pageCount,
-				HasNext = (int)pageCount > 1 && page < (int)pageCount,
-				HasPrev = page > 1
-			};
-		}
+            if (context.Images == null) return null;
 
-		public async Task<Image> GetRandomFavorite(int projectId)
-		{
-			using var context = _factory.CreateDbContext();
-			if (context.Images == null) return null;
-			return context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefault();
-		}
+            var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)PageSize);
 
-		public async Task<Image> UpdateImage(Image image)
-		{
-			using var context = _factory.CreateDbContext();
+            var images = await context.Images
+                .Where(i => i.ProjectId == projectId)
+                .OrderByDescending(i => i.Id)
+                .Skip((page - 1) * PageSize)
+                .Take(PageSize)
+                .ToListAsync();
 
-			var response = context.Update(image);
+            return new ImagesDto
+            {
+                Images = images,
+                CurrentPage = page,
+                PageCount = (int)pageCount,
+                HasNext = (int)pageCount > 1 && page < (int)pageCount,
+                HasPrev = page > 1
+            };
+        }
 
-			await context.SaveChangesAsync();
+        public async Task<ImagesDto> GetSortedImages(int page, int projectId, GallerySettingsModel settings)
+        {
+            using var context = _factory.CreateDbContext();
+            if (context.Images == null) return null;
 
-			return response.Entity;
-		}
+            List<Image> images = new();
 
-		public async Task<Image> DeleteImage(Image image)
-		{
-			using var context = _factory.CreateDbContext();
+            switch (settings.OrderBy)
+            {
+                case GalleryOrderBy.Date:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.DateCreated).ToListAsync();
+                    break;
+                case GalleryOrderBy.Sampler:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.SamplerId).ToListAsync();
+                    break;
+                case GalleryOrderBy.Seed:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Seed).ToListAsync();
+                    break;
+                case GalleryOrderBy.Steps:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Steps).ToListAsync();
+                    break;
+                case GalleryOrderBy.CfgScale:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.CfgScale).ToListAsync();
+                    break;
+                case GalleryOrderBy.Width:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Width).ToListAsync();
+                    break;
+                case GalleryOrderBy.Height:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Height).ToListAsync();
+                    break;
+                case GalleryOrderBy.Favorite:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Favorite).ToListAsync();
+                    break;
+                case GalleryOrderBy.Mode:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.ModeId).ToListAsync();
+                    break;
+                case GalleryOrderBy.Denoising:
+                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.DenoisingStrength).ToListAsync();
+                    break;
+            }
+            if (settings.OrderDirection == GalleryOrderDirection.Desc) images.Reverse();
 
-			var response = context.Remove(image);
+            var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())) / (float)PageSize);
 
-			await context.SaveChangesAsync();
+            return new ImagesDto
+            {
+                Images = images.Skip((page - 1) * PageSize).Take(PageSize).ToList(),
+                CurrentPage = page,
+                PageCount = (int)pageCount,
+                HasNext = (int)pageCount > 1 && page < (int)pageCount,
+                HasPrev = page > 1
+            };
+        }
 
-			return response.Entity;
-		}
+        public async Task<string> GetSampleImage(int projectId)
+        {
+            using var context = _factory.CreateDbContext();
+            var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            if (project != null) return project.SampleImagePath;
+            else return string.Empty;
+        }
 
-		public string GetSampler(int id)
-		{
-			using var context = _factory.CreateDbContext();
+        public async Task<Image> GetRandomFavorite(int projectId)
+        {
+            using var context = _factory.CreateDbContext();
+            if (context.Images == null) return null;
+            return context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefault();
+        }
 
-			return context.Samplers.SingleOrDefault(s => s.Id == id).Name;
-		}
+        public async Task<Image> UpdateImage(Image image)
+        {
+            using var context = _factory.CreateDbContext();
 
-		public int GetSampler(string samplerName)
-		{
-			using var context = _factory.CreateDbContext();
+            var response = context.Update(image);
 
-			return context.Samplers.SingleOrDefault(s => s.Name == samplerName).Id;
-		}
+            await context.SaveChangesAsync();
 
-		private async Task PopulateSamplers()
-		{
-			var samplers = await _api.GetSamplers();
+            return response.Entity;
+        }
 
-			using var context = _factory.CreateDbContext();
+        public async Task<Image> DeleteImage(Image image)
+        {
+            using var context = _factory.CreateDbContext();
 
-			if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
+            var response = context.Remove(image);
 
-				foreach (var sampler in samplers)
-				{
-					var currentSampler = context.Samplers.SingleOrDefault(s => s.Name == sampler.Name);
+            await context.SaveChangesAsync();
 
-					if (currentSampler == null)
-						await context.Samplers.AddAsync(new Sampler { Name = sampler.Name });
-				}
+            return response.Entity;
+        }
 
-			await context.SaveChangesAsync();
-		}
+        public string GetSampler(int id)
+        {
+            using var context = _factory.CreateDbContext();
 
-		public int GetMode(ModeType mode)
-		{
-			using var context = _factory.CreateDbContext();
+            return context.Samplers.SingleOrDefault(s => s.Id == id).Name;
+        }
 
-			return context.Modes.SingleOrDefault(m => m.Type == mode).Id;
-		}
+        public int GetSampler(string samplerName)
+        {
+            using var context = _factory.CreateDbContext();
 
-		private async void PopulateModes()
-		{
-			using var context = _factory.CreateDbContext();
+            return context.Samplers.SingleOrDefault(s => s.Name == samplerName).Id;
+        }
 
-			if (context.Modes.Count() == 0)
-			{
-				foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
-				{
-					await context.Modes.AddAsync(new Mode { Type = mode });
-				}
-			}
+        private async Task PopulateSamplers()
+        {
+            var samplers = await _api.GetSamplers();
 
-			await context.SaveChangesAsync();
-		}
-	}
+            using var context = _factory.CreateDbContext();
+
+            if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
+
+                foreach (var sampler in samplers)
+                {
+                    var currentSampler = context.Samplers.SingleOrDefault(s => s.Name == sampler.Name);
+
+                    if (currentSampler == null)
+                        await context.Samplers.AddAsync(new Sampler { Name = sampler.Name });
+                }
+
+            await context.SaveChangesAsync();
+        }
+
+        public int GetMode(ModeType mode)
+        {
+            using var context = _factory.CreateDbContext();
+
+            return context.Modes.SingleOrDefault(m => m.Type == mode).Id;
+        }
+
+        private async void PopulateModes()
+        {
+            using var context = _factory.CreateDbContext();
+
+            if (context.Modes.Count() == 0)
+            {
+                foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
+                {
+                    await context.Modes.AddAsync(new Mode { Type = mode });
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+    }
 }

@@ -1,22 +1,4 @@
-﻿.form-control {
-	--positive: greenyellow;
-	--negative: var(--app-red);
-	background: var(--app-dark-2);
-	border: 1px solid var(--app-dark-3);
-	color: var(--app-light-1);
-	padding: 0.6rem;
-	font-family: var(--app-font-mono);
-	max-height: 2.8rem;
-	min-height: 2.8rem;
-}
-
-	.form-control:focus {
-		color: var(--app-light-1);
-		border: 1px solid var(--app-blue-5);
-		box-shadow: none;
-	}
-
-.card {
+﻿.card {
     --bs-card-bg: var(--app-dark-1);
     --bs-card-border-color: var(--app-dark-3);
 }

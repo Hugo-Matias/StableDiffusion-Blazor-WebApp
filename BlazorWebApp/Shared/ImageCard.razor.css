@@ -30,6 +30,10 @@
 	--btn-hue: var(--app-h-purple);
 }
 
+.btn-cover {
+	--btn-hue: 40;
+}
+
 .card {
 	--bs-card-bg: var(--app-dark-1);
 	--bs-card-color: var(--app-dark-5);
