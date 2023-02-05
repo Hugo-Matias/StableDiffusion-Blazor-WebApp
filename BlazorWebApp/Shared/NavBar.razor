@@ -94,8 +94,9 @@
         AppState.OnConverging += Refresh;
         AppState.OnOptionsChange += Refresh;
         AppState.OnProjectChange += Refresh;
+        AppState.OnStateHasChanged += Refresh;
 
-        PopulateProjects();
+        await AppState.GetProjects();
         if (AppState.Projects != null && AppState.Projects.Count > 0)
         {
             if (AppState.CurrentProjectId == 0)
@@ -135,12 +136,6 @@
         Refresh();
     }
 
-    private async void PopulateProjects()
-    {
-        await AppState.GetProjects();
-        Refresh();
-    }
-
     private async Task HandleProjectSelected(string selected)
     {
         AppState.SetCurrentProject(DB.GetProject(selected).Result.Id);
@@ -152,6 +147,7 @@
         AppState.OnConverging -= Refresh;
         AppState.OnOptionsChange -= Refresh;
         AppState.OnProjectChange -= Refresh;
+        AppState.OnStateHasChanged -= Refresh;
     }
 
     private void Refresh() => InvokeAsync(StateHasChanged);

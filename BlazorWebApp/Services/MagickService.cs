@@ -14,38 +14,44 @@ namespace BlazorWebApp.Services
 
 		public async Task<string> SaveGrid(List<string> data, string path)
 		{
-			using (var images = new MagickImageCollection())
+			using var images = new MagickImageCollection();
+			foreach (var image in data)
 			{
-				foreach (var image in data)
-				{
-					images.Add(new MagickImage(Convert.FromBase64String(image)));
-				}
-
-				var width = images[0].Width;
-				var height = images[0].Height;
-
-				using (var result = images.Montage(new MontageSettings() { Geometry = new MagickGeometry(width, height), BackgroundColor = MagickColors.Black }))
-				{
-					await result.WriteAsync(path);
-
-					return result.ToBase64(MagickFormat.Png);
-				}
+				images.Add(new MagickImage(Convert.FromBase64String(image)));
 			}
+
+			var width = images[0].Width;
+			var height = images[0].Height;
+
+			using var result = images.Montage(new MontageSettings() { Geometry = new MagickGeometry(width, height), BackgroundColor = MagickColors.Black });
+			await result.WriteAsync(path);
+
+			return result.ToBase64(MagickFormat.Png);
 		}
 
 		public async Task<string> LoadImage(string path)
 		{
-			using (var image = new MagickImage(path))
+			using var image = new MagickImage(path);
+			if (image.Width > _app.Settings.GallerySettings.MaxImageWidth || image.Height > _app.Settings.GallerySettings.MaxImageHeight)
 			{
-				if (image.Width > _app.Settings.GallerySettings.MaxImageWidth || image.Height > _app.Settings.GallerySettings.MaxImageHeight)
-				{
-					var size = new MagickGeometry(_app.Settings.GallerySettings.MaxImageWidth, _app.Settings.GallerySettings.MaxImageHeight);
+				var size = new MagickGeometry(_app.Settings.GallerySettings.MaxImageWidth, _app.Settings.GallerySettings.MaxImageHeight);
 
-					image.Resize(size);
-				}
-
-				return image.ToBase64(MagickFormat.Png);
+				image.Resize(size);
 			}
+
+			return image.ToBase64(MagickFormat.Png);
+		}
+
+		public async Task<string> ResizeImage(byte[] data)
+		{
+			using var image = new MagickImage(data);
+			if (image.Width < _app.Settings.GallerySettings.MaxImageWidth && image.Height < _app.Settings.GallerySettings.MaxImageHeight)
+				return image.ToBase64(image.Format);
+
+			var sizeGeom = new MagickGeometry(_app.Settings.GallerySettings.MaxImageWidth, _app.Settings.GallerySettings.MaxImageHeight) { IgnoreAspectRatio = false };
+
+			image.Resize(sizeGeom);
+			return image.ToBase64(image.Format);
 		}
 
 		#region Examples

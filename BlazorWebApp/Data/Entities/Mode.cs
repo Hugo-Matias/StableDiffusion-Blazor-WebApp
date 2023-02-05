@@ -2,7 +2,7 @@
 {
 	public enum ModeType
 	{
-		Txt2Img, Img2Img, Extras, None
+		Txt2Img, Img2Img, Extras
 	}
 	public class Mode
 	{

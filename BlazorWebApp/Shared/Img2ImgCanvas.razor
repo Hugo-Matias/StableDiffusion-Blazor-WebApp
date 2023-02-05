@@ -1,4 +1,5 @@
 ﻿@inject AppState AppState
+@inject MagickService Magick
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -205,7 +206,8 @@
 		using var stream = e.File.OpenReadStream(maxSize);
 		using var ms = new MemoryStream();
 		await stream.CopyToAsync(ms);
-		var data = $"data:{e.File.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+		var imageString = await Magick.ResizeImage(ms.ToArray());
+		var data = $"data:{e.File.ContentType};base64,{imageString}";
 		AppState.CanvasImageData = data;
 		await LoadImage();
 	}

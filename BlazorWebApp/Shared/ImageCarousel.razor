@@ -1,9 +1,10 @@
 ﻿<div id="generatedImagesCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
 	<div class="carousel-inner">
-		@foreach (var image in Images)
+		@for (int i = 0; i < Images.Count; i++)
 		{
-			<div class="carousel-item @(image == Images[0] ? "active" : "")" data-bs-interval="10000">
-				<img src="data:image/png;base64,@image" class="d-block w-100">
+			<div class="carousel-item @(Images[i] == Images[0] ? "active" : "")" data-bs-interval="10000">
+				<img src="data:image/png;base64,@Images[i]" class="d-block w-100">
+				<div class="image-number">@i</div>
 			</div>
 		}
 	</div>
@@ -21,5 +22,6 @@
 </div>
 
 @code {
-	[Parameter] public List<string> Images { get; set; }
+	[Parameter] 
+	public List<string> Images { get; set; }
 }

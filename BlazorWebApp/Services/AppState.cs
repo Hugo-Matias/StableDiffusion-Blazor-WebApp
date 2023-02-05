@@ -26,6 +26,7 @@ namespace BlazorWebApp.Services
 		public event Action OnBrushColorChange;
 		public event Action OnProjectChange;
 		public event Func<Task> OnProjectChangeTask;
+		public event Action OnStateHasChanged;
 
 		public GeneratedImagesModel Images { get; set; }
 		public GeneratedImagesInfoModel ImagesInfo { get; set; }
@@ -131,6 +132,7 @@ namespace BlazorWebApp.Services
 		public async Task GetSDModels()
 		{
 			SDModels = await _api.GetSDModels();
+			SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
 
 			OnSDModelsChange?.Invoke();
 		}
@@ -157,8 +159,8 @@ namespace BlazorWebApp.Services
 
 		public async Task SetCurrentProject(int id)
 		{
-			CurrentProjectId = id;
 			await GetProjects();
+			CurrentProjectId = id;
 			CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)!.Name;
 			OnProjectChange?.Invoke();
 			OnProjectChangeTask?.Invoke();
@@ -173,11 +175,11 @@ namespace BlazorWebApp.Services
 
 		public async Task GetSamplers() => Samplers = await _api.GetSamplers();
 
-		public void LoadImageInfoParameters(Image image)
+		public async Task LoadImageInfoParameters(Image image)
 		{
 			ParametersTxt2Img.Prompt = image.Prompt;
 			ParametersTxt2Img.NegativePrompt = image.NegativePrompt;
-			ParametersTxt2Img.SamplerIndex = _db.GetSampler(image.SamplerId);
+			ParametersTxt2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
 			ParametersTxt2Img.Steps = image.Steps;
 			ParametersTxt2Img.Seed = image.Seed;
 			ParametersTxt2Img.CfgScale = image.CfgScale;
@@ -267,7 +269,9 @@ namespace BlazorWebApp.Services
 
 		public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfoModel>(Images.Info);
 
-		public async void LoadSettings()
+		public void InvokeStateHasChanged() => OnStateHasChanged?.Invoke();
+
+		public async Task LoadSettings()
 		{
 			var json = await _io.LoadText(_settingsFile);
 
@@ -280,7 +284,7 @@ namespace BlazorWebApp.Services
 			else { Settings = new(); SaveSettings(); }
 		}
 
-		public async void SaveSettings()
+		public async Task SaveSettings()
 		{
 			var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions() { WriteIndented = true });
 			await _io.SaveText(_settingsFile, json);

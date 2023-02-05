@@ -26,7 +26,6 @@ namespace BlazorWebApp.Services
         public async Task<List<Project>> GetProjects()
         {
             using var context = _factory.CreateDbContext();
-
             return await context.Projects.ToListAsync();
         }
 
@@ -42,13 +41,12 @@ namespace BlazorWebApp.Services
             return await context.Projects.FirstOrDefaultAsync(p => p.Name == name);
         }
 
-        public async Task CreateProject(Project project)
+        public async Task<Project> CreateProject(Project project)
         {
             using var context = _factory.CreateDbContext();
-
             var result = await context.Projects.AddAsync(project);
-
             await context.SaveChangesAsync();
+            return result.Entity;
         }
 
         public async Task<Project?> DeleteProject(int projectId)
@@ -79,29 +77,23 @@ namespace BlazorWebApp.Services
         public async Task<Image> AddImage(Image image)
         {
             using var context = _factory.CreateDbContext();
-
             if (context.Images != null)
             {
                 var result = await context.Images.AddAsync(image);
                 if (result != null) { await context.SaveChangesAsync(); }
             }
-
             return await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path);
         }
 
         public async Task<ImagesDto> GetImages(int page)
         {
             using var context = _factory.CreateDbContext();
-
             if (context.Images == null) return null;
-
             var pageCount = Math.Ceiling(context.Images.Count() / (float)PageSize);
-
             var images = await context.Images
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
                 .ToListAsync();
-
             return new ImagesDto
             {
                 Images = images,
@@ -115,18 +107,14 @@ namespace BlazorWebApp.Services
         public async Task<ImagesDto> GetImages(int page, int projectId)
         {
             using var context = _factory.CreateDbContext();
-
             if (context.Images == null) return null;
-
             var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)PageSize);
-
             var images = await context.Images
                 .Where(i => i.ProjectId == projectId)
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
                 .ToListAsync();
-
             return new ImagesDto
             {
                 Images = images,
@@ -142,44 +130,57 @@ namespace BlazorWebApp.Services
             using var context = _factory.CreateDbContext();
             if (context.Images == null) return null;
 
-            List<Image> images = new();
+            var query = context.Images.Where(i => i.ProjectId == projectId);
+            if (!string.IsNullOrWhiteSpace(settings.SearchPrompt))
+                query = query.Where(i => i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()));
+            if (!string.IsNullOrWhiteSpace(settings.SearchNegativePrompt))
+                query = query.Where(i => i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower()));
+            if (settings.IsFavoritesOnly) query = query.Where(i => i.Favorite);
+
+            List<int> modes = new();
+            if (settings.IsModeTxt2Img) modes.Add(1);
+            if (settings.IsModeImg2Img) modes.Add(2);
+            if (settings.IsModeUpscale) modes.Add(3);
+            query = query.Where(i => modes.Contains(i.ModeId));
 
             switch (settings.OrderBy)
             {
                 case GalleryOrderBy.Date:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.DateCreated).ToListAsync();
+                    query = query.OrderBy(i => i.DateCreated);
                     break;
                 case GalleryOrderBy.Sampler:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.SamplerId).ToListAsync();
+                    query = query.OrderBy(i => i.SamplerId);
                     break;
                 case GalleryOrderBy.Seed:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Seed).ToListAsync();
+                    query = query.OrderBy(i => i.Seed);
                     break;
                 case GalleryOrderBy.Steps:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Steps).ToListAsync();
+                    query = query.OrderBy(i => i.Steps);
                     break;
                 case GalleryOrderBy.CfgScale:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.CfgScale).ToListAsync();
+                    query = query.OrderBy(i => i.CfgScale);
                     break;
                 case GalleryOrderBy.Width:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Width).ToListAsync();
+                    query = query.OrderBy(i => i.Width);
                     break;
                 case GalleryOrderBy.Height:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Height).ToListAsync();
+                    query = query.OrderBy(i => i.Height);
                     break;
                 case GalleryOrderBy.Favorite:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.Favorite).ToListAsync();
+                    query = query.OrderBy(i => i.Favorite);
                     break;
                 case GalleryOrderBy.Mode:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.ModeId).ToListAsync();
+                    query = query.OrderBy(i => i.ModeId);
                     break;
                 case GalleryOrderBy.Denoising:
-                    images = await context.Images.Where(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())).OrderBy(i => i.DenoisingStrength).ToListAsync();
+                    query = query.OrderBy(i => i.DenoisingStrength);
                     break;
             }
-            if (settings.OrderDirection == GalleryOrderDirection.Desc) images.Reverse();
 
-            var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId && i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()) && i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower())) / (float)PageSize);
+            var images = await query.ToListAsync();
+            if (settings.OrderDescending) images.Reverse();
+
+            var pageCount = Math.Ceiling(images.Count / (float)PageSize);
 
             return new ImagesDto
             {
@@ -209,69 +210,57 @@ namespace BlazorWebApp.Services
         public async Task<Image> UpdateImage(Image image)
         {
             using var context = _factory.CreateDbContext();
-
             var response = context.Update(image);
-
             await context.SaveChangesAsync();
-
             return response.Entity;
         }
 
         public async Task<Image> DeleteImage(Image image)
         {
             using var context = _factory.CreateDbContext();
-
             var response = context.Remove(image);
-
             await context.SaveChangesAsync();
-
             return response.Entity;
         }
 
-        public string GetSampler(int id)
+        public async Task<string> GetSampler(int id)
         {
             using var context = _factory.CreateDbContext();
-
-            return context.Samplers.SingleOrDefault(s => s.Id == id).Name;
+            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Id == id);
+            return sampler.Name;
         }
 
-        public int GetSampler(string samplerName)
+        public async Task<int> GetSampler(string samplerName)
         {
             using var context = _factory.CreateDbContext();
-
-            return context.Samplers.SingleOrDefault(s => s.Name == samplerName).Id;
+            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name == samplerName);
+            return sampler.Id;
         }
 
         private async Task PopulateSamplers()
         {
             var samplers = await _api.GetSamplers();
-
             using var context = _factory.CreateDbContext();
-
             if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
-
                 foreach (var sampler in samplers)
                 {
                     var currentSampler = context.Samplers.SingleOrDefault(s => s.Name == sampler.Name);
-
                     if (currentSampler == null)
                         await context.Samplers.AddAsync(new Sampler { Name = sampler.Name });
                 }
-
             await context.SaveChangesAsync();
         }
 
-        public int GetMode(ModeType mode)
+        public async Task<int> GetMode(ModeType mode)
         {
             using var context = _factory.CreateDbContext();
-
-            return context.Modes.SingleOrDefault(m => m.Type == mode).Id;
+            var modeEntity = await context.Modes.FirstOrDefaultAsync(m => m.Type == mode);
+            return modeEntity.Id;
         }
 
         private async void PopulateModes()
         {
             using var context = _factory.CreateDbContext();
-
             if (context.Modes.Count() == 0)
             {
                 foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
@@ -279,7 +268,6 @@ namespace BlazorWebApp.Services
                     await context.Modes.AddAsync(new Mode { Type = mode });
                 }
             }
-
             await context.SaveChangesAsync();
         }
     }

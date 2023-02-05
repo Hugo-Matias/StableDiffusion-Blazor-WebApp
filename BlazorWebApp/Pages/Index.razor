@@ -28,21 +28,34 @@ else if (_projects.Count() == 0)
 else
 {
     <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
-    if (images.Images.Count > 0)
+    if (IsFetchingImages)
     {
-        <ImagesContainer Images="@images" OnPageSelected="(page) => LoadPage(page)" OnDeleteImage="LoadImages" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
+        <div style="margin-top: 10rem;">
+            <Blazorise.SpinKit.SpinKit Centered Color="#0d6efd" Type="Blazorise.SpinKit.SpinKitType.Chase" />
+        </div>
+    }
+    else
+    {
+
+        if (images.Images.Count > 0)
+        {
+            <ImagesContainer Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
+        }
     }
 }
+
 
 @code {
     private ImagesDto images = new();
     private List<Project>? _projects;
     private int currentImgPage;
+    public bool IsFetchingImages { get; set; } = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
         AppState.OnProjectChangeTask += HandleProjectChanged;
+        AppState.OnStateHasChanged += StateHasChanged;
         _projects = await DB.GetProjects();
         currentImgPage = 1;
         await LoadImages();
@@ -56,15 +69,17 @@ else
 
     private async Task LoadPage(int page)
     {
-        Console.WriteLine(page);
         currentImgPage = page;
         await LoadImages();
     }
 
     private async Task LoadImages()
     {
+        IsFetchingImages = true;
+        await InvokeAsync(StateHasChanged);
         if (AppState.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, AppState.CurrentProjectId, AppState.Settings.GallerySettings);
         else images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
+        IsFetchingImages = false;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -74,5 +89,9 @@ else
         await LoadImages();
     }
 
-    public void Dispose() => AppState.OnProjectChangeTask -= HandleProjectChanged;
+    public void Dispose()
+    {
+        AppState.OnProjectChangeTask -= HandleProjectChanged;
+        AppState.OnStateHasChanged -= StateHasChanged;
+    }
 }

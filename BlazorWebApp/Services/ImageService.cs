@@ -148,7 +148,7 @@ namespace BlazorWebApp.Services
             if (infoPath != null) { image.InfoPath = infoPath; }
             image.Prompt = _parsingParams.Prompt;
             image.NegativePrompt = _parsingParams.NegativePrompt;
-            image.SamplerId = _db.GetSampler(_parsingParams.SamplerIndex);
+            image.SamplerId = await _db.GetSampler(_parsingParams.SamplerIndex);
             image.Steps = (int)_parsingParams.Steps;
             image.Seed = (long)_app.CurrentSeed;
             image.CfgScale = (float)_parsingParams.CfgScale;
@@ -176,7 +176,7 @@ namespace BlazorWebApp.Services
                     mode = ModeType.Txt2Img;
                     break;
             }
-            image.ModeId = _db.GetMode(mode);
+            image.ModeId = await _db.GetMode(mode);
 
             return await _db.AddImage(image);
         }

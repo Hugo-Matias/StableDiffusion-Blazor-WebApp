@@ -4,7 +4,7 @@
 
 <div class="card m-1">
     <div class="card-body p-1 pt-2">
-        <span class="sampler-badge rounded-pill" style="@SetSamplerBadgeColor() border: 2px solid var(--app-dark-1);">@(DB.GetSampler(Image.SamplerId))</span>
+        <span class="sampler-badge rounded-pill" style="@(SetSamplerBadgeColor().Result) border: 2px solid var(--app-dark-1);">@(DB.GetSampler(Image.SamplerId).Result)</span>
         <span class="favorite-icon @(Image.Favorite ? "active" : "")"><span class="fa-solid fa-star"></span></span>
         <img src="data:image/png;base64,@ImageData" class="card-img mb-3" alt="image">
         <h1>
@@ -13,7 +13,9 @@
             <span class="fa-solid fa-stairs" /> @Image.Steps<span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale
             @if (Image.DenoisingStrength != null)
             {
-                <span class="ms-2">|</span><span class="fa-solid fa-braille" /> @Image.DenoisingStrength
+                <span class="ms-2">|</span>
+
+                <span class="fa-solid fa-braille" /> @Image.DenoisingStrength
             }
         </h1>
         <div class="text-card">
@@ -57,9 +59,9 @@
     [Parameter]
     public EventCallback OnCoverChanged { get; set; }
 
-    private void LoadParameters()
+    private async Task LoadParameters()
     {
-        AppState.LoadImageInfoParameters(Image);
+        await AppState.LoadImageInfoParameters(Image);
     }
 
     private async Task ToggleFavorite()
@@ -77,9 +79,9 @@
         await OnCoverChanged.InvokeAsync();
     }
 
-    private string SetSamplerBadgeColor()
+    private async Task<string> SetSamplerBadgeColor()
     {
-        switch (DB.GetSampler(Image.SamplerId))
+        switch (await DB.GetSampler(Image.SamplerId))
         {
             case "Euler":
                 return "background: #59b32d; color: var(--app-dark-1);";

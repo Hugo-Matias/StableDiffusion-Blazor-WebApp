@@ -1,1 +1,17 @@
-﻿
+﻿.image-number {
+	position:absolute;
+	font-size: 1.8rem;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content:center;
+	height: 2.5rem;
+	width: 2.5rem;
+	right: 1rem;
+	top: 1rem;
+	z-index: 1000;
+	background: var(--app-dark-3);
+	opacity: 0.3;
+	color: white;
+	border-radius: 50%;
+}

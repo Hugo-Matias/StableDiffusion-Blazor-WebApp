@@ -47,7 +47,8 @@
         if (string.IsNullOrWhiteSpace(image))
         {
             var imageEntity = await DB.GetRandomFavorite(projectId);
-            image ??= imageEntity.Path;
+            if(imageEntity != null)
+                image ??= imageEntity.Path;
         }
         if (!string.IsNullOrWhiteSpace(image)) return $"data:image/png;base64,{await IM.LoadImageAsync(image)}";
         else return "./no_image.png";

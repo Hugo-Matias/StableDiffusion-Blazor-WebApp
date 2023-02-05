@@ -37,37 +37,6 @@
 }
 /**/
 
-.btn-outline-secondary {
-	--bs-btn-color: var(--app-dark-4);
-	--bs-btn-border-color: var(--app-dark-3);
-	--bs-btn-hover-color: var(--app-dark-7);
-	--bs-btn-hover-border-color: var(--app-dark-5);
-	--bs-btn-hover-bg: var(--app-dark-1);
-	--bs-btn-active-color: var(--app-blue-5);
-	--bs-btn-active-border-color: var(--app-blue-5);
-	--bs-btn-active-bg: var(--app-dark-1);
-}
-
-/* Check buttons */
-.btn-check + .btn:hover {
-	--bs-btn-color: var(--app-dark-7);
-	--bs-btn-border-color: var(--app-dark-5);
-	--bs-btn-bg: var(--app-dark-1);
-}
-
-.btn-check:checked + .btn {
-	--bs-btn-active-color: var(--app-blue-5);
-	--bs-btn-active-bg: var(--app-blue-9);
-	--bs-btn-active-border-color: var(--app-blue-5);
-}
-
-.expand-btn {
-	display: flex;
-	margin: auto;
-	justify-content: center;
-}
-/**/
-
 .form-range {
 	margin-top: 7px;
 }
