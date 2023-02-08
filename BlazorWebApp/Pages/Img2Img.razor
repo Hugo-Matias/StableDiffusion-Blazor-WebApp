@@ -92,7 +92,7 @@
         await canvasRef.Generate();
         Parameters.InitImages = new() { AppState.CanvasImageData };
         Parameters.Mask = AppState.CanvasMaskData;
-        AppState.GeneratedImageEntities = await ImageService.GetImages(isImg2Img: true);
+        AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Img2Img);
         Refresh();
     }
 

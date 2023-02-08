@@ -1,0 +1,38 @@
+﻿.card {
+    --bs-card-bg: var(--app-dark-1);
+    --bs-card-border-color: var(--app-dark-3);
+}
+
+label {
+	color: var(--app-dark-5);
+}
+
+::deep input[type=radio] {
+	display: none;
+}
+
+.form-range {
+	margin-top: 7px;
+}
+
+input[type="range"]::-moz-range-thumb {
+	height: 30px;
+	width: 12px;
+	background: var(--app-dark-2);
+	border: 2px solid var(--app-dark-3);
+	cursor: pointer;
+	box-shadow: 2px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+	transition: all .2s ease-in-out;
+}
+
+	input[type="range"]::-moz-range-thumb:hover,
+	input[type="range"]::-moz-range-thumb:active {
+		background: var(--app-dark-3);
+		border: 2px solid var(--app-blue-5);
+	}
+
+input[type="range"]::-moz-range-track {
+	background: var(--app-dark-2);
+	border: none;
+	height: 4px;
+}

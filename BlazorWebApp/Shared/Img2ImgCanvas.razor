@@ -154,7 +154,7 @@
 
 	public async Task Generate()
 	{
-		if (AppState.Settings.Img2ImgSettings.Mode == "Inpaint")
+		if (AppState.Settings.Img2Img.Mode == "Inpaint")
 		{
 			await _canvasInstance.InvokeAsync<string>("saveInpaint");
 		}
@@ -206,7 +206,7 @@
 		using var stream = e.File.OpenReadStream(maxSize);
 		using var ms = new MemoryStream();
 		await stream.CopyToAsync(ms);
-		var imageString = await Magick.ResizeImage(ms.ToArray());
+		var imageString = Magick.ResizeImage(ms.ToArray());
 		var data = $"data:{e.File.ContentType};base64,{imageString}";
 		AppState.CanvasImageData = data;
 		await LoadImage();

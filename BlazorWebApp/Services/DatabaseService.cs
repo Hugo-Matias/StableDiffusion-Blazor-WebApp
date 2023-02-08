@@ -26,7 +26,7 @@ namespace BlazorWebApp.Services
         public async Task<List<Project>> GetProjects()
         {
             using var context = _factory.CreateDbContext();
-            return await context.Projects.ToListAsync();
+            return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();
         }
 
         public async Task<Project> GetProject(int id)
@@ -39,6 +39,12 @@ namespace BlazorWebApp.Services
         {
             using var context = _factory.CreateDbContext();
             return await context.Projects.FirstOrDefaultAsync(p => p.Name == name);
+        }
+
+        public async Task<Project> GetLatestProject()
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Projects.OrderBy(p => p.Id).LastOrDefaultAsync();
         }
 
         public async Task<Project> CreateProject(Project project)
@@ -204,7 +210,7 @@ namespace BlazorWebApp.Services
         {
             using var context = _factory.CreateDbContext();
             if (context.Images == null) return null;
-            return context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefault();
+            return await context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
         }
 
         public async Task<Image> UpdateImage(Image image)
@@ -225,6 +231,7 @@ namespace BlazorWebApp.Services
 
         public async Task<string> GetSampler(int id)
         {
+            if (id == 0) return string.Empty;
             using var context = _factory.CreateDbContext();
             var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Id == id);
             return sampler.Name;

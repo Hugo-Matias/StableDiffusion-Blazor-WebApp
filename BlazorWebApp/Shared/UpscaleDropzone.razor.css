@@ -1,0 +1,36 @@
+﻿#dropzone-image {
+	object-fit: contain;
+	max-width:100%;
+}
+
+#dropzone-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--app-dark-3);
+	border-radius: 0.375rem;
+	margin-bottom: 1rem;
+	background: var(--app-dark-1);
+}
+
+.dropzone {
+	display: none;
+	justify-content: center;
+	position: absolute;
+}
+
+	.dropzone h1 {
+		color: var(--app-light-5);
+		margin-top: 5rem;
+	}
+
+	.dropzone.hover {
+		display: flex;
+		border: 2px solid var(--app-green);
+		border-radius: 5px;
+		padding: 5rem;
+	}
+
+::deep input[type="file"] {
+	display: none;
+}

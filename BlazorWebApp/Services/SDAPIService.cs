@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Models;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -25,6 +26,8 @@ namespace BlazorWebApp.Services
 		public async Task<List<SamplerModel>> GetSamplers() => await _httpClient.GetFromJsonAsync<List<SamplerModel>>("samplers");
 
 		public async Task<List<PromptStyleModel>> GetStyles() => await _httpClient.GetFromJsonAsync<List<PromptStyleModel>>("prompt-styles");
+
+		public async Task<List<UpscalerModel>> GetUpscalers() => await _httpClient.GetFromJsonAsync<List<UpscalerModel>>("upscalers");
 
 		public async Task<ProgressModel> GetProgress() => await _httpClient.GetFromJsonAsync<ProgressModel>("progress");
 
@@ -59,6 +62,13 @@ namespace BlazorWebApp.Services
 			response.EnsureSuccessStatusCode();
 
 			return await response.Content.ReadFromJsonAsync<GeneratedImagesModel>();
+		}
+
+		public async Task<UpscaledImageDto> PostExtraSingle(UpscaleParametersModel param)
+		{
+			using var response = await _httpClient.PostAsJsonAsync("extra-single-image", param, _jsonIgnoreNull);
+			response.EnsureSuccessStatusCode();
+			return await response.Content.ReadFromJsonAsync<UpscaledImageDto>();
 		}
 
 		public async Task<string> PostInterrupt()

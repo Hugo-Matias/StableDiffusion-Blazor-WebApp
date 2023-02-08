@@ -1,7 +1,8 @@
-﻿@inject DatabaseService DB
+﻿@page "/"
+@inject DatabaseService DB
 @inject AppState AppState
+@inject EPicsService EP
 @implements IDisposable
-@page "/"
 
 <PageTitle>Blazor Diffusion</PageTitle>
 
@@ -27,6 +28,7 @@ else if (_projects.Count() == 0)
 }
 else
 {
+    @*<button @onclick="EP.GetSets">TEST</button>*@
     <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
     if (IsFetchingImages)
     {
@@ -77,7 +79,7 @@ else
     {
         IsFetchingImages = true;
         await InvokeAsync(StateHasChanged);
-        if (AppState.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, AppState.CurrentProjectId, AppState.Settings.GallerySettings);
+        if (AppState.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, AppState.CurrentProjectId, AppState.Settings.Gallery);
         else images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
         IsFetchingImages = false;
         await InvokeAsync(StateHasChanged);

@@ -80,8 +80,7 @@
 
 	private async void Generate()
 	{
-		//await JSConsole.LogAsync(Parser.ParseParameters(new Txt2ImgParametersModel(Parameters)));
-		AppState.GeneratedImageEntities = await ImageService.GetImages();
+		AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Txt2Img);
 		Refresh();
 	}
 

@@ -29,12 +29,12 @@ namespace BlazorWebApp.Services
 			return result.ToBase64(MagickFormat.Png);
 		}
 
-		public async Task<string> LoadImage(string path)
+		public string LoadImage(string path)
 		{
 			using var image = new MagickImage(path);
-			if (image.Width > _app.Settings.GallerySettings.MaxImageWidth || image.Height > _app.Settings.GallerySettings.MaxImageHeight)
+			if (image.Width > _app.Settings.Gallery.MaxImageWidth || image.Height > _app.Settings.Gallery.MaxImageHeight)
 			{
-				var size = new MagickGeometry(_app.Settings.GallerySettings.MaxImageWidth, _app.Settings.GallerySettings.MaxImageHeight);
+				var size = new MagickGeometry(_app.Settings.Gallery.MaxImageWidth, _app.Settings.Gallery.MaxImageHeight);
 
 				image.Resize(size);
 			}
@@ -42,16 +42,22 @@ namespace BlazorWebApp.Services
 			return image.ToBase64(MagickFormat.Png);
 		}
 
-		public async Task<string> ResizeImage(byte[] data)
+		public string ResizeImage(byte[] data)
 		{
 			using var image = new MagickImage(data);
-			if (image.Width < _app.Settings.GallerySettings.MaxImageWidth && image.Height < _app.Settings.GallerySettings.MaxImageHeight)
+			if (image.Width < _app.Settings.Gallery.MaxImageWidth && image.Height < _app.Settings.Gallery.MaxImageHeight)
 				return image.ToBase64(image.Format);
 
-			var sizeGeom = new MagickGeometry(_app.Settings.GallerySettings.MaxImageWidth, _app.Settings.GallerySettings.MaxImageHeight) { IgnoreAspectRatio = false };
+			var sizeGeom = new MagickGeometry(_app.Settings.Gallery.MaxImageWidth, _app.Settings.Gallery.MaxImageHeight) { IgnoreAspectRatio = false };
 
 			image.Resize(sizeGeom);
 			return image.ToBase64(image.Format);
+		}
+
+		public (int, int) GetImageSize(string data)
+		{
+			using var image = new MagickImage(Convert.FromBase64String(data));
+			return (image.Width, image.Height);
 		}
 
 		#region Examples

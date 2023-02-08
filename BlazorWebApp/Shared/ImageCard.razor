@@ -1,26 +1,48 @@
 ﻿@using System.Diagnostics;
 @inject AppState AppState
 @inject DatabaseService DB
+@inject IOService IO
 
 <div class="card m-1">
     <div class="card-body p-1 pt-2">
-        <span class="sampler-badge rounded-pill" style="@(SetSamplerBadgeColor().Result) border: 2px solid var(--app-dark-1);">@(DB.GetSampler(Image.SamplerId).Result)</span>
+        @if (Image.ModeId != 3)
+        {
+            <span class="sampler-badge rounded-pill" style="@(SetSamplerBadgeColor().Result) border: 2px solid var(--app-dark-1);">@(DB.GetSampler(Image.SamplerId).Result)</span>
+        }
         <span class="favorite-icon @(Image.Favorite ? "active" : "")"><span class="fa-solid fa-star"></span></span>
         <img src="data:image/png;base64,@ImageData" class="card-img mb-3" alt="image">
         <h1>
-            <span class="fa-solid fa-seedling" /><strong>@Image.Seed</strong>
-            <br />
-            <span class="fa-solid fa-stairs" /> @Image.Steps<span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale
-            @if (Image.DenoisingStrength != null)
+            @if (Image.ModeId != 3)
             {
-                <span class="ms-2">|</span>
-
-                <span class="fa-solid fa-braille" /> @Image.DenoisingStrength
+                <span class="fa-solid fa-seedling" />
+                <strong>@Image.Seed</strong>
+                <br />
+                <span class="fa-solid fa-stairs" /> @Image.Steps
+                <span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale
+                @if (Image.DenoisingStrength != null)
+                {
+                    <span class="ms-2">|</span>
+                    <span class="fa-solid fa-braille" /> @Image.DenoisingStrength
+                }
+            }
+            else
+            {
+                <strong>Upscaled</strong>
+                <br />
+                <span class="fa-solid fa-arrows-left-right" /> @($"{Image.Width} px")
+                <span class="ms-2">|</span> <span class="fa-solid fa-arrows-up-down" /> @($"{Image.Height} px")
             }
         </h1>
         <div class="text-card">
-            <h2 class="lead">@Image.Prompt</h2>
-            <h3 class="lead">@Image.NegativePrompt</h3>
+            @if (Image.ModeId != 3)
+            {
+                <h2 class="lead">@Image.Prompt</h2>
+                <h3 class="lead">@Image.NegativePrompt</h3>
+            }
+            else
+            {
+                <h2 class="lead">@(IO.LoadText(Image.InfoPath))</h2>
+            }
         </div>
         <div class="row btn-container">
             <div class="col-6">

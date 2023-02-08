@@ -6,7 +6,7 @@
 		<div class="row mb-3">
 			<div class="col-8">
 				<label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
-				<input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.StepsMin" max="@AppState.Settings.StepsMax" step="@AppState.Settings.StepsStep" />
+				<input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.Shared.Steps.Min" max="@AppState.Settings.Shared.Steps.Max" step="@AppState.Settings.Shared.Steps.Step" />
 			</div>
 			<div class="col-4">
 				<label class="form-label" for="samplerGroup">Sampler</label> <br />
@@ -26,7 +26,7 @@
 		<div class="row mb-3">
 			<div class="col-6">
 				<label class="form-label" for="cfg-scale">CFG Scale: <strong class="ms-2">@Parameters.CfgScale</strong></label>
-				<input type="range" class="form-range" id="cfg-scale" @bind-value="Parameters.CfgScale" @bind-value:event="oninput" min="@AppState.Settings.CfgScaleMin" max="@AppState.Settings.CfgScaleMax" step="@AppState.Settings.CfgScaleStep" />
+				<input type="range" class="form-range" id="cfg-scale" @bind-value="Parameters.CfgScale" @bind-value:event="oninput" min="@AppState.Settings.Shared.CfgScale.Min" max="@AppState.Settings.Shared.CfgScale.Max" step="@AppState.Settings.Shared.CfgScale.Step" />
 			</div>
 			<div class="col-6">
 				<label class="form-label" for="seed">Seed</label>
@@ -50,21 +50,21 @@
 		<div class="row mb-3">
 			<div class="col-6">
 				<label class="form-label" for="width">Width: <strong class="ms-2">@Parameters.Width</strong></label>
-				<input type="range" class="form-range" id="width" @bind-value="@Parameters.Width" @bind-value:event="oninput" min="@AppState.Settings.ResolutionMin" max="@AppState.Settings.ResolutionMax" step="@AppState.Settings.ResolutionStep" />
+				<input type="range" class="form-range" id="width" @bind-value="@Parameters.Width" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
 			</div>
 			<div class="col-6">
 				<label class="form-label" for="height">Height: <strong class="ms-2">@Parameters.Height</strong></label>
-				<input type="range" class="form-range" id="height" @bind-value="@Parameters.Height" @bind-value:event="oninput" min="@AppState.Settings.ResolutionMin" max="@AppState.Settings.ResolutionMax" step="@AppState.Settings.ResolutionStep" />
+				<input type="range" class="form-range" id="height" @bind-value="@Parameters.Height" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
 			</div>
 		</div>
 		<div class="row mb-3">
 			<div class="col-6">
 				<label class="form-label" for="batch-count">Batch Count: <strong class="ms-2">@Parameters.NIter</strong></label>
-				<input type="range" class="form-range" id="batch-count" @bind-value="@Parameters.NIter" @bind-value:event="oninput" min="@AppState.Settings.BatchCountMin" max="@AppState.Settings.BatchCountMax" step="@AppState.Settings.BatchCountStep" />
+				<input type="range" class="form-range" id="batch-count" @bind-value="@Parameters.NIter" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Count.Min" max="@AppState.Settings.Shared.Batch.Count.Max" step="@AppState.Settings.Shared.Batch.Count.Step" />
 			</div>
 			<div class="col-6">
 				<label class="form-label" for="batch-size">Batch Size: <strong class="ms-2">@Parameters.BatchSize</strong></label>
-				<input type="range" class="form-range" id="batch-size" @bind-value="@Parameters.BatchSize" @bind-value:event="oninput" min="@AppState.Settings.BatchSizeMin" max="@AppState.Settings.BatchSizeMax" step="@AppState.Settings.BatchSizeStep" />
+				<input type="range" class="form-range" id="batch-size" @bind-value="@Parameters.BatchSize" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Size.Min" max="@AppState.Settings.Shared.Batch.Size.Max" step="@AppState.Settings.Shared.Batch.Size.Step" />
 			</div>
 		</div>
 		<div class="row mb-3">
@@ -84,15 +84,15 @@
 		<div class="row mb-3 collapse @(Parameters.EnableHR == true ? "show" : "")" id="highres-options">
 			<div class="col-4">
 				<label class="form-label" for="highres-width">First Pass Width: <strong class="ms-2">@Parameters.FirstphaseWidth</strong></label>
-				<input type="range" class="form-range" id="highres-width" @bind-value="@Parameters.FirstphaseWidth" @bind-value:event="oninput" min="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthMin" max="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthMax" step="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassWidthStep" />
+				<input type="range" class="form-range" id="highres-width" @bind-value="@Parameters.FirstphaseWidth" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
 			</div>
 			<div class="col-4">
 				<label class="form-label" for="highres-height">First Pass Height: <strong class="ms-2">@Parameters.FirstphaseHeight</strong></label>
-				<input type="range" class="form-range" id="highres-height" @bind-value="@Parameters.FirstphaseHeight" @bind-value:event="oninput" min="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightMin" max="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightMax" step="@AppState.Settings.Txt2ImgSettings.HighresSettings.FirstPassHeightStep" />
+				<input type="range" class="form-range" id="highres-height" @bind-value="@Parameters.FirstphaseHeight" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
 			</div>
 			<div class="col-4">
 				<label class="form-label" for="highres-denoising">Denoising: <strong class="ms-2">@Parameters.DenoisingStrength</strong></label>
-				<input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.DenoisingMin" max="@AppState.Settings.DenoisingMax" step="@AppState.Settings.DenoisingStep" />
+				<input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.Shared.Denoising.Min" max="@AppState.Settings.Shared.Denoising.Max" step="@AppState.Settings.Shared.Denoising.Step" />
 			</div>
 		</div>
 	</div>

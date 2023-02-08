@@ -28,6 +28,11 @@
                     </NavLink>
                 </li>
                 <li class="nav-item me-2">
+                    <NavLink class="nav-link" href="upscale">
+                        <span class="fa-solid fa-panorama me-1" aria-hidden="true"></span> Upscale
+                    </NavLink>
+                </li>
+                <li class="nav-item me-2">
                     <NavLink class="nav-link" href="settings">
                         <span class="fa-solid fa-cog me-1" aria-hidden="true"></span> Settings
                     </NavLink>
@@ -101,11 +106,12 @@
         {
             if (AppState.CurrentProjectId == 0)
             {
-                AppState.SetCurrentProject(1);
+                var latestProject = await DB.GetLatestProject();
+                await AppState.SetCurrentProject(latestProject.Id);
             }
             else
             {
-                AppState.SetCurrentProject(AppState.CurrentProjectId);
+                await AppState.SetCurrentProject(AppState.CurrentProjectId);
             }
         }
         else
@@ -138,7 +144,7 @@
 
     private async Task HandleProjectSelected(string selected)
     {
-        AppState.SetCurrentProject(DB.GetProject(selected).Result.Id);
+        await AppState.SetCurrentProject(DB.GetProject(selected).Result.Id);
         Refresh();
     }
 

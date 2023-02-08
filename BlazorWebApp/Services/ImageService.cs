@@ -1,6 +1,7 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using HtmlAgilityPack;
 
 namespace BlazorWebApp.Services
 {
@@ -27,7 +28,7 @@ namespace BlazorWebApp.Services
             _db = db;
         }
 
-        public async Task<ImagesDto> GetImages(bool isImg2Img = false)
+        public async Task<ImagesDto> GetImages(ModeType mode)
         {
             _app.IsConverging = true;
             StartProgressChecker();
@@ -35,46 +36,66 @@ namespace BlazorWebApp.Services
             //_app.GridImage = string.Empty;
 
             // Using a temporary parameters model to parse selected dropdown Styles without writing them to the input fields
-            if (isImg2Img)
+            switch (mode)
             {
-                _parsingParams = _parser.ParseParameters(new SharedParametersModel(_app.ParametersImg2Img));
-                var newParameters = new Img2ImgParametersModel(_parsingParams);
-                newParameters.InitImages = _app.ParametersImg2Img.InitImages;
-                newParameters.Mask = _app.ParametersImg2Img.Mask;
-                newParameters.MaskBlur = _app.ParametersImg2Img.MaskBlur;
-                newParameters.ResizeMode = _app.ParametersImg2Img.ResizeMode;
-                newParameters.InpaintingFill = _app.ParametersImg2Img.InpaintingFill;
-                newParameters.InpaintFullRes = _app.ParametersImg2Img.InpaintFullRes;
-                newParameters.InpaintFullResPadding = _app.ParametersImg2Img.InpaintFullResPadding;
-                newParameters.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
-                _app.Images = await _api.PostImg2Img(newParameters);
-            }
-            else
-            {
-                _parsingParams = _parser.ParseParameters(new SharedParametersModel(_app.ParametersTxt2Img));
-                var newParameters = new Txt2ImgParametersModel(_parsingParams);
-                if (newParameters.EnableHR != null && (bool)newParameters.EnableHR)
-                {
-                    newParameters.FirstphaseWidth = _app.ParametersTxt2Img.FirstphaseWidth;
-                    newParameters.FirstphaseHeight = _app.ParametersTxt2Img.FirstphaseHeight;
-                    newParameters.DenoisingStrength = _app.ParametersTxt2Img.DenoisingStrength;
-                }
-                _app.Images = await _api.PostTxt2Img(newParameters);
-            }
+                case ModeType.Img2Img:
+                    _parsingParams = _parser.ParseParameters(new SharedParametersModel(_app.ParametersImg2Img));
+                    var img2imgParams = new Img2ImgParametersModel(_parsingParams);
+                    img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
+                    img2imgParams.Mask = _app.ParametersImg2Img.Mask;
+                    img2imgParams.MaskBlur = _app.ParametersImg2Img.MaskBlur;
+                    img2imgParams.ResizeMode = _app.ParametersImg2Img.ResizeMode;
+                    img2imgParams.InpaintingFill = _app.ParametersImg2Img.InpaintingFill;
+                    img2imgParams.InpaintFullRes = _app.ParametersImg2Img.InpaintFullRes;
+                    img2imgParams.InpaintFullResPadding = _app.ParametersImg2Img.InpaintFullResPadding;
+                    img2imgParams.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
+                    _app.Images = await _api.PostImg2Img(img2imgParams);
+                    _app.SerializeInfo();
+                    break;
 
-            _app.SerializeInfo();
+                case ModeType.Extras:
+                    _parsingParams = _app.ParametersUpscale;
+                    _app.GeneratedUpscaleImage = await _api.PostExtraSingle(_app.ParametersUpscale);
+                    if (_app.GeneratedUpscaleImage != null && !string.IsNullOrWhiteSpace(_app.GeneratedUpscaleImage.Image))
+                    {
+                        var upscaledResolution = _magick.GetImageSize(_app.GeneratedUpscaleImage.Image);
+                        _parsingParams.Width = upscaledResolution.Item1;
+                        _parsingParams.Height = upscaledResolution.Item2;
+                        var html = new HtmlDocument();
+                        html.LoadHtml(_app.GeneratedUpscaleImage.Info);
+                        _app.GeneratedUpscaleImage.Info = html.DocumentNode.InnerText;
+                    }
+                    break;
+
+                default:
+                    _parsingParams = _parser.ParseParameters(new SharedParametersModel(_app.ParametersTxt2Img));
+                    var txt2imgParams = new Txt2ImgParametersModel(_parsingParams);
+                    if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
+                    {
+                        txt2imgParams.FirstphaseWidth = _app.ParametersTxt2Img.FirstphaseWidth;
+                        txt2imgParams.FirstphaseHeight = _app.ParametersTxt2Img.FirstphaseHeight;
+                        txt2imgParams.DenoisingStrength = _app.ParametersTxt2Img.DenoisingStrength;
+                    }
+                    _app.Images = await _api.PostTxt2Img(txt2imgParams);
+                    _app.SerializeInfo();
+                    break;
+            }
 
             ImagesDto images = new();
 
             if ((bool)_app.Options.SamplesSave)
             {
-                if (isImg2Img)
+                switch (mode)
                 {
-                    images = await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid);
-                }
-                else
-                {
-                    images = await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
+                    case ModeType.Img2Img:
+                        images = await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid);
+                        break;
+                    case ModeType.Extras:
+                        images = await SaveUpscaleImage();
+                        break;
+                    default:
+                        images = await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
+                        break;
                 }
             }
 
@@ -90,7 +111,7 @@ namespace BlazorWebApp.Services
             DirectoryInfo saveDir = _io.CreateDirectory(_app.GetCurrentSaveFolder(outdirSamples));
             ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
 
-            int fileIndex = _io.GetFileIndex(saveDir.FullName);
+            var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
             _app.CurrentSeed = _app.ImagesInfo.Seed;
 
             for (int i = 0; i < _app.Images.Images.Count; i++)
@@ -107,7 +128,7 @@ namespace BlazorWebApp.Services
                 if ((bool)_app.Options.SaveTxt)
                 {
                     var infoPath = $"{fullpath}.txt";
-                    await _io.SaveText(infoPath, _app.ImagesInfo.InfoTexts[i]);
+                    _io.SaveText(infoPath, _app.ImagesInfo.InfoTexts[i]);
                     savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, infoPath));
                 }
                 else
@@ -119,7 +140,7 @@ namespace BlazorWebApp.Services
             if (outdirGrid != null && (bool)_app.Options.GridSave && (_app.Images.Images.Count > 1 && (bool)_app.Options.GridOnlyIfMultiple))
             {
                 saveDir = _io.CreateDirectory(_app.GetCurrentSaveFolder(outdirGrid));
-                fileIndex = _io.GetFileIndex(saveDir.FullName) + 1;
+                fileIndex = _io.GetFileIndex(saveDir.FullName, (Outdir)outdirGrid) + 1;
                 string fullpath = Path.Combine(saveDir.FullName, $"grid-{fileIndex.ToString().PadLeft(4, '0')}");
                 string extension = _app.Options.GridFormat.ToLowerInvariant();
                 string gridPath = $"{fullpath}.{extension}";
@@ -128,10 +149,35 @@ namespace BlazorWebApp.Services
 
                 if ((bool)_app.Options.SaveTxt)
                 {
-                    await _io.SaveText($"{fullpath}.txt", _app.ImagesInfo.InfoTexts[0]);
+                    _io.SaveText($"{fullpath}.txt", _app.ImagesInfo.InfoTexts[0]);
                 }
             }
             return savedImages;
+        }
+
+        public async Task<ImagesDto?> SaveUpscaleImage()
+        {
+            //if (_upscaledImage == null) return null;
+
+            DirectoryInfo saveDir = _io.CreateDirectory(_app.GetCurrentSaveFolder(Outdir.Extras));
+            ImagesDto savedImage = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
+
+            var fileIndex = _io.GetFileIndex(saveDir.FullName, Outdir.Extras) + 1;
+            var fullpath = Path.Combine(saveDir.FullName, fileIndex.ToString().PadLeft(5, '0'));
+            var extension = _app.Options.SamplesFormat.ToLowerInvariant();
+            var imagePath = $"{fullpath}.{extension}";
+            await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_app.GeneratedUpscaleImage.Image));
+
+            if ((bool)_app.Options.SaveTxt)
+            {
+                var infoPath = $"{fullpath}.txt";
+                _io.SaveText(infoPath, _app.GeneratedUpscaleImage.Info);
+                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, infoPath));
+            }
+            else
+                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras));
+
+            return savedImage;
         }
 
         public string LoadImage(string imagePath) => _io.GetBase64FromFile(imagePath);
@@ -145,17 +191,20 @@ namespace BlazorWebApp.Services
             Image image = new();
 
             image.Path = path;
-            if (infoPath != null) { image.InfoPath = infoPath; }
-            image.Prompt = _parsingParams.Prompt;
-            image.NegativePrompt = _parsingParams.NegativePrompt;
-            image.SamplerId = await _db.GetSampler(_parsingParams.SamplerIndex);
-            image.Steps = (int)_parsingParams.Steps;
-            image.Seed = (long)_app.CurrentSeed;
-            image.CfgScale = (float)_parsingParams.CfgScale;
             image.Width = (int)_parsingParams.Width;
             image.Height = (int)_parsingParams.Height;
             image.ProjectId = _app.CurrentProjectId;
-            image.DenoisingStrength = _parsingParams.DenoisingStrength;
+            if (infoPath != null) { image.InfoPath = infoPath; }
+            if (outdir != Outdir.Extras)
+            {
+                image.Prompt = _parsingParams.Prompt;
+                image.NegativePrompt = _parsingParams.NegativePrompt;
+                image.SamplerId = await _db.GetSampler(_parsingParams.SamplerIndex);
+                image.Steps = (int)_parsingParams.Steps;
+                image.Seed = (long)_app.CurrentSeed;
+                image.CfgScale = (float)_parsingParams.CfgScale;
+                image.DenoisingStrength = _parsingParams.DenoisingStrength;
+            }
 
             ModeType mode;
             switch (outdir)

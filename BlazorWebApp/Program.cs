@@ -11,6 +11,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor().AddHubOptions(opt => { opt.MaximumReceiveMessageSize = maxBufferSize; });
 
 builder.Services.AddHttpClient<SDAPIService>();
+builder.Services.AddHttpClient<EPicsService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => opt.UseSqlite("Data Source=BlazorWebApp.db"));
 
 builder.Services.AddSingleton<AppState>();
