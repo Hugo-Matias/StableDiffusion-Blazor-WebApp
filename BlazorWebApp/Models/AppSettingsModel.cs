@@ -37,6 +37,8 @@ namespace BlazorWebApp.Models
     {
         public string Sampler { get; set; } = "DPM++ 2M Karras";
         public int Seed { get; set; } = -1;
+        public bool FaceRestoration { get; set; } = true;
+        public bool Tilling { get; set; } = false;
         public StepsSettingsModel Steps { get; set; } = new();
         public ResolutionSettingsModel Resolution { get; set; } = new();
         public BatchSettingsModel Batch { get; set; } = new();
@@ -69,7 +71,7 @@ namespace BlazorWebApp.Models
 
     public class BatchCountSettingsModel
     {
-        public int DefaultValue { get; set; } = 4;
+        public int DefaultValue { get; set; } = 1;
         public int Min { get; set; } = 1;
         public int Max { get; set; } = 8;
         public int Step { get; set; } = 1;
@@ -77,7 +79,7 @@ namespace BlazorWebApp.Models
 
     public class BatchSizeSettingsModel
     {
-        public int DefaultValue { get; set; } = 1;
+        public int DefaultValue { get; set; } = 4;
         public int Min { get; set; } = 1;
         public int Max { get; set; } = 8;
         public int Step { get; set; } = 1;
@@ -107,6 +109,7 @@ namespace BlazorWebApp.Models
     }
     public class HighresSettingsModel
     {
+        public bool Enabled { get; set; } = false;
         public FirstPassSettingsModel FirstPass { get; set; } = new();
     }
 

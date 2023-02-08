@@ -19,6 +19,7 @@ builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<PromptButtonService>();
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<IOService>();
+builder.Services.AddSingleton<ToasterService>();
 
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddScoped<RandomService>();

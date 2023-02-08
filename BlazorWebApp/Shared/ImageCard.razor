@@ -2,6 +2,7 @@
 @inject AppState AppState
 @inject DatabaseService DB
 @inject IOService IO
+@inject ToasterService Toaster
 
 <div class="card m-1">
     <div class="card-body p-1 pt-2">
@@ -99,6 +100,7 @@
     {
         await DB.SetProjectCover(AppState.CurrentProjectId, Image.Path);
         await OnCoverChanged.InvokeAsync();
+        Toaster.AddToast(ToastModel.NewToast("Cover Image", $"Cover image selected for project {AppState.CurrentProjectName}.", MessageColor.Success, 5));
     }
 
     private async Task<string> SetSamplerBadgeColor()

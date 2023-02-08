@@ -114,10 +114,13 @@ namespace BlazorWebApp.Services
                 NIter = Settings.Shared.Batch.Count.DefaultValue,
                 BatchSize = Settings.Shared.Batch.Size.DefaultValue,
                 DenoisingStrength = Settings.Shared.Denoising.DefaultValue,
+                RestoreFaces = Settings.Shared.FaceRestoration,
+                Tiling = Settings.Shared.Tilling,
             };
 
             ParametersTxt2Img = new Txt2ImgParametersModel(defaultParameters)
             {
+                EnableHR = Settings.Txt2Img.HighRes.Enabled,
                 FirstphaseWidth = Settings.Txt2Img.HighRes.FirstPass.Width,
                 FirstphaseHeight = Settings.Txt2Img.HighRes.FirstPass.Height,
             };

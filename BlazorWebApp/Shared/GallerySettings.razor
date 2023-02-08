@@ -8,7 +8,7 @@
         <div class="projects-container row">
             @foreach (var project in AppState.Projects)
             {
-                @*<ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnRename="ShowRenameProjectModal"></ProjectCard>*@
+                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnRename="ShowRenameProjectModal"></ProjectCard>
             }
         </div>
         <div class="gallery-settings row">
