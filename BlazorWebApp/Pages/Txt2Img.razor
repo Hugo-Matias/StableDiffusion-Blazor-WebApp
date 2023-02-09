@@ -5,94 +5,94 @@
 @inject ImageService ImageService
 @implements IDisposable
 
-<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagClicked="PromptTagClicked" OnNegativePromptTagClicked="NegativePromptTagClicked"/>
+<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagClicked="PromptTagClicked" OnNegativePromptTagClicked="NegativePromptTagClicked" />
 
 <div class="row">
-	<div class="col">
-		<GenerateFormTxt2Img Parameters="@Parameters" />
-	</div>
-	<!-- Carousel Tabs-->
-	<div class="col">
-		<nav>
-			<div class="nav nav-tabs" id="nav-tabs" role="tablist">
-				<button class="nav-link active" id="nav-gallery-tab" data-bs-toggle="tab" data-bs-target="#nav-gallery" type="button" role="tab" aria-controls="nav-gallery" aria-selected="true">Gallery</button>
-				<button class="nav-link" id="nav-gen-tab" data-bs-toggle="tab" data-bs-target="#nav-gen" type="button" role="tab" aria-controls="nav-gen" aria-selected="false">Generated</button>
-				<button class="nav-link" id="nav-progress-tab" data-bs-toggle="tab" data-bs-target="#nav-progress" type="button" role="tab" aria-controls="nav-progress" aria-selected="false">Progress</button>
-			</div>
-		</nav>
-		<div class="tab-content" id="nav-tabContent">
-			<div class="tab-pane fade show active" id="nav-gallery" role="tabpanel" aria-labelledby="nav-gallery-tab" tabindex="0">
-				@if (AppState.Images.Images != null)
-				{
-					List<string> generatedImages = new();
+    <div class="col">
+        <GenerateFormTxt2Img Parameters="@Parameters" />
+    </div>
+    <!-- Carousel Tabs-->
+    <div class="col">
+        <nav>
+            <div class="nav nav-tabs" id="nav-tabs" role="tablist">
+                <button class="nav-link active" id="nav-gallery-tab" data-bs-toggle="tab" data-bs-target="#nav-gallery" type="button" role="tab" aria-controls="nav-gallery" aria-selected="true">Gallery</button>
+                <button class="nav-link" id="nav-gen-tab" data-bs-toggle="tab" data-bs-target="#nav-gen" type="button" role="tab" aria-controls="nav-gen" aria-selected="false">Generated</button>
+                <button class="nav-link" id="nav-progress-tab" data-bs-toggle="tab" data-bs-target="#nav-progress" type="button" role="tab" aria-controls="nav-progress" aria-selected="false">Progress</button>
+            </div>
+        </nav>
+        <div class="tab-content" id="nav-tabContent">
+            <div class="tab-pane fade show active" id="nav-gallery" role="tabpanel" aria-labelledby="nav-gallery-tab" tabindex="0">
+                @if (AppState.Images.Images != null)
+                {
+                    List<string> generatedImages = new();
 
-					if (!string.IsNullOrWhiteSpace(AppState.GridImage)) generatedImages.Add(AppState.GridImage);
+                    if (!string.IsNullOrWhiteSpace(AppState.GridImage)) generatedImages.Add(AppState.GridImage);
 
-					generatedImages.AddRange(AppState.Images.Images);
+                    generatedImages.AddRange(AppState.Images.Images);
 
-					<ImageCarousel Images="generatedImages" />
+                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery" ShowNumber=true />
 
-					<ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
-				}
-			</div>
+                    <ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
+                }
+            </div>
             <div class="tab-pane fade" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
                 @if (AppState.GeneratedImageEntities != null)
                 {
                     <ImagesContainer Images="AppState.GeneratedImageEntities"></ImagesContainer>
                 }
             </div>
-			<div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
-				@if (AppState.Progress.State != null)
-				{
-					var value = AppState.Progress.Progress;
-					<ProgressBar Value="@value" MaxValue=1>
-						<Compact>
-							<span><strong>@(Convert.ToInt32(value * 100))%</strong></span>
-						</Compact>
-						<Expanded>
-							<span><strong>@(Convert.ToInt32(value * 100))%</strong> | <small>@AppState.Progress.State.Job</small></span>
-						</Expanded>
-					</ProgressBar>
+            <div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
+                @if (AppState.Progress.State != null)
+                {
+                    var value = AppState.Progress.Progress;
+                    <ProgressBar Value="@value" MaxValue=1>
+                        <Compact>
+                            <span><strong>@(Convert.ToInt32(value * 100))%</strong></span>
+                        </Compact>
+                        <Expanded>
+                            <span><strong>@(Convert.ToInt32(value * 100))%</strong> | <small>@AppState.Progress.State.Job</small></span>
+                        </Expanded>
+                    </ProgressBar>
 
-					if (AppState.Progress.CurrentImage != null)
-					{
-						List<string> imageAsList = new List<string> { AppState.Progress.CurrentImage };
-						<ImageCarousel Images="imageAsList" />
-					}
-				}
-			</div>
-		</div>
-	</div>
+                    if (AppState.Progress.CurrentImage != null)
+                    {
+                        List<string> imageAsList = new List<string> { AppState.Progress.CurrentImage };
+                        <ImageCarousel Images="imageAsList" GalleryId="progress-image" ShowNumber=true />
+                    }
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
-	public Txt2ImgParametersModel Parameters { get; set; }
-	public SharedParametersModel SharedParameters { get; set; }
+    public Txt2ImgParametersModel Parameters { get; set; }
+    public SharedParametersModel SharedParameters { get; set; }
 
-	protected override void OnInitialized()
-	{
-		base.OnInitialized();
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
 
-		ImageService.OnChange += Refresh;
-		Parameters = AppState.ParametersTxt2Img;
-		SharedParameters = AppState.ParametersTxt2Img;
-	}
+        ImageService.OnChange += Refresh;
+        Parameters = AppState.ParametersTxt2Img;
+        SharedParameters = AppState.ParametersTxt2Img;
+    }
 
-	private async void Generate()
-	{
-		AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Txt2Img);
-		Refresh();
-	}
+    private async void Generate()
+    {
+        AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Txt2Img);
+        Refresh();
+    }
 
-	private async void Skip() => await SDAPIService.PostSkip();
+    private async void Skip() => await SDAPIService.PostSkip();
 
-	private async void Interrupt() => await SDAPIService.PostInterrupt();
+    private async void Interrupt() => await SDAPIService.PostInterrupt();
 
-	private void PromptTagClicked(string tag) => Parameters.Prompt += $"{tag}, ";
+    private void PromptTagClicked(string tag) => Parameters.Prompt += $"{tag}, ";
 
-	private void NegativePromptTagClicked(string tag) => Parameters.NegativePrompt += $"{tag}, ";
+    private void NegativePromptTagClicked(string tag) => Parameters.NegativePrompt += $"{tag}, ";
 
-	public void Dispose() => ImageService.OnChange -= Refresh;
+    public void Dispose() => ImageService.OnChange -= Refresh;
 
-	void Refresh() => InvokeAsync(StateHasChanged);
+    void Refresh() => InvokeAsync(StateHasChanged);
 }

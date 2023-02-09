@@ -3,6 +3,7 @@ using System.Timers;
 
 namespace BlazorWebApp.Services
 {
+    //https://www.codeproject.com/Articles/5322875/A-Blazor-Bootstrap-Toaster
     public class ToasterService : IDisposable
     {
         private readonly List<ToastModel> _toasts = new();
@@ -32,7 +33,7 @@ namespace BlazorWebApp.Services
 
         public ToasterService()
         {
-            AddToast(new ToastModel { Title = "Welcome!", Message = "Welcome to BlazorDiffusion. I'll disappear after 15 seconds.", TimeToBurn = DateTimeOffset.Now.AddHours(2) });
+            //AddToast(new ToastModel { Title = "Welcome!", Message = "Welcome to BlazorDiffusion. I'll disappear after 15 seconds.", TimeToBurn = DateTimeOffset.Now.AddHours(2) });
 
             _timer.Interval = 5000;
             _timer.AutoReset = true;

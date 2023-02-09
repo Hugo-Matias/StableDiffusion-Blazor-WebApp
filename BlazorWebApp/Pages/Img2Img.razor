@@ -32,7 +32,7 @@
 
                     generatedImages.AddRange(AppState.Images.Images);
 
-                    <ImageCarousel Images="generatedImages" />
+                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery" ShowNumber=true />
 
                     <ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
                 }
@@ -59,7 +59,7 @@
                     if (AppState.Progress.CurrentImage != null)
                     {
                         List<string> imageAsList = new List<string> { AppState.Progress.CurrentImage };
-                        <ImageCarousel Images="imageAsList" />
+                        <ImageCarousel Images="imageAsList" GalleryId="progress-image" ShowNumber=true />
                     }
                 }
             </div>

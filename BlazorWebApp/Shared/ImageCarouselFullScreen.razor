@@ -1,0 +1,20 @@
+﻿<button class="btn btn-outline-primary btn-fullscreen" data-bs-toggle="modal" data-bs-target="#fullscreen-carousel-modal"><i class="fa-solid fa-arrow-up-right-from-square me-2"></i> Fullscreen</button>
+
+<div class="modal fade" id="fullscreen-carousel-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5">Gallery</h1>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ImageCarousel Images="Images" GalleryId="fullscree-gallery" ShowNumber=false/>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<string> Images { get; set; }
+}

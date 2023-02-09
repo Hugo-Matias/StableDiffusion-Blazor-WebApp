@@ -120,7 +120,7 @@
                 @if (AppState.GeneratedUpscaleImage != null)
                 {
                     List<string> generatedImages = new() { AppState.GeneratedUpscaleImage.Image};
-                    <ImageCarousel Images="generatedImages" />
+                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery" ShowNumber=false/>
                     <ImageParametersInfo Text="@AppState.GeneratedUpscaleImage.Info" />
                 }
             </div>
