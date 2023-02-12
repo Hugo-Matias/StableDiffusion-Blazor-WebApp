@@ -6,6 +6,7 @@
 }
 
 .modal-header {
+	display: flex;
 	background: var(--app-dark-1);
 }
 
@@ -46,4 +47,15 @@
 		max-height: inherit !important;
 		height: inherit !important;
 		object-fit: contain;
+	}
+
+.header-controls {
+	display: flex;
+	flex-direction: row;
+	width:100%;
+	justify-content:center;
+}
+
+	.header-controls .btn {
+		color: var(--app-light-5);
 	}

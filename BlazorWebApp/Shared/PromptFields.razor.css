@@ -1,6 +1,6 @@
 ﻿.card {
-    --bs-card-bg: var(--app-dark-1);
-    --bs-card-border-color: var(--app-dark-3);
+	--bs-card-bg: var(--app-dark-1);
+	--bs-card-border-color: var(--app-dark-3);
 }
 
 label {
@@ -49,7 +49,7 @@ label {
 	--bs-btn-hover-bg: var(--app-dark-2);
 	--bs-btn-hover-border-color: var(--app-dark-3);
 	--bs-btn-active-bg: var(--app-dark-3);
-
 	height: 2.8rem;
 	width: 4rem;
-}	
+}
+

@@ -11,7 +11,7 @@
 	top: 1rem;
 	z-index: 1000;
 	background: var(--app-dark-3);
-	opacity: 0.3;
+	opacity: 0.6;
 	color: white;
 	border-radius: 50%;
 }

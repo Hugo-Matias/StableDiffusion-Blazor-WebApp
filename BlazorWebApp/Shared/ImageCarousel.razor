@@ -4,14 +4,14 @@
         {
             <div class="carousel-item @(Images[i] == Images[0] ? "active" : "")" data-bs-interval="10000">
                 <img src="data:image/png;base64,@Images[i]" class="d-block w-100">
-                @if (ShowNumber && Images.Count > 1)
+                @if (Images.Count > 1)
                 {
-                    <div class="image-number">@i</div>
+                    <div class="image-number">@(IncrementCounter ? i + 1 : i)</div>
                 }
             </div>
         }
     </div>
-    @if (Images.Count > 1)
+    @if (ShowControls && Images.Count > 1)
     {
         <button class="carousel-control-prev" type="button" data-bs-target="#@GalleryId" data-bs-slide="prev">
             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -27,8 +27,10 @@
 @code {
     [Parameter]
     public List<string> Images { get; set; }
-    [Parameter, EditorRequired]
+    [Parameter]
     public string GalleryId { get; set; } = string.Empty;
-    [Parameter, EditorRequired]
-    public bool ShowNumber { get; init; }
+    [Parameter]
+    public bool ShowControls { get; set; } = true;
+    [Parameter]
+    public bool IncrementCounter { get; set; } = false;
 }

@@ -2,129 +2,130 @@
 @inject AppState AppState
 
 <EditForm Model="@Parameters">
-	<div class="generate-form card p-4 col mb-3">
-		<div class="row mb-3">
-			<div class="col-8">
-				<label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
-				<input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.Shared.Steps.Min" max="@AppState.Settings.Shared.Steps.Max" step="@AppState.Settings.Shared.Steps.Step" />
-			</div>
-			<div class="col-4">
-				<label class="form-label" for="samplerGroup">Sampler</label> <br />
-				<Dropdown ButtonText="@Parameters.SamplerIndex" OnSelected="SamplerSelected">
-					<Button>
-						@Parameters.SamplerIndex
-					</Button>
-					<Items>
-						@foreach (var sampler in AppState.Samplers)
-						{
-							<DropdownItem Text="@sampler.Name" />
-						}
-					</Items>
-				</Dropdown>
-			</div>
-		</div>
-		<div class="row mb-3">
-			<div class="col-6">
-				<label class="form-label" for="cfg-scale">CFG Scale: <strong class="ms-2">@Parameters.CfgScale</strong></label>
-				<input type="range" class="form-range" id="cfg-scale" @bind-value="Parameters.CfgScale" @bind-value:event="oninput" min="@AppState.Settings.Shared.CfgScale.Min" max="@AppState.Settings.Shared.CfgScale.Max" step="@AppState.Settings.Shared.CfgScale.Step" />
-			</div>
-			<div class="col-6">
-				<label class="form-label" for="seed">Seed</label>
-				<div class="row me-0">
-					<div class="col-8 pe-0">
-						<div class="input-group">
-							<button type="button" class="btn btn-outline-secondary" @onclick="DecrementSeed"><span class="fa-solid fa-minus"></span></button>
-							<input type="number" class="form-control" style="font-size:@(Parameters.Seed < 999999999 ? "1rem" : "0.7rem")" id="seed" min="-1" @bind-value="@Parameters.Seed" @bind-value:event="oninput" />
-							<button type="button" class="btn btn-outline-secondary"  @onclick="IncrementSeed"><span class="fa-solid fa-plus"></span></button>
-						</div>
-					</div>
-					<div class="col-2">
-						<button type="button" class="btn btn-outline-secondary"  @onclick="SetRandomSeed"><span class="fa-solid fa-shuffle"></span></button>
-					</div>
-					<div class="col-2">
-						<button type="button" class="btn btn-outline-secondary" @onclick="RestoreSeed"><span class="fa-solid fa-rotate-left"></span></button>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="row mb-3">
-			<div class="col-6">
-				<label class="form-label" for="width">Width: <strong class="ms-2">@Parameters.Width</strong></label>
-				<input type="range" class="form-range" id="width" @bind-value="@Parameters.Width" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
-			</div>
-			<div class="col-6">
-				<label class="form-label" for="height">Height: <strong class="ms-2">@Parameters.Height</strong></label>
-				<input type="range" class="form-range" id="height" @bind-value="@Parameters.Height" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
-			</div>
-		</div>
-		<div class="row mb-3">
-			<div class="col-6">
-				<label class="form-label" for="batch-count">Batch Count: <strong class="ms-2">@Parameters.NIter</strong></label>
-				<input type="range" class="form-range" id="batch-count" @bind-value="@Parameters.NIter" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Count.Min" max="@AppState.Settings.Shared.Batch.Count.Max" step="@AppState.Settings.Shared.Batch.Count.Step" />
-			</div>
-			<div class="col-6">
-				<label class="form-label" for="batch-size">Batch Size: <strong class="ms-2">@Parameters.BatchSize</strong></label>
-				<input type="range" class="form-range" id="batch-size" @bind-value="@Parameters.BatchSize" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Size.Min" max="@AppState.Settings.Shared.Batch.Size.Max" step="@AppState.Settings.Shared.Batch.Size.Step" />
-			</div>
-		</div>
-		<div class="row mb-3">
-			<div class="col-4">
-				<input type="checkbox" class="btn-check" id="restore-faces" autocomplete="off" @bind-value="@Parameters.RestoreFaces" checked="@Parameters.RestoreFaces" />
-				<label class="btn btn-outline-secondary expand-btn" for="restore-faces">Restore Faces</label>
-			</div>
-			<div class="col-4">
-				<input type="checkbox" class="btn-check" id="tiling" autocomplete="off" @bind-value="@Parameters.Tiling" checked="@Parameters.Tiling" />
-				<label class="btn btn-outline-secondary expand-btn" for="tiling">Tiling</label>
-			</div>
-			<div class="col-4">
-				<input type="checkbox" class="btn-check" id="highres-fix" autocomplete="off" data-bs-toggle="collapse" data-bs-target="#highres-options" @bind-value="@Parameters.EnableHR" checked="@Parameters.EnableHR" />
-				<label class="btn btn-outline-secondary expand-btn" for="highres-fix">HighRes Fix</label>
-			</div>
-		</div>
-		<div class="row mb-3 collapse @(Parameters.EnableHR == true ? "show" : "")" id="highres-options">
-			<div class="col-4">
-				<label class="form-label" for="highres-width">First Pass Width: <strong class="ms-2">@Parameters.FirstphaseWidth</strong></label>
-				<input type="range" class="form-range" id="highres-width" @bind-value="@Parameters.FirstphaseWidth" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
-			</div>
-			<div class="col-4">
-				<label class="form-label" for="highres-height">First Pass Height: <strong class="ms-2">@Parameters.FirstphaseHeight</strong></label>
-				<input type="range" class="form-range" id="highres-height" @bind-value="@Parameters.FirstphaseHeight" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
-			</div>
-			<div class="col-4">
-				<label class="form-label" for="highres-denoising">Denoising: <strong class="ms-2">@Parameters.DenoisingStrength</strong></label>
-				<input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.Shared.Denoising.Min" max="@AppState.Settings.Shared.Denoising.Max" step="@AppState.Settings.Shared.Denoising.Step" />
-			</div>
-		</div>
-	</div>
+    <div class="generate-form card p-4 col mb-3">
+        <div class="row mb-3">
+            <div class="col-8">
+                <label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
+                <input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.Shared.Steps.Min" max="@AppState.Settings.Shared.Steps.Max" step="@AppState.Settings.Shared.Steps.Step" />
+            </div>
+            <div class="col-4">
+                <label class="form-label" for="samplerGroup">Sampler</label> <br />
+                @if (AppState.Samplers != null)
+                {
+                    <Dropdown ButtonText="@Parameters.SamplerIndex" OnSelected="SamplerSelected">
+                        <Button>
+                            @Parameters.SamplerIndex
+                        </Button>
+                        <Items>
+                            @foreach (var sampler in AppState.Samplers)
+                            {
+                                <DropdownItem Text="@sampler.Name" />
+                            }
+                        </Items>
+                    </Dropdown>
+                }
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-6">
+                <label class="form-label" for="cfg-scale">CFG Scale: <strong class="ms-2">@Parameters.CfgScale</strong></label>
+                <input type="range" class="form-range" id="cfg-scale" @bind-value="Parameters.CfgScale" @bind-value:event="oninput" min="@AppState.Settings.Shared.CfgScale.Min" max="@AppState.Settings.Shared.CfgScale.Max" step="@AppState.Settings.Shared.CfgScale.Step" />
+            </div>
+            <div class="col-6">
+                <label class="form-label" for="seed">Seed</label>
+                <div class="row me-0">
+                    <div class="col-8 pe-0">
+                        <div class="input-group">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="DecrementSeed"><span class="fa-solid fa-minus"></span></button>
+                            <input type="number" class="form-control" style="font-size:@(Parameters.Seed < 999999999 ? "1rem" : "0.7rem")" id="seed" min="-1" @bind-value="@Parameters.Seed" @bind-value:event="oninput" />
+                            <button type="button" class="btn btn-outline-secondary" @onclick="IncrementSeed"><span class="fa-solid fa-plus"></span></button>
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="SetRandomSeed"><span class="fa-solid fa-shuffle"></span></button>
+                    </div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="RestoreSeed"><span class="fa-solid fa-rotate-left"></span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-6">
+                <label class="form-label" for="width">Width: <strong class="ms-2">@Parameters.Width</strong></label>
+                <input type="range" class="form-range" id="width" @bind-value="@Parameters.Width" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
+            </div>
+            <div class="col-6">
+                <label class="form-label" for="height">Height: <strong class="ms-2">@Parameters.Height</strong></label>
+                <input type="range" class="form-range" id="height" @bind-value="@Parameters.Height" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-6">
+                <label class="form-label" for="batch-count">Batch Count: <strong class="ms-2">@Parameters.NIter</strong></label>
+                <input type="range" class="form-range" id="batch-count" @bind-value="@Parameters.NIter" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Count.Min" max="@AppState.Settings.Shared.Batch.Count.Max" step="@AppState.Settings.Shared.Batch.Count.Step" />
+            </div>
+            <div class="col-6">
+                <label class="form-label" for="batch-size">Batch Size: <strong class="ms-2">@Parameters.BatchSize</strong></label>
+                <input type="range" class="form-range" id="batch-size" @bind-value="@Parameters.BatchSize" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Size.Min" max="@AppState.Settings.Shared.Batch.Size.Max" step="@AppState.Settings.Shared.Batch.Size.Step" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-4">
+                <input type="checkbox" class="btn-check" id="restore-faces" autocomplete="off" @bind-value="@Parameters.RestoreFaces" checked="@Parameters.RestoreFaces" />
+                <label class="btn btn-outline-secondary expand-btn" for="restore-faces">Restore Faces</label>
+            </div>
+            <div class="col-4">
+                <input type="checkbox" class="btn-check" id="tiling" autocomplete="off" @bind-value="@Parameters.Tiling" checked="@Parameters.Tiling" />
+                <label class="btn btn-outline-secondary expand-btn" for="tiling">Tiling</label>
+            </div>
+            <div class="col-4">
+                <input type="checkbox" class="btn-check" id="highres-fix" autocomplete="off" data-bs-toggle="collapse" data-bs-target="#highres-options" @bind-value="@Parameters.EnableHR" checked="@Parameters.EnableHR" />
+                <label class="btn btn-outline-secondary expand-btn" for="highres-fix">HighRes Fix</label>
+            </div>
+        </div>
+        <div class="row mb-3 collapse @(Parameters.EnableHR == true ? "show" : "")" id="highres-options">
+            <div class="col-4">
+                <label class="form-label" for="highres-width">First Pass Width: <strong class="ms-2">@Parameters.FirstphaseWidth</strong></label>
+                <input type="range" class="form-range" id="highres-width" @bind-value="@Parameters.FirstphaseWidth" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
+            </div>
+            <div class="col-4">
+                <label class="form-label" for="highres-height">First Pass Height: <strong class="ms-2">@Parameters.FirstphaseHeight</strong></label>
+                <input type="range" class="form-range" id="highres-height" @bind-value="@Parameters.FirstphaseHeight" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
+            </div>
+            <div class="col-4">
+                <label class="form-label" for="highres-denoising">Denoising: <strong class="ms-2">@Parameters.DenoisingStrength</strong></label>
+                <input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.Shared.Denoising.Min" max="@AppState.Settings.Shared.Denoising.Max" step="@AppState.Settings.Shared.Denoising.Step" />
+            </div>
+        </div>
+    </div>
 </EditForm>
 
 @code {
-	[Parameter] 
-	public Txt2ImgParametersModel Parameters { get; set; }
+    [Parameter]
+    public Txt2ImgParametersModel Parameters { get; set; }
 
-	private OptionsModel _options;
+    private OptionsModel _options;
 
-	protected override void OnInitialized()
-	{
-		base.OnInitialized();
+    protected override void OnInitialized()
+    {
+        _options = AppState.Options;
+    }
 
-		_options = AppState.Options;
-	}
+    private void IncrementSeed() => Parameters.Seed++;
+    private void DecrementSeed()
+    {
+        if (Parameters.Seed > -1)
+            Parameters.Seed--;
+    }
+    private void SetRandomSeed() => Parameters.Seed = -1;
 
-	private void IncrementSeed() => Parameters.Seed++;
-	private void DecrementSeed()
-	{
-		if (Parameters.Seed > -1)
-			Parameters.Seed--;
-	}
-	private void SetRandomSeed() => Parameters.Seed = -1;
+    private void RestoreSeed()
+    {
+        if (AppState.ImagesInfo != null && AppState.ImagesInfo.Seed != null)
+            Parameters.Seed = AppState.ImagesInfo.Seed;
+    }
 
-	private void RestoreSeed()
-	{
-		if(AppState.ImagesInfo != null && AppState.ImagesInfo.Seed != null)
-			Parameters.Seed = AppState.ImagesInfo.Seed;
-	}
-
-	private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;
+    private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;
 
 }

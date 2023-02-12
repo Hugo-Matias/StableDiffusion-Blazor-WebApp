@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -37,6 +38,7 @@ namespace BlazorWebApp.Services
         public List<SamplerModel> Samplers { get; set; }
         public List<PromptStyleModel> Styles { get; set; }
         public List<UpscalerModel> Upscalers { get; set; }
+        public List<Folder>? Folders { get; set; }
         public List<Project>? Projects { get; set; }
         public OptionsModel Options { get; set; }
         public AppSettingsModel Settings { get; set; }
@@ -68,6 +70,9 @@ namespace BlazorWebApp.Services
         public string UpscaleImageData { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
         public bool IsGalleryFiltered { get; set; }
+        public List<CsvTagModel> CsvTags { get; set; }
+        public PromptButtonModel RootButtonTag { get; set; }
+        public List<int> TagAccordionIds { get; set; }
 
         public string? Style1 { get; set; }
         public string? Style2 { get; set; }
@@ -92,8 +97,11 @@ namespace BlazorWebApp.Services
 
             Images = new();
             Progress = new();
+            Folders = new();
             Projects = new();
-            GetProjects();
+            TagAccordionIds = new();
+            GetCsvTags();
+            GetButtonTags();
 
             CreateParameters();
 
@@ -181,10 +189,45 @@ namespace BlazorWebApp.Services
             Upscalers = await _api.GetUpscalers();
         }
 
-        public async Task GetProjects()
+        public async Task GetFolders()
         {
-            Projects = await _db.GetProjects();
+            Folders = await _db.GetFolders();
+        }
+
+        public async Task GetProjects(int folderId = 0)
+        {
+            Projects = await _db.GetProjects(folderId);
             if (Settings.Gallery.GalleriesOrderDescending) Projects.Reverse();
+        }
+
+        public void GetCsvTags(bool readAll = false)
+        {
+            var path = @"E:\Programas\Stable Diffusion\stable-diffusion-webui\extensions\a1111-sd-webui-tagcomplete\tags";
+            if (readAll)
+            {
+                var files = _io.GetFilesFromPath(path);
+                CsvTags = new();
+                if (files == null) return;
+                foreach (var file in files)
+                {
+                    if (file.Extension.ToLower().Contains("csv"))
+                        CsvTags.AddRange(Parser.ParseCsvTags(file.FullName));
+                }
+            }
+            else CsvTags = Parser.ParseCsvTags(path + @"\danbooru.csv");
+        }
+
+        public void GetButtonTags() => RootButtonTag = JsonSerializer.Deserialize<PromptButtonModel>(_io.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+
+        public int GetTagAccordionId()
+        {
+            var id = 0;
+            while (TagAccordionIds.Contains(id))
+            {
+                id = new Random().Next();
+            }
+            TagAccordionIds.Add(id);
+            return id;
         }
 
         public async Task SetCurrentProject(int id)

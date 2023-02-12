@@ -1,4 +1,4 @@
-﻿@inject RandomService RandomService
+﻿@inject AppState AppState
 
 <div class="accordion-item">
 	<h2 class="accordion-header" id="header-@(id)">
@@ -22,7 +22,7 @@
 			{
 				foreach (var tag in Tag.Tags)
 				{
-					<button class="btn btn-outline-primary m-2" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
+					<button class="btn btn-outline-primary m-2" type="button" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
 				}
 			}
 		</div>
@@ -43,7 +43,7 @@
 
 	protected override void OnInitialized()
 	{
-		id = $"accordion-{RandomService.GetRandomId()}";
+		id = $"accordion-{AppState.GetTagAccordionId()}";
 	}
 
 	private void HandleButtonClicked(string tag) => OnButtonClicked.InvokeAsync(tag);

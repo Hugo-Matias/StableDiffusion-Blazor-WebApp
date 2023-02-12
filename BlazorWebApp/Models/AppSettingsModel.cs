@@ -138,7 +138,7 @@ namespace BlazorWebApp.Models
         public int DefaultValue { get; set; } = 50;
         public int Min { get; set; } = 5;
         public int Max { get; set; } = 70;
-        public string Color { get; set; } = "black";
+        public string Color { get; set; } = "#1fbe00";
         public string PointerOutline { get; set; } = "white";
     }
 

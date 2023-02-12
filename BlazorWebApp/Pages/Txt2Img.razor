@@ -5,7 +5,7 @@
 @inject ImageService ImageService
 @implements IDisposable
 
-<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagClicked="PromptTagClicked" OnNegativePromptTagClicked="NegativePromptTagClicked" />
+<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
 
 <div class="row">
     <div class="col">
@@ -30,7 +30,7 @@
 
                     generatedImages.AddRange(AppState.Images.Images);
 
-                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery" ShowNumber=true />
+                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery" IncrementCounter=!(bool)AppState.Options.GridSave />
 
                     <ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
                 }
@@ -57,7 +57,7 @@
                     if (AppState.Progress.CurrentImage != null)
                     {
                         List<string> imageAsList = new List<string> { AppState.Progress.CurrentImage };
-                        <ImageCarousel Images="imageAsList" GalleryId="progress-image" ShowNumber=true />
+                        <ImageCarousel Images="imageAsList" GalleryId="progress-image" />
                     }
                 }
             </div>
@@ -88,9 +88,19 @@
 
     private async void Interrupt() => await SDAPIService.PostInterrupt();
 
-    private void PromptTagClicked(string tag) => Parameters.Prompt += $"{tag}, ";
-
-    private void NegativePromptTagClicked(string tag) => Parameters.NegativePrompt += $"{tag}, ";
+    private void TagAppended(AppendedTagsModel tags, bool isNegativePrompt)
+    {
+        if (isNegativePrompt)
+        {
+            if (tags.IsPrefix) Parameters.NegativePrompt = tags.Tags + (string.IsNullOrEmpty(Parameters.NegativePrompt) ? "" : ", " + Parameters.NegativePrompt);
+            else Parameters.NegativePrompt += (string.IsNullOrEmpty(Parameters.NegativePrompt) ? "" : ", ") + tags.Tags;
+        }
+        else
+        {
+            if (tags.IsPrefix) Parameters.Prompt = tags.Tags + (string.IsNullOrEmpty(Parameters.Prompt) ? "" : ", " + Parameters.Prompt);
+            else Parameters.Prompt += (string.IsNullOrEmpty(Parameters.Prompt) ? "" : ", ") + tags.Tags;
+        }
+    }
 
     public void Dispose() => ImageService.OnChange -= Refresh;
 

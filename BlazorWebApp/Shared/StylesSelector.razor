@@ -1,56 +1,59 @@
 ﻿@implements IDisposable
 @inject AppState AppState
 
-<div class="row">
-	<div class="col-6">
-		<label class="form-label">Style 1</label>
-		<Dropdown ButtonText="@AppState.Style1" Modifier="@(AppState.Style1 == "None" ? "" : "using")" OnSelected="(s) => HandleSelected(s, 1)">
-			<Button>@AppState.Style1</Button>
-			<Items>
-				@foreach (var style in AppState.Styles)
-				{
-					<DropdownItem Text="@style.Name"></DropdownItem>
-				}
-			</Items>
-		</Dropdown>
-	</div>
-	<div class="col-6">
-		<label class="form-label">Style 2</label>
-		<Dropdown ButtonText="@AppState.Style2" Modifier="@(AppState.Style2 == "None" ? "" : "using")" OnSelected="(s) => HandleSelected(s, 2)">
-			<Button>@AppState.Style2</Button>
-			<Items>
-				@foreach (var style in AppState.Styles)
-				{
-					<DropdownItem Text="@style.Name"></DropdownItem>
-				}
-			</Items>
-		</Dropdown>
-	</div>
-</div>
+@if (AppState.Styles != null)
+{
+    <div class="row">
+        <div class="col-6">
+            <label class="form-label">Style 1</label>
+            <Dropdown ButtonText="@AppState.Style1" Modifier="@(AppState.Style1 == "None" ? "" : "using")" OnSelected="(s) => HandleSelected(s, 1)">
+                <Button>@AppState.Style1</Button>
+                <Items>
+                    @foreach (var style in AppState.Styles)
+                    {
+                        <DropdownItem Text="@style.Name"></DropdownItem>
+                    }
+                </Items>
+            </Dropdown>
+        </div>
+        <div class="col-6">
+            <label class="form-label">Style 2</label>
+            <Dropdown ButtonText="@AppState.Style2" Modifier="@(AppState.Style2 == "None" ? "" : "using")" OnSelected="(s) => HandleSelected(s, 2)">
+                <Button>@AppState.Style2</Button>
+                <Items>
+                    @foreach (var style in AppState.Styles)
+                    {
+                        <DropdownItem Text="@style.Name"></DropdownItem>
+                    }
+                </Items>
+            </Dropdown>
+        </div>
+    </div>
+}
 
 @code {
-	protected override void OnInitialized()
-	{
-		base.OnInitialized();
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
 
-		AppState.OnStyleChange += Refresh;
-	}
+        AppState.OnStyleChange += Refresh;
+    }
 
-	private void HandleSelected(string selection, int source)
-	{
-		switch (source)
-		{
-			case 1:
-				AppState.Style1 = selection;
-				break;
+    private void HandleSelected(string selection, int source)
+    {
+        switch (source)
+        {
+            case 1:
+                AppState.Style1 = selection;
+                break;
 
-			case 2:
-				AppState.Style2 = selection;
-				break;
-		}
-	}
+            case 2:
+                AppState.Style2 = selection;
+                break;
+        }
+    }
 
-	void Refresh() => InvokeAsync(StateHasChanged);
+    void Refresh() => InvokeAsync(StateHasChanged);
 
-	public void Dispose() => AppState.OnStyleChange -= Refresh;
+    public void Dispose() => AppState.OnStyleChange -= Refresh;
 }

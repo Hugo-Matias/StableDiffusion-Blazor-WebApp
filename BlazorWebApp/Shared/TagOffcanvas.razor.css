@@ -1,6 +1,83 @@
 ﻿div {
 	--bs-offcanvas-width: 45vw;
 	--bs-offcanvas-color: var(--app-light-4);
-	--bs-offcanvas-bg: var(--app-dark-2);
-	--bs-offcanvas-border-color: var(--app-dark-3);
+	--bs-offcanvas-bg: rgba(0,0,0,0.7);
+	--bs-offcanvas-border-color: var(--app-dark-2);
 }
+
+.offcanvas-header {
+	background: var(--app-dark-1);
+}
+
+/*Autocomplete*/
+::deep .dropdown-menu {
+	--bs-position: end;
+	--bs-dropdown-bg: var(--app-dark-2);
+	--bs-dropdown-border-color: var(--app-dark-3);
+	max-height: 400px;
+	overflow: scroll;
+}
+
+::deep .dropdown-item {
+	--bs-dropdown-link-color: var(--app-dark-5);
+	--bs-dropdown-link-hover-bg: var(--app-dark-3);
+	--bs-dropdown-link-hover-color: var(--app-light-4);
+	--bs-dropdown-link-active-bg: var(--app-blue-5);
+	cursor: pointer;
+	max-height: 2rem;
+}
+
+	::deep .dropdown-item .fa-square {
+		margin-right: 0.5rem;
+	}
+
+	::deep .dropdown-item .fa-check-square {
+		margin-right: 1rem;
+	}
+
+	/*Used for checkbox icon color*/
+	::deep .dropdown-item i {
+		color: var(--app-blue-7);
+	}
+
+::deep .autocomplete-item-content {
+	font-family: 'FiraCode NF';
+}
+
+.badge {
+	display: flex;
+	flex-direction: row;
+	width: fit-content;
+	align-items: center;
+	background-color: var(--app-dark-2);
+	margin-right: 0.5rem;
+	margin-bottom: 0.5rem;
+	padding: 0.3rem 0.7rem;
+	font-size: 0.9rem;
+	font-weight: 400;
+}
+
+	.badge .btn-close {
+		--size: 0.4rem;
+		width: var(--size);
+		height: var(--size);
+		margin-left: 0.2rem;
+	}
+
+		.badge .btn-close:focus {
+			box-shadow: none;
+		}
+
+.btn-weight {
+	padding: 0;
+	margin: 0;
+	margin-right: 0.5rem;
+	background: none;
+	border: none;
+	color: var(--app-dark-5);
+}
+
+	.btn-weight:hover, .btn-weight:focus {
+		color: var(--app-light-5);
+	}
+

@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using HtmlAgilityPack;
 
@@ -11,20 +12,18 @@ namespace BlazorWebApp.Services
         private readonly IOService _io;
         private readonly AppState _app;
         private readonly MagickService _magick;
-        private readonly ParsingService _parser;
         private readonly DatabaseService _db;
         private PeriodicTimer? _timer;
         private SharedParametersModel _parsingParams;
 
         public event Action OnChange;
 
-        public ImageService(SDAPIService api, IOService io, AppState app, MagickService magick, ParsingService parser, DatabaseService db)
+        public ImageService(SDAPIService api, IOService io, AppState app, MagickService magick, DatabaseService db)
         {
             _api = api;
             _io = io;
             _app = app;
             _magick = magick;
-            _parser = parser;
             _db = db;
         }
 
@@ -39,7 +38,7 @@ namespace BlazorWebApp.Services
             switch (mode)
             {
                 case ModeType.Img2Img:
-                    _parsingParams = _parser.ParseParameters(new SharedParametersModel(_app.ParametersImg2Img));
+                    _parsingParams = Parser.ParseParameters(new SharedParametersModel(_app.ParametersImg2Img), _app.Styles, _app.Style1, _app.Style2);
                     var img2imgParams = new Img2ImgParametersModel(_parsingParams);
                     img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                     img2imgParams.Mask = _app.ParametersImg2Img.Mask;
@@ -68,7 +67,7 @@ namespace BlazorWebApp.Services
                     break;
 
                 default:
-                    _parsingParams = _parser.ParseParameters(new SharedParametersModel(_app.ParametersTxt2Img));
+                    _parsingParams = Parser.ParseParameters(new SharedParametersModel(_app.ParametersTxt2Img), _app.Styles, _app.Style1, _app.Style2);
                     var txt2imgParams = new Txt2ImgParametersModel(_parsingParams);
                     if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
                     {
