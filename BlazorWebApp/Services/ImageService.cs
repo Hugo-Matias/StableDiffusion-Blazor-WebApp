@@ -14,7 +14,7 @@ namespace BlazorWebApp.Services
         private readonly MagickService _magick;
         private readonly DatabaseService _db;
         private PeriodicTimer? _timer;
-        private SharedParametersModel _parsingParams;
+        private SharedParameters _parsingParams;
 
         public event Action OnChange;
 
@@ -38,8 +38,8 @@ namespace BlazorWebApp.Services
             switch (mode)
             {
                 case ModeType.Img2Img:
-                    _parsingParams = Parser.ParseParameters(new SharedParametersModel(_app.ParametersImg2Img), _app.Styles, _app.Style1, _app.Style2);
-                    var img2imgParams = new Img2ImgParametersModel(_parsingParams);
+                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.Styles, _app.Style1, _app.Style2);
+                    var img2imgParams = new Img2ImgParameters(_parsingParams);
                     img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                     img2imgParams.Mask = _app.ParametersImg2Img.Mask;
                     img2imgParams.MaskBlur = _app.ParametersImg2Img.MaskBlur;
@@ -67,8 +67,8 @@ namespace BlazorWebApp.Services
                     break;
 
                 default:
-                    _parsingParams = Parser.ParseParameters(new SharedParametersModel(_app.ParametersTxt2Img), _app.Styles, _app.Style1, _app.Style2);
-                    var txt2imgParams = new Txt2ImgParametersModel(_parsingParams);
+                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.Styles, _app.Style1, _app.Style2);
+                    var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                     if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
                     {
                         txt2imgParams.FirstphaseWidth = _app.ParametersTxt2Img.FirstphaseWidth;

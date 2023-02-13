@@ -1,9 +1,7 @@
-using Blazorise;
-using Blazorise.Bootstrap5;
-using Blazorise.Icons.FontAwesome;
 using BlazorWebApp.Data;
 using BlazorWebApp.Services;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var maxBufferSize = 100 * 1024 * 1024;
@@ -12,7 +10,7 @@ var maxBufferSize = 100 * 1024 * 1024;
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor().AddHubOptions(opt => { opt.MaximumReceiveMessageSize = maxBufferSize; });
 
-builder.Services.AddBlazorise(opt => { opt.Immediate = true; }).AddBootstrap5Providers().AddFontAwesomeIcons();
+builder.Services.AddMudServices();
 
 builder.Services.AddHttpClient<SDAPIService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => opt.UseSqlite("Data Source=BlazorWebApp.db"));

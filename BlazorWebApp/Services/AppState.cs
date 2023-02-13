@@ -29,22 +29,22 @@ namespace BlazorWebApp.Services
         public event Func<Task> OnProjectChangeTask;
         public event Action OnStateHasChanged;
 
-        public GeneratedImagesModel Images { get; set; }
-        public GeneratedImagesInfoModel ImagesInfo { get; set; }
+        public GeneratedImages Images { get; set; }
+        public GeneratedImagesInfo ImagesInfo { get; set; }
         public ImagesDto GeneratedImageEntities { get; set; }
         public string? GridImage { get; set; }
-        public ProgressModel Progress { get; set; }
-        public List<SDModelModel> SDModels { get; set; }
-        public List<SamplerModel> Samplers { get; set; }
-        public List<PromptStyleModel> Styles { get; set; }
-        public List<UpscalerModel> Upscalers { get; set; }
+        public Progress Progress { get; set; }
+        public List<SDModel> SDModels { get; set; }
+        public List<Models.Sampler> Samplers { get; set; }
+        public List<PromptStyle> Styles { get; set; }
+        public List<Upscaler> Upscalers { get; set; }
         public List<Folder>? Folders { get; set; }
         public List<Project>? Projects { get; set; }
-        public OptionsModel Options { get; set; }
-        public AppSettingsModel Settings { get; set; }
-        public Txt2ImgParametersModel ParametersTxt2Img { get; set; }
-        public Img2ImgParametersModel ParametersImg2Img { get; set; }
-        public UpscaleParametersModel ParametersUpscale { get; set; }
+        public Options Options { get; set; }
+        public AppSettings Settings { get; set; }
+        public Txt2ImgParameters ParametersTxt2Img { get; set; }
+        public Img2ImgParameters ParametersImg2Img { get; set; }
+        public UpscaleParameters ParametersUpscale { get; set; }
         public long? CurrentSeed { get; set; }
         public int CurrentFolderId { get; set; }
         public string CurrentFolderName { get; set; }
@@ -72,8 +72,8 @@ namespace BlazorWebApp.Services
         public string UpscaleImageData { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
         public bool IsGalleryFiltered { get; set; }
-        public List<CsvTagModel> CsvTags { get; set; }
-        public PromptButtonModel RootButtonTag { get; set; }
+        public List<CsvTag> CsvTags { get; set; }
+        public PromptButton RootButtonTag { get; set; }
         public List<int> TagAccordionIds { get; set; }
 
         public string? Style1 { get; set; }
@@ -112,7 +112,7 @@ namespace BlazorWebApp.Services
 
         private void CreateParameters()
         {
-            var defaultParameters = new SharedParametersModel()
+            var defaultParameters = new SharedParameters()
             {
                 Steps = Settings.Shared.Steps.DefaultValue,
                 SamplerIndex = Settings.Shared.Sampler,
@@ -127,14 +127,14 @@ namespace BlazorWebApp.Services
                 Tiling = Settings.Shared.Tilling,
             };
 
-            ParametersTxt2Img = new Txt2ImgParametersModel(defaultParameters)
+            ParametersTxt2Img = new Txt2ImgParameters(defaultParameters)
             {
                 EnableHR = Settings.Txt2Img.HighRes.Enabled,
                 FirstphaseWidth = Settings.Txt2Img.HighRes.FirstPass.Width,
                 FirstphaseHeight = Settings.Txt2Img.HighRes.FirstPass.Height,
             };
 
-            ParametersImg2Img = new Img2ImgParametersModel(defaultParameters)
+            ParametersImg2Img = new Img2ImgParameters(defaultParameters)
             {
                 MaskBlur = Settings.Img2Img.MaskBlurSettings.DefaultValue,
                 ResizeMode = Settings.Img2Img.ResizeMode,
@@ -144,7 +144,7 @@ namespace BlazorWebApp.Services
                 InpaintingMaskInvert = Settings.Img2Img.Inpainting.MaskInvert,
             };
 
-            ParametersUpscale = new UpscaleParametersModel(defaultParameters)
+            ParametersUpscale = new UpscaleParameters(defaultParameters)
             {
                 ResizeMode = Settings.Upscale.ResizeMode,
                 ShowResults = Settings.Upscale.ShowResults,
@@ -218,7 +218,7 @@ namespace BlazorWebApp.Services
             else CsvTags = Parser.ParseCsvTags(path + @"\danbooru.csv");
         }
 
-        public void GetButtonTags() => RootButtonTag = JsonSerializer.Deserialize<PromptButtonModel>(_io.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+        public void GetButtonTags() => RootButtonTag = JsonSerializer.Deserialize<PromptButton>(_io.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
 
         public int GetTagAccordionId()
         {
@@ -344,9 +344,9 @@ namespace BlazorWebApp.Services
             return string.Empty;
         }
 
-        public async Task<string> PostOptions(OptionsModel options) => await _api.PostOptions(options);
+        public async Task<string> PostOptions(Options options) => await _api.PostOptions(options);
 
-        public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfoModel>(Images.Info);
+        public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
 
         public void InvokeStateHasChanged() => OnStateHasChanged?.Invoke();
 
@@ -357,7 +357,7 @@ namespace BlazorWebApp.Services
             if (json != null)
             {
                 Settings = new();
-                Settings = JsonSerializer.Deserialize<AppSettingsModel>(json);
+                Settings = JsonSerializer.Deserialize<AppSettings>(json);
                 SaveSettings();
             }
             else { Settings = new(); SaveSettings(); }

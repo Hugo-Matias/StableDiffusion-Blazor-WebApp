@@ -1,0 +1,163 @@
+﻿@inject AppState AppState
+@inject DatabaseService DB
+@inject JavascriptService JS
+
+<div class="card p-3 mb-3">
+    @if (AppState.Projects != null && AppState.Projects.Count > 0)
+    {
+        <div class="projects-container row">
+            @foreach (var project in AppState.Projects)
+            {
+                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
+            }
+        </div>
+        <div class="gallery-settings row">
+            <div class="col-5">
+                <label for="search-prompt" class="form-label">Search Prompt:</label>
+                <input type="text" class="form-control" id="search-prompt" @bind-value="AppState.Settings.Gallery.SearchPrompt" />
+                <label for="search-negative-prompt" class="form-label mt-2">Search Negative Prompt:</label>
+                <input type="text" class="form-control" id="search-negative-prompt" @bind-value="AppState.Settings.Gallery.SearchNegativePrompt" />
+            </div>
+            <div class="col-3">
+                <label class="form-label">Filters:</label>
+                <input type="checkbox" class="btn-check" id="is-favorite" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsFavoritesOnly" checked="@AppState.Settings.Gallery.IsFavoritesOnly" />
+                <label class="btn btn-outline-secondary expand-btn" for="is-favorite">Favorites Only</label>
+                <label class="form-label mt-3">Modes:</label>
+                <div class="d-flex flex-row w-auto justify-content-between">
+                    <input type="checkbox" class="btn-check" id="mode-txt" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeTxt2Img" checked="@AppState.Settings.Gallery.IsModeTxt2Img" />
+                    <label class="btn btn-outline-secondary px-3" for="mode-txt">Txt2Img</label>
+                    <input type="checkbox" class="btn-check" id="mode-img" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeImg2Img" checked="@AppState.Settings.Gallery.IsModeImg2Img" />
+                    <label class="btn btn-outline-secondary px-3" for="mode-img">Img2Img</label>
+                    <input type="checkbox" class="btn-check" id="mode-upscale" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeUpscale" checked="@AppState.Settings.Gallery.IsModeUpscale" />
+                    <label class="btn btn-outline-secondary px-3" for="mode-upscale">Upscale</label>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label">Order By:</label>
+                        <Dropdown ButtonText="@AppState.Settings.Gallery.OrderBy.ToString()" ButtonId="order-by" OnSelected="HandleOrderBySelected">
+                            <Button>@AppState.Settings.Gallery.OrderBy</Button>
+                            <Items>
+                                @foreach (var order in Enum.GetValues(typeof(GalleryOrderBy)))
+                                {
+                                    <DropdownItem Text="@order.ToString()" />
+                                }
+                            </Items>
+                        </Dropdown>
+                        <button class="btn btn-outline-warning w-100 mt-2 py-3" @onclick="async () => await OnFilterImages.InvokeAsync()">Filter</button>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Order Direction:</label>
+                        <input type="checkbox" class="btn-check" id="order-direction" autocomplete="off" @bind-value="@AppState.Settings.Gallery.OrderDescending" checked="@AppState.Settings.Gallery.OrderDescending" />
+                        <label class="btn btn-outline-secondary expand-btn" for="order-direction">@(AppState.Settings.Gallery.OrderDescending ? "Descending" : "Ascending")</label>
+                        <button class="btn btn-outline-danger w-100 mt-2 py-3" @onclick="async () => await OnResetFilters.InvokeAsync()">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Delete Project Confirmation Modal -->
+<ConfirmationDialogModal Id="delete-project-modal" Title="Delete Project" OkButton="Yes" CancelButton="No" OnConfirm="DeleteProject">
+    <span class="lead">Are you sure you want to <strong class="text-danger">delete</strong> this project?<br /></span>
+    <small>This action is irreversible!</small>
+</ConfirmationDialogModal>
+
+<!-- Rename Project Modal -->
+@if (_editedProject != null)
+{
+    <div class="modal fade" id="edit-project-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5">Rename Project</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form class="modal-body">
+                    <label for="folder" class="form-label">Folder:</label>
+                    <Dropdown OnSelected="HandleFolderSelected" ButtonText="@AppState.CurrentFolderName" ButtonId="edit-modal-folder-dropdown">
+                        <Button>@AppState.CurrentFolderName</Button>
+                        <Items>
+                            <button type="button">Add New Folder...</button>
+                            @foreach (var folder in AppState.Folders!)
+                            {
+                                <DropdownItem Text="@folder.Name" />
+                            }
+                        </Items>
+                    </Dropdown>
+                    <label for="rename-input" class="form-label">Name:</label>
+                    <input class="form-control" @bind="_editedProject.Name" @bind:event="oninput" placeholder="New name for this project" id="rename-input" required />
+                </form>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-outline-primary" @onclick="EditProject" disabled="@string.IsNullOrWhiteSpace(_editedProject.Name)">Ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public EventCallback OnFilterImages { get; set; }
+    [Parameter]
+    public EventCallback OnResetFilters { get; set; }
+
+    int _deleteProjectId;
+    int _editedProjectId;
+    Project _editedProject;
+
+    private async Task HandleProjectSelected(int projectId)
+    {
+        await AppState.SetCurrentProject(projectId);
+        StateHasChanged();
+    }
+
+    private async Task HandleFolderSelected(string folderName)
+    {
+        var folder = AppState.Folders.FirstOrDefault(f => f.Name == folderName);
+        if (folder != null) _editedProject.FolderId = folder.Id;
+    }
+
+    private async Task ShowDeleteProjectModal(int projectId)
+    {
+        _deleteProjectId = projectId;
+        await JS.RunScript("ShowModal", "#delete-project-modal");
+    }
+
+    private async Task ShowEditProjectModal(int projectId)
+    {
+        _editedProjectId = projectId;
+        _editedProject = AppState.Projects.FirstOrDefault(p => p.Id == projectId);
+        await JS.RunScript("ShowModal", "#edit-project-modal");
+    }
+
+    private async Task EditProject()
+    {
+        //await DB.RenameProject(_editedProjectId, _editedProject);
+        await JS.RunScript("HideModal", "#edit-project-modal");
+        // Re-sets current project to refresh the relevant ui components
+        await AppState.SetCurrentProject(AppState.CurrentProjectId);
+        _editedProjectId = 0;
+        _editedProject = new();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DeleteProject()
+    {
+        var firstProject = await DB.DeleteProject(_deleteProjectId);
+        _deleteProjectId = 0;
+        await AppState.GetProjects();
+        if (firstProject != null)
+            await AppState.SetCurrentProject(firstProject.Id);
+        else
+            await AppState.SetCurrentProject(0);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleOrderBySelected(string selection) => AppState.Settings.Gallery.OrderBy = (GalleryOrderBy)Enum.Parse(typeof(GalleryOrderBy), selection, true);
+
+    private void HandleOrderDirectionSelected(string selection) => AppState.Settings.Gallery.OrderDescending = selection == "Descending";
+}

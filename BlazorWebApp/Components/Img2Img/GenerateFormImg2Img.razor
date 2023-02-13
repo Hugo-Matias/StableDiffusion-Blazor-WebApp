@@ -1,0 +1,214 @@
+﻿@inject AppState AppState
+
+<EditForm Model="@Parameters" class="w-100">
+	<div class="generate-form card p-4 col mb-3">
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="img-mode">Mode</label>
+				<InputRadioGroup id="img-mode" @bind-Value="@AppState.Settings.Img2Img.Mode">
+					<div class="row">
+						@foreach (var mode in _modes)
+						{
+							<div class="col-6 px-1 from-check">
+								<InputRadio Value="mode" id=@($"mode-{mode}") class="btn-check" />
+								<label class="btn btn-outline-secondary expand-btn" for=@($"mode-{mode}")>@mode</label>
+							</div>
+						}
+					</div>
+				</InputRadioGroup>
+			</div>
+			<div class="col-3 d-flex flex-column px-3">
+				<button @onclick="OnSet" class="btn btn-outline-secondary mb-1" type="button"><span class="fa-regular fa-file-image me-2" />Set</button>
+				<button @onclick="OnDelete" class="btn btn-outline-secondary mt-1" type="button"><span class="fa-solid fa-trash-can me-2" />Delete</button>
+			</div>
+			<div class="col-3 d-flex flex-column px-3">
+				<button @onclick="OnClear" class="btn btn-outline-secondary mb-1" type="button"><span class="fa-solid fa-fill-drip me-2" />Clear</button>
+				<button @onclick="OnUndo" class="btn btn-outline-secondary mt-1" type="button"><span class="fa-solid fa-spray-can me-2" />Undo</button>
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-4">
+				<label class="form-label" for="mask-blur">Mask Blur: <strong class="ms-2">@Parameters.MaskBlur</strong></label>
+				<input type="range" class="form-range" id="mask-blur" @bind-value="@Parameters.MaskBlur" @bind-value:event="oninput" min="@AppState.Settings.Img2Img.MaskBlurSettings.Min" max="@AppState.Settings.Img2Img.MaskBlurSettings.Max" step="@AppState.Settings.Img2Img.MaskBlurSettings.Step" />
+			</div>
+			<div class="col-4">
+				<label class="form-label" for="brush-size">Brush Size: <strong class="ms-2">@AppState.CurrentBrushSize</strong></label>
+				<input type="range" id="brush-size" class="form-range" @bind-value="@AppState.CurrentBrushSize" @bind-value:event="oninput" min="@AppState.Settings.Img2Img.BrushSetttings.Min" max="@AppState.Settings.Img2Img.BrushSetttings.Max" step="1" />
+			</div>
+			<div class="col-4">
+				<label class="form-label" for="brush-color">Brush Color</label>
+				<input type="color" id="brush-size" class="form-control form-control-color w-100" @bind-value="@AppState.CurrentBrushColor" @bind-value:event="oninput" />
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="resize-mode">Resize Mode</label> <br />
+				<Dropdown ButtonText="@Parser.ParseResizeModeValue(Parameters.ResizeMode)" OnSelected="ResizeModeSelected">
+					<Button>
+						@Parser.ParseResizeModeValue(Parameters.ResizeMode)
+					</Button>
+					<Items>
+						@for (var i = 0; i <= 2; i++)
+						{
+							var text = Parser.ParseResizeModeValue(i);
+							<DropdownItem Text="@text" />
+						}
+					</Items>
+				</Dropdown>
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="inpaint-fill">Fill Mode</label> <br />
+				<Dropdown ButtonText="@Parser.ParseInpaintingFillValue(Parameters.InpaintingFill)" OnSelected="InpaintFillSelected">
+					<Button>
+						@Parser.ParseInpaintingFillValue(Parameters.InpaintingFill)
+					</Button>
+					<Items>
+						@for (var i = 0; i <= 3; i++)
+						{
+							var text = Parser.ParseInpaintingFillValue(i);
+							<DropdownItem Text="@text" />
+						}
+					</Items>
+				</Dropdown>
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label px-1" for="inpainting">Inpainting</label><br/>
+				<input type="checkbox" class="btn-check" id="inpaint-full-res" autocomplete="off" @bind-value="@Parameters.InpaintFullRes" checked="@Parameters.InpaintFullRes" />
+				<label class="btn btn-outline-secondary me-2" for="inpaint-full-res">Full Res</label>
+				<input type="checkbox" class="btn-check" id="invert-mask" autocomplete="off" @bind-value="@Parameters.InpaintingMaskInvert" checked="@(Parameters.InpaintingMaskInvert == 1 ? true : false)" />
+				<label class="btn btn-outline-secondary" for="invert-mask">Invert Mask</label>
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="full-res-padding">Full Res Padding: <strong class="ms-2">@Parameters.InpaintFullResPadding</strong></label>
+				<input type="range" class="form-range" id="full-res-padding" @bind-value="@Parameters.InpaintFullResPadding" @bind-value:event="oninput" min="@AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Min" max="@AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Max" step="@AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Step" />
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-8">
+				<label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
+				<input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.Shared.Steps.Min" max="@AppState.Settings.Shared.Steps.Max" step="@AppState.Settings.Shared.Steps.Step" />
+			</div>
+			<div class="col-4">
+				<label class="form-label" for="samplerGroup">Sampler</label> <br />
+				<Dropdown ButtonText="@Parameters.SamplerIndex" OnSelected="SamplerSelected">
+					<Button>
+						@Parameters.SamplerIndex
+					</Button>
+					<Items>
+						@foreach (var sampler in AppState.Samplers)
+						{
+							<DropdownItem Text="@sampler.Name" />
+						}
+					</Items>
+				</Dropdown>
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="cfg-scale">CFG Scale: <strong class="ms-2">@Parameters.CfgScale</strong></label>
+				<input type="range" class="form-range" id="cfg-scale" @bind-value="Parameters.CfgScale" @bind-value:event="oninput" min="@AppState.Settings.Shared.CfgScale.Min" max="@AppState.Settings.Shared.CfgScale.Max" step="@AppState.Settings.Shared.CfgScale.Step" />
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="denoising-strength">Denoising Strength: <strong class="ms-2">@Parameters.DenoisingStrength</strong></label>
+				<input type="range" class="form-range" id="denoising-strength" @bind-value="Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.Shared.Denoising.Min" max="@AppState.Settings.Shared.Denoising.Max" step="@AppState.Settings.Shared.Denoising.Step" />
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="width">Width: <strong class="ms-2">@Parameters.Width</strong></label>
+				<input type="range" class="form-range" id="width" @bind-value="@Parameters.Width" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="height">Height: <strong class="ms-2">@Parameters.Height</strong></label>
+				<input type="range" class="form-range" id="height" @bind-value="@Parameters.Height" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="batch-count">Batch Count: <strong class="ms-2">@Parameters.NIter</strong></label>
+				<input type="range" class="form-range" id="batch-count" @bind-value="@Parameters.NIter" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Count.Min" max="@AppState.Settings.Shared.Batch.Count.Max" step="@AppState.Settings.Shared.Batch.Count.Step" />
+			</div>
+			<div class="col-6">
+				<label class="form-label" for="batch-size">Batch Size: <strong class="ms-2">@Parameters.BatchSize</strong></label>
+				<input type="range" class="form-range" id="batch-size" @bind-value="@Parameters.BatchSize" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Size.Min" max="@AppState.Settings.Shared.Batch.Size.Max" step="@AppState.Settings.Shared.Batch.Size.Step" />
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<label class="form-label" for="seed">Seed</label>
+				<div class="row me-0">
+					<div class="col-8 pe-0">
+						<div class="input-group">
+							<button type="button" class="btn btn-outline-secondary" @onclick="DecrementSeed"><span class="fa-solid fa-minus"></span></button>
+							<input type="number" class="form-control" style="font-size:@(Parameters.Seed < 999999999 ? "1rem" : "0.7rem")" id="seed" min="-1" @bind-value="@Parameters.Seed" @bind-value:event="oninput" />
+							<button type="button" class="btn btn-outline-secondary" @onclick="IncrementSeed"><span class="fa-solid fa-plus"></span></button>
+						</div>
+					</div>
+					<div class="col-2">
+						<button type="button" class="btn btn-outline-secondary" @onclick="SetRandomSeed"><span class="fa-solid fa-shuffle"></span></button>
+					</div>
+					<div class="col-2">
+						<button type="button" class="btn btn-outline-secondary" @onclick="RestoreSeed"><span class="fa-solid fa-rotate-left"></span></button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="row mb-3">
+			<div class="col-6">
+				<input type="checkbox" class="btn-check" id="restore-faces" autocomplete="off" @bind-value="@Parameters.RestoreFaces" checked="@Parameters.RestoreFaces" />
+				<label class="btn btn-outline-secondary expand-btn" for="restore-faces">Restore Faces</label>
+			</div>
+			<div class="col-6">
+				<input type="checkbox" class="btn-check" id="tiling" autocomplete="off" @bind-value="@Parameters.Tiling" checked="@Parameters.Tiling" />
+				<label class="btn btn-outline-secondary expand-btn" for="tiling">Tiling</label>
+			</div>
+		</div>
+	</div>
+</EditForm>
+
+@code {
+	[Parameter, EditorRequired]
+	public Img2ImgParameters Parameters { get; set; }
+
+	[Parameter, EditorRequired]
+	public EventCallback OnSet { get; set; }
+	[Parameter, EditorRequired]
+	public EventCallback OnDelete { get; set; }
+	[Parameter, EditorRequired]
+	public EventCallback OnClear { get; set; }
+	[Parameter, EditorRequired]
+	public EventCallback OnUndo { get; set; }
+
+	private Options _options;
+	private List<string> _modes = new List<string>() { "Inpaint", "Mask" };
+
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+
+		_options = AppState.Options;
+	}
+
+	private void ResizeModeSelected(string selection) => Parameters.ResizeMode = Parser.ParseResizeModeSelection(selection);
+
+	private void InpaintFillSelected(string selection) => Parameters.InpaintingFill = Parser.ParseInpaintingFillSelection(selection);
+
+	private void IncrementSeed() => Parameters.Seed++;
+	private void DecrementSeed()
+	{
+		if (Parameters.Seed > -1)
+			Parameters.Seed--;
+	}
+	private void SetRandomSeed() => Parameters.Seed = -1;
+
+	private void RestoreSeed()
+	{
+		if (AppState.ImagesInfo != null && AppState.ImagesInfo.Seed != null)
+			Parameters.Seed = AppState.ImagesInfo.Seed;
+	}
+
+	private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;
+
+}

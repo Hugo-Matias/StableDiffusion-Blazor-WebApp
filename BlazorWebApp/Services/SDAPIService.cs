@@ -21,19 +21,19 @@ namespace BlazorWebApp.Services
 			_jsonIgnoreNull = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 		}
 
-		public async Task<List<SDModelModel>> GetSDModels() => await _httpClient.GetFromJsonAsync<List<SDModelModel>>("sd-models");
+		public async Task<List<SDModel>> GetSDModels() => await _httpClient.GetFromJsonAsync<List<SDModel>>("sd-models");
 
-		public async Task<List<SamplerModel>> GetSamplers() => await _httpClient.GetFromJsonAsync<List<SamplerModel>>("samplers");
+		public async Task<List<Sampler>> GetSamplers() => await _httpClient.GetFromJsonAsync<List<Sampler>>("samplers");
 
-		public async Task<List<PromptStyleModel>> GetStyles() => await _httpClient.GetFromJsonAsync<List<PromptStyleModel>>("prompt-styles");
+		public async Task<List<PromptStyle>> GetStyles() => await _httpClient.GetFromJsonAsync<List<PromptStyle>>("prompt-styles");
 
-		public async Task<List<UpscalerModel>> GetUpscalers() => await _httpClient.GetFromJsonAsync<List<UpscalerModel>>("upscalers");
+		public async Task<List<Upscaler>> GetUpscalers() => await _httpClient.GetFromJsonAsync<List<Upscaler>>("upscalers");
 
-		public async Task<ProgressModel> GetProgress() => await _httpClient.GetFromJsonAsync<ProgressModel>("progress");
+		public async Task<Progress> GetProgress() => await _httpClient.GetFromJsonAsync<Progress>("progress");
 
-		public async Task<OptionsModel> GetOptions() => await _httpClient.GetFromJsonAsync<OptionsModel>("options");
+		public async Task<Options> GetOptions() => await _httpClient.GetFromJsonAsync<Options>("options");
 
-		public async Task<string> PostOptions(OptionsModel options)
+		public async Task<string> PostOptions(Options options)
 		{
 			using var response = await _httpClient.PostAsJsonAsync("options", options, _jsonIgnoreNull);
 
@@ -46,25 +46,25 @@ namespace BlazorWebApp.Services
 			return await response.Content.ReadAsStringAsync();
 		}
 
-		public async Task<GeneratedImagesModel> PostTxt2Img(Txt2ImgParametersModel param)
+		public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters param)
 		{
 			using var response = await _httpClient.PostAsJsonAsync("txt2img", param, _jsonIgnoreNull);
 
 			response.EnsureSuccessStatusCode();
 
-			return await response.Content.ReadFromJsonAsync<GeneratedImagesModel>();
+			return await response.Content.ReadFromJsonAsync<GeneratedImages>();
 		}
 
-		public async Task<GeneratedImagesModel> PostImg2Img(Img2ImgParametersModel param)
+		public async Task<GeneratedImages> PostImg2Img(Img2ImgParameters param)
 		{
 			using var response = await _httpClient.PostAsJsonAsync("img2img", param, _jsonIgnoreNull);
 
 			response.EnsureSuccessStatusCode();
 
-			return await response.Content.ReadFromJsonAsync<GeneratedImagesModel>();
+			return await response.Content.ReadFromJsonAsync<GeneratedImages>();
 		}
 
-		public async Task<UpscaledImageDto> PostExtraSingle(UpscaleParametersModel param)
+		public async Task<UpscaledImageDto> PostExtraSingle(UpscaleParameters param)
 		{
 			using var response = await _httpClient.PostAsJsonAsync("extra-single-image", param, _jsonIgnoreNull);
 			response.EnsureSuccessStatusCode();

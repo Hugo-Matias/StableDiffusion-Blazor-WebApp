@@ -27,14 +27,14 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public async Task<List<ImageInfoModel>?> GetImagesFromPath(string path)
+        public async Task<List<ImageInfo>?> GetImagesFromPath(string path)
         {
             if (!Directory.Exists(path)) return null;
 
             var files = GetFilesFromPath(path);
-            var images = new List<ImageInfoModel>();
+            var images = new List<ImageInfo>();
             var currentFileName = string.Empty;
-            ImageInfoModel currentImage = null;
+            ImageInfo currentImage = null;
 
             foreach (var file in files)
             {

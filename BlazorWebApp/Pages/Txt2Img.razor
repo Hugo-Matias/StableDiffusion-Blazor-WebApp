@@ -44,7 +44,7 @@
             <div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
                 @if (AppState.Progress.State != null)
                 {
-                    var value = AppState.Progress.Progress;
+                    var value = AppState.Progress.Value;
                     <ProgressBar Value="@value" MaxValue=1>
                         <Compact>
                             <span><strong>@(Convert.ToInt32(value * 100))%</strong></span>
@@ -66,8 +66,8 @@
 </div>
 
 @code {
-    public Txt2ImgParametersModel Parameters { get; set; }
-    public SharedParametersModel SharedParameters { get; set; }
+    public Txt2ImgParameters Parameters { get; set; }
+    public SharedParameters SharedParameters { get; set; }
 
     protected override void OnInitialized()
     {
@@ -88,7 +88,7 @@
 
     private async void Interrupt() => await SDAPIService.PostInterrupt();
 
-    private void TagAppended(AppendedTagsModel tags, bool isNegativePrompt)
+    private void TagAppended(AppendedTags tags, bool isNegativePrompt)
     {
         if (isNegativePrompt)
         {

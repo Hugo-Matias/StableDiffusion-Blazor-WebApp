@@ -7,7 +7,7 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
-        public static SharedParametersModel ParseParameters(this SharedParametersModel param, List<PromptStyleModel> styles, string style1 = null, string style2 = null)
+        public static SharedParameters ParseParameters(this SharedParameters param, List<PromptStyle> styles, string style1 = null, string style2 = null)
         {
             if (style1 != "None" || style2 != "None")
             {
@@ -17,7 +17,7 @@ namespace BlazorWebApp.Extensions
             return param;
         }
 
-        private static void ParsePromptStyles(this SharedParametersModel param, List<PromptStyleModel> styles, string style1, string style2)
+        private static void ParsePromptStyles(this SharedParameters param, List<PromptStyle> styles, string style1, string style2)
         {
             foreach (var style in styles)
             {
@@ -39,7 +39,7 @@ namespace BlazorWebApp.Extensions
             return $"{prompt}{style}";
         }
 
-        public static ImageInfoModel ParseImageInfoString(this ImageInfoModel image)
+        public static ImageInfo ParseImageInfoString(this ImageInfo image)
         {
             foreach (var line in image.InfoString)
             {
@@ -56,7 +56,7 @@ namespace BlazorWebApp.Extensions
             return image;
         }
 
-        public static ImageInfoModel ParseImageInfoParameters(this ImageInfoModel image, string info)
+        public static ImageInfo ParseImageInfoParameters(this ImageInfo image, string info)
         {
             image.Steps = int.Parse(Regex.Match(info, @"(Steps: )(\d+)").Groups[2].Value);
             image.Sampler = Regex.Match(info, @"(Sampler: )(.+?),").Groups[2].Value;
@@ -125,12 +125,12 @@ namespace BlazorWebApp.Extensions
             }
         }
 
-        public static List<CsvTagModel> ParseCsvTags(this string path)
+        public static List<CsvTag> ParseCsvTags(this string path)
         {
             var schema = Schema.Parse("Name,Color,Uses,Aliases");
             var opts = new CsvDataReaderOptions() { Schema = new CsvSchema(schema), HasHeaders = false };
             using var reader = CsvDataReader.Create(path, opts);
-            var tags = reader.GetRecords<CsvTagModel>().ToList();
+            var tags = reader.GetRecords<CsvTag>().ToList();
             for (int i = 0; i < tags.Count; i++)
             {
                 tags[i].Name = tags[i].Name.Replace("_", " ");

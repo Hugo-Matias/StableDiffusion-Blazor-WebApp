@@ -6,7 +6,7 @@ namespace BlazorWebApp.Services
     //https://www.codeproject.com/Articles/5322875/A-Blazor-Bootstrap-Toaster
     public class ToasterService : IDisposable
     {
-        private readonly List<ToastModel> _toasts = new();
+        private readonly List<Toast> _toasts = new();
         private System.Timers.Timer _timer = new();
 
         public event EventHandler? OnToasterChanged;
@@ -41,20 +41,20 @@ namespace BlazorWebApp.Services
             _timer.Start();
         }
 
-        public List<ToastModel> GetToasts()
+        public List<Toast> GetToasts()
         {
             ClearBurntToast();
             return _toasts;
         }
 
-        public void AddToast(ToastModel toast)
+        public void AddToast(Toast toast)
         {
             _toasts.Add(toast);
             // Only raise the OnToasterChanged event if it hasn't already been raised by ClearBurnToast()
             if (!ClearBurntToast()) OnToasterChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        public void ClearToast(ToastModel toast)
+        public void ClearToast(Toast toast)
         {
             if (_toasts.Contains(toast))
             {

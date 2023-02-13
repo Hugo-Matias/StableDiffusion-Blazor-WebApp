@@ -282,7 +282,7 @@ namespace BlazorWebApp.Services
                 {
                     var currentSampler = context.Samplers.SingleOrDefault(s => s.Name == sampler.Name);
                     if (currentSampler == null)
-                        await context.Samplers.AddAsync(new Sampler { Name = sampler.Name });
+                        await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = sampler.Name });
                 }
             await context.SaveChangesAsync();
         }

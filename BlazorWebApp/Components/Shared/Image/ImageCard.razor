@@ -1,0 +1,150 @@
+﻿@using System.Diagnostics;
+@inject AppState AppState
+@inject DatabaseService DB
+@inject IOService IO
+@inject ToasterService Toaster
+
+<div class="card m-1">
+    <div class="card-body p-1 pt-2">
+        @if (Image.ModeId != 3)
+        {
+            <span class="sampler-badge rounded-pill" style="@(SetSamplerBadgeColor().Result) border: 2px solid var(--app-dark-1);">@(DB.GetSampler(Image.SamplerId).Result)</span>
+        }
+        <span class="favorite-icon @(Image.Favorite ? "active" : "")"><span class="fa-solid fa-star"></span></span>
+        <img src="data:image/png;base64,@ImageData" class="card-img mb-3" alt="image">
+        <h1>
+            @if (Image.ModeId != 3)
+            {
+                <span class="fa-solid fa-seedling" />
+                <strong>@Image.Seed</strong>
+                <br />
+                <span class="fa-solid fa-stairs" /> @Image.Steps
+                <span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale
+                @if (Image.DenoisingStrength != null)
+                {
+                    <span class="ms-2">|</span>
+                    <span class="fa-solid fa-braille" /> @Image.DenoisingStrength
+                }
+            }
+            else
+            {
+                <strong>Upscaled</strong>
+                <br />
+                <span class="fa-solid fa-arrows-left-right" /> @($"{Image.Width} px")
+                <span class="ms-2">|</span> <span class="fa-solid fa-arrows-up-down" /> @($"{Image.Height} px")
+            }
+        </h1>
+        <div class="text-card">
+            @if (Image.ModeId != 3)
+            {
+                <h2 class="lead">@Image.Prompt</h2>
+                <h3 class="lead">@Image.NegativePrompt</h3>
+            }
+            else
+            {
+                <h2 class="lead">@(IO.LoadText(Image.InfoPath))</h2>
+            }
+        </div>
+        <div class="row btn-container">
+            <div class="col-6">
+                <button @onclick="LoadParameters" class="btn btn-load"><span class="btn-icon fa-solid fa-pen-to-square"></span>Load</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-favorite" @onclick="ToggleFavorite"><span class="btn-icon fa-solid fa-star"></span>Favorite</button>
+            </div>
+            <div class="col-6">
+                <button data-bs-toggle="modal" data-bs-target="#@Target" class="btn btn-show" @onclick="@(() => OnSelectImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-expand"></span>Show</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-cover" @onclick="SetProjectCover"><span class="btn-icon fa-solid fa-image-portrait"></span>Cover</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-open" @onclick="OpenFileInExplorer"><span class="btn-icon fa-regular fa-folder-open"></span>File</button>
+            </div>
+            <div class="col-6">
+                <button class="btn btn-delete" @onclick="@(() => OnDeleteImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-trash-can"></span>Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Image Image { get; set; }
+    [Parameter]
+    public string ImageData { get; set; }
+    [Parameter]
+    public string Target { get; set; }
+    [Parameter]
+    public EventCallback<Image> OnSelectImage { get; set; }
+    [Parameter]
+    public EventCallback<Image> OnDeleteImage { get; set; }
+    [Parameter]
+    public EventCallback OnCoverChanged { get; set; }
+
+    private async Task LoadParameters()
+    {
+        await AppState.LoadImageInfoParameters(Image);
+    }
+
+    private async Task ToggleFavorite()
+    {
+        Image.Favorite = !Image.Favorite;
+        await DB.UpdateImage(Image);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path}");
+
+    private async Task SetProjectCover()
+    {
+        await DB.SetProjectCover(AppState.CurrentProjectId, Image.Path);
+        await OnCoverChanged.InvokeAsync();
+        Toaster.AddToast(Toast.NewToast("Cover Image", $"Cover image selected for project {AppState.CurrentProjectName}.", MessageColor.Success, 5));
+    }
+
+    private async Task<string> SetSamplerBadgeColor()
+    {
+        switch (await DB.GetSampler(Image.SamplerId))
+        {
+            case "Euler":
+                return "background: #59b32d; color: var(--app-dark-1);";
+
+            case "Euler a":
+                return "background: #156948; color: var(--app-light-1);";
+
+            case "LMS":
+                return "background: #db6e53; color: var(--app-dark-1);";
+
+            case "PLMS":
+                return "background: #853e33; color: var(--app-light-1);";
+
+            case "DDIM":
+                return "background: #f07508; color: var(--app-dark-1);";
+
+            case "Heun":
+                return "background: #b52d1b; color: var(--app-light-1);";
+
+            case "DPM2":
+                return "background: #ee6283; color: var(--app-dark-1);";
+
+            case "DPM2 a":
+                return "background: #981e82; color: var(--app-light-1);";
+
+            case "DPM++ 2S a":
+                return "background: #214aa7; color: var(--app-light-1);";
+
+            case "DPM++ 2M":
+                return "background: #0a98d8; color: var(--app-dark-1);";
+
+            case "DPM fast":
+                return "background: #b0a28d; color: var(--app-dark-1);";
+
+            case "DPM adaptive":
+                return "background: #6d5d5b; color: var(--app-light-1);";
+
+            default:
+                return "background: #7eaea3; color: var(--app-dark-1);";
+        }
+    }
+}
