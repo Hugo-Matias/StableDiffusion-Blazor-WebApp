@@ -20,11 +20,14 @@ namespace BlazorWebApp.Data
 				.HasMany(m => m.Images)
 				.WithOne()
 				.HasForeignKey(i => i.ModeId);
+
+			modelBuilder.Entity<Folder>().HasIndex(f => f.Name).IsUnique();
 		}
 
 		public DbSet<Image> Images { get; set; }
 		public DbSet<Sampler> Samplers { get; set; }
 		public DbSet<Project> Projects { get; set; }
 		public DbSet<Mode> Modes { get; set; }
+		public DbSet<Folder> Folders { get; set; }
 	}
 }

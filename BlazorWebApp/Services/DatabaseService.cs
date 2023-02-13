@@ -23,10 +23,17 @@ namespace BlazorWebApp.Services
             PopulateSamplers();
         }
 
-        public async Task<List<Project>> GetProjects()
+        public async Task<List<Folder>> GetFolders()
         {
             using var context = _factory.CreateDbContext();
-            return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();
+            return await context.Folders.ToListAsync();
+        }
+
+        public async Task<List<Project>> GetProjects(int folderId)
+        {
+            using var context = _factory.CreateDbContext();
+            if (folderId <= 0) return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();
+            else return await context.Projects.Where(p => p.FolderId == folderId).OrderBy(p => p.CreationTime).ToListAsync();
         }
 
         public async Task<Project> GetProject(int id)
@@ -55,6 +62,20 @@ namespace BlazorWebApp.Services
             return result.Entity;
         }
 
+        public async Task<Project> UpdateProject(int projectId, Project data)
+        {
+            using var context = _factory.CreateDbContext();
+            var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            if (!string.IsNullOrWhiteSpace(data.Name))
+                project.Name = data.Name;
+            if (!string.IsNullOrWhiteSpace(data.SampleImagePath))
+                project.SampleImagePath = data.SampleImagePath;
+            if (data.FolderId != null && data.FolderId >= 0 && context.Folders.Any(f => f.Id == data.FolderId))
+                project.FolderId = data.FolderId;
+            await context.SaveChangesAsync();
+            return project;
+        }
+
         public async Task<Project?> DeleteProject(int projectId)
         {
             using var context = _factory.CreateDbContext();
@@ -77,6 +98,14 @@ namespace BlazorWebApp.Services
             using var context = _factory.CreateDbContext();
             var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             project.SampleImagePath = imagePath;
+            await context.SaveChangesAsync();
+        }
+
+        public async Task SetProjectFolder(int projectId, int folderId)
+        {
+            using var context = _factory.CreateDbContext();
+            var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            project.FolderId = folderId;
             await context.SaveChangesAsync();
         }
 

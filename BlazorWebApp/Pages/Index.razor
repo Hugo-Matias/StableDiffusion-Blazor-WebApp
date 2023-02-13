@@ -1,7 +1,6 @@
 ﻿@page "/"
 @inject DatabaseService DB
 @inject AppState AppState
-@inject EPicsService EP
 @implements IDisposable
 
 <PageTitle>Blazor Diffusion</PageTitle>
@@ -28,7 +27,6 @@ else if (_projects.Count() == 0)
 }
 else
 {
-    @*<button @onclick="EP.GetSets">TEST</button>*@
     <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
     if (IsFetchingImages)
     {
@@ -58,13 +56,14 @@ else
         if (!firstRender) return;
         AppState.OnProjectChangeTask += HandleProjectChanged;
         AppState.OnStateHasChanged += StateHasChanged;
-        _projects = await DB.GetProjects();
+        _projects = await DB.GetProjects(AppState.CurrentFolderId);
         currentImgPage = 1;
         await LoadImages();
     }
 
     private async Task FilterImages(bool resetFilter)
     {
+        currentImgPage = 1;
         AppState.IsGalleryFiltered = !resetFilter;
         await LoadImages();
     }

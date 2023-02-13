@@ -46,6 +46,8 @@ namespace BlazorWebApp.Services
         public Img2ImgParametersModel ParametersImg2Img { get; set; }
         public UpscaleParametersModel ParametersUpscale { get; set; }
         public long? CurrentSeed { get; set; }
+        public int CurrentFolderId { get; set; }
+        public string CurrentFolderName { get; set; }
         public int CurrentProjectId { get; set; }
         public string CurrentProjectName { get; set; }
         public int CurrentBrushSize
@@ -100,13 +102,12 @@ namespace BlazorWebApp.Services
             Folders = new();
             Projects = new();
             TagAccordionIds = new();
-            GetCsvTags();
-            GetButtonTags();
-
-            CreateParameters();
-
             CurrentBrushSize = Settings.Img2Img.BrushSetttings.DefaultValue;
             CurrentBrushColor = Settings.Img2Img.BrushSetttings.Color;
+
+            GetCsvTags();
+            GetButtonTags();
+            CreateParameters();
         }
 
         private void CreateParameters()
@@ -228,6 +229,13 @@ namespace BlazorWebApp.Services
             }
             TagAccordionIds.Add(id);
             return id;
+        }
+
+        public async Task SetCurrentFolder(int id)
+        {
+            await GetFolders();
+            CurrentFolderId = id;
+            CurrentFolderName = Folders.FirstOrDefault(f => f.Id == id)!.Name;
         }
 
         public async Task SetCurrentProject(int id)

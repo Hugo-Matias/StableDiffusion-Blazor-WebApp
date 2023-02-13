@@ -8,7 +8,7 @@
         <div class="projects-container row">
             @foreach (var project in AppState.Projects)
             {
-                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnRename="ShowRenameProjectModal"></ProjectCard>
+                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
             }
         </div>
         <div class="gallery-settings row">
@@ -25,7 +25,7 @@
                 <label class="form-label mt-3">Modes:</label>
                 <div class="d-flex flex-row w-auto justify-content-between">
                     <input type="checkbox" class="btn-check" id="mode-txt" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeTxt2Img" checked="@AppState.Settings.Gallery.IsModeTxt2Img" />
-                    <label class="btn btn-outline-secondary px-3"  for="mode-txt">Txt2Img</label>
+                    <label class="btn btn-outline-secondary px-3" for="mode-txt">Txt2Img</label>
                     <input type="checkbox" class="btn-check" id="mode-img" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeImg2Img" checked="@AppState.Settings.Gallery.IsModeImg2Img" />
                     <label class="btn btn-outline-secondary px-3" for="mode-img">Img2Img</label>
                     <input type="checkbox" class="btn-check" id="mode-upscale" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeUpscale" checked="@AppState.Settings.Gallery.IsModeUpscale" />
@@ -66,24 +66,38 @@
 </ConfirmationDialogModal>
 
 <!-- Rename Project Modal -->
-<div class="modal fade" id="rename-project-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-5">Rename Project</h1>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form class="modal-body">
-                <label for="rename-project-input" class="form-label">Name:</label>
-                <input class="form-control" @bind="_renameProjectName" @bind:event="oninput" placeholder="New name for this project" id="rename-project-input" required></input>
-            </form>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-outline-primary" @onclick="RenameProject" disabled="@string.IsNullOrWhiteSpace(_renameProjectName)">Ok</button>
+@if (_editedProject != null)
+{
+    <div class="modal fade" id="edit-project-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5">Rename Project</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form class="modal-body">
+                    <label for="folder" class="form-label">Folder:</label>
+                    <Dropdown OnSelected="HandleFolderSelected" ButtonText="@AppState.CurrentFolderName" ButtonId="edit-modal-folder-dropdown">
+                        <Button>@AppState.CurrentFolderName</Button>
+                        <Items>
+                            <button type="button" @onclick="">Add New Folder...</button>
+                            @foreach (var folder in AppState.Folders!)
+                            {
+                                <DropdownItem Text="@folder.Name" />
+                            }
+                        </Items>
+                    </Dropdown>
+                    <label for="rename-input" class="form-label">Name:</label>
+                    <input class="form-control" @bind="_editedProject.Name" @bind:event="oninput" placeholder="New name for this project" id="rename-input" required />
+                </form>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-outline-primary" @onclick="EditProject" disabled="@string.IsNullOrWhiteSpace(_editedProject.Name)">Ok</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+}
 
 @code {
     [Parameter]
@@ -92,13 +106,19 @@
     public EventCallback OnResetFilters { get; set; }
 
     int _deleteProjectId;
-    int _renameProjectId;
-    string _renameProjectName;
+    int _editedProjectId;
+    Project _editedProject;
 
     private async Task HandleProjectSelected(int projectId)
     {
         await AppState.SetCurrentProject(projectId);
         StateHasChanged();
+    }
+
+    private async Task HandleFolderSelected(string folderName)
+    {
+        var folder = AppState.Folders.FirstOrDefault(f => f.Name == folderName);
+        if (folder != null) _editedProject.FolderId = folder.Id;
     }
 
     private async Task ShowDeleteProjectModal(int projectId)
@@ -107,21 +127,21 @@
         await JS.RunScript("ShowModal", "#delete-project-modal");
     }
 
-    private async Task ShowRenameProjectModal(int projectId)
+    private async Task ShowEditProjectModal(int projectId)
     {
-        _renameProjectId = projectId;
-        _renameProjectName = AppState.Projects.FirstOrDefault(p => p.Id == projectId).Name;
-        await JS.RunScript("ShowModal", "#rename-project-modal");
+        _editedProjectId = projectId;
+        _editedProject = AppState.Projects.FirstOrDefault(p => p.Id == projectId);
+        await JS.RunScript("ShowModal", "#edit-project-modal");
     }
 
-    private async Task RenameProject()
+    private async Task EditProject()
     {
-        await DB.RenameProject(_renameProjectId, _renameProjectName);
-        await JS.RunScript("HideModal", "#rename-project-modal");
+        //await DB.RenameProject(_editedProjectId, _editedProject);
+        await JS.RunScript("HideModal", "#edit-project-modal");
         // Re-sets current project to refresh the relevant ui components
         await AppState.SetCurrentProject(AppState.CurrentProjectId);
-        _renameProjectId = 0;
-        _renameProjectName = string.Empty;
+        _editedProjectId = 0;
+        _editedProject = new();
         await InvokeAsync(StateHasChanged);
     }
 

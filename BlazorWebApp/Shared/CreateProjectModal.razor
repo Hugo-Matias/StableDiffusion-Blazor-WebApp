@@ -12,6 +12,7 @@
 				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<form class="modal-body">
+				<label for="create-project-input" class="form-label">Folder:</label>
 				<label for="create-project-input" class="form-label">Name:</label>
 				<input class="form-control" @bind="_newProject.Name" @bind:event="oninput" placeholder="Enter the name for your new project" id="create-project-input" required></input>
 			</form>
