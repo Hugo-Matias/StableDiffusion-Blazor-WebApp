@@ -1,0 +1,108 @@
+﻿@inject AppState AppState
+@inject SDAPIService SD
+@inject DatabaseService DB
+@inject JavascriptService JS
+@implements IDisposable
+
+<div class="mt-6">
+    <MudStack Justify="Justify.FlexEnd" Row>
+        <MudSelect T=string Value=AppState.CurrentProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success">
+            @foreach (var project in AppState.Projects)
+            {
+                <MudSelectItem Value="@project.Name">@project.Name</MudSelectItem>
+            }
+        </MudSelect>
+        @if (AppState.CurrentSDModel == "Loading...")
+        {
+            <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
+                <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading Model...</MudText>
+                <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate Rounded />
+            </MudStack>
+        }
+        else
+        {
+            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info">
+                @if (AppState.SDModels != null)
+                {
+                    @foreach (var model in AppState.SDModels)
+                    {
+                        <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        }
+    </MudStack>
+</div>
+
+@code {
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        await AppState.GetOptions();
+        await AppState.GetSDModels();
+        await AppState.GetSamplers();
+        await AppState.GetStyles();
+
+        AppState.OnConverging += Refresh;
+        AppState.OnOptionsChange += Refresh;
+        AppState.OnProjectChange += Refresh;
+        AppState.OnStateHasChanged += Refresh;
+
+        await AppState.GetProjects();
+        if (AppState.Projects != null && AppState.Projects.Count > 0)
+        {
+            if (AppState.CurrentProjectId == 0)
+            {
+                var latestProject = await DB.GetLatestProject();
+                await AppState.SetCurrentProject(latestProject.Id);
+            }
+            else
+            {
+                await AppState.SetCurrentProject(AppState.CurrentProjectId);
+            }
+        }
+        else
+        {
+            AppState.CurrentProjectName = "Create New Project...";
+        }
+
+        AppState.CurrentSDModel = AppState.Options.SDModelCheckpoint;
+    }
+
+    private async Task HandleModelSelected(string selected)
+    {
+        AppState.CurrentSDModel = "Loading...";
+        Refresh();
+        await SD.PostOptions(new() { SDModelCheckpoint = selected });
+        AppState.CurrentSDModel = selected;
+        Refresh();
+    }
+
+    private async Task RefreshModels()
+    {
+        var currentModel = AppState.CurrentSDModel;
+        AppState.CurrentSDModel = "Loading...";
+        Refresh();
+        _ = await SD.PostRefreshModels();
+        await AppState.GetSDModels();
+        AppState.CurrentSDModel = currentModel;
+        Refresh();
+    }
+
+    private async Task HandleProjectSelected(string selected)
+    {
+        await AppState.SetCurrentProject(DB.GetProject(selected).Result.Id);
+        Refresh();
+    }
+
+    public void Dispose()
+    {
+        AppState.OnConverging -= Refresh;
+        AppState.OnOptionsChange -= Refresh;
+        AppState.OnProjectChange -= Refresh;
+        AppState.OnStateHasChanged -= Refresh;
+    }
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+}

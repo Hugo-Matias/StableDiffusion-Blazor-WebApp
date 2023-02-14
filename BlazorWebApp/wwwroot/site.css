@@ -1,0 +1,10 @@
+﻿.brand {
+	font-family: 'Helvetica';
+	font-size: 1rem;
+	font-weight: 300;
+}
+
+/*Bootstrap Overrides*/
+a:hover {
+	color: inherit !important;
+}

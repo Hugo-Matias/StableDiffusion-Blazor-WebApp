@@ -1,7 +1,7 @@
-﻿::deep #create-project-btn {
-	margin: 0 1rem 0 0.5rem;
+﻿::deep .navbar-horizontal {
+	display: flex;
 }
 
-::deep #navbar-project-dropdown {
-	margin-right: 2rem;
+::deep .mud-nav-item {
+	width: initial;
 }

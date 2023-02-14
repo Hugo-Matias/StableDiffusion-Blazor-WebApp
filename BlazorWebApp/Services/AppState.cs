@@ -45,6 +45,7 @@ namespace BlazorWebApp.Services
         public Txt2ImgParameters ParametersTxt2Img { get; set; }
         public Img2ImgParameters ParametersImg2Img { get; set; }
         public UpscaleParameters ParametersUpscale { get; set; }
+        public string CurrentSDModel { get; set; } = "Loading...";
         public long? CurrentSeed { get; set; }
         public int CurrentFolderId { get; set; }
         public string CurrentFolderName { get; set; }
