@@ -1,28 +1,36 @@
-﻿.card {
-    --bs-card-bg: var(--app-dark-1);
-    --bs-card-color: var(--app-light-4);
-    --bs-card-border-color: var(--app-dark-3);
-    align-items: center;
+﻿::deep .projects-container {
+	overflow: scroll;
 }
 
-    .card h3 {
-        color: var(--bs-card-color);
-    }
+::deep .filter-btns {
+
+}
+
+.card {
+	--bs-card-bg: var(--app-dark-1);
+	--bs-card-color: var(--app-light-4);
+	--bs-card-border-color: var(--app-dark-3);
+	align-items: center;
+}
+
+	.card h3 {
+		color: var(--bs-card-color);
+	}
 
 h1 {
-    font-size: 1.7rem;
-    color: var(--app-light-4);
+	font-size: 1.7rem;
+	color: var(--app-light-4);
 }
 
 .projects-container {
-    max-width: 90vw;
-    overflow: scroll;
-    flex-wrap: nowrap;
+	max-width: 90vw;
+	overflow: scroll;
+	flex-wrap: nowrap;
 }
 
 .gallery-settings {
-    width: 100%;
-    padding: 1.5rem 0;
+	width: 100%;
+	padding: 1.5rem 0;
 }
 
 .modal-content {
@@ -54,4 +62,3 @@ input {
 		border: 1px solid var(--app-blue-7);
 		box-shadow: none;
 	}
-

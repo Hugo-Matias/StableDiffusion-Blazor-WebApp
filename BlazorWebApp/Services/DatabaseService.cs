@@ -23,10 +23,17 @@ namespace BlazorWebApp.Services
             PopulateSamplers();
         }
 
-        public async Task<List<Folder>> GetFolders()
+        public IAsyncEnumerable<Folder> GetFolders()
         {
             using var context = _factory.CreateDbContext();
-            return await context.Folders.ToListAsync();
+            return context.Folders.AsAsyncEnumerable();
+        }
+
+        public async Task<List<Folder>> GetFolders(string name)
+        {
+            using var context = _factory.CreateDbContext();
+            if (string.IsNullOrWhiteSpace(name)) return await context.Folders.ToListAsync();
+            else return await context.Folders.Where(f => f.Name.Contains(name, StringComparison.InvariantCultureIgnoreCase)).ToListAsync();
         }
 
         public async Task<List<Project>> GetProjects(int folderId)
@@ -76,6 +83,11 @@ namespace BlazorWebApp.Services
             return project;
         }
 
+        /// <summary>
+        /// Deletes Project from the database
+        /// </summary>
+        /// <param name="projectId"></param>
+        /// <returns>First Project on the projects table, if any.</returns>
         public async Task<Project?> DeleteProject(int projectId)
         {
             using var context = _factory.CreateDbContext();

@@ -193,7 +193,7 @@ namespace BlazorWebApp.Services
 
         public async Task GetFolders()
         {
-            Folders = await _db.GetFolders();
+            //Folders = _db.GetFolders();
         }
 
         public async Task GetProjects(int folderId = 0)

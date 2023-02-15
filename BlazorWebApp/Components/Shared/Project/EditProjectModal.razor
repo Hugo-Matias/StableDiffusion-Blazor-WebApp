@@ -1,0 +1,28 @@
+﻿@inject DatabaseService DB
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            Editing @Project.Name
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="@Project">
+            <DataAnnotationsValidator />
+            <MudAutocomplete T="Folder" @bind-Value=Project.Folder Label="Folder" SearchFunc="@(async e => await DB.GetFolders(e))" ToStringFunc="@(e => e == null ? null : e.Name)" CoerceValue />
+            <MudTextField Label="Name" @bind-Value=Project.Name Required/>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" OnClick="@(() => MudDialog.Close(Project))" Color="Color.Info" Variant="Variant.Filled" Disabled="@string.IsNullOrWhiteSpace(Project.Name)">Confirm</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public Project Project { get; set; }
+}

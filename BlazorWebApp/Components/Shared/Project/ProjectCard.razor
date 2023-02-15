@@ -2,24 +2,18 @@
 @inject DatabaseService DB
 @inject ImageService IM
 
-<div class="card project-card m-1@(AppState.CurrentProjectId == ProjectId ? " selected":"")">
-    <div class="card-body p-1 pt-2">
-        <img src="@Image" class="card-img mb-3" alt="image">
-        <h1>@Name</h1>
-        <div class="text-card">
-        </div>
-        <div class="row btn-container">
-            <div class="col-12">
-                <button class="btn btn-load" @onclick="@(() => OnSelected.InvokeAsync(ProjectId))"><span class="btn-icon fa-solid fa-check"></span>Load</button>
-            </div>
-            <div class="col-6">
-                <button class="btn btn-delete" @onclick="@(() => OnDeleted.InvokeAsync(ProjectId))"><span class="btn-icon fa-solid fa-trash-can"></span>Delete</button>
-            </div>
-            <div class="col-6">
-                <button class="btn btn-rename" @onclick="@(() => OnEdited.InvokeAsync(ProjectId))"><span class="btn-icon fa-solid fa-pen"></span>Edit</button>
-            </div>
-        </div>
-    </div>
+<div>
+    <MudCard Elevation="4" Class="@("project-card" + (AppState.CurrentProjectId == ProjectId ? " selected" : ""))">
+        <MudCardMedia Image="@Image" />
+        <MudCardContent>
+            <MudText Typo="Typo.h5">@Name</MudText>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton OnClick="() => OnSelected.InvokeAsync(ProjectId)" StartIcon="fa-solid fa-check" IconClass="icon"  ButtonType=ButtonType.Button Variant="Variant.Text" IconColor=Color.Success>Load</MudButton>
+            <MudButton OnClick="() => OnEdited.InvokeAsync(ProjectId)" StartIcon="fa-solid fa-pen" IconClass="icon" ButtonType=ButtonType.Button Variant="Variant.Text" IconColor="Color.Info">Edit</MudButton>
+            <MudButton OnClick="() => OnDeleted.InvokeAsync(ProjectId)" StartIcon="fa-solid fa-trash-can" IconClass="icon" ButtonType=ButtonType.Button Variant="Variant.Text" IconColor="Color.Error">Delete</MudButton>
+        </MudCardActions>
+    </MudCard>
 </div>
 
 @code {
@@ -47,7 +41,7 @@
         if (string.IsNullOrWhiteSpace(image))
         {
             var imageEntity = await DB.GetRandomFavorite(projectId);
-            if(imageEntity != null)
+            if (imageEntity != null)
                 image ??= imageEntity.Path;
         }
         if (!string.IsNullOrWhiteSpace(image)) return $"data:image/png;base64,{await IM.LoadImageAsync(image)}";

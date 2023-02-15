@@ -1,44 +1,22 @@
-﻿<div class="modal fade" id="@Id" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-5">@Title</h1>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center">
-                    @ChildContent
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@CancelButton</button>
-                <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal" @onclick="OnConfirm">@OkButton</button>
-            </div>
-        </div>
-    </div>
-</div>
+﻿<MudDialog>
+    <DialogContent>@Content</DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())" Variant="Variant.Text" Color="CancelButtonColor">@CancelButtonText</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Ok(true)))" Variant="Variant.Filled" Color="OkButtonColor">@OkButtonText</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
-    [EditorRequired]
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; }
     [Parameter]
-    public string Id { get; set; }
-
-    [EditorRequired]
+    public string CancelButtonText { get; set; } = "Cancel";
     [Parameter]
-    public string Title { get; set; }
-
+    public Color CancelButtonColor { get; set; } = Color.Default;
     [Parameter]
-    public string CancelButton { get; set; } = "Cancel";
-
+    public string OkButtonText { get; set; } = "Ok";
     [Parameter]
-    public string OkButton { get; set; } = "Ok";
-
-    [EditorRequired]
+    public Color OkButtonColor { get; set; } = Color.Success;
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
-
-    [EditorRequired]
-    [Parameter]
-    public EventCallback OnConfirm { get; set; }
-
+    public MarkupString Content { get; set; }
 }

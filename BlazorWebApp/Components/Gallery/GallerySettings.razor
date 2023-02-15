@@ -1,103 +1,54 @@
 ﻿@inject AppState AppState
 @inject DatabaseService DB
-@inject JavascriptService JS
+@inject IDialogService DialogService
 
-<div class="card p-3 mb-3">
-    @if (AppState.Projects != null && AppState.Projects.Count > 0)
-    {
-        <div class="projects-container row">
-            @foreach (var project in AppState.Projects)
-            {
-                <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
-            }
-        </div>
-        <div class="gallery-settings row">
-            <div class="col-5">
-                <label for="search-prompt" class="form-label">Search Prompt:</label>
-                <input type="text" class="form-control" id="search-prompt" @bind-value="AppState.Settings.Gallery.SearchPrompt" />
-                <label for="search-negative-prompt" class="form-label mt-2">Search Negative Prompt:</label>
-                <input type="text" class="form-control" id="search-negative-prompt" @bind-value="AppState.Settings.Gallery.SearchNegativePrompt" />
-            </div>
-            <div class="col-3">
-                <label class="form-label">Filters:</label>
-                <input type="checkbox" class="btn-check" id="is-favorite" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsFavoritesOnly" checked="@AppState.Settings.Gallery.IsFavoritesOnly" />
-                <label class="btn btn-outline-secondary expand-btn" for="is-favorite">Favorites Only</label>
-                <label class="form-label mt-3">Modes:</label>
-                <div class="d-flex flex-row w-auto justify-content-between">
-                    <input type="checkbox" class="btn-check" id="mode-txt" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeTxt2Img" checked="@AppState.Settings.Gallery.IsModeTxt2Img" />
-                    <label class="btn btn-outline-secondary px-3" for="mode-txt">Txt2Img</label>
-                    <input type="checkbox" class="btn-check" id="mode-img" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeImg2Img" checked="@AppState.Settings.Gallery.IsModeImg2Img" />
-                    <label class="btn btn-outline-secondary px-3" for="mode-img">Img2Img</label>
-                    <input type="checkbox" class="btn-check" id="mode-upscale" autocomplete="off" @bind-value="@AppState.Settings.Gallery.IsModeUpscale" checked="@AppState.Settings.Gallery.IsModeUpscale" />
-                    <label class="btn btn-outline-secondary px-3" for="mode-upscale">Upscale</label>
-                </div>
-            </div>
-            <div class="col-4">
-                <div class="row">
-                    <div class="col-6">
-                        <label class="form-label">Order By:</label>
-                        <Dropdown ButtonText="@AppState.Settings.Gallery.OrderBy.ToString()" ButtonId="order-by" OnSelected="HandleOrderBySelected">
-                            <Button>@AppState.Settings.Gallery.OrderBy</Button>
-                            <Items>
-                                @foreach (var order in Enum.GetValues(typeof(GalleryOrderBy)))
-                                {
-                                    <DropdownItem Text="@order.ToString()" />
-                                }
-                            </Items>
-                        </Dropdown>
-                        <button class="btn btn-outline-warning w-100 mt-2 py-3" @onclick="async () => await OnFilterImages.InvokeAsync()">Filter</button>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Order Direction:</label>
-                        <input type="checkbox" class="btn-check" id="order-direction" autocomplete="off" @bind-value="@AppState.Settings.Gallery.OrderDescending" checked="@AppState.Settings.Gallery.OrderDescending" />
-                        <label class="btn btn-outline-secondary expand-btn" for="order-direction">@(AppState.Settings.Gallery.OrderDescending ? "Descending" : "Ascending")</label>
-                        <button class="btn btn-outline-danger w-100 mt-2 py-3" @onclick="async () => await OnResetFilters.InvokeAsync()">Reset</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
+<div>
+    <MudPaper Class="p-3 mb-3">
+        @if (AppState.Projects != null && AppState.Projects.Count > 0)
+        {
+            <MudStack Class="projects-container" Row>
+                @foreach (var project in AppState.Projects)
+                {
+                    <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
+                }
+            </MudStack>
+        }
+    </MudPaper>
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <MudGrid>
+            <MudItem xs="5">
+                <MudStack>
+                    <MudTextField T="string" @bind-Value="AppState.Settings.Gallery.SearchPrompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus Variant="Variant.Text" />
+                    <MudTextField Class="mt-n4" T="string" @bind-Value="AppState.Settings.Gallery.SearchNegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus Variant="Variant.Text" />
+                </MudStack>
+            </MudItem>
+            <MudItem xs="3">
+                <MudCheckBox Class="mt-4" Label="Favorites Only" @bind-Checked="AppState.Settings.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
+                <MudStack Class="mt-2" Row>
+                    <MudSelect Label="Order by" @bind-Value="AppState.Settings.Gallery.OrderBy">
+                        @foreach (GalleryOrderBy order in Enum.GetValues(typeof(GalleryOrderBy)))
+                        {
+                            <MudSelectItem Value="order">@order</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudCheckBox Class="mt-2" Label="@(AppState.Settings.Gallery.OrderDescending ? "Desc" : "Asc")" CheckedIcon="@Icons.Material.Filled.ArrowDownward" UncheckedIcon="@Icons.Material.Filled.ArrowUpward" @bind-Checked="AppState.Settings.Gallery.OrderDescending" />
+                </MudStack>
+            </MudItem>
+            <MudItem xs="4" Class="d-flex flex-column align-items-center">
+                <MudText Typo="Typo.overline">Modes:</MudText>
+                <MudStack Row>
+                    <MudCheckBox Label="Txt2Img" @bind-Checked="AppState.Settings.Gallery.IsModeTxt2Img" Dense />
+                    <MudCheckBox Label="Img2Img" @bind-Checked="AppState.Settings.Gallery.IsModeImg2Img" Dense />
+                    <MudCheckBox Label="Upscale" @bind-Checked="AppState.Settings.Gallery.IsModeUpscale" Dense />
+                </MudStack>
+                <MudButtonGroup Class="mt-5" Variant="Variant.Outlined" Color="Color.Primary" OverrideStyles=false>
+                    <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Outlined" Color="Color.Warning">Filter</MudButton>
+                    <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Outlined" Color="Color.Error">Reset</MudButton>
+                </MudButtonGroup>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
 </div>
-
-<!-- Delete Project Confirmation Modal -->
-<ConfirmationDialogModal Id="delete-project-modal" Title="Delete Project" OkButton="Yes" CancelButton="No" OnConfirm="DeleteProject">
-    <span class="lead">Are you sure you want to <strong class="text-danger">delete</strong> this project?<br /></span>
-    <small>This action is irreversible!</small>
-</ConfirmationDialogModal>
-
-<!-- Rename Project Modal -->
-@if (_editedProject != null)
-{
-    <div class="modal fade" id="edit-project-modal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5">Rename Project</h1>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form class="modal-body">
-                    <label for="folder" class="form-label">Folder:</label>
-                    <Dropdown OnSelected="HandleFolderSelected" ButtonText="@AppState.CurrentFolderName" ButtonId="edit-modal-folder-dropdown">
-                        <Button>@AppState.CurrentFolderName</Button>
-                        <Items>
-                            <button type="button">Add New Folder...</button>
-                            @foreach (var folder in AppState.Folders!)
-                            {
-                                <DropdownItem Text="@folder.Name" />
-                            }
-                        </Items>
-                    </Dropdown>
-                    <label for="rename-input" class="form-label">Name:</label>
-                    <input class="form-control" @bind="_editedProject.Name" @bind:event="oninput" placeholder="New name for this project" id="rename-input" required />
-                </form>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-outline-primary" @onclick="EditProject" disabled="@string.IsNullOrWhiteSpace(_editedProject.Name)">Ok</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
 
 @code {
     [Parameter]
@@ -105,9 +56,7 @@
     [Parameter]
     public EventCallback OnResetFilters { get; set; }
 
-    int _deleteProjectId;
-    int _editedProjectId;
-    Project _editedProject;
+    DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
 
     private async Task HandleProjectSelected(int projectId)
     {
@@ -115,49 +64,46 @@
         StateHasChanged();
     }
 
-    private async Task HandleFolderSelected(string folderName)
-    {
-        var folder = AppState.Folders.FirstOrDefault(f => f.Name == folderName);
-        if (folder != null) _editedProject.FolderId = folder.Id;
-    }
-
     private async Task ShowDeleteProjectModal(int projectId)
     {
-        _deleteProjectId = projectId;
-        await JS.RunScript("ShowModal", "#delete-project-modal");
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this project?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialogModal>("Delete Project", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Cancelled) await DeleteProject(projectId);
     }
 
-    private async Task ShowEditProjectModal(int projectId)
+    private async Task DeleteProject(int id)
     {
-        _editedProjectId = projectId;
-        _editedProject = AppState.Projects.FirstOrDefault(p => p.Id == projectId);
-        await JS.RunScript("ShowModal", "#edit-project-modal");
-    }
-
-    private async Task EditProject()
-    {
-        //await DB.RenameProject(_editedProjectId, _editedProject);
-        await JS.RunScript("HideModal", "#edit-project-modal");
-        // Re-sets current project to refresh the relevant ui components
-        await AppState.SetCurrentProject(AppState.CurrentProjectId);
-        _editedProjectId = 0;
-        _editedProject = new();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task DeleteProject()
-    {
-        var firstProject = await DB.DeleteProject(_deleteProjectId);
-        _deleteProjectId = 0;
+        var project = await DB.DeleteProject(id);
         await AppState.GetProjects();
-        if (firstProject != null)
-            await AppState.SetCurrentProject(firstProject.Id);
+        if (project != null)
+            await AppState.SetCurrentProject(project.Id);
         else
             await AppState.SetCurrentProject(0);
         await InvokeAsync(StateHasChanged);
     }
 
-    private void HandleOrderBySelected(string selection) => AppState.Settings.Gallery.OrderBy = (GalleryOrderBy)Enum.Parse(typeof(GalleryOrderBy), selection, true);
+    private async Task ShowEditProjectModal(int projectId)
+    {
+        var project = AppState.Projects.FirstOrDefault(p => p.Id == projectId);
+        var param = new DialogParameters();
+        param.Add("Project", project);
+        var dialog = await DialogService.ShowAsync<EditProjectModal>("Edit", param, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Cancelled) await EditProject((Project)result.Data);
+    }
 
-    private void HandleOrderDirectionSelected(string selection) => AppState.Settings.Gallery.OrderDescending = selection == "Descending";
+    private async Task EditProject(Project project)
+    {
+        var updates = new Project() { Name = project.Name };
+        if (project.Folder != null) updates.FolderId = project.Folder.Id;
+        await DB.UpdateProject(project.Id, updates);
+        // Re-sets current project to refresh the relevant ui components
+        await AppState.SetCurrentProject(AppState.CurrentProjectId);
+        await InvokeAsync(StateHasChanged);
+    }
 }

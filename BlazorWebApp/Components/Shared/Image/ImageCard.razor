@@ -4,7 +4,52 @@
 @inject IOService IO
 @inject ToasterService Toaster
 
-<div class="card m-1">
+<div>
+    @if (Image.ModeId != 3)
+    {
+        <MudBadge Class="mb-n2 ms-3" Content="@(DB.GetSampler(Image.SamplerId).Result.ToString())" Color="@(SetSamplerBadgeColor().Result)" Overlap />
+    }
+    <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
+        <MudCardMedia Image="@("data:image/png;base64," + ImageData)" />
+        <MudCardContent Class="pb-n4" >
+            @if (Image.ModeId != 3)
+            {
+                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-seedling info-icon" />@Image.Seed</MudText>
+                <MudSpacer />
+                <MudText Typo="Typo.caption">
+                    <MudIcon Icon="fa-solid fa-stairs info-icon" />@Image.Steps
+                    <span class="separator ms-2">|</span>
+                    <MudIcon Icon="fa-solid fa-scale-unbalanced info-icon" />@Image.CfgScale
+                    @if (Image.DenoisingStrength != null)
+                    {
+                        <span class="separator ms-2">|</span>
+                        <MudIcon Icon="fa-solid fa-braille info-icon" />
+
+                        @Image.DenoisingStrength
+                    }
+                </MudText>
+            }
+            else
+            {
+                <strong>Upscaled</strong>
+                <br />
+                <span class="fa-solid fa-arrows-left-right" /> @($"{Image.Width} px")
+                <span class="ms-2">|</span> <span class="fa-solid fa-arrows-up-down" /> @($"{Image.Height} px")
+            }
+        </MudCardContent>
+        <MudCardActions>
+            <MudIconButton OnClick="@(() => OnSelectImage.InvokeAsync(Image))" Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Success />
+            <MudIconButton OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
+            <MudSpacer />
+            <MudCheckBox CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Checked="Image.Favorite" Color="Color.Error" />
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert">
+                @*//TODO*@
+            </MudMenu>
+        </MudCardActions>
+    </MudCard>
+</div>
+
+@*<div class="card m-1">
     <div class="card-body p-1 pt-2">
         @if (Image.ModeId != 3)
         {
@@ -67,7 +112,7 @@
         </div>
     </div>
 </div>
-
+*@
 @code {
     [Parameter]
     public Image Image { get; set; }
@@ -103,48 +148,30 @@
         Toaster.AddToast(Toast.NewToast("Cover Image", $"Cover image selected for project {AppState.CurrentProjectName}.", MessageColor.Success, 5));
     }
 
-    private async Task<string> SetSamplerBadgeColor()
+    private async Task<Color> SetSamplerBadgeColor()
     {
         switch (await DB.GetSampler(Image.SamplerId))
         {
             case "Euler":
-                return "background: #59b32d; color: var(--app-dark-1);";
-
             case "Euler a":
-                return "background: #156948; color: var(--app-light-1);";
-
-            case "LMS":
-                return "background: #db6e53; color: var(--app-dark-1);";
-
-            case "PLMS":
-                return "background: #853e33; color: var(--app-light-1);";
-
-            case "DDIM":
-                return "background: #f07508; color: var(--app-dark-1);";
-
+                return Color.Success;
             case "Heun":
-                return "background: #b52d1b; color: var(--app-light-1);";
-
+                return Color.Secondary;
+            case "DDIM":
+                return Color.Dark;
             case "DPM2":
-                return "background: #ee6283; color: var(--app-dark-1);";
-
             case "DPM2 a":
-                return "background: #981e82; color: var(--app-light-1);";
-
+                return Color.Warning;
+            case "LMS":
+            case "PLMS":
+                return Color.Error;
             case "DPM++ 2S a":
-                return "background: #214aa7; color: var(--app-light-1);";
-
             case "DPM++ 2M":
-                return "background: #0a98d8; color: var(--app-dark-1);";
-
             case "DPM fast":
-                return "background: #b0a28d; color: var(--app-dark-1);";
-
             case "DPM adaptive":
-                return "background: #6d5d5b; color: var(--app-light-1);";
-
+                return Color.Tertiary;
             default:
-                return "background: #7eaea3; color: var(--app-dark-1);";
+                return Color.Info;
         }
     }
 }

@@ -7,9 +7,9 @@
 
 @if (_projects == null)
 {
-    <div style="margin-top: 15rem;">
-        @*<Blazorise.SpinKit.SpinKit Type="Blazorise.SpinKit.SpinKitType.Grid" Color="#0d6efd" Centered />*@
-    </div>
+    <MudStack Row Justify="Justify.Center" Style="margin-top: 15rem;">
+        <MudProgressCircular Color="Color.Info" Indeterminate />
+    </MudStack>
 }
 else if (_projects.Count() == 0)
 {
@@ -27,19 +27,19 @@ else if (_projects.Count() == 0)
 }
 else
 {
-    @*<GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />*@
+    <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
     if (IsFetchingImages)
     {
-        <div style="margin-top: 10rem;">
-            @*<Blazorise.SpinKit.SpinKit Centered Color="#0d6efd" Type="Blazorise.SpinKit.SpinKitType.Chase" />*@
-        </div>
+        <MudStack Row Justify="Justify.Center" Style="margin-top: 10rem;">
+            <MudProgressCircular Color="Color.Info" Indeterminate />
+        </MudStack>
     }
     else
     {
 
         if (images.Images.Count > 0)
         {
-            @*<ImagesContainer Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />*@
+            <ImagesContainer Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
         }
     }
 }
