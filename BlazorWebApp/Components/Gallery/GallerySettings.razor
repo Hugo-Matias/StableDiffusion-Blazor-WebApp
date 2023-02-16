@@ -36,11 +36,11 @@
             </MudItem>
             <MudItem xs="4" Class="d-flex flex-column align-items-center">
                 <MudText Typo="Typo.overline">Modes:</MudText>
-                <MudStack Row>
-                    <MudCheckBox Label="Txt2Img" @bind-Checked="AppState.Settings.Gallery.IsModeTxt2Img" Dense />
-                    <MudCheckBox Label="Img2Img" @bind-Checked="AppState.Settings.Gallery.IsModeImg2Img" Dense />
-                    <MudCheckBox Label="Upscale" @bind-Checked="AppState.Settings.Gallery.IsModeUpscale" Dense />
-                </MudStack>
+                <MudChipSet SelectedChipsChanged="HandleModeSelection" Class="" Filter MultiSelection>
+                    <MudChip Text="Txt2Img" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeTxt2Img"/>
+                    <MudChip Text="Img2Img" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeImg2Img"/>
+                    <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeUpscale"/>
+                </MudChipSet>
                 <MudButtonGroup Class="mt-5" Variant="Variant.Outlined" Color="Color.Primary" OverrideStyles=false>
                     <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Outlined" Color="Color.Warning">Filter</MudButton>
                     <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Outlined" Color="Color.Error">Reset</MudButton>
@@ -62,6 +62,13 @@
     {
         await AppState.SetCurrentProject(projectId);
         StateHasChanged();
+    }
+
+    private void HandleModeSelection(MudChip[] chips)
+    {
+        AppState.Settings.Gallery.IsModeTxt2Img = chips.Any(c => c.Text == "Txt2Img");
+        AppState.Settings.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "Img2Img");
+        AppState.Settings.Gallery.IsModeUpscale = chips.Any(c => c.Text == "Upscale");
     }
 
     private async Task ShowDeleteProjectModal(int projectId)

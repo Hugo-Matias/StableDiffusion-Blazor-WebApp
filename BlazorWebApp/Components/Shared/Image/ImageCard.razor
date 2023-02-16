@@ -2,7 +2,7 @@
 @inject AppState AppState
 @inject DatabaseService DB
 @inject IOService IO
-@inject ToasterService Toaster
+@inject ISnackbar Snackbar
 
 <div>
     @if (Image.ModeId != 3)
@@ -11,7 +11,7 @@
     }
     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
         <MudCardMedia Image="@("data:image/png;base64," + ImageData)" />
-        <MudCardContent Class="pb-n4" >
+        <MudCardContent Class="pb-n4">
             @if (Image.ModeId != 3)
             {
                 <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-seedling info-icon" />@Image.Seed</MudText>
@@ -31,55 +31,31 @@
             }
             else
             {
-                <strong>Upscaled</strong>
-                <br />
-                <span class="fa-solid fa-arrows-left-right" /> @($"{Image.Width} px")
-                <span class="ms-2">|</span> <span class="fa-solid fa-arrows-up-down" /> @($"{Image.Height} px")
+                <MudText Typo="Typo.caption">Upscaled</MudText>
+                <MudSpacer />
+                <MudText Typo="Typo.caption">
+                    <MudIcon Icon="fa-solid fa-arrows-left-right info-icon" />@($"{Image.Width} px")
+                    <span class="separator ms-2">|</span>
+                    <MudIcon Icon="fa-solid fa-arrows-up-down info-icon" />@($"{Image.Height} px")
+                </MudText>
             }
         </MudCardContent>
         <MudCardActions>
+            <MudCheckBox T="bool" CheckedChanged="e => ToggleFavorite(e)" Checked="Image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
             <MudIconButton OnClick="@(() => OnSelectImage.InvokeAsync(Image))" Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Success />
             <MudIconButton OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
             <MudSpacer />
-            <MudCheckBox CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Checked="Image.Favorite" Color="Color.Error" />
-            <MudMenu Icon="@Icons.Material.Filled.MoreVert">
-                @*//TODO*@
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
+                <MudMenuItem OnClick="() => LoadParameters(false)" Icon="fa-solid fa-pen-to-square" IconColor="Color.Warning">Load Txt2Img</MudMenuItem> 
+                <MudMenuItem OnClick="() => LoadParameters(true)" Icon="fa-solid fa-square-pen" IconColor="Color.Warning">Load Img2Img</MudMenuItem> 
+                <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem> 
+                <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem> 
             </MudMenu>
         </MudCardActions>
     </MudCard>
 </div>
 
 @*<div class="card m-1">
-    <div class="card-body p-1 pt-2">
-        @if (Image.ModeId != 3)
-        {
-            <span class="sampler-badge rounded-pill" style="@(SetSamplerBadgeColor().Result) border: 2px solid var(--app-dark-1);">@(DB.GetSampler(Image.SamplerId).Result)</span>
-        }
-        <span class="favorite-icon @(Image.Favorite ? "active" : "")"><span class="fa-solid fa-star"></span></span>
-        <img src="data:image/png;base64,@ImageData" class="card-img mb-3" alt="image">
-        <h1>
-            @if (Image.ModeId != 3)
-            {
-                <span class="fa-solid fa-seedling" />
-                <strong>@Image.Seed</strong>
-                <br />
-                <span class="fa-solid fa-stairs" /> @Image.Steps
-                <span class="ms-2">|</span> <span class="fa-solid fa-scale-unbalanced" /> @Image.CfgScale
-                @if (Image.DenoisingStrength != null)
-                {
-                    <span class="ms-2">|</span>
-                    <span class="fa-solid fa-braille" /> @Image.DenoisingStrength
-                }
-            }
-            else
-            {
-                <strong>Upscaled</strong>
-                <br />
-                <span class="fa-solid fa-arrows-left-right" /> @($"{Image.Width} px")
-                <span class="ms-2">|</span> <span class="fa-solid fa-arrows-up-down" /> @($"{Image.Height} px")
-            }
-        </h1>
-        <div class="text-card">
             @if (Image.ModeId != 3)
             {
                 <h2 class="lead">@Image.Prompt</h2>
@@ -90,29 +66,8 @@
                 <h2 class="lead">@(IO.LoadText(Image.InfoPath))</h2>
             }
         </div>
-        <div class="row btn-container">
-            <div class="col-6">
-                <button @onclick="LoadParameters" class="btn btn-load"><span class="btn-icon fa-solid fa-pen-to-square"></span>Load</button>
-            </div>
-            <div class="col-6">
-                <button class="btn btn-favorite" @onclick="ToggleFavorite"><span class="btn-icon fa-solid fa-star"></span>Favorite</button>
-            </div>
-            <div class="col-6">
-                <button data-bs-toggle="modal" data-bs-target="#@Target" class="btn btn-show" @onclick="@(() => OnSelectImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-expand"></span>Show</button>
-            </div>
-            <div class="col-6">
-                <button class="btn btn-cover" @onclick="SetProjectCover"><span class="btn-icon fa-solid fa-image-portrait"></span>Cover</button>
-            </div>
-            <div class="col-6">
-                <button class="btn btn-open" @onclick="OpenFileInExplorer"><span class="btn-icon fa-regular fa-folder-open"></span>File</button>
-            </div>
-            <div class="col-6">
-                <button class="btn btn-delete" @onclick="@(() => OnDeleteImage.InvokeAsync(Image))"><span class="btn-icon fa-solid fa-trash-can"></span>Delete</button>
-            </div>
-        </div>
-    </div>
-</div>
 *@
+
 @code {
     [Parameter]
     public Image Image { get; set; }
@@ -127,12 +82,12 @@
     [Parameter]
     public EventCallback OnCoverChanged { get; set; }
 
-    private async Task LoadParameters()
+    private async Task LoadParameters(bool isImg2Img)
     {
-        await AppState.LoadImageInfoParameters(Image);
+        await AppState.LoadImageInfoParameters(Image, isImg2Img);
     }
 
-    private async Task ToggleFavorite()
+    private async Task ToggleFavorite(bool isChecked)
     {
         Image.Favorite = !Image.Favorite;
         await DB.UpdateImage(Image);
@@ -145,7 +100,7 @@
     {
         await DB.SetProjectCover(AppState.CurrentProjectId, Image.Path);
         await OnCoverChanged.InvokeAsync();
-        Toaster.AddToast(Toast.NewToast("Cover Image", $"Cover image selected for project {AppState.CurrentProjectName}.", MessageColor.Success, 5));
+        Snackbar.Add($"Cover image selected for project {AppState.CurrentProjectName}.", Severity.Success);
     }
 
     private async Task<Color> SetSamplerBadgeColor()

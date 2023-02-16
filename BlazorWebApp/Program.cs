@@ -1,6 +1,7 @@
 using BlazorWebApp.Data;
 using BlazorWebApp.Services;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,7 +11,11 @@ var maxBufferSize = 100 * 1024 * 1024;
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor().AddHubOptions(opt => { opt.MaximumReceiveMessageSize = maxBufferSize; });
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(opt =>
+{
+    opt.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopEnd;
+    opt.SnackbarConfiguration.PreventDuplicates = false;
+});
 
 builder.Services.AddHttpClient<SDAPIService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => opt.UseSqlite("Data Source=BlazorWebApp.db"));
@@ -19,7 +24,6 @@ builder.Services.AddSingleton<AppState>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<IOService>();
-builder.Services.AddSingleton<ToasterService>();
 
 builder.Services.AddScoped<JavascriptService>();
 

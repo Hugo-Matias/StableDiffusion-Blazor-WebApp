@@ -1,0 +1,27 @@
+﻿<MudDialog>
+    <DialogContent>
+        @if (ImagesData != null && ImagesData.Count == 1)
+        {
+            <MudImage Class="mt-4 mb-5" Style="max-height: 90vh; max-width: 95vw;" Src="@("data:image/png;base64," + ImagesData[0])" ObjectFit="ObjectFit.Contain" Elevation="6" Fluid/>
+        }
+        else
+        {
+            <MudCarousel Class="mud-width-full" ShowArrows="@(ImagesData.Count > 1)" ShowBullets=false AutoCycle TData="string">
+                @foreach (var image in ImagesData)
+                {
+                    <MudCarouselItem Transition="Transition.Fade">
+                        <MudImage Src="@("data:image/png;base64," + image)" ObjectFit="ObjectFit.Contain" Elevation="0" Fluid />
+                    </MudCarouselItem>
+                }
+            </MudCarousel>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public List<string> ImagesData { get; set; }
+}

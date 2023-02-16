@@ -257,16 +257,32 @@ namespace BlazorWebApp.Services
 
         public async Task GetSamplers() => Samplers = await _api.GetSamplers();
 
-        public async Task LoadImageInfoParameters(Image image)
+        public async Task LoadImageInfoParameters(Image image, bool isImg2Img)
         {
-            ParametersTxt2Img.Prompt = image.Prompt;
-            ParametersTxt2Img.NegativePrompt = image.NegativePrompt;
-            ParametersTxt2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
-            ParametersTxt2Img.Steps = image.Steps;
-            ParametersTxt2Img.Seed = image.Seed;
-            ParametersTxt2Img.CfgScale = image.CfgScale;
-            ParametersTxt2Img.Width = image.Width;
-            ParametersTxt2Img.Height = image.Height;
+            if (isImg2Img)
+            {
+                ParametersImg2Img.Prompt = image.Prompt;
+                ParametersImg2Img.NegativePrompt = image.NegativePrompt;
+                ParametersImg2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
+                ParametersImg2Img.Steps = image.Steps;
+                ParametersImg2Img.Seed = image.Seed;
+                ParametersImg2Img.CfgScale = image.CfgScale;
+                ParametersImg2Img.Width = image.Width;
+                ParametersImg2Img.Height = image.Height;
+                ParametersImg2Img.DenoisingStrength = image.DenoisingStrength;
+            }
+            else
+            {
+                ParametersTxt2Img.Prompt = image.Prompt;
+                ParametersTxt2Img.NegativePrompt = image.NegativePrompt;
+                ParametersTxt2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
+                ParametersTxt2Img.Steps = image.Steps;
+                ParametersTxt2Img.Seed = image.Seed;
+                ParametersTxt2Img.CfgScale = image.CfgScale;
+                ParametersTxt2Img.Width = image.Width;
+                ParametersTxt2Img.Height = image.Height;
+                ParametersTxt2Img.DenoisingStrength = image.DenoisingStrength;
+            }
         }
 
         public string GetCurrentSaveFolder(Outdir? outdir)
