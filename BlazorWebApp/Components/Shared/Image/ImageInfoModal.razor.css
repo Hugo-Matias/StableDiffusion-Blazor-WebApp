@@ -1,0 +1,10 @@
+﻿.spacer {
+	display: block;
+	height: 0.7rem;
+}
+
+::deep .copy-btns .mud-input-slot {
+	display: flex !important;
+	align-items: center;
+	justify-content: space-between;
+}

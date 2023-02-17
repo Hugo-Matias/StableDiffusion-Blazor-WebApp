@@ -1,9 +1,9 @@
-﻿<div id="@GalleryId" class="carousel slide carousel-fade" data-bs-ride="carousel">
+﻿<div id="@GalleryId" class="carousel slide carousel-fade" style="@Style" data-bs-ride="carousel">
     <div class="carousel-inner">
         @for (int i = 0; i < Images.Count; i++)
         {
             <div class="carousel-item @(Images[i] == Images[0] ? "active" : "")" data-bs-interval="10000">
-                <img src="data:image/png;base64,@Images[i]" class="d-block w-100">
+                <MudImage Src="@("data:image/png;base64," + Images[i])" Style="max-height: 80vh;" ObjectFit="ObjectFit.Contain" Elevation="5" Fluid />
                 @if (Images.Count > 1)
                 {
                     <div class="image-number">@(IncrementCounter ? i + 1 : i)</div>
@@ -33,4 +33,6 @@
     public bool ShowControls { get; set; } = true;
     [Parameter]
     public bool IncrementCounter { get; set; } = false;
+    [Parameter]
+    public string Style { get; set; }
 }

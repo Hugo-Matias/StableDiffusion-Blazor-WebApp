@@ -28,19 +28,15 @@ else if (_projects.Count() == 0)
 else
 {
     <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
-    if (IsFetchingImages)
+    if (images != null && images.Images != null && images.Images.Count > 0)
+    {
+        <ImagesContainer Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
+    }
+    else
     {
         <MudStack Row Justify="Justify.Center" Style="margin-top: 10rem;">
             <MudProgressCircular Color="Color.Info" Indeterminate />
         </MudStack>
-    }
-    else
-    {
-
-        if (images.Images.Count > 0)
-        {
-            <ImagesContainer Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
-        }
     }
 }
 
@@ -49,7 +45,6 @@ else
     private ImagesDto images = new();
     private List<Project>? _projects;
     private int currentImgPage;
-    public bool IsFetchingImages { get; set; } = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -76,11 +71,10 @@ else
 
     private async Task LoadImages()
     {
-        IsFetchingImages = true;
+        if (images != null && images.Images != null) images.Images.Clear();
         await InvokeAsync(StateHasChanged);
         if (AppState.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, AppState.CurrentProjectId, AppState.Settings.Gallery);
         else images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
-        IsFetchingImages = false;
         await InvokeAsync(StateHasChanged);
     }
 

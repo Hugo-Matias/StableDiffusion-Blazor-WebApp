@@ -3,6 +3,7 @@
 @inject DatabaseService DB
 @inject IOService IO
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <div>
     @if (Image.ModeId != 3)
@@ -42,14 +43,15 @@
         </MudCardContent>
         <MudCardActions>
             <MudCheckBox T="bool" CheckedChanged="e => ToggleFavorite(e)" Checked="Image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
-            <MudIconButton OnClick="@(() => OnSelectImage.InvokeAsync(Image))" Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Success />
+            <MudIconButton OnClick="@(() => OnSelectImage.InvokeAsync(Image))" Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
             <MudIconButton OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
             <MudSpacer />
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                <MudMenuItem OnClick="() => LoadParameters(false)" Icon="fa-solid fa-pen-to-square" IconColor="Color.Warning">Load Txt2Img</MudMenuItem> 
-                <MudMenuItem OnClick="() => LoadParameters(true)" Icon="fa-solid fa-square-pen" IconColor="Color.Warning">Load Img2Img</MudMenuItem> 
-                <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem> 
                 <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem> 
+                <MudDivider />
+                <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem> 
+                <MudDivider />
+                <MudMenuItem OnClick="ShowImageInfoModal" Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem> 
             </MudMenu>
         </MudCardActions>
     </MudCard>
@@ -81,11 +83,6 @@
     public EventCallback<Image> OnDeleteImage { get; set; }
     [Parameter]
     public EventCallback OnCoverChanged { get; set; }
-
-    private async Task LoadParameters(bool isImg2Img)
-    {
-        await AppState.LoadImageInfoParameters(Image, isImg2Img);
-    }
 
     private async Task ToggleFavorite(bool isChecked)
     {
@@ -128,5 +125,13 @@
             default:
                 return Color.Info;
         }
+    }
+
+    private void ShowImageInfoModal()
+    {
+        var param = new DialogParameters();
+        param.Add("Image", Image);
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth=true };
+        DialogService.Show<ImageInfoModal>("Image Info", param, options);
     }
 }

@@ -6,12 +6,12 @@
     <MudCard Elevation="4" Class="@("project-card" + (AppState.CurrentProjectId == ProjectId ? " selected" : ""))">
         <MudCardMedia Image="@Image" />
         <MudCardContent>
-            <MudText Typo="Typo.h5">@Name</MudText>
+            <MudText Typo="Typo.h6" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@Name</MudText>
         </MudCardContent>
-        <MudCardActions>
-            <MudButton OnClick="() => OnSelected.InvokeAsync(ProjectId)" StartIcon="fa-solid fa-check" IconClass="icon"  ButtonType=ButtonType.Button Variant="Variant.Text" IconColor=Color.Success>Load</MudButton>
-            <MudButton OnClick="() => OnEdited.InvokeAsync(ProjectId)" StartIcon="fa-solid fa-pen" IconClass="icon" ButtonType=ButtonType.Button Variant="Variant.Text" IconColor="Color.Info">Edit</MudButton>
-            <MudButton OnClick="() => OnDeleted.InvokeAsync(ProjectId)" StartIcon="fa-solid fa-trash-can" IconClass="icon" ButtonType=ButtonType.Button Variant="Variant.Text" IconColor="Color.Error">Delete</MudButton>
+        <MudCardActions Style="display: flex; justify-content: space-around">
+            <MudIconButton OnClick="() => OnSelected.InvokeAsync(ProjectId)" Icon="fa-solid fa-check" Class="icon" ButtonType=ButtonType.Button Color=Color.Success />
+            <MudIconButton OnClick="() => OnEdited.InvokeAsync(ProjectId)" Icon="fa-solid fa-pen" Class="icon" ButtonType=ButtonType.Button Color="Color.Info" />
+            <MudIconButton OnClick="() => OnDeleted.InvokeAsync(ProjectId)" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color="Color.Error" />
         </MudCardActions>
     </MudCard>
 </div>

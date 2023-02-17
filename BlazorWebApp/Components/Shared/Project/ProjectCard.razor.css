@@ -1,7 +1,12 @@
-﻿::deep .project-card.selected {
+﻿::deep .project-card {
+	--size: 13rem;
+	max-width: var(--size);
+	min-width: var(--size);
+}
+::deep .project-card.selected {
 	border: 2px solid var(--mud-palette-primary);
 }
 
 ::deep .icon span {
-	font-size:0.7rem !important;
+	font-size:1rem !important;
 }

@@ -1,0 +1,9 @@
+﻿::deep .mud-icon-root {
+	opacity: 0.5;
+	font-size: 1rem !important;
+}
+
+/* Line Separator */
+::deep .mud-button-root {
+	border-color: rgba(255,255,255,0.2) !important;
+}
