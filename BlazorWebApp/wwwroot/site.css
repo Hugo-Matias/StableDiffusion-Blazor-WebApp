@@ -8,3 +8,10 @@
 a:hover {
 	color: inherit !important;
 }
+
+.generation-info-text {
+	margin-top: 1rem;
+	white-space: pre-line;
+	opacity: 0.4;
+}
+

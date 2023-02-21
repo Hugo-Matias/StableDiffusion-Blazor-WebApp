@@ -33,17 +33,21 @@ namespace BlazorWebApp.Extensions
         public static MarkupString ParseHighresFixResizeInfo(this Txt2ImgParameters param)
         {
             var currentRes = $"{param.Width}x{param.Height} px";
-            var ar = (float)param.Width / param.Height;
-            string? resizeRes;
-            if (param.HRWidth == 0 && param.HRHeight == 0)
-                resizeRes = $"{(int)(param.Width * param.HRScale)}x{(int)(param.Height * param.HRScale)} px";
-            else if (param.HRWidth > 0 && param.HRHeight == 0)
-                resizeRes = $"{param.HRWidth}x{(int)(param.HRWidth / ar)} px";
-            else if (param.HRWidth == 0 && param.HRHeight > 0)
-                resizeRes = $"{(int)(param.HRHeight * ar)}x{param.HRHeight} px";
+            var resizeRes = ParseHighresResolution((int)param.Width, (int)param.Height, param.HRWidth, param.HRHeight, param.HRScale);
+            return new MarkupString($"From: {currentRes} | To: <strong>{resizeRes.Item1}x{resizeRes.Item2} px</strong>");
+        }
+
+        public static (int, int) ParseHighresResolution(this int width, int height, int hrWidth = 0, int hrHeight = 0, double scale = 0)
+        {
+            var ar = (float)width / height;
+            if (hrWidth == 0 && hrHeight == 0)
+                return ((int)(width * scale), (int)(height * scale));
+            else if (hrWidth > 0 && hrHeight == 0)
+                return (hrWidth, (int)(hrWidth / ar));
+            else if (hrWidth == 0 && hrHeight > 0)
+                return ((int)(hrHeight * ar), hrHeight);
             else
-                resizeRes = $"{param.HRWidth}x{param.HRHeight} px";
-            return new MarkupString($"From: {currentRes} | To: <strong>{resizeRes}</strong>");
+                return (hrWidth, hrHeight);
         }
 
         public static ImageInfo ParseImageInfoString(this ImageInfo image)

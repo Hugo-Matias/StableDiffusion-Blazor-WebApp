@@ -120,8 +120,8 @@
                 @if (AppState.GeneratedUpscaleImage != null)
                 {
                     List<string> generatedImages = new() { AppState.GeneratedUpscaleImage.Image};
-                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery"/>
-                    <ImageParametersInfo Text="@AppState.GeneratedUpscaleImage.Info" />
+                    @*<ImageCarousel Images="generatedImages" GalleryId="generated-gallery"/>*@
+                    @*<ImageParametersInfo Text="@AppState.GeneratedUpscaleImage.Info" />*@
                 }
             </div>
             <div class="tab-pane fade" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">

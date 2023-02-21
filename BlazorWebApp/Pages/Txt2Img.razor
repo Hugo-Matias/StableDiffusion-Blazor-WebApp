@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/txt2img"
 @inject SDAPIService SDAPIService
 @inject JavascriptService JSConsole
 @inject AppState AppState
@@ -7,63 +7,48 @@
 
 <PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
 
-<div class="row">
-    <div class="col">
+<MudGrid>
+    <MudItem xs="6">
         <GenerateFormTxt2Img Parameters="@Parameters" />
-    </div>
-    <!-- Carousel Tabs-->
-    <div class="col">
-        <nav>
-            <div class="nav nav-tabs" id="nav-tabs" role="tablist">
-                <button class="nav-link active" id="nav-gallery-tab" data-bs-toggle="tab" data-bs-target="#nav-gallery" type="button" role="tab" aria-controls="nav-gallery" aria-selected="true">Gallery</button>
-                <button class="nav-link" id="nav-gen-tab" data-bs-toggle="tab" data-bs-target="#nav-gen" type="button" role="tab" aria-controls="nav-gen" aria-selected="false">Generated</button>
-                <button class="nav-link" id="nav-progress-tab" data-bs-toggle="tab" data-bs-target="#nav-progress" type="button" role="tab" aria-controls="nav-progress" aria-selected="false">Progress</button>
-            </div>
-        </nav>
-        <div class="tab-content" id="nav-tabContent">
-            <div class="tab-pane fade show active" id="nav-gallery" role="tabpanel" aria-labelledby="nav-gallery-tab" tabindex="0">
+    </MudItem>
+    <MudItem xs="6">
+        <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" Rounded Centered>
+            <MudTabPanel Text="Preview">
                 @if (AppState.Images.Images != null)
                 {
-                    List<string> generatedImages = new();
-
-                    if (!string.IsNullOrWhiteSpace(AppState.GridImage)) generatedImages.Add(AppState.GridImage);
-
-                    generatedImages.AddRange(AppState.Images.Images);
-
-                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery" IncrementCounter=!(bool)AppState.Options.GridSave />
-
-                    <ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
+                    <ImageCarousel Images="AppState.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls />
+                    <br/>
+                    <span class="generation-info-text"><small>@AppState.ImagesInfo.InfoTexts[0]</small></span>
                 }
-            </div>
-            <div class="tab-pane fade" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
+            </MudTabPanel>
+            <MudTabPanel Text="Generated">
                 @if (AppState.GeneratedImageEntities != null)
                 {
-                    <ImagesContainer Images="AppState.GeneratedImageEntities"></ImagesContainer>
+                    <ImagesContainer Images="AppState.GeneratedImageEntities" />
                 }
-            </div>
-            <div class="tab-pane fade" id="nav-progress" role="tabpanel" aria-labelledby="nav-progress-tab" tabindex="0">
-                @if (AppState.Progress.State != null)
+            </MudTabPanel>
+            <MudTabPanel Text="Progress">
+                @if (AppState.Progress.State != null && AppState.IsConverging)
                 {
-                    var value = AppState.Progress.Value;
-                    <ProgressBar Value="@value" MaxValue=1>
-                        <Compact>
-                            <span><strong>@(Convert.ToInt32(value * 100))%</strong></span>
-                        </Compact>
-                        <Expanded>
-                            <span><strong>@(Convert.ToInt32(value * 100))%</strong> | <small>@AppState.Progress.State.Job</small></span>
-                        </Expanded>
-                    </ProgressBar>
-
+                    var value = AppState.Progress.Value * 100;
+                    <MudProgressLinear Style="height: 1.3rem !important;" Color="Color.Secondary" Value="@value" Min=0 Max=100 Class="mb-5" Rounded>
+                        <MudText Typo="Typo.caption" Class="py-2">
+                            <strong>@((int)value)%</strong>
+                            @if (!string.IsNullOrWhiteSpace(AppState.Progress.State.Job))
+                            {
+                                <small> | @AppState.Progress.State.Job</small>
+                            }
+                        </MudText>
+                    </MudProgressLinear>
                     if (AppState.Progress.CurrentImage != null)
                     {
-                        List<string> imageAsList = new List<string> { AppState.Progress.CurrentImage };
-                        <ImageCarousel Images="imageAsList" GalleryId="progress-image" />
+                        <MudImage Src=@($"data:image/png;base64,{AppState.Progress.CurrentImage}") Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid/>
                     }
                 }
-            </div>
-        </div>
-    </div>
-</div>
+            </MudTabPanel>
+        </MudTabs>
+    </MudItem>
+</MudGrid>
 
 @code {
     public Txt2ImgParameters Parameters { get; set; }

@@ -1,4 +1,4 @@
-﻿@page "/img2img"
+﻿@page "/"
 @inject SDAPIService SDAPIService
 @inject JavascriptService JS
 @inject AppState AppState
@@ -31,9 +31,9 @@
 
                     generatedImages.AddRange(AppState.Images.Images);
 
-                    <ImageCarousel Images="generatedImages" GalleryId="generated-gallery" IncrementCounter=!(bool)AppState.Options.GridSave />
+                    @*<ImageCarousel Images="generatedImages" GalleryId="generated-gallery" IncrementCounter=!(bool)AppState.Options.GridSave />*@
 
-                    <ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />
+                    @*<ImageParametersInfo Text="@AppState.ImagesInfo.InfoTexts[0]" />*@
                 }
             </div>
             <div class="tab-pane fade" id="nav-gen" role="tabpanel" aria-labelledby="nav-gen-tab" tabindex="0">
@@ -46,7 +46,7 @@
                 @if (AppState.Progress.State != null)
                 {
                     var value = AppState.Progress.Value;
-                    <ProgressBar Value="@value" MaxValue=1>
+@*                    <ProgressBar Value="@value" MaxValue=1>
                         <Compact>
                             <span><strong>@(Convert.ToInt32(value * 100))%</strong></span>
                         </Compact>
@@ -60,7 +60,7 @@
                         List<string> imageAsList = new List<string> { AppState.Progress.CurrentImage };
                         <ImageCarousel Images="imageAsList" GalleryId="progress-image" />
                     }
-                }
+*@                }
             </div>
         </div>
     </div>

@@ -6,22 +6,28 @@
 <div style="@Style">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudStack AlignItems="AlignItems.Center">
-            <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
             @if (Images.Images is not null && Images.Images.Count > 0)
             {
-                <MudButton OnClick="ShowAllImagesViewerModal">Fullscreen</MudButton>
-                <MudGrid Spacing="1" Justify="Justify.Center">
+                if (Images.PageCount > 1)
+                {
+                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
+                }
+                <MudButton OnClick="ShowAllImagesViewerModal" Color="Color.Secondary">Fullscreen</MudButton>
+                <MudGrid Class="mt-n7" Spacing="1" Justify="Justify.Center">
                     @foreach (var image in Images.Images)
                     {
                         <ImageCard Image="@image" ImageData="@LoadCardImage(image.Path)" Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
                     }
                 </MudGrid>
+                if (Images.PageCount > 1)
+                {
+                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
+                }
             }
             else
             {
-                <MudProgressCircular Class="mt-10" Color="Color.Primary" Indeterminate/>
+                <MudProgressCircular Class="mt-10" Color="Color.Primary" Indeterminate />
             }
-            <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
         </MudStack>
     </MudContainer>
 </div>

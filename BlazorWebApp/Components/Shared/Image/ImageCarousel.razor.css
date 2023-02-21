@@ -1,17 +1,18 @@
-﻿.image-number {
-	position:absolute;
-	font-size: 1.8rem;
-	font-weight: bold;
+﻿::deep .overlay-icons {
 	display: flex;
 	align-items: center;
-	justify-content:center;
-	height: 2.5rem;
-	width: 2.5rem;
-	right: 1rem;
+	justify-content: center;
+	position: absolute;
 	top: 1rem;
-	z-index: 1000;
-	background: var(--app-dark-3);
-	opacity: 0.6;
-	color: white;
-	border-radius: 50%;
+	right: 1rem;
+	background-color: rgba(0,0,0,0.6);
+	padding: 0.5rem;
+	border-radius: 1rem;
+}
+
+.image-number {
+	margin-top: -.7rem;
+	font-size: 1.8rem;
+	font-weight: bold;
+	text-align: center;
 }

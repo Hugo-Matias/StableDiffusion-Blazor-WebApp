@@ -69,10 +69,11 @@ namespace BlazorWebApp.Services
                 default:
                     _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
                     var txt2imgParams = new Txt2ImgParameters(_parsingParams);
+                    txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
                     if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
                     {
-                        txt2imgParams.FirstphaseWidth = _app.ParametersTxt2Img.FirstphaseWidth;
-                        txt2imgParams.FirstphaseHeight = _app.ParametersTxt2Img.FirstphaseHeight;
+                        txt2imgParams.FirstphaseWidth = _app.ParametersTxt2Img.Width;
+                        txt2imgParams.FirstphaseHeight = _app.ParametersTxt2Img.Height;
                         txt2imgParams.HRUpscaler = _app.ParametersTxt2Img.HRUpscaler;
                         txt2imgParams.HRScale = _app.ParametersTxt2Img.HRScale;
                         txt2imgParams.HRWidth = _app.ParametersTxt2Img.HRWidth;
@@ -195,9 +196,18 @@ namespace BlazorWebApp.Services
             Image image = new();
 
             image.Path = path;
-            image.Width = (int)_parsingParams.Width;
-            image.Height = (int)_parsingParams.Height;
             image.ProjectId = _app.CurrentProjectId;
+            if (outdir == Outdir.Txt2ImgSamples && _app.ParametersTxt2Img.EnableHR == true)
+            {
+                var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _app.ParametersTxt2Img.HRWidth, _app.ParametersTxt2Img.HRHeight, _app.ParametersTxt2Img.HRScale);
+                image.Width = resizeRes.Item1;
+                image.Height = resizeRes.Item2;
+            }
+            else
+            {
+                image.Width = (int)_parsingParams.Width;
+                image.Height = (int)_parsingParams.Height;
+            }
             if (infoPath != null) { image.InfoPath = infoPath; }
             if (outdir != Outdir.Extras)
             {

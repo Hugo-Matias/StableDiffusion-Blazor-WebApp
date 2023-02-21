@@ -1,40 +1,67 @@
-﻿<div id="@GalleryId" class="carousel slide carousel-fade" style="@Style" data-bs-ride="carousel">
-    <div class="carousel-inner">
-        @for (int i = 0; i < Images.Count; i++)
-        {
-            <div class="carousel-item @(Images[i] == Images[0] ? "active" : "")" data-bs-interval="10000">
-                <MudImage Src="@("data:image/png;base64," + Images[i])" Style="max-height: 80vh;" ObjectFit="ObjectFit.Contain" Elevation="5" Fluid />
-                @if (Images.Count > 1)
-                {
-                    <div class="image-number">@(IncrementCounter ? i + 1 : i)</div>
-                }
-            </div>
-        }
-    </div>
-    @if (ShowControls && Images.Count > 1)
-    {
-        <button class="carousel-control-prev" type="button" data-bs-target="#@GalleryId" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Previous</span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#@GalleryId" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Next</span>
-        </button>
-    }
-</div>
+﻿@inject DatabaseService DB
+@inject ImageService ImageService
 
+<div>
+    <MudCarousel @ref=Reference Class="mud-width-full" Style=@($"width: {_width}px; height: {_height + 20}px; max-width: {MaxWidth}; max-height: {MaxHeight}") ShowArrows="ShowControls" ShowBullets=false TData="Image" AutoCycle=AutoCycle>
+        @foreach (var image in Images)
+        {
+            <MudCarouselItem Style=@($"width: 100%; height: 100%; max-width: {MaxWidth}; max-height: {MaxHeight};") Transition="Transition.Fade">
+                <MudImage Src="@("data:image/png;base64," + LoadCardImage(image.Path))" Style="width: 100%; height: 100%;" ObjectFit="ObjectFit.Contain" Elevation="0" Fluid />
+                <MudStack Class="overlay-icons">
+                    <MudCheckBox T=bool CheckedChanged="HandleFavoriteChanged" Checked="image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
+                    @if (Images.Count > 1)
+                    {
+                        <div class="image-number">@(Reference.SelectedIndex + 1)</div>
+                    }
+                </MudStack>
+            </MudCarouselItem>
+        }
+    </MudCarousel>
+</div>
 
 @code {
     [Parameter]
-    public List<string> Images { get; set; }
+    public List<Image> Images { get; set; }
     [Parameter]
-    public bool ShowControls { get; set; } = true;
+    public bool ShowControls { get; set; }
     [Parameter]
-    public bool IncrementCounter { get; set; } = false;
+    public bool AutoCycle { get; set; }
     [Parameter]
-    public string Style { get; set; }
+    public string MaxWidth { get; set; }
+    [Parameter]
+    public string MaxHeight { get; set; }
 
-    public Guid GalleryId { get; set; } = Guid.NewGuid();
+    public MudCarousel<Image>? Reference { get; set; } = new();
 
+    private int _width;
+    private int _height;
+
+    protected override void OnInitialized()
+    {
+        ResizeCarousel();
+    }
+
+    private async Task HandleFavoriteChanged(bool isfavorite)
+    {
+        Images[Reference.SelectedIndex].Favorite = isfavorite;
+        await DB.UpdateImage(Images[Reference.SelectedIndex]);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ResizeCarousel()
+    {
+        if (Images == null || Images.Count == 0) return;
+        if (Images.Count == 1)
+        {
+            _width = Images[0].Width;
+            _height = Images[0].Height;
+        }
+        else
+        {
+            _width = Images.Max(i => i.Width);
+            _height = Images.Max(i => i.Height);
+        }
+    }
+
+    private string LoadCardImage(string path) => ImageService.LoadImage(path);
 }
