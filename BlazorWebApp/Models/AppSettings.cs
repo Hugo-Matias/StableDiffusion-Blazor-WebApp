@@ -156,9 +156,9 @@ namespace BlazorWebApp.Models
     #region Img2Img
     public class Img2ImgSettingsModel
     {
-        public BrushSettingsModel BrushSetttings { get; set; } = new();
+        public BrushSettingsModel Brush { get; set; } = new();
         public string Mode { get; set; } = "Mask";
-        public MaskBlurSettingsModel MaskBlurSettings { get; set; } = new();
+        public MaskBlurSettingsModel MaskBlur { get; set; } = new();
         public int ResizeMode { get; set; } = 1;
         public InpaintingSettingsModel Inpainting { get; set; } = new();
     }

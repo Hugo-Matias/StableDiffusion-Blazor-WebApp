@@ -88,21 +88,10 @@ namespace BlazorWebApp.Extensions
                     return "Crop and Resize";
                 case 2:
                     return "Resize and Fill";
+                case 3:
+                    return "Just Resize (latent upscale)";
                 default:
                     return "Just Resize";
-            }
-        }
-
-        public static int ParseResizeModeSelection(this string selection)
-        {
-            switch (selection)
-            {
-                case "Crop and Resize":
-                    return 1;
-                case "Resize and Fill":
-                    return 2;
-                default:
-                    return 0;
             }
         }
 
@@ -118,21 +107,6 @@ namespace BlazorWebApp.Extensions
                     return "Latent Nothing";
                 default:
                     return "Fill";
-            }
-        }
-
-        public static int ParseInpaintingFillSelection(this string selection)
-        {
-            switch (selection)
-            {
-                case "Original":
-                    return 1;
-                case "Latent Noise":
-                    return 2;
-                case "Latent Nothing":
-                    return 3;
-                default:
-                    return 0;
             }
         }
 

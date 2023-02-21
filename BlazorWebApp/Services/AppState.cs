@@ -101,8 +101,8 @@ namespace BlazorWebApp.Services
             Folders = new();
             Projects = new();
             TagAccordionIds = new();
-            CurrentBrushSize = Settings.Img2Img.BrushSetttings.DefaultValue;
-            CurrentBrushColor = Settings.Img2Img.BrushSetttings.Color;
+            CurrentBrushSize = Settings.Img2Img.Brush.DefaultValue;
+            CurrentBrushColor = Settings.Img2Img.Brush.Color;
 
             GetCsvTags();
             GetButtonTags();
@@ -140,7 +140,7 @@ namespace BlazorWebApp.Services
 
             ParametersImg2Img = new Img2ImgParameters(defaultParameters)
             {
-                MaskBlur = Settings.Img2Img.MaskBlurSettings.DefaultValue,
+                MaskBlur = Settings.Img2Img.MaskBlur.DefaultValue,
                 ResizeMode = Settings.Img2Img.ResizeMode,
                 InpaintingFill = Settings.Img2Img.Inpainting.Fill,
                 InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.DefaultValue,

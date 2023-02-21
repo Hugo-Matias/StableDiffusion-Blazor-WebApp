@@ -12,41 +12,7 @@
         <GenerateFormTxt2Img Parameters="@Parameters" />
     </MudItem>
     <MudItem xs="6">
-        <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" Rounded Centered>
-            <MudTabPanel Text="Preview">
-                @if (AppState.Images.Images != null)
-                {
-                    <ImageCarousel Images="AppState.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls />
-                    <br/>
-                    <span class="generation-info-text"><small>@AppState.ImagesInfo.InfoTexts[0]</small></span>
-                }
-            </MudTabPanel>
-            <MudTabPanel Text="Generated">
-                @if (AppState.GeneratedImageEntities != null)
-                {
-                    <ImagesContainer Images="AppState.GeneratedImageEntities" />
-                }
-            </MudTabPanel>
-            <MudTabPanel Text="Progress">
-                @if (AppState.Progress.State != null && AppState.IsConverging)
-                {
-                    var value = AppState.Progress.Value * 100;
-                    <MudProgressLinear Style="height: 1.3rem !important;" Color="Color.Secondary" Value="@value" Min=0 Max=100 Class="mb-5" Rounded>
-                        <MudText Typo="Typo.caption" Class="py-2">
-                            <strong>@((int)value)%</strong>
-                            @if (!string.IsNullOrWhiteSpace(AppState.Progress.State.Job))
-                            {
-                                <small> | @AppState.Progress.State.Job</small>
-                            }
-                        </MudText>
-                    </MudProgressLinear>
-                    if (AppState.Progress.CurrentImage != null)
-                    {
-                        <MudImage Src=@($"data:image/png;base64,{AppState.Progress.CurrentImage}") Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid/>
-                    }
-                }
-            </MudTabPanel>
-        </MudTabs>
+        <GeneratedImageTabs />
     </MudItem>
 </MudGrid>
 

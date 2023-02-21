@@ -154,7 +154,7 @@
 
 	public async Task Generate()
 	{
-		if (AppState.Settings.Img2Img.Mode == "Inpaint")
+		if (AppState.Settings.Img2Img.Mode == "Paint")
 		{
 			await _canvasInstance.InvokeAsync<string>("saveInpaint");
 		}
