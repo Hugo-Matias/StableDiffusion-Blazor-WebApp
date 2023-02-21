@@ -3,12 +3,13 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<div>
+<div style="@Style">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudStack AlignItems="AlignItems.Center">
             <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
             @if (Images.Images is not null && Images.Images.Count > 0)
             {
+                <MudButton OnClick="ShowAllImagesViewerModal">Fullscreen</MudButton>
                 <MudGrid Spacing="1" Justify="Justify.Center">
                     @foreach (var image in Images.Images)
                     {
@@ -34,6 +35,8 @@
     public EventCallback OnDeleteImage { get; set; }
     [Parameter]
     public EventCallback OnCoverChanged { get; set; }
+    [Parameter]
+    public string Style { get; set; }
 
     private int _currentPage = 1;
 
@@ -54,12 +57,19 @@
 
     private async Task ShowImageViewerModal(Image image)
     {
-        var data = await ImageService.LoadImageAsync(image.Path);
         var param = new DialogParameters();
         var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        param.Add("ImagesData", new List<string>() { data });
+        param.Add("Images", new List<Image>() { image });
         DialogService.Show<ImageViewerModal>("", param, options);
         //Refresh();
+    }
+
+    private void ShowAllImagesViewerModal()
+    {
+        var param = new DialogParameters();
+        var options = new DialogOptions() { MaxWidth = MaxWidth.ExtraLarge, CloseButton = true };
+        param.Add("Images", Images.Images);
+        DialogService.Show<ImageViewerModal>("", param, options);
     }
 
     private async Task ShowDeleteImageModal(Image image)

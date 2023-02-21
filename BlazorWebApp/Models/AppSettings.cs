@@ -111,7 +111,11 @@ namespace BlazorWebApp.Models
     public class HighresSettingsModel
     {
         public bool Enabled { get; set; } = false;
+        public string Upscaler { get; set; } = "Latent";
         public FirstPassSettingsModel FirstPass { get; set; } = new();
+        public ResizeScaleSettingsModel Scale { get; set; } = new();
+        public ResizeResolutionSettingsModel Resolution { get; set; } = new();
+        public SecondPassStepsSettingsModel SecondPassSteps { get; set; } = new();
     }
 
     public class FirstPassSettingsModel
@@ -121,6 +125,31 @@ namespace BlazorWebApp.Models
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 2048;
         public int Step { get; set; } = 64;
+    }
+
+    public class ResizeScaleSettingsModel
+    {
+        public double DefaultValue { get; set; } = 2;
+        public double Min { get; set; } = 1;
+        public double Max { get; set; } = 4;
+        public double Step { get; set; } = 0.05;
+    }
+
+    public class ResizeResolutionSettingsModel
+    {
+        public int Width { get; set; } = 0;
+        public int Height { get; set; } = 0;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 2048;
+        public int Step { get; set; } = 8;
+    }
+
+    public class SecondPassStepsSettingsModel
+    {
+        public int DefaultValue { get; set; } = 0;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 150;
+        public int Step { get; set; } = 1;
     }
     #endregion
 

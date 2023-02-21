@@ -45,6 +45,7 @@ namespace BlazorWebApp.Services
         public Txt2ImgParameters ParametersTxt2Img { get; set; }
         public Img2ImgParameters ParametersImg2Img { get; set; }
         public UpscaleParameters ParametersUpscale { get; set; }
+        public IEnumerable<PromptStyle> CurrentStyles { get; set; }
         public string CurrentSDModel { get; set; } = "Loading...";
         public long? CurrentSeed { get; set; }
         public int CurrentFolderId { get; set; }
@@ -76,9 +77,6 @@ namespace BlazorWebApp.Services
         public List<CsvTag> CsvTags { get; set; }
         public PromptButton RootButtonTag { get; set; }
         public List<int> TagAccordionIds { get; set; }
-
-        public string? Style1 { get; set; }
-        public string? Style2 { get; set; }
         public bool IsConverging
         {
             get => _isConverging;
@@ -133,6 +131,11 @@ namespace BlazorWebApp.Services
                 EnableHR = Settings.Txt2Img.HighRes.Enabled,
                 FirstphaseWidth = Settings.Txt2Img.HighRes.FirstPass.Width,
                 FirstphaseHeight = Settings.Txt2Img.HighRes.FirstPass.Height,
+                HRUpscaler = Settings.Txt2Img.HighRes.Upscaler,
+                HRScale = Settings.Txt2Img.HighRes.Scale.DefaultValue,
+                HRWidth = Settings.Txt2Img.HighRes.Resolution.Width,
+                HRHeight = Settings.Txt2Img.HighRes.Resolution.Height,
+                HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.DefaultValue,
             };
 
             ParametersImg2Img = new Img2ImgParameters(defaultParameters)
@@ -181,14 +184,18 @@ namespace BlazorWebApp.Services
         public async Task GetStyles()
         {
             Styles = await _api.GetStyles();
-
-            Style1 = Styles[0].Name;
-            Style2 = Styles[0].Name;
+            CurrentStyles = new List<PromptStyle>();
         }
 
         public async Task GetUpscalers()
         {
-            Upscalers = await _api.GetUpscalers();
+            Upscalers = new List<Upscaler>();
+            List<string> builtInUpscalers = new() { "Latent", "Latent (antialiased)", "Latent (bicubic)", "Latent (bicubic antialiased)", "Latent (nearest)", "Latent (nearest-exact)" };
+            foreach (var upscaler in builtInUpscalers)
+            {
+                Upscalers.Add(new Upscaler() { Name = upscaler, ModelName = upscaler, ModelPath = string.Empty, ModelUrl = string.Empty });
+            }
+            Upscalers.AddRange(await _api.GetUpscalers());
         }
 
         public async Task GetFolders()
@@ -250,8 +257,7 @@ namespace BlazorWebApp.Services
 
         public void ResetStyles()
         {
-            Style1 = "None";
-            Style2 = "None";
+            CurrentStyles = new List<PromptStyle>();
             OnStyleChange?.Invoke();
         }
 

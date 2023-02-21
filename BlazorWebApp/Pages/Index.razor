@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/txt2img"
 @inject DatabaseService DB
 @inject AppState AppState
 @implements IDisposable
@@ -30,7 +30,7 @@ else
     <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
     if (images != null && images.Images != null && images.Images.Count > 0)
     {
-        <ImagesContainer Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
+        <ImagesContainer Style="margin-bottom: 2rem;" Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
     }
     else
     {

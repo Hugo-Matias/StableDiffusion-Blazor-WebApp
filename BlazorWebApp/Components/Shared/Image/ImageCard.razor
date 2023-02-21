@@ -8,7 +8,12 @@
 <div>
     @if (Image.ModeId != 3)
     {
-        <MudBadge Class="mb-n2 ms-3" Content="@(DB.GetSampler(Image.SamplerId).Result.ToString())" Color="@(SetSamplerBadgeColor().Result)" Overlap />
+        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content="@(DB.GetSampler(Image.SamplerId).Result.ToString())" Color="@(SetSamplerBadgeColor().Result)" Overlap />
+    }
+    else
+    {
+        @*Spacing element to keep top margin consistency*@
+        <MudBadge Style="opacity: 0;" Content="null" Overlap />
     }
     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
         <MudCardMedia Image="@("data:image/png;base64," + ImageData)" />

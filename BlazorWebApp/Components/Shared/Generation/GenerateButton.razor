@@ -1,35 +1,29 @@
 ﻿@inject AppState AppState
 
 <EditForm Model="Parameters" OnSubmit="@Generate">
-	@if (!AppState.IsConverging)
-	{
-		<div class="row">
-			<div class="col">
-				<button id="generate-btn" class="btn btn-outline-success" type="submit"><span class="fa-solid fa-circle-half-stroke me-2"/> Generate</button>
-			</div>
-		</div>
-	}
-	else
-	{
-		<div class="row">
-			<div class="col-6">
-				<button id="skip-btn" class="btn btn-outline-warning" type="button" @onclick="OnSkip"><span class="fa-solid fa-forward me-2" />Skip</button>
-			</div>
-			<div class="col-6">
-				<button id="interrupt-btn" class="btn btn-outline-danger" type="button" @onclick="OnInterrupt"><span class="fa-solid fa-ban me-2" />Interrupt</button>
-			</div>
-		</div>
-	}
+    @if (!AppState.IsConverging)
+    {
+        <MudStack Class="d-flex justify-content-center align-items-center" Style="height: 100%">
+            <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" FullWidth>Generate</MudButton>
+        </MudStack>
+    }
+    else
+    {
+        <MudButtonGroup Variant=Variant.Filled Color=Color.Primary OverrideStyles=false Class="mt-2 w-100">
+            <MudButton OnClick=@(() => OnSkip.InvokeAsync()) Variant=Variant.Filled Color=Color.Warning StartIcon="fa-solid fa-forward" ButtonType="ButtonType.Button" FullWidth>Skip</MudButton>
+            <MudButton OnClick=@(() => OnInterrupt.InvokeAsync()) Variant=Variant.Filled Color=Color.Error StartIcon="fa-solid fa-ban" ButtonType="ButtonType.Button" FullWidth>Interrupt</MudButton>
+        </MudButtonGroup>
+    }
 </EditForm>
 
 @code {
-	[Parameter] public SharedParameters Parameters { get; set; }
-	[Parameter] public EventCallback<SharedParameters> OnGenerate { get; set; }
-	[Parameter] public EventCallback OnSkip { get; set; }
-	[Parameter] public EventCallback OnInterrupt { get; set; }
+    [Parameter] public SharedParameters Parameters { get; set; }
+    [Parameter] public EventCallback<SharedParameters> OnGenerate { get; set; }
+    [Parameter] public EventCallback OnSkip { get; set; }
+    [Parameter] public EventCallback OnInterrupt { get; set; }
 
-	public async void Generate()
-	{
-		await OnGenerate.InvokeAsync(Parameters);
-	}
+    public async void Generate()
+    {
+        await OnGenerate.InvokeAsync(Parameters);
+    }
 }

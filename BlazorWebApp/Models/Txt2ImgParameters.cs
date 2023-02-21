@@ -10,6 +10,16 @@ namespace BlazorWebApp.Models
 		public int? FirstphaseWidth { get; set; }
 		[JsonPropertyName("firstphase_height")]
 		public int? FirstphaseHeight { get; set; }
+		[JsonPropertyName("hr_scale")]
+		public double HRScale { get; set; }
+		[JsonPropertyName("hr_upscaler")]
+		public string HRUpscaler { get; set; }
+		[JsonPropertyName("hr_second_pass_steps")]
+		public int HRSecondPassSteps { get; set; }
+		[JsonPropertyName("hr_resize_x")]
+		public int HRWidth { get; set; }
+		[JsonPropertyName("hr_resize_y")]
+		public int HRHeight { get; set; }
 
 		public Txt2ImgParameters() { }
 		public Txt2ImgParameters(SharedParameters clone)

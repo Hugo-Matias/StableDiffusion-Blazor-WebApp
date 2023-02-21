@@ -1,123 +1,105 @@
 ﻿@using System.Globalization;
 @inject AppState AppState
 
-<EditForm Model="@Parameters">
-    <div class="generate-form card p-4 col mb-3">
-        <div class="row mb-3">
-            <div class="col-8">
-                <label class="form-label" for="steps">Steps: <strong class="ms-2">@Parameters.Steps</strong></label>
-                <input type="range" class="form-range" id="steps" @bind-value="@Parameters.Steps" @bind-value:event="oninput" min="@AppState.Settings.Shared.Steps.Min" max="@AppState.Settings.Shared.Steps.Max" step="@AppState.Settings.Shared.Steps.Step" />
-            </div>
-            <div class="col-4">
-                <label class="form-label" for="samplerGroup">Sampler</label> <br />
-                @if (AppState.Samplers != null)
-                {
-                    <Dropdown ButtonText="@Parameters.SamplerIndex" OnSelected="SamplerSelected">
-                        <Button>
-                            @Parameters.SamplerIndex
-                        </Button>
-                        <Items>
-                            @foreach (var sampler in AppState.Samplers)
+<div>
+    <EditForm Model="@Parameters">
+        <MudGrid Class="pa-5">
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.Steps Min=AppState.Settings.Shared.Steps.Min Max=AppState.Settings.Shared.Steps.Max Step=AppState.Settings.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerIndex AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    @if (AppState.Samplers != null)
+                    {
+                        @foreach (var sampler in AppState.Samplers)
+                        {
+                            <MudSelectItem Value=@sampler.Name />
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.CfgScale Min=AppState.Settings.Shared.CfgScale.Min Max=AppState.Settings.Shared.CfgScale.Max Step=AppState.Settings.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
+            </MudItem>
+            <MudItem xs="5">
+                <MudNumericField @bind-Value=Parameters.Seed Label="Seed" Min="-1" Max="long.MaxValue" />
+            </MudItem>
+            <MudItem xs="1">
+                <MudButtonGroup Variant="Variant.Text" VerticalAlign>
+                    <MudIconButton OnClick=SetRandomSeed Icon="fa-solid fa-shuffle" ButtonType="ButtonType.Button" Class="icon" />
+                    <MudIconButton OnClick=RestoreSeed Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" />
+                </MudButtonGroup>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=AppState.Settings.Shared.Resolution.Min Max=AppState.Settings.Shared.Resolution.Max Step=AppState.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=AppState.Settings.Shared.Resolution.Min Max=AppState.Settings.Shared.Resolution.Max Step=AppState.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.NIter Min=AppState.Settings.Shared.Batch.Count.Min Max=AppState.Settings.Shared.Batch.Count.Max Step=AppState.Settings.Shared.Batch.Count.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Count:</small> @Parameters.NIter</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.BatchSize Min=AppState.Settings.Shared.Batch.Size.Min Max=AppState.Settings.Shared.Batch.Size.Max Step=AppState.Settings.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
+            </MudItem>
+            <MudItem xs="12">
+                <MudChipSet SelectedChipsChanged="HandleParameterChecked" Class="d-flex align-items-center justify-content-center" MultiSelection Filter>
+                    <MudChip Text="Restore Faces" Default="Parameters.RestoreFaces" Variant="Variant.Text" Color="Color.Primary">Restore Faces</MudChip>
+                    <MudChip Text="Tiling" Default="Parameters.Tiling" Variant="Variant.Text" Color="Color.Primary">Tiling</MudChip>
+                    <MudChip Text="Highres Fix" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Highres Fix</MudChip>
+                </MudChipSet>
+            </MudItem>
+            <MudItem xs="12">
+                <MudGrid Class=@($"collapse {(Parameters.EnableHR == true ? "show" : "")}")>
+                    <MudItem xs="12" Class="align-items-center justify-content-center d-flex mt-n3">
+                        <MudText Typo="Typo.overline">@_resizeInfo</MudText>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSelect T="string" Label="Upscaler" @bind-Value=Parameters.HRUpscaler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            @if (AppState.Upscalers != null && AppState.Upscalers.Count > 0)
                             {
-                                <DropdownItem Text="@sampler.Name" />
+                                @foreach (var upscaler in AppState.Upscalers)
+                                {
+                                    <MudSelectItem Value=@(upscaler.Name) />
+                                }
                             }
-                        </Items>
-                    </Dropdown>
-                }
-            </div>
-        </div>
-        <div class="row mb-3">
-            <div class="col-6">
-                <label class="form-label" for="cfg-scale">CFG Scale: <strong class="ms-2">@Parameters.CfgScale</strong></label>
-                <input type="range" class="form-range" id="cfg-scale" @bind-value="Parameters.CfgScale" @bind-value:event="oninput" min="@AppState.Settings.Shared.CfgScale.Min" max="@AppState.Settings.Shared.CfgScale.Max" step="@AppState.Settings.Shared.CfgScale.Step" />
-            </div>
-            <div class="col-6">
-                <label class="form-label" for="seed">Seed</label>
-                <div class="row me-0">
-                    <div class="col-8 pe-0">
-                        <div class="input-group">
-                            <button type="button" class="btn btn-outline-secondary" @onclick="DecrementSeed"><span class="fa-solid fa-minus"></span></button>
-                            <input type="number" class="form-control" style="font-size:@(Parameters.Seed < 999999999 ? "1rem" : "0.7rem")" id="seed" min="-1" @bind-value="@Parameters.Seed" @bind-value:event="oninput" />
-                            <button type="button" class="btn btn-outline-secondary" @onclick="IncrementSeed"><span class="fa-solid fa-plus"></span></button>
-                        </div>
-                    </div>
-                    <div class="col-2">
-                        <button type="button" class="btn btn-outline-secondary" @onclick="SetRandomSeed"><span class="fa-solid fa-shuffle"></span></button>
-                    </div>
-                    <div class="col-2">
-                        <button type="button" class="btn btn-outline-secondary" @onclick="RestoreSeed"><span class="fa-solid fa-rotate-left"></span></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="row mb-3">
-            <div class="col-6">
-                <label class="form-label" for="width">Width: <strong class="ms-2">@Parameters.Width</strong></label>
-                <input type="range" class="form-range" id="width" @bind-value="@Parameters.Width" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
-            </div>
-            <div class="col-6">
-                <label class="form-label" for="height">Height: <strong class="ms-2">@Parameters.Height</strong></label>
-                <input type="range" class="form-range" id="height" @bind-value="@Parameters.Height" @bind-value:event="oninput" min="@AppState.Settings.Shared.Resolution.Min" max="@AppState.Settings.Shared.Resolution.Max" step="@AppState.Settings.Shared.Resolution.Step" />
-            </div>
-        </div>
-        <div class="row mb-3">
-            <div class="col-6">
-                <label class="form-label" for="batch-count">Batch Count: <strong class="ms-2">@Parameters.NIter</strong></label>
-                <input type="range" class="form-range" id="batch-count" @bind-value="@Parameters.NIter" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Count.Min" max="@AppState.Settings.Shared.Batch.Count.Max" step="@AppState.Settings.Shared.Batch.Count.Step" />
-            </div>
-            <div class="col-6">
-                <label class="form-label" for="batch-size">Batch Size: <strong class="ms-2">@Parameters.BatchSize</strong></label>
-                <input type="range" class="form-range" id="batch-size" @bind-value="@Parameters.BatchSize" @bind-value:event="oninput" min="@AppState.Settings.Shared.Batch.Size.Min" max="@AppState.Settings.Shared.Batch.Size.Max" step="@AppState.Settings.Shared.Batch.Size.Step" />
-            </div>
-        </div>
-        <div class="row mb-3">
-            <div class="col-4">
-                <input type="checkbox" class="btn-check" id="restore-faces" autocomplete="off" @bind-value="@Parameters.RestoreFaces" checked="@Parameters.RestoreFaces" />
-                <label class="btn btn-outline-secondary expand-btn" for="restore-faces">Restore Faces</label>
-            </div>
-            <div class="col-4">
-                <input type="checkbox" class="btn-check" id="tiling" autocomplete="off" @bind-value="@Parameters.Tiling" checked="@Parameters.Tiling" />
-                <label class="btn btn-outline-secondary expand-btn" for="tiling">Tiling</label>
-            </div>
-            <div class="col-4">
-                <input type="checkbox" class="btn-check" id="highres-fix" autocomplete="off" data-bs-toggle="collapse" data-bs-target="#highres-options" @bind-value="@Parameters.EnableHR" checked="@Parameters.EnableHR" />
-                <label class="btn btn-outline-secondary expand-btn" for="highres-fix">HighRes Fix</label>
-            </div>
-        </div>
-        <div class="row mb-3 collapse @(Parameters.EnableHR == true ? "show" : "")" id="highres-options">
-            <div class="col-4">
-                <label class="form-label" for="highres-width">First Pass Width: <strong class="ms-2">@Parameters.FirstphaseWidth</strong></label>
-                <input type="range" class="form-range" id="highres-width" @bind-value="@Parameters.FirstphaseWidth" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
-            </div>
-            <div class="col-4">
-                <label class="form-label" for="highres-height">First Pass Height: <strong class="ms-2">@Parameters.FirstphaseHeight</strong></label>
-                <input type="range" class="form-range" id="highres-height" @bind-value="@Parameters.FirstphaseHeight" @bind-value:event="oninput" min="@AppState.Settings.Txt2Img.HighRes.FirstPass.Min" max="@AppState.Settings.Txt2Img.HighRes.FirstPass.Max" step="@AppState.Settings.Txt2Img.HighRes.FirstPass.Step" />
-            </div>
-            <div class="col-4">
-                <label class="form-label" for="highres-denoising">Denoising: <strong class="ms-2">@Parameters.DenoisingStrength</strong></label>
-                <input type="range" class="form-range" id="highres-denoising" @bind-value="@Parameters.DenoisingStrength" @bind-value:event="oninput" min="@AppState.Settings.Shared.Denoising.Min" max="@AppState.Settings.Shared.Denoising.Max" step="@AppState.Settings.Shared.Denoising.Step" />
-            </div>
-        </div>
-    </div>
-</EditForm>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider @bind-Value=Parameters.HRSecondPassSteps Min=AppState.Settings.Txt2Img.HighRes.SecondPassSteps.Min Max=AppState.Settings.Txt2Img.HighRes.SecondPassSteps.Max Step=AppState.Settings.Txt2Img.HighRes.SecondPassSteps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @($"{(Parameters.HRSecondPassSteps > 0 ? Parameters.HRSecondPassSteps : $"Original ({Parameters.Steps})")}")</MudSlider>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=AppState.Settings.Shared.Denoising.Min Max=AppState.Settings.Shared.Denoising.Max Step=AppState.Settings.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=AppState.Settings.Txt2Img.HighRes.Scale.Min Max=AppState.Settings.Txt2Img.HighRes.Scale.Max Step=AppState.Settings.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=AppState.Settings.Txt2Img.HighRes.Resolution.Min Max=AppState.Settings.Txt2Img.HighRes.Resolution.Max Step=AppState.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=AppState.Settings.Txt2Img.HighRes.Resolution.Min Max=AppState.Settings.Txt2Img.HighRes.Resolution.Max Step=AppState.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</div>
 
 @code {
     [Parameter]
     public Txt2ImgParameters Parameters { get; set; }
 
     private Options _options;
+    private MarkupString _resizeInfo;
 
-    protected override void OnInitialized()
+    protected async override Task OnInitializedAsync()
     {
         _options = AppState.Options;
+        if (AppState.Upscalers == null || AppState.Upscalers.Count == 0) await AppState.GetUpscalers();
+        RefreshHighresInfo();
     }
 
-    private void IncrementSeed() => Parameters.Seed++;
-    private void DecrementSeed()
-    {
-        if (Parameters.Seed > -1)
-            Parameters.Seed--;
-    }
     private void SetRandomSeed() => Parameters.Seed = -1;
 
     private void RestoreSeed()
@@ -126,6 +108,49 @@
             Parameters.Seed = AppState.ImagesInfo.Seed;
     }
 
-    private void SamplerSelected(string selection) => Parameters.SamplerIndex = selection;
+    private void HandleParameterChecked(MudChip[] checkboxes)
+    {
+        Parameters.RestoreFaces = false;
+        Parameters.Tiling = false;
+        Parameters.EnableHR = false;
+        if (checkboxes == null || checkboxes.Count() == 0) return;
 
+        foreach (var check in checkboxes)
+        {
+            switch (check.Text)
+            {
+                case "Restore Faces":
+                    Parameters.RestoreFaces = true;
+                    break;
+                case "Tiling":
+                    Parameters.Tiling = true;
+                    break;
+                case "Highres Fix":
+                    Parameters.EnableHR = true;
+                    break;
+            }
+        }
+    }
+
+    private void HandleResolutionChanged(int value, bool isWidth)
+    {
+        if (isWidth) Parameters.Width = value;
+        else Parameters.Height = value;
+        RefreshHighresInfo();
+    }
+
+    private void HandleHRResolutionChanged(int value, bool isWidth)
+    {
+        if (isWidth) Parameters.HRWidth = value;
+        else Parameters.HRHeight = value;
+        RefreshHighresInfo();
+    }
+
+    private void HandleHRScaleChanged(double value)
+    {
+        Parameters.HRScale = value;
+        RefreshHighresInfo();
+    }
+
+    private void RefreshHighresInfo() => _resizeInfo = Parser.ParseHighresFixResizeInfo(Parameters);
 }

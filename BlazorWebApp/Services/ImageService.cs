@@ -38,7 +38,7 @@ namespace BlazorWebApp.Services
             switch (mode)
             {
                 case ModeType.Img2Img:
-                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.Styles, _app.Style1, _app.Style2);
+                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
                     var img2imgParams = new Img2ImgParameters(_parsingParams);
                     img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                     img2imgParams.Mask = _app.ParametersImg2Img.Mask;
@@ -67,12 +67,17 @@ namespace BlazorWebApp.Services
                     break;
 
                 default:
-                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.Styles, _app.Style1, _app.Style2);
+                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
                     var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                     if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
                     {
                         txt2imgParams.FirstphaseWidth = _app.ParametersTxt2Img.FirstphaseWidth;
                         txt2imgParams.FirstphaseHeight = _app.ParametersTxt2Img.FirstphaseHeight;
+                        txt2imgParams.HRUpscaler = _app.ParametersTxt2Img.HRUpscaler;
+                        txt2imgParams.HRScale = _app.ParametersTxt2Img.HRScale;
+                        txt2imgParams.HRWidth = _app.ParametersTxt2Img.HRWidth;
+                        txt2imgParams.HRHeight = _app.ParametersTxt2Img.HRHeight;
+                        txt2imgParams.HRSecondPassSteps = _app.ParametersTxt2Img.HRSecondPassSteps;
                         txt2imgParams.DenoisingStrength = _app.ParametersTxt2Img.DenoisingStrength;
                     }
                     _app.Images = await _api.PostTxt2Img(txt2imgParams);

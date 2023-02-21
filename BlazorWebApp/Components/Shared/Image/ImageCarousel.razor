@@ -24,15 +24,17 @@
     }
 </div>
 
+
 @code {
     [Parameter]
     public List<string> Images { get; set; }
-    [Parameter]
-    public string GalleryId { get; set; } = string.Empty;
     [Parameter]
     public bool ShowControls { get; set; } = true;
     [Parameter]
     public bool IncrementCounter { get; set; } = false;
     [Parameter]
     public string Style { get; set; }
+
+    public Guid GalleryId { get; set; } = Guid.NewGuid();
+
 }

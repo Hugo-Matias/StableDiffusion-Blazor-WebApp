@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Models;
+using Microsoft.AspNetCore.Components;
 using Sylvan.Data;
 using Sylvan.Data.Csv;
 using System.Text.RegularExpressions;
@@ -7,26 +8,17 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
-        public static SharedParameters ParseParameters(this SharedParameters param, List<PromptStyle> styles, string style1 = null, string style2 = null)
+        public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
         {
-            if (style1 != "None" || style2 != "None")
+            if (styles != null && styles.Count() > 0)
             {
-                param.ParsePromptStyles(styles, style1, style2);
-            }
-
-            return param;
-        }
-
-        private static void ParsePromptStyles(this SharedParameters param, List<PromptStyle> styles, string style1, string style2)
-        {
-            foreach (var style in styles)
-            {
-                if (style.Name != "None" && (style1 == style.Name || style2 == style.Name))
+                foreach (var style in styles)
                 {
                     param.Prompt = param.Prompt.ParsePrompt(style.Prompt);
                     param.NegativePrompt = param.NegativePrompt.ParsePrompt(style.NegativePrompt);
                 }
             }
+            return param;
         }
 
         private static string ParsePrompt(this string prompt, string style)
@@ -35,8 +27,23 @@ namespace BlazorWebApp.Extensions
             {
                 return Regex.Replace(style, "{prompt}", prompt ?? "");
             }
-
             return $"{prompt}{style}";
+        }
+
+        public static MarkupString ParseHighresFixResizeInfo(this Txt2ImgParameters param)
+        {
+            var currentRes = $"{param.Width}x{param.Height} px";
+            var ar = (float)param.Width / param.Height;
+            string? resizeRes;
+            if (param.HRWidth == 0 && param.HRHeight == 0)
+                resizeRes = $"{(int)(param.Width * param.HRScale)}x{(int)(param.Height * param.HRScale)} px";
+            else if (param.HRWidth > 0 && param.HRHeight == 0)
+                resizeRes = $"{param.HRWidth}x{(int)(param.HRWidth / ar)} px";
+            else if (param.HRWidth == 0 && param.HRHeight > 0)
+                resizeRes = $"{(int)(param.HRHeight * ar)}x{param.HRHeight} px";
+            else
+                resizeRes = $"{param.HRWidth}x{param.HRHeight} px";
+            return new MarkupString($"From: {currentRes} | To: <strong>{resizeRes}</strong>");
         }
 
         public static ImageInfo ParseImageInfoString(this ImageInfo image)
