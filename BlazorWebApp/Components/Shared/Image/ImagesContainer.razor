@@ -14,9 +14,12 @@
                 }
                 <MudButton OnClick="ShowAllImagesViewerModal" Color="Color.Secondary">Fullscreen</MudButton>
                 <MudGrid Class="mt-n7" Spacing="1" Justify="Justify.Center">
-                    @foreach (var image in Images.Images)
+                    @if (Images.Images.Count > 0)
                     {
-                        <ImageCard Image="@image" ImageData="@LoadCardImage(image.Path)" Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
+                        @foreach (var image in Images.Images)
+                        {
+                            <ImageCard Image="@image" ImageData="@LoadCardImage(image.Path)" Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
+                        }
                     }
                 </MudGrid>
                 if (Images.PageCount > 1)

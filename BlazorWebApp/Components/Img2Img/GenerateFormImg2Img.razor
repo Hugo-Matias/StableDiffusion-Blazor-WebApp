@@ -23,10 +23,10 @@
                 </MudStack>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MaskBlur Min="AppState.Settings.Img2Img.MaskBlur.Min" Max="AppState.Settings.Img2Img.MaskBlur.Max" Step="AppState.Settings.Img2Img.MaskBlur.Step" ValueLabel><small>Mask Blur:</small> @Parameters.MaskBlur</MudSlider>
+                <MudSlider @bind-Value=Parameters.MaskBlur Min="AppState.Settings.Img2Img.MaskBlur.Min" Max="AppState.Settings.Img2Img.MaskBlur.Max" Step="AppState.Settings.Img2Img.MaskBlur.Step" Variant="Variant.Filled" ValueLabel><small>Mask Blur:</small> @Parameters.MaskBlur</MudSlider>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider @bind-Value=AppState.CurrentBrushSize Min="AppState.Settings.Img2Img.Brush.Min" Max="AppState.Settings.Img2Img.Brush.Max" ValueLabel><small>Brush Size:</small> @AppState.CurrentBrushSize</MudSlider>
+                <MudSlider @bind-Value=AppState.CurrentBrushSize Min="AppState.Settings.Img2Img.Brush.Min" Max="AppState.Settings.Img2Img.Brush.Max" Variant=Variant.Filled ValueLabel><small>Brush Size:</small> @AppState.CurrentBrushSize</MudSlider>
             </MudItem>
             <MudItem xs="4">
                 <MudColorPicker AnchorOrigin=Origin.BottomRight TransformOrigin=Origin.TopRight Label="Brush Color" @bind-Text="AppState.CurrentBrushColor" DisableAlpha />
@@ -57,7 +57,7 @@
                 </MudChipSet>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.InpaintFullResPadding Min="AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Min" Max="AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Max" Step="AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Step" ValueLabel>
+                <MudSlider @bind-Value=Parameters.InpaintFullResPadding Min="AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Min" Max="AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Max" Step="AppState.Settings.Img2Img.Inpainting.FullRes.Padding.Step" Variant="Variant.Filled" ValueLabel>
                     <small>Full Res Padding:</small> @Parameters.InpaintFullResPadding
                 </MudSlider>
             </MudItem>
