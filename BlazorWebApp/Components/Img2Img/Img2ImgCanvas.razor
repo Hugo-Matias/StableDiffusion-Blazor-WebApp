@@ -3,240 +3,246 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<img id="img-work" src="" @ref="_imgWork"/>
+<img id="img-work" src="" @ref="_imgWork" />
 
 <div id="canvas-container" @ref="_container">
-	<img id="img-canvas" src="./no_image.png" @ref="_imgCanvas" />
-	<Canvas id="canvas-work" @ref="_canvasWork" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
-	<Canvas id="canvas-drawing" @ref="_canvas" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
-	<Canvas id="canvas-pointer" @ref="_canvasPointer" @onmousedown="OnMouseDown" @onmouseup="OnMouseUp" @onmousemove="OnMouseMove" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
-	<div class="dropzone" @ref="_dropzone">
-		<h1>Drop an image here.</h1>
-		<InputFile OnChange="@OnDropFile" @ref="_inputFile" />
-	</div>
+    <img id="img-canvas" src="./no_image.png" @ref="_imgCanvas" />
+    <Canvas id="canvas-work" @ref="_canvasWork" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
+    <Canvas id="canvas-drawing" @ref="_canvas" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
+    <Canvas id="canvas-pointer" @ref="_canvasPointer" @onmousedown="OnMouseDown" @onmouseup="OnMouseUp" @onmousemove="OnMouseMove" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
+    <div class="dropzone" @ref="_dropzone">
+        <h1>Drop an image here.</h1>
+        <InputFile OnChange="@OnDropFile" @ref="_inputFile" />
+    </div>
 </div>
 
 @code {
-	// Canvas
-	private ElementReference _container;
-	private ElementReference _imgCanvas;
-	private ElementReference _imgWork;
-	private Canvas? _canvas;
-	private Canvas? _canvasPointer;
-	private Canvas? _canvasWork;
+    [Parameter]
+    public EventCallback OnImageChanged { get; set; }
 
-	private Context2D? _ctx;
-	private Context2D? _ctxWork;
-	private Context2D? _ctxPointer;
+    // Canvas
+    private ElementReference _container;
+    private ElementReference _imgCanvas;
+    private ElementReference _imgWork;
+    private Canvas? _canvas;
+    private Canvas? _canvasPointer;
+    private Canvas? _canvasWork;
 
-	private bool _isDrawing;
-	private long _canvasWidth;
-	private long _canvasHeight;
-	private double _canvasMultiplierX = 1;
-	private double _canvasMultiplierY = 1;
-	private string _imgWorkData = string.Empty;
+    private Context2D? _ctx;
+    private Context2D? _ctxWork;
+    private Context2D? _ctxPointer;
 
-	// Dropzone
-	private ElementReference _dropzone;
-	private InputFile _inputFile;
-	private int _maxFileSizeMB = 30;
+    private bool _isDrawing;
+    private long _canvasWidth;
+    private long _canvasHeight;
+    private double _canvasMultiplierX = 1;
+    private double _canvasMultiplierY = 1;
+    private string _imgWorkData = string.Empty;
 
-	private IJSObjectReference _canvasModule;
-	private IJSObjectReference _canvasInstance;
-	private IJSObjectReference _dropzoneModule;
-	private IJSObjectReference _dropzoneInstance;
+    // Dropzone
+    private ElementReference _dropzone;
+    private InputFile _inputFile;
+    private int _maxFileSizeMB = 30;
 
-	protected override async Task OnAfterRenderAsync(bool firstRender)
-	{
-		if (firstRender)
-		{
-			_canvasModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Canvas.js");
-			_dropzoneModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Dropzone.js");
+    private IJSObjectReference _canvasModule;
+    private IJSObjectReference _canvasInstance;
+    private IJSObjectReference _dropzoneModule;
+    private IJSObjectReference _dropzoneInstance;
 
-			_canvasInstance = await _canvasModule.InvokeAsync<IJSObjectReference>("init", DotNetObjectReference.Create(this), _container, _canvas, _canvasPointer, _canvasWork, _imgCanvas, _imgWork);
-			_dropzoneInstance = await _dropzoneModule.InvokeAsync<IJSObjectReference>("init", _dropzone, _inputFile.Element);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _canvasModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Canvas.js");
+            _dropzoneModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Dropzone.js");
 
-			_ctx = await _canvas.GetContext2DAsync();
-			_ctxWork = await _canvasWork.GetContext2DAsync();
-			_ctxPointer = await _canvasPointer.GetContext2DAsync();
+            _canvasInstance = await _canvasModule.InvokeAsync<IJSObjectReference>("init", DotNetObjectReference.Create(this), _container, _canvas, _canvasPointer, _canvasWork, _imgCanvas, _imgWork);
+            _dropzoneInstance = await _dropzoneModule.InvokeAsync<IJSObjectReference>("init", _dropzone, _inputFile.Element);
 
-			AppState.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-			AppState.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+            _ctx = await _canvas.GetContext2DAsync();
+            _ctxWork = await _canvasWork.GetContext2DAsync();
+            _ctxPointer = await _canvasPointer.GetContext2DAsync();
 
-			if (!string.IsNullOrEmpty(AppState.CanvasImageData)) { await LoadImage(); }
-		}
-	}
+            AppState.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+            AppState.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
 
-	private async Task OnMouseDown(MouseEventArgs e)
-	{
-		_isDrawing = true;
-		await _ctx.BeginPathAsync();
-		await _ctx.MoveToAsync(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
-		await Draw(e);
-	}
+            if (!string.IsNullOrEmpty(AppState.CanvasImageData)) { await LoadImage(); }
+        }
+    }
 
-	private async Task OnMouseUp(MouseEventArgs e)
-	{
-		if (!_isDrawing) return;
-		await _ctx.StrokeAsync();
-		var image = await _ctx.GetImageDataAsync(0, 0, _canvasWidth, _canvasHeight);
-		AppState.CanvasStates.Add(image); // Add state to array for undoing
-		_isDrawing = false;
-	}
+    private async Task OnMouseDown(MouseEventArgs e)
+    {
+        _isDrawing = true;
+        await _ctx.BeginPathAsync();
+        await _ctx.MoveToAsync(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
+        await Draw(e);
+    }
 
-	private async Task OnMouseMove(MouseEventArgs e)
-	{
-		await RenderPointer(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
-		if (!_isDrawing) return;
-		await Draw(e);
-	}
+    private async Task OnMouseUp(MouseEventArgs e)
+    {
+        if (!_isDrawing) return;
+        await _ctx.StrokeAsync();
+        var image = await _ctx.GetImageDataAsync(0, 0, _canvasWidth, _canvasHeight);
+        AppState.CanvasStates.Add(image); // Add state to array for undoing
+        _isDrawing = false;
+    }
 
-	private async Task Draw(MouseEventArgs e)
-	{
-		if (_ctx == null) return;
+    private async Task OnMouseMove(MouseEventArgs e)
+    {
+        await RenderPointer(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
+        if (!_isDrawing) return;
+        await Draw(e);
+    }
 
-		await using (var cctx = _ctx.CreateBatch())
-		{
-			await cctx.StrokeStyleAsync(AppState.CurrentBrushColor);
-			await cctx.LineWidthAsync(AppState.CurrentBrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2);
-			await cctx.LineCapAsync(LineCap.Round);
-			await cctx.LineJoinAsync(LineJoin.Round);
-			await cctx.LineToAsync(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
-			await cctx.StrokeAsync();
-		}
-	}
+    private async Task Draw(MouseEventArgs e)
+    {
+        if (_ctx == null) return;
 
-	private async Task RenderPointer(double x, double y)
-	{
-		if (_ctxPointer == null) return;
+        await using (var cctx = _ctx.CreateBatch())
+        {
+            await cctx.StrokeStyleAsync(AppState.CurrentBrushColor);
+            await cctx.LineWidthAsync(AppState.CurrentBrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2);
+            await cctx.LineCapAsync(LineCap.Round);
+            await cctx.LineJoinAsync(LineJoin.Round);
+            await cctx.LineToAsync(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
+            await cctx.StrokeAsync();
+        }
+    }
 
-		await using (var batch = _ctxPointer.CreateBatch())
-		{
-			await batch.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
-			await batch.BeginPathAsync();
-			await batch.ArcAsync(x, y, AppState.CurrentBrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2 / 2, 0, Math.PI * 2);
-			await batch.FillStyleAsync(AppState.CurrentBrushColor);
-			await batch.FillAsync(FillRule.NonZero);
-			await batch.StrokeStyleAsync("white");
-			await batch.StrokeAsync();
-		}
-	}
+    private async Task RenderPointer(double x, double y)
+    {
+        if (_ctxPointer == null) return;
 
-	private async Task LoadImage()
-	{
-		await _canvasInstance.InvokeVoidAsync("loadImage", AppState.CanvasImageData);
-	}
+        await using (var batch = _ctxPointer.CreateBatch())
+        {
+            await batch.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
+            await batch.BeginPathAsync();
+            await batch.ArcAsync(x, y, AppState.CurrentBrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2 / 2, 0, Math.PI * 2);
+            await batch.FillStyleAsync(AppState.CurrentBrushColor);
+            await batch.FillAsync(FillRule.NonZero);
+            await batch.StrokeStyleAsync("white");
+            await batch.StrokeAsync();
+        }
+    }
 
-	[JSInvokable]
-	public void LoadImageData(string img, string? mask = null)
-	{
-		if(!string.IsNullOrWhiteSpace(mask)) { AppState.CanvasMaskData = mask; }
-		AppState.CanvasImageData = img;
-	}
+    private async Task LoadImage()
+    {
+        await _canvasInstance.InvokeVoidAsync("loadImage", AppState.CanvasImageData);
+        await OnImageChanged.InvokeAsync();
+    }
 
-	private async Task LoadCanvasState()
-	{
-		await _ctx.PutImageDataAsync(AppState.CanvasStates.LastOrDefault(), 0, 0);
-	}
+    [JSInvokable]
+    public void LoadImageData(string img, string? mask = null)
+    {
+        if (!string.IsNullOrWhiteSpace(mask)) { AppState.CanvasMaskData = mask; }
+        AppState.CanvasImageData = img;
+        OnImageChanged.InvokeAsync();
+    }
 
-	private async Task LoadImage(string file)
-	{
-		// Gets content type for the image file: image/png, image/jpg, etc.
-		var provider = new FileExtensionContentTypeProvider();
-		string contentType;
-		if (!provider.TryGetContentType(file, out contentType)) { contentType = "application/octet-stream"; }
+    private async Task LoadCanvasState()
+    {
+        await _ctx.PutImageDataAsync(AppState.CanvasStates.LastOrDefault(), 0, 0);
+    }
 
-		var bytes = await File.ReadAllBytesAsync(file);
-		var data = Convert.ToBase64String(bytes);
-		var dataString = $"data:{contentType};base64,{data}";
-		await _canvasInstance.InvokeVoidAsync("loadImage", dataString);
-	}
+    private async Task LoadImage(string file)
+    {
+        // Gets content type for the image file: image/png, image/jpg, etc.
+        var provider = new FileExtensionContentTypeProvider();
+        string contentType;
+        if (!provider.TryGetContentType(file, out contentType)) { contentType = "application/octet-stream"; }
 
-	public async Task Generate()
-	{
-		if (AppState.Settings.Img2Img.Mode == "Paint")
-		{
-			await _canvasInstance.InvokeAsync<string>("saveInpaint");
-		}
-		else
-		{
-			await _canvasInstance.InvokeAsync<string>("saveMask");
-		}
-	}
+        var bytes = await File.ReadAllBytesAsync(file);
+        var data = Convert.ToBase64String(bytes);
+        var dataString = $"data:{contentType};base64,{data}";
+        await _canvasInstance.InvokeVoidAsync("loadImage", dataString);
+    }
 
-	public async Task SetInpaint() { await _canvasInstance.InvokeVoidAsync("setInpaint"); await Clear(); }
+    public async Task Generate()
+    {
+        if (AppState.Settings.Img2Img.Mode == "Paint")
+        {
+            await _canvasInstance.InvokeAsync<string>("saveInpaint");
+        }
+        else
+        {
+            await _canvasInstance.InvokeAsync<string>("saveMask");
+        }
+    }
 
-	public ValueTask Delete() => _canvasInstance.InvokeVoidAsync("deleteImage", "./no_image.png");
+    public async Task SetInpaint() { await _canvasInstance.InvokeVoidAsync("setInpaint"); await Clear(); }
 
-	public async Task Undo()
-	{
-		if (AppState.CanvasStates.Count <= 0) return;
+    public ValueTask Delete() => _canvasInstance.InvokeVoidAsync("deleteImage", "./no_image.png");
 
-		if (AppState.CanvasStates.Count == 1)
-		{
-			await Clear();
-		}
-		else
-		{
-			AppState.CanvasStates.RemoveAt(AppState.CanvasStates.Count - 1);
-			await _ctx.PutImageDataAsync(AppState.CanvasStates.LastOrDefault(), 0, 0);
-		}
-	}
+    public async Task Undo()
+    {
+        if (AppState.CanvasStates.Count <= 0) return;
 
-	public async Task Clear()
-	{
-		AppState.CanvasStates.Clear();
-		await _ctx.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
-		await _canvasInstance.InvokeVoidAsync("clearData");
-	}
+        if (AppState.CanvasStates.Count == 1)
+        {
+            await Clear();
+        }
+        else
+        {
+            AppState.CanvasStates.RemoveAt(AppState.CanvasStates.Count - 1);
+            await _ctx.PutImageDataAsync(AppState.CanvasStates.LastOrDefault(), 0, 0);
+        }
+    }
 
-	[JSInvokable]
-	public async void OnResize(long width, long height, double multX, double multY)
-	{
-		_canvasWidth = width;
-		_canvasHeight = height;
-		_canvasMultiplierX = multX;
-		_canvasMultiplierY = multY;
-		await InvokeAsync(StateHasChanged);
-	}
+    public async Task Clear()
+    {
+        AppState.CanvasStates.Clear();
+        await _ctx.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
+        await _canvasInstance.InvokeVoidAsync("clearData");
+        AppState.CanvasMaskData = null;
+    }
 
-	private async Task OnDropFile(InputFileChangeEventArgs e)
-	{
-		var maxSize = _maxFileSizeMB * 1024 * 1024;
-		using var stream = e.File.OpenReadStream(maxSize);
-		using var ms = new MemoryStream();
-		await stream.CopyToAsync(ms);
-		var imageString = Magick.ResizeImage(ms.ToArray());
-		var data = $"data:{e.File.ContentType};base64,{imageString}";
-		AppState.CanvasImageData = data;
-		await LoadImage();
-	}
+    [JSInvokable]
+    public async void OnResize(long width, long height, double multX, double multY)
+    {
+        _canvasWidth = width;
+        _canvasHeight = height;
+        _canvasMultiplierX = multX;
+        _canvasMultiplierY = multY;
+        await InvokeAsync(StateHasChanged);
+    }
 
-	public async ValueTask DisposeAsync()
-	{
-		AppState.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-		AppState.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+    private async Task OnDropFile(InputFileChangeEventArgs e)
+    {
+        var maxSize = _maxFileSizeMB * 1024 * 1024;
+        using var stream = e.File.OpenReadStream(maxSize);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var imageString = Magick.ResizeImage(ms.ToArray());
+        var data = $"data:{e.File.ContentType};base64,{imageString}";
+        AppState.CanvasImageData = data;
+        await LoadImage();
+    }
 
-		if (_canvasInstance != null)
-		{
-			await _canvasInstance.InvokeVoidAsync("dispose");
-			await _canvasInstance.DisposeAsync();
-		}
+    public async ValueTask DisposeAsync()
+    {
+        AppState.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+        AppState.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
 
-		if (_canvasModule != null)
-		{
-			await _canvasModule.DisposeAsync();
-		}
+        if (_canvasInstance != null)
+        {
+            await _canvasInstance.InvokeVoidAsync("dispose");
+            await _canvasInstance.DisposeAsync();
+        }
 
-		if (_dropzoneInstance != null)
-		{
-			await _dropzoneInstance.InvokeVoidAsync("dispose");
-			await _dropzoneInstance.DisposeAsync();
-		}
+        if (_canvasModule != null)
+        {
+            await _canvasModule.DisposeAsync();
+        }
 
-		if (_dropzoneModule != null)
-		{
-			await _dropzoneModule.DisposeAsync();
-		}
-	}
+        if (_dropzoneInstance != null)
+        {
+            await _dropzoneInstance.InvokeVoidAsync("dispose");
+            await _dropzoneInstance.DisposeAsync();
+        }
+
+        if (_dropzoneModule != null)
+        {
+            await _dropzoneModule.DisposeAsync();
+        }
+    }
 }

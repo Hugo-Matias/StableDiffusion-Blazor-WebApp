@@ -3,7 +3,6 @@
 @inject JavascriptService JSConsole
 @inject AppState AppState
 @inject ImageService ImageService
-@implements IDisposable
 
 <PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
 
@@ -24,7 +23,6 @@
     {
         base.OnInitialized();
 
-        ImageService.OnChange += Refresh;
         Parameters = AppState.ParametersTxt2Img;
         SharedParameters = AppState.ParametersTxt2Img;
     }
@@ -32,7 +30,6 @@
     private async void Generate()
     {
         AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Txt2Img);
-        Refresh();
     }
 
     private async void Skip() => await SDAPIService.PostSkip();
@@ -52,8 +49,4 @@
             else Parameters.Prompt += (string.IsNullOrEmpty(Parameters.Prompt) ? "" : ", ") + tags.Tags;
         }
     }
-
-    public void Dispose() => ImageService.OnChange -= Refresh;
-
-    void Refresh() => InvokeAsync(StateHasChanged);
 }

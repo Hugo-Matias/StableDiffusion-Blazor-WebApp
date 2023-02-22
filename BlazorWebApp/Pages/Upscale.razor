@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/upscale"
 @inject AppState AppState
 @inject ImageService IM
 
@@ -67,7 +67,7 @@
 </EditForm>
 
 <MudGrid>
-    <MudItem xs="6">
+    <MudItem xs="6" Class="d-flex flex-column align-items-center">
         <UpscaleDropzone OnImageChanged="StateHasChanged" />
     </MudItem>
     <MudItem xs="6">

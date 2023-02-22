@@ -1,19 +1,20 @@
 ﻿@inject AppState AppState
+@implements IDisposable
 
-<EditForm Model="Parameters" OnSubmit="@Generate">
-    @if (!AppState.IsConverging)
-    {
-        <MudStack Class="d-flex justify-content-center align-items-center" Style="height: 100%">
-            <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" FullWidth>Generate</MudButton>
-        </MudStack>
-    }
-    else
-    {
-        <MudButtonGroup Variant=Variant.Filled Color=Color.Primary OverrideStyles=false Class="mt-2 w-100">
-            <MudButton OnClick=@(() => OnSkip.InvokeAsync()) Variant=Variant.Filled Color=Color.Warning StartIcon="fa-solid fa-forward" ButtonType="ButtonType.Button" FullWidth>Skip</MudButton>
-            <MudButton OnClick=@(() => OnInterrupt.InvokeAsync()) Variant=Variant.Filled Color=Color.Error StartIcon="fa-solid fa-ban" ButtonType="ButtonType.Button" FullWidth>Interrupt</MudButton>
-        </MudButtonGroup>
-    }
+<EditForm Model="Parameters" OnSubmit="@Generate" class="d-flex flex-column align-items-center justify-content-center h-100">
+    <MudStack Class="d-flex flex-column justify-content-center align-items-center w-100 h-100">
+        @if (!AppState.IsConverging)
+        {
+            <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" Disabled=ButtonDisabled FullWidth>Generate</MudButton>
+        }
+        else
+        {
+            <MudButtonGroup Variant=Variant.Filled Color=Color.Primary OverrideStyles=false Class="w-100">
+                <MudButton OnClick=@(() => OnSkip.InvokeAsync()) Variant=Variant.Filled Color=Color.Warning StartIcon="fa-solid fa-forward" ButtonType="ButtonType.Button" Class="w-100" FullWidth>Skip</MudButton>
+                <MudButton OnClick=@(() => OnInterrupt.InvokeAsync()) Variant=Variant.Filled Color=Color.Error StartIcon="fa-solid fa-ban" ButtonType="ButtonType.Button" FullWidth>Interrupt</MudButton>
+            </MudButtonGroup>
+        }
+    </MudStack>
 </EditForm>
 
 @code {
@@ -21,9 +22,17 @@
     [Parameter] public EventCallback<SharedParameters> OnGenerate { get; set; }
     [Parameter] public EventCallback OnSkip { get; set; }
     [Parameter] public EventCallback OnInterrupt { get; set; }
+    [Parameter] public bool ButtonDisabled { get; set; }
+
+    protected override void OnInitialized()
+    {
+        AppState.OnConverging += StateHasChanged;
+    }
 
     public async void Generate()
     {
         await OnGenerate.InvokeAsync(Parameters);
     }
+
+    public void Dispose() => AppState.OnConverging -= StateHasChanged;
 }

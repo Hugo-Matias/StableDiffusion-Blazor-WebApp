@@ -3,13 +3,13 @@
 @inject JavascriptService JS
 @inject AppState AppState
 @inject ImageService ImageService
-@implements IDisposable
+@inject ISnackbar Snackbar
 
-<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
+<PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" ButtonDisabled=CheckCanvasState() />
 
 <MudGrid>
-    <MudItem xs="6">
-        <Img2ImgCanvas @ref="canvasRef" />
+    <MudItem xs="6" Class="d-flex flex-column align-items-center">
+        <Img2ImgCanvas @ref="canvasRef" OnImageChanged="StateHasChanged" />
         <GenerateFormImg2Img Parameters="@Parameters" OnDelete="OnDelete" OnSet="OnSet" OnClear="OnClear" OnUndo="OnUndo" />
     </MudItem>
     <MudItem xs="6">
@@ -27,24 +27,29 @@
     {
         base.OnInitialized();
 
-        ImageService.OnChange += Refresh;
         Parameters = AppState.ParametersImg2Img;
         SharedParameters = AppState.ParametersImg2Img;
     }
 
     private async Task OnSet() => await canvasRef.SetInpaint();
-    private async Task OnDelete() => await canvasRef.Delete();
+    private async Task OnDelete() { await canvasRef.Delete(); await InvokeAsync(StateHasChanged); }
     private async Task OnClear() => await canvasRef.Clear();
     private async Task OnUndo() => await canvasRef.Undo();
 
     private async void Generate()
     {
         await canvasRef.Generate();
+        if (AppState.Settings.Img2Img.Mode == "Mask" && AppState.CanvasMaskData == null)
+        {
+            Snackbar.Add("Mask is empty! Use the canvas to draw the area you want to change.", Severity.Warning);
+            return;
+        }
         Parameters.InitImages = new() { AppState.CanvasImageData };
         Parameters.Mask = AppState.CanvasMaskData;
         AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Img2Img);
-        Refresh();
     }
+
+    private bool CheckCanvasState() => AppState.CanvasImageData == null;
 
     private async void Skip() => await SDAPIService.PostSkip();
 
@@ -64,7 +69,4 @@
         }
     }
 
-    public void Dispose() => ImageService.OnChange -= Refresh;
-
-    void Refresh() => InvokeAsync(StateHasChanged);
 }

@@ -1,8 +1,10 @@
 ﻿@inject AppState AppState
+@inject ImageService ImageService
+@implements IDisposable
 
 <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" Rounded Centered>
     <MudTabPanel Text="Preview">
-        @if (AppState.Images.Images != null)
+        @if (AppState.GeneratedImageEntities != null && AppState.GeneratedImageEntities.Images != null)
         {
             <ImageCarousel Images="AppState.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls />
             <br />
@@ -35,3 +37,14 @@
         }
     </MudTabPanel>
 </MudTabs>
+
+@code{
+    protected override void OnInitialized()
+    {
+        ImageService.OnChange += Refresh;
+    }
+
+    public void Dispose() => ImageService.OnChange -= Refresh;
+
+    void Refresh() => InvokeAsync(StateHasChanged);
+}

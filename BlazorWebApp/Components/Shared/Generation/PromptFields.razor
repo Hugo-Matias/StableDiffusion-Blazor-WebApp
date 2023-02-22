@@ -11,7 +11,7 @@
                     </MudStack>
                 </MudItem>
                 <MudItem xs="3">
-                    <MudStack>
+                    <MudStack Class="h-100 w-100">
                         <MudSelect Label="Styles" Text="@_currentStyles" SelectedValuesChanged=@((e) => HandleStylesChanged(e)) T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MultiSelection>
                             @if (AppState.Styles != null)
                             {
@@ -24,7 +24,7 @@
                                 }
                             }
                         </MudSelect>
-                        <GenerateButton Parameters="Parameters" OnGenerate="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" />
+                        <GenerateButton Parameters="Parameters" OnGenerate="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" ButtonDisabled=ButtonDisabled/>
                     </MudStack>
                 </MudItem>
             </MudGrid>
@@ -48,6 +48,8 @@
     public EventCallback<AppendedTags> OnPromptTagAppended { get; set; }
     [Parameter]
     public EventCallback<AppendedTags> OnNegativePromptTagAppended { get; set; }
+    [Parameter]
+    public bool ButtonDisabled { get; set; }
 
     private string _currentStyles;
     private int _promptLines = 2;

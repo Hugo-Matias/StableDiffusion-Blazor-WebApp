@@ -3,6 +3,7 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using HtmlAgilityPack;
+using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -202,6 +203,13 @@ namespace BlazorWebApp.Services
                 var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _app.ParametersTxt2Img.HRWidth, _app.ParametersTxt2Img.HRHeight, _app.ParametersTxt2Img.HRScale);
                 image.Width = resizeRes.Item1;
                 image.Height = resizeRes.Item2;
+            }
+            else if (outdir == Outdir.Img2ImgSamples)
+            {
+                var data = Regex.Replace(_app.CanvasImageData, @"data.+?,", "");
+                var size = _magick.GetImageSize(data);
+                image.Width = size.Item1;
+                image.Height = size.Item2;
             }
             else
             {
