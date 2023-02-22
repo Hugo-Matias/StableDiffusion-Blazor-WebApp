@@ -25,6 +25,7 @@ namespace BlazorWebApp.Services
         public event Action OnConverging;
         public event Action OnBrushSizeChange;
         public event Action OnBrushColorChange;
+        public event Action OnProjectsChanged;
         public event Action OnProjectChange;
         public event Func<Task> OnProjectChangeTask;
         public event Action OnStateHasChanged;
@@ -207,6 +208,7 @@ namespace BlazorWebApp.Services
         {
             Projects = await _db.GetProjects(folderId);
             if (Settings.Gallery.GalleriesOrderDescending) Projects.Reverse();
+            OnProjectsChanged?.Invoke();
         }
 
         public void GetCsvTags(bool readAll = false)
@@ -250,7 +252,7 @@ namespace BlazorWebApp.Services
         {
             await GetProjects();
             CurrentProjectId = id;
-            CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)!.Name;
+            CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)?.Name;
             OnProjectChange?.Invoke();
             OnProjectChangeTask?.Invoke();
         }
@@ -349,23 +351,17 @@ namespace BlazorWebApp.Services
                 case "[cfg]":
                     return ParametersTxt2Img.CfgScale.ToString();
 
+                case "[model_name]":
+                    return GetModelName(Options.SDModelCheckpoint);
+
                 default:
                     return "";
             }
         }
 
-        private string GetModelHash(string modelName)
-        {
-            foreach (var model in SDModels)
-            {
-                if (model.Title == modelName)
-                {
-                    return model.Hash;
-                }
-            }
+        private string GetModelHash(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Hash;
 
-            return string.Empty;
-        }
+        private string GetModelName(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Model_name;
 
         public async Task<string> PostOptions(Options options) => await _api.PostOptions(options);
 

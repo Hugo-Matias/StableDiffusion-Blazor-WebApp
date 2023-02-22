@@ -16,6 +16,8 @@ namespace BlazorWebApp.Services
         private readonly DatabaseService _db;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
+        private int _canvasSourceWidth;
+        private int _canvasSourceHeight;
 
         public event Action OnChange;
 
@@ -49,6 +51,7 @@ namespace BlazorWebApp.Services
                     img2imgParams.InpaintFullRes = _app.ParametersImg2Img.InpaintFullRes;
                     img2imgParams.InpaintFullResPadding = _app.ParametersImg2Img.InpaintFullResPadding;
                     img2imgParams.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
+                    SetSourceImageSize();
                     _app.Images = await _api.PostImg2Img(img2imgParams);
                     _app.SerializeInfo();
                     break;
@@ -206,10 +209,8 @@ namespace BlazorWebApp.Services
             }
             else if (outdir == Outdir.Img2ImgSamples)
             {
-                var data = Regex.Replace(_app.CanvasImageData, @"data.+?,", "");
-                var size = _magick.GetImageSize(data);
-                image.Width = size.Item1;
-                image.Height = size.Item2;
+                image.Width = _canvasSourceWidth;
+                image.Height = _canvasSourceHeight;
             }
             else
             {
@@ -257,6 +258,18 @@ namespace BlazorWebApp.Services
             string infoname = _app.ConvertPathPattern(_app.Options.FilenamePatternSamples);
             string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
             return Path.Combine(path, filename);
+        }
+
+        /// <summary>
+        /// In Img2Img, Width and Height are related to the section being masked and not the final image. <br/>
+        /// This method will set global variables with the proper dimensions to be used in the image's data.
+        /// </summary>
+        private void SetSourceImageSize()
+        {
+            var data = Regex.Replace(_app.CanvasImageData, @"data.+?,", "");
+            var size = _magick.GetImageSize(data);
+            _canvasSourceWidth = size.Item1;
+            _canvasSourceHeight = size.Item2;
         }
 
         private async void StartProgressChecker()

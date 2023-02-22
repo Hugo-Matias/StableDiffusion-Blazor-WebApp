@@ -8,34 +8,35 @@
 @if (_projects == null)
 {
     <MudStack Row Justify="Justify.Center" Style="margin-top: 15rem;">
-        <MudProgressCircular Color="Color.Info" Indeterminate />
+    <MudProgressCircular Color="Color.Info" Indeterminate />
     </MudStack>
 }
 else if (_projects.Count() == 0)
 {
-    <div class="row" style="color: var(--app-light-2);">
-        <div class="col">
-            <h2>
-                Looks like you haven't created any project yet.<br />
-                <small>Create a new project to store your images.</small>
-            </h2>
-            <CreateProjectModal>
-                <ButtonText>Create Project</ButtonText>
-            </CreateProjectModal>
-        </div>
-    </div>
+    <MudContainer Class="d-flex flex-column align-items-center justify-content-center" Style="height: 50vh">
+        <MudPaper Class="pa-10 d-flex flex-column align-items-center" MaxWidth="30vw" Elevation="5">
+            <MudText Typo="Typo.h4" Class="mb-5" Style="text-align:center;">Create a new project to get started! 😎</MudText>
+            <CreateProjectButton Color="Color.Info" Variant="Variant.Text" OnProjectCreated="async () => await RefreshProjects()">
+                Lets Go
+            </CreateProjectButton>
+        </MudPaper>
+    </MudContainer>
 }
 else
 {
-    <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" />
+    <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" OnProjectDeleted="async () => await RefreshProjects()" />
     if (images != null && images.Images != null && images.Images.Count > 0)
     {
         <ImagesContainer Style="margin-bottom: 2rem;" Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" />
     }
+    else if (images.Images.Count == 0)
+    {
+        <MudText Style="opacity: 0.4; text-align: center; margin-top: 10rem;" Typo="Typo.h5">Empty Project</MudText>
+    }
     else
     {
         <MudStack Row Justify="Justify.Center" Style="margin-top: 10rem;">
-            <MudProgressCircular Color="Color.Info" Indeterminate />
+        <MudProgressCircular Color="Color.Info" Indeterminate />
         </MudStack>
     }
 }
@@ -51,15 +52,21 @@ else
         if (!firstRender) return;
         AppState.OnProjectChangeTask += HandleProjectChanged;
         AppState.OnStateHasChanged += StateHasChanged;
-        _projects = await DB.GetProjects(AppState.CurrentFolderId);
-        currentImgPage = 1;
-        await LoadImages();
+        await LoadProjects();
     }
 
     private async Task FilterImages(bool resetFilter)
     {
         currentImgPage = 1;
         AppState.IsGalleryFiltered = !resetFilter;
+        await LoadImages();
+    }
+
+    private async Task LoadProjects()
+    {
+        _projects = await DB.GetProjects(AppState.CurrentFolderId);
+        await AppState.GetProjects();
+        currentImgPage = 1;
         await LoadImages();
     }
 
@@ -72,9 +79,14 @@ else
     private async Task LoadImages()
     {
         if (images != null && images.Images != null) images.Images.Clear();
-        await InvokeAsync(StateHasChanged);
         if (AppState.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, AppState.CurrentProjectId, AppState.Settings.Gallery);
         else images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshProjects()
+    {
+        LoadProjects();
         await InvokeAsync(StateHasChanged);
     }
 

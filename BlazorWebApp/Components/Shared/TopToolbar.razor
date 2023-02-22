@@ -6,7 +6,7 @@
 
 <div class="mt-6">
     <MudStack Justify="Justify.FlexEnd" Row>
-        <MudSelect T=string Value=AppState.CurrentProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success">
+        <MudSelect T=string Value=AppState.CurrentProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
             @foreach (var project in AppState.Projects)
             {
                 <MudSelectItem Value="@project.Name">@project.Name</MudSelectItem>
@@ -21,7 +21,7 @@
         }
         else
         {
-            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info">
+            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600">
                 @if (AppState.SDModels != null)
                 {
                     @foreach (var model in AppState.SDModels)

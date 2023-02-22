@@ -42,8 +42,8 @@
                     <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeUpscale"/>
                 </MudChipSet>
                 <MudButtonGroup Class="mt-5" Variant="Variant.Outlined" Color="Color.Primary" OverrideStyles=false>
-                    <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Outlined" Color="Color.Warning">Filter</MudButton>
-                    <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Outlined" Color="Color.Error">Reset</MudButton>
+                    <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Warning">Filter</MudButton>
+                    <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Error">Reset</MudButton>
                 </MudButtonGroup>
             </MudItem>
         </MudGrid>
@@ -55,13 +55,15 @@
     public EventCallback OnFilterImages { get; set; }
     [Parameter]
     public EventCallback OnResetFilters { get; set; }
+    [Parameter]
+    public EventCallback OnProjectDeleted { get; set; }
 
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
 
     private async Task HandleProjectSelected(int projectId)
     {
         await AppState.SetCurrentProject(projectId);
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void HandleModeSelection(MudChip[] chips)
@@ -91,7 +93,7 @@
             await AppState.SetCurrentProject(project.Id);
         else
             await AppState.SetCurrentProject(0);
-        await InvokeAsync(StateHasChanged);
+        await OnProjectDeleted.InvokeAsync();
     }
 
     private async Task ShowEditProjectModal(int projectId)
@@ -99,7 +101,7 @@
         var project = AppState.Projects.FirstOrDefault(p => p.Id == projectId);
         var param = new DialogParameters();
         param.Add("Project", project);
-        var dialog = await DialogService.ShowAsync<EditProjectModal>("Edit", param, _dialogOptions);
+        var dialog = await DialogService.ShowAsync<ProjectModal>($"Edit {project.Name}", param, _dialogOptions);
         var result = await dialog.Result;
         if (!result.Cancelled) await EditProject((Project)result.Data);
     }

@@ -1,0 +1,40 @@
+﻿@inject DatabaseService DB
+@inject AppState AppState
+@inject IDialogService DialogService
+
+<MudButton OnClick=@(async () => await ShowModal()) ButtonType="ButtonType.Button" Variant="Variant" Color="Color">
+    @ChildContent
+</MudButton>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+    [Parameter]
+    public Color Color { get; set; } = Color.Primary;
+    [Parameter]
+    public Variant Variant { get; set; } = Variant.Filled;
+    [Parameter]
+    public EventCallback OnProjectCreated { get; set; }
+
+    private Project _newProject = new();
+    private DialogOptions _dialogOptions = new() { CloseButton = true, MaxWidth = MaxWidth.Small };
+
+    private async Task ShowModal()
+    {
+        var param = new DialogParameters();
+        param.Add("Project", _newProject);
+        var dialog = await DialogService.ShowAsync<ProjectModal>("Create Project", param, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Cancelled) await CreateProject();
+    }
+
+    private async Task CreateProject()
+    {
+        if (string.IsNullOrWhiteSpace(_newProject.Name)) return;
+        _newProject.CreationTime = DateTime.Now;
+        var projectEntity = await DB.CreateProject(new() { Name = _newProject.Name, FolderId = _newProject.FolderId, CreationTime = _newProject.CreationTime });
+        await AppState.GetProjects();
+        await AppState.SetCurrentProject(projectEntity.Id);
+        await OnProjectCreated.InvokeAsync();
+    }
+}

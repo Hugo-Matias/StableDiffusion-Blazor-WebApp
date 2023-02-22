@@ -16,11 +16,18 @@ namespace BlazorWebApp.Services
         {
             _factory = factory;
             _api = api;
-
             PageSize = 5;
 
+            InitializeDatabase();
             PopulateModes();
             PopulateSamplers();
+        }
+
+        public async Task InitializeDatabase()
+        {
+            using var context = _factory.CreateDbContext();
+            await context.Database.EnsureCreatedAsync();
+            await context.Database.MigrateAsync();
         }
 
         public IAsyncEnumerable<Folder> GetFolders()
