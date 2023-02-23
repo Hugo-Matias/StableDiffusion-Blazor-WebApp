@@ -1,50 +1,26 @@
 ﻿@inject AppState AppState
 
-<div class="accordion-item">
-	<h2 class="accordion-header" id="header-@(id)">
-		<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@(id)" aria-expanded="true" aria-controls="collapse-@(id)">
-			@Tag.Title
-		</button>
-	</h2>
-	<div id="collapse-@(id)" class="accordion-collapse collapse" data-bs-parent="#@DataParent" aria-labelledby="header-@(id)">
-		<div class="accordion-body">
-			@if (Tag.Items != null)
-			{
-				<div class="accordion" id="@id">
-					@foreach (var item in Tag.Items)
-					{
-						<TagAccordion Tag="@item" DataParent="@id" OnButtonClicked="HandleButtonClicked" />
-					}
-				</div>
-			}
-
-			@if (Tag.Tags != null)
-			{
-				foreach (var tag in Tag.Tags)
-				{
-					<button class="btn btn-outline-primary m-2" type="button" @onclick="(() => HandleButtonClicked(tag))">@tag</button>
-				}
-			}
-		</div>
-	</div>
-</div>
+<MudExpansionPanel Text="@Title">
+    @if (TagContent.Items != null)
+    {
+        @foreach (var item in TagContent.Items)
+        {
+			<TagAccordion TagContent="item" Title="@item.Title" OnButtonClicked="HandleButtonClicked" />
+        }
+    }
+	@if(TagContent.Tags != null)
+	{
+		foreach (var tag in TagContent.Tags)
+		{
+			<MudButton Class="me-2" Color=Color.Primary ButtonType="ButtonType.Button" OnClick="() => HandleButtonClicked(tag)">@tag</MudButton>
+		}
+	}
+</MudExpansionPanel>
 
 @code {
-	[Parameter]
-	public PromptButton Tag { get; set; }
+    [Parameter] public string Title { get; set; }
+    [Parameter] public PromptButton TagContent { get; set; }
+    [Parameter] public EventCallback<string> OnButtonClicked { get; set; }
 
-	[Parameter]
-	public string DataParent { get; set; }
-
-	[Parameter]
-	public EventCallback<string> OnButtonClicked { get; set; }
-
-	private string id;
-
-	protected override void OnInitialized()
-	{
-		id = $"accordion-{AppState.GetTagAccordionId()}";
-	}
-
-	private void HandleButtonClicked(string tag) => OnButtonClicked.InvokeAsync(tag);
+    private void HandleButtonClicked(string tag) => OnButtonClicked.InvokeAsync(tag);
 }

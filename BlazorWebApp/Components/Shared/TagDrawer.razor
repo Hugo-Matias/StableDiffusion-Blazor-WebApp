@@ -1,0 +1,191 @@
+﻿@inject AppState AppState
+
+@*<button class="btn btn-outline-secondary tags-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#@OffscreenId" aria-controls="tag-offcanvas"><span class="fa-solid fa-tags me-2"></span> Tags</button>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="@OffscreenId" aria-labelledby="tag-offcanvas-label">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="tag-offcanvas-label">Tag Selector</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        @if (_selectedTags.Count > 0)
+        {
+            <label class="form-label me-2">Selected Tags:</label>
+            <div class="row selected-tags-container mb-4">
+                @for (var i = 0; i < _selectedTags.Count; i++)
+                {
+                    var index = i;
+                    <span class="badge rounded-pill" style="color:@GetTagBadgeColor(i)">
+                        <div class="d-flex flex-column">
+                            <button class="btn-weight" @onclick="() => ChangeTagWeight(index, increment: true)">
+                                <i class="fa-solid fa-chevron-up" />
+                            </button>
+                            <button class="btn-weight" @onclick="() => ChangeTagWeight(index, increment: false)">
+                                <i class="fa-solid fa-chevron-down" />
+                            </button>
+                        </div>
+                        @ParseTagWeight(i)
+                        <button class="btn-close btn-close-white" @onclick="() => RemoveTag(index)"></button>
+                    </span>
+                }
+            </div>
+            <div class="append-tags-btn-container d-flex align-items-baseline mb-3">
+                <button class="btn btn-outline-primary me-2" @onclick="() => AppendTags(true)">Prefix</button>
+                <button class="btn btn-outline-primary me-2" @onclick="() => AppendTags(false)">Suffix</button>
+                <button class="btn btn-outline-danger" @onclick="() => _selectedTags.Clear()">Clear</button>
+            </div>
+        }
+        <Autocomplete @ref="SearchInputRef"
+                      TItem="CsvTagModel"
+                      TValue="string"
+                      Placeholder="Search tags..."
+                      TextField="t => t.Name"
+                      ValueField="t => t.Name"
+                      Data="@CsvTags"
+                      @bind-SelectedText="@SelectedText"
+                      CustomFilter="@(SearchInputChanged)"
+                      SelectedValueChanged="SelectedValueChanged"
+                      FreeTyping
+                      Virtualize
+                      Context="acContext">
+            <ItemContent>
+                <p class="autocomplete-item-content align-content-end" style="color:@GetTagSuggestionColor(acContext.Item.Name, acContext.Item.Color)">
+                    @acContext.Text
+                    @if (!acContext.Item.Name.Contains(_searchText) && acContext.Item.Aliases.Contains(_searchText))
+                    {
+                        <small style="color: var(--app-light-2);"> => @(Parser.ParseCsvTagAlias(acContext.Item.Aliases, _searchText))</small>
+                    }
+                </p>
+            </ItemContent>
+        </Autocomplete>
+        <div class="accordion mt-3" id="tagsAccordion">
+            @foreach (var item in AppState.RootButtonTag.Items)
+            {
+                <TagAccordion Tag="@item" DataParent="tagsAccordion" OnButtonClicked="AddTag" />
+            }
+        </div>
+    </div>
+</div>
+*@
+
+<MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="100vh" Width="45vw" Fixed>
+    <MudDrawerHeader Class="d-flex flex-row align-items-center" Style=@($"background-color: {HeaderBgColor};")>
+        <MudText Typo="Typo.h6" Color="Color.Dark">Tag Selector</MudText>
+        <MudSpacer />
+        <MudIconButton OnClick="() => Visible = false" Icon="@Icons.Material.Filled.Close" Color="Color.Dark" />
+    </MudDrawerHeader>
+    <MudPaper Class="pa-2 ma-4" Elevation="4">
+        <MudStack>
+            <MudGrid Class="pa-4">
+                @for (int i = 0; i < _selectedTags.Count; i++)
+                {
+                    var value = i;
+                    <MudChip Value="@value" Text="@_selectedTags[value].Item1" OnClose="RemoveTag" Variant="Variant.Text" Color="GetTagBadgeColor(value)" />
+                }
+            </MudGrid>
+            <MudStack Class="pa-2" Row>
+                <MudAutocomplete ValueChanged="SelectedValueChanged" SearchFunc="SearchTags" @ref=_autocompleteRef T="CsvTag" Label="Search Tag" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Info" MaxHeight="500" MaxItems="30" ResetValueOnEmptyText Dense>
+                    <ItemTemplate Context="tag">
+                        <MudText Typo="Typo.body1" Style="font-family:'FiraCode NF'; font-weight:500;" Color="GetTagSuggestionColor(tag.Name, tag.Color)">
+                            @tag.Name
+                            @if (!tag.Name.Contains(_autocompleteRef.Text, StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                <small style="color:var(--mud-palette-white); opacity:0.3; font-weight: 100;"> > @(Parser.ParseCsvTagAlias(tag.Aliases, _autocompleteRef.Text))</small>
+                            }
+                        </MudText>
+                    </ItemTemplate>
+                </MudAutocomplete>
+                @if (_selectedTags != null && _selectedTags.Count > 0)
+                {
+                    <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                        <MudTooltip Text="Insert tags into prompt as prefix" Delay="600" Duration="600">
+                            <MudIconButton OnClick=@(() => AppendTags(isPrefix: true)) Class="h-100" Color="Color.Info" Icon="fa-solid fa-circle-chevron-left" />
+                        </MudTooltip>
+                        <MudTooltip Text="Insert tags into prompt as suffix" Delay="600" Duration="600">
+                            <MudIconButton OnClick=@(()=> AppendTags(isPrefix: false)) Class="h-100" Color="Color.Info" Icon="fa-solid fa-circle-chevron-right" />
+                        </MudTooltip>
+                        <MudTooltip Text="Clear current selected tags" Delay="600" Duration="600">
+                            <MudIconButton OnClick=@(() => _selectedTags.Clear()) Class="h-100" Color="Color.Error" Icon="fa-solid fa-delete-left" />
+                        </MudTooltip>
+                    </MudButtonGroup>
+                }
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+    <MudExpansionPanels Class="mx-4" MultiExpansion Elevation="4">
+        @foreach (var item in ButtonTags.Items)
+        {
+            <TagAccordion TagContent="item" Title="@item.Title" OnButtonClicked="AddTag" />
+        }
+    </MudExpansionPanels>
+</MudDrawer>
+
+@code {
+    [Parameter] public EventCallback<AppendedTags> OnAppendTags { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public List<CsvTag> AutocompleteTags { get; set; }
+    [Parameter] public PromptButton ButtonTags { get; set; }
+    [Parameter] public string HeaderBgColor { get; set; }
+
+    public string SelectedText { get; set; }
+
+    private List<(string, float)> _selectedTags = new();
+    private int _tagListCount = 10;
+    private string _searchText;
+    private float _incrementAmount = 0.05f;
+    private MudAutocomplete<CsvTag>? _autocompleteRef;
+    private string _autocompleteValue = string.Empty;
+
+    private async Task<IEnumerable<CsvTag>> SearchTags(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return new CsvTag[0];
+        return AutocompleteTags.Where(t => t.Name.Contains(input, StringComparison.InvariantCultureIgnoreCase) || t.Aliases.Contains(input, StringComparison.InvariantCultureIgnoreCase)).OrderByDescending(t => t.Uses);
+    }
+
+    private void SelectedValueChanged(CsvTag tag)
+    {
+        if (tag == null) return;
+        _selectedTags.Add((tag.Name, 1.0f));
+        _autocompleteRef.Clear();
+        _autocompleteRef.Value = null;
+    }
+
+    private void AddTag(string tag) => _selectedTags.Add((tag, 1.0f));
+
+    private void RemoveTag(MudChip chip) => _selectedTags.RemoveAt((int)chip.Value);
+
+    private void AppendTags(bool isPrefix)
+    {
+        var tags = string.Empty;
+        for (int i = 0; i < _selectedTags.Count; i++)
+            tags += ParseTagWeight(i) + (i < _selectedTags.Count - 1 ? ", " : "");
+        OnAppendTags.InvokeAsync(new AppendedTags() { Tags = tags, IsPrefix = isPrefix });
+        _selectedTags.Clear();
+    }
+
+    private string ParseTagWeight(int tagIndex)
+    {
+        var item = _selectedTags[tagIndex];
+        if (item.Item2 == 1.0f) return item.Item1.ToString();
+        else return $"({item.Item1}:{item.Item2:0.00})";
+    }
+
+    private void ChangeTagWeight(int tagIndex, bool increment)
+    {
+        var item = _selectedTags[tagIndex];
+        _selectedTags.RemoveAt(tagIndex);
+        if (increment) _selectedTags.Insert(tagIndex, (item.Item1, item.Item2 + _incrementAmount));
+        else _selectedTags.Insert(tagIndex, (item.Item1, (item.Item2 - _incrementAmount <= 0 ? 0f : item.Item2 - _incrementAmount)));
+    }
+
+    private Color GetTagSuggestionColor(string tag, int color)
+    {
+        return _selectedTags.Any(t => t.Item1 == tag) ? Color.Dark : Parser.ParseCsvTagColor(color);
+    }
+
+    private Color GetTagBadgeColor(int tagIndex)
+    {
+        var item = _selectedTags[tagIndex];
+        return AppState.AutocompleteTags.Any(t => t.Name == item.Item1.ToString()) ? Parser.ParseCsvTagColor(AppState.AutocompleteTags.FirstOrDefault(t => t.Name == item.Item1.ToString()).Color) : Color.Default;
+    }
+}

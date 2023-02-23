@@ -1,4 +1,6 @@
-﻿@inject AppState AppState
+﻿@using System.Text.Json;
+@inject IOService IO
+@inject AppState AppState
 
 <div>
     <EditForm Model="Parameters">
@@ -6,8 +8,8 @@
             <MudGrid>
                 <MudItem xs="9">
                     <MudStack>
-                        <MudTextField Class="prompt" Lines=_promptLines Label="Prompt" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" Value=@Parameters.Prompt ValueChanged="(v) => HandleInputChanged(v, isNegative: false)" Clearable Immediate />
-                        <MudTextField Class="negative-prompt" Lines=_negativePromptLines Label="Negative Prompt" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" Value=@Parameters.NegativePrompt ValueChanged="(v) => HandleInputChanged(v, isNegative: true)" Clearable Immediate />
+                        <MudTextField Class="prompt" Lines=_promptLines Label="Prompt" OnAdornmentClick="() => PromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" Value=@Parameters.Prompt ValueChanged="(v) => HandleInputChanged(v, isNegative: false)" Clearable Immediate />
+                        <MudTextField Class="negative-prompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" Value=@Parameters.NegativePrompt ValueChanged="(v) => HandleInputChanged(v, isNegative: true)" Clearable Immediate />
                     </MudStack>
                 </MudItem>
                 <MudItem xs="3">
@@ -24,14 +26,16 @@
                                 }
                             }
                         </MudSelect>
-                        <GenerateButton Parameters="Parameters" OnGenerate="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" ButtonDisabled=ButtonDisabled/>
+                        <GenerateButton Parameters="Parameters" OnGenerate="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" ButtonDisabled=ButtonDisabled />
                     </MudStack>
                 </MudItem>
             </MudGrid>
         </MudPaper>
     </EditForm>
-    @*<TagOffcanvas CsvTags="@AppState.CsvTags" OnAppendTags="OnPromptTagAppended" OffscreenId="prompt-tags" />*@
 </div>
+
+<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=_tags/>
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=_tags/>
 
 @code {
     [Parameter]
@@ -50,23 +54,29 @@
     public EventCallback<AppendedTags> OnNegativePromptTagAppended { get; set; }
     [Parameter]
     public bool ButtonDisabled { get; set; }
+    [Parameter]
+    public TagDrawer? PromptDrawer { get; set; }
+    [Parameter]
+    public TagDrawer? NegativePromptDrawer { get; set; }
 
     private string _currentStyles;
     private int _promptLines = 2;
     private int _negativePromptLines = 2;
+    private PromptButton _tags;
+
+    protected override void OnInitialized()
+    {
+        GetButtonTags();
+    }
+
+    public void GetButtonTags() => _tags = JsonSerializer.Deserialize<PromptButton>(IO.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
 
     private void HandleInputChanged(string value, bool isNegative)
     {
         if (isNegative) Parameters.NegativePrompt = value;
         else Parameters.Prompt = value;
         GetInputLines(value, isNegative);
-    }
-
-    private void GetInputLines(string characters, bool isNegative)
-    {
-        var lines = (int)(characters.Count() / 120f + 1);
-        if (isNegative) _negativePromptLines = lines > 2 ? lines : 2;
-        else _promptLines = lines > 2 ? lines : 2;
+        StateHasChanged();
     }
 
     private void HandleStylesChanged(IEnumerable<PromptStyle> styles)
@@ -74,5 +84,12 @@
         if (styles == null || styles.Count() == 0) _currentStyles = string.Empty;
         else _currentStyles = string.Join(", ", styles.Select(s => s.Name));
         AppState.CurrentStyles = styles;
+    }
+
+    private void GetInputLines(string characters, bool isNegative)
+    {
+        var lines = (int)(characters.Count() / 120f + 1);
+        if (isNegative) _negativePromptLines = lines > 2 ? lines : 2;
+        else _promptLines = lines > 2 ? lines : 2;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Models;
 using Microsoft.AspNetCore.Components;
+using MudBlazor;
 using Sylvan.Data;
 using Sylvan.Data.Csv;
 using System.Text.RegularExpressions;
@@ -130,30 +131,30 @@ namespace BlazorWebApp.Extensions
             return aliasesList.FirstOrDefault(a => a.Contains(search, StringComparison.InvariantCultureIgnoreCase));
         }
 
-        public static string ParseCsvTagColor(this int color)
+        public static Color ParseCsvTagColor(this int color)
         {
             switch (color)
             {
                 case 0:
-                    return "var(--app-blue-5);";
+                    return Color.Info;
                 case 1:
-                    return "var(--app-red)";
+                    return Color.Error;
                 case 2:
-                    return "var(--app-yellow)";
+                    return Color.Warning;
                 case 3:
-                    return "var(--app-purple)";
+                    return Color.Secondary;
                 case 4:
-                    return "var(--app-lime)";
+                    return Color.Tertiary;
                 case 5:
-                    return "var(--app-orange)";
+                    return Color.Warning;
                 case 6:
-                    return "var(--app-magenta)";
+                    return Color.Secondary;
                 case 7:
-                    return "var(--app-green)";
+                    return Color.Success;
                 case 8:
-                    return "var(--app-cyan)";
+                    return Color.Info;
                 default:
-                    return "var(--app-light-2);";
+                    return Color.Default;
             }
         }
     }
