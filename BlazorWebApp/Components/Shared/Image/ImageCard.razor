@@ -52,28 +52,24 @@
             <MudIconButton OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
             <MudSpacer />
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem> 
+                <MudTreeView T="string" ExpandOnClick>
+                    <MudTreeViewItem Style="margin-left: 1rem;" Value="@("Send To")">
+                        <MudButtonGroup VerticalAlign>
+                            <MudButton Style="border: none;" StartIcon="fa-solid fa-file-image" IconClass="me-6" IconColor=Color.Warning OnClick=@(() => SendTo(img2img:true))>Img2Img</MudButton>
+                            <MudButton StartIcon="fa-solid fa-panorama" IconColor=Color.Warning IconClass="me-6" OnClick=@(() => SendTo(img2img:false))>Upscale</MudButton>
+                        </MudButtonGroup>
+                    </MudTreeViewItem>
+                </MudTreeView>
                 <MudDivider />
-                <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem> 
+                <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
                 <MudDivider />
-                <MudMenuItem OnClick="ShowImageInfoModal" Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem> 
+                <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick="ShowImageInfoModal" Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem>
             </MudMenu>
         </MudCardActions>
     </MudCard>
 </div>
-
-@*<div class="card m-1">
-            @if (Image.ModeId != 3)
-            {
-                <h2 class="lead">@Image.Prompt</h2>
-                <h3 class="lead">@Image.NegativePrompt</h3>
-            }
-            else
-            {
-                <h2 class="lead">@(IO.LoadText(Image.InfoPath))</h2>
-            }
-        </div>
-*@
 
 @code {
     [Parameter]
@@ -103,6 +99,13 @@
         await DB.SetProjectCover(AppState.CurrentProjectId, Image.Path);
         await OnCoverChanged.InvokeAsync();
         Snackbar.Add($"Cover image selected for project {AppState.CurrentProjectName}.", Severity.Success);
+    }
+
+    private void SendTo(bool img2img)
+    {
+        var data = $"data:image/png;base64,{ImageData}";
+        if (img2img) AppState.CanvasImageData = data;
+        else AppState.UpscaleImageData = data;
     }
 
     private async Task<Color> SetSamplerBadgeColor()
@@ -136,7 +139,7 @@
     {
         var param = new DialogParameters();
         param.Add("Image", Image);
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth=true };
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         DialogService.Show<ImageInfoModal>("Image Info", param, options);
     }
 }
