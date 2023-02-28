@@ -25,7 +25,8 @@ namespace BlazorWebApp.Services
         public event Action OnConverging;
         public event Action OnBrushSizeChange;
         public event Action OnBrushColorChange;
-        public event Action OnProjectsChanged;
+        public event Action OnFolderChange;
+        public event Action OnProjectsChange;
         public event Action OnProjectChange;
         public event Func<Task> OnProjectChangeTask;
         public event Action OnStateHasChanged;
@@ -199,14 +200,14 @@ namespace BlazorWebApp.Services
 
         public async Task GetFolders()
         {
-            //Folders = _db.GetFolders();
+            Folders = await _db.GetFolders();
         }
 
-        public async Task GetProjects(int folderId = 0)
+        public async Task GetProjects()
         {
-            Projects = await _db.GetProjects(folderId);
+            Projects = await _db.GetProjects(CurrentFolderId);
             if (Settings.Gallery.GalleriesOrderDescending) Projects.Reverse();
-            OnProjectsChanged?.Invoke();
+            OnProjectsChange?.Invoke();
         }
 
         public void GetCsvTags(bool readAll = false)
@@ -230,13 +231,24 @@ namespace BlazorWebApp.Services
 
         public async Task SetCurrentFolder(int id)
         {
-            await GetFolders();
-            CurrentFolderId = id;
-            CurrentFolderName = Folders.FirstOrDefault(f => f.Id == id)!.Name;
+            if (id > 0)
+            {
+                await GetFolders();
+                CurrentFolderId = id;
+                CurrentFolderName = Folders.FirstOrDefault(f => f.Id == id)!.Name;
+            }
+            else
+            {
+                CurrentFolderId = 0;
+                CurrentFolderName = "All";
+            }
+            await GetProjects();
+            OnFolderChange?.Invoke();
         }
 
         public async Task SetCurrentProject(int id)
         {
+            await GetFolders();
             await GetProjects();
             CurrentProjectId = id;
             CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)?.Name;

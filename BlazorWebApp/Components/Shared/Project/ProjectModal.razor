@@ -4,20 +4,42 @@
     <DialogContent>
         <EditForm Model="@Project">
             <DataAnnotationsValidator />
-            <MudAutocomplete T="Folder" @bind-Value=Project.Folder Label="Folder" SearchFunc="@(async e => await DB.GetFolders(e))" ToStringFunc="@(e => e == null ? null : e.Name)" CoerceValue />
+            <MudAutocomplete T="string" @bind-Value=_projectFolder Label="Folder" SearchFunc="GetFolders" CoerceValue CoerceText ResetValueOnEmptyText/>
             <MudTextField Label="Name" @bind-Value=Project.Name Required />
         </EditForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
-        <MudButton ButtonType="ButtonType.Submit" OnClick="@(() => MudDialog.Close(Project))" Color="Color.Info" Variant="Variant.Filled">Confirm</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" OnClick="SetProject" Color="Color.Info" Variant="Variant.Filled">Confirm</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter]
-    public MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
 
-    [Parameter]
-    public Project Project { get; set; }
+    [Parameter] public Project Project { get; set; }
+
+    private string _projectFolder;
+
+    protected async override Task OnInitializedAsync()
+    {
+        if(Project.FolderId != null && Project.FolderId > 0)
+        {
+            var folder = await DB.GetFolder((int)Project.FolderId);
+            _projectFolder = folder.Name;
+        }
+    }
+
+    private async Task<IEnumerable<string>> GetFolders(string search)
+    {
+        var folders = await DB.GetFolders(search);
+
+        return folders.Select(f => f.Name);
+    }
+
+    private void SetProject()
+    {
+        if (!string.IsNullOrWhiteSpace(_projectFolder)) Project.Folder = new() { Name = _projectFolder };
+        MudDialog.Close(Project);
+    }
 }

@@ -30,10 +30,10 @@ namespace BlazorWebApp.Services
             await context.Database.MigrateAsync();
         }
 
-        public IAsyncEnumerable<Folder> GetFolders()
+        public async Task<List<Folder>> GetFolders()
         {
             using var context = _factory.CreateDbContext();
-            return context.Folders.AsAsyncEnumerable();
+            return await context.Folders.ToListAsync();
         }
 
         public async Task<List<Folder>> GetFolders(string name)
@@ -41,6 +41,18 @@ namespace BlazorWebApp.Services
             using var context = _factory.CreateDbContext();
             if (string.IsNullOrWhiteSpace(name)) return await context.Folders.ToListAsync();
             else return await context.Folders.Where(f => f.Name.Contains(name, StringComparison.InvariantCultureIgnoreCase)).ToListAsync();
+        }
+
+        public async Task<Folder> GetFolder(string name)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Folders.FirstOrDefaultAsync(f => f.Name.Equals(name));
+        }
+
+        public async Task<Folder> GetFolder(int id)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Folders.FirstOrDefaultAsync(f => f.Id.Equals(id));
         }
 
         public async Task<List<Project>> GetProjects(int folderId)
@@ -53,7 +65,7 @@ namespace BlazorWebApp.Services
         public async Task<Project> GetProject(int id)
         {
             using var context = _factory.CreateDbContext();
-            return await context.Projects.SingleOrDefaultAsync(p => p.Id == id);
+            return await context.Projects.FirstOrDefaultAsync(p => p.Id == id);
         }
 
         public async Task<Project> GetProject(string name)
@@ -68,9 +80,26 @@ namespace BlazorWebApp.Services
             return await context.Projects.OrderBy(p => p.Id).LastOrDefaultAsync();
         }
 
+        public async Task<Folder> CreateFolder(Folder folder)
+        {
+            using var context = _factory.CreateDbContext();
+            var folderEntity = await context.Folders.AddAsync(folder);
+            await context.SaveChangesAsync();
+            return folderEntity.Entity;
+        }
+
         public async Task<Project> CreateProject(Project project)
         {
             using var context = _factory.CreateDbContext();
+            if (project.Folder != null && !string.IsNullOrWhiteSpace(project.Folder.Name))
+            {
+                var folder = await GetFolder(project.Folder.Name);
+                if (folder != null)
+                {
+                    project.FolderId = folder.Id;
+                    project.Folder = null;
+                }
+            }
             var result = await context.Projects.AddAsync(project);
             await context.SaveChangesAsync();
             return result.Entity;
@@ -84,10 +113,31 @@ namespace BlazorWebApp.Services
                 project.Name = data.Name;
             if (!string.IsNullOrWhiteSpace(data.SampleImagePath))
                 project.SampleImagePath = data.SampleImagePath;
-            if (data.FolderId != null && data.FolderId >= 0 && context.Folders.Any(f => f.Id == data.FolderId))
-                project.FolderId = data.FolderId;
+            if (data.Folder != null && !string.IsNullOrWhiteSpace(data.Folder.Name))
+            {
+                var folder = await GetFolder(data.Folder.Name);
+                if (folder != null) project.FolderId = folder.Id;
+                else project.Folder = data.Folder;
+            }
+            else if (data.Folder == null && project.FolderId > 0) project.FolderId = null;
             await context.SaveChangesAsync();
             return project;
+        }
+
+        public async Task DeleteFolder(int folderId)
+        {
+            using var context = _factory.CreateDbContext();
+            var folder = await context.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
+            if (context.Projects.Any(p => p.FolderId == folderId))
+            {
+                var projects = context.Projects.Where(p => p.FolderId == folderId);
+                foreach (var project in projects)
+                {
+                    project.FolderId = null;
+                }
+            }
+            context.Folders.Remove(folder);
+            await context.SaveChangesAsync();
         }
 
         /// <summary>

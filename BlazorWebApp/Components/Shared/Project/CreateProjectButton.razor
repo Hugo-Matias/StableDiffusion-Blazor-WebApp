@@ -7,14 +7,10 @@
 </MudButton>
 
 @code {
-    [Parameter]
-    public RenderFragment ChildContent { get; set; }
-    [Parameter]
-    public Color Color { get; set; } = Color.Primary;
-    [Parameter]
-    public Variant Variant { get; set; } = Variant.Filled;
-    [Parameter]
-    public EventCallback OnProjectCreated { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+    [Parameter] public Variant Variant { get; set; } = Variant.Filled;
+    [Parameter] public EventCallback OnProjectCreated { get; set; }
 
     private Project _newProject = new();
     private DialogOptions _dialogOptions = new() { CloseButton = true, MaxWidth = MaxWidth.Small };
@@ -32,7 +28,7 @@
     {
         if (string.IsNullOrWhiteSpace(_newProject.Name)) return;
         _newProject.CreationTime = DateTime.Now;
-        var projectEntity = await DB.CreateProject(new() { Name = _newProject.Name, FolderId = _newProject.FolderId, CreationTime = _newProject.CreationTime });
+        var projectEntity = await DB.CreateProject(new() { Name = _newProject.Name, Folder = _newProject.Folder, CreationTime = _newProject.CreationTime });
         await AppState.GetProjects();
         await AppState.SetCurrentProject(projectEntity.Id);
         await OnProjectCreated.InvokeAsync();

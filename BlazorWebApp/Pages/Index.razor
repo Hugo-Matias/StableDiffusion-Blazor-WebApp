@@ -11,7 +11,7 @@
     <MudProgressCircular Color="Color.Info" Indeterminate />
     </MudStack>
 }
-else if (_projects.Count() == 0)
+else if (_projects.Count() == 0 && AppState.CurrentFolderId == 0)
 {
     <MudContainer Class="d-flex flex-column align-items-center justify-content-center" Style="height: 50vh">
         <MudPaper Class="pa-10 d-flex flex-column align-items-center" MaxWidth="30vw" Elevation="5">

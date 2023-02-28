@@ -18,7 +18,7 @@ builder.Services.AddMudServices(opt =>
 });
 
 builder.Services.AddHttpClient<SDAPIService>();
-builder.Services.AddDbContextFactory<AppDbContext>(opt => opt.UseSqlite("Data Source=BlazorWebApp.db"));
+builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
 
 builder.Services.AddSingleton<AppState>();
 builder.Services.AddSingleton<ImageService>();

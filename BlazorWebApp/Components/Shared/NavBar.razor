@@ -13,13 +13,13 @@
 @code{
     protected override void OnInitialized()
     {
-        AppState.OnProjectsChanged += Refresh;
+        AppState.OnProjectsChange += Refresh;
     }
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        AppState.OnProjectsChanged -= Refresh;
+        AppState.OnProjectsChange -= Refresh;
     }
 }

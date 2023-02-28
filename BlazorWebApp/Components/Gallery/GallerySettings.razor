@@ -1,18 +1,36 @@
 ﻿@inject AppState AppState
 @inject DatabaseService DB
 @inject IDialogService DialogService
+@implements IDisposable
 
 <div>
     <MudPaper Class="p-3 mb-3">
-        @if (AppState.Projects != null && AppState.Projects.Count > 0)
-        {
-            <MudStack Class="projects-container" Row>
+        <MudStack Class="projects-container" Row>
+            <MudStack Class="justify-content-center">
+                <CreateProjectButton Variant="Variant.Text">
+                    <MudStack Class="d-flex flex-column align-items-center">
+                        <MudText Typo="Typo.caption">Add Project</MudText>
+                        <MudIcon Icon="fa-solid fa-plus" />
+                    </MudStack>
+                </CreateProjectButton>
+                @if (AppState.CurrentFolderId > 0)
+                {
+                    <MudButton OnClick="ShowDeleteFolderModal" Variant="Variant.Text" Color="Color.Error">
+                        <MudStack Class="d-flex flex-column align-items-center">
+                            <MudText Typo="Typo.caption">Delete Folder</MudText>
+                            <MudIcon Icon="fa-solid fa-trash-can" />
+                        </MudStack>
+                    </MudButton>
+                }
+            </MudStack>
+            @if (AppState.Projects != null && AppState.Projects.Count > 0)
+            {
                 @foreach (var project in AppState.Projects)
                 {
                     <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
                 }
-            </MudStack>
-        }
+            }
+        </MudStack>
     </MudPaper>
     <MudContainer MaxWidth="MaxWidth.Medium">
         <MudGrid>
@@ -20,11 +38,11 @@
                 <MudStack>
                     <MudTextField T="string" @bind-Value="AppState.Settings.Gallery.SearchPrompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus Variant="Variant.Text" />
                     <MudTextField Class="mt-n4" T="string" @bind-Value="AppState.Settings.Gallery.SearchNegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus Variant="Variant.Text" />
-                </MudStack>
-            </MudItem>
-            <MudItem xs="3">
-                <MudCheckBox Class="mt-4" Label="Favorites Only" @bind-Checked="AppState.Settings.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
-                <MudStack Class="mt-2" Row>
+                    </MudStack>
+                    </MudItem>
+                    <MudItem xs="3">
+                    <MudCheckBox Class="mt-4" Label="Favorites Only" @bind-Checked="AppState.Settings.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
+                    <MudStack Class="mt-2" Row>
                     <MudSelect Label="Order by" @bind-Value="AppState.Settings.Gallery.OrderBy">
                         @foreach (GalleryOrderBy order in Enum.GetValues(typeof(GalleryOrderBy)))
                         {
@@ -37,9 +55,9 @@
             <MudItem xs="4" Class="d-flex flex-column align-items-center">
                 <MudText Typo="Typo.overline">Modes:</MudText>
                 <MudChipSet SelectedChipsChanged="HandleModeSelection" Class="" Filter MultiSelection>
-                    <MudChip Text="Txt2Img" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeTxt2Img"/>
-                    <MudChip Text="Img2Img" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeImg2Img"/>
-                    <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeUpscale"/>
+                    <MudChip Text="Txt2Img" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeTxt2Img" />
+                    <MudChip Text="Img2Img" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeImg2Img" />
+                    <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeUpscale" />
                 </MudChipSet>
                 <MudButtonGroup Class="mt-5" Variant="Variant.Outlined" Color="Color.Primary" OverrideStyles=false>
                     <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Warning">Filter</MudButton>
@@ -59,6 +77,11 @@
     public EventCallback OnProjectDeleted { get; set; }
 
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+
+    protected override void OnInitialized()
+    {
+        AppState.OnFolderChange += Refresh;
+    }
 
     private async Task HandleProjectSelected(int projectId)
     {
@@ -85,6 +108,25 @@
         if (!result.Cancelled) await DeleteProject(projectId);
     }
 
+    private async Task ShowDeleteFolderModal()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this folder?<br /></span><span>All projects in this folder will be folderless and you can find them in the ""All"" projects folder.</span><br/><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialogModal>("Delete Folder", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Cancelled) await DeleteFolder();
+    }
+
+    private async Task DeleteFolder()
+    {
+        await DB.DeleteFolder(AppState.CurrentFolderId);
+        await AppState.GetFolders();
+        await AppState.SetCurrentFolder(0);
+    }
+
     private async Task DeleteProject(int id)
     {
         var project = await DB.DeleteProject(id);
@@ -108,11 +150,17 @@
 
     private async Task EditProject(Project project)
     {
-        var updates = new Project() { Name = project.Name };
-        if (project.Folder != null) updates.FolderId = project.Folder.Id;
+        var updates = new Project() { Name = project.Name, Folder = project.Folder };
         await DB.UpdateProject(project.Id, updates);
         // Re-sets current project to refresh the relevant ui components
         await AppState.SetCurrentProject(AppState.CurrentProjectId);
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        AppState.OnFolderChange -= Refresh;
     }
 }

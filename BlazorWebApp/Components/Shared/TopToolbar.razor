@@ -6,6 +6,13 @@
 
 <div class="mt-6">
     <MudStack Justify="Justify.FlexEnd" Row>
+        <MudSelect T=string Value=AppState.CurrentFolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelectItem Value=@("")>All</MudSelectItem>
+            @foreach (var folder in AppState.Folders)
+            {
+                <MudSelectItem Value="@folder.Name">@folder.Name</MudSelectItem>
+            }
+        </MudSelect>
         <MudSelect T=string Value=AppState.CurrentProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
             @foreach (var project in AppState.Projects)
             {
@@ -46,8 +53,12 @@
 
         AppState.OnConverging += Refresh;
         AppState.OnOptionsChange += Refresh;
+        AppState.OnFolderChange += Refresh;
         AppState.OnProjectChange += Refresh;
+        AppState.OnProjectsChange += Refresh;
         AppState.OnStateHasChanged += Refresh;
+
+        await AppState.GetFolders();
 
         await AppState.GetProjects();
         if (AppState.Projects != null && AppState.Projects.Count > 0)
@@ -96,11 +107,20 @@
         Refresh();
     }
 
+    private async Task HandleFolderSelected(string selected)
+    {
+        if (string.IsNullOrWhiteSpace(selected)) await AppState.SetCurrentFolder(0);
+        else await AppState.SetCurrentFolder(DB.GetFolder(selected).Result.Id);
+        Refresh();
+    }
+
     public void Dispose()
     {
         AppState.OnConverging -= Refresh;
         AppState.OnOptionsChange -= Refresh;
+        AppState.OnFolderChange -= Refresh;
         AppState.OnProjectChange -= Refresh;
+        AppState.OnProjectsChange -= Refresh;
         AppState.OnStateHasChanged -= Refresh;
     }
 
