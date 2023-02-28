@@ -4,13 +4,15 @@
 <div>
     <MudDialog Style="max-width: 95vw; max-height: 90vh;">
         <TitleContent>
-            <MudButtonGroup>
-                @if (Images.Count > 1)
-                {
-                    <MudButton OnClick="@(() => Carousel.Reference.Previous())"><MudIcon Icon="fa-solid fa-chevron-left" /></MudButton>
-                    <MudButton OnClick="@(() => Carousel.Reference.Next())"><MudIcon Icon="fa-solid fa-chevron-right" /></MudButton>
-                }
-            </MudButtonGroup>
+            <MudContainer Class="d-flex flex-row justify-content-center">
+                <MudButtonGroup>
+                    @if (Images.Count > 1)
+                    {
+                        <MudButton OnClick="@(() => Carousel.Reference.Previous())"><MudIcon Icon="fa-solid fa-chevron-left" /></MudButton>
+                        <MudButton Style="border:none" OnClick="@(() => Carousel.Reference.Next())"><MudIcon Icon="fa-solid fa-chevron-right" /></MudButton>
+                    }
+                </MudButtonGroup>
+            </MudContainer>
         </TitleContent>
         <DialogContent>
             <ImageCarousel @ref=Carousel Images="Images" MaxWidth="85vw" MaxHeight="80vh" />

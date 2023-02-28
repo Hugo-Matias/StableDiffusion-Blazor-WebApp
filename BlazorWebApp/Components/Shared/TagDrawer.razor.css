@@ -1,0 +1,8 @@
+﻿::deep .weight-button {
+	border: 0 !important;
+	padding: 0 4px !important;
+}
+
+	::deep .weight-button span {
+		font-size: 1rem !important;
+	}

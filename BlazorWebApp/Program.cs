@@ -24,6 +24,7 @@ builder.Services.AddSingleton<AppState>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<IOService>();
+builder.Services.AddSingleton<CsvService>();
 
 builder.Services.AddScoped<JavascriptService>();
 

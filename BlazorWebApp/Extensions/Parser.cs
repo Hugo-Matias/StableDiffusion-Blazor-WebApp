@@ -1,8 +1,6 @@
 ﻿using BlazorWebApp.Models;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
-using Sylvan.Data;
-using Sylvan.Data.Csv;
 using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Extensions
@@ -111,19 +109,13 @@ namespace BlazorWebApp.Extensions
             }
         }
 
-        public static List<CsvTag> ParseCsvTags(this string path)
+        public static CsvTag ParseCsvTag(this CsvTag tag) => new CsvTag()
         {
-            var schema = Schema.Parse("Name,Color,Uses,Aliases");
-            var opts = new CsvDataReaderOptions() { Schema = new CsvSchema(schema), HasHeaders = false };
-            using var reader = CsvDataReader.Create(path, opts);
-            var tags = reader.GetRecords<CsvTag>().ToList();
-            for (int i = 0; i < tags.Count; i++)
-            {
-                tags[i].Name = tags[i].Name.Replace("_", " ");
-                tags[i].Aliases = tags[i].Aliases.Replace("_", " ");
-            }
-            return tags;
-        }
+            Name = tag.Name.Replace("_", " "),
+            Aliases = tag.Aliases.Replace("_", " "),
+            Color = tag.Color,
+            Uses = tag.Uses
+        };
 
         public static string ParseCsvTagAlias(this string aliases, string search)
         {

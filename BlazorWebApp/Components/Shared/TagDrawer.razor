@@ -1,4 +1,5 @@
 ﻿@inject AppState AppState
+@inject CsvService CsvService
 
 <div style="display:@(Visible ? "block" : "none");">
     <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="calc(100vh - 45px)" Width="45vw" Fixed>
@@ -13,7 +14,13 @@
                     @for (int i = 0; i < _selectedTags.Count; i++)
                     {
                         var value = i;
-                        <MudChip Value="@value" Text="@_selectedTags[value].Item1" OnClose="RemoveTag" Variant="Variant.Text" Color="GetTagBadgeColor(value)" />
+                        <MudChip Value="@value" OnClose="RemoveTag" Variant="Variant.Text" Color="GetTagBadgeColor(value)">
+                            <MudButtonGroup Style="margin-right:4px;">
+                                <MudIconButton Class="weight-button" Icon="fa-solid fa-chevron-up" OnClick="() => ChangeTagWeight(value, increment: true)" />
+                                <MudIconButton Class="weight-button" Icon="fa-solid fa-chevron-down" OnClick="() => ChangeTagWeight(value, increment: false)" />
+                            </MudButtonGroup>
+                            @ParseTagWeight(value)
+                        </MudChip>
                     }
                 </MudGrid>
                 <MudStack Class="pa-2" Row>
@@ -57,15 +64,12 @@
 @code {
     [Parameter] public EventCallback<AppendedTags> OnAppendTags { get; set; }
     [Parameter] public bool Visible { get; set; }
-    [Parameter] public List<CsvTag> AutocompleteTags { get; set; }
     [Parameter] public PromptButton ButtonTags { get; set; }
     [Parameter] public string HeaderBgColor { get; set; }
 
     public string SelectedText { get; set; }
 
     private List<(string, float)> _selectedTags = new();
-    private int _tagListCount = 10;
-    private string _searchText;
     private float _incrementAmount = 0.05f;
     private MudAutocomplete<CsvTag>? _autocompleteRef;
     private string _autocompleteValue = string.Empty;
@@ -73,7 +77,7 @@
     private async Task<IEnumerable<CsvTag>> SearchTags(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return new CsvTag[0];
-        return AutocompleteTags.Where(t => t.Name.Contains(input, StringComparison.InvariantCultureIgnoreCase) || t.Aliases.Contains(input, StringComparison.InvariantCultureIgnoreCase)).OrderByDescending(t => t.Uses);
+        return CsvService.SearchTags(input);
     }
 
     private void SelectedValueChanged(CsvTag tag)
@@ -120,6 +124,6 @@
     private Color GetTagBadgeColor(int tagIndex)
     {
         var item = _selectedTags[tagIndex];
-        return AppState.AutocompleteTags.Any(t => t.Name == item.Item1.ToString()) ? Parser.ParseCsvTagColor(AppState.AutocompleteTags.FirstOrDefault(t => t.Name == item.Item1.ToString()).Color) : Color.Default;
+        return CsvService.CheckTagExists(item.Item1) ? Parser.ParseCsvTagColor(CsvService.GetTag(item.Item1)!.Color) : Color.Default;
     }
 }

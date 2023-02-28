@@ -34,8 +34,8 @@
     </EditForm>
 </div>
 
-<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=AppState.ButtonTags />
-<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=AppState.ButtonTags />
+<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags=AppState.ButtonTags />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags=AppState.ButtonTags />
 
 @code {
     [Parameter]

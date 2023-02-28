@@ -1,6 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
-using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -76,7 +75,6 @@ namespace BlazorWebApp.Services
         public string UpscaleImageData { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
         public bool IsGalleryFiltered { get; set; }
-        public List<CsvTag> AutocompleteTags { get; set; }
         public PromptButton ButtonTags { get; set; }
         public CmdFlags CmdFlags { get; set; }
         public bool IsConverging
@@ -106,7 +104,6 @@ namespace BlazorWebApp.Services
             CurrentBrushSize = Settings.Img2Img.Brush.DefaultValue;
             CurrentBrushColor = Settings.Img2Img.Brush.Color;
 
-            GetCsvTags();
             GetButtonTags();
             CreateParameters();
 
@@ -213,23 +210,6 @@ namespace BlazorWebApp.Services
             Projects = await _db.GetProjects(CurrentFolderId);
             if (Settings.Gallery.GalleriesOrderDescending) Projects.Reverse();
             OnProjectsChange?.Invoke();
-        }
-
-        public void GetCsvTags(bool readAll = false)
-        {
-            var path = @"E:\Programas\Stable Diffusion\stable-diffusion-webui\extensions\a1111-sd-webui-tagcomplete\tags";
-            if (readAll)
-            {
-                var files = _io.GetFilesFromPath(path);
-                AutocompleteTags = new();
-                if (files == null) return;
-                foreach (var file in files)
-                {
-                    if (file.Extension.ToLower().Contains("csv"))
-                        AutocompleteTags.AddRange(Parser.ParseCsvTags(file.FullName));
-                }
-            }
-            else AutocompleteTags = Parser.ParseCsvTags(path + @"\danbooru.csv");
         }
 
         public void GetButtonTags() => ButtonTags = JsonSerializer.Deserialize<PromptButton>(_io.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
