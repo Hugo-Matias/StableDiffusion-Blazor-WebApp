@@ -78,6 +78,7 @@ namespace BlazorWebApp.Services
         public bool IsGalleryFiltered { get; set; }
         public List<CsvTag> AutocompleteTags { get; set; }
         public PromptButton ButtonTags { get; set; }
+        public CmdFlags CmdFlags { get; set; }
         public bool IsConverging
         {
             get => _isConverging;
@@ -94,6 +95,7 @@ namespace BlazorWebApp.Services
             _db = db;
             _io = io;
 
+            GetCmdFlags();
             LoadSettings();
             _db.PageSize = Settings.Gallery.PageSize;
 
@@ -373,7 +375,7 @@ namespace BlazorWebApp.Services
 
         public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
 
-        public void InvokeStateHasChanged() => OnStateHasChanged?.Invoke();
+        public async Task GetCmdFlags() => CmdFlags = await _api.GetCmdFlags();
 
         public void LoadSettings()
         {

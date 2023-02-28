@@ -1,75 +1,7 @@
 ﻿@inject AppState AppState
 
-@*<button class="btn btn-outline-secondary tags-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#@OffscreenId" aria-controls="tag-offcanvas"><span class="fa-solid fa-tags me-2"></span> Tags</button>
-
-<div class="offcanvas offcanvas-end" tabindex="-1" id="@OffscreenId" aria-labelledby="tag-offcanvas-label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="tag-offcanvas-label">Tag Selector</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-        @if (_selectedTags.Count > 0)
-        {
-            <label class="form-label me-2">Selected Tags:</label>
-            <div class="row selected-tags-container mb-4">
-                @for (var i = 0; i < _selectedTags.Count; i++)
-                {
-                    var index = i;
-                    <span class="badge rounded-pill" style="color:@GetTagBadgeColor(i)">
-                        <div class="d-flex flex-column">
-                            <button class="btn-weight" @onclick="() => ChangeTagWeight(index, increment: true)">
-                                <i class="fa-solid fa-chevron-up" />
-                            </button>
-                            <button class="btn-weight" @onclick="() => ChangeTagWeight(index, increment: false)">
-                                <i class="fa-solid fa-chevron-down" />
-                            </button>
-                        </div>
-                        @ParseTagWeight(i)
-                        <button class="btn-close btn-close-white" @onclick="() => RemoveTag(index)"></button>
-                    </span>
-                }
-            </div>
-            <div class="append-tags-btn-container d-flex align-items-baseline mb-3">
-                <button class="btn btn-outline-primary me-2" @onclick="() => AppendTags(true)">Prefix</button>
-                <button class="btn btn-outline-primary me-2" @onclick="() => AppendTags(false)">Suffix</button>
-                <button class="btn btn-outline-danger" @onclick="() => _selectedTags.Clear()">Clear</button>
-            </div>
-        }
-        <Autocomplete @ref="SearchInputRef"
-                      TItem="CsvTagModel"
-                      TValue="string"
-                      Placeholder="Search tags..."
-                      TextField="t => t.Name"
-                      ValueField="t => t.Name"
-                      Data="@CsvTags"
-                      @bind-SelectedText="@SelectedText"
-                      CustomFilter="@(SearchInputChanged)"
-                      SelectedValueChanged="SelectedValueChanged"
-                      FreeTyping
-                      Virtualize
-                      Context="acContext">
-            <ItemContent>
-                <p class="autocomplete-item-content align-content-end" style="color:@GetTagSuggestionColor(acContext.Item.Name, acContext.Item.Color)">
-                    @acContext.Text
-                    @if (!acContext.Item.Name.Contains(_searchText) && acContext.Item.Aliases.Contains(_searchText))
-                    {
-                        <small style="color: var(--app-light-2);"> => @(Parser.ParseCsvTagAlias(acContext.Item.Aliases, _searchText))</small>
-                    }
-                </p>
-            </ItemContent>
-        </Autocomplete>
-        <div class="accordion mt-3" id="tagsAccordion">
-            @foreach (var item in AppState.RootButtonTag.Items)
-            {
-                <TagAccordion Tag="@item" DataParent="tagsAccordion" OnButtonClicked="AddTag" />
-            }
-        </div>
-    </div>
-</div>
-*@
-
 <div style="display:@(Visible ? "block" : "none");">
-    <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="100vh" Width="45vw" Fixed>
+    <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="calc(100vh - 45px)" Width="45vw" Fixed>
         <MudDrawerHeader Class="d-flex flex-row align-items-center" Style=@($"background-color: {HeaderBgColor};")>
             <MudText Typo="Typo.h6" Color="Color.Dark">Tag Selector</MudText>
             <MudSpacer />
