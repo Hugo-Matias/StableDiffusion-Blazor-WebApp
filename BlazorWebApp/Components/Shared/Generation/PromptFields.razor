@@ -8,8 +8,8 @@
             <MudGrid>
                 <MudItem xs="9">
                     <MudStack>
-                        <MudTextField Class="prompt" Lines=_promptLines Label="Prompt" OnAdornmentClick="() => PromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.Prompt Clearable Immediate />
-                        <MudTextField Class="negative-prompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.NegativePrompt Clearable Immediate />
+                        <MudTextField Class="prompt" id="prompt" Lines=_promptLines Label="Prompt" OnAdornmentClick="() => PromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.Prompt Clearable Immediate />
+                        <MudTextField Class="negative-prompt" id="negativePrompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.NegativePrompt Clearable Immediate />
                     </MudStack>
                 </MudItem>
                 <MudItem xs="3">

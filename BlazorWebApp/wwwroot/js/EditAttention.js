@@ -1,5 +1,5 @@
 ﻿addEventListener("keydown", (event) => {
-  let target = event.originalTarget;
+  let target = event.target;
   const positive = "ArrowUp";
   const negative = "ArrowDown";
 
