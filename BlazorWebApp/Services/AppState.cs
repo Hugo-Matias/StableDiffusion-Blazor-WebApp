@@ -107,6 +107,9 @@ namespace BlazorWebApp.Services
             GetCsvTags();
             GetButtonTags();
             CreateParameters();
+
+            if (Settings.Folder > 0) SetCurrentFolder(Settings.Folder);
+            if (Settings.Project > 0) SetCurrentProject(Settings.Project);
         }
 
         private void CreateParameters()
@@ -242,6 +245,8 @@ namespace BlazorWebApp.Services
                 CurrentFolderId = 0;
                 CurrentFolderName = "All";
             }
+            Settings.Folder = CurrentFolderId;
+            SaveSettings();
             await GetProjects();
             OnFolderChange?.Invoke();
         }
@@ -252,6 +257,8 @@ namespace BlazorWebApp.Services
             await GetProjects();
             CurrentProjectId = id;
             CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)?.Name;
+            Settings.Project = CurrentProjectId;
+            SaveSettings();
             OnProjectChange?.Invoke();
             OnProjectChangeTask?.Invoke();
         }

@@ -5,6 +5,8 @@ namespace BlazorWebApp.Models
     public class AppSettings
     {
         public bool IsDarkMode { get; set; } = true;
+        public int Folder { get; set; } = 0;
+        public int Project { get; set; } = 0;
         public GallerySettingsModel Gallery { get; set; } = new();
         public SharedSettingsModel Shared { get; set; } = new();
         public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
