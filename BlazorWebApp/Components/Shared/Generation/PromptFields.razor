@@ -8,8 +8,8 @@
             <MudGrid>
                 <MudItem xs="9">
                     <MudStack>
-                        <MudTextField Class="prompt" Lines=_promptLines Label="Prompt" OnAdornmentClick="() => PromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" Value=@Parameters.Prompt ValueChanged="(v) => HandleInputChanged(v, isNegative: false)" Clearable Immediate />
-                        <MudTextField Class="negative-prompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" Value=@Parameters.NegativePrompt ValueChanged="(v) => HandleInputChanged(v, isNegative: true)" Clearable Immediate />
+                        <MudTextField Class="prompt" Lines=_promptLines Label="Prompt" OnAdornmentClick="() => PromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.Prompt Clearable Immediate />
+                        <MudTextField Class="negative-prompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.NegativePrompt Clearable Immediate />
                     </MudStack>
                 </MudItem>
                 <MudItem xs="3">
@@ -34,8 +34,8 @@
     </EditForm>
 </div>
 
-<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=_tags/>
-<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=_tags/>
+<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=AppState.ButtonTags />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" AutocompleteTags="@AppState.AutocompleteTags" ButtonTags=AppState.ButtonTags />
 
 @code {
     [Parameter]
@@ -60,23 +60,13 @@
     public TagDrawer? NegativePromptDrawer { get; set; }
 
     private string _currentStyles;
-    private int _promptLines = 2;
-    private int _negativePromptLines = 2;
-    private PromptButton _tags;
+    private int _promptLines = 5;
+    private int _negativePromptLines = 5;
+    private bool _isDrawerOpen = false;
 
     protected override void OnInitialized()
     {
-        GetButtonTags();
-    }
-
-    public void GetButtonTags() => _tags = JsonSerializer.Deserialize<PromptButton>(IO.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
-
-    private void HandleInputChanged(string value, bool isNegative)
-    {
-        if (isNegative) Parameters.NegativePrompt = value;
-        else Parameters.Prompt = value;
-        GetInputLines(value, isNegative);
-        StateHasChanged();
+        if (AppState.ButtonTags == null) AppState.GetButtonTags();
     }
 
     private void HandleStylesChanged(IEnumerable<PromptStyle> styles)
@@ -84,12 +74,5 @@
         if (styles == null || styles.Count() == 0) _currentStyles = string.Empty;
         else _currentStyles = string.Join(", ", styles.Select(s => s.Name));
         AppState.CurrentStyles = styles;
-    }
-
-    private void GetInputLines(string characters, bool isNegative)
-    {
-        var lines = (int)(characters.Count() / 120f + 1);
-        if (isNegative) _negativePromptLines = lines > 2 ? lines : 2;
-        else _promptLines = lines > 2 ? lines : 2;
     }
 }
