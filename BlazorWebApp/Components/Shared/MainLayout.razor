@@ -14,13 +14,13 @@
         <MudSpacer />
         <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Edge="Edge.Start" OnClick="() => DrawerToggler()" />
     </MudAppBar>
-    <MudExpansionPanels>
+    <MudExpansionPanels Style="position: fixed; width:100%; z-index:100;">
         <MudExpansionPanel HideIcon=true IsExpanded="_isToolbarOpen">
             <TopToolbar />
         </MudExpansionPanel>
     </MudExpansionPanels>
     <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge">
+        <MudContainer Style="margin-top: 2rem;" MaxWidth="MaxWidth.ExtraLarge">
             @Body
         </MudContainer>
     </MudMainContent>

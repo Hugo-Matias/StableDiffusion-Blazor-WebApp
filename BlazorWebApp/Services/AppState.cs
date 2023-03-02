@@ -176,6 +176,15 @@ namespace BlazorWebApp.Services
             OnSDModelsChange?.Invoke();
         }
 
+        public async Task SetSDModel(string modelTitle)
+        {
+            CurrentSDModel = "Loading...";
+            OnSDModelsChange?.Invoke();
+            await _api.PostOptions(new() { SDModelCheckpoint = modelTitle });
+            CurrentSDModel = modelTitle;
+            OnSDModelsChange?.Invoke();
+        }
+
         public async Task GetOptions()
         {
             Options = await _api.GetOptions();

@@ -1,0 +1,16 @@
+﻿@inject IOService IO
+
+<MudCard Style="max-width: 12rem; min-width: 12rem;" Elevation="4" Class="m-2">
+    <MudCardMedia Image="@(string.IsNullOrWhiteSpace(Resource.ImagePath) ? "./no_image.png" : Resource.ImagePath)" />
+    <MudCardContent Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" Class="pb-n4">
+        <MudText Typo="Typo.caption">@Resource.Title</MudText>
+    </MudCardContent>
+    <MudCardActions Class="justify-content-center">
+        <MudButton ButtonType="ButtonType.Button" Color="Color.Primary" Variant="Variant.Text" OnClick=@(async () => await OnLoad.InvokeAsync(Resource))>Load</MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter] public BaseResource Resource { get; set; }
+    [Parameter] public EventCallback<BaseResource> OnLoad { get; set; }
+}

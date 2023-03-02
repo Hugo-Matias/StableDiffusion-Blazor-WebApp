@@ -1,6 +1,7 @@
 using BlazorWebApp.Data;
 using BlazorWebApp.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -43,6 +44,11 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcePreviews"]),
+    RequestPath = "/resource_previews"
+});
 
 app.UseRouting();
 

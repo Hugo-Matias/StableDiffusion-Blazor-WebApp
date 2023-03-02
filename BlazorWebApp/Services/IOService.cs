@@ -7,7 +7,7 @@ namespace BlazorWebApp.Services
     {
         public string GetJsonAsString(string path) => new string(File.ReadAllText(path));
 
-        public IOrderedEnumerable<FileInfo>? GetFilesFromPath(string path)
+        public IOrderedEnumerable<FileInfo>? GetOrderedFiles(string path)
         {
             if (!Directory.Exists(path)) return null;
 
@@ -17,21 +17,44 @@ namespace BlazorWebApp.Services
 
                 // Order by name is important to get txt/img file pairs
                 var files = directory.GetFiles().OrderBy(f => f.Name);
-
                 return files;
             }
             catch (Exception e)
             {
-
                 throw new Exception($"Couldn't read files from directory: {path}\n", e);
             }
         }
 
-        public async Task<List<ImageInfo>?> GetImagesFromPath(string path)
+        public IEnumerable<FileInfo> GetFilesRecursive(string path)
+        {
+            static void GetFiles(DirectoryInfo dir, ref List<FileInfo> files)
+            {
+                foreach (var subdir in dir.GetDirectories())
+                {
+                    GetFiles(subdir, ref files);
+                }
+                files.AddRange(dir.GetFiles().OrderBy(f => f.Name).ToList());
+            }
+
+            if (!Directory.Exists(path)) return Array.Empty<FileInfo>();
+            try
+            {
+                List<FileInfo> files = new();
+                var directory = new DirectoryInfo(path);
+                GetFiles(directory, ref files);
+                return files;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"Couldn't read files from directory: {path}\n", e);
+            }
+        }
+
+        public async Task<List<ImageInfo>?> GetImages(string path)
         {
             if (!Directory.Exists(path)) return null;
 
-            var files = GetFilesFromPath(path);
+            var files = GetOrderedFiles(path);
             var images = new List<ImageInfo>();
             var currentFileName = string.Empty;
             ImageInfo currentImage = null;
@@ -121,7 +144,7 @@ namespace BlazorWebApp.Services
             return fileIndex;
         }
 
-        private FileInfo? GetLastSavedFile(string path) => GetFilesFromPath(path).LastOrDefault();
+        private FileInfo? GetLastSavedFile(string path) => GetOrderedFiles(path).LastOrDefault();
 
         public async Task SaveFileToDisk(string path, byte[] data) => await File.WriteAllBytesAsync(path, data);
 

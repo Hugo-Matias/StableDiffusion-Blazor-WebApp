@@ -1,0 +1,38 @@
+﻿@inject AppState AppState
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Color="Color.Info">@Title</MudText>
+        <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
+        <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row>
+            <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
+            <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success">Prompt</MudButton>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error">Negative Prompt</MudButton>
+            </MudButtonGroup>
+        </MudStack>
+        <MudStack Class="align-items-center justify-content-center" Row>
+            <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;"/>Img2Img:</MudText>
+            <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success">Prompt</MudButton>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error">Negative Prompt</MudButton>
+            </MudButtonGroup>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="@(()=>MudDialog.Cancel())">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public string Title { get; set; }
+
+    private void LoadResource(ModeType source, bool isPrompt) => MudDialog.Close((source, isPrompt));
+
+    private void HandleResourceWeightChanged(float value)
+    {
+        AppState.Settings.Resources.Weight.Value = value;
+        AppState.SaveSettings();
+    }
+}

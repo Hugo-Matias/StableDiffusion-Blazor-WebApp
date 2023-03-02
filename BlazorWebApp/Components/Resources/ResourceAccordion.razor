@@ -1,0 +1,33 @@
+﻿@if (Resources != null)
+{
+    @if (Resources.Count() == 1)
+    {
+        <MudGrid Spacing="1" Justify="Justify.Center">
+            @foreach (var file in Resources.First())
+            {
+                <ResourceCard Resource="file" OnLoad=@(async (resource) => await OnLoad.InvokeAsync(resource)) />
+            }
+        </MudGrid>
+    }
+    else
+    {
+        <MudExpansionPanels>
+            @foreach (var dir in Resources)
+            {
+                <MudExpansionPanel Text="@dir.Key">
+                    <MudGrid Spacing="1" Justify="Justify.Center">
+                        @foreach (var file in dir)
+                        {
+                            <ResourceCard Resource="file" OnLoad=@(async (resource) => await OnLoad.InvokeAsync(resource)) />
+                        }
+                    </MudGrid>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    }
+}
+
+@code {
+    [Parameter] public IEnumerable<IGrouping<string?, BaseResource>> Resources { get; set; }
+    [Parameter] public EventCallback<BaseResource> OnLoad { get; set; }
+}

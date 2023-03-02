@@ -1,0 +1,112 @@
+﻿@page "/"
+@inject AppState AppState
+@inject SDAPIService SD
+@inject IOService IO
+@inject IConfiguration Configuration
+@inject IDialogService DialogService
+
+<MudTabs Elevation="4" PanelClass="pa-5" Rounded Centered>
+    <MudTabPanel Text="Checkpoint">
+        <ResourceAccordion Resources="_checkpoints" OnLoad="LoadResource" />
+    </MudTabPanel>
+    <MudTabPanel Text="Textual Inversion">
+        <ResourceAccordion Resources="_embeddings" OnLoad="LoadResource" />
+    </MudTabPanel>
+    <MudTabPanel Text="Hypernetwork">
+        <ResourceAccordion Resources="_hypernets" OnLoad="LoadResource" />
+    </MudTabPanel>
+    <MudTabPanel Text="LoRA">
+        <ResourceAccordion Resources="_loras" OnLoad="LoadResource" />
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private string _baseDir, _checkpointDir, _embeddingDir, _hypernetDir, _loraDir;
+    private IEnumerable<IGrouping<string?, BaseResource>> _checkpoints, _embeddings, _hypernets, _loras;
+    private List<string> _resourceFormats = new() { ".safetensors", ".ckpt", ".pt" };
+
+    protected async override Task OnInitializedAsync()
+    {
+        if (AppState.CmdFlags == null) await AppState.GetCmdFlags();
+
+        _baseDir = AppState.CmdFlags.BaseDir;
+        _checkpointDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.CkptDir) ? Path.Join(_baseDir, @"models/Stable-diffusion") : AppState.CmdFlags.CkptDir;
+        _embeddingDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.EmbeddingDir) ? Path.Join(_baseDir, "embeddings") : AppState.CmdFlags.EmbeddingDir;
+        _hypernetDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.HypernetworkDir) ? Path.Join(_baseDir, @"models/hypernetworks") : AppState.CmdFlags.HypernetworkDir;
+        _loraDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.LoraDir) ? Path.Join(_baseDir, @"models/Lora") : AppState.CmdFlags.LoraDir;
+
+        _checkpoints = CreateResourceEntities(_checkpointDir, ResourceType.Checkpoint);
+        _embeddings = CreateResourceEntities(_embeddingDir, ResourceType.Embedding);
+        _hypernets = CreateResourceEntities(_hypernetDir, ResourceType.Hypernetwork);
+        _loras = CreateResourceEntities(_loraDir, ResourceType.Lora);
+    }
+
+    private IEnumerable<IGrouping<string?, BaseResource>> CreateResourceEntities(string path, ResourceType resourceType)
+    {
+        List<BaseResource> resources = new();
+        var files = IO.GetFilesRecursive(path);
+        foreach (var file in files)
+        {
+            if (_resourceFormats.Contains(file.Extension))
+            {
+                //BaseResource resource = new() { Title = file.Name.Replace(file.Extension, ""), Type = resourceType};
+                BaseResource resource = new() { File = file, Title = file.Name, Type = resourceType };
+                var previewPath = $"{resourceType.ToString()}/{file.Name.Replace(file.Extension, "")}";
+                if (File.Exists(Path.Join(Configuration["ResourcePreviews"], previewPath + ".png"))) resource.ImagePath = $"./resource_previews/{previewPath}.png";
+                else if (File.Exists(Path.Join(Configuration["ResourcePreviews"], previewPath + ".jpg"))) resource.ImagePath = $"./resource_previews/{previewPath}.jpg";
+                resources.Add(resource);
+            }
+        }
+        return resources.GroupBy(r => r.File.Directory.Name);
+    }
+
+    private async Task LoadResource(BaseResource resource)
+    {
+        var filename = resource.File.Name.Replace(resource.File.Extension, "");
+
+        if (resource.Type == ResourceType.Checkpoint)
+        {
+            var model = AppState.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename));
+            await AppState.SetSDModel(model.Title);
+        }
+        else
+        {
+            var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
+            var dialogParam = new DialogParameters();
+            dialogParam.Add("Title", resource.File.Name);
+            var dialog = await DialogService.ShowAsync<LoadResourceDialog>($"Load {resource.Type.ToString()}", dialogParam, options);
+            var result = await dialog.Result;
+
+            if (!result.Canceled)
+            {
+                var keyword = string.Empty;
+                var weight = AppState.Settings.Resources.Weight.Value;
+                var target = (ValueTuple<ModeType, bool>)result.Data;
+
+                switch (resource.Type)
+                {
+                    case ResourceType.Embedding:
+                        keyword = weight != 1 ? $"({filename}:{weight})" : filename;
+                        break;
+                    case ResourceType.Hypernetwork:
+                        keyword = $"<hypernet:{filename}:{weight}>";
+                        break;
+                    case ResourceType.Lora:
+                        keyword = $"<lora:{filename}:{weight}>";
+                        break;
+                }
+
+                if (target.Item1 == ModeType.Txt2Img)
+                {
+                    if (target.Item2 == true) AppState.ParametersTxt2Img.Prompt += $" {keyword}";
+                    else AppState.ParametersTxt2Img.NegativePrompt += $" {keyword}";
+                }
+                else if (target.Item1 == ModeType.Img2Img)
+                {
+                    if (target.Item2 == true) AppState.ParametersImg2Img.Prompt += $" {keyword}";
+                    else AppState.ParametersImg2Img.NegativePrompt += $" {keyword}";
+                }
+            }
+        }
+    }
+}

@@ -12,6 +12,7 @@ namespace BlazorWebApp.Models
         public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
         public Img2ImgSettingsModel Img2Img { get; set; } = new();
         public UpscaleSettingsModel Upscale { get; set; } = new();
+        public ResourcesSettingsModel Resources { get; set; } = new();
     }
 
     #region Gallery
@@ -250,5 +251,22 @@ namespace BlazorWebApp.Models
         public double Max { get; set; } = 1;
         public double Step { get; set; } = 0.01;
     }
+    #endregion
+
+    #region Resources
+
+    public class ResourcesSettingsModel
+    {
+        public ResourceWeightSettingsModel Weight { get; set; } = new();
+    }
+
+    public class ResourceWeightSettingsModel
+    {
+        public float Value { get; set; } = 1f;
+        public float Min { get; set; } = 0f;
+        public float Max { get; set; } = 2f;
+        public float Step { get; set; } = 0.05f;
+    }
+
     #endregion
 }

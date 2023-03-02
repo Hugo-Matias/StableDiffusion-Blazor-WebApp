@@ -1,44 +1,49 @@
 ﻿@inject AppState AppState
 @inject SDAPIService SD
 @inject DatabaseService DB
-@inject JavascriptService JS
 @implements IDisposable
 
 <div class="mt-6">
-    <MudStack Justify="Justify.FlexEnd" Row>
-        <MudSelect T=string Value=AppState.CurrentFolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            <MudSelectItem Value=@("")>All</MudSelectItem>
-            @foreach (var folder in AppState.Folders)
-            {
-                <MudSelectItem Value="@folder.Name">@folder.Name</MudSelectItem>
-            }
-        </MudSelect>
-        <MudSelect T=string Value=AppState.CurrentProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var project in AppState.Projects)
-            {
-                <MudSelectItem Value="@project.Name">@project.Name</MudSelectItem>
-            }
-        </MudSelect>
-        @if (AppState.CurrentSDModel == "Loading...")
-        {
-            <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
-                <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading Model...</MudText>
-                <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate Rounded />
-            </MudStack>
-        }
-        else
-        {
-            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600">
-                @if (AppState.SDModels != null)
+    <MudGrid Justify="Justify.FlexEnd">
+        <MudItem xs="6">
+            <MudSelect T=string Value=AppState.CurrentFolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                <MudSelectItem Value=@("")>All</MudSelectItem>
+                @foreach (var folder in AppState.Folders)
                 {
-                    @foreach (var model in AppState.SDModels)
-                    {
-                        <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
-                    }
+                    <MudSelectItem Value="@folder.Name">@folder.Name</MudSelectItem>
                 }
             </MudSelect>
-        }
-    </MudStack>
+        </MudItem>
+        <MudItem xs="6">
+            <MudSelect T=string Value=AppState.CurrentProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                @foreach (var project in AppState.Projects)
+                {
+                    <MudSelectItem Value="@project.Name">@project.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12">
+            @if (AppState.CurrentSDModel == "Loading...")
+            {
+                <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
+                    <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading Model...</MudText>
+                    <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate Rounded />
+                </MudStack>
+            }
+            else
+            {
+                <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600">
+                    @if (AppState.SDModels != null)
+                    {
+                        @foreach (var model in AppState.SDModels)
+                        {
+                            <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+            }
+        </MudItem>
+    </MudGrid>
 </div>
 
 @code {
@@ -57,6 +62,7 @@
         AppState.OnProjectChange += Refresh;
         AppState.OnProjectsChange += Refresh;
         AppState.OnStateHasChanged += Refresh;
+        AppState.OnSDModelsChange += Refresh;
 
         await AppState.GetFolders();
 
@@ -83,11 +89,7 @@
 
     private async Task HandleModelSelected(string selected)
     {
-        AppState.CurrentSDModel = "Loading...";
-        Refresh();
-        await SD.PostOptions(new() { SDModelCheckpoint = selected });
-        AppState.CurrentSDModel = selected;
-        Refresh();
+        await AppState.SetSDModel(selected);
     }
 
     private async Task RefreshModels()
@@ -122,6 +124,7 @@
         AppState.OnProjectChange -= Refresh;
         AppState.OnProjectsChange -= Refresh;
         AppState.OnStateHasChanged -= Refresh;
+        AppState.OnSDModelsChange -= Refresh;
     }
 
     private void Refresh() => InvokeAsync(StateHasChanged);

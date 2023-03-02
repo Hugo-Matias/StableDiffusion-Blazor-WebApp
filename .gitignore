@@ -6,6 +6,8 @@
 _backup/
 BlazorDiffusion.json
 Data/*.json
+/BlazorWebApp/appsettings.json
+/BlazorWebApp/appsettings.Development.json
 
 # SQLite DB
 *.db
