@@ -1,16 +1,18 @@
 ﻿@inject IOService IO
 
-<MudCard Style="max-width: 12rem; min-width: 12rem;" Elevation="4" Class="m-2">
-    <MudCardMedia Image="@(string.IsNullOrWhiteSpace(Resource.ImagePath) ? "./no_image.png" : Resource.ImagePath)" />
-    <MudCardContent Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" Class="pb-n4">
-        <MudText Typo="Typo.caption">@Resource.Title</MudText>
-    </MudCardContent>
-    <MudCardActions Class="justify-content-center">
-        <MudButton ButtonType="ButtonType.Button" Color="Color.Primary" Variant="Variant.Text" OnClick=@(async () => await OnLoad.InvokeAsync(Resource))>Load</MudButton>
-    </MudCardActions>
-</MudCard>
+<div>
+    <MudButton Class="resource-btn" Style=@($"--hover-color: var(--{HoverColor}) !important;") OnClick="@(async () => await OnLoad.InvokeAsync(Resource))">
+        <MudCard Style="max-width: 12rem; min-width: 12rem;" Elevation="4" Class="m-2">
+            <MudCardMedia Image="@(string.IsNullOrWhiteSpace(Resource.ImageSrc) ? "./no_image.png" : Resource.ImageSrc)" />
+            <MudCardContent Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" Class="pb-n4">
+                <MudText Typo="Typo.caption">@Resource.Title</MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudButton>
+</div>
 
 @code {
     [Parameter] public BaseResource Resource { get; set; }
-    [Parameter] public EventCallback<BaseResource> OnLoad { get; set; }
+    [Parameter] public string HoverColor { get; set; } = "mud-palette-primary";
+    [Parameter] public EventCallback OnLoad { get; set; }
 }

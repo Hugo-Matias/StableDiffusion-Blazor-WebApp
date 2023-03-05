@@ -1,0 +1,87 @@
+﻿@inject AppState AppState
+@inject CivitaiService Api
+
+<MudPaper Class="px-4 mb-7 mt-5">
+    <EditForm Model=Request OnSubmit="Search">
+        <MudGrid>
+            <MudItem xs="5">
+                <MudTextField @bind-Value=Request.Query Label="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="3">
+                <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
+            </MudItem>
+            <MudItem xs="2">
+                <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
+            </MudItem>
+            <MudItem xs="2">
+                <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+@if (AppState.CivitaiCreators != null)
+{
+    <MudTable Items=@AppState.CivitaiCreators.Creators Loading=_isSearching Dense Hover>
+    <HeaderContent>
+        <MudTh>Username</MudTh>
+        <MudTh>Model Count</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Username</MudTd>
+        <MudTd>@context.ModelCount</MudTd>
+        <MudTd><MudIconButton OnClick=@(async () => await OnSearchCreator.InvokeAsync(context.Username)) Icon="@Icons.Material.Filled.Search" /></MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <div class="d-flex flex-column align-center pa-3">
+            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="AppState.CivitaiCreators.Metadata.TotalPages" />
+        </div>
+    </PagerContent>
+</MudTable>
+}
+else if (AppState.CivitaiCreators == null && _isSearching)
+{
+    <LoadingSpinner />
+}
+
+@code {
+    [Parameter] public EventCallback<string> OnSearchCreator { get; set; }
+    public CivitaiBaseRequest Request { get; set; }
+    private bool _isSearching;
+
+    protected override void OnInitialized()
+    {
+        LoadSettings();
+    }
+
+    private async Task HandlePageSelected(int selection)
+    {
+        Request.Page = selection;
+        await Search();
+    }
+
+    private async Task Search()
+    {
+        _isSearching = true;
+        SaveSettings();
+        AppState.CivitaiCreators = await Api.GetCreators(Request);
+        _isSearching = false;
+    }
+
+    private void LoadSettings()
+    {
+        Request = new();
+        Request.Query = AppState.Settings.Resources.Civitai.Query;
+        Request.Limit = AppState.Settings.Resources.Civitai.Limit.Value;
+        Request.Page = AppState.Settings.Resources.Civitai.Page;
+    }
+
+    private void SaveSettings()
+    {
+        AppState.Settings.Resources.Civitai.Query = Request.Query;
+        AppState.Settings.Resources.Civitai.Limit.Value = (int)Request.Limit;
+        AppState.Settings.Resources.Civitai.Page = (int)Request.Page;
+        AppState.SaveSettings();
+    }
+}

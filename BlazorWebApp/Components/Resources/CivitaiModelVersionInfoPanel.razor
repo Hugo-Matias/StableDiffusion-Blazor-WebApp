@@ -1,0 +1,53 @@
+﻿@inject AppState AppState
+@inject CivitaiService Civitai
+@inject ISnackbar Snackbar
+
+<div>
+    <MudTabs Class="tabs" Position="Position.Start" Rounded>
+        @foreach (var version in Versions)
+        {
+            <MudTabPanel Text="@version.Name">
+                <MudGrid>
+                    <MudItem xs="8">
+                        <MudGrid Class="images-container">
+                            @foreach (var image in version.Images)
+                            {
+                                <CivitaiModelImageCard Image="image" />
+                            }
+                        </MudGrid>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <CivitaiFileButton Class="mb-4 mt-n4" Files="version.Files" OnDownload="@(async (file) => await DownloadFile(version, file))" />
+                        @if (version.TrainedWords != null && version.TrainedWords.Count > 0)
+                        {
+                            <MudStack Class="mb-4">
+                                <MudText Class="meta-label" Typo="Typo.caption">Trigger Words</MudText>
+                                <MudChipSet Class="mt-n4" Style="max-height:10vh; overflow:scroll;">
+                                    @foreach (var word in version.TrainedWords)
+                                    {
+                                        <MudChip Style="font-size: 0.75rem; max-width:20vw;" Color="Color.Primary" Text="@word">@word</MudChip>
+                                    }
+                                </MudChipSet>
+                            </MudStack>
+                        }
+                        <MudStack Class="description">
+                            @((MarkupString)version.Description)
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+        }
+    </MudTabs>
+</div>
+
+@code {
+    [Parameter] public List<CivitaiModelVersionDto> Versions { get; set; }
+    [Parameter] public string ModelType { get; set; }
+
+    private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
+    {
+        var isSuccess = await Civitai.DownloadResource(version, file, ModelType, AppState.CurrentResourceSubType);
+        if (isSuccess) Snackbar.Add($"{file.Name} downloaded successfully!", Severity.Success);
+        else Snackbar.Add($"Something went wrong downloading {file.Name}!", Severity.Error);
+    }
+}

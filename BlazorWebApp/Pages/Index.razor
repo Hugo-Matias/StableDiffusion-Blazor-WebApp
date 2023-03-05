@@ -1,4 +1,4 @@
-﻿@page "/resources"
+﻿@page "/"
 @inject DatabaseService DB
 @inject AppState AppState
 @implements IDisposable
@@ -7,9 +7,7 @@
 
 @if (_projects == null)
 {
-    <MudStack Row Justify="Justify.Center" Style="margin-top: 15rem;">
-    <MudProgressCircular Color="Color.Info" Indeterminate />
-    </MudStack>
+    <LoadingSpinner />
 }
 else if (_projects.Count() == 0 && AppState.CurrentFolderId == 0)
 {

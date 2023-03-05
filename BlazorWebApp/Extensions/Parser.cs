@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Models;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Text.RegularExpressions;
@@ -148,6 +149,124 @@ namespace BlazorWebApp.Extensions
                 default:
                     return Color.Default;
             }
+        }
+
+        public static string ParseCivitaiResourceColor(this CivitaiModelType type)
+        {
+            switch (type)
+            {
+                case CivitaiModelType.Checkpoint:
+                    return "mud-palette-primary";
+                case CivitaiModelType.TextualInversion:
+                    return "mud-palette-secondary";
+                case CivitaiModelType.Hypernetwork:
+                    return "mud-palette-info";
+                case CivitaiModelType.AestheticGradient:
+                    return "mud-palette-warning";
+                case CivitaiModelType.LORA:
+                    return "mud-palette-success";
+                case CivitaiModelType.Controlnet:
+                    return "mud-palette-error";
+                case CivitaiModelType.Poses:
+                    return "mud-palette-tertiary";
+                default:
+                    return "mud-palette-default";
+            }
+        }
+
+        public static string ParseCivitaiImageSize(this string metaSize, int width, int height)
+        {
+            if (metaSize == null) return $"{width}x{height}";
+            var metaWidth = int.Parse(metaSize.Split('x')[0]);
+            var metaHeigth = int.Parse(metaSize.Split('x')[1]);
+            if (metaWidth == width && metaHeigth == height) return metaSize;
+            else return $"{metaSize} | {width}x{height}";
+        }
+
+        public static string ParseCivitaiFilesize(this double filesize)
+        {
+            if (filesize < 1024)
+                return $"{filesize:#.##} KB";
+            else if (filesize / 1024 < 1024)
+                return $"{filesize / 1024:#.##} MB";
+            else
+                return $"{filesize / 1024 / 1024:#.##} GB";
+        }
+
+        public static CivitaiScanResult ParseCivitaiScanResult(this string result) => (CivitaiScanResult)Enum.Parse(typeof(CivitaiScanResult), result);
+
+        public static string ParseCivitaiScanIcon(this CivitaiScanResult result)
+        {
+            switch (result)
+            {
+                case CivitaiScanResult.Success:
+                    return "fa-solid fa-shield-halved";
+                case CivitaiScanResult.Pending:
+                    return "fa-solid fa-file-shield";
+                case CivitaiScanResult.Error:
+                    return "fa-solid fa-triangle-exclamation";
+                case CivitaiScanResult.Danger:
+                    return "fa-solid fa-shield-virus";
+                default:
+                    return string.Empty;
+            }
+        }
+
+        public static Color ParseCivitaiScanColor(this CivitaiScanResult result)
+        {
+            switch (result)
+            {
+                case CivitaiScanResult.Success:
+                    return Color.Success;
+                case CivitaiScanResult.Pending:
+                case CivitaiScanResult.Error:
+                    return Color.Warning;
+                case CivitaiScanResult.Danger:
+                    return Color.Error;
+                default:
+                    return Color.Default;
+            }
+        }
+
+        public static string ParseCivitaiScanTimespan(this DateTime scanTime)
+        {
+            var timeSpan = DateTime.Now - scanTime;
+            if (timeSpan.Minutes < 1) return $"{timeSpan.Seconds} seconds ago";
+            if (timeSpan.Hours < 1)
+            {
+                if (timeSpan.Minutes == 1) return "1 minute ago";
+                else return $"{timeSpan.Minutes} minutes ago";
+            }
+            if (timeSpan.Days < 1)
+            {
+                if (timeSpan.Hours == 1) return "1 hour ago";
+                else return $"{timeSpan.Hours} hours ago";
+            }
+            else
+            {
+                if (timeSpan.Days == 1) return "1 day ago";
+                else return $"{timeSpan.Days} days ago";
+            }
+        }
+
+        public static CivitaiModelType ParseCivitaiModelType(this string modelType) => (CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), modelType, true);
+
+        public static Models.ResourceType? ConvertCivitaiResourceType(this CivitaiModelType type)
+        {
+            switch (type)
+            {
+                case CivitaiModelType.Checkpoint: return Models.ResourceType.Checkpoint;
+                case CivitaiModelType.TextualInversion: return Models.ResourceType.Embedding;
+                case CivitaiModelType.Hypernetwork: return Models.ResourceType.Hypernetwork;
+                case CivitaiModelType.LORA: return Models.ResourceType.Lora;
+                default: return null;
+            }
+        }
+
+        public static int CollapseInteger(int number)
+        {
+            if (number < 1000) return number;
+            else return number / 1000;
         }
     }
 }

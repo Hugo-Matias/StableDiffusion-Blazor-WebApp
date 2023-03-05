@@ -261,6 +261,14 @@ namespace BlazorWebApp.Services
             return await _db.AddImage(image);
         }
 
+        public async Task DownloadImageAsPng(string url, string path)
+        {
+            var httpClient = new HttpClient();
+            httpClient.BaseAddress = new Uri(url);
+            var response = await httpClient.GetByteArrayAsync(url);
+            await File.WriteAllBytesAsync(path, _magick.ConvertToPng(response));
+        }
+
         private string GetImagePath(string path, int fileIndex)
         {
             string infoname = _app.ConvertPathPattern(_app.Options.FilenamePatternSamples);

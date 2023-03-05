@@ -17,6 +17,7 @@ namespace BlazorWebApp.Services
         private bool _isConverging;
         private int _currentBrushSize;
         private string _currentBrushColor;
+        private int _currentDownloadProgress;
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -29,6 +30,7 @@ namespace BlazorWebApp.Services
         public event Action OnProjectChange;
         public event Func<Task> OnProjectChangeTask;
         public event Action OnStateHasChanged;
+        public event Action OnDownloadProgressChanged;
 
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
@@ -53,6 +55,15 @@ namespace BlazorWebApp.Services
         public string CurrentFolderName { get; set; }
         public int CurrentProjectId { get; set; }
         public string CurrentProjectName { get; set; }
+        public ResourceSubType CurrentResourceSubType { get; set; } = ResourceSubType.None;
+        public int CurrentDownloadProgress
+        {
+            get => _currentDownloadProgress; set
+            {
+                _currentDownloadProgress = value;
+                OnDownloadProgressChanged?.Invoke();
+            }
+        }
         public int CurrentBrushSize
         {
             get => _currentBrushSize; set
@@ -77,6 +88,8 @@ namespace BlazorWebApp.Services
         public bool IsGalleryFiltered { get; set; }
         public PromptButton ButtonTags { get; set; }
         public CmdFlags CmdFlags { get; set; }
+        public CivitaiModelsDto CivitaiModels { get; set; }
+        public CivitaiCreatorsDto CivitaiCreators { get; set; }
         public bool IsConverging
         {
             get => _isConverging;
@@ -105,13 +118,14 @@ namespace BlazorWebApp.Services
             CurrentBrushColor = Settings.Img2Img.Brush.Color;
 
             GetButtonTags();
-            CreateParameters();
+            ModeType[] modes = new ModeType[3] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras };
+            InitializeParameters(modes);
 
             if (Settings.Folder > 0) SetCurrentFolder(Settings.Folder);
             if (Settings.Project > 0) SetCurrentProject(Settings.Project);
         }
 
-        private void CreateParameters()
+        public void InitializeParameters(ModeType[] modes)
         {
             var defaultParameters = new SharedParameters()
             {
@@ -128,44 +142,47 @@ namespace BlazorWebApp.Services
                 Tiling = Settings.Shared.Tilling,
             };
 
-            ParametersTxt2Img = new Txt2ImgParameters(defaultParameters)
-            {
-                EnableHR = Settings.Txt2Img.HighRes.Enabled,
-                FirstphaseWidth = Settings.Txt2Img.HighRes.FirstPass.Width,
-                FirstphaseHeight = Settings.Txt2Img.HighRes.FirstPass.Height,
-                HRUpscaler = Settings.Txt2Img.HighRes.Upscaler,
-                HRScale = Settings.Txt2Img.HighRes.Scale.DefaultValue,
-                HRWidth = Settings.Txt2Img.HighRes.Resolution.Width,
-                HRHeight = Settings.Txt2Img.HighRes.Resolution.Height,
-                HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.DefaultValue,
-            };
+            if (modes.Contains(ModeType.Txt2Img))
+                ParametersTxt2Img = new Txt2ImgParameters(defaultParameters)
+                {
+                    EnableHR = Settings.Txt2Img.HighRes.Enabled,
+                    FirstphaseWidth = Settings.Txt2Img.HighRes.FirstPass.Width,
+                    FirstphaseHeight = Settings.Txt2Img.HighRes.FirstPass.Height,
+                    HRUpscaler = Settings.Txt2Img.HighRes.Upscaler,
+                    HRScale = Settings.Txt2Img.HighRes.Scale.DefaultValue,
+                    HRWidth = Settings.Txt2Img.HighRes.Resolution.Width,
+                    HRHeight = Settings.Txt2Img.HighRes.Resolution.Height,
+                    HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.DefaultValue,
+                };
 
-            ParametersImg2Img = new Img2ImgParameters(defaultParameters)
-            {
-                MaskBlur = Settings.Img2Img.MaskBlur.DefaultValue,
-                ResizeMode = Settings.Img2Img.ResizeMode,
-                InpaintingFill = Settings.Img2Img.Inpainting.Fill,
-                InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.DefaultValue,
-                InpaintFullResPadding = Settings.Img2Img.Inpainting.FullRes.Padding.DefaultValue,
-                InpaintingMaskInvert = Settings.Img2Img.Inpainting.MaskInvert,
-            };
+            if (modes.Contains(ModeType.Img2Img))
+                ParametersImg2Img = new Img2ImgParameters(defaultParameters)
+                {
+                    MaskBlur = Settings.Img2Img.MaskBlur.DefaultValue,
+                    ResizeMode = Settings.Img2Img.ResizeMode,
+                    InpaintingFill = Settings.Img2Img.Inpainting.Fill,
+                    InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.DefaultValue,
+                    InpaintFullResPadding = Settings.Img2Img.Inpainting.FullRes.Padding.DefaultValue,
+                    InpaintingMaskInvert = Settings.Img2Img.Inpainting.MaskInvert,
+                };
 
-            ParametersUpscale = new UpscaleParameters(defaultParameters)
-            {
-                ResizeMode = Settings.Upscale.ResizeMode,
-                ShowResults = Settings.Upscale.ShowResults,
-                GfpganVisibility = Settings.Upscale.FaceRestoration.GfpganVisibility,
-                CodeformerVisibility = Settings.Upscale.FaceRestoration.CodeformerVisibility,
-                CodeformerWeight = Settings.Upscale.FaceRestoration.CodeformerWeight,
-                UpscalingMultiplier = Settings.Upscale.UpscalingMultiplier.DefaultValue,
-                UpscalingWidth = Settings.Upscale.UpscalingResolution.Width,
-                UpscalingHeight = Settings.Upscale.UpscalingResolution.Height,
-                UpscalingCrop = Settings.Upscale.UpscalingResolution.CropToFit,
-                UpscalerPrimary = Settings.Upscale.UpscalerPrimary,
-                UpscalerSecondary = Settings.Upscale.UpscalerSecondary.Name,
-                UpscalerSecondaryVisibility = Settings.Upscale.UpscalerSecondary.DefaultValue,
-                UpscalePriority = Settings.Upscale.FaceRestoration.UpscaleBeforeRestoration
-            };
+            if (modes.Contains(ModeType.Extras))
+                ParametersUpscale = new UpscaleParameters(defaultParameters)
+                {
+                    ResizeMode = Settings.Upscale.ResizeMode,
+                    ShowResults = Settings.Upscale.ShowResults,
+                    GfpganVisibility = Settings.Upscale.FaceRestoration.GfpganVisibility,
+                    CodeformerVisibility = Settings.Upscale.FaceRestoration.CodeformerVisibility,
+                    CodeformerWeight = Settings.Upscale.FaceRestoration.CodeformerWeight,
+                    UpscalingMultiplier = Settings.Upscale.UpscalingMultiplier.DefaultValue,
+                    UpscalingWidth = Settings.Upscale.UpscalingResolution.Width,
+                    UpscalingHeight = Settings.Upscale.UpscalingResolution.Height,
+                    UpscalingCrop = Settings.Upscale.UpscalingResolution.CropToFit,
+                    UpscalerPrimary = Settings.Upscale.UpscalerPrimary,
+                    UpscalerSecondary = Settings.Upscale.UpscalerSecondary.Name,
+                    UpscalerSecondaryVisibility = Settings.Upscale.UpscalerSecondary.DefaultValue,
+                    UpscalePriority = Settings.Upscale.FaceRestoration.UpscaleBeforeRestoration
+                };
         }
 
         public async Task GetSDModels()

@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject AppState AppState
+@implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
 
@@ -19,8 +20,9 @@
             <TopToolbar />
         </MudExpansionPanel>
     </MudExpansionPanels>
+    <MudProgressLinear Style=@($"margin-top: {(AppState.CurrentDownloadProgress > 0 ? "65px" : "60px;")};") Min="0" Max="100" @bind-Value="AppState.CurrentDownloadProgress" Color="Color.Primary" />
     <MudMainContent>
-        <MudContainer Style="margin-top: 2rem;" MaxWidth="MaxWidth.ExtraLarge">
+        <MudContainer Class="mt-n12" MaxWidth="MaxWidth.ExtraLarge">
             @Body
         </MudContainer>
     </MudMainContent>
@@ -29,5 +31,11 @@
 @code {
     private bool _isToolbarOpen = false;
 
+    protected override void OnInitialized() => AppState.OnDownloadProgressChanged += Refresh;
+
     private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
+
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose() => AppState.OnDownloadProgressChanged -= Refresh;
 }

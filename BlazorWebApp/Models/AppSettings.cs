@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Data.Entities;
+﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Entities;
 
 namespace BlazorWebApp.Models
 {
@@ -258,6 +259,7 @@ namespace BlazorWebApp.Models
     public class ResourcesSettingsModel
     {
         public ResourceWeightSettingsModel Weight { get; set; } = new();
+        public CivitaiSettingsModel Civitai { get; set; } = new();
     }
 
     public class ResourceWeightSettingsModel
@@ -266,6 +268,31 @@ namespace BlazorWebApp.Models
         public float Min { get; set; } = 0f;
         public float Max { get; set; } = 2f;
         public float Step { get; set; } = 0.05f;
+    }
+
+    public class CivitaiSettingsModel
+    {
+        public string Query { get; set; } = string.Empty;
+        public CivitaiLimitSettingsModel Limit { get; set; } = new();
+        public int Page { get; set; } = 1;
+        public string Username { get; set; } = string.Empty;
+        public string Tag { get; set; } = string.Empty;
+        public CivitaiModelType? Type { get; set; } = null;
+        public CivitaiSort Sort { get; set; } = CivitaiSort.Highest_Rated;
+        public CivitaiPeriod Period { get; set; } = CivitaiPeriod.AllTime;
+        public int Rating { get; set; } = -1;
+        public bool Favorites { get; set; } = false;
+        public bool Hidden { get; set; } = false;
+        public bool IsPrimaryFileOnly { get; set; } = false;
+        public string Hash { get; set; } = string.Empty;
+    }
+
+    public class CivitaiLimitSettingsModel
+    {
+        public int Value { get; set; } = 15;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 200;
+        public int Step { get; set; } = 8;
     }
 
     #endregion

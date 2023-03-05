@@ -5,6 +5,13 @@ namespace BlazorWebApp.Services
 {
     public class IOService
     {
+        private readonly IConfiguration _configuration;
+
+        public IOService(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
         public string GetJsonAsString(string path) => new string(File.ReadAllText(path));
 
         public IOrderedEnumerable<FileInfo>? GetOrderedFiles(string path)

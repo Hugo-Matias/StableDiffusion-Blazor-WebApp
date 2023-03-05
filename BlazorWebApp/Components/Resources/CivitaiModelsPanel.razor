@@ -1,0 +1,185 @@
+﻿@inject AppState AppState
+@inject CivitaiService Api
+@inject IDialogService DialogService
+
+<MudPaper Class="px-4 mb-7 mt-5">
+    <EditForm Model=Request OnSubmit="Search">
+        <MudGrid>
+            <MudItem xs="3">
+                <MudTextField @bind-Value=Request.Query Label="Title" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="2">
+                <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" />
+            </MudItem>
+            <MudItem xs="2">
+                <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
+            </MudItem>
+            <MudItem xs="1">
+                <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
+            </MudItem>
+            <MudItem xs="1">
+                <MudCheckBox @bind-Checked=Request.Favorites>Favorites</MudCheckBox>
+            </MudItem>
+            <MudItem xs="1">
+                <MudCheckBox @bind-Checked=Request.Hidden>Hidden</MudCheckBox>
+            </MudItem>
+            <MudItem xs="2">
+                <MudCheckBox @bind-Checked=Request.IsPrimaryFileOnly>Primary Only</MudCheckBox>
+            </MudItem>
+            <MudItem xs="3">
+                <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-user" />
+            </MudItem>
+            <MudItem xs="2">
+                <MudTextField @bind-Value=Request.Tag Label="Tag" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-tag" />
+            </MudItem>
+            <MudItem xs="2">
+                <MudSelect @bind-Value=Request.Type Label="Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
+                    @foreach (CivitaiModelType? modelType in Enum.GetValues(typeof(CivitaiModelType)))
+                    {
+                        <MudSelectItem Value="@modelType">@modelType</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="2">
+                <MudSelect @bind-Value=Request.Sort Label="Sort" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    @foreach (CivitaiSort? sort in Enum.GetValues(typeof(CivitaiSort)))
+                    {
+                        <MudSelectItem Value="@sort">@sort.ToString().Replace("_", " ")</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="1">
+                <MudSelect @bind-Value=Request.Period Label="Period" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    @foreach (CivitaiPeriod? period in Enum.GetValues(typeof(CivitaiPeriod)))
+                    {
+                        <MudSelectItem Value="@period">@period</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="2">
+                <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+@if (_isSearching)
+{
+    <LoadingSpinner />
+
+}
+else if (AppState.CivitaiModels != null)
+{
+    @if (AppState.CivitaiModels.Metadata.TotalPages > 1)
+    {
+        <div class="d-flex flex-column align-center pa-3">
+            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="AppState.CivitaiModels.Metadata.TotalPages" />
+        </div>
+    }
+
+    <MudGrid Spacing="1" Justify="Justify.Center">
+        @foreach (var model in AppState.CivitaiModels.Models)
+        {
+            <ResourceCard Resource="CreateResourceCard(model)" HoverColor=@(Parser.ParseCivitaiResourceColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type))) OnLoad="@(async () => await ShowInfo(model))" />
+        }
+    </MudGrid>
+
+    @if (AppState.CivitaiModels.Metadata.TotalPages > 1)
+    {
+        <div class="d-flex flex-column align-center pa-3">
+            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="AppState.CivitaiModels.Metadata.TotalPages" />
+        </div>
+    }
+}
+
+@code {
+    public CivitaiModelsRequest Request { get; set; }
+    private bool _isSearching;
+
+    protected override void OnInitialized()
+    {
+        LoadSettings();
+    }
+
+    private async Task Search()
+    {
+        _isSearching = true;
+        SaveSettings();
+        AppState.CivitaiModels = await Api.GetModels(Request);
+        _isSearching = false;
+    }
+
+    private BaseResource CreateResourceCard(CivitaiModelsModelDto model)
+    {
+        var resource = new BaseResource() { Title = model.Name };
+        if (model.ModelVersions.Count > 0 && model.ModelVersions[0].Images.Count > 0)
+        {
+            resource.ImageSrc = model.ModelVersions[0].Images[0].Url;
+        }
+        return resource;
+    }
+
+    private async Task ShowInfo(CivitaiModelsModelDto modelsModel)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
+        var dialogParam = new DialogParameters();
+        var model = await Api.GetModel(modelsModel.Id);
+        // Model version file object doesn't have a Primary property, we must use the one from Models list.
+        for (int i = 0; i < model.ModelVersions.Count; i++)
+        {
+            for (int j = 0; j < model.ModelVersions[i].Files.Count; j++)
+            {
+                model.ModelVersions[i].Files[j].Primary = modelsModel.ModelVersions[i].Files[j].Primary;
+            }
+        }
+        dialogParam.Add("Model", model);
+        var dialog = await DialogService.ShowAsync<CivitaiModelInfoDialog>("Model", dialogParam, options);
+        var result = await dialog.Result;
+    }
+
+    private async Task HandlePageSelected(int selection)
+    {
+        // Pagination components somehow call this method in an endless loop if the page number is higher than 1.
+        if (Request.Page != selection)
+        {
+            Request.Page = selection;
+            await Search();
+        }
+    }
+
+    private void LoadSettings()
+    {
+        Request = new();
+        Request.Query = AppState.Settings.Resources.Civitai.Query;
+        Request.Limit = AppState.Settings.Resources.Civitai.Limit.Value;
+        Request.Page = AppState.Settings.Resources.Civitai.Page;
+        Request.Username = AppState.Settings.Resources.Civitai.Username;
+        Request.Tag = AppState.Settings.Resources.Civitai.Tag;
+        Request.Type = AppState.Settings.Resources.Civitai.Type;
+        Request.Sort = AppState.Settings.Resources.Civitai.Sort;
+        Request.Period = AppState.Settings.Resources.Civitai.Period;
+        Request.Rating = AppState.Settings.Resources.Civitai.Rating;
+        Request.Favorites = AppState.Settings.Resources.Civitai.Favorites;
+        Request.Hidden = AppState.Settings.Resources.Civitai.Hidden;
+        Request.IsPrimaryFileOnly = AppState.Settings.Resources.Civitai.IsPrimaryFileOnly;
+        Request.Hash = AppState.Settings.Resources.Civitai.Hash;
+    }
+
+    private void SaveSettings()
+    {
+        AppState.Settings.Resources.Civitai.Query = Request.Query;
+        AppState.Settings.Resources.Civitai.Limit.Value = (int)Request.Limit;
+        AppState.Settings.Resources.Civitai.Page = (int)Request.Page;
+        AppState.Settings.Resources.Civitai.Username = Request.Username;
+        AppState.Settings.Resources.Civitai.Tag = Request.Tag;
+        AppState.Settings.Resources.Civitai.Type = Request.Type;
+        AppState.Settings.Resources.Civitai.Sort = (CivitaiSort)Request.Sort;
+        AppState.Settings.Resources.Civitai.Period = (CivitaiPeriod)Request.Period;
+        AppState.Settings.Resources.Civitai.Rating = (int)Request.Rating;
+        AppState.Settings.Resources.Civitai.Favorites = (bool)Request.Favorites;
+        AppState.Settings.Resources.Civitai.Hidden = (bool)Request.Hidden;
+        AppState.Settings.Resources.Civitai.IsPrimaryFileOnly = (bool)Request.IsPrimaryFileOnly;
+        AppState.Settings.Resources.Civitai.Hash = Request.Hash;
+        AppState.SaveSettings();
+    }
+}

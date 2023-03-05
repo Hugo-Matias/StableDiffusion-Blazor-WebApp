@@ -1,0 +1,70 @@
+﻿<div>
+    <MudDialog Style="min-width: 90vw; min-height: 90vh;" Class="pa-5">
+        <TitleContent>
+            <MudText Style="display: flex; justify-content: space-between;" Typo="Typo.h4">
+                <MudStack>
+                    <MudStack Class="align-items-center" Row>
+                        @Model.Name
+                        <MudText Style="opacity: 0.4;" Typo="Typo.subtitle1">ID: @Model.Id</MudText>
+                    </MudStack>
+                </MudStack>
+                @if (Model.Nsfw)
+                {
+                    <MudIcon Class="me-4" Color="Color.Error" Icon="fa-solid fa-circle-dot" />
+                }
+            </MudText>
+            <MudStack Class="mt-2 align-items-center" Row>
+                <MudText Color="Color.Info">
+                    <MudIcon Size=Size.Small Icon="fa-solid fa-download" />
+                    @(Parser.CollapseInteger(Model.Rank.DownloadCountAllTime))K
+                </MudText>
+                <MudText Color="Color.Error">
+                    <MudIcon Size=Size.Small Icon="fa-solid fa-heart" />
+                    @(Parser.CollapseInteger(Model.Rank.FavoriteCountAllTime))K
+                </MudText>
+                <MudRating Class="me-n2" SelectedValue="@((int)Math.Round(Model.Rank.RatingAllTime))" ReadOnly />
+                <MudText Color="Color.Warning">(@(Parser.CollapseInteger(Model.Rank.RatingCountAllTime)))</MudText>
+            </MudStack>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid>
+                <MudItem xs="2">
+                    <MudStack Class="justify-content-center">
+                        <MudStack Class="align-items-center justify-content-center" Row>
+                            <MudImage Style="border-radius: 50%; max-width: 3rem; max-height: 3rem;" Src="@Model.Creator.Image" />
+                            <MudText Typo="Typo.button">@Model.Creator.Username</MudText>
+                        </MudStack>
+                        <MudChip Style=@($"background-color: var(--{Parser.ParseCivitaiResourceColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Model.Type))}); font-weight: 500; color: var(--mud-palette-white);") Label>@Model.Type</MudChip>
+                        @if (Model.PersonOfInterest)
+                        {
+                            <MudChip Icon="fa-solid fa-user" Color="Color.Tertiary" Label>Person of Interest</MudChip>
+                        }
+                        <MudChipSet Filter=false>
+                            @foreach (var tag in Model.Tags)
+                            {
+                                <MudChip>@tag</MudChip>
+                            }
+                        </MudChipSet>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="10">
+                    <MudTabs PanelClass="py-4">
+                        <MudTabPanel Text="Files">
+                            <CivitaiModelVersionInfoPanel Versions="Model.ModelVersions" ModelType="@Model.Type" />
+                        </MudTabPanel>
+                        <MudTabPanel Text="Description">
+                            <MudContainer Class="description">
+                                @((MarkupString)Model.Description)
+                            </MudContainer>
+                        </MudTabPanel>
+                    </MudTabs>
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+    </MudDialog>
+</div>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public CivitaiModelDto Model { get; set; }
+}

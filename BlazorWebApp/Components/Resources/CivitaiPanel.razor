@@ -1,0 +1,15 @@
+﻿<MudTabs Elevation="1" Rounded Centered>
+    <MudTabPanel Text="Models">
+        <CivitaiModelsPanel />
+    </MudTabPanel>
+    <MudTabPanel Text="Creators">
+        <CivitaiCreatorsPanel OnSearchCreator="SearchCreator" />
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private void SearchCreator(string name)
+    {
+        return;
+    }
+}

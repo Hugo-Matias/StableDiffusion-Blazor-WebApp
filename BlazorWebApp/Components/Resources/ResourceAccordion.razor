@@ -5,7 +5,7 @@
         <MudGrid Spacing="1" Justify="Justify.Center">
             @foreach (var file in Resources.First())
             {
-                <ResourceCard Resource="file" OnLoad=@(async (resource) => await OnLoad.InvokeAsync(resource)) />
+                <ResourceCard Resource="file" OnLoad=@(async () => await OnLoad.InvokeAsync(file)) />
             }
         </MudGrid>
     }
@@ -18,7 +18,7 @@
                     <MudGrid Spacing="1" Justify="Justify.Center">
                         @foreach (var file in dir)
                         {
-                            <ResourceCard Resource="file" OnLoad=@(async (resource) => await OnLoad.InvokeAsync(resource)) />
+                            <ResourceCard Resource="file" OnLoad=@(async () => await OnLoad.InvokeAsync(file)) />
                         }
                     </MudGrid>
                 </MudExpansionPanel>
@@ -28,6 +28,6 @@
 }
 
 @code {
-    [Parameter] public IEnumerable<IGrouping<string?, BaseResource>> Resources { get; set; }
-    [Parameter] public EventCallback<BaseResource> OnLoad { get; set; }
+    [Parameter] public IEnumerable<IGrouping<string?, LocalResource>> Resources { get; set; }
+    [Parameter] public EventCallback<LocalResource> OnLoad { get; set; }
 }

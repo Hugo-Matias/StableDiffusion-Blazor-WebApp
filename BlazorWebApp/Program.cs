@@ -19,6 +19,7 @@ builder.Services.AddMudServices(opt =>
 });
 
 builder.Services.AddHttpClient<SDAPIService>();
+builder.Services.AddHttpClient<CivitaiService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
 
 builder.Services.AddSingleton<AppState>();
@@ -46,8 +47,13 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcePreviews"]),
-    RequestPath = "/resource_previews"
+    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcesPath"]),
+    RequestPath = "/files/resources"
+});
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcePreviewsPath"]),
+    RequestPath = "/files/resource_previews"
 });
 
 app.UseRouting();

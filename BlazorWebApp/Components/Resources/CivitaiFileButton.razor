@@ -1,0 +1,129 @@
+﻿@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject AppState AppState
+
+<div>
+    <MudStack Class=@Class>
+        <MudSelect @bind-Value=AppState.CurrentResourceSubType T="ResourceSubType" Label="Resource Subtype" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            @foreach (ResourceSubType subtype in Enum.GetValues(typeof(ResourceSubType)))
+            {
+                <MudSelectItem Value="subtype">@subtype</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField Label="Filename" @bind-Value=_selected.Name />
+        @*        <MudText Class="meta-label" Typo="Typo.caption">Filename</MudText>
+        <MudText Typo="Typo.caption">@_selected.Name</MudText>
+        *@        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+            <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">
+                Download (@(Parser.ParseCivitaiFilesize(_selected.SizeKb)))
+            </MudButton>
+            @if (Files.Count > 1)
+            {
+                <MudMenu Color="_color" Icon="@Icons.Material.Filled.KeyboardArrowDown" TransformOrigin="Origin.TopRight" AnchorOrigin="Origin.BottomRight">
+                    @foreach (var file in Files)
+                    {
+                        <MudMenuItem OnClick=@(() => SelectFile(file)) IconColor=GetVersionButtonColor(file) Icon="@Parser.ParseCivitaiScanIcon(Parser.ParseCivitaiScanResult(file.VirusScanResult))">@($"{file.Type}{(file.Format != "Other" ? $" {file.Format}" : "")} ({Parser.ParseCivitaiFilesize(file.SizeKb)})")</MudMenuItem>
+                    }
+                </MudMenu>
+            }
+        </MudButtonGroup>
+        @if (_selected.PickleScanResult != "Success")
+        {
+            <MudText Typo="Typo.subtitle2">@_selected.PickleScanMessage</MudText>
+        }
+        <MudText Class="meta-label" Typo="Typo.caption">Verified</MudText>
+        @if (_selected.ScannedAt != null)
+        {
+            <MudText Typo="Typo.subtitle2">@($"{Parser.ParseCivitaiScanTimespan((DateTime)_selected.ScannedAt)}")</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.subtitle2">Pending verification...</MudText>
+        }
+        @if (_selected.Hashes != null)
+        {
+            <MudText Class="meta-label" Typo="Typo.caption">Hashes</MudText>
+            <MudSimpleTable>
+                <tbody>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">AutoV1</MudText></td>
+                        <td><MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.AutoV1))" EndIcon="fa-regular fa-clipboard">@_selected.Hashes.AutoV1</MudButton></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.caption">AutoV2</MudText></td>
+                        <td><MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.AutoV2))" EndIcon="fa-regular fa-clipboard">@_selected.Hashes.AutoV2</MudButton></td>
+                    </tr>
+                    @if (_showMoreHashes)
+                    {
+                        <tr>
+                            <td><MudText Typo="Typo.caption">SHA256</MudText></td>
+                            <td><MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.SHA256))" EndIcon="fa-regular fa-clipboard">@_selected.Hashes.SHA256</MudButton></td>
+                        </tr>
+                        <tr>
+                            <td><MudText Typo="Typo.caption">CRC32</MudText></td>
+                            <td><MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.CRC32))" EndIcon="fa-regular fa-clipboard">@_selected.Hashes.CRC32</MudButton></td>
+                        </tr>
+                        <tr>
+                            <td><MudText Typo="Typo.caption">BLAKE3</MudText></td>
+                            <td><MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.BLAKE3))" EndIcon="fa-regular fa-clipboard">@_selected.Hashes.BLAKE3</MudButton></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudButton OnClick=@(() => _showMoreHashes = !_showMoreHashes)>@(!_showMoreHashes ? "Show More" : "Show Less")</MudButton>
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; }
+    [Parameter] public List<CivitaiModelVersionFileDto> Files { get; set; }
+    [Parameter] public EventCallback<CivitaiModelVersionFileDto> OnDownload { get; set; }
+    private CivitaiModelVersionFileDto _selected;
+    private string _icon;
+    private Color _color;
+    private bool _showMoreHashes = false;
+
+    protected override void OnInitialized()
+    {
+        foreach (var file in Files)
+        {
+            if (file.Primary != null && file.Primary == true)
+                SelectFile(file);
+        }
+    }
+
+    private void SelectFile(CivitaiModelVersionFileDto file)
+    {
+        _selected = file;
+        ParseScanResults();
+    }
+
+    private void ParseScanResults()
+    {
+        var scanResult = Parser.ParseCivitaiScanResult(_selected.VirusScanResult);
+        _color = Parser.ParseCivitaiScanColor(scanResult);
+        _icon = Parser.ParseCivitaiScanIcon(scanResult);
+        //_tooltip = new MarkupString($"File is safe!<br />Scanned at: {_selected.ScannedAt:dd/MM/yyyy}");
+        //_tooltip = new MarkupString($"File scan is still pending!");
+        //_tooltip = new MarkupString($"Something went wrong during file scan!<br />Proceed with caution.<br />Scanned at: {_selected.ScannedAt:dd/MM/yyyy}");
+        //_tooltip = new MarkupString($"File contains a virus!<br/>Scanned at: {_selected.ScannedAt:dd/MM/yyyy}");
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        await JS.InvokeVoidAsync("clipboardCopy.copyText", text);
+        Snackbar.Add("Hash copied to the clipboard.", Severity.Info);
+    }
+
+    private Color GetVersionButtonColor(CivitaiModelVersionFileDto file)
+    {
+        if (file.Format == "Other")
+        {
+            if (file.Type == "Config") return Color.Info;
+            else if (file.Type == "Training Data") return Color.Secondary;
+        }
+        else if (file.Format == "SafeTensor") return Color.Primary;
+        return Color.Default;
+    }
+}

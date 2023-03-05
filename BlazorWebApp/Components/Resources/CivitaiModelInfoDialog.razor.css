@@ -1,0 +1,18 @@
+﻿::deep .resource-dialog {
+	min-width: 80vw;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: cover;
+	filter: blur(10px) opacity(0.5);
+	-webkit-filter: blur(10px) opacity(0.5);
+}
+
+::deep .description {
+	max-height: 73vh;
+	overflow: scroll;
+}
+
+::deep .meta-label {
+	opacity: 0.4;
+	font-size: 0.7rem;
+}

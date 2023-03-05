@@ -1,11 +1,14 @@
-﻿@page "/"
+﻿@page "/resources"
 @inject AppState AppState
 @inject SDAPIService SD
 @inject IOService IO
 @inject IConfiguration Configuration
 @inject IDialogService DialogService
 
-<MudTabs Elevation="4" PanelClass="pa-5" Rounded Centered>
+<MudTabs Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
+    <MudTabPanel Text="CivitAI">
+        <CivitaiPanel />
+    </MudTabPanel>
     <MudTabPanel Text="Checkpoint">
         <ResourceAccordion Resources="_checkpoints" OnLoad="LoadResource" />
     </MudTabPanel>
@@ -22,7 +25,7 @@
 
 @code {
     private string _baseDir, _checkpointDir, _embeddingDir, _hypernetDir, _loraDir;
-    private IEnumerable<IGrouping<string?, BaseResource>> _checkpoints, _embeddings, _hypernets, _loras;
+    private IEnumerable<IGrouping<string?, LocalResource>> _checkpoints, _embeddings, _hypernets, _loras;
     private List<string> _resourceFormats = new() { ".safetensors", ".ckpt", ".pt" };
 
     protected async override Task OnInitializedAsync()
@@ -41,26 +44,26 @@
         _loras = CreateResourceEntities(_loraDir, ResourceType.Lora);
     }
 
-    private IEnumerable<IGrouping<string?, BaseResource>> CreateResourceEntities(string path, ResourceType resourceType)
+    private IEnumerable<IGrouping<string?, LocalResource>> CreateResourceEntities(string path, ResourceType resourceType)
     {
-        List<BaseResource> resources = new();
+        List<LocalResource> resources = new();
         var files = IO.GetFilesRecursive(path);
         foreach (var file in files)
         {
             if (_resourceFormats.Contains(file.Extension))
             {
                 //BaseResource resource = new() { Title = file.Name.Replace(file.Extension, ""), Type = resourceType};
-                BaseResource resource = new() { File = file, Title = file.Name, Type = resourceType };
+                LocalResource resource = new() { File = file, Title = file.Name, Type = resourceType };
                 var previewPath = $"{resourceType.ToString()}/{file.Name.Replace(file.Extension, "")}";
-                if (File.Exists(Path.Join(Configuration["ResourcePreviews"], previewPath + ".png"))) resource.ImagePath = $"./resource_previews/{previewPath}.png";
-                else if (File.Exists(Path.Join(Configuration["ResourcePreviews"], previewPath + ".jpg"))) resource.ImagePath = $"./resource_previews/{previewPath}.jpg";
+                if (File.Exists(Path.Join(Configuration["ResourcePreviewsPath"], previewPath + ".png"))) resource.ImageSrc = $"./files/resource_previews/{previewPath}.png";
+                else if (File.Exists(Path.Join(Configuration["ResourcePreviewsPath"], previewPath + ".jpg"))) resource.ImageSrc = $"./files/resource_previews/{previewPath}.jpg";
                 resources.Add(resource);
             }
         }
         return resources.GroupBy(r => r.File.Directory.Name);
     }
 
-    private async Task LoadResource(BaseResource resource)
+    private async Task LoadResource(LocalResource resource)
     {
         var filename = resource.File.Name.Replace(resource.File.Extension, "");
 

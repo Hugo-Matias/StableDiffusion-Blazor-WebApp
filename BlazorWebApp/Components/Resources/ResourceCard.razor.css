@@ -1,0 +1,8 @@
+﻿::deep .resource-btn {
+	--hover-color: var(--mud-palette-primary);
+	padding: 0 !important
+}
+
+	::deep .resource-btn:hover {
+		background-color: var(--hover-color);
+	}

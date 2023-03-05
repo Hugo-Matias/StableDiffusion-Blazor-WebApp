@@ -1,0 +1,16 @@
+﻿::deep .tabs .mud-tab {
+	justify-content: start;
+	font-weight: 300;
+	text-transform: none;
+}
+
+::deep .description {
+	height: 30vh;
+	overflow: scroll;
+}
+
+::deep .images-container {
+	height: 70vh;
+	overflow: scroll;
+	align-content: flex-start;
+}
