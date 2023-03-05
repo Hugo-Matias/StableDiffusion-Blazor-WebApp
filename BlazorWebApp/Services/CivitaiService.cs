@@ -97,7 +97,7 @@ namespace BlazorWebApp.Services
                 progressHandler.HttpReceiveProgress += (sender, e) => _app.CurrentDownloadProgress = e.ProgressPercentage;
                 var client = new HttpClient(progressHandler);
                 client.BaseAddress = _httpClient.BaseAddress;
-                var response = await client.GetAsync(url);
+                var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
 
                 var path = _configuration["ResourcesPath"];
                 if (modelType != null) path = Path.Combine(path, modelType.ToString());

@@ -16,11 +16,11 @@
             <MudStack Class="mt-2 align-items-center" Row>
                 <MudText Color="Color.Info">
                     <MudIcon Size=Size.Small Icon="fa-solid fa-download" />
-                    @(Parser.CollapseInteger(Model.Rank.DownloadCountAllTime))K
+                    @(Parser.CollapseInteger(Model.Rank.DownloadCountAllTime))
                 </MudText>
                 <MudText Color="Color.Error">
                     <MudIcon Size=Size.Small Icon="fa-solid fa-heart" />
-                    @(Parser.CollapseInteger(Model.Rank.FavoriteCountAllTime))K
+                    @(Parser.CollapseInteger(Model.Rank.FavoriteCountAllTime))
                 </MudText>
                 <MudRating Class="me-n2" SelectedValue="@((int)Math.Round(Model.Rank.RatingAllTime))" ReadOnly />
                 <MudText Color="Color.Warning">(@(Parser.CollapseInteger(Model.Rank.RatingCountAllTime)))</MudText>

@@ -258,6 +258,7 @@ namespace BlazorWebApp.Models
 
     public class ResourcesSettingsModel
     {
+        public bool LoadTriggerWords { get; set; } = true;
         public ResourceWeightSettingsModel Weight { get; set; } = new();
         public CivitaiSettingsModel Civitai { get; set; } = new();
     }

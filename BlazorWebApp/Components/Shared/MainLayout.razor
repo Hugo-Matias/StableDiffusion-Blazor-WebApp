@@ -20,9 +20,9 @@
             <TopToolbar />
         </MudExpansionPanel>
     </MudExpansionPanels>
-    <MudProgressLinear Style=@($"margin-top: {(AppState.CurrentDownloadProgress > 0 ? "65px" : "60px;")};") Min="0" Max="100" @bind-Value="AppState.CurrentDownloadProgress" Color="Color.Primary" />
+    <MudProgressLinear Style=@($"position: fixed; margin-top: {(AppState.CurrentDownloadProgress > 0 ? "64px; z-index: 1000;" : "60px; z-index: -1000;")}") Min="0" Max="100" @bind-Value="AppState.CurrentDownloadProgress" Color="Color.Primary" />
     <MudMainContent>
-        <MudContainer Class="mt-n12" MaxWidth="MaxWidth.ExtraLarge">
+        <MudContainer Class="mt-5" MaxWidth="MaxWidth.ExtraLarge">
             @Body
         </MudContainer>
     </MudMainContent>

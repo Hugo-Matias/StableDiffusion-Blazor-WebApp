@@ -263,10 +263,10 @@ namespace BlazorWebApp.Extensions
             }
         }
 
-        public static int CollapseInteger(int number)
+        public static string CollapseInteger(int number)
         {
-            if (number < 1000) return number;
-            else return number / 1000;
+            if (number < 1000) return number.ToString();
+            else return $"{number / 1000}K";
         }
     }
 }

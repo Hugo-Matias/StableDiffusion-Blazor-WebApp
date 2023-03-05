@@ -3,7 +3,10 @@
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.h6" Color="Color.Info">@Title</MudText>
-        <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
+        <MudStack Row>
+            <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
+            <MudCheckBox Checked="AppState.Settings.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
+        </MudStack>
         <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row>
             <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
             <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
@@ -12,7 +15,7 @@
             </MudButtonGroup>
         </MudStack>
         <MudStack Class="align-items-center justify-content-center" Row>
-            <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;"/>Img2Img:</MudText>
+            <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;" />Img2Img:</MudText>
             <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
                 <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success">Prompt</MudButton>
                 <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error">Negative Prompt</MudButton>
@@ -33,6 +36,12 @@
     private void HandleResourceWeightChanged(float value)
     {
         AppState.Settings.Resources.Weight.Value = value;
+        AppState.SaveSettings();
+    }
+
+    private void HandleLoadTriggerWordsChanged(bool value)
+    {
+        AppState.Settings.Resources.LoadTriggerWords = value;
         AppState.SaveSettings();
     }
 }
