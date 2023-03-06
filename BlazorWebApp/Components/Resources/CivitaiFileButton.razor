@@ -15,7 +15,7 @@
         <MudText Typo="Typo.caption">@_selected.Name</MudText>
         *@        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
             <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">
-                Download (@(Parser.ParseCivitaiFilesize(_selected.SizeKb)))
+                @_buttonText
             </MudButton>
             @if (Files.Count > 1)
             {
@@ -31,15 +31,28 @@
         {
             <MudText Typo="Typo.subtitle2">@_selected.PickleScanMessage</MudText>
         }
-        <MudText Class="meta-label" Typo="Typo.caption">Verified</MudText>
-        @if (_selected.ScannedAt != null)
+        @if (Files.Any(f => f.Type == "Config"))
         {
-            <MudText Typo="Typo.subtitle2">@($"{Parser.ParseCivitaiScanTimespan((DateTime)_selected.ScannedAt)}")</MudText>
+            <MudText Typo="Typo.subtitle2" Color="Color.Info">Config file available!</MudText>
         }
-        else
-        {
-            <MudText Typo="Typo.subtitle2">Pending verification...</MudText>
-        }
+        <MudStack Row>
+            <MudStack>
+                <MudText Class="meta-label" Typo="Typo.caption">Verified</MudText>
+                @if (_selected.ScannedAt != null)
+                {
+                    <MudText Typo="Typo.subtitle2">@($"{Parser.ParseCivitaiScanTimespan((DateTime)_selected.ScannedAt)}")</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle2">Pending verification...</MudText>
+                }
+            </MudStack>
+            <MudSpacer />
+            <MudStack>
+                <MudText Class="meta-label" Typo="Typo.caption">Size</MudText>
+                <MudText Typo="Typo.subtitle2">@Parser.ParseCivitaiFilesize(_selected.SizeKb)</MudText>
+            </MudStack>
+        </MudStack>
         @if (_selected.Hashes != null)
         {
             <MudText Class="meta-label" Typo="Typo.caption">Hashes</MudText>
@@ -83,6 +96,7 @@
     private string _icon;
     private Color _color;
     private bool _showMoreHashes = false;
+    private string _buttonText;
 
     protected override void OnInitialized()
     {
@@ -91,12 +105,14 @@
             if (file.Primary != null && file.Primary == true)
                 SelectFile(file);
         }
+        ParseButtonText();
     }
 
     private void SelectFile(CivitaiModelVersionFileDto file)
     {
         _selected = file;
         ParseScanResults();
+        ParseButtonText();
     }
 
     private void ParseScanResults()
@@ -110,10 +126,13 @@
         //_tooltip = new MarkupString($"File contains a virus!<br/>Scanned at: {_selected.ScannedAt:dd/MM/yyyy}");
     }
 
-    private async Task CopyToClipboard(string text)
+    private void ParseButtonText()
     {
-        await JS.InvokeVoidAsync("clipboardCopy.copyText", text);
-        Snackbar.Add("Hash copied to the clipboard.", Severity.Info);
+        if (_selected.Format == "Other")
+            _buttonText = _selected.Type;
+        else if (_selected.Type == "Model") _buttonText = _selected.Format;
+        else if (_selected.Type == "Pruned Model") _buttonText = $"{_selected.Format} (Pruned)";
+        else _buttonText = $"{_selected.Format} | {_selected.Type}";
     }
 
     private Color GetVersionButtonColor(CivitaiModelVersionFileDto file)
@@ -125,5 +144,11 @@
         }
         else if (file.Format == "SafeTensor") return Color.Primary;
         return Color.Default;
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        await JS.InvokeVoidAsync("clipboardCopy.copyText", text);
+        Snackbar.Add("Hash copied to the clipboard.", Severity.Info);
     }
 }

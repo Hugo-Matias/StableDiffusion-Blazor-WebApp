@@ -1,5 +1,7 @@
 ﻿@inject AppState AppState
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 @using System.Text.Json;
 
 <div>
@@ -7,93 +9,98 @@
         <DialogContent>
             <MudStack Row>
                 <MudStack Style="justify-content:center;">
-                    <MudImage Src="@Image.Url" ObjectFit="ObjectFit.Contain" Fluid />
-                    <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                        <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-lines" Color=Color.Info OnClick="@(() => LoadSettings(ModeType.Txt2Img))">Txt2Img</MudButton>
-                        <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-image" Color=Color.Warning OnClick="@(() => LoadSettings(ModeType.Img2Img))">Img2Img</MudButton>
-                    </MudButtonGroup>
+                    <MudSkeleton hidden="@_isImageLoaded" SkeletonType="SkeletonType.Rectangle" Width="@($"{Image.Width}px")" Height="@($"{Image.Height}px")" Class="full-image" />
+                    <MudImage hidden="@(!_isImageLoaded)" id="image" Class="full-image" Src="@(Parser.ParseCivitaiImageFullSize(Image.Url, Image.Width, Image.Meta != null ? Image.Meta.Size : null))" ObjectFit="ObjectFit.Contain" Fluid />
                 </MudStack>
-                @if (Image.Meta != null)
-                {
-                    <MudStack Class="mt-3" Style="align-content:flex-start;">
-                        @if (Image.Meta.Resources != null && Image.Meta.Resources.Count > 0)
-                        {
-                            <MudText Class="meta-label" Typo="Typo.caption">Resources</MudText>
-                            @foreach (var resource in Image.Meta.Resources)
-                            {
-                                <MudBadge Origin="Origin.TopCenter" Content="@resource.Type" Color="Color.Dark" Bordered>
-                                <MudChip Label="true" Color="Color.Tertiary" Variant="Variant.Outlined">
-                                    @($"{resource.Name}{(!string.IsNullOrWhiteSpace(resource.Hash) ? $" ({resource.Hash})" : "")}{(resource.Weight != null ? $":{resource.Weight}" : "")}")
-                                    </MudChip>
-                                </MudBadge>
-                            }
-                        }
-                        @if (Image.Meta.Prompt != null)
-                        {
-                            <MudTextField Label="Prompt" Lines="6" Value="@Image.Meta.Prompt" T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.NegativePrompt != null)
-                        {
-                            <MudTextField Label="Negative Prompt" Lines="6" Value="@Image.Meta.NegativePrompt" T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.HighResUpscale != null)
-                        {
-                            @*<MudText Class="meta-label mb-1" Typo="Typo.caption">HighRes Upscale</MudText>*@
-                            @if (Image.Meta.HighResUpscaler != null)
-                            {
-                                <MudTextField Label="Upscaler" Value=@Image.Meta.HighResUpscaler T="string" ReadOnly />
-                            }
-                            @if (Image.Meta.HighResUpscale != null)
-                            {
-                                <MudTextField Label="Scale" Value=@Image.Meta.HighResUpscale T="string" ReadOnly />
-                            }
-                            @if (Image.Meta.HighResSteps != null && int.Parse(Image.Meta.HighResSteps) != Image.Meta.Steps)
-                            {
-                                <MudTextField Label="Second Pass Steps" Value=@Image.Meta.HighResSteps T="string" ReadOnly />
-                            }
-                            @if (Image.Meta.DenoisingStrength != null)
-                            {
-                                <MudTextField Label="Denoising Strength" Value=@Image.Meta.DenoisingStrength T="string" ReadOnly />
-                            }
-                        }
-                    </MudStack>
-                }
-                <MudStack Class="mt-3">
+                <MudStack>
+                    <MudChip Text="@Parser.ParseCivitaiImageGenerationProcess(Image.GenerationProcess)" Color="@Parser.ParseCivitaiImageGenerationProcessColor(Image.GenerationProcess)" Label />
                     @if (Image.Meta != null)
                     {
-                        <MudTextField Label="Resolution" Value=@(Parser.ParseCivitaiImageSize(Image.Meta.Size, Image.Width, Image.Height)) T="string" ReadOnly />
-                        @if (Image.Meta.Model != null)
+                        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                            <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-lines" Color=Color.Info OnClick="@(() => LoadSettings(ModeType.Txt2Img))">Txt2Img</MudButton>
+                            <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-image" Color=Color.Warning OnClick="@(() => LoadSettings(ModeType.Img2Img))">Img2Img</MudButton>
+                        </MudButtonGroup>
+                        @if (Image.Meta.Resources != null && Image.Meta.Resources.Count > 0)
                         {
-                            <MudTextField Label="Model" Value=@Image.Meta.Model T="string" ReadOnly />
+                            <MudText Class="meta-label mt-2" Typo="Typo.caption">Resources</MudText>
+                            <MudGrid Class="mt-3">
+                                @foreach (var resource in Image.Meta.Resources)
+                                {
+                                    <MudBadge Origin="Origin.TopCenter" Content="@resource.Type" Color="Color.Dark" Bordered>
+                                    <MudChip Label="true" Color="Color.Tertiary" Variant="Variant.Outlined">
+                                        @($"{resource.Name}{(!string.IsNullOrWhiteSpace(resource.Hash) ? $" ({resource.Hash})" : "")}{(resource.Weight != null ? $":{resource.Weight}" : "")}")
+                                        </MudChip>
+                                    </MudBadge>
+                                }
+                            </MudGrid>
                         }
-                        @if (Image.Meta.ModelHash != null)
-                        {
-                            <MudTextField Label="Hash" Value=@Image.Meta.ModelHash T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.Seed != null)
-                        {
-                            <MudTextField Label="Seed" Value=@Image.Meta.Seed.ToString() T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.Sampler != null)
-                        {
-                            <MudTextField Label="Sampler" Value=@Image.Meta.Sampler T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.Steps != null)
-                        {
-                            <MudTextField Label="Steps" Value=@Image.Meta.Steps.ToString() T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.CfgScale != null)
-                        {
-                            <MudTextField Label="CFG Scale" Value=@Image.Meta.CfgScale.ToString() T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.ClipSkip != null)
-                        {
-                            <MudTextField Label="Clip Skip" Value=@Image.Meta.ClipSkip T="string" ReadOnly />
-                        }
-                        @if (Image.Meta.ENSD != null)
-                        {
-                            <MudTextField Label="ENSD" Value=@Image.Meta.ENSD T="string" ReadOnly />
-                        }
+                        <MudStack Row>
+                        <MudStack Class="mt-3" Style="align-content:flex-start;">
+                            @if (Image.Meta.Prompt != null)
+                                {
+                                    <MudTextField Label="Prompt" Lines="6" Value="@Image.Meta.Prompt" T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.NegativePrompt != null)
+                                {
+                                    <MudTextField Label="Negative Prompt" Lines="6" Value="@Image.Meta.NegativePrompt" T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.HighResUpscale != null)
+                                {
+                                    @*<MudText Class="meta-label mb-1" Typo="Typo.caption">HighRes Upscale</MudText>*@
+                                    @if (Image.Meta.HighResUpscaler != null)
+                                    {
+                                        <MudTextField Label="Upscaler" Value=@Image.Meta.HighResUpscaler T="string" ReadOnly />
+                                    }
+                                    @if (Image.Meta.HighResUpscale != null)
+                                    {
+                                        <MudTextField Label="Scale" Value=@Image.Meta.HighResUpscale T="string" ReadOnly />
+                                    }
+                                    @if (Image.Meta.HighResSteps != null && int.Parse(Image.Meta.HighResSteps) != Image.Meta.Steps)
+                                    {
+                                        <MudTextField Label="Second Pass Steps" Value=@Image.Meta.HighResSteps T="string" ReadOnly />
+                                    }
+                                    @if (Image.Meta.DenoisingStrength != null)
+                                    {
+                                        <MudTextField Label="Denoising Strength" Value=@Image.Meta.DenoisingStrength T="string" ReadOnly />
+                                    }
+                                }
+                            </MudStack>
+                            <MudStack Class="mt-3">
+                                <MudTextField Label="Resolution" Value=@(Parser.ParseCivitaiImageSize(Image.Meta.Size, Image.Width, Image.Height)) T="string" ReadOnly />
+                                @if (Image.Meta.Model != null)
+                                {
+                                    <MudTextField Label="Model" Value=@Image.Meta.Model T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.ModelHash != null)
+                                {
+                                    <MudTextField Label="Hash" Value=@Image.Meta.ModelHash T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.Seed != null)
+                                {
+                                    <MudTextField Label="Seed" Value=@Image.Meta.Seed.ToString() T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.Sampler != null)
+                                {
+                                    <MudTextField Label="Sampler" Value=@Image.Meta.Sampler T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.Steps != null)
+                                {
+                                    <MudTextField Label="Steps" Value=@Image.Meta.Steps.ToString() T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.CfgScale != null)
+                                {
+                                    <MudTextField Label="CFG Scale" Value=@Image.Meta.CfgScale.ToString() T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.ClipSkip != null)
+                                {
+                                    <MudTextField Label="Clip Skip" Value=@Image.Meta.ClipSkip T="string" ReadOnly />
+                                }
+                                @if (Image.Meta.ENSD != null)
+                                {
+                                    <MudTextField Label="ENSD" Value=@Image.Meta.ENSD T="string" ReadOnly />
+                                }
+                            </MudStack>
+                        </MudStack>
                     }
                     else
                     {
@@ -107,7 +114,23 @@
 
 @code {
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-    [Parameter] public CivitaiBaseModelVersionImageDto Image { get; set; }
+    [Parameter] public CivitaiModelVersionImageDto Image { get; set; }
+
+    private bool _isImageLoaded;
+    private IJSObjectReference _module;
+    private IJSObjectReference _instance;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Image.js");
+            _instance = await _module.InvokeAsync<IJSObjectReference>("init", DotNetObjectReference.Create(this));
+        }
+    }
+
+    [JSInvokable]
+    public void HandleImageLoaded(bool isLoaded) { _isImageLoaded = isLoaded; StateHasChanged(); }
 
     private void LoadSettings(ModeType mode)
     {
@@ -160,5 +183,15 @@
             AppState.ParametersImg2Img.Height = height;
         }
         Snackbar.Add($"Settings copied to {mode}", Severity.Success);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_instance != null)
+        {
+            await _instance.InvokeVoidAsync("dispose");
+            await _instance.DisposeAsync();
+        }
+        if (_module != null) await _module.DisposeAsync();
     }
 }

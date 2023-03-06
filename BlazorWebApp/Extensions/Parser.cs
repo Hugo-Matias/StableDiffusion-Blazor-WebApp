@@ -183,6 +183,50 @@ namespace BlazorWebApp.Extensions
             else return $"{metaSize} | {width}x{height}";
         }
 
+        public static string ParseCivitaiImageFullSize(this string url, int width, string? metaSize)
+        {
+            var splitUrl = Regex.Matches(url, @"(.+?width=).+", RegexOptions.Compiled)[0].Groups[1].Value;
+            if (!string.IsNullOrWhiteSpace(metaSize))
+            {
+                var parsedWidth = int.Parse(metaSize.Split("x")[0]);
+                if (parsedWidth > width) width = parsedWidth;
+            }
+            return splitUrl + width.ToString();
+        }
+        public static string ParseCivitaiImageGenerationProcess(this string process)
+        {
+            switch (process)
+            {
+                case "txt2img":
+                    return "Txt2Img";
+                case "txt2imgHiRes":
+                    return "Txt2Img (HighRes)";
+                case "img2img":
+                    return "Img2Img";
+                case "inpainting":
+                    return "Inpainting";
+                default:
+                    return process;
+            }
+        }
+
+        public static Color ParseCivitaiImageGenerationProcessColor(this string process)
+        {
+            switch (process)
+            {
+                case "txt2img":
+                    return Color.Info;
+                case "txt2imgHiRes":
+                    return Color.Secondary;
+                case "img2img":
+                    return Color.Warning;
+                case "inpainting":
+                    return Color.Success;
+                default:
+                    return Color.Primary;
+            }
+        }
+
         public static string ParseCivitaiFilesize(this double filesize)
         {
             if (filesize < 1024)

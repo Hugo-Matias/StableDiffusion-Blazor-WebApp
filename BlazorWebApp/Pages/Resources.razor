@@ -1,4 +1,4 @@
-﻿@page "/resources"
+﻿@page "/"
 @inject AppState AppState
 @inject SDAPIService SD
 @inject IOService IO
@@ -38,10 +38,10 @@
         _hypernetDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.HypernetworkDir) ? Path.Join(_baseDir, @"models/hypernetworks") : AppState.CmdFlags.HypernetworkDir;
         _loraDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.LoraDir) ? Path.Join(_baseDir, @"models/Lora") : AppState.CmdFlags.LoraDir;
 
-        _checkpoints = CreateResourceEntities(_checkpointDir, ResourceType.Checkpoint);
-        _embeddings = CreateResourceEntities(_embeddingDir, ResourceType.Embedding);
-        _hypernets = CreateResourceEntities(_hypernetDir, ResourceType.Hypernetwork);
-        _loras = CreateResourceEntities(_loraDir, ResourceType.Lora);
+        //_checkpoints = CreateResourceEntities(_checkpointDir, ResourceType.Checkpoint);
+        //_embeddings = CreateResourceEntities(_embeddingDir, ResourceType.Embedding);
+        //_hypernets = CreateResourceEntities(_hypernetDir, ResourceType.Hypernetwork);
+        //_loras = CreateResourceEntities(_loraDir, ResourceType.Lora);
     }
 
     private IEnumerable<IGrouping<string?, LocalResource>> CreateResourceEntities(string path, ResourceType resourceType)

@@ -21,6 +21,15 @@ namespace BlazorWebApp.Data.Dtos
         [JsonPropertyName("negativePrompt")] public string NegativePrompt { get; set; }
         [JsonPropertyName("AddNet Enabled")] public string AddNetEnabled { get; set; }
         [JsonPropertyName("Denoising strength")] public string DenoisingStrength { get; set; }
+        [JsonPropertyName("Mask blur")] public string MaskBlur { get; set; }
+        [JsonPropertyName("Script")] public string Script { get; set; }
+        [JsonPropertyName("X Values")] public string XValues { get; set; }
+        [JsonPropertyName("Y Values")] public string YValues { get; set; }
+        [JsonPropertyName("Ultimate SD upscale padding")] public string UltimateSDPadding { get; set; }
+        [JsonPropertyName("Ultimate SD upscale upscaler")] public string UltimateSDUpscaler { get; set; }
+        [JsonPropertyName("Ultimate SD upscale mask_blur")] public string UltimateSDMaskBlur { get; set; }
+        [JsonPropertyName("Ultimate SD upscale tile_width")] public string UltimateSDWidth { get; set; }
+        [JsonPropertyName("Ultimate SD upscale tile_height")] public string UltimateSDHeight { get; set; }
     }
 
     public class CivitaiImageMetaResource

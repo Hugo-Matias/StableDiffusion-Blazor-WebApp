@@ -5,7 +5,7 @@
 }
 
 ::deep .description {
-	height: 30vh;
+	height: 20vh;
 	overflow: scroll;
 }
 

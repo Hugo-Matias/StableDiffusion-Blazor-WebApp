@@ -4,6 +4,7 @@ using BlazorWebApp.Models;
 using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -69,7 +70,53 @@ namespace BlazorWebApp.Services
             else return null;
         }
 
-        public async Task<CivitaiModelDto> GetModel(int id) => await _httpClient.GetFromJsonAsync<CivitaiModelDto>($"v1/models/{id}");
+        public async Task<CivitaiModelDto> GetModel(int id)
+        {
+            var response = await _httpClient.GetAsync($"v1/models/{id}");
+            var content = await response.Content.ReadAsStringAsync();
+            var model = await response.Content.ReadFromJsonAsync<CivitaiModelDto>();
+            var json = JsonNode.Parse(content);
+            for (var v = 0; v < json["modelVersions"].AsArray().Count; v++)
+            {
+                var version = json["modelVersions"][v];
+                for (var i = 0; i < version["images"].AsArray().Count; i++)
+                {
+                    var meta = version["images"][i]["meta"];
+                    if (meta != null)
+                    {
+                        var isAddNetEnabled = meta["AddNet Enabled"];
+                        if (isAddNetEnabled != null && isAddNetEnabled.ToString() == "True")
+                        {
+                            var modelResources = model.ModelVersions[v].Images[i].Meta.Resources;
+                            for (int r = 1; r <= modelResources.Count; r++)
+                            {
+                                var name = meta[$"AddNet Model {r}"];
+                                var weight = meta[$"AddNet Weight A {r}"];
+                                if (name != null && weight != null)
+                                    ParseAddNetResource(ref modelResources, name.ToString(), weight.ToString());
+                            }
+                        }
+                    }
+                }
+            }
+            return model;
+        }
+
+        private void ParseAddNetResource(ref List<CivitaiImageMetaResource> resources, string addnetModel, string addnetWeight)
+        {
+            var re = Regex.Matches(addnetModel, @"(.+)\((.+)\)")[0].Groups;
+            var name = re[1].Value;
+            var hash = re[2].Value;
+            var weight = float.Parse(addnetWeight);
+            foreach (var resource in resources)
+            {
+                if (resource.Hash != null && resource.Hash.Equals(hash, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    resource.Name = name;
+                    resource.Weight = weight;
+                }
+            }
+        }
 
         public async Task<int> GetModelIdByHash(string hash)
         {
@@ -89,10 +136,9 @@ namespace BlazorWebApp.Services
             {
                 var modelType = Parser.ConvertCivitaiResourceType(Parser.ParseCivitaiModelType(type));
 
-                string url;
-                if (file.Primary != null && file.Primary == true) url = $"download/models/{version.Id}";
-                else url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
-
+                var url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
+                //if (file.Primary != null && file.Primary == true) url = $"download/models/{version.Id}";
+                //else url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
                 var progressHandler = new ProgressMessageHandler(new HttpClientHandler());
                 progressHandler.HttpReceiveProgress += (sender, e) => _app.CurrentDownloadProgress = e.ProgressPercentage;
                 var client = new HttpClient(progressHandler);

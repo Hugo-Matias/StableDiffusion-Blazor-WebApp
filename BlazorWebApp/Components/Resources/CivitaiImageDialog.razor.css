@@ -13,3 +13,8 @@
 ::deep .mud-input-control {
 	margin-top: -0.5rem;
 }
+
+::deep .full-image {
+	max-width: 50vw;
+	max-height: 75vh;
+}
