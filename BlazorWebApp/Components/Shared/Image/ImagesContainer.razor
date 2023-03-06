@@ -1,5 +1,4 @@
 ﻿@inject DatabaseService DB
-@inject ImageService ImageService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -18,7 +17,7 @@
                     {
                         @foreach (var image in Images.Images)
                         {
-                            <ImageCard Image="@image" ImageData="@LoadCardImage(image.Path)" Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
+                            <ImageCard Image="@image"  Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
                         }
                     }
                 </MudGrid>
@@ -53,15 +52,6 @@
     {
         _currentPage = page;
         OnPageSelected.InvokeAsync(page);
-    }
-
-    private string LoadCardImage(string path) => ImageService.LoadImage(path);
-
-    private List<string> LoadImageStrings()
-    {
-        List<string> imageStrings = new();
-        Images.Images.ForEach(i => imageStrings.Add(LoadCardImage(i.Path)));
-        return imageStrings;
     }
 
     private async Task ShowImageViewerModal(Image image)

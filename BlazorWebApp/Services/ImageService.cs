@@ -197,12 +197,6 @@ namespace BlazorWebApp.Services
             return savedImage;
         }
 
-        public string LoadImage(string imagePath) => _io.GetBase64FromFile(imagePath);
-
-        public async Task<string> LoadImageAsync(string imagePath) => await _io.GetBase64FromFileAsync(imagePath);
-
-        //public async Task<string> LoadImageAsync(string imagePath) => await _magick.LoadImage(imagePath);
-
         private async Task<Image> AddImageToDb(string path, Outdir outdir, string infoPath = null)
         {
             Image image = new();

@@ -8,6 +8,13 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
+        public static string NormalizePath(this string path)
+        {
+            return Path.GetFullPath(new Uri(path).LocalPath)
+                       .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                       .ToLowerInvariant();
+        }
+
         public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
         {
             if (styles != null && styles.Count() > 0)

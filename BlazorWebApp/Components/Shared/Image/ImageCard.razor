@@ -16,7 +16,7 @@
         <MudBadge Style="opacity: 0;" Content="null" Overlap />
     }
     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
-        <MudCardMedia Image="@("data:image/png;base64," + ImageData)" />
+        <MudCardMedia Image=@IO.GetImageStaticFile(Image.Path) />
         <MudCardContent Class="pb-n4">
             @if (Image.ModeId != 3)
             {
@@ -75,8 +75,6 @@
     [Parameter]
     public Image Image { get; set; }
     [Parameter]
-    public string ImageData { get; set; }
-    [Parameter]
     public string Target { get; set; }
     [Parameter]
     public EventCallback<Image> OnSelectImage { get; set; }
@@ -103,7 +101,7 @@
 
     private void SendTo(bool img2img)
     {
-        var data = $"data:image/png;base64,{ImageData}";
+        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
         if (img2img) AppState.CanvasImageData = data;
         else AppState.UpscaleImageData = data;
     }

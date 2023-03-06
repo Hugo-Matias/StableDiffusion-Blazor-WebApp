@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Extensions;
+using BlazorWebApp.Models;
 using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
@@ -6,6 +7,7 @@ namespace BlazorWebApp.Services
     public class IOService
     {
         private readonly IConfiguration _configuration;
+        private readonly string[] _imagePaths = new string[3] { "ImagesPathLocal", "ImagesPathCloud", "ImagesPathVault" };
 
         public IOService(IConfiguration configuration)
         {
@@ -97,6 +99,27 @@ namespace BlazorWebApp.Services
             }
 
             return images;
+        }
+
+        public string GetImageStaticFile(string path)
+        {
+            foreach (var imagePath in _imagePaths)
+            {
+                var normalizedPath = Parser.NormalizePath(path);
+                var normalizedImagePath = Parser.NormalizePath(_configuration[imagePath]);
+                if (normalizedPath.Contains(normalizedImagePath))
+                {
+                    var imageFile = normalizedPath.Replace(normalizedImagePath, "").Replace(@"\", "/");
+                    return imagePath switch
+                    {
+                        "ImagesPathLocal" => "/image/local" + imageFile,
+                        "ImagesPathCloud" => "/image/cloud" + imageFile,
+                        "ImagesPathVault" => "/image/vault" + imageFile,
+                        _ => string.Empty
+                    };
+                }
+            }
+            return string.Empty;
         }
 
         public string GetBase64FromFile(string path)
