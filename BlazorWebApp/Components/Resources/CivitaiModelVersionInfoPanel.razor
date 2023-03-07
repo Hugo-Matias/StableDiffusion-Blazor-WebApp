@@ -1,10 +1,15 @@
 ﻿@inject AppState AppState
 @inject CivitaiService Civitai
 @inject ISnackbar Snackbar
+@inject IOService IO
+@inject ImageService ImageService
+@inject IConfiguration Configuration
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
 
 <div>
     <MudTabs Class="tabs" Position="Position.Start" Rounded>
-        @foreach (var version in Versions)
+        @foreach (var version in Model.ModelVersions)
         {
             <MudTabPanel Text="@version.Name">
                 <MudGrid>
@@ -12,12 +17,27 @@
                         <MudGrid Class="images-container">
                             @foreach (var image in version.Images)
                             {
-                                <CivitaiModelImageCard Image="image" />
+                                <CivitaiModelImageCard Image="image" OnSaveImage=@(async () => await SaveImage(image)) />
                             }
                         </MudGrid>
                     </MudItem>
                     <MudItem xs="4">
                         <CivitaiFileButton Class="mb-4 mt-n4" Files="version.Files" OnDownload="@(async (file) => await DownloadFile(version, file))" />
+                        <MudStack Class="mb-4" Row>
+                        <MudStack>
+                            <MudText Class="meta-label" Typo="Typo.caption">Created</MudText>
+                            <MudText Typo="Typo.subtitle2">@(version.CreatedAt.ToString("dd MMMMM yyyy"))</MudText>
+                                </MudStack>
+                                <MudSpacer />
+                                @if (version.UpdatedAt != null)
+                            {
+
+                                <MudStack>
+                                    <MudText Class="meta-label" Typo="Typo.caption">Updated</MudText>
+                                    <MudText Typo="Typo.subtitle2">@(version.UpdatedAt.ToString("dd MMMM yyyy"))</MudText>
+                                    </MudStack>
+                            }
+                        </MudStack>
                         @if (version.TrainedWords != null && version.TrainedWords.Count > 0)
                         {
                             <MudStack Class="mb-4">
@@ -41,13 +61,36 @@
 </div>
 
 @code {
-    [Parameter] public List<CivitaiModelVersionDto> Versions { get; set; }
-    [Parameter] public string ModelType { get; set; }
+    [Parameter] public CivitaiModelDto Model { get; set; }
 
     private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
     {
-        var isSuccess = await Civitai.DownloadResource(version, file, ModelType, AppState.CurrentResourceSubType);
+        var isSuccess = await Civitai.DownloadResource(version, file, Model.Type, AppState.CurrentResourceSubType);
         if (isSuccess) Snackbar.Add($"{file.Name} downloaded successfully!", Severity.Success);
         else Snackbar.Add($"Something went wrong downloading {file.Name}!", Severity.Error);
+        await SaveImage(version.Images[0]);
+    }
+
+    private async Task SaveImage(CivitaiModelVersionImageDto image)
+    {
+        var path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}", Parser.SanitizePath(image.Hash));
+        var url = Parser.ParseCivitaiImageFullSize(image.Url, image.Width, image.Meta != null ? image.Meta.Size : null);
+        var parameters = JsonSerializer.Serialize(image, new JsonSerializerOptions()
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+        var jsonPath = path + ".json";
+        var imagePath = path + ".png";
+        if (File.Exists(jsonPath) || File.Exists(imagePath))
+        {
+            Snackbar.Add("Image and parameters already saved!", Severity.Warning);
+        }
+        else
+        {
+            IO.SaveText(jsonPath, parameters, overwrite: false);
+            await ImageService.DownloadImageAsPng(url, imagePath, overwrite: false);
+            Snackbar.Add("Image and parameters saved!", Severity.Success);
+        }
     }
 }

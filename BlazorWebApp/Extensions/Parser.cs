@@ -8,6 +8,8 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
+        public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+
         public static string NormalizePath(this string path)
         {
             return Path.GetFullPath(new Uri(path).LocalPath)

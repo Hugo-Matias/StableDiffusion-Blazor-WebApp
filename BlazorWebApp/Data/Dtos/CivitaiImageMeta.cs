@@ -30,6 +30,7 @@ namespace BlazorWebApp.Data.Dtos
         [JsonPropertyName("Ultimate SD upscale mask_blur")] public string UltimateSDMaskBlur { get; set; }
         [JsonPropertyName("Ultimate SD upscale tile_width")] public string UltimateSDWidth { get; set; }
         [JsonPropertyName("Ultimate SD upscale tile_height")] public string UltimateSDHeight { get; set; }
+        [JsonPropertyName("Face restoration")] public string FaceRestoration { get; set; }
     }
 
     public class CivitaiImageMetaResource

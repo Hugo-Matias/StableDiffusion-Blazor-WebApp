@@ -84,6 +84,7 @@ namespace BlazorWebApp.Services
                     var meta = version["images"][i]["meta"];
                     if (meta != null)
                     {
+                        model.ModelVersions[v].Images[i].MetaObject = meta;
                         var isAddNetEnabled = meta["AddNet Enabled"];
                         if (isAddNetEnabled != null && isAddNetEnabled.ToString() == "True")
                         {

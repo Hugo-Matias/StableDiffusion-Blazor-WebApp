@@ -176,8 +176,6 @@ namespace BlazorWebApp.Services
 
         private FileInfo? GetLastSavedFile(string path) => GetOrderedFiles(path).LastOrDefault();
 
-        public async Task SaveFileToDisk(string path, byte[] data) => await File.WriteAllBytesAsync(path, data);
-
         public string[]? LoadTextLines(string path)
         {
             if (!File.Exists(path)) return null;
@@ -192,7 +190,25 @@ namespace BlazorWebApp.Services
             return File.ReadAllText(path);
         }
 
-        public void SaveText(string path, string content) => File.WriteAllText(path, content);
+        public void SaveText(string path, string content, bool overwrite = true)
+        {
+            if (File.Exists(path) && !overwrite) return;
+            CheckDirectory(path);
+            File.WriteAllText(path, content);
+        }
+
+        public async Task SaveFileToDisk(string path, byte[] data)
+        {
+            CheckDirectory(path);
+            await File.WriteAllBytesAsync(path, data);
+        }
+
+        private void CheckDirectory(string path)
+        {
+            path = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(path))
+                Directory.CreateDirectory(path);
+        }
 
         public DirectoryInfo CreateDirectory(string path) => Directory.CreateDirectory(path);
     }

@@ -8,5 +8,5 @@
     }
 
     public enum ResourceType { Checkpoint, Embedding, Hypernetwork, Lora }
-    public enum ResourceSubType { None, Anatomy, Character, Clothing, Design, Expression, Landscape, Object, Person, Pose, Style, Photography, Anime, Painting, NSFW }
+    public enum ResourceSubType { None, Style, Character, Person, Pose, Clothing, Anatomy, Expression, Landscape, Location, Animal, Object, Car, Design, Photography, Anime, Painting, NSFW }
 }

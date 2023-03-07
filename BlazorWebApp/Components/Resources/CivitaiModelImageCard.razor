@@ -7,6 +7,7 @@
 
 @code {
     [Parameter] public CivitaiBaseModelVersionImageDto Image { get; set; }
+    [Parameter] public EventCallback OnSaveImage { get; set; }
 
     private async Task ShowImage()
     {
@@ -14,5 +15,13 @@
         var param = new DialogParameters();
         param.Add("Image", Image);
         var dialog = await DialogService.ShowAsync<CivitaiImageDialog>("Image", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            if (result.Data == "Save")
+            {
+                await OnSaveImage.InvokeAsync();
+            }
+        }
     }
 }

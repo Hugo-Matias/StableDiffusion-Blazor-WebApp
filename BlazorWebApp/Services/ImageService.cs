@@ -255,8 +255,9 @@ namespace BlazorWebApp.Services
             return await _db.AddImage(image);
         }
 
-        public async Task DownloadImageAsPng(string url, string path)
+        public async Task DownloadImageAsPng(string url, string path, bool overwrite = true)
         {
+            if (File.Exists(path) && !overwrite) return;
             var httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri(url);
             var response = await httpClient.GetByteArrayAsync(url);

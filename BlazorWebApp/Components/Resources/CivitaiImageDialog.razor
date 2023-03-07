@@ -2,7 +2,6 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
-@using System.Text.Json;
 
 <div>
     <MudDialog Style="max-width: 85vw; max-height: 85vh;" Class="pa-3">
@@ -10,15 +9,16 @@
             <MudStack Row>
                 <MudStack Style="justify-content:center;">
                     <MudSkeleton hidden="@_isImageLoaded" SkeletonType="SkeletonType.Rectangle" Width="@($"{Image.Width}px")" Height="@($"{Image.Height}px")" Class="full-image" />
-                    <MudImage hidden="@(!_isImageLoaded)" id="image" Class="full-image" Src="@(Parser.ParseCivitaiImageFullSize(Image.Url, Image.Width, Image.Meta != null ? Image.Meta.Size : null))" ObjectFit="ObjectFit.Contain" Fluid />
+                    <MudImage hidden="@(!_isImageLoaded)" id="image" Class="full-image" Src=@GetFullResUrl() ObjectFit="ObjectFit.Contain" Fluid />
                 </MudStack>
                 <MudStack>
-                    <MudChip Text="@Parser.ParseCivitaiImageGenerationProcess(Image.GenerationProcess)" Color="@Parser.ParseCivitaiImageGenerationProcessColor(Image.GenerationProcess)" Label />
                     @if (Image.Meta != null)
                     {
+                        <MudChip Text="@Parser.ParseCivitaiImageGenerationProcess(Image.GenerationProcess)" Color="@Parser.ParseCivitaiImageGenerationProcessColor(Image.GenerationProcess)" Label />
                         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
                             <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-lines" Color=Color.Info OnClick="@(() => LoadSettings(ModeType.Txt2Img))">Txt2Img</MudButton>
                             <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-image" Color=Color.Warning OnClick="@(() => LoadSettings(ModeType.Img2Img))">Img2Img</MudButton>
+                            <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-download" Color=Color.Secondary OnClick="@(() => MudDialog.Close("Save"))">Save</MudButton>
                         </MudButtonGroup>
                         @if (Image.Meta.Resources != null && Image.Meta.Resources.Count > 0)
                         {
@@ -104,6 +104,7 @@
                     }
                     else
                     {
+                        <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-download" Color=Color.Secondary OnClick="@(() => MudDialog.Close("Save"))">Save</MudButton>
                         <MudTextField Label="Resolution" Value=@($"{Image.Width}x{Image.Height}") T="string" ReadOnly />
                     }
                 </MudStack>
@@ -131,6 +132,8 @@
 
     [JSInvokable]
     public void HandleImageLoaded(bool isLoaded) { _isImageLoaded = isLoaded; StateHasChanged(); }
+
+    private string GetFullResUrl() => Parser.ParseCivitaiImageFullSize(Image.Url, Image.Width, Image.Meta != null ? Image.Meta.Size : null);
 
     private void LoadSettings(ModeType mode)
     {

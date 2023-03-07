@@ -56,6 +56,7 @@
         public int Height { get; set; }
         public string Hash { get; set; }
         public CivitaiImageMeta? Meta { get; set; }
+        public object MetaObject { get; set; }
 
         public CivitaiBaseModelVersionImageDto() { }
         public CivitaiBaseModelVersionImageDto(CivitaiModelVersionImageDto image)
