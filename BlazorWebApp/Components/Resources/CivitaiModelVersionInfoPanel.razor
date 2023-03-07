@@ -42,7 +42,7 @@
                         {
                             <MudStack Class="mb-4">
                                 <MudText Class="meta-label" Typo="Typo.caption">Trigger Words</MudText>
-                                <MudChipSet Class="mt-n4" Style="max-height:10vh; overflow:scroll;">
+                                <MudChipSet Style="max-height:10vh; overflow:scroll;">
                                     @foreach (var word in version.TrainedWords)
                                     {
                                         <MudChip Style="font-size: 0.75rem; max-width:20vw;" Color="Color.Primary" Text="@word">@word</MudChip>
