@@ -1,7 +1,7 @@
 ﻿@inject AppState AppState
 @inject SDAPIService API
 
-<MudGrid Class="@($"collapse {(AppState.ControlNetEnabled ? "show" : "")}")">
+<MudGrid>
     <MudItem xs=6>
         <MudSelect T="ControlNetPreprocessor" Value=Parameters.Preprocessor ValueChanged=@(async (v) => await HandlePreprocessorChanged(v)) Label="Preprocessor" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft" Dense>
             @foreach (ControlNetPreprocessor processor in Enum.GetValues(typeof(ControlNetPreprocessor)))
@@ -77,11 +77,11 @@
     </MudItem>
     <MudItem xs="12">
         <MudText Typo="Typo.caption">Input Image</MudText>
-        <ImageDropzone Class="mt-2" ImageData=@Parameters.InputImage OnImageChanged="HandleInputImageChanged" />
+        <ImageDropzone Class="mt-2" Style="--width: 42vw !important;" ImageData=@Parameters.InputImage OnImageChanged="HandleInputImageChanged" />
     </MudItem>
 </MudGrid>
 
-    @code {
+@code {
     [Parameter] public ControlNetParameters Parameters { get; set; }
 
     private List<string> _models = new();
@@ -109,7 +109,7 @@
 
     private async Task HandleInputImageChanged(string data)
     {
-        Parameters.InputImage = Parser.RemoveBase64Header(data);
+        Parameters.InputImage = data;
         await InvokeAsync(StateHasChanged);
     }
 }

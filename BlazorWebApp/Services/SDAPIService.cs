@@ -98,8 +98,8 @@ namespace BlazorWebApp.Services
 
         public async Task<GeneratedImages> PostControlNetTxt2Img(Txt2ImgParameters param)
         {
-            var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { WriteIndented = true });
-            File.WriteAllText("txt2img.json", json);
+            //var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { WriteIndented = true });
+            //File.WriteAllText("txt2img.json", json);
             using var response = await _httpClient.PostAsJsonAsync(_controlnetRoute + "txt2img", param, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<GeneratedImages>();

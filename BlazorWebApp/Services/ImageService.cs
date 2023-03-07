@@ -58,7 +58,13 @@ namespace BlazorWebApp.Services
                     img2imgParams.ControlNet = _app.ParametersImg2Img.ControlNet;
                     SetSourceImageSize();
                     if (_app.ControlNetEnabled)
+                    {
+                        foreach (var unit in img2imgParams.ControlNet)
+                        {
+                            unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
+                        }
                         _app.Images = await _api.PostControlNetImg2Img(img2imgParams);
+                    }
                     else
                         _app.Images = await _api.PostImg2Img(img2imgParams);
                     _app.SerializeInfo();
@@ -95,7 +101,13 @@ namespace BlazorWebApp.Services
                     }
                     txt2imgParams.ControlNet = _app.ParametersTxt2Img.ControlNet;
                     if (_app.ControlNetEnabled)
+                    {
+                        foreach (var unit in txt2imgParams.ControlNet)
+                        {
+                            unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
+                        }
                         _app.Images = await _api.PostControlNetTxt2Img(txt2imgParams);
+                    }
                     else
                         _app.Images = await _api.PostTxt2Img(txt2imgParams);
                     _app.SerializeInfo();

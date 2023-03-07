@@ -1,0 +1,68 @@
+﻿@inject AppState AppState
+
+<MudDynamicTabs @ref="@_cnTabs" @bind-ActivePanelIndex="@_cnTabIndex"
+                AddTab="@AddTabCallback" CloseTab="@CloseTabCallback"
+                AddIconToolTip="Add new ControlNet unit" CloseIconToolTip="Close unit. All data will be lost"
+                PanelClass="px-4 py-6" Elevation="4" Rounded ApplyEffectsToContainer>
+    @foreach (var tab in _cnUnits)
+    {
+        <MudTabPanel ID="@tab.Id" Text="@tab.Label">
+            <ControlNetForm Parameters="@tab.Parameters" />
+        </MudTabPanel>
+    }
+</MudDynamicTabs>
+
+@code {
+    public class ControlNetUnit
+    {
+        public string Label { get; set; }
+        public ControlNetParameters Parameters { get; set; }
+        public Guid Id { get; set; }
+    }
+
+    [Parameter] public List<ControlNetParameters> Units { get; set; }
+    private MudDynamicTabs _cnTabs;
+    private List<ControlNetUnit> _cnUnits = new();
+    private int _cnTabIndex;
+    private int _unitCount;
+
+    protected async override Task OnInitializedAsync()
+    {
+        await InitializeControlNet();
+    }
+
+    private async Task InitializeControlNet()
+    {
+        _unitCount = 1;
+        _cnUnits.Clear();
+        _cnUnits.Add(new ControlNetUnit { Id = Guid.NewGuid(), Label = $"Unit {_unitCount}", Parameters = Units[0] });
+        _cnTabIndex = 0;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task AddTab(Guid id)
+    {
+        _unitCount++;
+        var parameters = AppState.CreateControlNet();
+        Units.Add(parameters);
+        _cnUnits.Add(new ControlNetUnit { Id = id, Label = $"Unit {_unitCount}", Parameters = parameters });
+        //_cnTabIndex = _cnUnits.Count - 1;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task RemoveTab(Guid id)
+    {
+        var unit = _cnUnits.SingleOrDefault((u) => Equals(u.Id, id));
+        if (unit != null)
+        {
+            _cnUnits.Remove(unit);
+            Units.Remove(unit.Parameters);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AddTabCallback() => await AddTab(Guid.NewGuid());
+    private async Task CloseTabCallback(MudTabPanel panel) => await RemoveTab((Guid)panel.ID);
+
+
+}

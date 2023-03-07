@@ -79,7 +79,7 @@
                 <MudSlider @bind-Value=Parameters.CfgScale Min=AppState.Settings.Shared.CfgScale.Min Max=AppState.Settings.Shared.CfgScale.Max Step=AppState.Settings.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=AppState.Settings.Shared.Denoising.Min Max=AppState.Settings.Shared.Denoising.Max Step=AppState.Settings.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
+                <MudSlider @bind-Value=Parameters.DenoisingStrength Min=AppState.Settings.Shared.Denoising.Min Max=AppState.Settings.Shared.Denoising.Max Step=AppState.Settings.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
             </MudItem>
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.Width Min=AppState.Settings.Shared.Resolution.Min Max=AppState.Settings.Shared.Resolution.Max Step=AppState.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
@@ -106,7 +106,11 @@
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" Class="d-flex align-items-center justify-content-center" MultiSelection Filter>
                     <MudChip Text="Restore Faces" Default="Parameters.RestoreFaces" Variant="Variant.Text" Color="Color.Primary">Restore Faces</MudChip>
                     <MudChip Text="Tiling" Default="Parameters.Tiling" Variant="Variant.Text" Color="Color.Primary">Tiling</MudChip>
+                    <MudChip Text="ControlNet" Default="AppState.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
                 </MudChipSet>
+            </MudItem>
+            <MudItem xs="12" Class="@($"collapse {(AppState.ControlNetEnabled ? "show" : "")}")">
+                <ControlNetTabs Units="Parameters.ControlNet" />
             </MudItem>
         </MudGrid>
     </EditForm>
@@ -172,6 +176,7 @@
     {
         Parameters.RestoreFaces = false;
         Parameters.Tiling = false;
+        AppState.ControlNetEnabled = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
         foreach (var check in checkboxes)
         {
@@ -182,6 +187,9 @@
                     break;
                 case "Tiling":
                     Parameters.Tiling = true;
+                    break;
+                case "ControlNet":
+                    AppState.ControlNetEnabled = true;
                     break;
             }
         }

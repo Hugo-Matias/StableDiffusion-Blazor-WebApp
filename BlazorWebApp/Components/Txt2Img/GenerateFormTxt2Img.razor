@@ -82,8 +82,8 @@
                     </MudItem>
                 </MudGrid>
             </MudItem>
-            <MudItem xs="12">
-                <ControlNetForm Parameters="Parameters.ControlNet[0]" />
+            <MudItem xs="12" Class="@($"collapse {(AppState.ControlNetEnabled ? "show" : "")}")">
+                <ControlNetTabs Units="Parameters.ControlNet" />
             </MudItem>
         </MudGrid>
     </EditForm>
