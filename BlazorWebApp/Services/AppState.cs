@@ -84,6 +84,7 @@ namespace BlazorWebApp.Services
         public string CanvasImageData { get; set; }
         public string CanvasMaskData { get; set; }
         public string UpscaleImageData { get; set; }
+        public bool ControlNetEnabled { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
         public bool IsGalleryFiltered { get; set; }
         public PromptButton ButtonTags { get; set; }
@@ -153,6 +154,7 @@ namespace BlazorWebApp.Services
                     HRWidth = Settings.Txt2Img.HighRes.Resolution.Width,
                     HRHeight = Settings.Txt2Img.HighRes.Resolution.Height,
                     HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.DefaultValue,
+                    ControlNet = new() { CreateControlNet() }
                 };
 
             if (modes.Contains(ModeType.Img2Img))
@@ -164,6 +166,7 @@ namespace BlazorWebApp.Services
                     InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.DefaultValue,
                     InpaintFullResPadding = Settings.Img2Img.Inpainting.FullRes.Padding.DefaultValue,
                     InpaintingMaskInvert = Settings.Img2Img.Inpainting.MaskInvert,
+                    ControlNet = new() { CreateControlNet() }
                 };
 
             if (modes.Contains(ModeType.Extras))
@@ -183,6 +186,22 @@ namespace BlazorWebApp.Services
                     UpscalerSecondaryVisibility = Settings.Upscale.UpscalerSecondary.DefaultValue,
                     UpscalePriority = Settings.Upscale.FaceRestoration.UpscaleBeforeRestoration
                 };
+        }
+
+        public ControlNetParameters CreateControlNet()
+        {
+            return new ControlNetParameters()
+            {
+                Preprocessor = Settings.ControlNet.Preprocessor,
+                Model = Settings.ControlNet.Model,
+                ResizeMode = Settings.ControlNet.ResizeMode,
+                Weight = Settings.ControlNet.Weight.Value,
+                Guidance = Settings.ControlNet.Guidance.Strenght,
+                GuidanceStart = Settings.ControlNet.Guidance.Start,
+                GuidanceEnd = Settings.ControlNet.Guidance.End,
+                IsLowVRam = Settings.ControlNet.IsLowVRam,
+                IsGuessMode = Settings.ControlNet.IsGuessMode,
+            };
         }
 
         public async Task GetSDModels()

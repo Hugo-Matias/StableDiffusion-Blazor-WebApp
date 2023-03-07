@@ -17,6 +17,8 @@ namespace BlazorWebApp.Extensions
                        .ToLowerInvariant();
         }
 
+        public static string RemoveBase64Header(this string data) => Regex.Replace(data, @"data.+?,", "", RegexOptions.Compiled);
+
         public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
         {
             if (styles != null && styles.Count() > 0)

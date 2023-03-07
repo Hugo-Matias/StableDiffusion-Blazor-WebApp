@@ -39,82 +39,90 @@ namespace BlazorWebApp.Services
 
             ImagesDto images = new();
 
-            try
+            //try
+            //{
+            // Using a temporary parameters model to parse selected dropdown Styles without writing them to the input fields
+            switch (mode)
             {
-                // Using a temporary parameters model to parse selected dropdown Styles without writing them to the input fields
+                case ModeType.Img2Img:
+                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
+                    var img2imgParams = new Img2ImgParameters(_parsingParams);
+                    img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
+                    img2imgParams.Mask = _app.ParametersImg2Img.Mask;
+                    img2imgParams.MaskBlur = _app.ParametersImg2Img.MaskBlur;
+                    img2imgParams.ResizeMode = _app.ParametersImg2Img.ResizeMode;
+                    img2imgParams.InpaintingFill = _app.ParametersImg2Img.InpaintingFill;
+                    img2imgParams.InpaintFullRes = _app.ParametersImg2Img.InpaintFullRes;
+                    img2imgParams.InpaintFullResPadding = _app.ParametersImg2Img.InpaintFullResPadding;
+                    img2imgParams.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
+                    img2imgParams.ControlNet = _app.ParametersImg2Img.ControlNet;
+                    SetSourceImageSize();
+                    if (_app.ControlNetEnabled)
+                        _app.Images = await _api.PostControlNetImg2Img(img2imgParams);
+                    else
+                        _app.Images = await _api.PostImg2Img(img2imgParams);
+                    _app.SerializeInfo();
+                    break;
+
+                case ModeType.Extras:
+                    _parsingParams = _app.ParametersUpscale;
+                    _app.GeneratedUpscaleImage = await _api.PostExtraSingle(_app.ParametersUpscale);
+                    if (_app.GeneratedUpscaleImage != null && !string.IsNullOrWhiteSpace(_app.GeneratedUpscaleImage.Image))
+                    {
+                        var upscaledResolution = _magick.GetImageSize(_app.GeneratedUpscaleImage.Image);
+                        _parsingParams.Width = upscaledResolution.Item1;
+                        _parsingParams.Height = upscaledResolution.Item2;
+                        var html = new HtmlDocument();
+                        html.LoadHtml(_app.GeneratedUpscaleImage.Info);
+                        _app.GeneratedUpscaleImage.Info = html.DocumentNode.InnerText;
+                    }
+                    break;
+
+                default:
+                    _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
+                    var txt2imgParams = new Txt2ImgParameters(_parsingParams);
+                    txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
+                    if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
+                    {
+                        txt2imgParams.FirstphaseWidth = _app.ParametersTxt2Img.Width;
+                        txt2imgParams.FirstphaseHeight = _app.ParametersTxt2Img.Height;
+                        txt2imgParams.HRUpscaler = _app.ParametersTxt2Img.HRUpscaler;
+                        txt2imgParams.HRScale = _app.ParametersTxt2Img.HRScale;
+                        txt2imgParams.HRWidth = _app.ParametersTxt2Img.HRWidth;
+                        txt2imgParams.HRHeight = _app.ParametersTxt2Img.HRHeight;
+                        txt2imgParams.HRSecondPassSteps = _app.ParametersTxt2Img.HRSecondPassSteps;
+                        txt2imgParams.DenoisingStrength = _app.ParametersTxt2Img.DenoisingStrength;
+                    }
+                    txt2imgParams.ControlNet = _app.ParametersTxt2Img.ControlNet;
+                    if (_app.ControlNetEnabled)
+                        _app.Images = await _api.PostControlNetTxt2Img(txt2imgParams);
+                    else
+                        _app.Images = await _api.PostTxt2Img(txt2imgParams);
+                    _app.SerializeInfo();
+                    break;
+            }
+
+
+            if ((bool)_app.Options.SamplesSave)
+            {
                 switch (mode)
                 {
                     case ModeType.Img2Img:
-                        _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
-                        var img2imgParams = new Img2ImgParameters(_parsingParams);
-                        img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
-                        img2imgParams.Mask = _app.ParametersImg2Img.Mask;
-                        img2imgParams.MaskBlur = _app.ParametersImg2Img.MaskBlur;
-                        img2imgParams.ResizeMode = _app.ParametersImg2Img.ResizeMode;
-                        img2imgParams.InpaintingFill = _app.ParametersImg2Img.InpaintingFill;
-                        img2imgParams.InpaintFullRes = _app.ParametersImg2Img.InpaintFullRes;
-                        img2imgParams.InpaintFullResPadding = _app.ParametersImg2Img.InpaintFullResPadding;
-                        img2imgParams.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
-                        SetSourceImageSize();
-                        _app.Images = await _api.PostImg2Img(img2imgParams);
-                        _app.SerializeInfo();
+                        images = await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid);
                         break;
-
                     case ModeType.Extras:
-                        _parsingParams = _app.ParametersUpscale;
-                        _app.GeneratedUpscaleImage = await _api.PostExtraSingle(_app.ParametersUpscale);
-                        if (_app.GeneratedUpscaleImage != null && !string.IsNullOrWhiteSpace(_app.GeneratedUpscaleImage.Image))
-                        {
-                            var upscaledResolution = _magick.GetImageSize(_app.GeneratedUpscaleImage.Image);
-                            _parsingParams.Width = upscaledResolution.Item1;
-                            _parsingParams.Height = upscaledResolution.Item2;
-                            var html = new HtmlDocument();
-                            html.LoadHtml(_app.GeneratedUpscaleImage.Info);
-                            _app.GeneratedUpscaleImage.Info = html.DocumentNode.InnerText;
-                        }
+                        images = await SaveUpscaleImage();
                         break;
-
                     default:
-                        _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
-                        var txt2imgParams = new Txt2ImgParameters(_parsingParams);
-                        txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
-                        if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
-                        {
-                            txt2imgParams.FirstphaseWidth = _app.ParametersTxt2Img.Width;
-                            txt2imgParams.FirstphaseHeight = _app.ParametersTxt2Img.Height;
-                            txt2imgParams.HRUpscaler = _app.ParametersTxt2Img.HRUpscaler;
-                            txt2imgParams.HRScale = _app.ParametersTxt2Img.HRScale;
-                            txt2imgParams.HRWidth = _app.ParametersTxt2Img.HRWidth;
-                            txt2imgParams.HRHeight = _app.ParametersTxt2Img.HRHeight;
-                            txt2imgParams.HRSecondPassSteps = _app.ParametersTxt2Img.HRSecondPassSteps;
-                            txt2imgParams.DenoisingStrength = _app.ParametersTxt2Img.DenoisingStrength;
-                        }
-                        _app.Images = await _api.PostTxt2Img(txt2imgParams);
-                        _app.SerializeInfo();
+                        images = await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
                         break;
                 }
-
-
-                if ((bool)_app.Options.SamplesSave)
-                {
-                    switch (mode)
-                    {
-                        case ModeType.Img2Img:
-                            images = await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid);
-                            break;
-                        case ModeType.Extras:
-                            images = await SaveUpscaleImage();
-                            break;
-                        default:
-                            images = await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
-                            break;
-                    }
-                }
             }
-            catch (Exception e)
-            {
-                await Console.Out.WriteLineAsync(e.ToString());
-            }
+            //}
+            //catch (Exception e)
+            //{
+            //    await Console.Out.WriteLineAsync(e.ToString());
+            //}
 
             StopProgressChecker();
             _app.IsConverging = false;
@@ -134,10 +142,22 @@ namespace BlazorWebApp.Services
             for (int i = 0; i < _app.Images.Images.Count; i++)
             {
                 fileIndex++;
+                var extension = _app.Options.SamplesFormat.ToLowerInvariant();
 
-                string fullpath = GetImagePath(saveDir.FullName, fileIndex);
-                string extension = _app.Options.SamplesFormat.ToLowerInvariant();
-                string imagePath = $"{fullpath}.{extension}";
+                // Annotator result is an extra image generated by SD when in ControlNet mode,
+                // It doesn't return an info string, creating a mismatch between Images and Info list sizes.
+                // TODO: Add the CN annotator result to the database as well.
+                if (i >= _app.ImagesInfo.InfoTexts.Length)
+                {
+                    var cnImageFile = $"{fileIndex.ToString().PadLeft(5, '0')}-ControlNet Annotator Result.{extension}";
+                    var cnImagePath = Path.Combine(saveDir.FullName, cnImageFile);
+                    await _io.SaveFileToDisk(cnImagePath, Convert.FromBase64String(_app.Images.Images[i]));
+                    //savedImages.Images.Add();
+                    break;
+                }
+
+                var fullpath = GetImagePath(saveDir.FullName, fileIndex);
+                var imagePath = $"{fullpath}.{extension}";
 
                 await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_app.Images.Images[i]));
 

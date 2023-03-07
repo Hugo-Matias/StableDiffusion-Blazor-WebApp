@@ -12,6 +12,7 @@ namespace BlazorWebApp.Models
         public SharedSettingsModel Shared { get; set; } = new();
         public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
         public Img2ImgSettingsModel Img2Img { get; set; } = new();
+        public ControlNetSettingsModel ControlNet { get; set; } = new();
         public UpscaleSettingsModel Upscale { get; set; } = new();
         public ResourcesSettingsModel Resources { get; set; } = new();
     }
@@ -202,6 +203,88 @@ namespace BlazorWebApp.Models
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 40;
         public int Step { get; set; } = 1;
+    }
+    #endregion
+
+
+    #region ControlNet
+    public class ControlNetSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public ControlNetPreprocessor Preprocessor { get; set; } = ControlNetPreprocessor.none;
+        public string Model { get; set; } = "None";
+        public bool IsLowVRam { get; set; } = false;
+        public bool IsGuessMode { get; set; } = true;
+        public string ResizeMode { get; set; } = "Scale to Fit (Inner Fit)";
+        public ControlNetWeightSettingsModel Weight { get; set; } = new();
+        public ControlNetGuidanceSettingsModel Guidance { get; set; } = new();
+        public Dictionary<ControlNetPreprocessor, ControlNetProcessorSettingsModel?> PreprocessorSettings { get; set; } = new()
+        {
+            { ControlNetPreprocessor.none, null },
+            { ControlNetPreprocessor.canny, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label= "Low Threshold", Value = 100f, Min = 1f, Max = 255f, Step = 1 }, B = new() { Label = "High Threshold", Value = 200f, Min = 1f, Max = 255f, Step = 1f } } } },
+            { ControlNetPreprocessor.depth, new() { Resolution = new() { Label = "Midas Resolution", Value = 384 } } },
+            { ControlNetPreprocessor.depth_leres, new() { Resolution = new() { Label = "LeReS Resolution" }, Threshold = new() { A = new() { Label= "Remove Near %", Value = 0f, Min = 0f, Max = 100f, Step = 0.1f }, B = new() { Label = "Remove Background %", Value = 0f, Min = 0f, Max = 100f, Step = 0.1f } } } },
+            { ControlNetPreprocessor.hed, new() { Resolution = new() { Label = "HED Resolution" } } },
+            { ControlNetPreprocessor.mlsd, new() { Resolution = new() { Label = "Hough Resolution" }, Threshold = new() { A = new() { Label= "Hough Value", Value = 0.1f, Min = 0.01f, Max = 2f, Step = 0.01f }, B = new() { Label = "Hough Distance", Value = 0.1f, Min = 0.01f, Max = 20f, Step = 0.01f } } } },
+            { ControlNetPreprocessor.normal_map, new() { Resolution = new() { Label = "Normal Resolution" }, Threshold = new() { A = new() { Label= "Normal Background Threshold", Value = 0.4f, Min = 0f, Max = 1f, Step = 0.01f } } } },
+            { ControlNetPreprocessor.openpose, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.openpose_hand, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.clip_vision, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.color, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.pidinet, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.scribble, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.fake_scrible, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.segmentation, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.binary, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label = "Binary Threshold", Value = 0f, Min = 0f, Max = 255f, Step = 1f } } } },
+        };
+    }
+
+    public class ControlNetWeightSettingsModel
+    {
+        public float Value { get; set; } = 1f;
+        public float Min { get; set; } = 0f;
+        public float Max { get; set; } = 2f;
+        public float Step { get; set; } = 0.05f;
+    }
+
+    public class ControlNetGuidanceSettingsModel
+    {
+        public float Strenght { get; set; } = 1f;
+        public float Start { get; set; } = 0f;
+        public float End { get; set; } = 1f;
+        public float Min { get; set; } = 0f;
+        public float Max { get; set; } = 1f;
+        public float Step { get; set; } = 0.01f;
+    }
+
+    public class ControlNetProcessorSettingsModel
+    {
+        public ControlNetProcessorResolutionSettingsModel Resolution { get; set; } = new();
+        public ControlNetProcessorThresholdSettingsModel? Threshold { get; set; }
+    }
+
+    public class ControlNetProcessorResolutionSettingsModel
+    {
+        public string Label { get; set; } = string.Empty;
+        public int Value { get; set; } = 512;
+        public int Min { get; set; } = 64;
+        public int Max { get; set; } = 2048;
+        public int Step { get; set; } = 8;
+    }
+
+    public class ControlNetProcessorThresholdSettingsModel
+    {
+        public ControlNetThresholdSettingsModel A { get; set; } = new();
+        public ControlNetThresholdSettingsModel? B { get; set; }
+    }
+
+    public class ControlNetThresholdSettingsModel
+    {
+        public string Label { get; set; }
+        public float Value { get; set; }
+        public float Min { get; set; }
+        public float Max { get; set; }
+        public float Step { get; set; }
     }
     #endregion
 

@@ -8,7 +8,14 @@
         {
             <ImageCarousel Images="AppState.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls />
             <br />
-            <span class="generation-info-text"><small>@AppState.ImagesInfo.InfoTexts[0]</small></span>
+            @if (AppState.ImagesInfo != null)
+            {
+                <span class="generation-info-text"><small>@AppState.ImagesInfo.InfoTexts[0]</small></span>
+            }
+            else if (AppState.GeneratedUpscaleImage.Info != null)
+            {
+                <span class="generation-info-text"><small>@AppState.GeneratedUpscaleImage.Info</small></span>
+            }
         }
     </MudTabPanel>
     <MudTabPanel Text="Generated">
@@ -22,8 +29,8 @@
         {
             var value = AppState.Progress.Value * 100;
             <MudProgressLinear Style="height: 1.3rem !important;" Color="Color.Secondary" Value="@value" Min=0 Max=100 Class="mb-5" Rounded>
-                <MudText Typo="Typo.caption" Class="py-2">
-                    <strong>@((int)value)%</strong>
+            <MudText Typo="Typo.caption" Class="py-2">
+                <strong>@((int)value)%</strong>
                     @if (!string.IsNullOrWhiteSpace(AppState.Progress.State.Job))
                     {
                         <small> | @AppState.Progress.State.Job</small>
@@ -38,7 +45,7 @@
     </MudTabPanel>
 </MudTabs>
 
-@code{
+@code {
     protected override void OnInitialized()
     {
         ImageService.OnChange += Refresh;

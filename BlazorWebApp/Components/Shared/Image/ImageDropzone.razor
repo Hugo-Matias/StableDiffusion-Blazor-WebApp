@@ -1,0 +1,69 @@
+﻿@inject AppState AppState
+@inject MagickService Magick
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div id="dropzone-container" class="@Class">
+    <img id="dropzone-image" src="@_imageSrc" />
+    <div class="dropzone" @ref="_dropzone">
+        <h1>Drop an image here.</h1>
+        <InputFile OnChange="@OnDropFile" @ref="_inputFile" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnImageChanged { get; set; }
+    [Parameter] public string ImageData { get; set; }
+    [Parameter] public string Class { get; set; }
+
+    private string _imageSrc;
+    private ElementReference _dropzone;
+    private InputFile _inputFile;
+    private int _maxFileSizeMB = 30;
+
+    private IJSObjectReference _dropzoneModule;
+    private IJSObjectReference _dropzoneInstance;
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dropzoneModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Dropzone.js");
+            _dropzoneInstance = await _dropzoneModule.InvokeAsync<IJSObjectReference>("init", _dropzone, _inputFile.Element);
+            if (!string.IsNullOrWhiteSpace(ImageData)) await LoadImage(ImageData);
+            else
+            {
+                _imageSrc = "./no_image.png";
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private async Task OnDropFile(InputFileChangeEventArgs e)
+    {
+        var maxSize = _maxFileSizeMB * 1024 * 1024;
+        using var stream = e.File.OpenReadStream(maxSize);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var imageString = Convert.ToBase64String(ms.ToArray());
+        //var imageString = Magick.ResizeImage(ms.ToArray());
+        var data = $"data:{e.File.ContentType};base64,{imageString}";
+        await LoadImage(data);
+    }
+    private async Task LoadImage(string data)
+    {
+        _imageSrc = data;
+        await OnImageChanged.InvokeAsync(data);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dropzoneInstance != null)
+        {
+            await _dropzoneInstance.InvokeVoidAsync("dispose");
+            await _dropzoneInstance.DisposeAsync();
+        }
+        if (_dropzoneModule != null) await _dropzoneModule.DisposeAsync();
+    }
+}

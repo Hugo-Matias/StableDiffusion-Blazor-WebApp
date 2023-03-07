@@ -46,6 +46,7 @@
                     <MudChip Text="Restore Faces" Default="Parameters.RestoreFaces" Variant="Variant.Text" Color="Color.Primary">Restore Faces</MudChip>
                     <MudChip Text="Tiling" Default="Parameters.Tiling" Variant="Variant.Text" Color="Color.Primary">Tiling</MudChip>
                     <MudChip Text="Highres Fix" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Highres Fix</MudChip>
+                    <MudChip Text="ControlNet" Default="AppState.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
                 </MudChipSet>
             </MudItem>
             <MudItem xs="12">
@@ -69,9 +70,9 @@
                         </MudItem>
                         <MudItem xs="4">
                             <MudSlider @bind-Value=Parameters.DenoisingStrength Min=AppState.Settings.Shared.Denoising.Min Max=AppState.Settings.Shared.Denoising.Max Step=AppState.Settings.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
-                        </MudItem>
-                        <MudItem xs="4">
-                            <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=AppState.Settings.Txt2Img.HighRes.Scale.Min Max=AppState.Settings.Txt2Img.HighRes.Scale.Max Step=AppState.Settings.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=AppState.Settings.Txt2Img.HighRes.Scale.Min Max=AppState.Settings.Txt2Img.HighRes.Scale.Max Step=AppState.Settings.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
                         <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=AppState.Settings.Txt2Img.HighRes.Resolution.Min Max=AppState.Settings.Txt2Img.HighRes.Resolution.Max Step=AppState.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
@@ -80,6 +81,9 @@
                         <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=AppState.Settings.Txt2Img.HighRes.Resolution.Min Max=AppState.Settings.Txt2Img.HighRes.Resolution.Max Step=AppState.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
                     </MudItem>
                 </MudGrid>
+            </MudItem>
+            <MudItem xs="12">
+                <ControlNetForm Parameters="Parameters.ControlNet[0]" />
             </MudItem>
         </MudGrid>
     </EditForm>
@@ -112,6 +116,7 @@
         Parameters.RestoreFaces = false;
         Parameters.Tiling = false;
         Parameters.EnableHR = false;
+        AppState.ControlNetEnabled = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
         foreach (var check in checkboxes)
@@ -126,6 +131,9 @@
                     break;
                 case "Highres Fix":
                     Parameters.EnableHR = true;
+                    break;
+                case "ControlNet":
+                    AppState.ControlNetEnabled = true;
                     break;
             }
         }

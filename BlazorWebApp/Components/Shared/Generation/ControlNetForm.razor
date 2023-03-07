@@ -1,0 +1,115 @@
+﻿@inject AppState AppState
+@inject SDAPIService API
+
+<MudGrid Class="@($"collapse {(AppState.ControlNetEnabled ? "show" : "")}")">
+    <MudItem xs=6>
+        <MudSelect T="ControlNetPreprocessor" Value=Parameters.Preprocessor ValueChanged=@(async (v) => await HandlePreprocessorChanged(v)) Label="Preprocessor" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft" Dense>
+            @foreach (ControlNetPreprocessor processor in Enum.GetValues(typeof(ControlNetPreprocessor)))
+            {
+                <MudSelectItem Value="processor">@processor.ToString()</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs=6>
+        <MudSelect @bind-Value=Parameters.Model Label="Model" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft" Dense>
+            <MudSelectItem Value=@("none")>None</MudSelectItem>
+            @if (_models.Count > 0)
+            {
+                @foreach (var model in _models)
+                {
+                    <MudSelectItem Value="@model">@model</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs=12>
+        <MudSlider @bind-Value=Parameters.Weight Min=AppState.Settings.ControlNet.Weight.Min Max=AppState.Settings.ControlNet.Weight.Max Step=AppState.Settings.ControlNet.Weight.Step ValueLabel><small>Weight:</small> @Parameters.Weight</MudSlider>
+    </MudItem>
+    <MudItem xs=12>
+        <MudText Typo="Typo.caption">Guidance</MudText>
+        <MudStack Row>
+            <MudSlider @bind-Value=Parameters.Guidance Min=AppState.Settings.ControlNet.Guidance.Min Max=AppState.Settings.ControlNet.Guidance.Max Step=AppState.Settings.ControlNet.Guidance.Step ValueLabel><small>Strength:</small> @Parameters.Guidance</MudSlider>
+            <MudSlider @bind-Value=Parameters.GuidanceStart Min=AppState.Settings.ControlNet.Guidance.Min Max=AppState.Settings.ControlNet.Guidance.Max Step=AppState.Settings.ControlNet.Guidance.Step ValueLabel><small>Start:</small> @Parameters.GuidanceStart</MudSlider>
+            <MudSlider @bind-Value=Parameters.GuidanceEnd Min=AppState.Settings.ControlNet.Guidance.Min Max=AppState.Settings.ControlNet.Guidance.Max Step=AppState.Settings.ControlNet.Guidance.Step ValueLabel><small>End:</small> @Parameters.GuidanceEnd</MudSlider>
+        </MudStack>
+    </MudItem>
+    @if (Parameters.Preprocessor != ControlNetPreprocessor.none && AppState.Settings.ControlNet.PreprocessorSettings[Parameters.Preprocessor] != null)
+    {
+        <MudItem xs=12>
+            <MudStack>
+                @if (_processor.Resolution != null)
+                {
+                    <MudSlider @bind-Value=Parameters.ProcessorResolution T="int?" Min=_processor.Resolution.Min Max=_processor.Resolution.Max Step=_processor.Resolution.Step ValueLabel>
+                    <small>@_processor.Resolution.Label:</small> @Parameters.ProcessorResolution
+                </MudSlider>
+                }
+                @if (_processor.Threshold != null)
+                {
+                    @if (_processor.Threshold.A != null)
+                    {
+                        <MudSlider @bind-Value=Parameters.ThresholdA T="float?" Min=_processor.Threshold.A.Min Max=_processor.Threshold.A.Max Step=_processor.Threshold.A.Step ValueLabel>
+                        <small>@_processor.Threshold.A.Label:</small> @Parameters.ThresholdA
+                    </MudSlider>
+                    }
+                    @if (_processor.Threshold.B != null)
+                    {
+                        <MudSlider @bind-Value=Parameters.ThresholdB T="float?" Min=_processor.Threshold.B.Min Max=_processor.Threshold.B.Max Step=_processor.Threshold.B.Step ValueLabel>
+                        <small>@_processor.Threshold.B.Label:</small> @Parameters.ThresholdB
+                    </MudSlider>
+                    }
+                }
+            </MudStack>
+        </MudItem>
+    }
+    <MudItem xs=6>
+        <MudSelect @bind-Value=Parameters.ResizeMode Label="Resize Mode" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
+            @foreach (var mode in _resizeModes)
+            {
+                <MudSelectItem Value="@mode">@mode</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs=6>
+        <MudStack Row>
+            <MudCheckBox @bind-Checked=Parameters.IsLowVRam Label="Low VRAM" />
+            <MudCheckBox @bind-Checked=Parameters.IsGuessMode Label="Guess Mode" />
+        </MudStack>
+    </MudItem>
+    <MudItem xs="12">
+        <MudText Typo="Typo.caption">Input Image</MudText>
+        <ImageDropzone Class="mt-2" ImageData=@Parameters.InputImage OnImageChanged="HandleInputImageChanged" />
+    </MudItem>
+</MudGrid>
+
+    @code {
+    [Parameter] public ControlNetParameters Parameters { get; set; }
+
+    private List<string> _models = new();
+    private List<string> _resizeModes = new() { "Just Resize", "Scale to Fit (Inner Fit)", "Envelope (Outer Fit)" };
+    private ControlNetProcessorSettingsModel _processor;
+
+    protected async override Task OnInitializedAsync()
+    {
+        _models = await API.GetControlNetModels();
+        _processor = AppState.Settings.ControlNet.PreprocessorSettings[Parameters.Preprocessor]!;
+    }
+
+    private async Task HandlePreprocessorChanged(ControlNetPreprocessor value)
+    {
+        Parameters.Preprocessor = value;
+        _processor = AppState.Settings.ControlNet.PreprocessorSettings[value]!;
+        if (_processor.Resolution != null) Parameters.ProcessorResolution = _processor.Resolution.Value;
+        if (_processor.Threshold != null)
+        {
+            if (_processor.Threshold.A != null) Parameters.ThresholdA = _processor.Threshold.A.Value;
+            if (_processor.Threshold.B != null) Parameters.ThresholdB = _processor.Threshold.B.Value;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleInputImageChanged(string data)
+    {
+        Parameters.InputImage = Parser.RemoveBase64Header(data);
+        await InvokeAsync(StateHasChanged);
+    }
+}

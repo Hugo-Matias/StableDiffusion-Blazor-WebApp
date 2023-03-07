@@ -17,9 +17,9 @@
             else
             {
                 <MudStack Row>
-                    <MudNumericField @bind-Value=Parameters.UpscalingWidth Label="Width" Min="0" T="int" />
-                    <MudNumericField @bind-Value=Parameters.UpscalingHeight Label="Height" Min="0" T="int" />
-                </MudStack>
+                <MudNumericField @bind-Value=Parameters.UpscalingWidth Label="Width" Min="0" T="int" />
+                <MudNumericField @bind-Value=Parameters.UpscalingHeight Label="Height" Min="0" T="int" />
+            </MudStack>
             }
         </MudItem>
         <MudItem xs="2">
@@ -68,7 +68,7 @@
 
 <MudGrid>
     <MudItem xs="6" Class="d-flex flex-column align-items-center">
-        <UpscaleDropzone OnImageChanged="StateHasChanged" />
+        <ImageDropzone ImageData=@AppState.UpscaleImageData OnImageChanged="@(Refresh)" />
     </MudItem>
     <MudItem xs="6">
         <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-cente" Rounded Centered>
@@ -100,6 +100,12 @@
     }
 
     private string ParseResizeMode(int value) => value == 0 ? "Multiplier" : "Resolution";
+
+    private async Task Refresh(string data)
+    {
+        AppState.UpscaleImageData = data;
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task Generate()
     {
