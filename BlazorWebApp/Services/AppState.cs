@@ -50,6 +50,7 @@ namespace BlazorWebApp.Services
         public UpscaleParameters ParametersUpscale { get; set; }
         public IEnumerable<PromptStyle> CurrentStyles { get; set; }
         public string CurrentSDModel { get; set; } = "Loading...";
+        public string CurrentVae { get; set; }
         public long? CurrentSeed { get; set; }
         public int CurrentFolderId { get; set; }
         public string CurrentFolderName { get; set; }
@@ -221,10 +222,15 @@ namespace BlazorWebApp.Services
             OnSDModelsChange?.Invoke();
         }
 
+        public async Task SetVae(string vae)
+        {
+            CurrentVae = vae;
+            await _api.PostOptions(new() { SDVae = vae });
+        }
+
         public async Task GetOptions()
         {
             Options = await _api.GetOptions();
-
             OnOptionsChange?.Invoke();
         }
 
@@ -396,7 +402,12 @@ namespace BlazorWebApp.Services
 
         private string GetModelName(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Model_name;
 
-        public async Task<string> PostOptions(Options options) => await _api.PostOptions(options);
+        public async Task<string> PostOptions(Options options)
+        {
+            var response = await _api.PostOptions(options);
+            await GetOptions();
+            return response;
+        }
 
         public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
 

@@ -35,7 +35,14 @@ namespace BlazorWebApp.Services
 
         public async Task<Progress> GetProgress() => await _httpClient.GetFromJsonAsync<Progress>(_sdapiRoute + "progress");
 
-        public async Task<Options> GetOptions() => await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
+        //public async Task<Options> GetOptions() => await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
+        public async Task<Options> GetOptions()
+        {
+            using var response = await _httpClient.GetAsync(_sdapiRoute + "options");
+            var content = await response.Content.ReadAsStringAsync();
+            var json = JsonNode.Parse(content);
+            return await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
+        }
 
         public async Task<CmdFlags> GetCmdFlags() => await _httpClient.GetFromJsonAsync<CmdFlags>(_sdapiRoute + "cmd-flags");
 

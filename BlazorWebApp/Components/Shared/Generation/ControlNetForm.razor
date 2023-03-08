@@ -88,10 +88,15 @@
     private List<string> _resizeModes = new() { "Just Resize", "Scale to Fit (Inner Fit)", "Envelope (Outer Fit)" };
     private ControlNetProcessorSettingsModel _processor;
 
+    protected override void OnParametersSet()
+    {
+        _processor = AppState.Settings.ControlNet.PreprocessorSettings[Parameters.Preprocessor]!;
+        if (!string.IsNullOrWhiteSpace(Parameters.InputImage) && !Parameters.InputImage.StartsWith("data:")) Parameters.InputImage = $"data:image/png;base64,{Parameters.InputImage}";
+    }
+
     protected async override Task OnInitializedAsync()
     {
         _models = await API.GetControlNetModels();
-        _processor = AppState.Settings.ControlNet.PreprocessorSettings[Parameters.Preprocessor]!;
     }
 
     private async Task HandlePreprocessorChanged(ControlNetPreprocessor value)

@@ -14,7 +14,7 @@
                 </MudItem>
                 <MudItem xs="3">
                     <MudStack Class="h-100 w-100">
-                        <MudSelect Label="Styles" Text="@_currentStyles" SelectedValuesChanged=@((e) => HandleStylesChanged(e)) T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MultiSelection>
+                        <MudSelect Label="Styles" Text="@_currentStyles" SelectedValuesChanged=@((e) => HandleStylesChanged(e)) T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" MultiSelection>
                             @if (AppState.Styles != null)
                             {
                                 @foreach (var style in AppState.Styles)

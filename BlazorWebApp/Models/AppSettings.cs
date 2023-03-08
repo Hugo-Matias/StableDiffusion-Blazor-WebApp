@@ -15,6 +15,7 @@ namespace BlazorWebApp.Models
         public ControlNetSettingsModel ControlNet { get; set; } = new();
         public UpscaleSettingsModel Upscale { get; set; } = new();
         public ResourcesSettingsModel Resources { get; set; } = new();
+        public WebuiSettingsModel Webui { get; set; } = new();
     }
 
     #region Gallery
@@ -206,7 +207,6 @@ namespace BlazorWebApp.Models
     }
     #endregion
 
-
     #region ControlNet
     public class ControlNetSettingsModel
     {
@@ -379,5 +379,20 @@ namespace BlazorWebApp.Models
         public int Step { get; set; } = 8;
     }
 
+    #endregion
+
+    #region WebUI
+    public class WebuiSettingsModel
+    {
+        public ClipSkipSettingsModel ClipSkip { get; set; } = new();
+    }
+
+    public class ClipSkipSettingsModel
+    {
+        public int Value { get; set; } = 1;
+        public int Min { get; set; } = 1;
+        public int Max { get; set; } = 12;
+        public int Step { get; set; } = 1;
+    }
     #endregion
 }

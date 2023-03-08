@@ -7,6 +7,6 @@
         public FileInfo? TriggerWordsFile { get; set; }
     }
 
-    public enum ResourceType { Checkpoint, Embedding, Hypernetwork, Lora }
+    public enum ResourceType { Checkpoint, Embedding, Hypernetwork, Lora, Vae }
     public enum ResourceSubType { None, Style, Character, Person, Pose, Clothing, Anatomy, Expression, Landscape, Location, Animal, Object, Car, Design, Photography, Anime, Painting, NSFW }
 }

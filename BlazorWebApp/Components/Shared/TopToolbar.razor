@@ -1,6 +1,7 @@
 ﻿@inject AppState AppState
 @inject SDAPIService SD
 @inject DatabaseService DB
+@inject IOService IO
 @implements IDisposable
 
 <div class="mt-6">
@@ -22,31 +23,53 @@
                 }
             </MudSelect>
         </MudItem>
-        <MudItem xs="12">
-            @if (AppState.CurrentSDModel == "Loading...")
-            {
-                <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
-                    <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading Model...</MudText>
-                    <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate Rounded />
-                </MudStack>
-            }
-            else
-            {
-                <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600">
-                    @if (AppState.SDModels != null)
-                    {
-                        @foreach (var model in AppState.SDModels)
+        @if (AppState.Options != null)
+        {
+            <MudItem xs="12">
+                <MudGrid>
+                    <MudItem xs="4">
+                        @if (AppState.CurrentSDModel == "Loading...")
                         {
-                            <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                            <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
+                                <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading Model...</MudText>
+                                <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate Rounded />
+                            </MudStack>
                         }
-                    }
-                </MudSelect>
-            }
+                        else
+                        {
+                            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="600">
+                                @if (AppState.SDModels != null)
+                                {
+                                    @foreach (var model in AppState.SDModels)
+                                    {
+                                        <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        }
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSelect Value="AppState.CurrentVae" T="string" ValueChanged="HandleVaeSelected" Label="VAE" AdornmentIcon="fa-solid fa-wand-sparkles" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
+                            <MudSelectItem Value=@("None")>None</MudSelectItem>
+                            <MudSelectItem Value=@("Automatic")>Automatic</MudSelectItem>
+                            @foreach (var file in IO.GetFilesRecursive(_vaeDir))
+                            {
+                                <MudSelectItem Value="@file.Name">@file.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider Value="_clipSkip" T="int" ValueChanged=@((v) => HandleClipSkipChanged(v)) Min="AppState.Settings.Webui.ClipSkip.Min" Max="AppState.Settings.Webui.ClipSkip.Max" Step="AppState.Settings.Webui.ClipSkip.Step" TickMarks ValueLabel><small>Clip Skip:</small> @AppState.Options.ClipSkip</MudSlider>
+                </MudItem>
+            </MudGrid>
         </MudItem>
+        }
     </MudGrid>
 </div>
 
 @code {
+    private string _vaeDir;
+    private int _clipSkip;
     protected async override Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -64,8 +87,10 @@
         AppState.OnStateHasChanged += Refresh;
         AppState.OnSDModelsChange += Refresh;
 
-        await AppState.GetFolders();
+        _vaeDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.VaeDir) ? Path.Join(AppState.CmdFlags.BaseDir, @"models/VAE") : AppState.CmdFlags.VaeDir;
+        _clipSkip = (int)AppState.Options.ClipSkip;
 
+        await AppState.GetFolders();
         await AppState.GetProjects();
         if (AppState.Projects != null && AppState.Projects.Count > 0)
         {
@@ -83,14 +108,11 @@
         {
             AppState.CurrentProjectName = "Create New Project...";
         }
-
         AppState.CurrentSDModel = AppState.Options.SDModelCheckpoint;
+        AppState.CurrentVae = AppState.Options.SDVae;
     }
 
-    private async Task HandleModelSelected(string selected)
-    {
-        await AppState.SetSDModel(selected);
-    }
+    private async Task HandleModelSelected(string selected) => await AppState.SetSDModel(selected);
 
     private async Task RefreshModels()
     {
@@ -114,6 +136,14 @@
         if (string.IsNullOrWhiteSpace(selected)) await AppState.SetCurrentFolder(0);
         else await AppState.SetCurrentFolder(DB.GetFolder(selected).Result.Id);
         Refresh();
+    }
+
+    private async Task HandleVaeSelected(string selected) => await AppState.SetVae(selected);
+
+    private async Task HandleClipSkipChanged(int value)
+    {
+        _clipSkip = value;
+        await AppState.PostOptions(new() { ClipSkip = (float)_clipSkip });
     }
 
     public void Dispose()

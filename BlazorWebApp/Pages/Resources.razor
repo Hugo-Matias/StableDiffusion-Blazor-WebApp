@@ -21,11 +21,14 @@
     <MudTabPanel Text="LoRA">
         <ResourceAccordion Resources="_loras" OnLoad="LoadResource" />
     </MudTabPanel>
+    <MudTabPanel Text="VAE">
+        <ResourceAccordion Resources="_vaes" OnLoad="LoadResource" />
+    </MudTabPanel>
 </MudTabs>
 
 @code {
-    private string _baseDir, _checkpointDir, _embeddingDir, _hypernetDir, _loraDir;
-    private IEnumerable<IGrouping<string?, LocalResource>> _checkpoints, _embeddings, _hypernets, _loras;
+    private string _baseDir, _checkpointDir, _embeddingDir, _hypernetDir, _loraDir, _vaeDir;
+    private IEnumerable<IGrouping<string?, LocalResource>> _checkpoints, _embeddings, _hypernets, _loras, _vaes;
     private List<string> _resourceFormats = new() { ".safetensors", ".ckpt", ".pt" };
 
     protected async override Task OnInitializedAsync()
@@ -37,17 +40,26 @@
         _embeddingDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.EmbeddingDir) ? Path.Join(_baseDir, "embeddings") : AppState.CmdFlags.EmbeddingDir;
         _hypernetDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.HypernetworkDir) ? Path.Join(_baseDir, @"models/hypernetworks") : AppState.CmdFlags.HypernetworkDir;
         _loraDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.LoraDir) ? Path.Join(_baseDir, @"models/Lora") : AppState.CmdFlags.LoraDir;
+        _vaeDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.VaeDir) ? Path.Join(_baseDir, @"models/VAE") : AppState.CmdFlags.VaeDir;
 
         _checkpoints = CreateResourceEntities(_checkpointDir, ResourceType.Checkpoint);
         _embeddings = CreateResourceEntities(_embeddingDir, ResourceType.Embedding);
         _hypernets = CreateResourceEntities(_hypernetDir, ResourceType.Hypernetwork);
         _loras = CreateResourceEntities(_loraDir, ResourceType.Lora);
+        _vaes = CreateResourceEntities(_vaeDir, ResourceType.Vae);
     }
 
     private IEnumerable<IGrouping<string?, LocalResource>> CreateResourceEntities(string path, ResourceType resourceType)
     {
         List<LocalResource> resources = new();
         var files = IO.GetFilesRecursive(path);
+        if (resourceType == ResourceType.Vae)
+        {
+            resources.AddRange(new List<LocalResource> {
+                new() { Title = "None", Type = resourceType },
+                new() { Title = "Automatic", Type = resourceType }
+            });
+        }
         foreach (var file in files)
         {
             if (_resourceFormats.Contains(file.Extension))
@@ -62,16 +74,18 @@
                 resources.Add(resource);
             }
         }
-        return resources.GroupBy(r => r.File.Directory.Name);
+        return resources.GroupBy(r => r.File != null ? r.File.Directory.Name : "");
     }
 
     private async Task LoadResource(LocalResource resource)
     {
-        var filename = resource.File.Name.Replace(resource.File.Extension, "");
+        if (resource.Type == ResourceType.Vae) { await AppState.PostOptions(new() { SDVae = resource.Title }); return; }
 
+        var filename = resource.File.Name.Replace(resource.File.Extension, "");
         if (resource.Type == ResourceType.Checkpoint)
         {
-            var model = AppState.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename));
+            await AppState.GetSDModels();
+            var model = AppState.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, StringComparison.InvariantCultureIgnoreCase));
             await AppState.SetSDModel(model.Title);
         }
         else
