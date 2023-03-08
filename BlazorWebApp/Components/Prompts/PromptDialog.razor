@@ -1,0 +1,75 @@
+﻿@inject DatabaseService DB
+@inject IDialogService DialogService
+
+<MudDialog Style="min-width: 40vw;">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_isNew ? "Create New Prompt" : Prompt.Title)</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Style="align-items: baseline" Row>
+            <MudTextField Label="Title" Value="Prompt.Title" ValueChanged="@(async v => await HandleValueChanged(v, "title"))" T="string" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Success" />
+            <MudCheckBox CheckedChanged=@(async v => await HandleValueChanged("","",v)) T="bool" Checked="Prompt.IsFavorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
+        </MudStack>
+        <MudTextField Lines="5" Label="Positive" Value="Prompt.Positive" ValueChanged="@(async v => await HandleValueChanged(v, "positive"))" T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Success" />
+        <MudTextField Lines="5" Label="Negative" Value="Prompt.Negative" ValueChanged="@(async v => await HandleValueChanged(v, "negative"))" T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Error" />
+    </DialogContent>
+    <DialogActions>
+        <MudContainer Class="w-100 d-flex justify-content-center">
+            @if (_isNew)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="ma-3" OnClick="@(() => MudDialog.Close("Create"))">Create</MudButton>
+            }
+            else
+            {
+                <MudButtonGroup Class="ma-3" OverrideStyles=false>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => MudDialog.Close("Txt2Img"))">Txt2Img</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => MudDialog.Close("Img2Img"))">Img2Img</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ShowDeletePromptDialog">Delete</MudButton>
+                </MudButtonGroup>
+            }
+        </MudContainer>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter, EditorRequired] public PromptResource Prompt { get; set; }
+
+    private bool _isNew;
+
+    protected override void OnParametersSet()
+    {
+        if (Prompt.Id <= 0) _isNew = true;
+    }
+
+    private async Task HandleValueChanged(string value, string type, bool? isFavorite = null)
+    {
+        switch (type)
+        {
+            case "title":
+                Prompt.Title = value;
+                break;
+            case "positive":
+                Prompt.Positive = value;
+                break;
+            case "negative":
+                Prompt.Negative = value;
+                break;
+        }
+        if (isFavorite != null) Prompt.IsFavorite = (bool)isFavorite;
+        if (!_isNew) await DB.UpdatePrompt(Prompt);
+    }
+
+    private async Task ShowDeletePromptDialog()
+    {
+        var dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this prompt?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialogModal>("Delete Prompt", parameters, dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Cancelled) MudDialog.Close("Delete");
+    }
+}

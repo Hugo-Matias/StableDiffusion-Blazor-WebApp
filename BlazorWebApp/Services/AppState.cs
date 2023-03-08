@@ -237,6 +237,11 @@ namespace BlazorWebApp.Services
         public async Task GetStyles()
         {
             Styles = await _api.GetStyles();
+            var promptResources = await _db.GetPrompts();
+            foreach (var prompt in promptResources)
+            {
+                Styles.Add(new(prompt));
+            }
             CurrentStyles = new List<PromptStyle>();
         }
 
@@ -294,12 +299,6 @@ namespace BlazorWebApp.Services
             SaveSettings();
             OnProjectChange?.Invoke();
             OnProjectChangeTask?.Invoke();
-        }
-
-        public void ResetStyles()
-        {
-            CurrentStyles = new List<PromptStyle>();
-            OnStyleChange?.Invoke();
         }
 
         public async Task GetSamplers() => Samplers = await _api.GetSamplers();

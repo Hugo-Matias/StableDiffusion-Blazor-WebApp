@@ -36,8 +36,9 @@ namespace BlazorWebApp.Extensions
             return param;
         }
 
-        private static string ParsePrompt(this string prompt, string style)
+        public static string ParsePrompt(this string prompt, string style)
         {
+            if (style == null) return prompt;
             if (style.Contains("{prompt}"))
             {
                 return Regex.Replace(style, "{prompt}", prompt ?? "");

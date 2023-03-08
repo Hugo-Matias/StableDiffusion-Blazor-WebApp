@@ -33,7 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="BlazorDiffusion.json" CopyToPublishDirectory="Never"/>
+    <Content Update="BlazorDiffusion.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

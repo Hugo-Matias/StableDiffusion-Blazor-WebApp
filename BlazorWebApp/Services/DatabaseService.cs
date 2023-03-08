@@ -25,64 +25,64 @@ namespace BlazorWebApp.Services
 
         public async Task InitializeDatabase()
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             await context.Database.EnsureCreatedAsync();
             await context.Database.MigrateAsync();
         }
 
         public async Task<List<Folder>> GetFolders()
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             return await context.Folders.ToListAsync();
         }
 
         public async Task<List<Folder>> GetFolders(string name)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (string.IsNullOrWhiteSpace(name)) return await context.Folders.ToListAsync();
             else return await context.Folders.Where(f => f.Name.Contains(name, StringComparison.InvariantCultureIgnoreCase)).ToListAsync();
         }
 
         public async Task<Folder> GetFolder(string name)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             return await context.Folders.FirstOrDefaultAsync(f => f.Name.Equals(name));
         }
 
         public async Task<Folder> GetFolder(int id)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             return await context.Folders.FirstOrDefaultAsync(f => f.Id.Equals(id));
         }
 
         public async Task<List<Project>> GetProjects(int folderId)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (folderId <= 0) return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();
             else return await context.Projects.Where(p => p.FolderId == folderId).OrderBy(p => p.CreationTime).ToListAsync();
         }
 
         public async Task<Project> GetProject(int id)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             return await context.Projects.FirstOrDefaultAsync(p => p.Id == id);
         }
 
         public async Task<Project> GetProject(string name)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             return await context.Projects.FirstOrDefaultAsync(p => p.Name == name);
         }
 
         public async Task<Project> GetLatestProject()
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             return await context.Projects.OrderBy(p => p.Id).LastOrDefaultAsync();
         }
 
         public async Task<Folder> CreateFolder(Folder folder)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var folderEntity = await context.Folders.AddAsync(folder);
             await context.SaveChangesAsync();
             return folderEntity.Entity;
@@ -90,7 +90,7 @@ namespace BlazorWebApp.Services
 
         public async Task<Project> CreateProject(Project project)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (project.Folder != null && !string.IsNullOrWhiteSpace(project.Folder.Name))
             {
                 var folder = await GetFolder(project.Folder.Name);
@@ -107,7 +107,7 @@ namespace BlazorWebApp.Services
 
         public async Task<Project> UpdateProject(int projectId, Project data)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             if (!string.IsNullOrWhiteSpace(data.Name))
                 project.Name = data.Name;
@@ -126,7 +126,7 @@ namespace BlazorWebApp.Services
 
         public async Task DeleteFolder(int folderId)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var folder = await context.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
             if (context.Projects.Any(p => p.FolderId == folderId))
             {
@@ -147,7 +147,7 @@ namespace BlazorWebApp.Services
         /// <returns>First Project on the projects table, if any.</returns>
         public async Task<Project?> DeleteProject(int projectId)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             context.Projects.Remove(project);
             await context.SaveChangesAsync();
@@ -156,7 +156,7 @@ namespace BlazorWebApp.Services
 
         public async Task RenameProject(int projectId, string name)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             project.Name = name;
             await context.SaveChangesAsync();
@@ -164,7 +164,7 @@ namespace BlazorWebApp.Services
 
         public async Task SetProjectCover(int projectId, string imagePath)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             project.SampleImagePath = imagePath;
             await context.SaveChangesAsync();
@@ -172,7 +172,7 @@ namespace BlazorWebApp.Services
 
         public async Task SetProjectFolder(int projectId, int folderId)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             project.FolderId = folderId;
             await context.SaveChangesAsync();
@@ -180,7 +180,7 @@ namespace BlazorWebApp.Services
 
         public async Task<Image> AddImage(Image image)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (context.Images != null)
             {
                 var result = await context.Images.AddAsync(image);
@@ -191,7 +191,7 @@ namespace BlazorWebApp.Services
 
         public async Task<ImagesDto> GetImages(int page)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
             var pageCount = Math.Ceiling(context.Images.Count() / (float)PageSize);
             var images = await context.Images
@@ -210,7 +210,7 @@ namespace BlazorWebApp.Services
 
         public async Task<ImagesDto> GetImages(int page, int projectId)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
             var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)PageSize);
             var images = await context.Images
@@ -231,7 +231,7 @@ namespace BlazorWebApp.Services
 
         public async Task<ImagesDto> GetSortedImages(int page, int projectId, GallerySettingsModel settings)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
 
             var query = context.Images.Where(i => i.ProjectId == projectId);
@@ -298,7 +298,7 @@ namespace BlazorWebApp.Services
 
         public async Task<string> GetSampleImage(int projectId)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var project = await context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             if (project != null) return project.SampleImagePath;
             else return string.Empty;
@@ -306,14 +306,14 @@ namespace BlazorWebApp.Services
 
         public async Task<Image> GetRandomFavorite(int projectId)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
             return await context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
         }
 
         public async Task<Image> UpdateImage(Image image)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var response = context.Update(image);
             await context.SaveChangesAsync();
             return response.Entity;
@@ -321,7 +321,7 @@ namespace BlazorWebApp.Services
 
         public async Task<Image> DeleteImage(Image image)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var response = context.Remove(image);
             await context.SaveChangesAsync();
             return response.Entity;
@@ -330,14 +330,14 @@ namespace BlazorWebApp.Services
         public async Task<string> GetSampler(int id)
         {
             if (id == 0) return string.Empty;
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Id == id);
             return sampler.Name;
         }
 
         public async Task<int> GetSampler(string samplerName)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name == samplerName);
             return sampler.Id;
         }
@@ -345,7 +345,7 @@ namespace BlazorWebApp.Services
         private async Task PopulateSamplers()
         {
             var samplers = await _api.GetSamplers();
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
                 foreach (var sampler in samplers)
                 {
@@ -358,14 +358,14 @@ namespace BlazorWebApp.Services
 
         public async Task<int> GetMode(ModeType mode)
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             var modeEntity = await context.Modes.FirstOrDefaultAsync(m => m.Type == mode);
             return modeEntity.Id;
         }
 
         private async void PopulateModes()
         {
-            using var context = _factory.CreateDbContext();
+            using var context = await _factory.CreateDbContextAsync();
             if (context.Modes.Count() == 0)
             {
                 foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
@@ -373,6 +373,41 @@ namespace BlazorWebApp.Services
                     await context.Modes.AddAsync(new Mode { Type = mode });
                 }
             }
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<List<Prompt>> GetPrompts(string positive = "", string negative = "")
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var query = context.Prompts.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(positive)) query = query.Where(p => p.Positive.ToLower().Contains(positive.ToLower()));
+            if (!string.IsNullOrWhiteSpace(negative)) query = query.Where(p => p.Negative.ToLower().Contains(negative.ToLower()));
+            return query.OrderBy(p => p.IsFavorite).ThenBy(p => p.Title).ToList();
+        }
+
+        public async Task CreatePrompt(Prompt prompt)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            context.Prompts.Add(prompt);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task UpdatePrompt(PromptResource prompt)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = await context.Prompts.FirstOrDefaultAsync(p => p.Id == prompt.Id);
+            entity.Title = prompt.Title;
+            entity.Positive = prompt.Positive;
+            entity.Negative = prompt.Negative;
+            entity.IsFavorite = prompt.IsFavorite;
+            await context.SaveChangesAsync();
+        }
+
+        public async Task DeletePrompt(int id)
+        {
+            using var context = _factory.CreateDbContext();
+            var entity = context.Prompts.FirstOrDefault(p => p.Id == id);
+            if (entity != null) context.Prompts.Remove(entity);
             await context.SaveChangesAsync();
         }
     }
