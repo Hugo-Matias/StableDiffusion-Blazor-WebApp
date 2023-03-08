@@ -10,7 +10,7 @@
     <Canvas id="canvas-work" @ref="_canvasWork" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
     <Canvas id="canvas-drawing" @ref="_canvas" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
     <Canvas id="canvas-pointer" @ref="_canvasPointer" @onmousedown="OnMouseDown" @onmouseup="OnMouseUp" @onmousemove="OnMouseMove" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
-    <div class="dropzone" @ref="_dropzone">
+    <div class="dropzone" style="width: @(_canvasWidth > 0 ? _canvasWidth + "px" : "var(--w)"); height: @(_canvasHeight > 0 ? _canvasHeight + "px" : "var(--h)")" @ref="_dropzone">
         <h1>Drop an image here.</h1>
         <InputFile OnChange="@OnDropFile" @ref="_inputFile" />
     </div>

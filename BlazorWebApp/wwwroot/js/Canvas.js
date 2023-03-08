@@ -24,7 +24,11 @@ export function init(
 		const isCanvasEmpty = convertMaskTransparency();
 		if (!isCanvasEmpty) {
 			saveImageData();
-			dotnetObject.invokeMethodAsync("LoadImageData", imgCanvas.src, imgWork.src);
+			dotnetObject.invokeMethodAsync(
+				"LoadImageData",
+				imgCanvas.src,
+				imgWork.src
+			);
 		}
 	}
 
@@ -32,7 +36,7 @@ export function init(
 		const ctxDraw = getContext(canvasDraw.additionalAttributes.id);
 		const ctxWork = getContext(canvasWork.additionalAttributes.id);
 		const drawData = getData(ctxDraw);
-		const isCanvasEmpty = !drawData.data.some(color => color !== 0);
+		const isCanvasEmpty = !drawData.data.some((color) => color !== 0);
 		if (isCanvasEmpty) return true;
 		let workData = drawData;
 		for (let i = 0; i < workData.data.length; i += 4) {

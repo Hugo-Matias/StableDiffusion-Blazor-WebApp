@@ -1,59 +1,62 @@
 ﻿div {
-  --w: 45vw;
-  --h: 60vh;
+	--w: 45vw;
+	--h: 60vh;
 }
 
 #img-canvas {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  padding: 1rem;
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
 }
 
 #img-work {
-  display: none;
+	display: none;
 }
 
 #canvas-container {
-  display: flex;
-  align-items:center;
-  justify-content: center;
-  border: 1px solid var(--mud-palette-dark-darken);
-  border-radius: 0.375rem;
-  width: var(--w);
-  height: var(--h);
-  margin-bottom: 1rem;
-  background: var(--mud-palette-dark);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--mud-palette-dark-darken);
+	border-radius: 0.375rem;
+	max-width: var(--w);
+	max-height: var(--h);
+	margin-bottom: 1rem;
+	background: var(--mud-palette-dark);
 }
 
 ::deep canvas {
-  position: absolute;
-  cursor: none;
-  background: transparent;
-  pointer-events: none;
-  width: var(--w);
-  height: var(--h);
-  object-fit: contain;
+	position: absolute;
+	cursor: none;
+	background: transparent;
+	pointer-events: none;
+	max-width: var(--w);
+	max-height: var(--h);
+	object-fit: contain;
 }
 
-::deep canvas.disable {
-  display: none;
-}
-
-::deep #canvas-pointer {
-  pointer-events: auto;
-}
+	::deep canvas.disable {
+		display: none;
+	}
 
 ::deep #canvas-work {
-  display: none;
+	display: none;
+	/*	border: 1px solid blue;*/
+}
+
+/*::deep #canvas-drawing {
+	border: 1px solid green;
+}
+*/
+::deep #canvas-pointer {
+	pointer-events: auto;
+	/*	border: 1px solid red;*/
 }
 
 .dropzone {
-  display: none;
-  justify-content: center;
-  position: absolute;
-  width: var(--w);
-  height: var(--h);
+	display: none;
+	justify-content: center;
+	position: absolute;
 }
 
 	.dropzone h1 {
@@ -61,14 +64,13 @@
 		margin-top: 5rem;
 	}
 
-.dropzone.hover {
-  display: flex;
-  border: 2px solid var(--mud-palette-success);
-  border-radius: 5px;
-  align-items: center;
-}
+	.dropzone.hover {
+		display: flex;
+		border: 2px solid var(--mud-palette-success);
+		border-radius: 5px;
+		align-items: center;
+	}
 
 ::deep input[type="file"] {
 	display: none;
 }
-
