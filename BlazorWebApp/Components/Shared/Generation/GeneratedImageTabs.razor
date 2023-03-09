@@ -17,11 +17,19 @@
                 <span class="generation-info-text"><small>@AppState.GeneratedUpscaleImage.Info</small></span>
             }
         }
+        else
+        {
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+        }
     </MudTabPanel>
     <MudTabPanel Text="Generated">
         @if (AppState.GeneratedImageEntities != null)
         {
             <ImagesContainer Images="AppState.GeneratedImageEntities" />
+        }
+        else
+        {
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
         }
     </MudTabPanel>
     <MudTabPanel Text="Progress">
@@ -39,8 +47,12 @@
             </MudProgressLinear>
             if (AppState.Progress.CurrentImage != null)
             {
-                <MudImage Src=@($"data:image/png;base64,{AppState.Progress.CurrentImage}") Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+                <MudImage Src=@($"data:image/png;base64,{AppState.Progress.CurrentImage}") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
             }
+        }
+        else
+        {
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
         }
     </MudTabPanel>
 </MudTabs>

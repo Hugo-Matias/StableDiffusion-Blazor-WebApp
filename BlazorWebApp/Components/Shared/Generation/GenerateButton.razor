@@ -1,7 +1,7 @@
 ﻿@inject AppState AppState
 @implements IDisposable
 
-<EditForm Model="Parameters" OnSubmit="@Generate" class="d-flex flex-column align-items-center justify-content-center h-100">
+<EditForm Model="Parameters" OnSubmit="@Generate" class="d-flex flex-column justify-content-center">
     <MudStack Class="d-flex flex-column justify-content-center align-items-center w-100 h-100">
         @if (!AppState.IsConverging)
         {

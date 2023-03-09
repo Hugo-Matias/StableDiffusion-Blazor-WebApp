@@ -31,13 +31,13 @@
                         @if (AppState.CurrentSDModel == "Loading...")
                         {
                             <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
-                                <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading Model...</MudText>
+                                <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading...</MudText>
                                 <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate Rounded />
                             </MudStack>
                         }
                         else
                         {
-                            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="600">
+                            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" OnAdornmentClick="async () => await RefreshModels()" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="600">
                                 @if (AppState.SDModels != null)
                                 {
                                     @foreach (var model in AppState.SDModels)

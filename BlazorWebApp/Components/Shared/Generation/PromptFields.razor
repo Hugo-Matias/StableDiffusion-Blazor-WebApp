@@ -14,7 +14,16 @@
                 </MudItem>
                 <MudItem xs="3">
                     <MudStack Class="h-100 w-100">
-                        <MudSelect Label="Styles" Text="@_currentStyles" SelectedValuesChanged=@((e) => HandleStylesChanged(e)) T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" MultiSelection>
+                        <MudChipSet Style="height: 10vh; overflow: scroll;" ReadOnly>
+                            @if (AppState.CurrentStyles != null && AppState.CurrentStyles.Count() > 0)
+                            {
+                                @foreach (var style in AppState.CurrentStyles)
+                                {
+                                    <MudChip Color="Color.Primary">@style.Name</MudChip>
+                                }
+                            }
+                        </MudChipSet>
+                        <MudSelect Label="Styles" Text="" SelectedValues="AppState.CurrentStyles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" MultiSelection>
                             @if (AppState.Styles != null)
                             {
                                 @foreach (var style in AppState.Styles)
@@ -59,7 +68,6 @@
     [Parameter]
     public TagDrawer? NegativePromptDrawer { get; set; }
 
-    private string _currentStyles;
     private int _promptLines = 5;
     private int _negativePromptLines = 5;
     private bool _isDrawerOpen = false;
@@ -71,8 +79,6 @@
 
     private void HandleStylesChanged(IEnumerable<PromptStyle> styles)
     {
-        if (styles == null || styles.Count() == 0) _currentStyles = string.Empty;
-        else _currentStyles = string.Join(", ", styles.Select(s => s.Name));
         AppState.CurrentStyles = styles;
     }
 }
