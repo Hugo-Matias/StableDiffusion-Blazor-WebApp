@@ -2,66 +2,68 @@
 @inject CivitaiService Api
 @inject IDialogService DialogService
 
-<MudPaper Class="px-4 mb-7 mt-5">
-    <EditForm Model=Request OnSubmit="Search">
-        <MudGrid>
-            <MudItem xs="3">
-                <MudTextField @bind-Value=Request.Query Label="Title" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
-            </MudItem>
-            <MudItem xs="2">
-                <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" />
-            </MudItem>
-            <MudItem xs="2">
-                <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
-            </MudItem>
-            <MudItem xs="1">
-                <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
-            </MudItem>
-            <MudItem xs="1">
-                <MudCheckBox @bind-Checked=Request.Favorites>Favorites</MudCheckBox>
-            </MudItem>
-            <MudItem xs="1">
-                <MudCheckBox @bind-Checked=Request.Hidden>Hidden</MudCheckBox>
-            </MudItem>
-            <MudItem xs="2">
-                <MudCheckBox @bind-Checked=Request.IsPrimaryFileOnly>Primary Only</MudCheckBox>
-            </MudItem>
-            <MudItem xs="3">
-                <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-user" />
-            </MudItem>
-            <MudItem xs="2">
-                <MudTextField @bind-Value=Request.Tag Label="Tag" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-tag" />
-            </MudItem>
-            <MudItem xs="2">
-                <MudSelect @bind-Value=Request.Type Label="Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
-                    @foreach (CivitaiModelType? modelType in Enum.GetValues(typeof(CivitaiModelType)))
-                    {
-                        <MudSelectItem Value="@modelType">@modelType</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="2">
-                <MudSelect @bind-Value=Request.Sort Label="Sort" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @foreach (CivitaiSort? sort in Enum.GetValues(typeof(CivitaiSort)))
-                    {
-                        <MudSelectItem Value="@sort">@sort.ToString().Replace("_", " ")</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="1">
-                <MudSelect @bind-Value=Request.Period Label="Period" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @foreach (CivitaiPeriod? period in Enum.GetValues(typeof(CivitaiPeriod)))
-                    {
-                        <MudSelectItem Value="@period">@period</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="2">
-                <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
-            </MudItem>
-        </MudGrid>
-    </EditForm>
-</MudPaper>
+<div>
+    <MudPaper Class="px-4 mb-7 mt-5">
+        <EditForm Model=Request OnSubmit="Search">
+            <MudGrid>
+                <MudItem xs="3">
+                    <MudTextField @bind-Value=Request.Query Label="Title" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                </MudItem>
+                <MudItem xs="2">
+                    <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" />
+                </MudItem>
+                <MudItem xs="2">
+                    <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
+                </MudItem>
+                <MudItem xs="1">
+                    <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 Class="page-number" AdornmentIcon="fa-solid fa-rotate-left" Adornment=Adornment.End OnAdornmentClick="() => Request.Page = 1" />
+                </MudItem>
+                <MudItem xs="1">
+                    <MudCheckBox @bind-Checked=Request.Favorites>Favorites</MudCheckBox>
+                </MudItem>
+                <MudItem xs="1">
+                    <MudCheckBox @bind-Checked=Request.Hidden>Hidden</MudCheckBox>
+                </MudItem>
+                <MudItem xs="2">
+                    <MudCheckBox @bind-Checked=Request.IsPrimaryFileOnly>Primary Only</MudCheckBox>
+                </MudItem>
+                <MudItem xs="3">
+                    <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-user" />
+                </MudItem>
+                <MudItem xs="2">
+                    <MudTextField @bind-Value=Request.Tag Label="Tag" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-tag" />
+                </MudItem>
+                <MudItem xs="2">
+                    <MudSelect @bind-Value=Request.Type Label="Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
+                        @foreach (CivitaiModelType? modelType in Enum.GetValues(typeof(CivitaiModelType)))
+                        {
+                            <MudSelectItem Value="@modelType">@modelType</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="2">
+                    <MudSelect @bind-Value=Request.Sort Label="Sort" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                        @foreach (CivitaiSort? sort in Enum.GetValues(typeof(CivitaiSort)))
+                        {
+                            <MudSelectItem Value="@sort">@sort.ToString().Replace("_", " ")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="1">
+                    <MudSelect @bind-Value=Request.Period Label="Period" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                        @foreach (CivitaiPeriod? period in Enum.GetValues(typeof(CivitaiPeriod)))
+                        {
+                            <MudSelectItem Value="@period">@period</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="2">
+                    <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudPaper>
+</div>
 
 @if (_isSearching)
 {
