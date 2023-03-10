@@ -3,6 +3,7 @@ using System;
 using BlazorWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorWebApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230309173130_Add Resources")]
+    partial class AddResources
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.11");
@@ -207,25 +209,7 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("Resources");
                 });
 
-            modelBuilder.Entity("BlazorWebApp.Data.Entities.ResourceSubType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("ResourceSubTypes");
-                });
-
-            modelBuilder.Entity("BlazorWebApp.Data.Entities.ResourceType", b =>
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.ResourceEntityType", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -284,11 +268,11 @@ namespace BlazorWebApp.Migrations
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Resource", b =>
                 {
-                    b.HasOne("BlazorWebApp.Data.Entities.ResourceSubType", "SubType")
+                    b.HasOne("BlazorWebApp.Data.Entities.ResourceEntityType", "SubType")
                         .WithMany()
                         .HasForeignKey("SubTypeId");
 
-                    b.HasOne("BlazorWebApp.Data.Entities.ResourceType", "Type")
+                    b.HasOne("BlazorWebApp.Data.Entities.ResourceEntityType", "Type")
                         .WithMany()
                         .HasForeignKey("TypeId")
                         .OnDelete(DeleteBehavior.Cascade)

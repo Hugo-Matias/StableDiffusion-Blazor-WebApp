@@ -1,19 +1,13 @@
 ﻿@inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject AppState AppState
+@inject DatabaseService DB
 
 <div>
     <MudStack Class=@Class>
-        <MudSelect @bind-Value=AppState.CurrentResourceSubType T="ResourceSubType" Label="Resource Subtype" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-            @foreach (ResourceSubType subtype in Enum.GetValues(typeof(ResourceSubType)))
-            {
-                <MudSelectItem Value="subtype">@subtype</MudSelectItem>
-            }
-        </MudSelect>
+        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=AppState.CurrentResourceSubType SearchFunc="GetResourceSubtypes" CoerceValue ResetValueOnEmptyText />
         <MudTextField Label="Filename" @bind-Value=_selected.Name />
-        @*        <MudText Class="meta-label" Typo="Typo.caption">Filename</MudText>
-        <MudText Typo="Typo.caption">@_selected.Name</MudText>
-        *@        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
             <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">
                 @_buttonText
             </MudButton>
@@ -150,5 +144,11 @@
     {
         await JS.InvokeVoidAsync("clipboardCopy.copyText", text);
         Snackbar.Add("Hash copied to the clipboard.", Severity.Info);
+    }
+
+    private async Task<IEnumerable<string>> GetResourceSubtypes(string name)
+    {
+        IEnumerable<ResourceSubType> types = string.IsNullOrWhiteSpace(name) ? await DB.GetResourceSubTypes(ordered: true) : await DB.GetResourceSubTypes(name, ordered: true);
+        return types.Select(t => t.Name).ToArray();
     }
 }

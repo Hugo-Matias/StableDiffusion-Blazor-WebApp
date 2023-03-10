@@ -65,10 +65,11 @@
 
     private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
     {
-        var isSuccess = await Civitai.DownloadResource(version, file, Model.Type, AppState.CurrentResourceSubType);
+        var isSuccess = await Civitai.DownloadResource(Model, version, file, AppState.CurrentResourceSubType);
         if (isSuccess) Snackbar.Add($"{file.Name} downloaded successfully!", Severity.Success);
         else Snackbar.Add($"Something went wrong downloading {file.Name}!", Severity.Error);
         await SaveImage(version.Images[0]);
+        AppState.InvokeDownloadComplete();
     }
 
     private async Task SaveImage(CivitaiModelVersionImageDto image)

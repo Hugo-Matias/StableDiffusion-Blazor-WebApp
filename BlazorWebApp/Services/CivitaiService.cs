@@ -1,6 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
-using BlazorWebApp.Extensions;
-using BlazorWebApp.Models;
+using BlazorWebApp.Data.Entities;
 using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
@@ -15,13 +14,15 @@ namespace BlazorWebApp.Services
         private readonly ImageService _img;
         private readonly IOService _io;
         private readonly AppState _app;
+        private readonly DatabaseService _db;
 
-        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, AppState app)
+        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, AppState app, DatabaseService db)
         {
             _configuration = configuration;
             _img = img;
             _io = io;
             _app = app;
+            _db = db;
             _httpClient = httpClient;
             _httpClient.BaseAddress = new Uri("https://civitai.com/api/");
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _configuration["CivitaiApiToken"]);
@@ -131,39 +132,62 @@ namespace BlazorWebApp.Services
             else return 0;
         }
 
-        public async Task<bool> DownloadResource(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string type, ResourceSubType? subfolder = null)
+        public async Task<bool> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null)
         {
             try
             {
-                var modelType = Parser.ConvertCivitaiResourceType(Parser.ParseCivitaiModelType(type));
-
                 var url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
-                //if (file.Primary != null && file.Primary == true) url = $"download/models/{version.Id}";
-                //else url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
+
+                #region Initialize HTTPClient
                 var progressHandler = new ProgressMessageHandler(new HttpClientHandler());
                 progressHandler.HttpReceiveProgress += (sender, e) => _app.CurrentDownloadProgress = e.ProgressPercentage;
                 var client = new HttpClient(progressHandler);
                 client.BaseAddress = _httpClient.BaseAddress;
                 var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                #endregion
 
-                var path = _configuration["ResourcesPath"];
-                if (modelType != null) path = Path.Combine(path, modelType.ToString());
-                if (subfolder != null && subfolder != ResourceSubType.None) path = Path.Combine(path, subfolder.ToString());
+                #region Get/Create Directory
+                var path = Path.Combine(_configuration["ResourcesPath"], model.Type);
+                if (subtype != null && !subtype.Equals("none", StringComparison.InvariantCultureIgnoreCase)) path = Path.Combine(path, subtype);
                 Directory.CreateDirectory(path);
+                #endregion
 
+                #region Create TriggerWords Text File
                 if (version.TrainedWords != null && version.TrainedWords.Count > 0)
                 {
                     var wordsPath = Path.Combine(path, Path.GetFileNameWithoutExtension(file.Name) + ".txt");
                     _io.SaveText(wordsPath, string.Join("\n", version.TrainedWords));
                 }
+                #endregion
 
-                var previewPath = Path.Combine(_configuration["ResourcePreviewsPath"], modelType.ToString(), Path.GetFileNameWithoutExtension(file.Name) + ".png");
+                #region Download Preview Image
+                var previewPath = Path.Combine(_configuration["ResourcePreviewsPath"], model.Type, Path.GetFileNameWithoutExtension(file.Name) + ".png");
                 await _img.DownloadImageAsPng(version.Images[0].Url, previewPath);
+                #endregion
 
+                #region Download Resource
                 path = Path.Combine(path, file.Name);
                 using var fs = new FileStream(path, FileMode.Create);
                 await response.Content.CopyToAsync(fs);
                 _app.CurrentDownloadProgress = 0;
+                #endregion
+
+                #region Add to DB
+                var entity = new Resource()
+                {
+                    Title = model.Name,
+                    Filename = file.Name,
+                    Author = model.Creator.Username,
+                    CivitaiModelId = model.Id,
+                    CivitaiModelVersionId = version.Id,
+                    Type = new() { Name = model.Type },
+                    Tags = model.Tags,
+                };
+                if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
+                if (version.TrainedWords != null) entity.TriggerWords = version.TrainedWords;
+                await _db.CreateResource(entity);
+                #endregion
+
                 return true;
             }
             catch (Exception ex)

@@ -1,22 +1,23 @@
 ﻿@if (Resources != null)
 {
-    @if (Resources.Count() == 1)
+    var subtypes = Resources.GroupBy(r => r.SubType.Name);
+    @if (subtypes.Count() == 1)
     {
         <MudGrid Spacing="1" Justify="Justify.Center">
-            @foreach (var file in Resources.First())
+            @foreach (var resource in Resources)
             {
-                <ResourceCard Resource="file" OnLoad=@(async () => await OnLoad.InvokeAsync(file)) />
+                <ResourceCard Resource="resource" OnLoad=@(async () => await OnLoad.InvokeAsync(resource)) />
             }
         </MudGrid>
     }
     else
     {
         <MudExpansionPanels>
-            @foreach (var dir in Resources)
+            @foreach (var subtype in subtypes)
             {
-                <MudExpansionPanel Text="@dir.Key">
+                <MudExpansionPanel Text="@subtype.Key">
                     <MudGrid Spacing="1" Justify="Justify.Center">
-                        @foreach (var file in dir)
+                        @foreach (var file in subtype)
                         {
                             <ResourceCard Resource="file" OnLoad=@(async () => await OnLoad.InvokeAsync(file)) />
                         }
@@ -28,6 +29,6 @@
 }
 
 @code {
-    [Parameter] public IEnumerable<IGrouping<string?, LocalResource>> Resources { get; set; }
+    [Parameter] public List<LocalResource> Resources { get; set; }
     [Parameter] public EventCallback<LocalResource> OnLoad { get; set; }
 }

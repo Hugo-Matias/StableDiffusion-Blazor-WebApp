@@ -410,5 +410,52 @@ namespace BlazorWebApp.Services
             if (entity != null) context.Prompts.Remove(entity);
             await context.SaveChangesAsync();
         }
+
+        public async Task<List<Resource>> GetResources()
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources.ToListAsync();
+        }
+
+        public async Task<List<Resource>> GetResources(int typeId)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources.Where(r => r.Type.Id == typeId).Include(r => r.Type).Include(r => r.SubType).ToListAsync();
+        }
+
+        public async Task<List<ResourceType>> GetResourceTypes(bool ordered)
+        {
+            using var context = _factory.CreateDbContext();
+            if (ordered) return await context.ResourceTypes.OrderBy(t => t.Name).ToListAsync();
+            return await context.ResourceTypes.ToListAsync();
+        }
+
+        public async Task<IEnumerable<ResourceSubType>> GetResourceSubTypes(bool ordered)
+        {
+            using var context = _factory.CreateDbContext();
+            if (ordered) return await context.ResourceSubTypes.OrderBy(t => t.Name).ToListAsync();
+            return await context.ResourceSubTypes.ToArrayAsync();
+        }
+
+        public async Task<IEnumerable<ResourceSubType>> GetResourceSubTypes(string name, bool ordered)
+        {
+            using var context = _factory.CreateDbContext();
+            if (ordered) return await context.ResourceSubTypes.Where(t => t.Name.ToLower().Contains(name.ToLower())).OrderBy(t => t.Name).ToListAsync();
+            return await context.ResourceSubTypes.Where(t => t.Name.ToLower().Contains(name.ToLower())).ToListAsync();
+        }
+
+        public async Task CreateResource(Resource resource)
+        {
+            using var context = _factory.CreateDbContext();
+            var type = await context.ResourceTypes.FirstOrDefaultAsync(t => t.Name.Equals(resource.Type.Name));
+            if (type != null) resource.Type = type;
+            if (resource.SubType != null)
+            {
+                var subtype = await context.ResourceSubTypes.FirstOrDefaultAsync(t => t.Name.Equals(resource.SubType.Name));
+                if (subtype != null) resource.SubType = subtype;
+            }
+            context.Resources.Add(resource);
+            await context.SaveChangesAsync();
+        }
     }
 }

@@ -309,21 +309,7 @@ namespace BlazorWebApp.Extensions
             }
         }
 
-        public static CivitaiModelType ParseCivitaiModelType(this string modelType) => (CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), modelType, true);
-
-        public static Models.ResourceType? ConvertCivitaiResourceType(this CivitaiModelType type)
-        {
-            switch (type)
-            {
-                case CivitaiModelType.Checkpoint: return Models.ResourceType.Checkpoint;
-                case CivitaiModelType.TextualInversion: return Models.ResourceType.Embedding;
-                case CivitaiModelType.Hypernetwork: return Models.ResourceType.Hypernetwork;
-                case CivitaiModelType.LORA: return Models.ResourceType.Lora;
-                default: return null;
-            }
-        }
-
-        public static string CollapseInteger(int number)
+        public static string CollapseInteger(this int number)
         {
             if (number < 1000) return number.ToString();
             else return $"{number / 1000}K";

@@ -31,6 +31,7 @@ namespace BlazorWebApp.Services
         public event Func<Task> OnProjectChangeTask;
         public event Action OnStateHasChanged;
         public event Action OnDownloadProgressChanged;
+        public event Action OnDownloadCompleted;
 
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
@@ -56,7 +57,7 @@ namespace BlazorWebApp.Services
         public string CurrentFolderName { get; set; }
         public int CurrentProjectId { get; set; }
         public string CurrentProjectName { get; set; }
-        public ResourceSubType CurrentResourceSubType { get; set; } = ResourceSubType.None;
+        public string CurrentResourceSubType { get; set; }
         public int CurrentDownloadProgress
         {
             get => _currentDownloadProgress; set
@@ -411,6 +412,8 @@ namespace BlazorWebApp.Services
         public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
 
         public async Task GetCmdFlags() => CmdFlags = await _api.GetCmdFlags();
+
+        public void InvokeDownloadComplete() => OnDownloadCompleted?.Invoke();
 
         public void LoadSettings()
         {
