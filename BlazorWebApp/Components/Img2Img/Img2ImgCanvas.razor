@@ -10,7 +10,7 @@
     <Canvas id="canvas-work" @ref="_canvasWork" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
     <Canvas id="canvas-drawing" @ref="_canvas" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
     <Canvas id="canvas-pointer" @ref="_canvasPointer" @onmousedown="OnMouseDown" @onmouseup="OnMouseUp" @onmousemove="OnMouseMove" width="@_canvasWidth" height="@_canvasHeight"></Canvas>
-    <div class="dropzone" style="width: @(_canvasWidth > 0 ? _canvasWidth + "px" : "var(--w)"); height: @(_canvasHeight > 0 ? _canvasHeight + "px" : "var(--h)")" @ref="_dropzone">
+    <div class="dropzone" style="width: @(_containerClientWidth > 0 ? _containerClientWidth + "px" : "var(--w)"); height: @(_containerClientHeight > 0 ? _containerClientHeight + "px" : "var(--h)")" @ref="_dropzone">
         <h1>Drop an image here.</h1>
         <InputFile OnChange="@OnDropFile" @ref="_inputFile" />
     </div>
@@ -35,6 +35,8 @@
     private bool _isDrawing;
     private long _canvasWidth;
     private long _canvasHeight;
+    private long _containerClientWidth;
+    private long _containerClientHeight;
     private double _canvasMultiplierX = 1;
     private double _canvasMultiplierY = 1;
     private string _imgWorkData = string.Empty;
@@ -197,10 +199,12 @@
     }
 
     [JSInvokable]
-    public async void OnResize(long width, long height, double multX, double multY)
+    public async void OnResize(long width, long height, long containerClientWidth, long containerClientHeight, double multX, double multY)
     {
         _canvasWidth = width;
         _canvasHeight = height;
+        _containerClientWidth = containerClientWidth;
+        _containerClientHeight = containerClientHeight;
         _canvasMultiplierX = multX;
         _canvasMultiplierY = multY;
         await InvokeAsync(StateHasChanged);

@@ -115,6 +115,12 @@ export function init(
 		if (!imgCanvas.src.includes("/no_image.png")) {
 			w = imgCanvas.naturalWidth;
 			h = imgCanvas.naturalHeight;
+			if (container.clientWidth > imgCanvas.clientWidth) {
+				container.setAttribute("style", `width:${imgCanvas.clientWidth}px;`);
+			}
+			else if (container.clientHeight > imgCanvas.clientHeight) {
+				container.setAttribute("style", `height:${imgCanvas.clientHeight}px;`);
+			}
 			multX = w / container.clientWidth;
 			multY = h / container.clientHeight;
 			toggleCanvas(true);
@@ -125,13 +131,8 @@ export function init(
 			toggleCanvas(false);
 		}
 
-		canvasDraw.width = w;
-		canvasDraw.height = h;
-		canvasPointer.width = w;
-		canvasPointer.height = h;
-		canvasWork.width = w;
-		canvasWork.height = h;
-		dotnetObject.invokeMethodAsync("OnResize", w, h, multX, multY);
+		//container.setAttribute("style", `width:${imgCanvas.clientWidth}px;height:${imgCanvas.clientHeight}px`);
+		dotnetObject.invokeMethodAsync("OnResize", w, h, container.clientWidth, container.clientHeight, multX, multY);
 	}
 
 	function loadImage(data) {
