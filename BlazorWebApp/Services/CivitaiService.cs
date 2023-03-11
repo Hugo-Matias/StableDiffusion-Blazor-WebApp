@@ -87,15 +87,16 @@ namespace BlazorWebApp.Services
                     {
                         model.ModelVersions[v].Images[i].MetaObject = meta;
                         var isAddNetEnabled = meta["AddNet Enabled"];
-                        if (isAddNetEnabled != null && isAddNetEnabled.ToString() == "True")
+                        if (isAddNetEnabled != null && isAddNetEnabled.ToString() == "True" && model.ModelVersions[v].Images[i].Meta.Resources != null)
                         {
                             var modelResources = model.ModelVersions[v].Images[i].Meta.Resources;
                             for (int r = 1; r <= modelResources.Count; r++)
                             {
                                 var name = meta[$"AddNet Model {r}"];
                                 var weight = meta[$"AddNet Weight A {r}"];
+                                var moduleType = meta[$"AddNet Module {r}"];
                                 if (name != null && weight != null)
-                                    ParseAddNetResource(ref modelResources, name.ToString(), weight.ToString());
+                                    ParseAddNetResource(ref modelResources, name.ToString(), weight.ToString(), moduleType.ToString());
                             }
                         }
                     }
@@ -104,18 +105,36 @@ namespace BlazorWebApp.Services
             return model;
         }
 
-        private void ParseAddNetResource(ref List<CivitaiImageMetaResource> resources, string addnetModel, string addnetWeight)
+        private void ParseAddNetResource(ref List<CivitaiImageMetaResource> resources, string addnetModel, string addnetWeight, string addnetModule)
         {
-            var re = Regex.Matches(addnetModel, @"(.+)\((.+)\)")[0].Groups;
-            var name = re[1].Value;
-            var hash = re[2].Value;
             var weight = float.Parse(addnetWeight);
-            foreach (var resource in resources)
+            var re = Regex.Matches(addnetModel, @"(.+)\((.+)\)");
+            if (re.Count > 0)
             {
-                if (resource.Hash != null && resource.Hash.Equals(hash, StringComparison.InvariantCultureIgnoreCase))
+                var groups = re[0].Groups;
+                var name = groups[1].Value;
+                var hash = groups[2].Value;
+                foreach (var resource in resources)
                 {
-                    resource.Name = name;
-                    resource.Weight = weight;
+                    if (resource.Hash != null && resource.Hash.Equals(hash, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        resource.Name = name;
+                        resource.Weight = weight;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var resource in resources)
+                {
+                    if (resource.Type != null && resource.Type.Equals(addnetModule, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        if (string.IsNullOrWhiteSpace(resource.Name) || resource.Name.Equals(addnetModel, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            resource.Name = addnetModel;
+                            resource.Weight = weight;
+                        }
+                    }
                 }
             }
         }
