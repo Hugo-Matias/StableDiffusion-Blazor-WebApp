@@ -1,12 +1,41 @@
 ﻿@inject AppState AppState
 
-<MudDialog>
-    <DialogContent>
-        <MudText Typo="Typo.h6" Color="Color.Info">@Title</MudText>
+<MudDialog Class="pa-4">
+    <TitleContent>
         <MudStack Row>
-            <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
-            <MudCheckBox Checked="AppState.Settings.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
+            <MudStack>
+                <MudText Typo="Typo.h6">@Resource.Title</MudText>
+                <MudLink Target="_blank" Href=@($"https://civitai.com/models/{Resource.CivitaiId}") Color="Color.Info" Typo="Typo.caption" Style="opacity: 0.3; font-size:0.7rem; margin-top: -1.2rem;">@($"Model: {Resource.CivitaiId} | File: {File.CivitaiId}")</MudLink>
+                </MudStack>
+                <MudSpacer />
+                <MudChip Text="@Resource.Type.Name" Color="Color.Secondary" Label />
+            @if (Resource.SubType != null)
+            {
+                <MudChip Text="@Resource.SubType.Name" Color="Color.Tertiary" Label />
+            }
         </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudText Class="mb-4" Style="align-items:center;" Color="Color.Primary" Typo="Typo.button">@File.Filename</MudText>
+        <MudChipSet ReadOnly>
+            @foreach (var tag in Resource.Tags)
+            {
+                <MudChip Variant="Variant.Text" Text="@tag" Label />
+            }
+        </MudChipSet>
+        <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
+        @if (File.TriggerWords != null && File.TriggerWords.Count > 1)
+        {
+            <MudStack Row>
+            <MudCheckBox Checked="AppState.Settings.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
+            <MudChipSet ReadOnly>
+                @foreach (var word in File.TriggerWords)
+                    {
+                        <MudChip Color="Color.Primary" Text="@word" Label />
+                    }
+                </MudChipSet>
+            </MudStack>
+        }
         <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row>
             <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
             <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
@@ -22,14 +51,12 @@
             </MudButtonGroup>
         </MudStack>
     </DialogContent>
-    <DialogActions>
-        <MudButton Color="Color.Default" OnClick="@(()=>MudDialog.Cancel())">Close</MudButton>
-    </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-    [Parameter] public string Title { get; set; }
+    [Parameter] public LocalResource Resource { get; set; }
+    [Parameter] public LocalResourceFile File { get; set; }
 
     private void LoadResource(ModeType source, bool isPrompt) => MudDialog.Close((source, isPrompt));
 

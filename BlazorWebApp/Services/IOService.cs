@@ -122,6 +122,14 @@ namespace BlazorWebApp.Services
             return string.Empty;
         }
 
+        public string GetResourceImagePath(string type, string filename)
+        {
+            var previewPath = $"{type}/{Path.GetFileNameWithoutExtension(filename)}";
+            if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + ".png"))) return $"./files/resource_previews/{previewPath}.png";
+            else if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + ".jpg"))) return $"./files/resource_previews/{previewPath}.jpg";
+            else return string.Empty;
+        }
+
         public string GetBase64FromFile(string path)
         {
             if (!File.Exists(path)) return string.Empty;

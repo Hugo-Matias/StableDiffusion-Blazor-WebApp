@@ -4,27 +4,38 @@ namespace BlazorWebApp.Models
 {
     public class LocalResource : BaseResource
     {
-        public string Filename { get; set; }
-        public FileInfo File { get; set; }
+        public List<LocalResourceFile> Files { get; set; }
         public string? Author { get; set; }
-        public int? CivitaiModelId { get; set; }
-        public int? CivitaiModelVersionId { get; set; }
+        public int? CivitaiId { get; set; }
         public ResourceType Type { get; set; }
         public ResourceSubType? SubType { get; set; }
         public List<string>? Tags { get; set; }
-        public List<string>? TriggerWords { get; set; }
 
         public LocalResource() { }
         public LocalResource(Resource resourceEntity)
         {
+            Files = new();
             Title = resourceEntity.Title;
             Author = resourceEntity.Author;
-            Filename = resourceEntity.Filename;
-            CivitaiModelId = resourceEntity.CivitaiModelId;
-            CivitaiModelVersionId = resourceEntity.CivitaiModelVersionId;
+            CivitaiId = resourceEntity.CivitaiModelId;
             Type = resourceEntity.Type;
             SubType = resourceEntity.SubType;
             Tags = resourceEntity.Tags;
+        }
+    }
+
+    public class LocalResourceFile : BaseResource
+    {
+        public int? CivitaiId { get; set; }
+        public string Filename { get; set; }
+        public FileInfo File { get; set; }
+        public List<string>? TriggerWords { get; set; }
+
+        public LocalResourceFile() { }
+        public LocalResourceFile(Resource resourceEntity)
+        {
+            CivitaiId = resourceEntity.CivitaiModelVersionId;
+            Filename = resourceEntity.Filename;
             TriggerWords = resourceEntity.TriggerWords;
         }
     }

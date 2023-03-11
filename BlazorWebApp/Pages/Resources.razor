@@ -14,7 +14,7 @@
     @foreach (var type in _resourceTypes)
     {
         <MudTabPanel Text=@(type.Name == "TextualInversion" ? "Embedding" : type.Name)>
-            <ResourceAccordion Resources="CreateResourceEntities(type.Id).Result" OnLoad="LoadResource" />
+            <ResourceAccordion Resources="CreateResourceEntities(type.Id).Result" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceInfoDialog(r) : LoadResource(r, r.Files[0])) />
         </MudTabPanel>
     }
 </MudTabs>
@@ -62,17 +62,40 @@
             }
             foreach (var entity in entities)
             {
-                LocalResource resource = new(entity);
-                var previewPath = $"{resource.Type.Name}/{Path.GetFileNameWithoutExtension(resource.Filename)}";
-                if (File.Exists(Path.Join(Configuration["ResourcePreviewsPath"], previewPath + ".png"))) resource.ImageSrc = $"./files/resource_previews/{previewPath}.png";
-                else if (File.Exists(Path.Join(Configuration["ResourcePreviewsPath"], previewPath + ".jpg"))) resource.ImageSrc = $"./files/resource_previews/{previewPath}.jpg";
-                resources.Add(resource);
+                if (resources.Any(r => r.Title == entity.Title))
+                {
+                    var createdResource = resources.FirstOrDefault(r => r.Title == entity.Title);
+                    var file = new LocalResourceFile(entity);
+                    file.ImageSrc = IO.GetResourceImagePath(createdResource.Type.Name, file.Filename);
+                    file.Title = Path.GetFileNameWithoutExtension(file.Filename);
+                    createdResource.Files.Add(file);
+                }
+                else
+                {
+                    var resource = new LocalResource(entity);
+                    var file = new LocalResourceFile(entity);
+                    file.ImageSrc = IO.GetResourceImagePath(resource.Type.Name, file.Filename);
+                    file.Title = Path.GetFileNameWithoutExtension(file.Filename);
+                    resource.ImageSrc = file.ImageSrc;
+                    resource.Files = new() { file };
+                    resources.Add(resource);
+                }
             }
         }
         return resources;
     }
 
-    private async Task LoadResource(LocalResource resource)
+    private async Task ShowResourceInfoDialog(LocalResource resource)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
+        var param = new DialogParameters();
+        param.Add("Resource", resource);
+        var dialog = await DialogService.ShowAsync<ResourceInfoDialog>(resource.Title, param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadResource(resource, (LocalResourceFile)result.Data);
+    }
+
+    private async Task LoadResource(LocalResource resource, LocalResourceFile file)
     {
         var comp = StringComparison.InvariantCultureIgnoreCase;
         if (resource.Type.Name.Equals("vae", comp)) { await AppState.PostOptions(new() { SDVae = resource.Title }); return; }
@@ -80,8 +103,8 @@
         var fileDir = _typeDirectories.FirstOrDefault(f => f.Key.Equals(resource.Type.Name, comp)).Value;
         if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
         if (resource.SubType != null) fileDir = Path.Combine(fileDir, resource.SubType.Name);
-        resource.File = new FileInfo(Path.Combine(fileDir, resource.Filename));
-        var filename = resource.File.Name.Replace(resource.File.Extension, "");
+        file.File = new FileInfo(Path.Combine(fileDir, file.Filename));
+        var filename = file.File.Name.Replace(file.File.Extension, "");
 
         if (resource.Type.Name.Equals("Checkpoint", comp))
         {
@@ -93,8 +116,9 @@
         {
             var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
             var dialogParam = new DialogParameters();
-            dialogParam.Add("Title", resource.File.Name);
-            var dialog = await DialogService.ShowAsync<LoadResourceDialog>($"Load {resource.Type.Name.ToString()}", dialogParam, options);
+            dialogParam.Add("Resource", resource);
+            dialogParam.Add("File", file);
+            var dialog = await DialogService.ShowAsync<LoadResourceDialog>("", dialogParam, options);
             var result = await dialog.Result;
 
             if (!result.Canceled)
@@ -108,10 +132,10 @@
                 else if (resource.Type.Name.Equals("Hypernetwork", comp)) keyword = $"<hypernet:{filename}:{weight}>";
                 else if (resource.Type.Name.Equals("LORA", comp)) keyword = $"<lora:{filename}:{weight}>";
 
-                if (AppState.Settings.Resources.LoadTriggerWords && resource.TriggerWords != null)
+                if (AppState.Settings.Resources.LoadTriggerWords && file.TriggerWords != null)
                 {
                     triggerWords = ", ";
-                    triggerWords += string.Join(", ", resource.TriggerWords);
+                    triggerWords += string.Join(", ", file.TriggerWords);
                 }
 
                 if (target.Item1 == ModeType.Txt2Img)
