@@ -12,7 +12,7 @@ export function init(
 	}
 
 	function getData(ctx) {
-		return ctx.getImageData(0, 0, canvasDraw.width, canvasDraw.height);
+		return ctx.getImageData(0, 0, canvasDrawElem.width, canvasDrawElem.height);
 	}
 
 	function saveImageData() {
@@ -131,7 +131,6 @@ export function init(
 			toggleCanvas(false);
 		}
 
-		//container.setAttribute("style", `width:${imgCanvas.clientWidth}px;height:${imgCanvas.clientHeight}px`);
 		dotnetObject.invokeMethodAsync("OnResize", w, h, container.clientWidth, container.clientHeight, multX, multY);
 	}
 
