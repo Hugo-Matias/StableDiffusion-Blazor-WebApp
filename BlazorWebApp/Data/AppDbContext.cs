@@ -38,6 +38,7 @@ namespace BlazorWebApp.Data
                 .HasForeignKey(i => i.ModeId);
 
             modelBuilder.Entity<Folder>().HasIndex(f => f.Name).IsUnique();
+            modelBuilder.Entity<Resource>().HasIndex(t => t.Filename).IsUnique();
             modelBuilder.Entity<ResourceType>().HasIndex(t => t.Name).IsUnique();
             modelBuilder.Entity<ResourceSubType>().HasIndex(t => t.Name).IsUnique();
             modelBuilder.Entity<Resource>().Property(nameof(Resource.Tags)).HasConversion(converter, comparer);

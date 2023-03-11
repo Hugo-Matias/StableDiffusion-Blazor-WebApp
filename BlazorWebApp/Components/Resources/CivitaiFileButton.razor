@@ -5,7 +5,7 @@
 
 <div>
     <MudStack Class=@Class>
-        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=AppState.CurrentResourceSubType SearchFunc="GetResourceSubtypes" CoerceValue ResetValueOnEmptyText />
+        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=AppState.CurrentResourceSubType Adornment=Adornment.End AdornmentIcon="fa-solid fa-rotate-left" OnAdornmentClick=@(() => AppState.CurrentResourceSubType = "") SearchFunc="GetResourceSubtypes" CoerceValue ResetValueOnEmptyText />
         <MudTextField Label="Filename" @bind-Value=_selected.Name />
         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
             <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">

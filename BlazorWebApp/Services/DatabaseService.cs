@@ -444,9 +444,16 @@ namespace BlazorWebApp.Services
             return await context.ResourceSubTypes.Where(t => t.Name.ToLower().Contains(name.ToLower())).ToListAsync();
         }
 
-        public async Task CreateResource(Resource resource)
+        /// <summary>
+        /// Creates a new database record for a Resource entity.
+        /// </summary>
+        /// <param name="resource"></param>
+        /// <returns>True, in case of successfully adding the new Resource.<br/>False, if the resource's Filename is already registered in the database.</returns>
+        public async Task<bool> CreateResource(Resource resource)
         {
             using var context = _factory.CreateDbContext();
+            var exists = await context.Resources.AnyAsync(r => r.Filename == resource.Filename);
+            if (exists) return false;
             var type = await context.ResourceTypes.FirstOrDefaultAsync(t => t.Name.Equals(resource.Type.Name));
             if (type != null) resource.Type = type;
             if (resource.SubType != null)
@@ -456,6 +463,7 @@ namespace BlazorWebApp.Services
             }
             context.Resources.Add(resource);
             await context.SaveChangesAsync();
+            return true;
         }
     }
 }

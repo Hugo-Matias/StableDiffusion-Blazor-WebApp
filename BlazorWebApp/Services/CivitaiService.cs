@@ -132,8 +132,9 @@ namespace BlazorWebApp.Services
             else return 0;
         }
 
-        public async Task<bool> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null)
+        public async Task<CivitaiDownloadStatus> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null)
         {
+            CivitaiDownloadStatus status;
             try
             {
                 var url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
@@ -167,9 +168,14 @@ namespace BlazorWebApp.Services
 
                 #region Download Resource
                 path = Path.Combine(path, file.Name);
-                using var fs = new FileStream(path, FileMode.Create);
-                await response.Content.CopyToAsync(fs);
-                _app.CurrentDownloadProgress = 0;
+                if (File.Exists(path)) status = CivitaiDownloadStatus.Database;
+                else
+                {
+                    using var fs = new FileStream(path, FileMode.Create);
+                    await response.Content.CopyToAsync(fs);
+                    _app.CurrentDownloadProgress = 0;
+                    status = CivitaiDownloadStatus.Success;
+                }
                 #endregion
 
                 #region Add to DB
@@ -185,16 +191,18 @@ namespace BlazorWebApp.Services
                 };
                 if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
                 if (version.TrainedWords != null) entity.TriggerWords = version.TrainedWords;
-                await _db.CreateResource(entity);
+                var isAdded = await _db.CreateResource(entity);
+                if (!isAdded) status = CivitaiDownloadStatus.Exists;
                 #endregion
-
-                return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return false;
+                status = CivitaiDownloadStatus.Error;
             }
+            return status;
         }
     }
+
+    public enum CivitaiDownloadStatus { Success, Error, Database, Exists }
 }

@@ -66,13 +66,26 @@
     private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
     {
         var isSuccess = await Civitai.DownloadResource(Model, version, file, AppState.CurrentResourceSubType);
-        if (isSuccess) Snackbar.Add($"{file.Name} downloaded successfully!", Severity.Success);
-        else Snackbar.Add($"Something went wrong downloading {file.Name}!", Severity.Error);
-        await SaveImage(version.Images[0]);
+        switch (isSuccess)
+        {
+            case CivitaiDownloadStatus.Success:
+                Snackbar.Add($"{file.Name} downloaded successfully!", Severity.Success);
+                break;
+            case CivitaiDownloadStatus.Database:
+                Snackbar.Add($"New database record created for {file.Name}!", Severity.Info);
+                break;
+            case CivitaiDownloadStatus.Exists:
+                Snackbar.Add($"File already downloaded {file.Name}!", Severity.Warning);
+                break;
+            case CivitaiDownloadStatus.Error:
+                Snackbar.Add($"Something went wrong downloading {file.Name}!", Severity.Error);
+                break;
+        }
+        await SaveImage(version.Images[0], showSnackbar: false);
         AppState.InvokeDownloadComplete();
     }
 
-    private async Task SaveImage(CivitaiModelVersionImageDto image)
+    private async Task SaveImage(CivitaiModelVersionImageDto image, bool showSnackbar = true)
     {
         var path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}", Parser.SanitizePath(image.Hash));
         var url = Parser.ParseCivitaiImageFullSize(image.Url, image.Width, image.Meta != null ? image.Meta.Size : null);
@@ -83,15 +96,18 @@
             });
         var jsonPath = path + ".json";
         var imagePath = path + ".png";
-        if (File.Exists(jsonPath) || File.Exists(imagePath))
+        if (showSnackbar)
         {
-            Snackbar.Add("Image and parameters already saved!", Severity.Warning);
-        }
-        else
-        {
-            IO.SaveText(jsonPath, parameters, overwrite: false);
-            await ImageService.DownloadImageAsPng(url, imagePath, overwrite: false);
-            Snackbar.Add("Image and parameters saved!", Severity.Success);
+            if (File.Exists(jsonPath) || File.Exists(imagePath))
+            {
+                Snackbar.Add("Image and parameters already saved!", Severity.Warning);
+            }
+            else
+            {
+                IO.SaveText(jsonPath, parameters, overwrite: false);
+                await ImageService.DownloadImageAsPng(url, imagePath, overwrite: false);
+                Snackbar.Add("Image and parameters saved!", Severity.Success);
+            }
         }
     }
 }
