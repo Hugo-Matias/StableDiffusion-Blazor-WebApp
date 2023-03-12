@@ -58,6 +58,10 @@
         param.Add("Resource", resource);
         var dialog = await DialogService.ShowAsync<ResourceInfoDialog>("Resource", param, options);
         var result = await dialog.Result;
-        if (!result.Canceled) { }
+        if (!result.Canceled)
+        {
+            await DB.CreateResource((Resource)result.Data);
+            await InvokeAsync(StateHasChanged);
+        }
     }
 }
