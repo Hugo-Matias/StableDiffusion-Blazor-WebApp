@@ -5,7 +5,7 @@
     <EditForm Model=Request OnSubmit="Search">
         <MudGrid>
             <MudItem xs="5">
-                <MudTextField @bind-Value=Request.Query Label="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudTextField @bind-Value=Request.Query Label="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
             </MudItem>
             <MudItem xs="3">
                 <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>

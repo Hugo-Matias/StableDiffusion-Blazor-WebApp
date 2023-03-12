@@ -7,10 +7,10 @@
         <EditForm Model=Request OnSubmit="Search">
             <MudGrid>
                 <MudItem xs="3">
-                    <MudTextField @bind-Value=Request.Query Label="Title" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                    <MudTextField @bind-Value=Request.Query Label="Title" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
                 </MudItem>
                 <MudItem xs="2">
-                    <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" />
+                    <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" Clearable />
                 </MudItem>
                 <MudItem xs="2">
                     <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
@@ -28,10 +28,10 @@
                     <MudCheckBox @bind-Checked=Request.IsPrimaryFileOnly>Primary Only</MudCheckBox>
                 </MudItem>
                 <MudItem xs="3">
-                    <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-user" />
+                    <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-user" Clearable />
                 </MudItem>
                 <MudItem xs="2">
-                    <MudTextField @bind-Value=Request.Tag Label="Tag" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-tag" />
+                    <MudTextField @bind-Value=Request.Tag Label="Tag" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-tag" Clearable />
                 </MudItem>
                 <MudItem xs="2">
                     <MudSelect @bind-Value=Request.Type Label="Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
