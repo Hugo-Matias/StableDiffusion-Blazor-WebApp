@@ -103,9 +103,16 @@
 
     private string ParseTagWeight(int tagIndex)
     {
-        var item = _selectedTags[tagIndex];
-        if (item.Item2 == 1.0f) return item.Item1.ToString();
-        else return $"({item.Item1}:{item.Item2:0.00})";
+        try
+        {
+            var item = _selectedTags[tagIndex];
+            if (item.Item2 == 1.0f) return item.Item1.ToString();
+            else return $"({item.Item1}:{item.Item2:0.00})";
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
     }
 
     private void ChangeTagWeight(int tagIndex, bool increment)
