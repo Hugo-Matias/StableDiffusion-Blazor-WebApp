@@ -1,28 +1,60 @@
-﻿<MudDialog Class="pa-4">
-    <TitleContent>
-        <MudStack Row>
-            <MudText Typo="Typo.h6">@Resource.Title</MudText>
-            <MudSpacer />
-            <MudChip Text="@Resource.Type.Name" Color="Color.Secondary" Label />
-            @if (Resource.SubType != null)
-            {
-                <MudChip Text="@Resource.SubType.Name" Color="Color.Tertiary" Label />
-            }
-        </MudStack>
-    </TitleContent>
+﻿@inject DatabaseService DB
+
+<MudDialog Class="pa-5">
     <DialogContent>
         <MudStack Row>
-            @foreach (var file in Resource.Files)
-            {
-                <ResourceCard Resource="file" OnLoad=@(() => Load(file)) />
-            }
+            <MudStack>
+                <MudTextField Label="File" @bind-Value=Resource.Filename ReadOnly />
+                <MudTextField Label="Title" @bind-Value=Resource.Title Clearable />
+                <MudTextField Label="Author" @bind-Value=Resource.Author Clearable />
+                <MudTextField Label="Type" @bind-Value=Resource.Type.Name ReadOnly />
+                <MudAutocomplete Label="Sub-Type" T="string" Value=Resource.SubType.Name SearchFunc="DB.GetResourceSubtypeNames" CoerceValue ResetValueOnEmptyText Clearable />
+            </MudStack>
+            <MudStack>
+                <MudText Typo="Typo.caption">CivitAI ID</MudText>
+                <MudStack Row>
+                    <MudNumericField @bind-Value=Resource.CivitaiModelId Label="Model" Min="0" Clearable />
+                    <MudNumericField @bind-Value=Resource.CivitaiModelVersionId Label="Version" Min="0" Clearable />
+                </MudStack>
+                <MudStack Class="align-items-center" Row>
+                    <MudTextField Label="Tag" @bind-Value=_currentTag Clearable />
+                    <MudIconButton Icon="fa-solid fa-square-plus" OnClick=@(() => Resource.Tags.Add(_currentTag)) Color="Color.Primary" />
+                </MudStack>
+                <MudChipSet Class="mt-3" OnClose="v => Resource.Tags.Remove(v.Text)" AllClosable>
+                    @foreach (var tag in Resource.Tags)
+                    {
+                        <MudChip Text="@tag" />
+                    }
+                </MudChipSet>
+                <MudStack Row>
+                    <MudTextField Label="Trigger Word" @bind-Value=_currentWord Clearable />
+                    <MudIconButton Icon="fa-solid fa-square-plus" OnClick=@(() => Resource.TriggerWords.Add(_currentWord)) Color="Color.Primary" />
+                </MudStack>
+                <MudChipSet Class="mt-3" OnClose="v => Resource.TriggerWords.Remove(v.Text)" AllClosable>
+                    @foreach (var word in Resource.TriggerWords)
+                    {
+                        <MudChip Text="@word" />
+                    }
+                </MudChipSet>
+            </MudStack>
         </MudStack>
     </DialogContent>
+    <DialogActions>
+        @if (Resource.Id == 0)
+        {
+            <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="() => MudDialog.Close(DialogResult.Ok(Resource))">Create</MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => MudDialog.Close(DialogResult.Ok(Resource))">Update</MudButton>
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="() => MudDialog.Close(DialogResult.Ok(Resource.Id))">Delete</MudButton>
+        }
+    </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-    [Parameter] public LocalResource Resource { get; set; }
-
-    private void Load(LocalResourceFile file) => MudDialog.Close(DialogResult.Ok(file));
+    [Parameter] public Resource Resource { get; set; }
+    private string _currentTag;
+    private string _currentWord;
 }

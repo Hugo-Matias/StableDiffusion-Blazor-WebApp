@@ -443,6 +443,11 @@ namespace BlazorWebApp.Services
             if (ordered) return await context.ResourceSubTypes.Where(t => t.Name.ToLower().Contains(name.ToLower())).OrderBy(t => t.Name).ToListAsync();
             return await context.ResourceSubTypes.Where(t => t.Name.ToLower().Contains(name.ToLower())).ToListAsync();
         }
+        public async Task<IEnumerable<string>> GetResourceSubtypeNames(string name)
+        {
+            IEnumerable<ResourceSubType> types = string.IsNullOrWhiteSpace(name) ? await GetResourceSubTypes(ordered: true) : await GetResourceSubTypes(name, ordered: true);
+            return types.Select(t => t.Name).ToArray();
+        }
 
         /// <summary>
         /// Creates a new database record for a Resource entity.

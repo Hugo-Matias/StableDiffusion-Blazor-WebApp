@@ -1,0 +1,63 @@
+﻿@inject IConfiguration Configuration
+@inject DatabaseService DB
+@inject IOService IO
+@inject IDialogService DialogService
+
+<MudStack Row>
+    @if (_missing != null)
+    {
+        <MudText Typo="Typo.h6" Color="Color.Error">Missing from Database:</MudText>
+        <AuditFileTree Files="_missing" OnFileSelected="async v => await HandleFileSelected(v)" />
+    }
+    @if (_added != null)
+    {
+        <MudText Typo="Typo.h6" Color="Color.Success">Exist in Database:</MudText>
+        <AuditFileTree Files="_added" />
+    }
+</MudStack>
+
+@code {
+    private List<FileInfo> _missing;
+    private List<FileInfo> _added;
+
+    protected async override Task OnInitializedAsync()
+    {
+        await Audit();
+    }
+
+    private async Task Audit()
+    {
+        var localModels = IO.GetFilesRecursive(Configuration["ResourcesPath"], ".git", extensionsBlacklist: null, extensionsWhitelist: new() { ".pt", ".ckpt", ".safetensors" });
+        var dbModels = await DB.GetResources();
+        _missing = new();
+        _added = new List<FileInfo>();
+        foreach (var file in localModels)
+        {
+            if (!dbModels.Any(m => file.Name.Equals(m.Filename, StringComparison.InvariantCultureIgnoreCase))) _missing.Add(file);
+            else _added.Add(file);
+        }
+    }
+
+    private async Task HandleFileSelected(string path)
+    {
+        var file = new FileInfo(path);
+        var splitPath = Path.GetRelativePath(Configuration["ResourcesPath"], path).Split("\\");
+        var type = splitPath[0];
+        var subType = splitPath[1] != file.Name ? splitPath[1] : string.Empty;
+        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
+        var param = new DialogParameters();
+        var resource = new Resource()
+            {
+                Filename = file.Name,
+                Title = file.Name,
+                Type = new() { Name = type },
+                SubType = new() { Name = subType },
+                Tags = new(),
+                TriggerWords = new()
+            };
+        param.Add("Resource", resource);
+        var dialog = await DialogService.ShowAsync<ResourceInfoDialog>("Resource", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled) { }
+    }
+}

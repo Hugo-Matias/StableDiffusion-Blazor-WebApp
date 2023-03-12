@@ -17,6 +17,9 @@
             <ResourceAccordion Resources="CreateResourceEntities(type.Id).Result" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceInfoDialog(r) : LoadResource(r, r.Files[0])) />
         </MudTabPanel>
     }
+    <MudTabPanel Text="Audit">
+        <ResourceAuditPanel />
+    </MudTabPanel>
 </MudTabs>
 
 @code {
@@ -90,7 +93,7 @@
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
         var param = new DialogParameters();
         param.Add("Resource", resource);
-        var dialog = await DialogService.ShowAsync<ResourceInfoDialog>(resource.Title, param, options);
+        var dialog = await DialogService.ShowAsync<ResourceVersionsDialog>(resource.Title, param, options);
         var result = await dialog.Result;
         if (!result.Canceled) await LoadResource(resource, (LocalResourceFile)result.Data);
     }

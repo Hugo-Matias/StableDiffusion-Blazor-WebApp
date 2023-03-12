@@ -1,0 +1,26 @@
+﻿@inject IConfiguration Configuration
+
+<MudTreeView T="string" SelectedValueChanged="async v => OnFileSelected.InvokeAsync(v)" Hover>
+    @foreach (var type in GroupByType(Files))
+    {
+        <MudTreeViewItem Value="@type.Key">
+            @foreach (var subtype in GroupBySubType(type.ToList()))
+            {
+                <MudTreeViewItem Value="@subtype.Key">
+                    @foreach (var file in subtype)
+                {
+                    <MudTreeViewItem Value="file.FullName" Text="@file.Name" />
+                }
+            </MudTreeViewItem>
+            }
+        </MudTreeViewItem>
+    }
+</MudTreeView>
+
+@code {
+    [Parameter] public List<FileInfo> Files { get; set; }
+    [Parameter] public EventCallback<string> OnFileSelected { get; set; }
+
+    private IEnumerable<IGrouping<string, FileInfo>> GroupByType(List<FileInfo> files) => files.GroupBy(f => Path.GetRelativePath(Configuration["ResourcesPath"], f.FullName).Split("\\")[0]);
+    private IEnumerable<IGrouping<string, FileInfo>> GroupBySubType(List<FileInfo> files) => files.GroupBy(f => Path.GetRelativePath(Configuration["ResourcesPath"], f.FullName).Split("\\")[1]);
+}

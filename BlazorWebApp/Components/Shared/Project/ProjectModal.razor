@@ -4,7 +4,7 @@
     <DialogContent>
         <EditForm Model="@Project">
             <DataAnnotationsValidator />
-            <MudAutocomplete T="string" @bind-Value=_projectFolder Label="Folder" SearchFunc="GetFolders" CoerceValue CoerceText ResetValueOnEmptyText/>
+            <MudAutocomplete T="string" @bind-Value=_projectFolder Label="Folder" SearchFunc="GetFolders" CoerceValue CoerceText ResetValueOnEmptyText Clearable />
             <MudTextField Label="Name" @bind-Value=Project.Name Required />
         </EditForm>
     </DialogContent>
@@ -23,7 +23,7 @@
 
     protected async override Task OnInitializedAsync()
     {
-        if(Project.FolderId != null && Project.FolderId > 0)
+        if (Project.FolderId != null && Project.FolderId > 0)
         {
             var folder = await DB.GetFolder((int)Project.FolderId);
             _projectFolder = folder.Name;

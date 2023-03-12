@@ -1,0 +1,28 @@
+﻿<MudDialog Class="pa-4">
+    <TitleContent>
+        <MudStack Row>
+            <MudText Typo="Typo.h6">@Resource.Title</MudText>
+            <MudSpacer />
+            <MudChip Text="@Resource.Type.Name" Color="Color.Secondary" Label />
+            @if (Resource.SubType != null)
+            {
+                <MudChip Text="@Resource.SubType.Name" Color="Color.Tertiary" Label />
+            }
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Row>
+            @foreach (var file in Resource.Files)
+            {
+                <ResourceCard Resource="file" OnLoad=@(() => Load(file)) />
+            }
+        </MudStack>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public LocalResource Resource { get; set; }
+
+    private void Load(LocalResourceFile file) => MudDialog.Close(DialogResult.Ok(file));
+}

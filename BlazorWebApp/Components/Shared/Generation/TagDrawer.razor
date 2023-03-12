@@ -24,7 +24,7 @@
                     }
                 </MudGrid>
                 <MudStack Class="pa-2" Row>
-                    <MudAutocomplete ValueChanged="SelectedValueChanged" SearchFunc="SearchTags" @ref=_autocompleteRef T="CsvTag" Label="Search Tag" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Info" MaxHeight="500" MaxItems="30" ResetValueOnEmptyText Dense>
+                    <MudAutocomplete ValueChanged="SelectedValueChanged" SearchFunc="SearchTags" @ref=_autocompleteRef T="CsvTag" Label="Search Tag" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Info" MaxHeight="500" MaxItems="30" ResetValueOnEmptyText Dense Clearable>
                         <ItemTemplate Context="tag">
                             <MudText Typo="Typo.body1" Style="font-family:'FiraCode NF'; font-weight:500;" Color="GetTagSuggestionColor(tag.Name, tag.Color)">
                                 @tag.Name

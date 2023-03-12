@@ -34,23 +34,36 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public IEnumerable<FileInfo> GetFilesRecursive(string path)
+        public IEnumerable<FileInfo> GetFilesRecursive(string path, string? ignorePath = null, List<string>? extensionsBlacklist = null, List<string>? extensionsWhitelist = null)
         {
-            static void GetFiles(DirectoryInfo dir, ref List<FileInfo> files)
+            void GetFiles(DirectoryInfo dir, ref List<FileInfo> files)
             {
                 foreach (var subdir in dir.GetDirectories())
                 {
                     GetFiles(subdir, ref files);
                 }
-                files.AddRange(dir.GetFiles().OrderBy(f => f.Name).ToList());
+                var query = dir.GetFiles().AsQueryable();
+                if (extensionsBlacklist != null)
+                {
+                    query = query.Where(f => !extensionsBlacklist.Contains(f.Extension));
+                }
+                if (extensionsWhitelist != null)
+                {
+                    query = query.Where(f => extensionsWhitelist.Contains(f.Extension));
+                }
+                query = query.OrderBy(f => f.Name);
+                files.AddRange(query.ToList());
             }
 
             if (!Directory.Exists(path)) return Array.Empty<FileInfo>();
             try
             {
                 List<FileInfo> files = new();
-                var directory = new DirectoryInfo(path);
-                GetFiles(directory, ref files);
+                if (string.IsNullOrWhiteSpace(ignorePath) || !path.Contains(ignorePath, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    var directory = new DirectoryInfo(path);
+                    GetFiles(directory, ref files);
+                }
                 return files;
             }
             catch (Exception e)

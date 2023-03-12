@@ -5,7 +5,7 @@
 
 <div>
     <MudStack Class=@Class>
-        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=AppState.CurrentResourceSubType Adornment=Adornment.End AdornmentIcon="fa-solid fa-rotate-left" OnAdornmentClick=@(() => AppState.CurrentResourceSubType = "") SearchFunc="GetResourceSubtypes" CoerceValue ResetValueOnEmptyText />
+        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=AppState.CurrentResourceSubType SearchFunc="DB.GetResourceSubtypeNames" CoerceValue ResetValueOnEmptyText Clearable />
         <MudTextField Label="Filename" @bind-Value=_selected.Name />
         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
             <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">
@@ -144,11 +144,5 @@
     {
         await JS.InvokeVoidAsync("clipboardCopy.copyText", text);
         Snackbar.Add("Hash copied to the clipboard.", Severity.Info);
-    }
-
-    private async Task<IEnumerable<string>> GetResourceSubtypes(string name)
-    {
-        IEnumerable<ResourceSubType> types = string.IsNullOrWhiteSpace(name) ? await DB.GetResourceSubTypes(ordered: true) : await DB.GetResourceSubTypes(name, ordered: true);
-        return types.Select(t => t.Name).ToArray();
     }
 }
