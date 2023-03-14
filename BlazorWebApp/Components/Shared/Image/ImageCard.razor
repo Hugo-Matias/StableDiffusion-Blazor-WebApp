@@ -52,14 +52,9 @@
             <MudIconButton OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
             <MudSpacer />
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                <MudTreeView T="string" ExpandOnClick>
-                    <MudTreeViewItem Style="margin-left: 1rem;" Value="@("Send To")">
-                        <MudButtonGroup VerticalAlign>
-                            <MudButton Style="border: none;" StartIcon="fa-solid fa-file-image" IconClass="me-6" IconColor=Color.Warning OnClick=@(() => SendTo(img2img:true))>Img2Img</MudButton>
-                            <MudButton StartIcon="fa-solid fa-panorama" IconColor=Color.Warning IconClass="me-6" OnClick=@(() => SendTo(img2img:false))>Upscale</MudButton>
-                        </MudButtonGroup>
-                    </MudTreeViewItem>
-                </MudTreeView>
+                <MudMenuItem OnClick="@(() => SendTo(img2img: true))" Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick="@(() => SendTo(img2img: false))" Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
                 <MudDivider />
                 <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
                 <MudDivider />
