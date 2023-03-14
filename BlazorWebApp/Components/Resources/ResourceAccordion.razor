@@ -1,6 +1,6 @@
 ﻿@if (Resources != null)
 {
-    var subtypes = Resources.GroupBy(r => r.SubType.Name);
+    var subtypes = Resources.GroupBy(r => r.SubType.Name).OrderBy(r => r.Key);
     @if (subtypes.Count() == 1)
     {
         <MudGrid Spacing="1" Justify="Justify.Center">
