@@ -30,6 +30,7 @@ namespace BlazorWebApp.Models
         public string Filename { get; set; }
         public FileInfo File { get; set; }
         public List<string>? TriggerWords { get; set; }
+        public bool IsEnabled { get; set; }
 
         public LocalResourceFile() { }
         public LocalResourceFile(Resource resourceEntity)

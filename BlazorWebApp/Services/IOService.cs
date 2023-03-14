@@ -14,6 +14,15 @@ namespace BlazorWebApp.Services
             _configuration = configuration;
         }
 
+        public void MoveFile(string sourcePath, string destinationPath)
+        {
+            sourcePath = Parser.ParseResourcePathFromRcloneMountToGoogleDrive(sourcePath);
+            destinationPath = Parser.ParseResourcePathFromRcloneMountToGoogleDrive(destinationPath);
+            var destFile = new FileInfo(destinationPath);
+            if (!destFile.Directory.Exists) Directory.CreateDirectory(destFile.DirectoryName);
+            File.Move(sourcePath, destinationPath);
+        }
+
         public string GetJsonAsString(string path) => new string(File.ReadAllText(path));
 
         public IOrderedEnumerable<FileInfo>? GetOrderedFiles(string path)

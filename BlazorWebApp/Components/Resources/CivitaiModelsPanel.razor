@@ -82,7 +82,7 @@ else if (AppState.CivitaiModels != null)
     <MudGrid Spacing="1" Justify="Justify.Center">
         @foreach (var model in AppState.CivitaiModels.Models)
         {
-            <ResourceCard Resource="CreateResourceCard(model)" HoverColor=@(Parser.ParseCivitaiResourceColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type))) OnLoad="@(async () => await ShowInfo(model))" />
+            <ResourceCard Resource="CreateResourceCard(model)" HoverColor=@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type))) OnLoad="@(async () => await ShowInfo(model))" />
         }
     </MudGrid>
 

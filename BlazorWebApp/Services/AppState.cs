@@ -93,6 +93,7 @@ namespace BlazorWebApp.Services
         public CmdFlags CmdFlags { get; set; }
         public CivitaiModelsDto CivitaiModels { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
+        public Dictionary<string, string> ResourceTypeDirectories { get; set; }
         public bool IsConverging
         {
             get => _isConverging;
@@ -206,8 +207,9 @@ namespace BlazorWebApp.Services
             };
         }
 
-        public async Task GetSDModels()
+        public async Task GetSDModels(bool refresh = false)
         {
+            if (refresh) await _api.PostRefreshModels();
             SDModels = await _api.GetSDModels();
             SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
 
@@ -401,6 +403,25 @@ namespace BlazorWebApp.Services
         private string GetModelHash(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Hash;
 
         private string GetModelName(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Model_name;
+
+        public async Task GetResourceTypeDirectories()
+        {
+            if (CmdFlags == null) await GetCmdFlags();
+            var baseDir = CmdFlags.BaseDir;
+            var checkpointDir = string.IsNullOrWhiteSpace(CmdFlags.CkptDir) ? Path.Join(baseDir, @"models/Stable-diffusion") : CmdFlags.CkptDir;
+            var embeddingDir = string.IsNullOrWhiteSpace(CmdFlags.EmbeddingDir) ? Path.Join(baseDir, "embeddings") : CmdFlags.EmbeddingDir;
+            var hypernetDir = string.IsNullOrWhiteSpace(CmdFlags.HypernetworkDir) ? Path.Join(baseDir, @"models/hypernetworks") : CmdFlags.HypernetworkDir;
+            var loraDir = string.IsNullOrWhiteSpace(CmdFlags.LoraDir) ? Path.Join(baseDir, @"models/Lora") : CmdFlags.LoraDir;
+            var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(baseDir, @"models/VAE") : CmdFlags.VaeDir;
+            ResourceTypeDirectories = new()
+            {
+                {"Checkpoint", checkpointDir},
+                {"TextualInversion", embeddingDir},
+                {"Hypernetwork", hypernetDir},
+                {"LORA", loraDir},
+                {"VAE", vaeDir}
+            };
+        }
 
         public async Task<string> PostOptions(Options options)
         {

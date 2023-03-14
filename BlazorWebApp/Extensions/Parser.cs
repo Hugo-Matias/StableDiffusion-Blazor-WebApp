@@ -23,6 +23,7 @@ namespace BlazorWebApp.Extensions
             return Regex.Replace(data, @"data.+?,", "", RegexOptions.Compiled);
         }
 
+
         public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
         {
             if (styles != null && styles.Count() > 0)
@@ -167,27 +168,34 @@ namespace BlazorWebApp.Extensions
             }
         }
 
-        public static string ParseCivitaiResourceColor(this CivitaiModelType type)
+        public static string ParseCivitaiResourceColorAsString(this CivitaiModelType type)
         {
-            switch (type)
+            return type switch
             {
-                case CivitaiModelType.Checkpoint:
-                    return "mud-palette-primary";
-                case CivitaiModelType.TextualInversion:
-                    return "mud-palette-secondary";
-                case CivitaiModelType.Hypernetwork:
-                    return "mud-palette-info";
-                case CivitaiModelType.AestheticGradient:
-                    return "mud-palette-warning";
-                case CivitaiModelType.LORA:
-                    return "mud-palette-success";
-                case CivitaiModelType.Controlnet:
-                    return "mud-palette-error";
-                case CivitaiModelType.Poses:
-                    return "mud-palette-tertiary";
-                default:
-                    return "mud-palette-default";
-            }
+                CivitaiModelType.Checkpoint => "mud-palette-primary",
+                CivitaiModelType.TextualInversion => "mud-palette-secondary",
+                CivitaiModelType.Hypernetwork => "mud-palette-info",
+                CivitaiModelType.AestheticGradient => "mud-palette-warning",
+                CivitaiModelType.LORA => "mud-palette-success",
+                CivitaiModelType.Controlnet => "mud-palette-error",
+                CivitaiModelType.Poses => "mud-palette-tertiary",
+                _ => "mud-palette-default",
+            };
+        }
+
+        public static Color ParseCivitaiResourceColorAsColor(this CivitaiModelType type)
+        {
+            return type switch
+            {
+                CivitaiModelType.Checkpoint => Color.Primary,
+                CivitaiModelType.TextualInversion => Color.Secondary,
+                CivitaiModelType.Hypernetwork => Color.Info,
+                CivitaiModelType.AestheticGradient => Color.Warning,
+                CivitaiModelType.LORA => Color.Success,
+                CivitaiModelType.Controlnet => Color.Error,
+                CivitaiModelType.Poses => Color.Tertiary,
+                _ => Color.Default
+            };
         }
 
         public static string ParseCivitaiImageSize(this string metaSize, int width, int height)
@@ -314,5 +322,6 @@ namespace BlazorWebApp.Extensions
             if (number < 1000) return number.ToString();
             else return $"{number / 1000}K";
         }
+        public static string ParseResourcePathFromRcloneMountToGoogleDrive(this string path) => path.Replace(@"Z:\", @"H:\O meu disco\");
     }
 }

@@ -34,7 +34,7 @@
                             <MudImage Style="border-radius: 50%; max-width: 3rem; max-height: 3rem;" Src="@Model.Creator.Image" />
                             <MudText Typo="Typo.button">@Model.Creator.Username</MudText>
                         </MudStack>
-                        <MudChip Style=@($"background-color: var(--{Parser.ParseCivitaiResourceColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Model.Type))}); font-weight: 500; color: var(--mud-palette-white);") Label>@Model.Type</MudChip>
+                        <MudChip Style=@($"background-color: var(--{Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Model.Type))}); font-weight: 500; color: var(--mud-palette-white);") Label>@Model.Type</MudChip>
                         @if (Model.PersonOfInterest)
                         {
                             <MudChip Icon="fa-solid fa-user" Color="Color.Tertiary" Label>Person of Interest</MudChip>
