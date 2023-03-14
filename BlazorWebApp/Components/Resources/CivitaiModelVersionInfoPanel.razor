@@ -14,8 +14,9 @@
             <MudTabPanel Text="@version.Name">
                 <MudGrid>
                     <MudItem xs="8">
-                        <MudGrid Class="images-container">
-                            @foreach (var image in version.Images)
+                        <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version)" Disabled=_isSavingImages>@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
+                            <MudGrid Class="images-container">
+                                @foreach (var image in version.Images)
                             {
                                 <CivitaiModelImageCard Image="image" OnSaveImage=@(async () => await SaveImage(image)) />
                             }
@@ -62,6 +63,7 @@
 
 @code {
     [Parameter] public CivitaiModelDto Model { get; set; }
+    public bool _isSavingImages;
 
     private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
     {
@@ -85,6 +87,19 @@
         AppState.InvokeDownloadComplete();
     }
 
+    private async Task SaveAllImages(CivitaiModelVersionDto version)
+    {
+        _isSavingImages = true;
+        //await InvokeAsync(StateHasChanged);
+        foreach (var image in version.Images)
+        {
+            await SaveImage(image, false);
+        }
+        Snackbar.Add("All images saved!", Severity.Success);
+        _isSavingImages = false;
+        //await InvokeAsync(StateHasChanged);
+    }
+
     private async Task SaveImage(CivitaiModelVersionImageDto image, bool showSnackbar = true)
     {
         var path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}", Parser.SanitizePath(image.Hash));
@@ -96,18 +111,16 @@
             });
         var jsonPath = path + ".json";
         var imagePath = path + ".png";
-        if (showSnackbar)
+        if ((File.Exists(jsonPath) || File.Exists(imagePath)) && showSnackbar)
         {
-            if (File.Exists(jsonPath) || File.Exists(imagePath))
-            {
-                Snackbar.Add("Image and parameters already saved!", Severity.Warning);
-            }
-            else
-            {
-                IO.SaveText(jsonPath, parameters, overwrite: false);
-                await ImageService.DownloadImageAsPng(url, imagePath, overwrite: false);
-                Snackbar.Add("Image and parameters saved!", Severity.Success);
-            }
+            Snackbar.Add("Image and parameters already saved!", Severity.Warning);
+        }
+        else
+        {
+            IO.SaveText(jsonPath, parameters, overwrite: false);
+            await ImageService.DownloadImageAsPng(url, imagePath, overwrite: false);
+            if (showSnackbar) Snackbar.Add("Image and parameters saved!", Severity.Success);
         }
     }
+}
 }
