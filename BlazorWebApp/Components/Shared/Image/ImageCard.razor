@@ -8,7 +8,7 @@
 <div>
     @if (Image.ModeId != 3)
     {
-        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content="@(DB.GetSampler(Image.SamplerId).Result.ToString())" Color="@(SetSamplerBadgeColor().Result)" Overlap />
+        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content=@(DB.GetSampler(Image.SamplerId).Result.ToString()) Color=@(SetSamplerBadgeColor().Result) Overlap />
     }
     else
     {
@@ -47,20 +47,22 @@
             }
         </MudCardContent>
         <MudCardActions>
-            <MudCheckBox T="bool" CheckedChanged="e => ToggleFavorite(e)" Checked="Image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
-            <MudIconButton OnClick="@(() => OnSelectImage.InvokeAsync(Image))" Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
-            <MudIconButton OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
+            <MudCheckBox T="bool" CheckedChanged=@(e => ToggleFavorite(e)) Checked="Image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
+            <MudIconButton OnClick=@(() => OnSelectImage.InvokeAsync(Image)) Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
+            <MudIconButton OnClick=@(() => OnDeleteImage.InvokeAsync(Image)) Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
             <MudSpacer />
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                <MudMenuItem OnClick="@(() => SendTo(img2img: true))" Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
+                <MudMenuItem OnClick=ShowSwitchProjectDialog Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Switch Project</MudMenuItem>
                 <MudDivider />
-                <MudMenuItem OnClick="@(() => SendTo(img2img: false))" Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
+                <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
                 <MudDivider />
-                <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
+                <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
                 <MudDivider />
-                <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
+                <MudMenuItem OnClick=OpenFileInExplorer Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
                 <MudDivider />
-                <MudMenuItem OnClick="ShowImageInfoModal" Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem>
+                <MudMenuItem OnClick=SetProjectCover Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick=ShowImageInfoDialog Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem>
             </MudMenu>
         </MudCardActions>
     </MudCard>
@@ -128,11 +130,25 @@
         }
     }
 
-    private void ShowImageInfoModal()
+    private void ShowImageInfoDialog()
     {
         var param = new DialogParameters();
         param.Add("Image", Image);
         var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        DialogService.Show<ImageInfoModal>("Image Info", param, options);
+        DialogService.Show<ImageInfoDialog>("Image Info", param, options);
+    }
+
+    private async Task ShowSwitchProjectDialog()
+    {
+        var param = new DialogParameters();
+        param.Add("Image", Image);
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await DB.UpdateImage((Image)result.Data);
+            Snackbar.Add("Image project was changed.", Severity.Success);
+        }
     }
 }

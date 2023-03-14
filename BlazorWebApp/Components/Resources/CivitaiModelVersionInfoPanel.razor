@@ -90,14 +90,12 @@
     private async Task SaveAllImages(CivitaiModelVersionDto version)
     {
         _isSavingImages = true;
-        //await InvokeAsync(StateHasChanged);
         foreach (var image in version.Images)
         {
             await SaveImage(image, false);
         }
         Snackbar.Add("All images saved!", Severity.Success);
         _isSavingImages = false;
-        //await InvokeAsync(StateHasChanged);
     }
 
     private async Task SaveImage(CivitaiModelVersionImageDto image, bool showSnackbar = true)

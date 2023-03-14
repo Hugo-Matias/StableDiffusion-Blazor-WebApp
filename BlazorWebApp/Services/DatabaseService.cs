@@ -55,7 +55,7 @@ namespace BlazorWebApp.Services
             return await context.Folders.FirstOrDefaultAsync(f => f.Id.Equals(id));
         }
 
-        public async Task<List<Project>> GetProjects(int folderId)
+        public async Task<List<Project>> GetProjects(int folderId = 0)
         {
             using var context = await _factory.CreateDbContextAsync();
             if (folderId <= 0) return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();

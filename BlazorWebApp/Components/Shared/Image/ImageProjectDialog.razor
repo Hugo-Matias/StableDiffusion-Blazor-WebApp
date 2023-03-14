@@ -1,0 +1,46 @@
+﻿@inject DatabaseService DB
+
+<MudDialog>
+    <DialogContent>
+        <MudSelect Label="Folder" Class="mb-4" Value=_currentFolderId ValueChanged=HandleFolderChanged T="int">
+            <MudSelectItem Value=0>All</MudSelectItem>
+            @foreach (var folder in _folders)
+            {
+                <MudSelectItem Value="@folder.Id">@folder.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect Label="Project" @bind-Value=Image.ProjectId T="int">
+            @foreach (var project in _projects)
+            {
+                <MudSelectItem Value="@project.Id">@project.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick=@(() => MudDialog.Close(DialogResult.Ok(Image))) Variant=Variant.Filled Color="Color.Success">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public Image Image { get; set; }
+    private int _currentFolderId;
+    private List<Folder> _folders;
+    private List<Project> _projects;
+
+    protected async override Task OnInitializedAsync()
+    {
+        _folders = await DB.GetFolders();
+        var imageProject = await DB.GetProject(Image.ProjectId);
+        _currentFolderId = (int)imageProject.FolderId;
+        await GetProjects();
+    }
+
+    private async Task GetProjects() => _projects = await DB.GetProjects(_currentFolderId);
+
+    private async Task HandleFolderChanged(int id)
+    {
+        _currentFolderId = id;
+        await GetProjects();
+    }
+}
