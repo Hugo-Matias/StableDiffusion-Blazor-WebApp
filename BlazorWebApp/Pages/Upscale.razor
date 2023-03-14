@@ -56,7 +56,7 @@
         <MudItem xs="4">
             <MudSlider @bind-Value=Parameters.GfpganVisibility Min="AppState.Settings.Upscale.FaceRestoration.Min" Max="AppState.Settings.Upscale.FaceRestoration.Max" Step="AppState.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>GFPGAN </strong><small>Visibility:</small> @Parameters.GfpganVisibility</MudSlider>
             <MudStack Row>
-                <MudSlider @bind-Value=Parameters.CodeformerVisibility Min="AppState.Settings.Upscale.FaceRestoration.Min" Max="AppState.Settings.Upscale.FaceRestoration.Max" Step="AppState.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>CodeFormer </strong><small>Visibility:</small> @Parameters.GfpganVisibility</MudSlider>
+                <MudSlider @bind-Value=Parameters.CodeformerVisibility Min="AppState.Settings.Upscale.FaceRestoration.Min" Max="AppState.Settings.Upscale.FaceRestoration.Max" Step="AppState.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>CodeFormer </strong><small>Visibility:</small> @Parameters.CodeformerVisibility</MudSlider>
                 <MudSlider @bind-Value=Parameters.CodeformerWeight Min="AppState.Settings.Upscale.FaceRestoration.Min" Max="AppState.Settings.Upscale.FaceRestoration.Max" Step="AppState.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><small>Attenuation:</small> @Parameters.CodeformerWeight</MudSlider>
             </MudStack>
         </MudItem>
