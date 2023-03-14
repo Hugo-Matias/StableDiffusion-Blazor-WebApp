@@ -8,7 +8,7 @@
                 <MudTextField Label="Title" @bind-Value=Resource.Title Clearable />
                 <MudTextField Label="Author" @bind-Value=Resource.Author Clearable />
                 <MudTextField Label="Type" @bind-Value=Resource.Type.Name ReadOnly />
-                <MudAutocomplete Label="Sub-Type" T="string" Value=Resource.SubType.Name SearchFunc="DB.GetResourceSubtypeNames" CoerceValue ResetValueOnEmptyText Clearable />
+                <MudAutocomplete Label="Sub-Type" T="string" Value=Resource.SubType.Name SearchFunc="DB.GetResourceSubtypeNames" MaxItems="30" CoerceValue ResetValueOnEmptyText Clearable />
             </MudStack>
             <MudStack>
                 <MudText Typo="Typo.caption">CivitAI ID</MudText>
