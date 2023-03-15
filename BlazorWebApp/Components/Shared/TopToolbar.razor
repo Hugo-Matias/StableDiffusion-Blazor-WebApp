@@ -157,5 +157,5 @@
         AppState.OnSDModelsChange -= Refresh;
     }
 
-    private void Refresh() => InvokeAsync(StateHasChanged);
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
 }

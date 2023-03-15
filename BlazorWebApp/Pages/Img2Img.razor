@@ -9,7 +9,7 @@
 
 <MudGrid>
     <MudItem xs="6" Class="d-flex flex-column align-items-center">
-        <Img2ImgCanvas @ref="canvasRef" OnImageChanged="StateHasChanged" />
+        <Img2ImgCanvas @ref="canvasRef" OnImageChanged=@(async () => await InvokeAsync(StateHasChanged)) />
         <GenerateFormImg2Img Parameters="@Parameters" OnDelete="OnDelete" OnSet="OnSet" OnClear="OnClear" OnUndo="OnUndo" />
     </MudItem>
     <MudItem xs="6">

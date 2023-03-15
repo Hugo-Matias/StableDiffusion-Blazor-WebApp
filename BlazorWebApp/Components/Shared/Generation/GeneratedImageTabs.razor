@@ -65,5 +65,5 @@
 
     public void Dispose() => ImageService.OnChange -= Refresh;
 
-    void Refresh() => InvokeAsync(StateHasChanged);
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
 }

@@ -49,7 +49,7 @@ else
     {
         if (!firstRender) return;
         AppState.OnProjectChangeTask += HandleProjectChanged;
-        AppState.OnStateHasChanged += StateHasChanged;
+        AppState.OnStateHasChanged += Refresh;
         await LoadProjects();
     }
 
@@ -94,9 +94,11 @@ else
         await LoadImages();
     }
 
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
     public void Dispose()
     {
         AppState.OnProjectChangeTask -= HandleProjectChanged;
-        AppState.OnStateHasChanged -= StateHasChanged;
+        AppState.OnStateHasChanged -= Refresh;
     }
 }

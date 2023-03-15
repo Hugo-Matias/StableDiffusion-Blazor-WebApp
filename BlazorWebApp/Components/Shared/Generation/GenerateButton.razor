@@ -11,8 +11,8 @@
         {
             <MudButtonGroup Variant=Variant.Filled Color=Color.Primary OverrideStyles=false Class="w-100">
                 <MudButton OnClick=@(() => OnSkip.InvokeAsync()) Variant=Variant.Filled Color=Color.Warning StartIcon="fa-solid fa-forward" ButtonType="ButtonType.Button" Class="w-100" FullWidth>Skip</MudButton>
-                <MudButton OnClick=@(() => OnInterrupt.InvokeAsync()) Variant=Variant.Filled Color=Color.Error StartIcon="fa-solid fa-ban" ButtonType="ButtonType.Button" FullWidth>Interrupt</MudButton>
-            </MudButtonGroup>
+            <MudButton OnClick=@(() => OnInterrupt.InvokeAsync()) Variant=Variant.Filled Color=Color.Error StartIcon="fa-solid fa-ban" ButtonType="ButtonType.Button" FullWidth>Interrupt</MudButton>
+        </MudButtonGroup>
         }
     </MudStack>
 </EditForm>
@@ -26,7 +26,7 @@
 
     protected override void OnInitialized()
     {
-        AppState.OnConverging += StateHasChanged;
+        AppState.OnConverging += Refresh;
     }
 
     public async void Generate()
@@ -34,5 +34,7 @@
         await OnGenerate.InvokeAsync(Parameters);
     }
 
-    public void Dispose() => AppState.OnConverging -= StateHasChanged;
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose() => AppState.OnConverging -= Refresh;
 }

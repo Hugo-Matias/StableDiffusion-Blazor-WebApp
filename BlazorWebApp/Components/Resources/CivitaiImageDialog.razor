@@ -131,7 +131,7 @@
     }
 
     [JSInvokable]
-    public void HandleImageLoaded(bool isLoaded) { _isImageLoaded = isLoaded; StateHasChanged(); }
+    public async Task HandleImageLoaded(bool isLoaded) { _isImageLoaded = isLoaded; await InvokeAsync(StateHasChanged); }
 
     private string GetFullResUrl() => Parser.ParseCivitaiImageFullSize(Image.Url, Image.Width, Image.Meta != null ? Image.Meta.Size : null);
 
