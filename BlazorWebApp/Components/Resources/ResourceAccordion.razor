@@ -1,10 +1,16 @@
 ﻿@if (Resources != null)
 {
-    var subtypes = Resources.GroupBy(r => r.SubType.Name).OrderBy(r => r.Key);
+    <MudStack Class="my-3 pa-2" Row=true>
+        <MudTextField Label="Title" Value="_searchTitle" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
+        <MudAutocomplete T="string" Value="_searchTag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="300" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(_isInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
+        <MudButton OnClick="Search" Color="Color.Success">Search</MudButton>
+    </MudStack>
+
+    var subtypes = _filteredResources.GroupBy(r => r.SubType.Name).OrderBy(r => r.Key);
     @if (subtypes.Count() == 1)
     {
         <MudGrid Spacing="1" Justify="Justify.Center">
-            @foreach (var resource in Resources)
+            @foreach (var resource in _filteredResources)
             {
                 <ResourceCard Resource="resource" OnLoad=@(async () => await OnLoad.InvokeAsync(resource)) />
             }
@@ -31,4 +37,50 @@
 @code {
     [Parameter] public List<LocalResource> Resources { get; set; }
     [Parameter] public EventCallback<LocalResource> OnLoad { get; set; }
+
+    private List<LocalResource> _filteredResources;
+    private string _searchTitle, _searchTag;
+    private bool _isInclusive = true;
+
+    protected override void OnParametersSet()
+    {
+        _filteredResources = Resources;
+    }
+
+    private async Task<IEnumerable<string>> GetTags(string value)
+    {
+        var query = Resources.SelectMany(r => r.Tags).Distinct();
+        if (!string.IsNullOrWhiteSpace(value)) query = query.Where(t => t.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        return query.OrderBy(t => t);
+    }
+
+    private void HandleSearchTitle(string value)
+    {
+        _searchTitle = value;
+        Search();
+    }
+
+    private void HandleSearchTag(string value)
+    {
+        _searchTag = value;
+        Search();
+    }
+
+    private void HandleTagInclusiveChanged()
+    {
+        _isInclusive = !_isInclusive;
+        Search();
+    }
+
+    private void Search()
+    {
+        var query = Resources.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(_searchTitle)) query = query.Where(r => r.Title.Contains(_searchTitle, StringComparison.InvariantCultureIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(_searchTag))
+        {
+            if (_isInclusive) query = query.Where(r => r.Tags.Contains(_searchTag));
+            else query = query.Where(r => !r.Tags.Contains(_searchTag));
+        }
+        _filteredResources = query.ToList();
+    }
 }
