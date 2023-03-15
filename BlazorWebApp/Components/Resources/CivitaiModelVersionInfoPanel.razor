@@ -18,7 +18,7 @@
                             <MudGrid Class="images-container">
                                 @foreach (var image in version.Images)
                             {
-                                <CivitaiModelImageCard Image="image" OnSaveImage=@(async () => await SaveImage(image)) />
+                                <CivitaiModelImageCard Image="image" OnSaveImage=@(async () => await SaveImage(image, version.Id)) />
                             }
                         </MudGrid>
                     </MudItem>
@@ -83,7 +83,7 @@
                 Snackbar.Add($"Something went wrong downloading {file.Name}!", Severity.Error);
                 break;
         }
-        await SaveImage(version.Images[0], showSnackbar: false);
+        await SaveImage(version.Images[0], version.Id, isPreview: true, showSnackbar: false);
         AppState.InvokeDownloadComplete();
     }
 
@@ -92,15 +92,26 @@
         _isSavingImages = true;
         foreach (var image in version.Images)
         {
-            await SaveImage(image, false);
+            try
+            {
+                await SaveImage(image, version.Id, showSnackbar: false);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Couldn't save image:\n" + image.Url);
+                Snackbar.Add("Couldn't save image:\n" + image.Url, Severity.Error);
+                continue;
+            }
         }
-        Snackbar.Add("All images saved!", Severity.Success);
+        Snackbar.Add("All images saved!\n" + Model.Name, Severity.Success);
         _isSavingImages = false;
     }
 
-    private async Task SaveImage(CivitaiModelVersionImageDto image, bool showSnackbar = true)
+    private async Task SaveImage(CivitaiModelVersionImageDto image, int versionId, bool isPreview = false, bool showSnackbar = true)
     {
-        var path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}", Parser.SanitizePath(image.Hash));
+        string path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
+        if (isPreview) path = Path.Combine(path, versionId.ToString());
+        else path = Path.Combine(path, versionId.ToString(), Parser.SanitizePath(image.Hash));
         var url = Parser.ParseCivitaiImageFullSize(image.Url, image.Width, image.Meta != null ? image.Meta.Size : null);
         var parameters = JsonSerializer.Serialize(image, new JsonSerializerOptions()
             {

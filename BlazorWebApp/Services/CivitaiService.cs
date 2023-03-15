@@ -151,6 +151,8 @@ namespace BlazorWebApp.Services
             else return 0;
         }
 
+        public async Task<CivitaiModelVersionDto> GetModelVersion(int id) => await _httpClient.GetFromJsonAsync<CivitaiModelVersionDto>($"v1/model-versions/{id}");
+
         public async Task<CivitaiDownloadStatus> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null)
         {
             CivitaiDownloadStatus status;
@@ -160,7 +162,7 @@ namespace BlazorWebApp.Services
 
                 #region Initialize HTTPClient
                 var progressHandler = new ProgressMessageHandler(new HttpClientHandler());
-                progressHandler.HttpReceiveProgress += (sender, e) => _app.CurrentDownloadProgress = e.ProgressPercentage;
+                progressHandler.HttpReceiveProgress += (sender, e) => _app.CurrentProgress = e.ProgressPercentage;
                 var client = new HttpClient(progressHandler);
                 client.BaseAddress = _httpClient.BaseAddress;
                 var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
@@ -192,7 +194,7 @@ namespace BlazorWebApp.Services
                 {
                     using var fs = new FileStream(path, FileMode.Create);
                     await response.Content.CopyToAsync(fs);
-                    _app.CurrentDownloadProgress = 0;
+                    _app.CurrentProgress = 0;
                     status = CivitaiDownloadStatus.Success;
                 }
                 #endregion
@@ -207,6 +209,7 @@ namespace BlazorWebApp.Services
                     CivitaiModelVersionId = version.Id,
                     Type = new() { Name = model.Type },
                     Tags = model.Tags,
+                    Description = version.Description,
                 };
                 if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
                 if (version.TrainedWords != null) entity.TriggerWords = version.TrainedWords;
@@ -220,6 +223,25 @@ namespace BlazorWebApp.Services
                 status = CivitaiDownloadStatus.Error;
             }
             return status;
+        }
+
+        // For development
+        public async Task UpdateResourceDescriptions()
+        {
+            var resources = await _db.GetResources();
+            var index = 0;
+            foreach (var entity in resources.Where(r => r.CivitaiModelVersionId != null))
+            {
+                index++;
+                _app.CurrentProgress = (index * 100) / resources.Count;
+                var resource = await GetModelVersion((int)entity.CivitaiModelVersionId);
+                if (resource != null)
+                {
+                    entity.Description = resource.Description;
+                    await _db.UpdateResource(entity);
+                }
+            }
+            _app.CurrentProgress = 0;
         }
     }
 

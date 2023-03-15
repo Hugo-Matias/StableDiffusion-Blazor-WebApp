@@ -17,7 +17,7 @@ namespace BlazorWebApp.Services
         private bool _isConverging;
         private int _currentBrushSize;
         private string _currentBrushColor;
-        private int _currentDownloadProgress;
+        private int _currentProgress;
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -30,7 +30,7 @@ namespace BlazorWebApp.Services
         public event Action OnProjectChange;
         public event Func<Task> OnProjectChangeTask;
         public event Action OnStateHasChanged;
-        public event Action OnDownloadProgressChanged;
+        public event Action OnProgressChanged;
         public event Action OnDownloadCompleted;
 
         public GeneratedImages Images { get; set; }
@@ -58,12 +58,12 @@ namespace BlazorWebApp.Services
         public int CurrentProjectId { get; set; }
         public string CurrentProjectName { get; set; }
         public string CurrentResourceSubType { get; set; }
-        public int CurrentDownloadProgress
+        public int CurrentProgress
         {
-            get => _currentDownloadProgress; set
+            get => _currentProgress; set
             {
-                _currentDownloadProgress = value;
-                OnDownloadProgressChanged?.Invoke();
+                _currentProgress = value;
+                OnProgressChanged?.Invoke();
             }
         }
         public int CurrentBrushSize

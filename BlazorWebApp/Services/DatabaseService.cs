@@ -470,5 +470,13 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
             return true;
         }
+        public async Task<Resource> UpdateResource(Resource resource)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var response = context.Update(resource);
+            await context.SaveChangesAsync();
+            return response.Entity;
+        }
+
     }
 }

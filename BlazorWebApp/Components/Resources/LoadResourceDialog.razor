@@ -22,6 +22,12 @@
     </TitleContent>
     <DialogContent>
         <MudText Class="mb-4" Style="text-align:center;" Color="Color.Primary" Typo="Typo.button">@File.Filename</MudText>
+        @if (File.Description != null)
+        {
+            <MudContainer Class="my-4">
+                @((MarkupString)File.Description)
+            </MudContainer>
+        }
         <MudChipSet ReadOnly>
             @foreach (var tag in Resource.Tags)
             {

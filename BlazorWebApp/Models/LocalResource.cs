@@ -31,6 +31,7 @@ namespace BlazorWebApp.Models
         public FileInfo File { get; set; }
         public List<string>? TriggerWords { get; set; }
         public bool IsEnabled { get; set; }
+        public string? Description { get; set; }
 
         public LocalResourceFile() { }
         public LocalResourceFile(Resource resourceEntity)
@@ -38,6 +39,7 @@ namespace BlazorWebApp.Models
             CivitaiId = resourceEntity.CivitaiModelVersionId;
             Filename = resourceEntity.Filename;
             TriggerWords = resourceEntity.TriggerWords;
+            Description = resourceEntity.Description;
         }
     }
 }

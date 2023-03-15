@@ -20,7 +20,7 @@
             <TopToolbar />
         </MudExpansionPanel>
     </MudExpansionPanels>
-    <MudProgressLinear Style=@($"position: fixed; margin-top: {(AppState.CurrentDownloadProgress > 0 ? "64px; z-index: 1000;" : "60px; z-index: -1000;")}") Min="0" Max="100" @bind-Value="AppState.CurrentDownloadProgress" Color="Color.Primary" />
+    <MudProgressLinear Style=@($"position: fixed; margin-top: {(AppState.CurrentProgress > 0 ? "64px; z-index: 1000;" : "60px; z-index: -1000;")}") Min="0" Max="100" @bind-Value="AppState.CurrentProgress" Color="Color.Primary" />
     <MudMainContent>
         <MudContainer Class="mt-5" MaxWidth="MaxWidth.ExtraLarge">
             @Body
@@ -31,11 +31,11 @@
 @code {
     private bool _isToolbarOpen = false;
 
-    protected override void OnInitialized() => AppState.OnDownloadProgressChanged += Refresh;
+    protected override void OnInitialized() => AppState.OnProgressChanged += Refresh;
 
     private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
-    public void Dispose() => AppState.OnDownloadProgressChanged -= Refresh;
+    public void Dispose() => AppState.OnProgressChanged -= Refresh;
 }
