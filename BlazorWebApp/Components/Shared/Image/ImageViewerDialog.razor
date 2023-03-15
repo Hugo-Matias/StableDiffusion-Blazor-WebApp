@@ -1,0 +1,31 @@
+﻿@inject ImageService ImageService
+@inject DatabaseService DB
+
+<div>
+    <MudDialog Style="max-width: 95vw; max-height: 90vh;">
+        <TitleContent>
+            <MudContainer Class="d-flex flex-row justify-content-center">
+                <MudButtonGroup>
+                    @if (Images.Count > 1)
+                    {
+                        <MudIconButton OnClick="@(() => Carousel.Reference.Previous())" Icon="fa-solid fa-chevron-left" />
+                        <MudIconButton OnClick="@(() => _autoCycle = !_autoCycle)" Style="border:none" Icon=@("fa-solid fa-play") />
+                        <MudIconButton OnClick="@(() => Carousel.Reference.Next())" Style="border:none" Icon="fa-solid fa-chevron-right" />
+                    }
+                </MudButtonGroup>
+            </MudContainer>
+        </TitleContent>
+        <DialogContent>
+            <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="85vw" MaxHeight="80vh" />
+        </DialogContent>
+    </MudDialog>
+</div>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public List<Image> Images { get; set; }
+
+    public ImageCarousel? Carousel { get; set; } = new();
+
+    private bool _autoCycle;
+}

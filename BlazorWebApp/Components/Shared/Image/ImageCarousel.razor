@@ -21,16 +21,11 @@
 </div>
 
 @code {
-    [Parameter]
-    public List<Image> Images { get; set; }
-    [Parameter]
-    public bool ShowControls { get; set; }
-    [Parameter]
-    public bool AutoCycle { get; set; }
-    [Parameter]
-    public string MaxWidth { get; set; }
-    [Parameter]
-    public string MaxHeight { get; set; }
+    [Parameter] public List<Image> Images { get; set; }
+    [Parameter] public bool ShowControls { get; set; }
+    [Parameter] public bool AutoCycle { get; set; }
+    [Parameter] public string MaxWidth { get; set; }
+    [Parameter] public string MaxHeight { get; set; }
 
     public MudCarousel<Image>? Reference { get; set; } = new();
 

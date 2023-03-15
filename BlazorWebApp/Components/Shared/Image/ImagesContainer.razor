@@ -17,7 +17,7 @@
                     {
                         @foreach (var image in Images.Images)
                         {
-                            <ImageCard Image="@image"  Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
+                            <ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
                         }
                     }
                 </MudGrid>
@@ -59,7 +59,7 @@
         var param = new DialogParameters();
         var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
         param.Add("Images", new List<Image>() { image });
-        DialogService.Show<ImageViewerModal>("", param, options);
+        DialogService.Show<ImageViewerDialog>("", param, options);
         //Refresh();
     }
 
@@ -68,7 +68,7 @@
         var param = new DialogParameters();
         var options = new DialogOptions() { MaxWidth = MaxWidth.ExtraLarge, CloseButton = true };
         param.Add("Images", Images.Images);
-        DialogService.Show<ImageViewerModal>("", param, options);
+        DialogService.Show<ImageViewerDialog>("", param, options);
     }
 
     private async Task ShowDeleteImageModal(Image image)
