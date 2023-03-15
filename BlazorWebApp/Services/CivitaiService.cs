@@ -167,7 +167,7 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Get/Create Directory
-                var path = Path.Combine(_configuration["ResourcesPath"], model.Type);
+                var path = Path.Combine(_configuration["ResourcesPath"], "_storage", model.Type);
                 if (subtype != null && !subtype.Equals("none", StringComparison.InvariantCultureIgnoreCase)) path = Path.Combine(path, subtype);
                 Directory.CreateDirectory(path);
                 #endregion
