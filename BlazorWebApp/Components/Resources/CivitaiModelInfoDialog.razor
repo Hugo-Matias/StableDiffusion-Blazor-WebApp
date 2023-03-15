@@ -5,7 +5,7 @@
                 <MudStack>
                     <MudStack Class="align-items-center" Row>
                         @Model.Name
-                        <MudText Style="opacity: 0.4;" Typo="Typo.subtitle1">ID: @Model.Id</MudText>
+                        <MudLink Href=@(@"https://civitai.com/models/" + Model.Id) Target="_blank" Color=Color.Info Style="opacity: 0.4;" Typo="Typo.subtitle1">ID: @Model.Id</MudLink>
                     </MudStack>
                 </MudStack>
                 @if (Model.Nsfw)
