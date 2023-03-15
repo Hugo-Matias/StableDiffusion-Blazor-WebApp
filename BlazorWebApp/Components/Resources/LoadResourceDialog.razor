@@ -24,7 +24,7 @@
         <MudText Class="mb-4" Style="text-align:center;" Color="Color.Primary" Typo="Typo.button">@File.Filename</MudText>
         @if (File.Description != null)
         {
-            <MudContainer Class="my-4">
+            <MudContainer Class="my-4" Style="max-height: 200px; overflow: scroll;">
                 @((MarkupString)File.Description)
             </MudContainer>
         }

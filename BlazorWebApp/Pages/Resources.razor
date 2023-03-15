@@ -56,7 +56,8 @@
                     var file = new LocalResourceFile(entity);
                     file.ImageSrc = IO.GetResourceImagePath(createdResource.Type.Name, file.Filename);
                     file.Title = Path.GetFileNameWithoutExtension(file.Filename);
-                    createdResource.Files.Add(file);
+                    createdResource.Files.Insert(0, file);
+                    createdResource.ImageSrc = file.ImageSrc;
                 }
                 else
                 {
@@ -70,7 +71,7 @@
                 }
             }
         }
-        return resources;
+        return resources.OrderBy(r => r.Title).ToList();
     }
 
     private async Task ShowResourceVersionsDialog(LocalResource resource)
