@@ -34,6 +34,18 @@
                 <MudChip Variant="Variant.Text" Text="@tag" Label />
             }
         </MudChipSet>
+        @if (File.TriggerWords != null && File.TriggerWords.Count >= 1)
+        {
+            <MudStack Row=true>
+                <MudCheckBox Checked="AppState.Settings.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
+                <MudChipSet ReadOnly>
+                @foreach (var word in File.TriggerWords)
+                    {
+                        <MudChip Color="Color.Primary" Text="@word" Label />
+                    }
+                </MudChipSet>
+            </MudStack>
+        }
         @if (Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase))
         {
             <MudButton Class="w-100 ma-4" OnClick=@(() => MudDialog.Close()) Color="Color.Success" ButtonType="ButtonType.Button" Disabled=@(!AppState.IsWebuiUp && !File.IsEnabled)>Load Checkpoint</MudButton>
@@ -41,32 +53,23 @@
         else
         {
             <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
-            @if (File.TriggerWords != null && File.TriggerWords.Count >= 1)
-            {
-                <MudStack Row>
-                <MudCheckBox Checked="AppState.Settings.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
-                <MudChipSet ReadOnly>
-                    @foreach (var word in File.TriggerWords)
-                        {
-                            <MudChip Color="Color.Primary" Text="@word" Label />
-                        }
-                    </MudChipSet>
-                </MudStack>
-            }
-            <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row>
-            <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
-            <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
-            </MudButtonGroup>
-        </MudStack>
-            <MudStack Class="align-items-center justify-content-center" Row>
-            <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;" />Img2Img:</MudText>
-            <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
-            </MudButtonGroup>
-        </MudStack>
+        }
+        @if (!(Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase) && File.TriggerWords.Count == 0))
+        {
+            <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row=true>
+                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
+                <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                    <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
+                    <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
+                </MudButtonGroup>
+            </MudStack>
+            <MudStack Class="align-items-center justify-content-center" Row=true>
+                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;" />Img2Img:</MudText>
+                <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                    <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
+                    <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
+                </MudButtonGroup>
+            </MudStack>
         }
     </DialogContent>
     <DialogActions>
