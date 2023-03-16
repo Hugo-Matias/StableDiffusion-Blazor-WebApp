@@ -127,7 +127,7 @@
 
         if (!result.Canceled)
         {
-            if (result.Data.ToString().Equals("Edit"))
+            if (result.Data != null && result.Data.ToString().Equals("Edit"))
             {
                 await ShowResourceInfoDialog(file);
                 return;
