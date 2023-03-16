@@ -1,26 +1,78 @@
 ﻿@inject IConfiguration Configuration
 
-<MudTreeView T="string" SelectedValueChanged="async v => OnFileSelected.InvokeAsync(v)" Hover>
-    @foreach (var type in GroupByType(Files))
-    {
-        <MudTreeViewItem Value="@type.Key">
-            @foreach (var subtype in GroupBySubType(type.ToList()))
-            {
-                <MudTreeViewItem Value="@subtype.Key">
-                    @foreach (var file in subtype)
-                {
-                    <MudTreeViewItem Value="file.FullName" Text="@file.Name" />
-                }
-            </MudTreeViewItem>
-            }
-        </MudTreeViewItem>
-    }
+<MudTreeView Items="Items" T="AuditTreeItem" SelectedValueChanged="HandleFileSelected" Hover>
+    <ItemTemplate>
+        <MudTreeViewItem Value="@context" Items="@context.Items" Text="@context.Title" />
+    </ItemTemplate>
 </MudTreeView>
 
 @code {
     [Parameter] public List<FileInfo> Files { get; set; }
     [Parameter] public EventCallback<string> OnFileSelected { get; set; }
 
-    private IEnumerable<IGrouping<string, FileInfo>> GroupByType(List<FileInfo> files) => files.GroupBy(f => Path.GetRelativePath(Configuration["ResourcesPath"], f.FullName).Split("\\")[0]);
-    private IEnumerable<IGrouping<string, FileInfo>> GroupBySubType(List<FileInfo> files) => files.GroupBy(f => Path.GetRelativePath(Configuration["ResourcesPath"], f.FullName).Split("\\")[1]);
+    public AuditTreeNode Items { get; set; } = new(@"\");
+
+    public class AuditTreeItem
+    {
+        public string Title { get; set; }
+        public FileInfo? File { get; set; }
+        public AuditTreeNode Items { get; set; }
+
+        public AuditTreeItem(string separator = AuditTreeNode.DefaultSeparator) { this.Items = new AuditTreeNode(separator); }
+    }
+
+    public class AuditTreeNode : HashSet<AuditTreeItem>
+    {
+        public const string DefaultSeparator = "/";
+        public string Separator { get; set; }
+
+        public AuditTreeNode(string separator = DefaultSeparator) { Separator = separator; }
+
+        public void AddItem(string path, FileInfo file, int startIndex)
+        {
+            if (startIndex >= path.Length)
+            {
+                return;
+            }
+
+            var endIndex = path.IndexOf(Separator, startIndex);
+            if (endIndex == -1)
+            {
+                endIndex = path.Length;
+            }
+            var title = path.Substring(startIndex, endIndex - startIndex);
+            if (string.IsNullOrEmpty(title))
+            {
+                return;
+            }
+
+            AuditTreeItem item;
+            item = this.FirstOrDefault(n => n.Title == title);
+            if (item == null)
+            {
+                item = new AuditTreeItem(Separator) { Title = title };
+                Add(item);
+            }
+            if (item.Title == file.Name) item.File = file;
+            item.Items.AddItem(path, file, endIndex + 1);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        GenerateTree();
+    }
+
+    private void GenerateTree()
+    {
+        foreach (var file in Files)
+        {
+            Items.AddItem(file.FullName, file, Configuration["ResourcesPath"].Length + 1);
+        }
+    }
+
+    private async Task HandleFileSelected(AuditTreeItem item)
+    {
+        if (item != null && item.File != null) await OnFileSelected.InvokeAsync(item.File.FullName);
+    }
 }
