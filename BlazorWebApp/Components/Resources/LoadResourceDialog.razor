@@ -36,7 +36,7 @@
         </MudChipSet>
         @if (Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase))
         {
-            <MudButton Class="w-100 ma-4" OnClick=@(() => MudDialog.Close()) Color="Color.Success" ButtonType="ButtonType.Button" Disabled=!File.IsEnabled>Load Checkpoint</MudButton>
+            <MudButton Class="w-100 ma-4" OnClick=@(() => MudDialog.Close()) Color="Color.Success" ButtonType="ButtonType.Button" Disabled=@(!AppState.IsWebuiUp && !File.IsEnabled)>Load Checkpoint</MudButton>
         }
         else
         {
@@ -56,15 +56,15 @@
             <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row>
             <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
             <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success">Prompt</MudButton>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error">Negative Prompt</MudButton>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
             </MudButtonGroup>
         </MudStack>
             <MudStack Class="align-items-center justify-content-center" Row>
             <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;" />Img2Img:</MudText>
             <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success">Prompt</MudButton>
-                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error">Negative Prompt</MudButton>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
+                <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
             </MudButtonGroup>
         </MudStack>
         }

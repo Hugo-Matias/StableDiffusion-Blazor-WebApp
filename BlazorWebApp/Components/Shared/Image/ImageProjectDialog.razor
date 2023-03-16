@@ -32,7 +32,7 @@
     {
         _folders = await DB.GetFolders();
         var imageProject = await DB.GetProject(Image.ProjectId);
-        _currentFolderId = (int)imageProject.FolderId;
+        _currentFolderId = imageProject.FolderId ?? 0;
         await GetProjects();
     }
 

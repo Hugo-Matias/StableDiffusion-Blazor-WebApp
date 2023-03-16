@@ -70,15 +70,11 @@
 @code {
     private string _vaeDir;
     private int _clipSkip;
+    private bool _isWebuiInitialized;
+
     protected async override Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
-
-        await AppState.GetOptions();
-        await AppState.GetSDModels();
-        await AppState.GetSamplers();
-        await AppState.GetStyles();
-
+        AppState.OnWebuiStateChanged += Refresh;
         AppState.OnConverging += Refresh;
         AppState.OnOptionsChange += Refresh;
         AppState.OnFolderChange += Refresh;
@@ -86,9 +82,6 @@
         AppState.OnProjectsChange += Refresh;
         AppState.OnStateHasChanged += Refresh;
         AppState.OnSDModelsChange += Refresh;
-
-        _vaeDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.VaeDir) ? Path.Join(AppState.CmdFlags.BaseDir, @"models/VAE") : AppState.CmdFlags.VaeDir;
-        _clipSkip = (int)AppState.Options.ClipSkip;
 
         await AppState.GetFolders();
         await AppState.GetProjects();
@@ -108,8 +101,26 @@
         {
             AppState.CurrentProjectName = "Create New Project...";
         }
+
+        await InitializeWebui();
+    }
+
+    private async Task InitializeWebui()
+    {
+        if (!AppState.IsWebuiUp) return;
+
+        await AppState.GetOptions();
+        await AppState.GetSDModels();
+        await AppState.GetSamplers();
+        await AppState.GetStyles();
+
+        _vaeDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.VaeDir) ? Path.Join(AppState.CmdFlags.BaseDir, @"models/VAE") : AppState.CmdFlags.VaeDir;
+        _clipSkip = (int)AppState.Options.ClipSkip;
+
         AppState.CurrentSDModel = AppState.Options.SDModelCheckpoint;
         AppState.CurrentVae = AppState.Options.SDVae;
+
+        _isWebuiInitialized = true;
     }
 
     private async Task HandleModelSelected(string selected) => await AppState.SetSDModel(selected);
@@ -148,6 +159,7 @@
 
     public void Dispose()
     {
+        AppState.OnWebuiStateChanged -= Refresh;
         AppState.OnConverging -= Refresh;
         AppState.OnOptionsChange -= Refresh;
         AppState.OnFolderChange -= Refresh;
@@ -157,5 +169,9 @@
         AppState.OnSDModelsChange -= Refresh;
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async void Refresh()
+    {
+        if (!_isWebuiInitialized) await InitializeWebui();
+        await InvokeAsync(StateHasChanged);
+    }
 }

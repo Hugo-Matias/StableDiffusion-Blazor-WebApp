@@ -14,10 +14,12 @@ namespace BlazorWebApp.Services
         private readonly SDAPIService _api;
         private readonly DatabaseService _db;
         private readonly IOService _io;
+        private readonly IConfiguration _configuration;
         private bool _isConverging;
         private int _currentBrushSize;
         private string _currentBrushColor;
         private int _currentProgress;
+        private bool _isWebuiUp;
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -32,6 +34,7 @@ namespace BlazorWebApp.Services
         public event Action OnStateHasChanged;
         public event Action OnProgressChanged;
         public event Action OnDownloadCompleted;
+        public event Action OnWebuiStateChanged;
 
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
@@ -103,12 +106,22 @@ namespace BlazorWebApp.Services
                 OnConverging?.Invoke();
             }
         }
+        public bool IsWebuiUp
+        {
+            get => _isWebuiUp;
+            set
+            {
+                _isWebuiUp = value;
+                OnWebuiStateChanged?.Invoke();
+            }
+        }
 
-        public AppState(SDAPIService api, DatabaseService db, IOService io)
+        public AppState(SDAPIService api, DatabaseService db, IOService io, IConfiguration configuration)
         {
             _api = api;
             _db = db;
             _io = io;
+            _configuration = configuration;
 
             GetCmdFlags();
             LoadSettings();
@@ -406,21 +419,36 @@ namespace BlazorWebApp.Services
 
         public async Task GetResourceTypeDirectories()
         {
-            if (CmdFlags == null) await GetCmdFlags();
-            var baseDir = CmdFlags.BaseDir;
-            var checkpointDir = string.IsNullOrWhiteSpace(CmdFlags.CkptDir) ? Path.Join(baseDir, @"models/Stable-diffusion") : CmdFlags.CkptDir;
-            var embeddingDir = string.IsNullOrWhiteSpace(CmdFlags.EmbeddingDir) ? Path.Join(baseDir, "embeddings") : CmdFlags.EmbeddingDir;
-            var hypernetDir = string.IsNullOrWhiteSpace(CmdFlags.HypernetworkDir) ? Path.Join(baseDir, @"models/hypernetworks") : CmdFlags.HypernetworkDir;
-            var loraDir = string.IsNullOrWhiteSpace(CmdFlags.LoraDir) ? Path.Join(baseDir, @"models/Lora") : CmdFlags.LoraDir;
-            var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(baseDir, @"models/VAE") : CmdFlags.VaeDir;
-            ResourceTypeDirectories = new()
+            if (IsWebuiUp)
             {
-                {"Checkpoint", checkpointDir},
-                {"TextualInversion", embeddingDir},
-                {"Hypernetwork", hypernetDir},
-                {"LORA", loraDir},
-                {"VAE", vaeDir}
-            };
+                if (CmdFlags == null) await GetCmdFlags();
+                var baseDir = CmdFlags.BaseDir;
+                var checkpointDir = string.IsNullOrWhiteSpace(CmdFlags.CkptDir) ? Path.Join(baseDir, @"models/Stable-diffusion") : CmdFlags.CkptDir;
+                var embeddingDir = string.IsNullOrWhiteSpace(CmdFlags.EmbeddingDir) ? Path.Join(baseDir, "embeddings") : CmdFlags.EmbeddingDir;
+                var hypernetDir = string.IsNullOrWhiteSpace(CmdFlags.HypernetworkDir) ? Path.Join(baseDir, @"models/hypernetworks") : CmdFlags.HypernetworkDir;
+                var loraDir = string.IsNullOrWhiteSpace(CmdFlags.LoraDir) ? Path.Join(baseDir, @"models/Lora") : CmdFlags.LoraDir;
+                var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(baseDir, @"models/VAE") : CmdFlags.VaeDir;
+                ResourceTypeDirectories = new()
+                {
+                    {"Checkpoint", checkpointDir},
+                    {"TextualInversion", embeddingDir},
+                    {"Hypernetwork", hypernetDir},
+                    {"LORA", loraDir},
+                    {"VAE", vaeDir}
+                };
+            }
+            else
+            {
+                var baseDir = _configuration["ResourcesPath"];
+                ResourceTypeDirectories = new()
+                {
+                    {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
+                    {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
+                    {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
+                    {"LORA", Path.Combine(baseDir, "LORA")},
+                    {"VAE", Path.Combine(baseDir, "VAE")}
+                };
+            }
         }
 
         public async Task<string> PostOptions(Options options)

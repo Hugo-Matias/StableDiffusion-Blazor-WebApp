@@ -35,14 +35,14 @@ namespace BlazorWebApp.Services
 
         public async Task<Progress> GetProgress() => await _httpClient.GetFromJsonAsync<Progress>(_sdapiRoute + "progress");
 
-        //public async Task<Options> GetOptions() => await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
-        public async Task<Options> GetOptions()
-        {
-            using var response = await _httpClient.GetAsync(_sdapiRoute + "options");
-            var content = await response.Content.ReadAsStringAsync();
-            var json = JsonNode.Parse(content);
-            return await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
-        }
+        public async Task<Options> GetOptions() => await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
+        //public async Task<Options> GetOptions()
+        //{
+        //    using var response = await _httpClient.GetAsync(_sdapiRoute + "options");
+        //    var content = await response.Content.ReadAsStringAsync();
+        //    var json = JsonNode.Parse(content);
+        //    return await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
+        //}
 
         public async Task<CmdFlags> GetCmdFlags() => await _httpClient.GetFromJsonAsync<CmdFlags>(_sdapiRoute + "cmd-flags");
 
@@ -91,6 +91,19 @@ namespace BlazorWebApp.Services
             using var response = await _httpClient.PostAsync(_sdapiRoute + "skip", null);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
+        }
+
+        public async Task<bool> CheckWebuiState()
+        {
+            try
+            {
+                using var response = await _httpClient.GetAsync(_sdapiRoute + "cmd-flags");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
         #endregion
 

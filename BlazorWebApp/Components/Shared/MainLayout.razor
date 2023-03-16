@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject AppState AppState
+@inject SDAPIService API
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
@@ -10,7 +11,7 @@
 
 <MudLayout Style="overflow:hidden;">
     <MudAppBar>
-        <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto"/>
+        <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" />
         <NavBar />
         <MudSpacer />
         <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Edge="Edge.Start" OnClick="() => DrawerToggler()" />
@@ -32,6 +33,8 @@
     private bool _isToolbarOpen = false;
 
     protected override void OnInitialized() => AppState.OnProgressChanged += Refresh;
+
+    protected async override Task OnInitializedAsync() => AppState.IsWebuiUp = await API.CheckWebuiState();
 
     private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
 

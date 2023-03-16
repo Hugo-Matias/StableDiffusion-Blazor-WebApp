@@ -30,6 +30,7 @@
 
     protected async override Task OnInitializedAsync()
     {
+        AppState.OnWebuiStateChanged += Refresh;
         AppState.OnDownloadCompleted += Refresh;
         _resourceTypes = await DB.GetResourceTypes(ordered: true);
         if (AppState.ResourceTypeDirectories == null) await AppState.GetResourceTypeDirectories();
@@ -87,7 +88,12 @@
     private async Task LoadResource(LocalResource resource, LocalResourceFile file)
     {
         var comp = StringComparison.InvariantCultureIgnoreCase;
-        if (resource.Type.Name.Equals("vae", comp)) { await AppState.PostOptions(new() { SDVae = resource.Title }); return; }
+        if (resource.Type.Name.Equals("vae", comp))
+        {
+            if (!AppState.IsWebuiUp) return;
+            await AppState.PostOptions(new() { SDVae = resource.Title });
+            return;
+        }
 
         var fileDir = AppState.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resource.Type.Name, comp)).Value;
         if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
@@ -119,7 +125,7 @@
         var dialog = await DialogService.ShowAsync<LoadResourceDialog>("", dialogParam, options);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (!result.Canceled && AppState.IsWebuiUp)
         {
             if (resource.Type.Name.Equals("Checkpoint", comp))
             {
@@ -157,7 +163,15 @@
         }
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async void Refresh()
+    {
+        await AppState.GetResourceTypeDirectories();
+        await InvokeAsync(StateHasChanged);
+    }
 
-    public void Dispose() => AppState.OnDownloadCompleted -= Refresh;
+    public void Dispose()
+    {
+        AppState.OnWebuiStateChanged -= Refresh;
+        AppState.OnDownloadCompleted -= Refresh;
+    }
 }
