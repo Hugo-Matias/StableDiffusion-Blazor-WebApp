@@ -1,0 +1,33 @@
+﻿<MudDialog>
+    <DialogContent>
+        @Content
+        @if (CheckboxEnabled)
+        {
+            <MudCheckBox @bind-Checked=_isChecked Label=@CheckboxContent Color=CheckboxColor />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())" Variant="Variant.Text" Color="CancelButtonColor">@CancelButtonText</MudButton>
+        <MudButton OnClick=ConfirmDialog Variant="Variant.Filled" Color="OkButtonColor">@OkButtonText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public string CancelButtonText { get; set; } = "Cancel";
+    [Parameter] public Color CancelButtonColor { get; set; } = Color.Default;
+    [Parameter] public string OkButtonText { get; set; } = "Ok";
+    [Parameter] public Color OkButtonColor { get; set; } = Color.Success;
+    [Parameter] public MarkupString Content { get; set; }
+    [Parameter] public bool CheckboxEnabled { get; set; }
+    [Parameter] public string CheckboxContent { get; set; }
+    [Parameter] public Color CheckboxColor { get; set; }
+
+    private bool _isChecked;
+
+    private void ConfirmDialog()
+    {
+        if (CheckboxEnabled) MudDialog.Close(DialogResult.Ok(_isChecked));
+        else MudDialog.Close();
+    }
+}

@@ -68,8 +68,8 @@
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
         parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this prompt?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialogModal>("Delete Prompt", parameters, dialogOptions);
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Prompt", parameters, dialogOptions);
         var result = await dialog.Result;
-        if (!result.Cancelled) MudDialog.Close("Delete");
+        if (!result.Canceled) MudDialog.Close("Delete");
     }
 }

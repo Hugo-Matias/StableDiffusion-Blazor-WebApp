@@ -78,9 +78,9 @@
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
         parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this image?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialogModal>("Delete Image", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Image", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
-        if (!result.Cancelled) await DeleteImage(image);
+        if (!result.Canceled) await DeleteImage(image);
     }
 
     private async Task DeleteImage(Image image)

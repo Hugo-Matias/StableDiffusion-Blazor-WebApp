@@ -4,6 +4,7 @@ namespace BlazorWebApp.Models
 {
     public class LocalResource : BaseResource
     {
+        public int ResourceId { get; set; }
         public List<LocalResourceFile> Files { get; set; }
         public string? Author { get; set; }
         public int? CivitaiId { get; set; }
@@ -14,6 +15,7 @@ namespace BlazorWebApp.Models
         public LocalResource() { }
         public LocalResource(Resource resourceEntity)
         {
+            ResourceId = resourceEntity.Id;
             Files = new();
             Title = resourceEntity.Title;
             Author = resourceEntity.Author;
@@ -26,6 +28,7 @@ namespace BlazorWebApp.Models
 
     public class LocalResourceFile : BaseResource
     {
+        public int ResourceId { get; set; }
         public int? CivitaiId { get; set; }
         public string Filename { get; set; }
         public FileInfo File { get; set; }
@@ -36,6 +39,7 @@ namespace BlazorWebApp.Models
         public LocalResourceFile() { }
         public LocalResourceFile(Resource resourceEntity)
         {
+            ResourceId = resourceEntity.Id;
             CivitaiId = resourceEntity.CivitaiModelVersionId;
             Filename = resourceEntity.Filename;
             TriggerWords = resourceEntity.TriggerWords;

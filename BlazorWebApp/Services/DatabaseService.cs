@@ -423,6 +423,12 @@ namespace BlazorWebApp.Services
             return await context.Resources.Where(r => r.Type.Id == typeId).Include(r => r.Type).Include(r => r.SubType).ToListAsync();
         }
 
+        public async Task<Resource> GetResource(int id)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Id == id);
+        }
+
         public async Task<List<ResourceType>> GetResourceTypes(bool ordered)
         {
             using var context = _factory.CreateDbContext();
@@ -440,8 +446,10 @@ namespace BlazorWebApp.Services
         public async Task<IEnumerable<ResourceSubType>> GetResourceSubTypes(string name, bool ordered)
         {
             using var context = _factory.CreateDbContext();
-            if (ordered) return await context.ResourceSubTypes.Where(t => t.Name.ToLower().Contains(name.ToLower())).OrderBy(t => t.Name).ToListAsync();
-            return await context.ResourceSubTypes.Where(t => t.Name.ToLower().Contains(name.ToLower())).ToListAsync();
+            var query = context.ResourceSubTypes.AsQueryable();
+            if (!string.IsNullOrEmpty(name)) query = query.Where(t => t.Name.ToLower().Contains(name.ToLower()));
+            if (ordered) query = query.OrderBy(t => t.Name);
+            return await query.ToArrayAsync();
         }
         public async Task<IEnumerable<string>> GetResourceSubtypeNames(string name)
         {
@@ -477,6 +485,12 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
             return response.Entity;
         }
-
+        public async Task DeleteResource(int resourceId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == resourceId);
+            if (resource != null) context.Resources.Remove(resource);
+            await context.SaveChangesAsync();
+        }
     }
 }

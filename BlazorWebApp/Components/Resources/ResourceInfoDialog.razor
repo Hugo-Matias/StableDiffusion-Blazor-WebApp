@@ -4,11 +4,16 @@
     <DialogContent>
         <MudStack Row>
             <MudStack>
-                <MudTextField Label="File" @bind-Value=Resource.Filename ReadOnly />
+                <MudTextField Label="File" @bind-Value=Resource.Filename />
                 <MudTextField Label="Title" @bind-Value=Resource.Title Clearable />
                 <MudTextField Label="Author" @bind-Value=Resource.Author Clearable />
-                <MudTextField Label="Type" @bind-Value=Resource.Type.Name ReadOnly />
-                <MudAutocomplete Label="Sub-Type" T="string" Value=Resource.SubType.Name SearchFunc="DB.GetResourceSubtypeNames" MaxItems="30" CoerceValue ResetValueOnEmptyText Clearable />
+                <MudSelect Label="Type" @bind-Value=Resource.Type ToStringFunc="v => v?.Name">
+                    @foreach (var type in DB.GetResourceTypes(ordered: true).Result)
+                    {
+                        <MudSelectItem Value="@type">@type.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudAutocomplete Label="Sub-Type" @bind-Value=Resource.SubType SearchFunc="async v => await DB.GetResourceSubTypes(v, ordered: true)" ToStringFunc="v => v?.Name" MaxItems="30" CoerceValue ResetValueOnEmptyText Clearable />
             </MudStack>
             <MudStack>
                 <MudText Typo="Typo.caption">CivitAI ID</MudText>
@@ -46,8 +51,8 @@
         }
         else
         {
-            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => MudDialog.Close(DialogResult.Ok(Resource))">Update</MudButton>
-            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="() => MudDialog.Close(DialogResult.Ok(Resource.Id))">Delete</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick=@(() => MudDialog.Close(DialogResult.Ok((Resource, "Update"))))>Update</MudButton>
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick=@(() => MudDialog.Close(DialogResult.Ok((Resource, "Delete"))))>Delete</MudButton>
         }
     </DialogActions>
 </MudDialog>

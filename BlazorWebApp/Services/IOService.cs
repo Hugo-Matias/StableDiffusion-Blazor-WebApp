@@ -43,6 +43,20 @@ namespace BlazorWebApp.Services
             }
         }
 
+        public IEnumerable<FileInfo> GetFilesByName(string path, string name)
+        {
+            if (!Directory.Exists(path)) return Array.Empty<FileInfo>();
+            try
+            {
+                var dir = new DirectoryInfo(path);
+                return dir.GetFiles().Where(f => f.Name.Replace(f.Extension, "").Equals(name));
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"Couldn't read files from directory: {path}\n", e);
+            }
+        }
+
         public IEnumerable<FileInfo> GetFilesRecursive(string path, string? ignorePath = null, List<string>? extensionsBlacklist = null, List<string>? extensionsWhitelist = null)
         {
             void GetFiles(DirectoryInfo dir, ref List<FileInfo> files)
@@ -241,5 +255,7 @@ namespace BlazorWebApp.Services
         }
 
         public DirectoryInfo CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+        public void DeleteFile(string path) => File.Delete(path);
     }
 }

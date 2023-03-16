@@ -103,9 +103,9 @@
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
         parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this project?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialogModal>("Delete Project", parameters, _dialogOptions);
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Project", parameters, _dialogOptions);
         var result = await dialog.Result;
-        if (!result.Cancelled) await DeleteProject(projectId);
+        if (!result.Canceled) await DeleteProject(projectId);
     }
 
     private async Task ShowDeleteFolderModal()
@@ -115,9 +115,9 @@
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
         parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this folder?<br /></span><span>All projects in this folder will be folderless and you can find them in the ""All"" projects folder.</span><br/><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialogModal>("Delete Folder", parameters, _dialogOptions);
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Folder", parameters, _dialogOptions);
         var result = await dialog.Result;
-        if (!result.Cancelled) await DeleteFolder();
+        if (!result.Canceled) await DeleteFolder();
     }
 
     private async Task DeleteFolder()
