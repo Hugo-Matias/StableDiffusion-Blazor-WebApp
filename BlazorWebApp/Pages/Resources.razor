@@ -137,10 +137,19 @@
 
         if (!result.Canceled)
         {
-            if (result.Data != null && result.Data.ToString().Equals("Edit"))
+            if (result.Data != null)
             {
-                await ShowResourceInfoDialog(file);
-                return;
+                if (result.Data.ToString().Equals("Edit"))
+                {
+                    await ShowResourceInfoDialog(file);
+                    return;
+                }
+                else if (result.Data.ToString() == "Toggle")
+                {
+                    await InitializeResourceDictionary();
+                    //await InvokeAsync(StateHasChanged);
+                    return;
+                }
             }
 
             if (!AppState.IsWebuiUp) return;
@@ -153,12 +162,6 @@
                     await AppState.GetSDModels(refresh: true);
                     var model = AppState.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
                     await AppState.SetSDModel(model.Title);
-                    return;
-                }
-                else if (result.Data.ToString() == "Toggle")
-                {
-                    await InitializeResourceDictionary();
-                    await InvokeAsync(StateHasChanged);
                     return;
                 }
             }
