@@ -14,7 +14,7 @@
         <MudStack Row>
             @foreach (var file in Resource.Files)
             {
-                <ResourceCard Resource="file" OnLoad=@(() => Load(file)) />
+                <ResourceCard Resource="file" Title=@(file.Title.Split("_", 2, StringSplitOptions.RemoveEmptyEntries).LastOrDefault()) OnLoad=@(() => Load(file)) />
             }
         </MudStack>
     </DialogContent>
