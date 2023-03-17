@@ -44,6 +44,7 @@
         {
             _resources.Add(type, await CreateResourceEntities(type.Id));
         }
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task<List<LocalResource>> CreateResourceEntities(int typeId)
@@ -142,12 +143,12 @@
                 if (result.Data.ToString().Equals("Edit"))
                 {
                     await ShowResourceInfoDialog(file);
+                    await InitializeResourceDictionary();
                     return;
                 }
                 else if (result.Data.ToString() == "Toggle")
                 {
                     await InitializeResourceDictionary();
-                    //await InvokeAsync(StateHasChanged);
                     return;
                 }
             }
@@ -211,6 +212,7 @@
                 var fileInfos = IO.GetFilesByName(file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
                 var baseDestPath = file.IsEnabled ? AppState.ResourceTypeDirectories[data.Item1.Type.Name] : Path.Combine(Configuration["ResourcesPath"], "_storage", data.Item1.Type.Name);
                 if (data.Item1.SubType != null) baseDestPath = Path.Combine(baseDestPath, data.Item1.SubType.Name);
+                // Update other files linked to the model that must share the same name, ie. yaml configs or txt info
                 foreach (var fileInfo in fileInfos)
                 {
                     var currentFile = new FileInfo(data.Item1.Filename);
@@ -218,6 +220,16 @@
                     var sourcePath = fileInfo.FullName;
                     var destinationPath = Path.Combine(baseDestPath, filename);
                     IO.MoveFile(sourcePath, destinationPath);
+                }
+                // Update resource preview
+                var resourceEntity = await DB.GetResourceById(file.ResourceId);
+                var previewFiles = IO.GetFilesByName(Path.Combine(Configuration["ResourcePreviewsPath"], resourceEntity.Type.Name), file.File.Name.Replace(file.File.Extension, "")).ToArray();
+                if (previewFiles != null)
+                {
+                    if (previewFiles.Length > 1) Snackbar.Add("More than one resource preview found.", Severity.Warning);
+                    var previewFilename = new FileInfo(data.Item1.Filename);
+                    var previewDestination = Path.Combine(Configuration["ResourcePreviewsPath"], data.Item1.Type.Name, previewFilename.Name.Replace(previewFilename.Extension, previewFiles[0].Extension));
+                    IO.MoveFile(previewFiles[0].FullName, previewDestination);
                 }
                 await DB.UpdateResource(data.Item1);
             }
