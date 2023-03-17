@@ -13,10 +13,10 @@
     <MudTabPanel Text="CivitAI">
         <CivitaiPanel />
     </MudTabPanel>
-    @foreach (var type in _resourceTypes)
+    @foreach (var resource in _resources)
     {
-        <MudTabPanel Text=@(type.Name == "TextualInversion" ? "Embedding" : type.Name)>
-            <ResourceAccordion Resources="CreateResourceEntities(type.Id).Result" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) : LoadResource(r, r.Files[0])) />
+        <MudTabPanel Text=@(resource.Key.Name == "TextualInversion" ? "Embedding" : resource.Key.Name)>
+            <ResourceAccordion Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) : LoadResource(r, r.Files[0])) />
         </MudTabPanel>
     }
     <MudTabPanel Text="Audit">
@@ -25,15 +25,25 @@
 </MudTabs>
 
 @code {
-    private List<ResourceType> _resourceTypes;
+    private Dictionary<ResourceType, List<LocalResource>> _resources;
     private List<string> _resourceFormats = new() { ".safetensors", ".ckpt", ".pt" };
 
     protected async override Task OnInitializedAsync()
     {
         AppState.OnWebuiStateChanged += Refresh;
         AppState.OnDownloadCompleted += Refresh;
-        _resourceTypes = await DB.GetResourceTypes(ordered: true);
         if (AppState.ResourceTypeDirectories == null) await AppState.GetResourceTypeDirectories();
+        await InitializeResourceDictionary();
+    }
+
+    private async Task InitializeResourceDictionary()
+    {
+        var resourceTypes = await DB.GetResourceTypes(ordered: true);
+        _resources = new();
+        foreach (var type in resourceTypes)
+        {
+            _resources.Add(type, await CreateResourceEntities(type.Id));
+        }
     }
 
     private async Task<List<LocalResource>> CreateResourceEntities(int typeId)
@@ -98,7 +108,7 @@
         var fileDir = AppState.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resource.Type.Name, comp)).Value;
         if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
         if (resource.SubType != null) fileDir = Path.Combine(fileDir, resource.SubType.Name);
-        if (File.Exists(Path.Combine(fileDir, file.Filename)))
+        if (File.Exists(Parser.ConvertCloudMount(Path.Combine(fileDir, file.Filename))))
         {
             file.IsEnabled = true;
             file.File = new FileInfo(Path.Combine(fileDir, file.Filename));
@@ -108,7 +118,7 @@
             file.IsEnabled = false;
             var storagePath = Path.Combine(Configuration["ResourcesPath"], "_storage", resource.Type.Name);
             if (resource.SubType != null) storagePath = Path.Combine(storagePath, resource.SubType.Name);
-            storagePath = Path.Combine(storagePath, file.Filename);
+            storagePath = Parser.ConvertCloudMount(Path.Combine(storagePath, file.Filename));
             if (File.Exists(storagePath)) file.File = new FileInfo(storagePath);
             else
             {
@@ -136,12 +146,21 @@
             if (!AppState.IsWebuiUp) return;
 
             // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
-            if (resource.Type.Name.Equals("Checkpoint", comp) && result.Data == null)
+            if (resource.Type.Name.Equals("Checkpoint", comp) && result.Data != null)
             {
-                await AppState.GetSDModels(refresh: true);
-                var model = AppState.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
-                await AppState.SetSDModel(model.Title);
-                return;
+                if (result.Data.ToString() == "Load")
+                {
+                    await AppState.GetSDModels(refresh: true);
+                    var model = AppState.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
+                    await AppState.SetSDModel(model.Title);
+                    return;
+                }
+                else if (result.Data.ToString() == "Toggle")
+                {
+                    await InitializeResourceDictionary();
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
             }
 
             var keyword = string.Empty;
@@ -175,7 +194,7 @@
     private async Task ShowResourceInfoDialog(LocalResourceFile file)
     {
         var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var entity = await DB.GetResource(file.ResourceId);
+        var entity = await DB.GetResourceById(file.ResourceId);
         var param = new DialogParameters();
         param.Add("Resource", entity);
         var dialog = await DialogService.ShowAsync<ResourceInfoDialog>("Edit", param, options);

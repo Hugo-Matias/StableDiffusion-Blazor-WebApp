@@ -322,6 +322,6 @@ namespace BlazorWebApp.Extensions
             if (number < 1000) return number.ToString();
             else return $"{number / 1000}K";
         }
-        public static string ParseResourcePathFromRcloneMountToGoogleDrive(this string path) => path.Replace(@"Z:\", @"H:\O meu disco\");
+        public static string ConvertCloudMount(this string path) => path.Replace(@"H:\O meu disco\", @"Z:\");
     }
 }
