@@ -1,10 +1,12 @@
 ﻿@inject AppState AppState
 @inject IOService IO
+@inject DatabaseService DB
 @inject IConfiguration Configuration
+@inject IDialogService DialogService
 
 <MudDialog Class="pa-4">
     <TitleContent>
-        <MudStack Row>
+        <MudStack Row=true>
             <MudStack>
                 <MudText Typo="Typo.h6">@Resource.Title</MudText>
                 @if (Resource.CivitaiId != null)
@@ -13,64 +15,76 @@
                 }
             </MudStack>
             <MudSpacer />
-            <MudChip Text="@Resource.Type.Name" Color="Parser.ParseCivitaiResourceColorAsColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Resource.Type.Name))" Label />
+            <MudChip Text="@Resource.Type.Name" Color="Parser.ParseCivitaiResourceColorAsColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Resource.Type.Name))" Label=true />
             @if (Resource.SubType != null)
             {
-                <MudChip Text="@Resource.SubType.Name" Color="Color.Tertiary" Label />
+                <MudChip Text="@Resource.SubType.Name" Color="Color.Tertiary" Label=true />
             }
         </MudStack>
     </TitleContent>
     <DialogContent>
-        <MudText Class="mb-4" Style="text-align:center;" Color="Color.Primary" Typo="Typo.button">@File.Filename</MudText>
-        @if (File.Description != null)
-        {
-            <MudContainer Class="my-4" Style="max-height: 200px; overflow: scroll;">
-                @((MarkupString)File.Description)
-            </MudContainer>
-        }
-        <MudChipSet ReadOnly>
-            @foreach (var tag in Resource.Tags)
-            {
-                <MudChip Variant="Variant.Text" Text="@tag" Label />
-            }
-        </MudChipSet>
-        @if (File.TriggerWords != null && File.TriggerWords.Count >= 1)
-        {
-            <MudStack Row=true>
-                <MudCheckBox Checked="AppState.Settings.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
-                <MudChipSet ReadOnly>
-                @foreach (var word in File.TriggerWords)
+        <MudTabs Elevation="0" PanelClass="mt-4" Rounded Centered>
+            <MudTabPanel Text="Data">
+                <MudText Class="mb-4" Style="text-align:center;" Color="Color.Primary" Typo="Typo.button">@File.Filename</MudText>
+                @if (File.Description != null)
+                {
+                    <MudContainer Class="my-4" Style="max-height: 200px; overflow: scroll;">
+                        @((MarkupString)File.Description)
+                    </MudContainer>
+                }
+                <MudChipSet ReadOnly=true>
+                    @foreach (var tag in Resource.Tags)
                     {
-                        <MudChip Color="Color.Primary" Text="@word" Label />
+                        <MudChip Variant="Variant.Text" Text="@tag" Label=true />
                     }
                 </MudChipSet>
-            </MudStack>
-        }
-        @if (Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase))
-        {
-            <MudButton Class="w-100 ma-4" OnClick=@(() => MudDialog.Close("Load")) Color="Color.Success" ButtonType="ButtonType.Button" Disabled=@(!AppState.IsWebuiUp || !File.IsEnabled)>Load Checkpoint</MudButton>
-        }
-        else
-        {
-            <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
-        }
-        @if (!(Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase) && File.TriggerWords.Count == 0))
-        {
-            <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row=true>
-                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
-                <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                    <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
-                    <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
-                </MudButtonGroup>
-            </MudStack>
-            <MudStack Class="align-items-center justify-content-center" Row=true>
-                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;" />Img2Img:</MudText>
-                <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                    <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
-                    <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
-                </MudButtonGroup>
-            </MudStack>
-        }
+                @if (File.TriggerWords != null && File.TriggerWords.Count >= 1)
+                {
+                    <MudStack Row=true>
+                        <MudCheckBox Checked="AppState.Settings.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
+                        <MudChipSet ReadOnly=true>
+                            @foreach (var word in File.TriggerWords)
+                            {
+                                <MudChip Color="Color.Primary" Text="@word" Label=true />
+                            }
+                        </MudChipSet>
+                    </MudStack>
+                }
+                @if (Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    <MudButton Class="w-100 ma-4" OnClick=@(() => MudDialog.Close("Load")) Color="Color.Success" ButtonType="ButtonType.Button" Disabled=@(!AppState.IsWebuiUp || !File.IsEnabled)>Load Checkpoint</MudButton>
+                }
+                else
+                {
+                    <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=AppState.Settings.Resources.Weight.Value Min="AppState.Settings.Resources.Weight.Min" Max="AppState.Settings.Resources.Weight.Max" Step="AppState.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @AppState.Settings.Resources.Weight.Value</MudSlider>
+                }
+                @if (!(Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase) && File.TriggerWords.Count == 0))
+                {
+                    <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row=true>
+                        <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
+                        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
+                        </MudButtonGroup>
+                    </MudStack>
+                    <MudStack Class="align-items-center justify-content-center" Row=true>
+                        <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;" />Img2Img:</MudText>
+                        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=!AppState.IsWebuiUp>Prompt</MudButton>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=!AppState.IsWebuiUp>Negative Prompt</MudButton>
+                        </MudButtonGroup>
+                    </MudStack>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Images">
+                <MudStack Style="width: 100%; overflow: scroll;" Row=true>
+                    @foreach (var image in _images)
+                    {
+                        <ResourceImageCard Image="image" />
+                    }
+                </MudStack>
+            </MudTabPanel>
+        </MudTabs>
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Filled" IconColor=@(File.IsEnabled ? Color.Success : Color.Error) StartIcon=@(File.IsEnabled ? "fa-solid fa-circle" : "fa-solid fa-circle-dot") Color=Color.Dark OnClick="ToggleFile">@(File.IsEnabled ? "Disable" : "Enable")</MudButton>
@@ -82,6 +96,10 @@
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
     [Parameter] public LocalResource Resource { get; set; }
     [Parameter] public LocalResourceFile File { get; set; }
+
+    private List<ResourceImage> _images;
+
+    protected async override Task OnInitializedAsync() => _images = await DB.GetResourceImages((int)File.CivitaiId);
 
     private void LoadResource(ModeType source, bool isPrompt) => MudDialog.Close((source, isPrompt));
 

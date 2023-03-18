@@ -44,7 +44,6 @@
         {
             _resources.Add(type, await CreateResourceEntities(type.Id));
         }
-        await InvokeAsync(StateHasChanged);
     }
 
     private async Task<List<LocalResource>> CreateResourceEntities(int typeId)
@@ -129,7 +128,7 @@
         }
         var filename = file.File.Name.Replace(file.File.Extension, "");
 
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
         var dialogParam = new DialogParameters();
         dialogParam.Add("Resource", resource);
         dialogParam.Add("File", file);
@@ -143,12 +142,12 @@
                 if (result.Data.ToString().Equals("Edit"))
                 {
                     await ShowResourceInfoDialog(file);
-                    await InitializeResourceDictionary();
+                    Refresh();
                     return;
                 }
                 else if (result.Data.ToString() == "Toggle")
                 {
-                    await InitializeResourceDictionary();
+                    Refresh();
                     return;
                 }
             }
@@ -264,6 +263,7 @@
 
     private async void Refresh()
     {
+        await InitializeResourceDictionary();
         await AppState.GetResourceTypeDirectories();
         await InvokeAsync(StateHasChanged);
     }

@@ -3,6 +3,7 @@ using System;
 using BlazorWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorWebApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230317215256_Add ResourceImages")]
+    partial class AddResourceImages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.11");
@@ -219,7 +221,7 @@ namespace BlazorWebApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<float?>("CfgScale")
+                    b.Property<float>("CfgScale")
                         .HasColumnType("REAL");
 
                     b.Property<int>("CivitaiModelId")
@@ -229,71 +231,81 @@ namespace BlazorWebApp.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ClipSkip")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DenoisingStrength")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ENSD")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FaceRestoration")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("GenerationProcess")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Hash")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("Height")
+                    b.Property<int>("Height")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("HiresSteps")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("HiresUpscale")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("HiresUpscaler")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Model")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ModelHash")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("NegativePrompt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool?>("Nsfw")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Path")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("HiresUpscale")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HiresUpscaler")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NegativePrompt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Nsfw")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Prompt")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Sampler")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<long?>("Seed")
+                    b.Property<long>("Seed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("Steps")
+                    b.Property<int>("Steps")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Tags")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Url")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("Width")
+                    b.Property<int>("Width")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");

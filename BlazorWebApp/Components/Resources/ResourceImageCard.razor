@@ -1,0 +1,19 @@
+﻿@inject IDialogService DialogService
+
+<div>
+    <MudButton OnClick=ShowImage Class="image-btn">
+        <MudImage Src="@Image.Path" ObjectFit="ObjectFit.Cover" Elevation="4" Fluid />
+    </MudButton>
+</div>
+
+@code {
+    [Parameter] public ResourceImage Image { get; set; }
+
+    private async Task ShowImage()
+    {
+        var options = new DialogOptions() { NoHeader = true };
+        var param = new DialogParameters();
+        param.Add("Image", Image);
+        await DialogService.ShowAsync<ResourceImageDialog>("Image", param, options);
+    }
+}

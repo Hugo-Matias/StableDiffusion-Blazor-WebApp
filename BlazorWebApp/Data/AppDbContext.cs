@@ -41,8 +41,10 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<Resource>().HasIndex(t => t.Filename).IsUnique();
             modelBuilder.Entity<ResourceType>().HasIndex(t => t.Name).IsUnique();
             modelBuilder.Entity<ResourceSubType>().HasIndex(t => t.Name).IsUnique();
+            modelBuilder.Entity<ResourceImage>().HasIndex(t => t.Hash).IsUnique();
             modelBuilder.Entity<Resource>().Property(nameof(Resource.Tags)).HasConversion(converter, comparer);
             modelBuilder.Entity<Resource>().Property(nameof(Resource.TriggerWords)).HasConversion(converter, comparer);
+            modelBuilder.Entity<ResourceImage>().Property(nameof(ResourceImage.Tags)).HasConversion(converter, comparer);
         }
 
         public DbSet<Image> Images { get; set; }
@@ -54,5 +56,6 @@ namespace BlazorWebApp.Data
         public DbSet<Resource> Resources { get; set; }
         public DbSet<ResourceType> ResourceTypes { get; set; }
         public DbSet<ResourceSubType> ResourceSubTypes { get; set; }
+        public DbSet<ResourceImage> ResourceImages { get; set; }
     }
 }

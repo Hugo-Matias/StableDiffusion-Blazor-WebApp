@@ -1,0 +1,13 @@
+﻿::deep .image-btn {
+	width: 15rem;
+	height: fit-content;
+	border-radius: 10px
+}
+
+	::deep .image-btn:hover {
+		background-color: var(--mud-palette-primary);
+	}
+
+::deep img {
+	border-radius: 10px;
+}

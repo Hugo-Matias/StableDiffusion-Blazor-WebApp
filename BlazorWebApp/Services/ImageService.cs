@@ -293,6 +293,7 @@ namespace BlazorWebApp.Services
             var httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri(url);
             var response = await httpClient.GetByteArrayAsync(url);
+            Directory.CreateDirectory(new FileInfo(path).DirectoryName);
             await File.WriteAllBytesAsync(path, _magick.ConvertToPng(response));
         }
 

@@ -498,5 +498,21 @@ namespace BlazorWebApp.Services
             if (resource != null) context.Resources.Remove(resource);
             await context.SaveChangesAsync();
         }
+
+        public async Task<bool> CreateResourceImage(ResourceImage image)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var exists = await context.ResourceImages.AnyAsync(i => i.Hash == image.Hash);
+            if (exists) return false;
+            context.ResourceImages.Add(image);
+            await context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<List<ResourceImage>> GetResourceImages(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return context.ResourceImages.Where(i => i.CivitaiModelVersionID == id).ToList();
+        }
     }
 }

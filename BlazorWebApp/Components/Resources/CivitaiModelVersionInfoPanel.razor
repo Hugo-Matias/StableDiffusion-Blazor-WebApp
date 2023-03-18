@@ -2,6 +2,7 @@
 @inject CivitaiService Civitai
 @inject ISnackbar Snackbar
 @inject IOService IO
+@inject DatabaseService DB
 @inject ImageService ImageService
 @inject IConfiguration Configuration
 @using System.Text.Json;
@@ -84,17 +85,19 @@
                 break;
         }
         await SaveImage(version.Images[0], version.Id, isPreview: true, showSnackbar: false);
+        await SaveAllImages(version);
         AppState.InvokeDownloadComplete();
     }
 
     private async Task SaveAllImages(CivitaiModelVersionDto version)
     {
         _isSavingImages = true;
+        var index = 1;
         foreach (var image in version.Images)
         {
             try
             {
-                await SaveImage(image, version.Id, showSnackbar: false);
+                await SaveImage(image, version.Id, filename: index.ToString(), showSnackbar: false);
             }
             catch (Exception)
             {
@@ -102,34 +105,49 @@
                 Snackbar.Add("Couldn't save image:\n" + image.Url, Severity.Error);
                 continue;
             }
+            index++;
         }
         Snackbar.Add("All images saved!\n" + Model.Name, Severity.Success);
         _isSavingImages = false;
     }
 
-    private async Task SaveImage(CivitaiModelVersionImageDto image, int versionId, bool isPreview = false, bool showSnackbar = true)
+    private async Task SaveImage(CivitaiModelVersionImageDto image, int versionId, string filename = "", bool isPreview = false, bool showSnackbar = true)
     {
         string path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
+        var imageFilename = string.IsNullOrWhiteSpace(filename) ? Parser.SanitizePath(image.Hash) : filename;
         if (isPreview) path = Path.Combine(path, versionId.ToString());
-        else path = Path.Combine(path, versionId.ToString(), Parser.SanitizePath(image.Hash));
+        else path = Path.Combine(path, versionId.ToString(), imageFilename);
         var url = Parser.ParseCivitaiImageFullSize(image.Url, image.Width, image.Meta != null ? image.Meta.Size : null);
-        var parameters = JsonSerializer.Serialize(image, new JsonSerializerOptions()
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
-        var jsonPath = path + ".json";
         var imagePath = path + ".png";
-        if ((File.Exists(jsonPath) || File.Exists(imagePath)) && showSnackbar)
+        if (File.Exists(imagePath) && showSnackbar)
         {
             Snackbar.Add("Image and parameters already saved!", Severity.Warning);
         }
         else
         {
-            IO.SaveText(jsonPath, parameters, overwrite: false);
             await ImageService.DownloadImageAsPng(url, imagePath, overwrite: false);
-            if (showSnackbar) Snackbar.Add("Image and parameters saved!", Severity.Success);
+            if (!isPreview)
+            {
+                var parameters = JsonSerializer.Serialize(image.MetaObject, new JsonSerializerOptions()
+                    {
+                        WriteIndented = true,
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    });
+                var jsonPath = path + ".json";
+                IO.SaveText(jsonPath, parameters, overwrite: false);
+            }
+            if (showSnackbar) Snackbar.Add("Image saved!", Severity.Success);
+        }
+
+        if (!isPreview)
+        {
+            // Add to Db
+            var entity = new ResourceImage(image);
+            entity.CivitaiModelId = Model.Id;
+            entity.CivitaiModelVersionID = versionId;
+            entity.Path = imagePath.Replace(Configuration["ImagesPathVault"], "/image/vault/").Replace(@"\", "/");
+            if (image.Meta != null) entity.Prompt = Parser.ParseCivitaiImageResources(image.Meta.Prompt, image.Meta.Resources);
+            await DB.CreateResourceImage(entity);
         }
     }
-}
 }

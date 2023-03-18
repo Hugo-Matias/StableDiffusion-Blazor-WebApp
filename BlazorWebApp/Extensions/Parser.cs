@@ -47,6 +47,23 @@ namespace BlazorWebApp.Extensions
             return $"{prompt}{style}";
         }
 
+        public static string ParseCivitaiImageResources(this string prompt, List<CivitaiImageMetaResource> resources)
+        {
+            if (resources == null || prompt == null) return prompt;
+            var comp = StringComparison.InvariantCultureIgnoreCase;
+            foreach (var resource in resources)
+            {
+                var resourceString = string.Empty;
+                if (resource.Type.Equals("lora", comp))
+                    resourceString = $"<lora:{resource.Name}:{resource.Weight}>";
+                else if (resource.Type.Equals("hypernet"))
+                    resourceString = $"<hypernet:{resource.Name}:{resource.Weight}>";
+                else if (!resource.Type.Equals("model")) Console.WriteLine($"NEW IMAGE RESOURCE TYPE FOUND: {resource.Type} | {resource.Name}");
+                if (!string.IsNullOrWhiteSpace(resourceString) && !prompt.Contains(resourceString, comp)) prompt += ", " + resourceString;
+            }
+            return prompt;
+        }
+
         public static MarkupString ParseHighresFixResizeInfo(this Txt2ImgParameters param)
         {
             var currentRes = $"{param.Width}x{param.Height} px";

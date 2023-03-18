@@ -60,6 +60,12 @@ namespace BlazorWebApp.Data.Dtos
 
     public class CivitaiModelVersionImageTagDto
     {
+        public CivitaiModelVersionImageTagDataDto Tag { get; set; }
+        public bool Automated { get; set; }
+    }
+
+    public class CivitaiModelVersionImageTagDataDto
+    {
         public int Id { get; set; }
         public string Name { get; set; }
         public bool IsCategory { get; set; }
