@@ -49,7 +49,7 @@ namespace BlazorWebApp.Extensions
 
         public static string ParseCivitaiImageResources(this string prompt, List<CivitaiImageMetaResource> resources)
         {
-            if (resources == null || prompt == null) return prompt;
+            if (resources == null || prompt == null) return prompt?.Replace("\n", "");
             var comp = StringComparison.InvariantCultureIgnoreCase;
             foreach (var resource in resources)
             {
@@ -61,7 +61,7 @@ namespace BlazorWebApp.Extensions
                 else if (!resource.Type.Equals("model")) Console.WriteLine($"NEW IMAGE RESOURCE TYPE FOUND: {resource.Type} | {resource.Name}");
                 if (!string.IsNullOrWhiteSpace(resourceString) && !prompt.Contains(resourceString, comp)) prompt += ", " + resourceString;
             }
-            return prompt;
+            return prompt.Replace("\n", "");
         }
 
         public static MarkupString ParseHighresFixResizeInfo(this Txt2ImgParameters param)
