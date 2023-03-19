@@ -77,12 +77,12 @@
                 }
             </MudTabPanel>
             <MudTabPanel Text="Images">
-                <MudStack Style="width: 100%; overflow: scroll;" Row=true>
+                <MudGrid Style="width: 100%; overflow: scroll; justify-content:center !important;">
                     @foreach (var image in _images)
                     {
                         <ResourceImageCard Image="image" />
                     }
-                </MudStack>
+                </MudGrid>
             </MudTabPanel>
         </MudTabs>
     </DialogContent>
