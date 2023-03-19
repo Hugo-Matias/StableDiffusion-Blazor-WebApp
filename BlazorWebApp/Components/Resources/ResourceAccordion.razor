@@ -1,9 +1,11 @@
-﻿@if (Resources != null)
+﻿@inject AppState AppState
+
+@if (Resources != null)
 {
     <MudStack Class="my-3 pa-2" Row=true>
         <MudTextField Label="Title" Value="_searchTitle" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
         <MudAutocomplete T="string" Value="_searchTag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="300" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(_isInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
-        <MudCheckBox T="bool?" Checked=_isEnabled CheckedChanged=@(v => HandleEnabledChecked(v)) Color=@(_isEnabled == null ? Color.Default : (bool)_isEnabled ? Color.Success : Color.Error) TriState=true>Active</MudCheckBox>
+        <MudCheckBox T="bool?" Checked=AppState.ResourceIsEnabledFilter CheckedChanged=@(v => HandleEnabledChecked(v)) Color=@(AppState.ResourceIsEnabledFilter == null ? Color.Default : (bool)AppState.ResourceIsEnabledFilter ? Color.Success : Color.Error) TriState=true>Active</MudCheckBox>
         <MudButton OnClick="Search" Color="Color.Success">Search</MudButton>
     </MudStack>
 
@@ -42,7 +44,6 @@
     private List<LocalResource> _filteredResources;
     private string _searchTitle, _searchTag;
     private bool _isInclusive = true;
-    private bool? _isEnabled = null;
 
     protected override void OnParametersSet()
     {
@@ -76,7 +77,7 @@
 
     private void HandleEnabledChecked(bool? value)
     {
-        _isEnabled = value;
+        AppState.ResourceIsEnabledFilter = value;
         Search();
     }
 
@@ -89,7 +90,7 @@
             if (_isInclusive) query = query.Where(r => r.Tags.Contains(_searchTag));
             else query = query.Where(r => !r.Tags.Contains(_searchTag));
         }
-        if (_isEnabled != null) query = query.Where(r => r.Files.Any(f => f.IsEnabled == _isEnabled));
+        if (AppState.ResourceIsEnabledFilter != null) query = query.Where(r => r.Files.Any(f => f.IsEnabled == AppState.ResourceIsEnabledFilter));
         _filteredResources = query.ToList();
     }
 }

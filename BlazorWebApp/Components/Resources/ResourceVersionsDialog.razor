@@ -1,4 +1,6 @@
-﻿<MudDialog Class="pa-4">
+﻿@inject AppState AppState
+
+<MudDialog Class="pa-4">
     <TitleContent>
         <MudStack Row>
             <MudText Typo="Typo.h6">@Resource.Title</MudText>
@@ -14,7 +16,7 @@
         <MudStack Row>
             @foreach (var file in Resource.Files)
             {
-                if (file.IsEnabled)
+                if (AppState.ResourceIsEnabledFilter == null || file.IsEnabled == AppState.ResourceIsEnabledFilter)
                 {
                     <ResourceCard Resource="file" Title=@(file.Title.Split("_", 2, StringSplitOptions.RemoveEmptyEntries).LastOrDefault()) OnLoad=@(() => Load(file)) />
                 }

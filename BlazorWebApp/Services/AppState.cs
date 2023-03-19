@@ -97,6 +97,7 @@ namespace BlazorWebApp.Services
         public CivitaiModelsDto CivitaiModels { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
         public Dictionary<string, string> ResourceTypeDirectories { get; set; }
+        public bool? ResourceIsEnabledFilter { get; set; }
         public bool IsConverging
         {
             get => _isConverging;
