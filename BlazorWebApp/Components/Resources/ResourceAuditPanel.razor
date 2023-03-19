@@ -6,13 +6,19 @@
 <MudStack Row>
     @if (_missing != null)
     {
-        <MudText Typo="Typo.h6" Color="Color.Error">Missing from Database:</MudText>
-        <AuditFileTree Files="_missing" OnFileSelected="async v => await HandleFileSelected(v)" />
+        <AuditFileTree Files="_missing" OnFileSelected="async v => await HandleFileSelected(v)">
+            <Title>
+                <MudText Typo="Typo.h6" Color="Color.Error">Missing from Database:</MudText>
+            </Title>
+        </AuditFileTree>
     }
     @if (_added != null)
     {
-        <MudText Typo="Typo.h6" Color="Color.Success">Exist in Database:</MudText>
-        <AuditFileTree Files="_added" />
+        <AuditFileTree Files="_added">
+            <Title>
+                <MudText Typo="Typo.h6" Color="Color.Success">Exist in Database:</MudText>
+            </Title>
+        </AuditFileTree>
     }
 </MudStack>
 

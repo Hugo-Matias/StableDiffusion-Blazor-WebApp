@@ -13,19 +13,23 @@
 	}
 
 
-::deep .negative-prompt textarea {
-	color: var(--mud-palette-error);
+::deep .negative-prompt {
+	margin-top: -0.4rem;
 }
 
-	::deep .negative-prompt textarea::selection {
-		color: var(--mud-palette-dark);
-		background-color: var(--mud-palette-error);
+	::deep .negative-prompt textarea {
+		color: var(--mud-palette-error);
 	}
 
-	::deep .negative-prompt textarea::-moz-selection {
-		color: var(--mud-palette-dark);
-		background-color: var(--mud-palette-error);
-	}
+		::deep .negative-prompt textarea::selection {
+			color: var(--mud-palette-dark);
+			background-color: var(--mud-palette-error);
+		}
+
+		::deep .negative-prompt textarea::-moz-selection {
+			color: var(--mud-palette-dark);
+			background-color: var(--mud-palette-error);
+		}
 
 ::deep .mud-select-input {
 	color: transparent;

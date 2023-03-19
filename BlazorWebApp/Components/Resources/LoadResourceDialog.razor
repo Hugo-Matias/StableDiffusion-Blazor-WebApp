@@ -77,7 +77,7 @@
                 }
             </MudTabPanel>
             <MudTabPanel Text="Images">
-                <MudGrid Style="width: 100%; overflow: scroll; justify-content:center !important;">
+                <MudGrid Style="width: 100%; max-height:80vh; overflow: scroll; justify-content:center !important;">
                     @foreach (var image in _images)
                     {
                         <ResourceImageCard Image="image" />

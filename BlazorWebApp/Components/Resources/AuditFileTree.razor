@@ -1,14 +1,18 @@
 ﻿@inject IConfiguration Configuration
 
-<MudTreeView Items="Items" T="AuditTreeItem" SelectedValueChanged="HandleFileSelected" Hover>
-    <ItemTemplate>
-        <MudTreeViewItem Value="@context" Items="@context.Items" Text="@context.Title" />
-    </ItemTemplate>
-</MudTreeView>
+<MudStack>
+    @Title
+    <MudTreeView Items="Items" T="AuditTreeItem" SelectedValueChanged="HandleFileSelected" Hover>
+        <ItemTemplate>
+            <MudTreeViewItem Value="@context" Items="@context.Items" Text="@context.Title" />
+        </ItemTemplate>
+    </MudTreeView>
+</MudStack>
 
 @code {
     [Parameter] public List<FileInfo> Files { get; set; }
     [Parameter] public EventCallback<string> OnFileSelected { get; set; }
+    [Parameter] public RenderFragment Title { get; set; }
 
     public AuditTreeNode Items { get; set; } = new(@"\");
 

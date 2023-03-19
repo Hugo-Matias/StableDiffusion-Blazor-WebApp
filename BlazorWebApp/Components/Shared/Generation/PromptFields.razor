@@ -23,7 +23,7 @@
                                 }
                             }
                         </MudChipSet>
-                        <MudSelect Label="Styles" Text="" SelectedValues="AppState.CurrentStyles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" MultiSelection>
+                        <MudSelect Label="Styles" Text="" SelectedValues="AppState.CurrentStyles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
                             @if (AppState.Styles != null)
                             {
                                 @foreach (var style in AppState.Styles)
@@ -68,8 +68,8 @@
     [Parameter]
     public TagDrawer? NegativePromptDrawer { get; set; }
 
-    private int _promptLines = 5;
-    private int _negativePromptLines = 5;
+    private int _promptLines = 6;
+    private int _negativePromptLines = 4;
     private bool _isDrawerOpen = false;
 
     protected override void OnInitialized()

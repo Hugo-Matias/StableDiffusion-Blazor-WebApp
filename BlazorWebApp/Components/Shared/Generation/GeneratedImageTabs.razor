@@ -6,7 +6,7 @@
     <MudTabPanel Text="Preview">
         @if (AppState.GeneratedImageEntities != null && AppState.GeneratedImageEntities.Images != null)
         {
-            <ImageCarousel Images="AppState.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls />
+            <ImageCarousel Images="AppState.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
             <br />
             @if (AppState.ImagesInfo != null)
             {
