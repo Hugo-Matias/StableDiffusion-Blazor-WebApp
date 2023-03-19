@@ -499,6 +499,12 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task<bool> CheckResourceExists(string filename)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Resources.AnyAsync(r => r.Filename == filename);
+        }
+
         public async Task<bool> CreateResourceImage(ResourceImage image)
         {
             using var context = await _factory.CreateDbContextAsync();
