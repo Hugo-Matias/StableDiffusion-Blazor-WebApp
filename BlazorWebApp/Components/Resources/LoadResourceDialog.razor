@@ -99,7 +99,7 @@
 
     private List<ResourceImage> _images;
 
-    protected async override Task OnInitializedAsync() => _images = await DB.GetResourceImages((int)File.CivitaiId);
+    protected async override Task OnInitializedAsync() => _images = File.CivitaiId != null ? await DB.GetResourceImages((int)File.CivitaiId) : new();
 
     private void LoadResource(ModeType source, bool isPrompt) => MudDialog.Close((source, isPrompt));
 
