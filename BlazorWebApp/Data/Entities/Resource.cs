@@ -1,4 +1,6 @@
-﻿namespace BlazorWebApp.Data.Entities
+﻿using BlazorWebApp.Data.Dtos;
+
+namespace BlazorWebApp.Data.Entities
 {
     public class Resource
     {
@@ -13,6 +15,22 @@
         public List<string>? Tags { get; set; }
         public List<string>? TriggerWords { get; set; }
         public string? Description { get; set; }
+        public bool IsEnabled { get; set; }
+
+        public Resource() { }
+        public Resource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
+        {
+            Title = model.Name;
+            Filename = file.Name;
+            Author = model.Creator.Username;
+            CivitaiModelId = model.Id;
+            CivitaiModelVersionId = version.Id;
+            Type = new() { Name = model.Type };
+            Tags = model.Tags;
+            Description = version.Description;
+            IsEnabled = false;
+            if (version.TrainedWords != null) TriggerWords = version.TrainedWords;
+        }
     }
 
     public class ResourceType

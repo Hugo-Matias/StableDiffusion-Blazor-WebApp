@@ -67,6 +67,7 @@
                     var file = new LocalResourceFile(entity);
                     file.ImageSrc = IO.GetResourceImagePath(createdResource.Type.Name, file.Filename);
                     file.Title = Path.GetFileNameWithoutExtension(file.Filename);
+                    file.IsEnabled = entity.IsEnabled;
                     createdResource.Files.Insert(0, file);
                     createdResource.ImageSrc = file.ImageSrc;
                 }
@@ -76,6 +77,7 @@
                     var file = new LocalResourceFile(entity);
                     file.ImageSrc = IO.GetResourceImagePath(resource.Type.Name, file.Filename);
                     file.Title = Path.GetFileNameWithoutExtension(file.Filename);
+                    file.IsEnabled = entity.IsEnabled;
                     resource.ImageSrc = file.ImageSrc;
                     resource.Files = new() { file };
                     resources.Add(resource);

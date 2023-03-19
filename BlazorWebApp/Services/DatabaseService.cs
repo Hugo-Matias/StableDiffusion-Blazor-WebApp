@@ -414,7 +414,7 @@ namespace BlazorWebApp.Services
         public async Task<List<Resource>> GetResources()
         {
             using var context = _factory.CreateDbContext();
-            return await context.Resources.ToListAsync();
+            return await context.Resources.Include(r => r.Type).Include(r => r.SubType).ToListAsync();
         }
 
         public async Task<List<Resource>> GetResources(int typeId)
@@ -496,6 +496,14 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == resourceId);
             if (resource != null) context.Resources.Remove(resource);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task ToggleResourceState(int resourceId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == resourceId);
+            if (resource != null) resource.IsEnabled = !resource.IsEnabled;
             await context.SaveChangesAsync();
         }
 

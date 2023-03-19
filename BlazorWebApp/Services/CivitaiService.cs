@@ -200,19 +200,8 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Add to DB
-                var entity = new Resource()
-                {
-                    Title = model.Name,
-                    Filename = file.Name,
-                    Author = model.Creator.Username,
-                    CivitaiModelId = model.Id,
-                    CivitaiModelVersionId = version.Id,
-                    Type = new() { Name = model.Type },
-                    Tags = model.Tags,
-                    Description = version.Description,
-                };
+                var entity = new Resource(model, version, file);
                 if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
-                if (version.TrainedWords != null) entity.TriggerWords = version.TrainedWords;
                 var isAdded = await _db.CreateResource(entity);
                 if (!isAdded) status = CivitaiDownloadStatus.Exists;
                 #endregion
@@ -225,7 +214,7 @@ namespace BlazorWebApp.Services
             return status;
         }
 
-        // For development
+        #region For Development
         public async Task UpdateResourceDescriptions()
         {
             var resources = await _db.GetResources();
@@ -243,6 +232,28 @@ namespace BlazorWebApp.Services
             }
             _app.CurrentProgress = 0;
         }
+
+        public async Task UpdateResourceState()
+        {
+            var resources = await _db.GetResources();
+            foreach (var item in resources)
+            {
+                var basePath = Path.Combine(_configuration["ResourcesPath"]);
+                var subPath = item.Type.Name;
+                if (item.SubType != null) subPath = Path.Combine(subPath, item.SubType.Name);
+                var enabledPath = Path.Combine(basePath, subPath, item.Filename);
+                var disabledPath = Path.Combine(basePath, "_storage", subPath, item.Filename);
+                if (File.Exists(enabledPath)) item.IsEnabled = true;
+                else if (File.Exists(disabledPath)) item.IsEnabled = false;
+                else
+                {
+                    await Console.Out.WriteLineAsync($"ITEM NOT FOUND: {item.Type.Name}{(item.SubType != null ? $" - {item.SubType.Name}" : "")} => {item.Filename} | {item.Id}");
+                    item.IsEnabled = false;
+                }
+                await _db.UpdateResource(item);
+            }
+        }
+        #endregion
     }
 
     public enum CivitaiDownloadStatus { Success, Error, Database, Exists }
