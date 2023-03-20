@@ -127,6 +127,7 @@ namespace BlazorWebApp.Services
             GetCmdFlags();
             LoadSettings();
             _db.PageSize = Settings.Gallery.PageSize;
+            Settings.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
             Images = new();
             Progress = new();

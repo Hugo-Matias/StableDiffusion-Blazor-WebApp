@@ -27,22 +27,22 @@
             {
                 @foreach (var project in AppState.Projects)
                 {
-                    <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
+                    @*<ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>*@
                 }
             }
         </MudStack>
     </MudPaper>
     <MudContainer MaxWidth="MaxWidth.Medium">
         <MudGrid>
-            <MudItem xs="5">
+            <MudItem xs="4">
                 <MudStack>
-                    <MudTextField T="string" @bind-Value="AppState.Settings.Gallery.SearchPrompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus Variant="Variant.Text" />
-                    <MudTextField Class="mt-n4" T="string" @bind-Value="AppState.Settings.Gallery.SearchNegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus Variant="Variant.Text" />
-                    </MudStack>
-                    </MudItem>
-                    <MudItem xs="3">
-                    <MudCheckBox Class="mt-4" Label="Favorites Only" @bind-Checked="AppState.Settings.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
-                    <MudStack Class="mt-2" Row>
+                    <MudTextField T="string" @bind-Value="AppState.Settings.Gallery.SearchPrompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus=true Variant="Variant.Text" />
+                    <MudTextField Class="mt-n4" T="string" @bind-Value="AppState.Settings.Gallery.SearchNegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus=true Variant="Variant.Text" />
+                </MudStack>
+            </MudItem>
+            <MudItem xs="3">
+                <MudCheckBox Class="mt-4" Label="Favorites Only" @bind-Checked="AppState.Settings.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
+                <MudStack Class="mt-2" Row=true>
                     <MudSelect Label="Order by" @bind-Value="AppState.Settings.Gallery.OrderBy">
                         @foreach (GalleryOrderBy order in Enum.GetValues(typeof(GalleryOrderBy)))
                         {
@@ -59,22 +59,24 @@
                     <MudChip Text="Img2Img" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeImg2Img" />
                     <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Primary" Default="AppState.Settings.Gallery.IsModeUpscale" />
                 </MudChipSet>
+                <MudDateRangePicker Label="Date Range" @bind-DateRange=AppState.Settings.Gallery.DateRange AutoClose=true />
+            </MudItem>
+            <MudItem xs=1>
                 <MudButtonGroup Class="mt-5" Variant="Variant.Outlined" Color="Color.Primary" OverrideStyles=false>
                     <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Warning">Filter</MudButton>
                     <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Error">Reset</MudButton>
                 </MudButtonGroup>
+                <MudCheckBox Class="mt-4" Label="DateRange" CheckedIcon="fa-solid fa-calendar" Color="Color.Success" UncheckedIcon="fa-regular fa-calendar" UnCheckedColor="Color.Error" @bind-Checked=AppState.Settings.Gallery.FilterByDateRange />
             </MudItem>
         </MudGrid>
     </MudContainer>
 </div>
 
 @code {
-    [Parameter]
-    public EventCallback OnFilterImages { get; set; }
-    [Parameter]
-    public EventCallback OnResetFilters { get; set; }
-    [Parameter]
-    public EventCallback OnProjectDeleted { get; set; }
+    //  TODO: Refactor ProjectCard container into index or another component
+    [Parameter] public EventCallback OnFilterImages { get; set; }
+    [Parameter] public EventCallback OnResetFilters { get; set; }
+    [Parameter] public EventCallback OnProjectDeleted { get; set; }
 
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
 

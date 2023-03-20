@@ -240,6 +240,7 @@ namespace BlazorWebApp.Services
             if (!string.IsNullOrWhiteSpace(settings.SearchNegativePrompt))
                 query = query.Where(i => i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower()));
             if (settings.IsFavoritesOnly) query = query.Where(i => i.Favorite);
+            if (settings.FilterByDateRange) query = query.Where(i => i.DateCreated >= settings.DateRange.Start && i.DateCreated <= settings.DateRange.End.Value.AddDays(1));
 
             List<int> modes = new();
             if (settings.IsModeTxt2Img) modes.Add(1);

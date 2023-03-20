@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using MudBlazor;
 
 namespace BlazorWebApp.Models
 {
@@ -34,6 +35,8 @@ namespace BlazorWebApp.Models
         public bool IsModeTxt2Img { get; set; } = true;
         public bool IsModeImg2Img { get; set; } = true;
         public bool IsModeUpscale { get; set; } = true;
+        public DateRange DateRange { get; set; } = new(DateTime.Now.Date, DateTime.Now.Date);
+        public bool FilterByDateRange { get; set; } = false;
     }
 
     public enum GalleryOrderBy { Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }
