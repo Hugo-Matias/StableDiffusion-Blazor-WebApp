@@ -96,7 +96,12 @@
     {
         var tags = string.Empty;
         for (int i = 0; i < _selectedTags.Count; i++)
+        {
+            var parsedTag = _selectedTags[i];
+            parsedTag.Item1 = Parser.EscapeParenthesis(parsedTag.Item1);
+            _selectedTags[i] = parsedTag;
             tags += ParseTagWeight(i) + (i < _selectedTags.Count - 1 ? ", " : "");
+        }
         OnAppendTags.InvokeAsync(new AppendedTags() { Tags = tags, IsPrefix = isPrefix });
         _selectedTags.Clear();
     }

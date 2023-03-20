@@ -23,6 +23,7 @@ namespace BlazorWebApp.Services
         public IEnumerable<CsvTag> SearchTags(string searchText)
         {
             using var reader = CsvDataReader.Create(_path, _options);
+            searchText = searchText.Replace(" ", "_");
             var tags = reader.GetRecords<CsvTag>().Where(t => t.Name.Contains(searchText, StringComparison.InvariantCultureIgnoreCase) || t.Aliases.Contains(searchText, StringComparison.InvariantCultureIgnoreCase)).OrderByDescending(t => t.Uses).ToArray();
             List<CsvTag> result = new();
             foreach (var tag in tags)

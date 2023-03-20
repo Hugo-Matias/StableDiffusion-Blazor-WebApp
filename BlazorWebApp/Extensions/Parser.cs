@@ -23,6 +23,12 @@ namespace BlazorWebApp.Extensions
             return Regex.Replace(data, @"data.+?,", "", RegexOptions.Compiled);
         }
 
+        public static string EscapeParenthesis(this string input)
+        {
+            input = input.Replace("(", @"\(");
+            input = input.Replace(")", @"\)");
+            return input;
+        }
 
         public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
         {
