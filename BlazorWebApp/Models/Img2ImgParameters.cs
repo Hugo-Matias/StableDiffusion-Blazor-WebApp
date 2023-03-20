@@ -12,7 +12,7 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("inpaint_full_res")] public bool InpaintFullRes { get; set; }
         [JsonPropertyName("inpaint_full_res_padding")] public int InpaintFullResPadding { get; set; }
         [JsonPropertyName("inpainting_mask_invert")] public int InpaintingMaskInvert { get; set; }
-        [JsonPropertyName("controlnet_units")] public List<ControlNetParameters> ControlNet { get; set; }
+        [JsonIgnore] public List<ControlNetParameters> ControlNet { get; set; }
 
         public Img2ImgParameters() { }
         public Img2ImgParameters(SharedParameters clone)
@@ -40,6 +40,7 @@ namespace BlazorWebApp.Models
             STmin = clone.STmin;
             SNoise = clone.SNoise;
             SamplerIndex = clone.SamplerIndex;
+            AlwaysOnScripts = clone.AlwaysOnScripts;
         }
     }
 }
