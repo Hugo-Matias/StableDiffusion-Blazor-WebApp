@@ -18,6 +18,7 @@ namespace BlazorWebApp.Services
         private readonly AppState _app;
         private readonly DatabaseService _db;
         private readonly ProgressService _progress;
+        private readonly List<CivitaiModelType> _ignoreDatabaseTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
 
         public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, AppState app, DatabaseService db, ProgressService progress)
         {
@@ -206,10 +207,13 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Add to DB
-                var entity = new Resource(model, version, file);
-                if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
-                var isAdded = await _db.CreateResource(entity);
-                if (!isAdded) status = CivitaiDownloadStatus.Exists;
+                if (!_ignoreDatabaseTypes.Contains((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)))
+                {
+                    var entity = new Resource(model, version, file);
+                    if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
+                    var isAdded = await _db.CreateResource(entity);
+                    if (!isAdded) status = CivitaiDownloadStatus.Exists;
+                }
                 #endregion
             }
             catch (Exception ex)

@@ -200,8 +200,11 @@ namespace BlazorWebApp.Extensions
                 CivitaiModelType.Hypernetwork => "mud-palette-info",
                 CivitaiModelType.AestheticGradient => "mud-palette-warning",
                 CivitaiModelType.LORA => "mud-palette-success",
+                CivitaiModelType.LoCon => "mud-palette-success",
                 CivitaiModelType.Controlnet => "mud-palette-error",
                 CivitaiModelType.Poses => "mud-palette-tertiary",
+                CivitaiModelType.Wildcards => "mud-palette-tertiary",
+                CivitaiModelType.Other => "mud-palette-tertiary",
                 _ => "mud-palette-default",
             };
         }
@@ -215,8 +218,11 @@ namespace BlazorWebApp.Extensions
                 CivitaiModelType.Hypernetwork => Color.Info,
                 CivitaiModelType.AestheticGradient => Color.Warning,
                 CivitaiModelType.LORA => Color.Success,
+                CivitaiModelType.LoCon => Color.Success,
                 CivitaiModelType.Controlnet => Color.Error,
                 CivitaiModelType.Poses => Color.Tertiary,
+                CivitaiModelType.Wildcards => Color.Tertiary,
+                CivitaiModelType.Other => Color.Tertiary,
                 _ => Color.Default
             };
         }

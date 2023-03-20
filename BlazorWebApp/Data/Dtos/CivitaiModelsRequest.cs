@@ -14,7 +14,7 @@
         public string? Hash { get; set; }
     }
 
-    public enum CivitaiModelType { All, Checkpoint, TextualInversion, Hypernetwork, AestheticGradient, LORA, Controlnet, Poses }
+    public enum CivitaiModelType { All, Checkpoint, LORA, LoCon, TextualInversion, Hypernetwork, AestheticGradient, Controlnet, Poses, Wildcards, Other }
     public enum CivitaiSort { Highest_Rated, Most_Downloaded, Newest }
     public enum CivitaiPeriod { AllTime, Year, Month, Week, Day }
 }

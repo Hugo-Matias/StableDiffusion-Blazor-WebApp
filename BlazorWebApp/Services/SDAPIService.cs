@@ -116,23 +116,31 @@ namespace BlazorWebApp.Services
             return json["model_list"].AsArray().Select(n => n.ToString()).ToList();
         }
 
-        // Deprecated
-        public async Task<GeneratedImages> PostControlNetTxt2Img(Txt2ImgParameters param)
+        public async Task<List<string>> GetControlNetPreprocessors()
         {
-            //var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { WriteIndented = true });
-            //File.WriteAllText("txt2img.json", json);
-            using var response = await _httpClient.PostAsJsonAsync(_controlnetRoute + "txt2img", param, _jsonIgnoreNull);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<GeneratedImages>();
+            var response = await _httpClient.GetAsync(_controlnetRoute + "module_list");
+            var content = await response.Content.ReadAsStringAsync();
+            var json = JsonNode.Parse(content);
+            return json["module_list"].AsArray().Select(n => n.ToString()).ToList();
         }
 
         // Deprecated
-        public async Task<GeneratedImages> PostControlNetImg2Img(Img2ImgParameters param)
-        {
-            using var response = await _httpClient.PostAsJsonAsync(_controlnetRoute + "img2img", param, _jsonIgnoreNull);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<GeneratedImages>();
-        }
+        //public async Task<GeneratedImages> PostControlNetTxt2Img(Txt2ImgParameters param)
+        //{
+        //    //var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { WriteIndented = true });
+        //    //File.WriteAllText("txt2img.json", json);
+        //    using var response = await _httpClient.PostAsJsonAsync(_controlnetRoute + "txt2img", param, _jsonIgnoreNull);
+        //    response.EnsureSuccessStatusCode();
+        //    return await response.Content.ReadFromJsonAsync<GeneratedImages>();
+        //}
+
+        // Deprecated
+        //public async Task<GeneratedImages> PostControlNetImg2Img(Img2ImgParameters param)
+        //{
+        //    using var response = await _httpClient.PostAsJsonAsync(_controlnetRoute + "img2img", param, _jsonIgnoreNull);
+        //    response.EnsureSuccessStatusCode();
+        //    return await response.Content.ReadFromJsonAsync<GeneratedImages>();
+        //}
         #endregion
     }
 }
