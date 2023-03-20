@@ -27,7 +27,8 @@ namespace BlazorWebApp.Data.Entities
             CivitaiModelVersionId = version.Id;
             Type = new() { Name = model.Type };
             Tags = model.Tags;
-            Description = version.Description;
+            if (!string.IsNullOrWhiteSpace(version.Description)) Description = version.Description;
+            else Description = model.Description;
             IsEnabled = false;
             if (version.TrainedWords != null) TriggerWords = version.TrainedWords;
         }
