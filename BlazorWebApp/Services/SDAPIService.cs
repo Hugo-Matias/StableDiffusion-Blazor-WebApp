@@ -116,6 +116,7 @@ namespace BlazorWebApp.Services
             return json["model_list"].AsArray().Select(n => n.ToString()).ToList();
         }
 
+        // Deprecated
         public async Task<GeneratedImages> PostControlNetTxt2Img(Txt2ImgParameters param)
         {
             //var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { WriteIndented = true });
@@ -125,6 +126,7 @@ namespace BlazorWebApp.Services
             return await response.Content.ReadFromJsonAsync<GeneratedImages>();
         }
 
+        // Deprecated
         public async Task<GeneratedImages> PostControlNetImg2Img(Img2ImgParameters param)
         {
             using var response = await _httpClient.PostAsJsonAsync(_controlnetRoute + "img2img", param, _jsonIgnoreNull);

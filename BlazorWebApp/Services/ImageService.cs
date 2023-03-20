@@ -49,6 +49,7 @@ namespace BlazorWebApp.Services
                 {
                     case ModeType.Img2Img:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
+                        CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.ControlNet);
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
                         img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                         img2imgParams.Mask = _app.ParametersImg2Img.Mask;
@@ -60,16 +61,7 @@ namespace BlazorWebApp.Services
                         img2imgParams.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
                         img2imgParams.ControlNet = _app.ParametersImg2Img.ControlNet;
                         SetSourceImageSize();
-                        if (_app.ControlNetEnabled)
-                        {
-                            foreach (var unit in img2imgParams.ControlNet)
-                            {
-                                unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
-                            }
-                            _app.Images = await _api.PostControlNetImg2Img(img2imgParams);
-                        }
-                        else
-                            _app.Images = await _api.PostImg2Img(img2imgParams);
+                        _app.Images = await _api.PostImg2Img(img2imgParams);
                         _app.SerializeInfo();
                         break;
 
@@ -89,6 +81,7 @@ namespace BlazorWebApp.Services
 
                     default:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
+                        CreateControlNetUnits(ref _parsingParams, _app.ParametersTxt2Img.ControlNet);
                         var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
                         if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
@@ -102,17 +95,7 @@ namespace BlazorWebApp.Services
                             txt2imgParams.HRSecondPassSteps = _app.ParametersTxt2Img.HRSecondPassSteps;
                             txt2imgParams.DenoisingStrength = _app.ParametersTxt2Img.DenoisingStrength;
                         }
-                        txt2imgParams.ControlNet = _app.ParametersTxt2Img.ControlNet;
-                        if (_app.ControlNetEnabled)
-                        {
-                            foreach (var unit in txt2imgParams.ControlNet)
-                            {
-                                unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
-                            }
-                            _app.Images = await _api.PostControlNetTxt2Img(txt2imgParams);
-                        }
-                        else
-                            _app.Images = await _api.PostTxt2Img(txt2imgParams);
+                        _app.Images = await _api.PostTxt2Img(txt2imgParams);
                         _app.SerializeInfo();
                         break;
                 }
@@ -144,6 +127,18 @@ namespace BlazorWebApp.Services
 
             NotifyStateChanged();
             return images;
+        }
+
+        private void CreateControlNetUnits(ref SharedParameters parameters, List<ControlNetParameters> units)
+        {
+            if (_app.ControlNetEnabled && units != null && units.Count > 0)
+            {
+                foreach (var unit in units)
+                {
+                    unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
+                }
+                parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ControlNetParameters>>() { { "args", units } } } };
+            }
         }
 
         public async Task<ImagesDto> SaveImages(Outdir outdirSamples, Outdir? outdirGrid = null)

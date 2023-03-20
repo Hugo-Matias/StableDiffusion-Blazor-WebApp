@@ -27,7 +27,7 @@
             {
                 @foreach (var project in AppState.Projects)
                 {
-                    @*<ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>*@
+                    <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
                 }
             }
         </MudStack>

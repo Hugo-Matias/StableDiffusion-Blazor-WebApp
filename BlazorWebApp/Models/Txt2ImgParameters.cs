@@ -12,7 +12,7 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("hr_second_pass_steps")] public int HRSecondPassSteps { get; set; }
         [JsonPropertyName("hr_resize_x")] public int HRWidth { get; set; }
         [JsonPropertyName("hr_resize_y")] public int HRHeight { get; set; }
-        [JsonPropertyName("controlnet_units")] public List<ControlNetParameters> ControlNet { get; set; }
+        [JsonIgnore] public List<ControlNetParameters> ControlNet { get; set; }
 
         public Txt2ImgParameters() { }
         public Txt2ImgParameters(SharedParameters clone)
@@ -40,6 +40,7 @@ namespace BlazorWebApp.Models
             STmin = clone.STmin;
             SNoise = clone.SNoise;
             SamplerIndex = clone.SamplerIndex;
+            AlwaysOnScripts = clone.AlwaysOnScripts;
         }
     }
 }
