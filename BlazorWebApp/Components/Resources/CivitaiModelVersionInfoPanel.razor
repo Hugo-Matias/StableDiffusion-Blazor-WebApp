@@ -12,51 +12,56 @@
     <MudTabs Class="tabs" Position="Position.Start" Rounded>
         @foreach (var version in Model.ModelVersions)
         {
-            <MudTabPanel Text="@version.Name">
-                <MudGrid>
-                    <MudItem xs="8">
-                        <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version)" Disabled=_isSavingImages>@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
-                            <MudGrid Class="images-container">
-                                @foreach (var image in version.Images)
-                            {
-                                <CivitaiModelImageCard Image="image" OnSaveImage=@(async () => await SaveImage(image, version.Id)) />
-                            }
-                        </MudGrid>
-                    </MudItem>
-                    <MudItem xs="4">
-                        <CivitaiFileButton Class="mb-4 mt-n4" Files="version.Files" OnDownload="@(async (file) => await DownloadFile(version, file))" />
-                        <MudStack Class="mb-4" Row>
-                        <MudStack>
-                            <MudText Class="meta-label" Typo="Typo.caption">Created</MudText>
-                            <MudText Typo="Typo.subtitle2">@(version.CreatedAt.ToString("dd MMMMM yyyy"))</MudText>
-                                </MudStack>
-                                <MudSpacer />
-                                @if (version.UpdatedAt != null)
-                            {
-
-                                <MudStack>
-                                    <MudText Class="meta-label" Typo="Typo.caption">Updated</MudText>
-                                    <MudText Typo="Typo.subtitle2">@(version.UpdatedAt.ToString("dd MMMM yyyy"))</MudText>
+            <MudTabPanel>
+                <TabContent>
+                    <MudText Class="d-flex align-items-center" Typo="Typo.caption"><MudIcon Style="font-size: 1rem; margin-right: 0.3rem;" Icon="fa-solid fa-server" Color=GetTabIconColor(version.Id).Result /> @version.Name</MudText>
+                </TabContent>
+                <ChildContent>
+                    <MudGrid>
+                        <MudItem xs="8">
+                            <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version)" Disabled=_isSavingImages>@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
+                                <MudGrid Class="images-container">
+                                    @foreach (var image in version.Images)
+                                {
+                                    <CivitaiModelImageCard Image="image" OnSaveImage=@(async () => await SaveImage(image, version.Id)) />
+                                }
+                            </MudGrid>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <CivitaiFileButton Class="mb-4 mt-n4" Files="version.Files" OnDownload="@(async (file) => await DownloadFile(version, file))" />
+                            <MudStack Class="mb-4" Row>
+                            <MudStack>
+                                <MudText Class="meta-label" Typo="Typo.caption">Created</MudText>
+                                <MudText Typo="Typo.subtitle2">@(version.CreatedAt.ToString("dd MMMMM yyyy"))</MudText>
                                     </MudStack>
-                            }
-                        </MudStack>
-                        @if (version.TrainedWords != null && version.TrainedWords.Count > 0)
-                        {
-                            <MudStack Class="mb-4">
-                                <MudText Class="meta-label" Typo="Typo.caption">Trigger Words</MudText>
-                                <MudChipSet Style="max-height:10vh; overflow:scroll;">
-                                    @foreach (var word in version.TrainedWords)
-                                    {
-                                        <MudChip Style="font-size: 0.75rem; max-width:20vw;" Color="Color.Primary" Text="@word">@word</MudChip>
-                                    }
-                                </MudChipSet>
+                                    <MudSpacer />
+                                    @if (version.UpdatedAt != null)
+                                {
+
+                                    <MudStack>
+                                        <MudText Class="meta-label" Typo="Typo.caption">Updated</MudText>
+                                        <MudText Typo="Typo.subtitle2">@(version.UpdatedAt.ToString("dd MMMM yyyy"))</MudText>
+                                        </MudStack>
+                                }
                             </MudStack>
-                        }
-                        <MudStack Class="description">
-                            @((MarkupString)version.Description)
-                        </MudStack>
-                    </MudItem>
-                </MudGrid>
+                            @if (version.TrainedWords != null && version.TrainedWords.Count > 0)
+                            {
+                                <MudStack Class="mb-4">
+                                    <MudText Class="meta-label" Typo="Typo.caption">Trigger Words</MudText>
+                                    <MudChipSet Style="max-height:10vh; overflow:scroll;">
+                                        @foreach (var word in version.TrainedWords)
+                                        {
+                                            <MudChip Style="font-size: 0.75rem; max-width:20vw;" Color="Color.Primary" Text="@word">@word</MudChip>
+                                        }
+                                    </MudChipSet>
+                                </MudStack>
+                            }
+                            <MudStack Class="description">
+                                @((MarkupString)version.Description)
+                            </MudStack>
+                        </MudItem>
+                    </MudGrid>
+                </ChildContent>
             </MudTabPanel>
         }
     </MudTabs>
@@ -149,5 +154,15 @@
             if (image.Meta != null) entity.Prompt = Parser.ParseCivitaiImageResources(image.Meta.Prompt, image.Meta.Resources);
             await DB.CreateResourceImage(entity);
         }
+    }
+
+    private async Task<Color> GetTabIconColor(int versionId)
+    {
+        var fileExists = await DB.CheckResourceExistsByModelVersionId(versionId);
+        var imageExists = await DB.CheckResourceImageExistsByModelVersionId(versionId);
+        Color color = Color.Default;
+        if (fileExists) color = Color.Warning;
+        if (imageExists) color = Color.Success;
+        return color;
     }
 }

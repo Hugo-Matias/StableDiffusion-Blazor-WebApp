@@ -507,10 +507,22 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
-        public async Task<bool> CheckResourceExists(string filename)
+        public async Task<bool> CheckResourceExistsByFilename(string filename)
         {
             using var context = await _factory.CreateDbContextAsync();
             return await context.Resources.AnyAsync(r => r.Filename == filename);
+        }
+
+        public async Task<bool> CheckResourceExistsByModelId(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Resources.AnyAsync(r => r.CivitaiModelId == id);
+        }
+
+        public async Task<bool> CheckResourceExistsByModelVersionId(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Resources.AnyAsync(r => r.CivitaiModelVersionId == id);
         }
 
         public async Task<bool> CreateResourceImage(ResourceImage image)
@@ -527,6 +539,12 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             return context.ResourceImages.Where(i => i.CivitaiModelVersionID == id).ToList();
+        }
+
+        public async Task<bool> CheckResourceImageExistsByModelVersionId(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.ResourceImages.AnyAsync(i => i.CivitaiModelVersionID == id);
         }
     }
 }

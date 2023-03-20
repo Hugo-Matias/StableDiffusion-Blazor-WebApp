@@ -194,7 +194,7 @@ namespace BlazorWebApp.Services
 
                 #region Download Resource
                 path = Path.Combine(path, file.Name);
-                if (File.Exists(path) || await _db.CheckResourceExists(file.Name)) status = CivitaiDownloadStatus.Database;
+                if (File.Exists(path) || await _db.CheckResourceExistsByFilename(file.Name)) status = CivitaiDownloadStatus.Database;
                 else
                 {
                     _progress.Add(progressBar);
