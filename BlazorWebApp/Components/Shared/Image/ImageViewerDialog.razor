@@ -2,7 +2,7 @@
 @inject DatabaseService DB
 
 <div>
-    <MudDialog Style="max-width: 95vw; max-height: 90vh;">
+    <MudDialog Style=@($"max-width: 98vw; max-height: 98vh; background-color: var(--mud-palette-{Color});")>
         <TitleContent>
             <MudContainer Class="d-flex flex-row justify-content-center">
                 <MudButtonGroup>
@@ -12,11 +12,12 @@
                         <MudIconButton OnClick="@(() => _autoCycle = !_autoCycle)" Style="border:none" Icon=@("fa-solid fa-play") />
                         <MudIconButton OnClick="@(() => Carousel.Reference.Next())" Style="border:none" Icon="fa-solid fa-chevron-right" />
                     }
+                    <MudIconButton OnClick=ExpandCarousel Style="border: none; position: absolute; right: 3.5rem;" Icon=@("fa-regular fa-window-maximize") />
                 </MudButtonGroup>
             </MudContainer>
         </TitleContent>
         <DialogContent>
-            <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="85vw" MaxHeight="80vh" />
+            <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="95vw" MaxHeight="90vh" />
         </DialogContent>
     </MudDialog>
 </div>
@@ -24,8 +25,16 @@
 @code {
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
     [Parameter] public List<Image> Images { get; set; }
+    [Parameter] public string Color { get; set; } = "dark";
 
     public ImageCarousel? Carousel { get; set; } = new();
 
     private bool _autoCycle;
+    private bool _expand;
+
+    private void ExpandCarousel()
+    {
+        _expand = !_expand;
+        Carousel.Exand(_expand);
+    }
 }

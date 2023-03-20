@@ -6,10 +6,6 @@
 
 <PageTitle>Blazor Diffusion</PageTitle>
 
-<MudButton OnClick=@(() => P.Add(prog))>Add</MudButton>
-<MudButton OnClick=UpdateProg>Update</MudButton>
-<MudButton OnClick=@(() => P.Remove(prog.Id))>Remove</MudButton>
-
 @if (_projects == null)
 {
     <LoadingSpinner />
