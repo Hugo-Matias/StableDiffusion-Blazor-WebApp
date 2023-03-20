@@ -1,9 +1,14 @@
 ﻿@page "/"
 @inject DatabaseService DB
 @inject AppState AppState
+@inject ProgressService P
 @implements IDisposable
 
 <PageTitle>Blazor Diffusion</PageTitle>
+
+<MudButton OnClick=@(() => P.Add(prog))>Add</MudButton>
+<MudButton OnClick=UpdateProg>Update</MudButton>
+<MudButton OnClick=@(() => P.Remove(prog.Id))>Remove</MudButton>
 
 @if (_projects == null)
 {
@@ -41,6 +46,10 @@ else
 
 
 @code {
+    private BaseProgress prog = new() { BarColor = Color.Error };
+    private void UpdateProg() { prog.Value += 10; P.Update(prog.Id, prog.Value); }
+
+
     private ImagesDto images = new();
     private List<Project>? _projects;
     private int currentImgPage;

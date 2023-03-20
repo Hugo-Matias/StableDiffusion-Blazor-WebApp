@@ -1,0 +1,30 @@
+﻿@inject ProgressService ProgressService
+@implements IDisposable
+
+<MudStack Style=@("position: absolute; margin-top: 60px; gap: 0.2rem !important; width: 95vw; z-index: " + GetZIndex())>
+    @if (ProgressService.Progresses != null && ProgressService.Progresses.Count > 0)
+    {
+        @foreach (var progress in ProgressService.Progresses)
+        {
+            <MudProgressLinear Min="0" Max="100" @bind-Value="progress.Value" Color="progress.BarColor">
+                @progress.Label
+            </MudProgressLinear>
+        }
+    }
+</MudStack>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ProgressService.OnUpdate += Refresh;
+    }
+
+    private string GetZIndex() => ProgressService.Progresses != null && ProgressService.Progresses.Count > 0 ? "1000" : "-1000";
+
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        ProgressService.OnUpdate -= Refresh;
+    }
+}

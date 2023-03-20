@@ -33,7 +33,7 @@ namespace BlazorWebApp.Services
 
         public async Task<List<Upscaler>> GetUpscalers() => await _httpClient.GetFromJsonAsync<List<Upscaler>>(_sdapiRoute + "upscalers");
 
-        public async Task<Progress> GetProgress() => await _httpClient.GetFromJsonAsync<Progress>(_sdapiRoute + "progress");
+        public async Task<InferenceProgress> GetProgress() => await _httpClient.GetFromJsonAsync<InferenceProgress>(_sdapiRoute + "progress");
 
         public async Task<Options> GetOptions() => await _httpClient.GetFromJsonAsync<Options>(_sdapiRoute + "options");
         //public async Task<Options> GetOptions()

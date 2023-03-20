@@ -1,5 +1,7 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
+using BlazorWebApp.Models;
 using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
@@ -15,14 +17,16 @@ namespace BlazorWebApp.Services
         private readonly IOService _io;
         private readonly AppState _app;
         private readonly DatabaseService _db;
+        private readonly ProgressService _progress;
 
-        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, AppState app, DatabaseService db)
+        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, AppState app, DatabaseService db, ProgressService progress)
         {
             _configuration = configuration;
             _img = img;
             _io = io;
             _app = app;
             _db = db;
+            _progress = progress;
             _httpClient = httpClient;
             _httpClient.BaseAddress = new Uri("https://civitai.com/api/");
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _configuration["CivitaiApiToken"]);
@@ -161,8 +165,9 @@ namespace BlazorWebApp.Services
                 var url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
 
                 #region Initialize HTTPClient
+                var progressBar = new BaseProgress() { BarColor = Parser.ParseCivitaiResourceColorAsColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)), Value = 0 };
                 var progressHandler = new ProgressMessageHandler(new HttpClientHandler());
-                progressHandler.HttpReceiveProgress += (sender, e) => _app.CurrentProgress = e.ProgressPercentage;
+                progressHandler.HttpReceiveProgress += (sender, e) => _progress.Update(progressBar.Id, e.ProgressPercentage);
                 var client = new HttpClient(progressHandler);
                 client.BaseAddress = _httpClient.BaseAddress;
                 var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
@@ -192,9 +197,10 @@ namespace BlazorWebApp.Services
                 if (File.Exists(path) || await _db.CheckResourceExists(file.Name)) status = CivitaiDownloadStatus.Database;
                 else
                 {
+                    _progress.Add(progressBar);
                     using var fs = new FileStream(path, FileMode.Create);
                     await response.Content.CopyToAsync(fs);
-                    _app.CurrentProgress = 0;
+                    _progress.Remove(progressBar.Id);
                     status = CivitaiDownloadStatus.Success;
                 }
                 #endregion

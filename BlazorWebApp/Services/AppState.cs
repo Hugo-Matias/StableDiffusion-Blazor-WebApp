@@ -40,7 +40,7 @@ namespace BlazorWebApp.Services
         public GeneratedImagesInfo ImagesInfo { get; set; }
         public ImagesDto GeneratedImageEntities { get; set; }
         public string? GridImage { get; set; }
-        public Progress Progress { get; set; }
+        public InferenceProgress Progress { get; set; }
         public List<SDModel> SDModels { get; set; }
         public List<Models.Sampler> Samplers { get; set; }
         public List<PromptStyle> Styles { get; set; }

@@ -14,6 +14,7 @@ namespace BlazorWebApp.Services
         private readonly AppState _app;
         private readonly MagickService _magick;
         private readonly DatabaseService _db;
+        private readonly ProgressService _progress;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
         private int _canvasSourceWidth;
@@ -21,19 +22,21 @@ namespace BlazorWebApp.Services
 
         public event Action OnChange;
 
-        public ImageService(SDAPIService api, IOService io, AppState app, MagickService magick, DatabaseService db)
+        public ImageService(SDAPIService api, IOService io, AppState app, MagickService magick, DatabaseService db, ProgressService progress)
         {
             _api = api;
             _io = io;
             _app = app;
             _magick = magick;
             _db = db;
+            _progress = progress;
         }
 
         public async Task<ImagesDto> GetImages(ModeType mode)
         {
             _app.IsConverging = true;
-            StartProgressChecker();
+            var progress = new BaseProgress() { BarColor = MudBlazor.Color.Primary };
+            StartProgressChecker(progress);
 
             //_app.GridImage = string.Empty;
 
@@ -136,7 +139,7 @@ namespace BlazorWebApp.Services
                 await Console.Out.WriteLineAsync(e.ToString());
             }
 
-            StopProgressChecker();
+            StopProgressChecker(progress.Id);
             _app.IsConverging = false;
 
             NotifyStateChanged();
@@ -316,20 +319,24 @@ namespace BlazorWebApp.Services
             _canvasSourceHeight = size.Item2;
         }
 
-        private async void StartProgressChecker()
+        private async void StartProgressChecker(BaseProgress progress)
         {
             _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            _progress.Add(progress);
 
             while (await _timer.WaitForNextTickAsync())
             {
-                _app.Progress = await _api.GetProgress();
+                var current = await _api.GetProgress();
+                _app.Progress = current;
+                _progress.Update(progress.Id, current.Value * 100);
                 NotifyStateChanged();
             }
         }
 
-        private void StopProgressChecker()
+        private void StopProgressChecker(Guid id)
         {
             _timer?.Dispose();
+            _progress.Remove(id);
             _app.Progress = new();
         }
 

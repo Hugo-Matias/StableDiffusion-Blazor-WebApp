@@ -16,13 +16,13 @@
             <NavBar />
             <MudSpacer />
             <MudIconButton Class=@(AppState.CurrentSDModel == "Loading..." ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(AppState.CurrentSDModel == "Loading..." ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
+            <ProgressContainer />
         </MudAppBar>
         <MudExpansionPanels Style="position: fixed; width:100%; z-index:100;">
             <MudExpansionPanel HideIcon=true IsExpanded="_isToolbarOpen">
                 <TopToolbar />
             </MudExpansionPanel>
         </MudExpansionPanels>
-        <MudProgressLinear Style=@($"position: fixed; margin-top: {(AppState.CurrentProgress > 0 ? "64px; z-index: 1000;" : "60px; z-index: -1000;")}") Min="0" Max="100" @bind-Value="AppState.CurrentProgress" Color="Color.Primary" />
         <MudMainContent>
             <MudContainer Class="mt-5" MaxWidth="MaxWidth.ExtraLarge">
                 @Body
