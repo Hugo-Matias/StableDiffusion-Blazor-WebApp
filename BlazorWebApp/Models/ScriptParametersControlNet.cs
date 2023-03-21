@@ -2,7 +2,7 @@
 
 namespace BlazorWebApp.Models
 {
-    public class ControlNetParameters
+    public class ScriptParametersControlNet
     {
         [JsonPropertyName("input_image")] public string InputImage { get; set; }
         [JsonPropertyName("mask")] public string Mask { get; set; }

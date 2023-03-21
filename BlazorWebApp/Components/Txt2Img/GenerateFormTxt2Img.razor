@@ -46,6 +46,7 @@
                     <MudChip Text="Restore Faces" Default="Parameters.RestoreFaces" Variant="Variant.Text" Color="Color.Primary">Restore Faces</MudChip>
                     <MudChip Text="Tiling" Default="Parameters.Tiling" Variant="Variant.Text" Color="Color.Primary">Tiling</MudChip>
                     <MudChip Text="Highres Fix" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Highres Fix</MudChip>
+                    <MudChip Text="Cutoff" Default="Parameters.Scripts.Cutoff.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Cutoff</MudChip>
                     <MudChip Text="ControlNet" Default="AppState.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
                 </MudChipSet>
             </MudItem>
@@ -82,8 +83,11 @@
                     </MudItem>
                 </MudGrid>
             </MudItem>
+            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.Cutoff.IsEnabled ? "show" : "")}")">
+                <CutoffForm Parameters=Parameters.Scripts.Cutoff />
+            </MudItem>
             <MudItem xs="12" Class="@($"collapse {(AppState.ControlNetEnabled ? "show" : "")}")">
-                <ControlNetTabs Units="Parameters.ControlNet" />
+                <ControlNetTabs Units="Parameters.Scripts.ControlNet" />
             </MudItem>
         </MudGrid>
     </EditForm>
@@ -116,6 +120,7 @@
         Parameters.RestoreFaces = false;
         Parameters.Tiling = false;
         Parameters.EnableHR = false;
+        Parameters.Scripts.Cutoff.IsEnabled = false;
         AppState.ControlNetEnabled = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
@@ -131,6 +136,9 @@
                     break;
                 case "Highres Fix":
                     Parameters.EnableHR = true;
+                    break;
+                case "Cutoff":
+                    Parameters.Scripts.Cutoff.IsEnabled = true;
                     break;
                 case "ControlNet":
                     AppState.ControlNetEnabled = true;

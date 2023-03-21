@@ -13,10 +13,10 @@ namespace BlazorWebApp.Models
         public SharedSettingsModel Shared { get; set; } = new();
         public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
         public Img2ImgSettingsModel Img2Img { get; set; } = new();
-        public ControlNetSettingsModel ControlNet { get; set; } = new();
         public UpscaleSettingsModel Upscale { get; set; } = new();
         public ResourcesSettingsModel Resources { get; set; } = new();
         public WebuiSettingsModel Webui { get; set; } = new();
+        public ScriptsSettingsModel Scripts { get; set; } = new();
     }
 
     #region Gallery
@@ -210,6 +210,13 @@ namespace BlazorWebApp.Models
     }
     #endregion
 
+    #region Scripts
+    public class ScriptsSettingsModel
+    {
+        public ControlNetSettingsModel ControlNet { get; set; } = new();
+        public CutoffSettingsModel Cutoff { get; set; } = new();
+    }
+
     #region ControlNet
     public class ControlNetSettingsModel
     {
@@ -289,6 +296,30 @@ namespace BlazorWebApp.Models
         public float Max { get; set; }
         public float Step { get; set; }
     }
+    #endregion
+
+    #region Cutoff
+    public class CutoffSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public string Targets { get; set; } = string.Empty;
+        public CutoffWeightSettingsModel Weight { get; set; } = new();
+        public bool DisableNegative { get; set; } = false;
+        public bool Strong { get; set; } = false;
+        public string Padding { get; set; } = string.Empty;
+        public string Interpolation { get; set; } = "Lerp";
+        public bool Debug { get; set; } = false;
+    }
+
+    public class CutoffWeightSettingsModel
+    {
+        public float Value { get; set; } = 1f;
+        public float Min { get; set; } = -1f;
+        public float Max { get; set; } = 2f;
+        public float Step { get; set; } = 0.01f;
+    }
+    #endregion
+
     #endregion
 
     #region Upscale

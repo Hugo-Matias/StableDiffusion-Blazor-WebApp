@@ -106,11 +106,15 @@
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" Class="d-flex align-items-center justify-content-center" MultiSelection Filter>
                     <MudChip Text="Restore Faces" Default="Parameters.RestoreFaces" Variant="Variant.Text" Color="Color.Primary">Restore Faces</MudChip>
                     <MudChip Text="Tiling" Default="Parameters.Tiling" Variant="Variant.Text" Color="Color.Primary">Tiling</MudChip>
+                    <MudChip Text="Cutoff" Default="Parameters.Scripts.Cutoff.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Cutoff</MudChip>
                     <MudChip Text="ControlNet" Default="AppState.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
                 </MudChipSet>
             </MudItem>
+            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.Cutoff.IsEnabled ? "show" : "")}")">
+                <CutoffForm Parameters=Parameters.Scripts.Cutoff />
+            </MudItem>
             <MudItem xs="12" Class="@($"collapse {(AppState.ControlNetEnabled ? "show" : "")}")">
-                <ControlNetTabs Units="Parameters.ControlNet" />
+                <ControlNetTabs Units="Parameters.Scripts.ControlNet" />
             </MudItem>
         </MudGrid>
     </EditForm>
@@ -176,6 +180,7 @@
     {
         Parameters.RestoreFaces = false;
         Parameters.Tiling = false;
+        Parameters.Scripts.Cutoff.IsEnabled = false;
         AppState.ControlNetEnabled = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
         foreach (var check in checkboxes)
@@ -187,6 +192,9 @@
                     break;
                 case "Tiling":
                     Parameters.Tiling = true;
+                    break;
+                case "Cutoff":
+                    Parameters.Scripts.Cutoff.IsEnabled = true;
                     break;
                 case "ControlNet":
                     AppState.ControlNetEnabled = true;

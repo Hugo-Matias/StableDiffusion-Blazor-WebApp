@@ -49,7 +49,8 @@ namespace BlazorWebApp.Services
                 {
                     case ModeType.Img2Img:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
-                        CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.ControlNet);
+                        CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.Scripts.ControlNet);
+                        CreateCutoffParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff);
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
                         img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                         img2imgParams.Mask = _app.ParametersImg2Img.Mask;
@@ -59,7 +60,6 @@ namespace BlazorWebApp.Services
                         img2imgParams.InpaintFullRes = _app.ParametersImg2Img.InpaintFullRes;
                         img2imgParams.InpaintFullResPadding = _app.ParametersImg2Img.InpaintFullResPadding;
                         img2imgParams.InpaintingMaskInvert = _app.ParametersImg2Img.InpaintingMaskInvert;
-                        img2imgParams.ControlNet = _app.ParametersImg2Img.ControlNet;
                         SetSourceImageSize();
                         _app.Images = await _api.PostImg2Img(img2imgParams);
                         _app.SerializeInfo();
@@ -81,7 +81,8 @@ namespace BlazorWebApp.Services
 
                     default:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
-                        CreateControlNetUnits(ref _parsingParams, _app.ParametersTxt2Img.ControlNet);
+                        CreateControlNetUnits(ref _parsingParams, _app.ParametersTxt2Img.Scripts.ControlNet);
+                        CreateCutoffParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.Cutoff);
                         var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
                         if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
@@ -129,7 +130,7 @@ namespace BlazorWebApp.Services
             return images;
         }
 
-        private void CreateControlNetUnits(ref SharedParameters parameters, List<ControlNetParameters> units)
+        private void CreateControlNetUnits(ref SharedParameters parameters, List<ScriptParametersControlNet> units)
         {
             if (_app.ControlNetEnabled && units != null && units.Count > 0)
             {
@@ -137,7 +138,19 @@ namespace BlazorWebApp.Services
                 {
                     unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
                 }
-                parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ControlNetParameters>>() { { "args", units } } } };
+                parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ScriptParametersControlNet>>() { { "args", units } } } };
+            }
+        }
+
+        private void CreateCutoffParameters(ref SharedParameters parameters, ScriptParametersCutoff cutoffParam)
+        {
+            if (cutoffParam != null && cutoffParam.IsEnabled)
+            {
+                var argsArray = cutoffParam.GetType().GetProperties().Select(p => p.GetValue(cutoffParam, null)).ToArray();
+                var payloadKey = "cutoff";
+                var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
+                if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
+                else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
             }
         }
 

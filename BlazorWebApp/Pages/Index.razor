@@ -1,7 +1,7 @@
 ﻿@page "/"
 @inject DatabaseService DB
 @inject AppState AppState
-@inject ProgressService P
+@inject ProgressService ProgressService
 @implements IDisposable
 
 <PageTitle>Blazor Diffusion</PageTitle>
@@ -43,7 +43,7 @@ else
 
 @code {
     private BaseProgress prog = new() { BarColor = Color.Error };
-    private void UpdateProg() { prog.Value += 10; P.Update(prog.Id, prog.Value); }
+    private void UpdateProg() { prog.Value += 10; ProgressService.Update(prog.Id, prog.Value); }
 
 
     private ImagesDto images = new();

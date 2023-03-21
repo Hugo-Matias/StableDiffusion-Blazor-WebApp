@@ -1,0 +1,35 @@
+﻿@inject AppState AppState
+<MudGrid>
+    <MudItem xs="12">
+        <MudTextField @bind-Value=Parameters.Targets Label="Target Tokens" Clearable=true HelperText=@("Comma Separated: \"red, green, blue\"") HelperTextOnFocus=true />
+    </MudItem>
+    <MudItem xs="12">
+        <MudSlider @bind-Value=Parameters.Weight Min=AppState.Settings.Scripts.Cutoff.Weight.Min Max=AppState.Settings.Scripts.Cutoff.Weight.Max Step=AppState.Settings.Scripts.Cutoff.Weight.Step ValueLabel=true><small>Weight: </small> @Parameters.Weight</MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudTextField @bind-Value=Parameters.Padding Label="Padding Token" Clearable=true HelperText="ID or single token" HelperTextOnFocus=true />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect @bind-Value=Parameters.Interpolation Label="Interpolation" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            @foreach (var value in _interpolationValues)
+            {
+                <MudSelectItem Value="value">@value</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4">
+        <MudCheckBox @bind-Checked=Parameters.DisableNegative Label="Disable on Negative Prompt" />
+    </MudItem>
+    <MudItem xs="4">
+        <MudCheckBox @bind-Checked=Parameters.Strong Label="Cutoff Strongly" />
+    </MudItem>
+    <MudItem xs="4">
+        <MudCheckBox @bind-Checked=Parameters.Debug Label="Debug Log" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersCutoff Parameters { get; set; }
+
+    private string[] _interpolationValues = new string[] { "Lerp", "SLerp" };
+}

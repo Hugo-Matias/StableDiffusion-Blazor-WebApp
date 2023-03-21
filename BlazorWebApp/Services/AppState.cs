@@ -172,7 +172,11 @@ namespace BlazorWebApp.Services
                     HRWidth = Settings.Txt2Img.HighRes.Resolution.Width,
                     HRHeight = Settings.Txt2Img.HighRes.Resolution.Height,
                     HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.DefaultValue,
-                    ControlNet = new() { CreateControlNet() }
+                    Scripts = new()
+                    {
+                        ControlNet = new() { CreateControlNet() },
+                        Cutoff = CreateCutoff()
+                    }
                 };
 
             if (modes.Contains(ModeType.Img2Img))
@@ -184,7 +188,11 @@ namespace BlazorWebApp.Services
                     InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.DefaultValue,
                     InpaintFullResPadding = Settings.Img2Img.Inpainting.FullRes.Padding.DefaultValue,
                     InpaintingMaskInvert = Settings.Img2Img.Inpainting.MaskInvert,
-                    ControlNet = new() { CreateControlNet() }
+                    Scripts = new()
+                    {
+                        ControlNet = new() { CreateControlNet() },
+                        Cutoff = CreateCutoff()
+                    }
                 };
 
             if (modes.Contains(ModeType.Extras))
@@ -206,19 +214,34 @@ namespace BlazorWebApp.Services
                 };
         }
 
-        public ControlNetParameters CreateControlNet()
+        public ScriptParametersControlNet CreateControlNet()
         {
-            return new ControlNetParameters()
+            return new ScriptParametersControlNet()
             {
-                Preprocessor = Settings.ControlNet.Preprocessor,
-                Model = Settings.ControlNet.Model,
-                ResizeMode = Settings.ControlNet.ResizeMode,
-                Weight = Settings.ControlNet.Weight.Value,
-                Guidance = Settings.ControlNet.Guidance.Strenght,
-                GuidanceStart = Settings.ControlNet.Guidance.Start,
-                GuidanceEnd = Settings.ControlNet.Guidance.End,
-                IsLowVRam = Settings.ControlNet.IsLowVRam,
-                IsGuessMode = Settings.ControlNet.IsGuessMode,
+                Preprocessor = Settings.Scripts.ControlNet.Preprocessor,
+                Model = Settings.Scripts.ControlNet.Model,
+                ResizeMode = Settings.Scripts.ControlNet.ResizeMode,
+                Weight = Settings.Scripts.ControlNet.Weight.Value,
+                Guidance = Settings.Scripts.ControlNet.Guidance.Strenght,
+                GuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
+                GuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
+                IsLowVRam = Settings.Scripts.ControlNet.IsLowVRam,
+                IsGuessMode = Settings.Scripts.ControlNet.IsGuessMode,
+            };
+        }
+
+        public ScriptParametersCutoff CreateCutoff()
+        {
+            return new ScriptParametersCutoff()
+            {
+                IsEnabled = Settings.Scripts.Cutoff.IsEnabled,
+                Targets = Settings.Scripts.Cutoff.Targets,
+                Weight = Settings.Scripts.Cutoff.Weight.Value,
+                DisableNegative = Settings.Scripts.Cutoff.DisableNegative,
+                Strong = Settings.Scripts.Cutoff.Strong,
+                Padding = Settings.Scripts.Cutoff.Padding,
+                Interpolation = Settings.Scripts.Cutoff.Interpolation,
+                Debug = Settings.Scripts.Cutoff.Debug,
             };
         }
 

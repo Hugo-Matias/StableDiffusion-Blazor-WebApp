@@ -16,11 +16,11 @@
     public class ControlNetUnit
     {
         public string Label { get; set; }
-        public ControlNetParameters Parameters { get; set; }
+        public ScriptParametersControlNet Parameters { get; set; }
         public Guid Id { get; set; }
     }
 
-    [Parameter] public List<ControlNetParameters> Units { get; set; }
+    [Parameter] public List<ScriptParametersControlNet> Units { get; set; }
     private MudDynamicTabs _cnTabs;
     private List<ControlNetUnit> _cnUnits = new();
     private int _cnTabIndex;
