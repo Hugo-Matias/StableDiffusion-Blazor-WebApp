@@ -2,6 +2,7 @@
 @inject DatabaseService DB
 @inject IOService IO
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <div>
     <MudDialog>
@@ -102,9 +103,10 @@
         </DialogContent>
         <DialogActions>
             <MudButton OnClick="() => MudDialog.Cancel()">Close</MudButton>
-            <MudButtonGroup Class="m-2" Color="Color.Warning" Variant="Variant.Text">
-                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Txt2Img)" StartIcon="fa-solid fa-pen-to-square" IconColor="Color.Warning">Load Txt2Img</MudButton>
-                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Img2Img)" StartIcon="fa-solid fa-square-pen" IconColor="Color.Warning">Load Img2Img</MudButton>
+            <MudButtonGroup Class="m-2" OverrideStyles=false>
+                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Txt2Img)" StartIcon="fa-solid fa-pen-to-square" Color="Color.Warning">Load Txt2Img</MudButton>
+                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Img2Img)" StartIcon="fa-solid fa-square-pen" Color="Color.Warning">Load Img2Img</MudButton>
+                <MudButton Class="px-4" OnClick=ShowPromptDialog StartIcon="fa-solid fa-floppy-disk" Color="Color.Tertiary">Save Prompt</MudButton>
             </MudButtonGroup>
         </DialogActions>
     </MudDialog>
@@ -138,6 +140,20 @@
         if (!string.IsNullOrWhiteSpace(lines["negative"]) && !Image.NegativePrompt.Equals(lines["negative"], StringComparison.InvariantCultureIgnoreCase)) Image.NegativePrompt = lines["negative"];
         Image.Info = lines["param"];
         await DB.UpdateImage(Image);
+    }
+
+    private async Task ShowPromptDialog()
+    {
+        var prompt = new PromptResource() { Positive = Image.Prompt, Negative = Image.NegativePrompt };
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var param = new DialogParameters();
+        param.Add("Prompt", prompt);
+        var dialog = await DialogService.ShowAsync<PromptDialog>("", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await DB.CreatePrompt(new(prompt));
+        }
     }
 
     private async Task LoadParameters(ModeType mode)
