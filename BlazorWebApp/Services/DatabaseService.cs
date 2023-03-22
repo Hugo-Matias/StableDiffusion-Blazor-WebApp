@@ -390,7 +390,7 @@ namespace BlazorWebApp.Services
             var query = context.Prompts.AsQueryable();
             if (!string.IsNullOrWhiteSpace(positive)) query = query.Where(p => p.Positive.ToLower().Contains(positive.ToLower()));
             if (!string.IsNullOrWhiteSpace(negative)) query = query.Where(p => p.Negative.ToLower().Contains(negative.ToLower()));
-            return query.OrderBy(p => p.IsFavorite).ThenBy(p => p.Title).ToList();
+            return query.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToList();
         }
 
         public async Task CreatePrompt(Prompt prompt)
