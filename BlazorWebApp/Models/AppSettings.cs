@@ -215,6 +215,7 @@ namespace BlazorWebApp.Models
     {
         public ControlNetSettingsModel ControlNet { get; set; } = new();
         public CutoffSettingsModel Cutoff { get; set; } = new();
+        public DynamicPromptsSettingsModel DynamicPrompts { get; set; } = new();
     }
 
     #region ControlNet
@@ -320,6 +321,95 @@ namespace BlazorWebApp.Models
     }
     #endregion
 
+    #region Dynamic Prompts
+    public class DynamicPromptsSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public DPCombinatorialSettingsModel Combinatorial { get; set; } = new();
+        public DPPromptMagicSettingsModel PromptMagic { get; set; } = new();
+        public bool UseFixedSeed { get; set; } = false;
+        public bool UnlinkSeedFromPrompt { get; set; } = false;
+        public bool DisableNegativePrompt { get; set; } = false;
+        public bool EnableJinjaTemplates { get; set; } = false;
+        public bool NoImageGeneration { get; set; } = false;
+    }
+
+    public class DPCombinatorialSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public DPCombinatorialBatchSettingsModel Batches { get; set; } = new();
+        public DPCombinatorialMaxGenSettingsModel MaxGenerations { get; set; } = new();
+    }
+
+    public class DPCombinatorialBatchSettingsModel
+    {
+        public int Value { get; set; } = 1;
+        public int Min { get; set; } = 1;
+        public int Max { get; set; } = 100;
+        public int Step { get; set; } = 1;
+    }
+
+    public class DPCombinatorialMaxGenSettingsModel
+    {
+        public int Value { get; set; } = 0;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 1000;
+        public int Step { get; set; } = 1;
+    }
+
+    public class DPPromptMagicSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public bool IsFeelingLucky { get; set; } = false;
+        public DPPromptMagicAttentionGrabberSettingsModel AttentionGrabber { get; set; } = new();
+        public DPPromptMagicLengthSettingsModel Length { get; set; } = new();
+        public DPPromptMagicCreativitySettingsModel Creativity { get; set; } = new();
+        public string? MagicBlocklistRegex { get; set; } = null;
+        public List<string> MagicModelList { get; set; } = new()
+        {
+            "Gustavosta/MagicPrompt-Stable-Diffusion",
+            "daspartho/prompt-extend",
+            "succinctly/text2image-prompt-generator",
+            "microsoft/Promptist",
+            "AUTOMATIC/promptgen-lexart",
+            "AUTOMATIC/promptgen-majinai-safe",
+            "AUTOMATIC/promptgen-majinai-unsafe",
+            "kmewhort/stable-diffusion-prompt-bolster",
+            "Gustavosta/MagicPrompt-Dalle",
+            "Ar4ikov/gpt2-650k-stable-diffusion-prompt-generator",
+            "Ar4ikov/gpt2-medium-650k-stable-diffusion-prompt-generator",
+            "crumb/bloom-560m-RLHF-SD2-prompter-aesthetic",
+            "Meli/GPT2-Prompt",
+            "DrishtiSharma/StableDiffusion-Prompt-Generator-GPT-Neo-125M",
+        };
+    }
+
+    public class DPPromptMagicAttentionGrabberSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public float ValueMin { get; set; } = 1.1f;
+        public float ValueMax { get; set; } = 1.5f;
+        public float Min { get; set; } = -1f;
+        public float Max { get; set; } = 2f;
+        public float Step { get; set; } = 0.1f;
+    }
+
+    public class DPPromptMagicLengthSettingsModel
+    {
+        public int Value { get; set; } = 100;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 300;
+        public int Step { get; set; } = 10;
+    }
+
+    public class DPPromptMagicCreativitySettingsModel
+    {
+        public float Value { get; set; } = 0.7f;
+        public float Min { get; set; } = 0.1f;
+        public float Max { get; set; } = 3f;
+        public float Step { get; set; } = 0.1f;
+    }
+    #endregion
     #endregion
 
     #region Upscale

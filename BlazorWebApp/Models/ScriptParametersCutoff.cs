@@ -1,8 +1,7 @@
 ﻿namespace BlazorWebApp.Models
 {
-    public class ScriptParametersCutoff
+    public class ScriptParametersCutoff : ScriptParametersBase
     {
-        public bool IsEnabled { get; set; }
         public string Targets { get; set; }
         public float Weight { get; set; }
         public bool DisableNegative { get; set; }

@@ -50,7 +50,8 @@ namespace BlazorWebApp.Services
                     case ModeType.Img2Img:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.Scripts.ControlNet);
-                        CreateCutoffParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff);
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff, "cutoff");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, "dynamic prompts");
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
                         img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                         img2imgParams.Mask = _app.ParametersImg2Img.Mask;
@@ -82,7 +83,8 @@ namespace BlazorWebApp.Services
                     default:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersTxt2Img.Scripts.ControlNet);
-                        CreateCutoffParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.Cutoff);
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.Cutoff, "cutoff");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.DynamicPrompts, "Dynamic Prompts v2.8.4");
                         var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
                         if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
@@ -142,12 +144,11 @@ namespace BlazorWebApp.Services
             }
         }
 
-        private void CreateCutoffParameters(ref SharedParameters parameters, ScriptParametersCutoff cutoffParam)
+        private void CreateScriptParameters(ref SharedParameters parameters, ScriptParametersBase scriptParam, string payloadKey)
         {
-            if (cutoffParam != null && cutoffParam.IsEnabled)
+            if (scriptParam != null && scriptParam.IsEnabled)
             {
-                var argsArray = cutoffParam.GetType().GetProperties().Select(p => p.GetValue(cutoffParam, null)).ToArray();
-                var payloadKey = "cutoff";
+                var argsArray = scriptParam.GetType().GetProperties().Select(p => p.GetValue(scriptParam, null)).ToArray();
                 var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
                 if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
                 else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);

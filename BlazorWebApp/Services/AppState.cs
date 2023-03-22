@@ -175,7 +175,8 @@ namespace BlazorWebApp.Services
                     Scripts = new()
                     {
                         ControlNet = new() { CreateControlNet() },
-                        Cutoff = CreateCutoff()
+                        Cutoff = CreateCutoff(),
+                        DynamicPrompts = CreateDynamicPrompts(),
                     }
                 };
 
@@ -191,7 +192,8 @@ namespace BlazorWebApp.Services
                     Scripts = new()
                     {
                         ControlNet = new() { CreateControlNet() },
-                        Cutoff = CreateCutoff()
+                        Cutoff = CreateCutoff(),
+                        DynamicPrompts = CreateDynamicPrompts(),
                     }
                 };
 
@@ -242,6 +244,31 @@ namespace BlazorWebApp.Services
                 Padding = Settings.Scripts.Cutoff.Padding,
                 Interpolation = Settings.Scripts.Cutoff.Interpolation,
                 Debug = Settings.Scripts.Cutoff.Debug,
+            };
+        }
+
+        public ScriptParametersDynamicPrompts CreateDynamicPrompts()
+        {
+            return new ScriptParametersDynamicPrompts()
+            {
+                IsEnabled = Settings.Scripts.DynamicPrompts.IsEnabled,
+                IsCombinatorial = Settings.Scripts.DynamicPrompts.Combinatorial.IsEnabled,
+                CombinatorialBatches = Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Value,
+                IsMagicPrompt = Settings.Scripts.DynamicPrompts.PromptMagic.IsEnabled,
+                IsFeelingLucky = Settings.Scripts.DynamicPrompts.PromptMagic.IsFeelingLucky,
+                IsAttentionGrabber = Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.IsEnabled,
+                MinAttention = Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.ValueMin,
+                MaxAttention = Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.ValueMax,
+                MagicPromptLength = Settings.Scripts.DynamicPrompts.PromptMagic.Length.Value,
+                MagicPromptCreativity = Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Value,
+                UseFixedSeed = Settings.Scripts.DynamicPrompts.UseFixedSeed,
+                UnlinkSeedFromPrompt = Settings.Scripts.DynamicPrompts.UnlinkSeedFromPrompt,
+                DisableNegativePrompt = Settings.Scripts.DynamicPrompts.DisableNegativePrompt,
+                EnableJinjaTemplates = Settings.Scripts.DynamicPrompts.EnableJinjaTemplates,
+                NoImageGeneration = Settings.Scripts.DynamicPrompts.NoImageGeneration,
+                MaxGenerations = Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Value,
+                MagicModel = Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList[0],
+                MagicBlocklistRegex = Settings.Scripts.DynamicPrompts.PromptMagic.MagicBlocklistRegex
             };
         }
 

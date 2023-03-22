@@ -48,5 +48,6 @@ namespace BlazorWebApp.Models
     {
         public List<ScriptParametersControlNet> ControlNet { get; set; }
         public ScriptParametersCutoff Cutoff { get; set; }
+        public ScriptParametersDynamicPrompts DynamicPrompts { get; set; }
     }
 }

@@ -1,0 +1,126 @@
+﻿@inject AppState AppState
+@inject IOService IO
+
+<MudGrid>
+    <MudItem xs="12" Class="d-flex align-items-center justify-content-center">
+        <MudTooltip Text="If checked, random prompts are generated regardless of seed." Delay="1600" Duration="600" Placement="Placement.End">
+            <MudCheckBox @bind-Checked=Parameters.UnlinkSeedFromPrompt Label="Unlink Seed" />
+        </MudTooltip>
+        <MudTooltip Text="Use the same seed for all prompts in the batch." Delay="1600" Duration="600" Placement="Placement.End">
+            <MudCheckBox @bind-Checked=Parameters.UseFixedSeed Label="Fixed Seed" />
+        </MudTooltip>
+        <MudTooltip Delay="1600" Duration="600" Placement="Placement.End">
+            <ChildContent>
+                <MudCheckBox @bind-Checked=Parameters.UseFixedSeed Label="No Images" />
+            </ChildContent>
+            <TooltipContent>Generate text only and disable image generation.<br />One image is still generated to initiate the <i>process</i> function.</TooltipContent>
+        </MudTooltip>
+        <MudTooltip Text="Enable Jinja templates experimental advanced feature." Delay="1600" Duration="600" Placement="Placement.End">
+            <MudCheckBox @bind-Checked=Parameters.UseFixedSeed Label="Jinja Templates" />
+        </MudTooltip>
+    </MudItem>
+    <MudItem xs="12">
+        <MudChipSet SelectedChipsChanged="HandleParameterChecked" Class="d-flex align-items-center justify-content-center" MultiSelection Filter>
+            <MudTooltip Text="Generate all possible prompt combinations." Delay="1600" Duration="600">
+                <MudChip Text="Combinatorial" Default="Parameters.IsCombinatorial" Variant="Variant.Text" Color="Color.Primary">Combinatorial Generation</MudChip>
+            </MudTooltip>
+            <MudTooltip Text="Automaticaly update the prompt with interesting modifiers." Delay="1600" Duration="600">
+                <MudChip Text="Prompt Magic" Default="Parameters.IsMagicPrompt" Variant="Variant.Text" Color="Color.Primary">Prompt Magic</MudChip>
+            </MudTooltip>
+        </MudChipSet>
+    </MudItem>
+    <MudItem xs="12" Class="@($"collapse {(Parameters.IsCombinatorial ? "show" : "")}")">
+        <MudSlider @bind-Value=Parameters.MaxGenerations Min=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Min Max=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Max Step=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Step><small>Max Generations:</small> @GetMaxGenerationsValue()</MudSlider>
+        <MudSlider @bind-Value=Parameters.CombinatorialBatches Min=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Min Max=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Max Step=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Step><small>Batches:</small> @Parameters.CombinatorialBatches</MudSlider>
+        <MudText Style="opacity: 0.5;" Typo="Typo.caption">Re-run combinatorial batch @Parameters.CombinatorialBatches times with a different seed each time.</MudText>
+    </MudItem>
+    <MudItem xs="12" Class="@($"collapse {(Parameters.IsMagicPrompt ? "show" : "")}")">
+        <MudGrid>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.MagicPromptLength Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Step><small>Maximum Length:</small> @Parameters.MagicPromptLength tokens</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.MagicPromptCreativity Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Step><small>Creativity:</small> @Parameters.MagicPromptCreativity</MudSlider>
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect @bind-Value=Parameters.MagicModel Label="Model" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
+                    @foreach (var model in AppState.Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList)
+                    {
+                        <MudSelectItem Value="model">@model</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value=Parameters.MagicBlocklistRegex Lines=3 Label="Blocklist Regex" Placeholder=@("Regular expression pattern for blocking terms out of the generated prompt, case insensitive. For instance, to block both \"purple\" and \"interdimensional\", use the pattern \"purple|interdimensional\"") Clearable=true />
+            </MudItem>
+            <MudItem xs="4">
+                <MudTooltip Text="Add emphasis to a randomly selected keyword in the prompt" Placement="Placement.End" Delay="1600" Duration="600">
+                    <MudCheckBox @bind-Checked=Parameters.IsAttentionGrabber Label="Attention Grabber" />
+                </MudTooltip>
+            </MudItem>
+            <MudItem xs="4">
+                <MudTooltip Placement="Placement.End" Delay="1600" Duration="600">
+                    <ChildContent>
+                        <MudCheckBox @bind-Checked=Parameters.IsFeelingLucky Label="I'm Feeling Lucky" />
+                    </ChildContent>
+                    <TooltipContent>
+                        Generate random prompts from lexica.art <br /> Current prompt is used as a search query
+                    </TooltipContent>
+                </MudTooltip>
+            </MudItem>
+            <MudItem xs="4">
+                <MudTooltip Text="Don't use Prompt Magic on Negative Prompt" Placement="Placement.End" Delay="1600" Duration="600">
+                    <MudCheckBox @bind-Checked=Parameters.DisableNegativePrompt Label="Disable on Negative Prompt" />
+                </MudTooltip>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.MinAttention Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Minimum Attention:</small> @Parameters.MinAttention</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.MaxAttention Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Maximum Attention:</small> @Parameters.MaxAttention</MudSlider>
+            </MudItem>
+        </MudGrid>
+    </MudItem>
+    <MudItem xs="12">
+        <MudExpansionPanel Text="Need Help?">
+            @_helpText
+        </MudExpansionPanel>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersDynamicPrompts Parameters { get; set; }
+    private MarkupString _helpText;
+
+    protected override void OnInitialized()
+    {
+        if (AppState.CmdFlags != null && !string.IsNullOrWhiteSpace(AppState.CmdFlags.BaseDir))
+        {
+            var path = Path.Combine(AppState.CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "helptext.html");
+            if (File.Exists(path)) _helpText = (MarkupString)IO.LoadText(path).Replace("$$", "$");
+        }
+    }
+
+    private void HandleParameterChecked(MudChip[] checkboxes)
+    {
+        Parameters.IsCombinatorial = false;
+        Parameters.IsMagicPrompt = false;
+        if (checkboxes == null || checkboxes.Count() == 0) return;
+
+        foreach (var check in checkboxes)
+        {
+            switch (check.Text)
+            {
+                case "Combinatorial":
+                    Parameters.IsCombinatorial = true;
+                    break;
+                case "Prompt Magic":
+                    Parameters.IsMagicPrompt = true;
+                    break;
+            }
+        }
+    }
+
+    // Using a Lambda for this currently messes the formatter.
+    private string GetMaxGenerationsValue() => Parameters.MaxGenerations > 0 ? Parameters.MaxGenerations.ToString() : "All";
+}
