@@ -149,6 +149,12 @@ namespace BlazorWebApp.Services
             if (scriptParam != null && scriptParam.IsEnabled)
             {
                 var argsArray = scriptParam.GetType().GetProperties().Select(p => p.GetValue(scriptParam, null)).ToArray();
+                // Since the shared ScriptParameteresBase.IsEnable property is loaded last and order is important, we need to reorder it to the first position
+                var tempList = argsArray.ToList();
+                var isEnabledValue = tempList[tempList.Count - 1];
+                tempList.RemoveAt(tempList.Count - 1);
+                tempList.Insert(0, isEnabledValue);
+                argsArray = tempList.ToArray();
                 var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
                 if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
                 else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
