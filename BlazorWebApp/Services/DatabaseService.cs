@@ -364,6 +364,13 @@ namespace BlazorWebApp.Services
             return modeEntity.Id;
         }
 
+        public async Task<ModeType> GetMode(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var modeEntity = await context.Modes.FirstOrDefaultAsync(m => m.Id == id);
+            return modeEntity.Type;
+        }
+
         private async void PopulateModes()
         {
             using var context = await _factory.CreateDbContextAsync();

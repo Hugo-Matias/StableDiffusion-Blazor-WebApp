@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -55,12 +56,12 @@ namespace BlazorWebApp.Services
         public IEnumerable<PromptStyle> CurrentStyles { get; set; }
         public string CurrentSDModel { get; set; } = "Loading...";
         public string CurrentVae { get; set; }
-        public long? CurrentSeed { get; set; }
         public int CurrentFolderId { get; set; }
         public string CurrentFolderName { get; set; }
         public int CurrentProjectId { get; set; }
         public string CurrentProjectName { get; set; }
         public string CurrentResourceSubType { get; set; }
+        public long CurrentSeed { get; set; }
         public int CurrentProgress
         {
             get => _currentProgress; set
@@ -371,9 +372,9 @@ namespace BlazorWebApp.Services
 
         public async Task GetSamplers() => Samplers = await _api.GetSamplers();
 
-        public async Task LoadImageInfoParameters(Image image, bool isImg2Img)
+        public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {
-            if (isImg2Img)
+            if (mode == ModeType.Img2Img)
             {
                 ParametersImg2Img.Prompt = image.Prompt;
                 ParametersImg2Img.NegativePrompt = image.NegativePrompt;
@@ -408,61 +409,75 @@ namespace BlazorWebApp.Services
                 case Outdir.Txt2ImgSamples:
                     path = Options.OutdirSamplesTxt2Img;
                     break;
-
                 case Outdir.Txt2ImgGrid:
                     path = Options.OutdirGridTxt2Img;
                     break;
-
                 case Outdir.Img2ImgSamples:
                     path = Options.OutdirSamplesImg2Img;
                     break;
-
                 case Outdir.Img2ImgGrid:
                     path = Options.OutdirGridImg2Img;
                     break;
-
                 case Outdir.Extras:
                     return Options.OutdirSamplesExtras;
-
                 default:
                     return string.Empty;
             }
 
-            return Path.Combine(path, ConvertPathPattern(Options.FilenamePatternDir));
+            return Path.Combine(path, ConvertPathPattern(Options.FilenamePatternDir, Parser.ModeTypeFromOutdir((Outdir)outdir)));
         }
 
-        public string ConvertPathPattern(string pattern)
+        public string ConvertPathPattern(string pattern, ModeType mode)
         {
             var rg = new Regex(@"(\[.+?\])");
 
-            return rg.Replace(pattern, (t) => ConvertPathTag(t.Value));
+            return rg.Replace(pattern, (t) => ConvertPathTag(t.Value, mode));
         }
 
-        private string ConvertPathTag(string tag)
+        private string ConvertPathTag(string tag, ModeType mode)
         {
             switch (tag)
             {
                 case "[model_hash]":
                     return GetModelHash(Options.SDModelCheckpoint);
-
-                case "[sampler]":
-                    return ParametersTxt2Img.SamplerIndex;
-
-                case "[seed]":
-                    return CurrentSeed.ToString();
-
-                case "[steps]":
-                    return ParametersTxt2Img.Steps.ToString();
-
-                case "[cfg]":
-                    return ParametersTxt2Img.CfgScale.ToString();
-
                 case "[model_name]":
                     return GetModelName(Options.SDModelCheckpoint);
-
                 default:
-                    return "";
+                    break;
             }
+
+            if (mode == ModeType.Txt2Img)
+            {
+                switch (tag)
+                {
+                    case "[sampler]":
+                        return ParametersTxt2Img.SamplerIndex;
+                    case "[seed]":
+                        return CurrentSeed.ToString();
+                    case "[steps]":
+                        return ParametersTxt2Img.Steps.ToString();
+                    case "[cfg]":
+                        return ParametersTxt2Img.CfgScale.ToString();
+                    default: break;
+                }
+            }
+            else if (mode == ModeType.Img2Img)
+            {
+                switch (tag)
+                {
+                    case "[sampler]":
+                        return ParametersImg2Img.SamplerIndex;
+                    case "[seed]":
+                        return CurrentSeed.ToString();
+                    case "[steps]":
+                        return ParametersImg2Img.Steps.ToString();
+                    case "[cfg]":
+                        return ParametersImg2Img.CfgScale.ToString();
+                    default: break;
+                }
+            }
+
+            return string.Empty;
         }
 
         private string GetModelHash(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Hash;

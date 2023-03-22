@@ -167,7 +167,7 @@ namespace BlazorWebApp.Services
             ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
 
             var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
-            _app.CurrentSeed = _app.ImagesInfo.Seed;
+            var mode = Parser.ModeTypeFromOutdir(outdirSamples);
 
             for (int i = 0; i < _app.Images.Images.Count; i++)
             {
@@ -185,23 +185,23 @@ namespace BlazorWebApp.Services
                     //savedImages.Images.Add();
                     break;
                 }
+                var info = Parser.ParseInfoStrings(_app.ImagesInfo.InfoTexts[i], mode);
+                var param = Parser.ParseInfoParameters(info["param"]);
+                _app.CurrentSeed = param != null && !string.IsNullOrEmpty(param["Seed"]) ? long.Parse(param["Seed"]) : (long)_parsingParams.Seed;
 
-                var fullpath = GetImagePath(saveDir.FullName, fileIndex);
+                var fullpath = GetImagePath(saveDir.FullName, fileIndex, mode);
                 var imagePath = $"{fullpath}.{extension}";
 
                 await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_app.Images.Images[i]));
-
 
                 if ((bool)_app.Options.SaveTxt)
                 {
                     var infoPath = $"{fullpath}.txt";
                     _io.SaveText(infoPath, _app.ImagesInfo.InfoTexts[i]);
-                    savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, infoPath));
+                    savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info, infoPath));
                 }
                 else
-                    savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples));
-
-                _app.CurrentSeed++;
+                    savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info));
             }
 
             if (outdirGrid != null && (bool)_app.Options.GridSave && (_app.Images.Images.Count > 1 && (bool)_app.Options.GridOnlyIfMultiple))
@@ -235,24 +235,26 @@ namespace BlazorWebApp.Services
             var imagePath = $"{fullpath}.{extension}";
             await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_app.GeneratedUpscaleImage.Image));
 
+            var info = Parser.ParseInfoParameters(_app.GeneratedUpscaleImage.Info);
             if ((bool)_app.Options.SaveTxt)
             {
                 var infoPath = $"{fullpath}.txt";
                 _io.SaveText(infoPath, _app.GeneratedUpscaleImage.Info);
-                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, infoPath));
+                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, info, infoPath));
             }
             else
-                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras));
+                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, info));
 
             return savedImage;
         }
 
-        private async Task<Image> AddImageToDb(string path, Outdir outdir, string infoPath = null)
+        private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info, string infoPath = null)
         {
             Image image = new();
 
             image.Path = path;
             image.ProjectId = _app.CurrentProjectId;
+            image.Info = info["param"];
             if (outdir == Outdir.Txt2ImgSamples && _app.ParametersTxt2Img.EnableHR == true)
             {
                 var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _app.ParametersTxt2Img.HRWidth, _app.ParametersTxt2Img.HRHeight, _app.ParametersTxt2Img.HRScale);
@@ -272,35 +274,16 @@ namespace BlazorWebApp.Services
             if (infoPath != null) { image.InfoPath = infoPath; }
             if (outdir != Outdir.Extras)
             {
-                image.Prompt = _parsingParams.Prompt;
-                image.NegativePrompt = _parsingParams.NegativePrompt;
+                image.Prompt = info["prompt"];
+                image.NegativePrompt = info["negative"];
                 image.SamplerId = await _db.GetSampler(_parsingParams.SamplerIndex);
                 image.Steps = (int)_parsingParams.Steps;
-                image.Seed = (long)_app.CurrentSeed;
+                image.Seed = _app.CurrentSeed;
                 image.CfgScale = (float)_parsingParams.CfgScale;
                 image.DenoisingStrength = _parsingParams.DenoisingStrength;
             }
 
-            ModeType mode;
-            switch (outdir)
-            {
-                case Outdir.Txt2ImgSamples:
-                    mode = ModeType.Txt2Img;
-                    break;
-
-                case Outdir.Img2ImgSamples:
-                    mode = ModeType.Img2Img;
-                    break;
-
-                case Outdir.Extras:
-                    mode = ModeType.Extras;
-                    break;
-
-                default:
-                    mode = ModeType.Txt2Img;
-                    break;
-            }
-            image.ModeId = await _db.GetMode(mode);
+            image.ModeId = await _db.GetMode(Parser.ModeTypeFromOutdir(outdir));
 
             return await _db.AddImage(image);
         }
@@ -315,9 +298,9 @@ namespace BlazorWebApp.Services
             await File.WriteAllBytesAsync(path, _magick.ConvertToPng(response));
         }
 
-        private string GetImagePath(string path, int fileIndex)
+        private string GetImagePath(string path, int fileIndex, ModeType mode)
         {
-            string infoname = _app.ConvertPathPattern(_app.Options.FilenamePatternSamples);
+            string infoname = _app.ConvertPathPattern(_app.Options.FilenamePatternSamples, mode);
             string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
             return Path.Combine(path, filename);
         }

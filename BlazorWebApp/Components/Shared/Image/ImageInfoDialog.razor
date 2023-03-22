@@ -12,61 +12,77 @@
         <DialogContent>
             @if (Image.ModeId != 3)
             {
-                <MudStack AlignItems="AlignItems.Center" Row>
-                    <MudTextField T="string" Label="Prompt" Style="color: var(--mud-palette-success); font-size:0.8rem;" Text="@Image.Prompt" Lines="5" ReadOnly />
-                    <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Prompt)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" Vertical />
-                </MudStack>
-                <div class="spacer" />
-                <MudStack AlignItems="AlignItems.Center" Row>
-                    <MudTextField T="string" Label="Negative Prompt" Style="color: var(--mud-palette-error); font-size: 0.8rem;" Text="@Image.NegativePrompt" Lines="5" ReadOnly />
-                    <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.NegativePrompt)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" Vertical />
-                </MudStack>
-                <div class="spacer" />
-                <MudStack AlignItems="AlignItems.Center" Row>
-                    <MudField Label="Sampler" Class="copy-btns">
-                        @GetSampler()
-                        <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.SamplerIndex)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
-                    </MudField>
-                    <MudField Label="Steps" Class="copy-btns">
-                        @Image.Steps.ToString()
-                        <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Steps)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
-                    </MudField>
-                    <MudField Label="CFG Scale" Class="copy-btns">
-                        @Image.CfgScale.ToString()
-                        <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.CfgScale)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
-                    </MudField>
-                    <MudField Label="Denoising Strength" Class="copy-btns">
-                        @Image.DenoisingStrength.ToString()
-                        <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.DenoisingStrength)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
-                    </MudField>
-                </MudStack>
-                <div class="spacer" />
-                <MudStack AlignItems="AlignItems.Center" Row>
-                    <MudField Label="Seed" Class="copy-btns">
-                        @Image.Seed.ToString()
-                        <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Seed)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
-                    </MudField>
-                    <MudField Label="Width" Class="copy-btns">
-                        @Image.Width.ToString() px
-                        <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Width)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
-                    </MudField>
-                    <MudField Label="Height" Class="copy-btns">
-                        @Image.Height.ToString() px
-                        <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Height)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
-                    </MudField>
-                </MudStack>
-                <div class="spacer" />
-                <MudStack AlignItems="AlignItems.Center" Row>
-                    <MudTextField Label="Mode" Text="@GetMode()" T="string" ReadOnly />
-                    <MudTextField Label="Path" Text="@Image.Path" T="string" ReadOnly />
-                    <MudTextField Label="Created Date" Text="@Image.DateCreated.ToString()" T="string" ReadOnly />
-                </MudStack>
+                <MudTabs Centered=true Rounded=true PanelClass="pa-3">
+                    <MudTabPanel Text="Parameters">
+                        <MudStack AlignItems="AlignItems.Center" Row=true>
+                            <MudTextField T="string" Label="Prompt" Style="color: var(--mud-palette-success); font-size:0.8rem;" Text="@Image.Prompt" Lines="5" ReadOnly=true />
+                            <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Prompt)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" Vertical />
+                        </MudStack>
+                        <div class="spacer" />
+                        <MudStack AlignItems="AlignItems.Center" Row=true>
+                            <MudTextField T="string" Label="Negative Prompt" Style="color: var(--mud-palette-error); font-size: 0.8rem;" Text="@Image.NegativePrompt" Lines="5" ReadOnly=true />
+                            <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.NegativePrompt)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" Vertical />
+                        </MudStack>
+                        <div class="spacer" />
+                        <MudStack AlignItems="AlignItems.Center" Row=true>
+                            <MudField Label="Sampler" Class="copy-btns">
+                                @GetSampler()
+                                <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.SamplerIndex)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
+                            </MudField>
+                            <MudField Label="Steps" Class="copy-btns">
+                                @Image.Steps.ToString()
+                                <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Steps)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
+                            </MudField>
+                            <MudField Label="CFG Scale" Class="copy-btns">
+                                @Image.CfgScale.ToString()
+                                <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.CfgScale)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
+                            </MudField>
+                            <MudField Label="Denoising Strength" Class="copy-btns">
+                                @Image.DenoisingStrength.ToString()
+                                <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.DenoisingStrength)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
+                            </MudField>
+                        </MudStack>
+                        <div class="spacer" />
+                        <MudStack AlignItems="AlignItems.Center" Row=true>
+                            <MudField Label="Seed" Class="copy-btns">
+                                @Image.Seed.ToString()
+                                <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Seed)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
+                            </MudField>
+                            <MudField Label="Width" Class="copy-btns">
+                                @Image.Width.ToString() px
+                                <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Width)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
+                            </MudField>
+                            <MudField Label="Height" Class="copy-btns">
+                                @Image.Height.ToString() px
+                                <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Height)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
+                            </MudField>
+                        </MudStack>
+                        <div class="spacer" />
+                        <MudStack AlignItems="AlignItems.Center" Row=true>
+                            <MudTextField Label="Mode" Text="@GetMode()" T="string" ReadOnly=true />
+                            <MudTextField Label="Path" Text="@Image.Path" T="string" ReadOnly=true />
+                            <MudTextField Label="Created Date" Text="@Image.DateCreated.ToString()" T="string" ReadOnly=true />
+                        </MudStack>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Info Table">
+                        <MudTable Items=_infoParams Style="max-height: 40vh; overflow: scroll;" Hover=true>
+                            <HeaderContent>
+                                <MudTh>Parameter</MudTh>
+                                <MudTh>Value</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Parameter">@context.Key</MudTd>
+                                <MudTd DataLabel="Value">@context.Value</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudTabPanel>
+                </MudTabs>
             }
             else
             {
-                <MudTextField Label="Details" Text="@GetInfo()" Lines=3 T="string" ReadOnly />
+                <MudTextField Label="Details" Text="@GetInfo()" Lines=3 T="string" ReadOnly=true />
                 <div class="spacer" />
-                <MudStack AlignItems="AlignItems.Center" Row>
+                <MudStack AlignItems="AlignItems.Center" Row=true>
                     <MudField Label="Width" Class="copy-btns">
                         @Image.Width.ToString() px
                         <ImageInfoCopyParameterButtons Property="@nameof(SharedParameters.Width)" OnTxt2ImgClicked="(e) => CopyParameter(e, isImg2Img: false)" OnImg2ImgClicked="(e) => CopyParameter(e, isImg2Img: true)" />
@@ -77,18 +93,18 @@
                     </MudField>
                 </MudStack>
                 <div class="spacer" />
-                <MudStack AlignItems="AlignItems.Center" Row>
-                    <MudTextField Label="Mode" Text="@GetMode()" T="string" ReadOnly />
-                    <MudTextField Label="Path" Text="@Image.Path" T="string" ReadOnly />
-                    <MudTextField Label="Created Date" Text="@Image.DateCreated.ToString()" T="string" ReadOnly />
+                <MudStack AlignItems="AlignItems.Center" Row=true>
+                    <MudTextField Label="Mode" Text="@GetMode()" T="string" ReadOnly=true />
+                    <MudTextField Label="Path" Text="@Image.Path" T="string" ReadOnly=true />
+                    <MudTextField Label="Created Date" Text="@Image.DateCreated.ToString()" T="string" ReadOnly=true />
                 </MudStack>
             }
         </DialogContent>
         <DialogActions>
             <MudButton OnClick="() => MudDialog.Cancel()">Close</MudButton>
             <MudButtonGroup Class="m-2" Color="Color.Warning" Variant="Variant.Text">
-                <MudButton Class="px-4" OnClick="() => LoadParameters(false)" StartIcon="fa-solid fa-pen-to-square" IconColor="Color.Warning">Load Txt2Img</MudButton>
-                <MudButton Class="px-4" OnClick="() => LoadParameters(true)" StartIcon="fa-solid fa-square-pen" IconColor="Color.Warning">Load Img2Img</MudButton>
+                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Txt2Img)" StartIcon="fa-solid fa-pen-to-square" IconColor="Color.Warning">Load Txt2Img</MudButton>
+                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Img2Img)" StartIcon="fa-solid fa-square-pen" IconColor="Color.Warning">Load Img2Img</MudButton>
             </MudButtonGroup>
         </DialogActions>
     </MudDialog>
@@ -101,10 +117,33 @@
     [Parameter]
     public Image Image { get; set; }
 
-    private async Task LoadParameters(bool isImg2Img)
+    private Dictionary<string, string>? _infoParams;
+
+    protected async override Task OnInitializedAsync()
     {
-        await AppState.LoadImageInfoParameters(Image, isImg2Img);
-        Snackbar.Add($"All parameters copied to {(isImg2Img ? "Img2Img" : "Txt2Img")}.");
+        if (Image.Info == null) await WriteImageInfo();
+        _infoParams = Parser.ParseInfoParameters(Image.Info);
+        if (!string.IsNullOrWhiteSpace(_infoParams["Seed"]) && Image.Seed != long.Parse(_infoParams["Seed"]))
+        {
+            Image.Seed = long.Parse(_infoParams["Seed"]);
+            await DB.UpdateImage(Image);
+        }
+    }
+
+    private async Task WriteImageInfo()
+    {
+        var mode = await DB.GetMode(Image.ModeId);
+        var lines = Parser.ParseInfoStrings(IO.LoadText(Image.InfoPath), mode);
+        if (!string.IsNullOrWhiteSpace(lines["prompt"]) && !Image.Prompt.Equals(lines["prompt"], StringComparison.InvariantCultureIgnoreCase)) Image.Prompt = lines["prompt"];
+        if (!string.IsNullOrWhiteSpace(lines["negative"]) && !Image.NegativePrompt.Equals(lines["negative"], StringComparison.InvariantCultureIgnoreCase)) Image.NegativePrompt = lines["negative"];
+        Image.Info = lines["param"];
+        await DB.UpdateImage(Image);
+    }
+
+    private async Task LoadParameters(ModeType mode)
+    {
+        await AppState.LoadImageInfoParameters(Image, mode);
+        Snackbar.Add($"All parameters copied to {(mode == ModeType.Img2Img ? "Img2Img" : "Txt2Img")}.");
         MudDialog.Cancel();
     }
 

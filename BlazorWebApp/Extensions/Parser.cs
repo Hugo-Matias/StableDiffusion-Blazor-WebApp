@@ -1,5 +1,7 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using BlazorWebApp.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using System.Text.RegularExpressions;
@@ -51,6 +53,51 @@ namespace BlazorWebApp.Extensions
                 return Regex.Replace(style, "{prompt}", prompt ?? "");
             }
             return $"{prompt}{style}";
+        }
+
+        /// <summary>
+        /// Parses the info text lines returned from the WebUI after inference.
+        /// </summary>
+        /// <param name="info">Info text</param>
+        /// <param name="mode">ModeType to unsure that Upscale generations are properly parsed</param>
+        /// <returns>Dictionary key values ["prompt", "negative", "param"] </returns>
+        public static Dictionary<string, string>? ParseInfoStrings(this string info, ModeType mode)
+        {
+            if (string.IsNullOrWhiteSpace(info)) return null;
+
+            var prompt = string.Empty;
+            var negative = string.Empty;
+            var param = string.Empty;
+
+            if (mode == ModeType.Extras) param = info;
+            else
+            {
+                var lines = info.Split('\n');
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith("Negative prompt:", StringComparison.InvariantCultureIgnoreCase)) negative = Regex.Replace(line, @"^Negative prompt: ", "");
+                    else if (line.StartsWith("Steps: ", StringComparison.InvariantCultureIgnoreCase)) param = line;
+                    else prompt = line;
+                }
+            }
+            return new Dictionary<string, string>() { { "prompt", prompt }, { "negative", negative }, { "param", param } };
+        }
+
+        public static Dictionary<string, string>? ParseInfoParameters(this string param)
+        {
+            if (string.IsNullOrWhiteSpace(param)) return null;
+
+            Dictionary<string, string>? parameters = new();
+            // Adding ", " to comply with the pattern
+            var groups = Regex.Matches(param + ", ", @"((.+?): ([^"",\n]*|""([^""]*|"")*""), )");
+            foreach (Match group in groups)
+            {
+                if (group.Groups.Count != 5) Console.WriteLine($"[ImageService:ParseInfoParameters] Incorrect group match: {group.Value} | {group.Groups.Count}");
+                var key = group.Groups[2].Value;
+                var value = group.Groups[3].Value;
+                parameters.Add(key, value);
+            }
+            return parameters;
         }
 
         public static string ParseCivitaiImageResources(this string prompt, List<CivitaiImageMetaResource> resources)
@@ -122,32 +169,24 @@ namespace BlazorWebApp.Extensions
 
         public static string ParseResizeModeValue(this int value)
         {
-            switch (value)
+            return value switch
             {
-                case 1:
-                    return "Crop and Resize";
-                case 2:
-                    return "Resize and Fill";
-                case 3:
-                    return "Just Resize (latent upscale)";
-                default:
-                    return "Just Resize";
-            }
+                1 => "Crop and Resize",
+                2 => "Resize and Fill",
+                3 => "Just Resize (latent upscale)",
+                _ => "Just Resize",
+            };
         }
 
         public static string ParseInpaintingFillValue(this int value)
         {
-            switch (value)
+            return value switch
             {
-                case 1:
-                    return "Original";
-                case 2:
-                    return "Latent Noise";
-                case 3:
-                    return "Latent Nothing";
-                default:
-                    return "Fill";
-            }
+                1 => "Original",
+                2 => "Latent Noise",
+                3 => "Latent Nothing",
+                _ => "Fill",
+            };
         }
 
         public static CsvTag ParseCsvTag(this CsvTag tag) => new CsvTag()
@@ -166,29 +205,19 @@ namespace BlazorWebApp.Extensions
 
         public static Color ParseCsvTagColor(this int color)
         {
-            switch (color)
+            return color switch
             {
-                case 0:
-                    return Color.Info;
-                case 1:
-                    return Color.Error;
-                case 2:
-                    return Color.Warning;
-                case 3:
-                    return Color.Secondary;
-                case 4:
-                    return Color.Tertiary;
-                case 5:
-                    return Color.Warning;
-                case 6:
-                    return Color.Secondary;
-                case 7:
-                    return Color.Success;
-                case 8:
-                    return Color.Info;
-                default:
-                    return Color.Default;
-            }
+                0 => Color.Info,
+                1 => Color.Error,
+                2 => Color.Warning,
+                3 => Color.Secondary,
+                4 => Color.Tertiary,
+                5 => Color.Warning,
+                6 => Color.Secondary,
+                7 => Color.Success,
+                8 => Color.Info,
+                _ => Color.Default,
+            };
         }
 
         public static string ParseCivitaiResourceColorAsString(this CivitaiModelType type)
@@ -248,36 +277,26 @@ namespace BlazorWebApp.Extensions
         }
         public static string ParseCivitaiImageGenerationProcess(this string process)
         {
-            switch (process)
+            return process switch
             {
-                case "txt2img":
-                    return "Txt2Img";
-                case "txt2imgHiRes":
-                    return "Txt2Img (HighRes)";
-                case "img2img":
-                    return "Img2Img";
-                case "inpainting":
-                    return "Inpainting";
-                default:
-                    return process;
-            }
+                "txt2img" => "Txt2Img",
+                "txt2imgHiRes" => "Txt2Img (HighRes)",
+                "img2img" => "Img2Img",
+                "inpainting" => "Inpainting",
+                _ => process,
+            };
         }
 
         public static Color ParseCivitaiImageGenerationProcessColor(this string process)
         {
-            switch (process)
+            return process switch
             {
-                case "txt2img":
-                    return Color.Info;
-                case "txt2imgHiRes":
-                    return Color.Secondary;
-                case "img2img":
-                    return Color.Warning;
-                case "inpainting":
-                    return Color.Success;
-                default:
-                    return Color.Primary;
-            }
+                "txt2img" => Color.Info,
+                "txt2imgHiRes" => Color.Secondary,
+                "img2img" => Color.Warning,
+                "inpainting" => Color.Success,
+                _ => Color.Primary,
+            };
         }
 
         public static string ParseCivitaiFilesize(this double filesize)
@@ -294,35 +313,25 @@ namespace BlazorWebApp.Extensions
 
         public static string ParseCivitaiScanIcon(this CivitaiScanResult result)
         {
-            switch (result)
+            return result switch
             {
-                case CivitaiScanResult.Success:
-                    return "fa-solid fa-shield-halved";
-                case CivitaiScanResult.Pending:
-                    return "fa-solid fa-file-shield";
-                case CivitaiScanResult.Error:
-                    return "fa-solid fa-triangle-exclamation";
-                case CivitaiScanResult.Danger:
-                    return "fa-solid fa-shield-virus";
-                default:
-                    return string.Empty;
-            }
+                CivitaiScanResult.Success => "fa-solid fa-shield-halved",
+                CivitaiScanResult.Pending => "fa-solid fa-file-shield",
+                CivitaiScanResult.Error => "fa-solid fa-triangle-exclamation",
+                CivitaiScanResult.Danger => "fa-solid fa-shield-virus",
+                _ => string.Empty,
+            };
         }
 
         public static Color ParseCivitaiScanColor(this CivitaiScanResult result)
         {
-            switch (result)
+            return result switch
             {
-                case CivitaiScanResult.Success:
-                    return Color.Success;
-                case CivitaiScanResult.Pending:
-                case CivitaiScanResult.Error:
-                    return Color.Warning;
-                case CivitaiScanResult.Danger:
-                    return Color.Error;
-                default:
-                    return Color.Default;
-            }
+                CivitaiScanResult.Success => Color.Success,
+                CivitaiScanResult.Pending or CivitaiScanResult.Error => Color.Warning,
+                CivitaiScanResult.Danger => Color.Error,
+                _ => Color.Default,
+            };
         }
 
         public static string ParseCivitaiScanTimespan(this DateTime scanTime)
@@ -352,5 +361,17 @@ namespace BlazorWebApp.Extensions
             else return $"{number / 1000}K";
         }
         public static string ConvertCloudMount(this string path) => path.Replace(@"H:\O meu disco\", @"Z:\");
+
+        public static ModeType ModeTypeFromOutdir(this Outdir outdir)
+        {
+            return outdir switch
+            {
+                Outdir.Txt2ImgSamples => ModeType.Txt2Img,
+                Outdir.Txt2ImgGrid => ModeType.Txt2Img,
+                Outdir.Img2ImgSamples => ModeType.Img2Img,
+                Outdir.Img2ImgGrid => ModeType.Img2Img,
+                Outdir.Extras => ModeType.Extras,
+            };
+        }
     }
 }
