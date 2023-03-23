@@ -1,6 +1,6 @@
 ﻿@inject AppState AppState
 
-<div>
+<div style="margin-bottom:15rem;">
     <EditForm Model="@Parameters">
         <MudGrid Class="pa-5">
             <MudItem xs="6">
@@ -60,7 +60,7 @@
                         <MudSelect T="string" Label="Upscaler" @bind-Value=Parameters.HRUpscaler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                             @if (AppState.Upscalers != null && AppState.Upscalers.Count > 0)
                             {
-                                @foreach (var upscaler in AppState.Upscalers)
+                                @foreach (var upscaler in _hiresUpscalers)
                                 {
                                     <MudSelectItem Value=@(upscaler.Name) />
                                 }
@@ -103,12 +103,24 @@
 
     private Options _options;
     private MarkupString _resizeInfo;
+    private List<Upscaler> _hiresUpscalers = new();
+    private List<string> _hiresUpscalerNames = new() { "Latent", "Latent (antialiased)", "Latent (bicubic)", "Latent (bicubic antialiased)", "Latent (nearest)", "Latent (nearest-exact)" };
 
     protected async override Task OnInitializedAsync()
     {
         _options = AppState.Options;
         if (AppState.Upscalers == null || AppState.Upscalers.Count == 0) await AppState.GetUpscalers();
         RefreshHighresInfo();
+        InitializeUpscalers();
+    }
+
+    private void InitializeUpscalers()
+    {
+        foreach (var upscaler in _hiresUpscalerNames)
+        {
+            _hiresUpscalers.Add(new Upscaler() { Name = upscaler, ModelName = upscaler, ModelPath = string.Empty, ModelUrl = string.Empty });
+        }
+        _hiresUpscalers.AddRange(AppState.Upscalers);
     }
 
     private void SetRandomSeed() => Parameters.Seed = -1;

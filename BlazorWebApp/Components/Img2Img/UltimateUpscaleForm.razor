@@ -1,0 +1,119 @@
+﻿@inject AppState AppState
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">Ultimate Upscale</MudText>
+<MudGrid>
+    <MudItem xs="6">
+        <MudSelect @bind-Value=Parameters.TargetSizeType Label="Target Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @{
+                var index = 0;
+                foreach (var type in AppState.Settings.Scripts.UltimateUpscale.TargetSizeTypes)
+                {
+                    <MudSelectItem Value="index">@type</MudSelectItem>
+                    index++;
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect Label="Upscaler" @bind-Value=Parameters.UpscalerIndex AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @{
+                if (AppState.Upscalers != null)
+                {
+                    var index = 0;
+                    foreach (var upscaler in AppState.Upscalers)
+                    {
+                        <MudSelectItem Value="index">@upscaler.Name</MudSelectItem>
+                        index++;
+                    }
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    @if (Parameters.TargetSizeType != 0)
+    {
+        <MudItem xs="12">
+            @if (Parameters.TargetSizeType == 1)
+            {
+                <MudStack Row=true>
+                    <MudSlider @bind-Value=Parameters.CustomWidth Min=AppState.Settings.Scripts.UltimateUpscale.TargetResolution.Min Max=AppState.Settings.Scripts.UltimateUpscale.TargetResolution.Max Step=AppState.Settings.Scripts.UltimateUpscale.TargetResolution.Step><small>Width:</small> @Parameters.CustomWidth px</MudSlider>
+                    <MudSlider @bind-Value=Parameters.CustomHeight Min=AppState.Settings.Scripts.UltimateUpscale.TargetResolution.Min Max=AppState.Settings.Scripts.UltimateUpscale.TargetResolution.Max Step=AppState.Settings.Scripts.UltimateUpscale.TargetResolution.Step><small>Height:</small> @Parameters.CustomHeight px</MudSlider>
+                </MudStack>
+            }
+            else if (Parameters.TargetSizeType == 2)
+            {
+                <MudSlider @bind-Value=Parameters.CustomScale Min=AppState.Settings.Scripts.UltimateUpscale.TargetScale.Min Max=AppState.Settings.Scripts.UltimateUpscale.TargetScale.Max Step=AppState.Settings.Scripts.UltimateUpscale.TargetScale.Step><small>Scale:</small> @Parameters.CustomScale</MudSlider>
+            }
+        </MudItem>
+    }
+    @*    <MudItem xs="6">
+    <MudStack Row=true>
+    <MudText Typo="Typo.caption">Save Images</MudText>
+    <MudCheckBox @bind-Checked=Parameters.SaveUpscaledImage Label="Upscaled" />
+    <MudCheckBox @bind-Checked=Parameters.SaveSeamFixImage Label="Seams Fix" />
+    </MudStack>
+    </MudItem>
+    *@
+    <MudItem xs="6">
+        <MudSelect @bind-Value=Parameters.RedrawMode Label="Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @{
+                var index = 0;
+                foreach (var mode in AppState.Settings.Scripts.UltimateUpscale.RedrawModes)
+                {
+                    <MudSelectItem Value="index">@mode</MudSelectItem>
+                    index++;
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect @bind-Value=Parameters.SeamFixType Label="Seam Fix Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @{
+                var index = 0;
+                foreach (var type in AppState.Settings.Scripts.UltimateUpscale.SeamFixTypes)
+                {
+                    <MudSelectItem Value="index">@type</MudSelectItem>
+                    index++;
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack>
+            <MudText Typo="Typo.caption">Tile</MudText>
+            <MudStack Class="mt-n5" Row=true>
+                <MudSlider @bind-Value=Parameters.TileWidth Min=AppState.Settings.Scripts.UltimateUpscale.TileResolution.Min Max=AppState.Settings.Scripts.UltimateUpscale.TileResolution.Max Step=AppState.Settings.Scripts.UltimateUpscale.TileResolution.Step><small>Width:</small> @Parameters.TileWidth px</MudSlider>
+                <MudSlider @bind-Value=Parameters.TileHeight Min=AppState.Settings.Scripts.UltimateUpscale.TileResolution.Min Max=AppState.Settings.Scripts.UltimateUpscale.TileResolution.Max Step=AppState.Settings.Scripts.UltimateUpscale.TileResolution.Step><small>Height:</small> @Parameters.TileHeight px</MudSlider>
+            </MudStack>
+            <MudStack Row=true>
+                <MudSlider @bind-Value=Parameters.MaskBlur Min=AppState.Settings.Scripts.UltimateUpscale.MaskBlur.Min Max=AppState.Settings.Scripts.UltimateUpscale.MaskBlur.Max Step=AppState.Settings.Scripts.UltimateUpscale.MaskBlur.Step><small>Mask Blur:</small> @Parameters.MaskBlur</MudSlider>
+                <MudSlider @bind-Value=Parameters.Padding Min=AppState.Settings.Scripts.UltimateUpscale.Padding.Min Max=AppState.Settings.Scripts.UltimateUpscale.Padding.Max Step=AppState.Settings.Scripts.UltimateUpscale.Padding.Step><small>Padding:</small> @Parameters.Padding</MudSlider>
+            </MudStack>
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        @if (Parameters.SeamFixType != 0)
+        {
+            <MudStack Class="mt-4" Row=true>
+                <MudSlider @bind-Value=Parameters.SeamFixDenoise Min=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Denoise.Min Max=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Denoise.Max Step=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Denoise.Step><small>Denoise:</small> @Parameters.SeamFixDenoise</MudSlider>
+                <MudSlider @bind-Value=Parameters.SeamFixPadding Min=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Padding.Min Max=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Padding.Max Step=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Padding.Step><small>Padding:</small> @Parameters.SeamFixPadding</MudSlider>
+            </MudStack>
+            if (Parameters.SeamFixType == 1)
+            {
+                <MudSlider Class="mt-4" @bind-Value=Parameters.SeamFixWidth Min=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Width.Min Max=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Width.Max Step=AppState.Settings.Scripts.UltimateUpscale.SeamFix.Width.Step><small>Width:</small> @Parameters.SeamFixWidth</MudSlider>
+            }
+            else
+            {
+                <MudSlider Class="mt-4" @bind-Value=Parameters.SeamFixMaskBlur Min=AppState.Settings.Scripts.UltimateUpscale.SeamFix.MaskBlur.Min Max=AppState.Settings.Scripts.UltimateUpscale.SeamFix.MaskBlur.Max Step=AppState.Settings.Scripts.UltimateUpscale.SeamFix.MaskBlur.Step><small>Mask Blur:</small> @Parameters.SeamFixMaskBlur</MudSlider>
+            }
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersUltimateUpscale Parameters { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        await AppState.GetUpscalers();
+    }
+}

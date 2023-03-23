@@ -1,7 +1,8 @@
 ﻿namespace BlazorWebApp.Models
 {
-    public class ScriptParametersCutoff : ScriptParametersBase
+    public class ScriptParametersCutoff : BaseScriptParameters
     {
+        // Properties will be passed to the payload as an object[] and order is important!
         public string Targets { get; set; }
         public float Weight { get; set; }
         public bool DisableNegative { get; set; }

@@ -1,6 +1,6 @@
 ﻿namespace BlazorWebApp.Models
 {
-    public class ScriptParametersDynamicPrompts : ScriptParametersBase
+    public class ScriptParametersDynamicPrompts : BaseScriptParameters
     {
         // Properties will be passed to the payload as an object[] and order is important!
         public bool IsCombinatorial { get; set; }

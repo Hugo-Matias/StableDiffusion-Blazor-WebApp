@@ -41,6 +41,7 @@ namespace BlazorWebApp.Services
             //_app.GridImage = string.Empty;
 
             ImagesDto images = new();
+            string scriptName = string.Empty;
 
             try
             {
@@ -51,7 +52,8 @@ namespace BlazorWebApp.Services
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.Scripts.ControlNet);
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff, "cutoff");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, "dynamic prompts");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, "Dynamic Prompts v2.8.4");
+                        scriptName = CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.UltimateUpscale, "Ultimate SD upscale");
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
                         img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                         img2imgParams.Mask = _app.ParametersImg2Img.Mask;
@@ -109,13 +111,13 @@ namespace BlazorWebApp.Services
                     switch (mode)
                     {
                         case ModeType.Img2Img:
-                            images = await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid);
+                            images = await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid, scriptName);
                             break;
                         case ModeType.Extras:
                             images = await SaveUpscaleImage();
                             break;
                         default:
-                            images = await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid);
+                            images = await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid, scriptName);
                             break;
                     }
                 }
@@ -144,24 +146,41 @@ namespace BlazorWebApp.Services
             }
         }
 
-        private void CreateScriptParameters(ref SharedParameters parameters, ScriptParametersBase scriptParam, string payloadKey)
+        private string CreateScriptParameters(ref SharedParameters parameters, BaseScriptParameters scriptParam, string payloadKey)
         {
             if (scriptParam != null && scriptParam.IsEnabled)
             {
                 var argsArray = scriptParam.GetType().GetProperties().Select(p => p.GetValue(scriptParam, null)).ToArray();
-                // Since the shared ScriptParameteresBase.IsEnable property is loaded last and order is important, we need to reorder it to the first position
+                // Since the shared ScriptParameteresBase properties are loaded last and order is important, we need to reorder them
                 var tempList = argsArray.ToList();
-                var isEnabledValue = tempList[tempList.Count - 1];
-                tempList.RemoveAt(tempList.Count - 1);
-                tempList.Insert(0, isEnabledValue);
-                argsArray = tempList.ToArray();
-                var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
-                if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
-                else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
+                if (scriptParam.IsAlwaysOn)
+                {
+                    // Last element at this point is BaseScriptParameters.IsAlwaysOn, since we don't need the value in the payload it's just discarded
+                    tempList.RemoveAt(tempList.Count - 1);
+                    // Last element at this point is BaseScriptParameters.IsEnabled, the value we need move to top
+                    var isEnabledValue = tempList[tempList.Count - 1];
+                    tempList.RemoveAt(tempList.Count - 1);
+                    tempList.Insert(0, isEnabledValue);
+                    argsArray = tempList.ToArray();
+                    var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
+                    if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
+                    else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
+                }
+                else
+                {
+                    // Remove the 2 shared values from the payload since they are not needed on triggered scripts like Ultimate Upscale
+                    tempList.RemoveAt(tempList.Count - 1);
+                    tempList.RemoveAt(tempList.Count - 1);
+                    argsArray = tempList.ToArray();
+                    parameters.ScriptName = payloadKey;
+                    parameters.ScriptArgs = argsArray;
+                    return payloadKey;
+                }
             }
+            return string.Empty;
         }
 
-        public async Task<ImagesDto> SaveImages(Outdir outdirSamples, Outdir? outdirGrid = null)
+        public async Task<ImagesDto> SaveImages(Outdir outdirSamples, Outdir? outdirGrid, string scriptName)
         {
             DirectoryInfo saveDir = _io.CreateDirectory(_app.GetCurrentSaveFolder(outdirSamples));
             ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
@@ -174,19 +193,27 @@ namespace BlazorWebApp.Services
                 fileIndex++;
                 var extension = _app.Options.SamplesFormat.ToLowerInvariant();
 
-                // Annotator result is an extra image generated by SD when in ControlNet mode,
-                // It doesn't return an info string, creating a mismatch between Images and Info list sizes.
-                // TODO: Add the CN annotator result to the database as well.
+                // Under certain conditions, SD returns images without info data, creating a mismatch between Images and Info list size.
+                // To prevent crashing later in the method when info is parsed and saved, we must preemptively break the execution and save the extra images to disk.
+                // These images aren't added to the database.
                 if (i >= _app.ImagesInfo.InfoTexts.Length)
                 {
-                    var cnImageFile = $"{fileIndex.ToString().PadLeft(5, '0')}-ControlNet Annotator Result.{extension}";
-                    var cnImagePath = Path.Combine(saveDir.FullName, cnImageFile);
-                    await _io.SaveFileToDisk(cnImagePath, Convert.FromBase64String(_app.Images.Images[i]));
-                    //savedImages.Images.Add();
+                    if ((outdirSamples == Outdir.Txt2ImgSamples && _app.ParametersTxt2Img.AlwaysOnScripts != null && _app.ParametersTxt2Img.AlwaysOnScripts["controlnet"] != null) ||
+                        (outdirSamples == Outdir.Img2ImgSamples && _app.ParametersImg2Img.AlwaysOnScripts != null && _app.ParametersImg2Img.AlwaysOnScripts["controlnet"] != null))
+                    {
+                        var cnImagePath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-ControlNet Annotator.{extension}";
+                        await _io.SaveFileToDisk(cnImagePath, Convert.FromBase64String(_app.Images.Images[i]));
+                    }
+                    else if (outdirSamples == Outdir.Img2ImgSamples && scriptName == "Ultimate SD upscale")
+                    {
+                        var seamfixPath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-SeamFix.{extension}";
+                        await _io.SaveFileToDisk(seamfixPath, Convert.FromBase64String(_app.Images.Images[i]));
+                    }
                     break;
                 }
                 var info = Parser.ParseInfoStrings(_app.ImagesInfo.InfoTexts[i], mode);
-                var param = Parser.ParseInfoParameters(info["param"]);
+                Dictionary<string, string>? param = null;
+                if (info != null) param = Parser.ParseInfoParameters(info["param"]);
                 _app.CurrentSeed = param != null && !string.IsNullOrEmpty(param["Seed"]) ? long.Parse(param["Seed"]) : (long)_parsingParams.Seed;
 
                 var fullpath = GetImagePath(saveDir.FullName, fileIndex, mode);
@@ -235,7 +262,7 @@ namespace BlazorWebApp.Services
             var imagePath = $"{fullpath}.{extension}";
             await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_app.GeneratedUpscaleImage.Image));
 
-            var info = Parser.ParseInfoParameters(_app.GeneratedUpscaleImage.Info);
+            var info = Parser.ParseInfoStrings(_app.GeneratedUpscaleImage.Info, ModeType.Extras);
             if ((bool)_app.Options.SaveTxt)
             {
                 var infoPath = $"{fullpath}.txt";
@@ -254,7 +281,7 @@ namespace BlazorWebApp.Services
 
             image.Path = path;
             image.ProjectId = _app.CurrentProjectId;
-            image.Info = info["param"];
+            if (info != null) image.Info = info["param"];
             if (outdir == Outdir.Txt2ImgSamples && _app.ParametersTxt2Img.EnableHR == true)
             {
                 var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _app.ParametersTxt2Img.HRWidth, _app.ParametersTxt2Img.HRHeight, _app.ParametersTxt2Img.HRScale);
@@ -263,8 +290,27 @@ namespace BlazorWebApp.Services
             }
             else if (outdir == Outdir.Img2ImgSamples)
             {
-                image.Width = _canvasSourceWidth;
-                image.Height = _canvasSourceHeight;
+
+                if (info == null || string.IsNullOrWhiteSpace(info["param"]))
+                {
+                    image.Width = _canvasSourceWidth;
+                    image.Height = _canvasSourceHeight;
+                }
+                else
+                {
+                    var param = Parser.ParseInfoParameters(info["param"]);
+                    if (param != null && !string.IsNullOrWhiteSpace(param["Size"]))
+                    {
+                        var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);
+                        image.Width = int.Parse(size[0].Trim());
+                        image.Height = int.Parse(size[1].Trim());
+                    }
+                    else
+                    {
+                        image.Width = _canvasSourceWidth;
+                        image.Height = _canvasSourceHeight;
+                    }
+                }
             }
             else
             {
@@ -274,8 +320,8 @@ namespace BlazorWebApp.Services
             if (infoPath != null) { image.InfoPath = infoPath; }
             if (outdir != Outdir.Extras)
             {
-                image.Prompt = info["prompt"];
-                image.NegativePrompt = info["negative"];
+                image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
+                image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
                 image.SamplerId = await _db.GetSampler(_parsingParams.SamplerIndex);
                 image.Steps = (int)_parsingParams.Steps;
                 image.Seed = _app.CurrentSeed;

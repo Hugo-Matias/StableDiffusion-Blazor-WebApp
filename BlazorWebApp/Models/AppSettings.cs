@@ -216,6 +216,7 @@ namespace BlazorWebApp.Models
         public ControlNetSettingsModel ControlNet { get; set; } = new();
         public CutoffSettingsModel Cutoff { get; set; } = new();
         public DynamicPromptsSettingsModel DynamicPrompts { get; set; } = new();
+        public UltimateUpscaleSettingsModel UltimateUpscale { get; set; } = new();
     }
 
     #region ControlNet
@@ -408,6 +409,102 @@ namespace BlazorWebApp.Models
         public float Min { get; set; } = 0.1f;
         public float Max { get; set; } = 3f;
         public float Step { get; set; } = 0.1f;
+    }
+    #endregion
+
+    #region Ultimate Upscale
+    public class UltimateUpscaleSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public int UpscalerIndex { get; set; } = 0;
+        public int SeamFixType { get; set; } = 2;
+        public int TargetSizeType { get; set; } = 2;
+        public int RedrawMode { get; set; } = 1;
+        public bool SaveUpscaledImage { get; set; } = false;
+        public bool SaveSeamFixImage { get; set; } = false;
+        public UUSeamFixSettingsModel SeamFix { get; set; } = new();
+        public UUTileResolutionSettingsModel TileResolution { get; set; } = new();
+        public UUMaskBlurSettingsModel MaskBlur { get; set; } = new();
+        public UUPaddingSettingsModel Padding { get; set; } = new();
+        public UUTargetSizeResolutionSettingsModel TargetResolution { get; set; } = new();
+        public UUTargetSizeScaleSettingsModel TargetScale { get; set; } = new();
+        public List<string> TargetSizeTypes { get; set; } = new()
+        {
+            "Img2Img Settings",
+            "Resolution",
+            "Scale"
+        };
+        public List<string> SeamFixTypes { get; set; } = new()
+        {
+            "None",
+            "Band pass",
+            "Half tile offset pass",
+            "Half tile offset pass + intersections"
+        };
+        public List<string> RedrawModes { get; set; } = new()
+        {
+            "Linear",
+            "Chess",
+            "None"
+        };
+    }
+    public class UUTileResolutionSettingsModel
+    {
+        public int Width { get; set; } = 512;
+        public int Heigth { get; set; } = 512;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 2048;
+        public int Step { get; set; } = 64;
+    }
+    public class UUMaskBlurSettingsModel
+    {
+        public int Value { get; set; } = 16;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 64;
+        public int Step { get; set; } = 1;
+    }
+    public class UUPaddingSettingsModel
+    {
+        public int Value { get; set; } = 32;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 128;
+        public int Step { get; set; } = 1;
+    }
+    public class UUTargetSizeResolutionSettingsModel
+    {
+        public int CustomWidth { get; set; } = 2048;
+        public int CustomHeight { get; set; } = 2048;
+        public int Min { get; set; } = 64;
+        public int Max { get; set; } = 8192;
+        public int Step { get; set; } = 64;
+    }
+    public class UUTargetSizeScaleSettingsModel
+    {
+        public float Value { get; set; } = 4f;
+        public float Min { get; set; } = 1f;
+        public float Max { get; set; } = 16f;
+        public float Step { get; set; } = 0.1f;
+    }
+    public class UUSeamFixSettingsModel
+    {
+        public UUPaddingSettingsModel Padding { get; set; } = new();
+        public UUMaskBlurSettingsModel MaskBlur { get; set; } = new();
+        public UUSeamFixWidthSettingsModel Width { get; set; } = new();
+        public UUSeamFixDenoiseSettingsModel Denoise { get; set; } = new();
+    }
+    public class UUSeamFixWidthSettingsModel
+    {
+        public int Value { get; set; } = 64;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 128;
+        public int Step { get; set; } = 1;
+    }
+    public class UUSeamFixDenoiseSettingsModel
+    {
+        public float Value { get; set; } = 0.25f;
+        public float Min { get; set; } = 0f;
+        public float Max { get; set; } = 1f;
+        public float Step { get; set; } = 0.01f;
     }
     #endregion
     #endregion

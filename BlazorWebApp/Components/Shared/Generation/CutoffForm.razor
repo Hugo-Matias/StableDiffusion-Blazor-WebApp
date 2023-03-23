@@ -1,4 +1,6 @@
 ﻿@inject AppState AppState
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">Cutoff</MudText>
 <MudGrid>
     <MudItem xs="12">
         <MudTextField @bind-Value=Parameters.Targets Label="Target Tokens" Clearable=true HelperText=@("Comma Separated: \"red, green, blue\"") HelperTextOnFocus=true />

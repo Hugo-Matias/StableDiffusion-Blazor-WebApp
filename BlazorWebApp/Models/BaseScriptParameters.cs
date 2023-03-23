@@ -1,7 +1,8 @@
 ﻿namespace BlazorWebApp.Models
 {
-    public class ScriptParametersBase
+    public class BaseScriptParameters
     {
         public bool IsEnabled { get; set; }
+        public bool IsAlwaysOn { get; set; }
     }
 }

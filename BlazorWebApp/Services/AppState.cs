@@ -195,6 +195,7 @@ namespace BlazorWebApp.Services
                         ControlNet = new() { CreateControlNet() },
                         Cutoff = CreateCutoff(),
                         DynamicPrompts = CreateDynamicPrompts(),
+                        UltimateUpscale = CreateUltimateUpscale(),
                     }
                 };
 
@@ -237,6 +238,7 @@ namespace BlazorWebApp.Services
         {
             return new ScriptParametersCutoff()
             {
+                IsAlwaysOn = true,
                 IsEnabled = Settings.Scripts.Cutoff.IsEnabled,
                 Targets = Settings.Scripts.Cutoff.Targets,
                 Weight = Settings.Scripts.Cutoff.Weight.Value,
@@ -252,6 +254,7 @@ namespace BlazorWebApp.Services
         {
             return new ScriptParametersDynamicPrompts()
             {
+                IsAlwaysOn = true,
                 IsEnabled = Settings.Scripts.DynamicPrompts.IsEnabled,
                 IsCombinatorial = Settings.Scripts.DynamicPrompts.Combinatorial.IsEnabled,
                 CombinatorialBatches = Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Value,
@@ -270,6 +273,31 @@ namespace BlazorWebApp.Services
                 MaxGenerations = Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Value,
                 MagicModel = Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList[0],
                 MagicBlocklistRegex = Settings.Scripts.DynamicPrompts.PromptMagic.MagicBlocklistRegex
+            };
+        }
+
+        public ScriptParametersUltimateUpscale CreateUltimateUpscale()
+        {
+            return new ScriptParametersUltimateUpscale()
+            {
+                IsAlwaysOn = false,
+                TileWidth = Settings.Scripts.UltimateUpscale.TileResolution.Width,
+                TileHeight = Settings.Scripts.UltimateUpscale.TileResolution.Heigth,
+                MaskBlur = Settings.Scripts.UltimateUpscale.MaskBlur.Value,
+                Padding = Settings.Scripts.UltimateUpscale.Padding.Value,
+                SeamFixType = Settings.Scripts.UltimateUpscale.SeamFixType,
+                SeamFixWidth = Settings.Scripts.UltimateUpscale.SeamFix.Width.Value,
+                SeamFixDenoise = Settings.Scripts.UltimateUpscale.SeamFix.Denoise.Value,
+                SeamFixPadding = Settings.Scripts.UltimateUpscale.SeamFix.Padding.Value,
+                SeamFixMaskBlur = Settings.Scripts.UltimateUpscale.SeamFix.MaskBlur.Value,
+                SaveSeamFixImage = Settings.Scripts.UltimateUpscale.SaveSeamFixImage,
+                SaveUpscaledImage = Settings.Scripts.UltimateUpscale.SaveUpscaledImage,
+                UpscalerIndex = Settings.Scripts.UltimateUpscale.UpscalerIndex,
+                RedrawMode = Settings.Scripts.UltimateUpscale.RedrawMode,
+                TargetSizeType = Settings.Scripts.UltimateUpscale.TargetSizeType,
+                CustomWidth = Settings.Scripts.UltimateUpscale.TileResolution.Width,
+                CustomHeight = Settings.Scripts.UltimateUpscale.TileResolution.Heigth,
+                CustomScale = Settings.Scripts.UltimateUpscale.TargetScale.Value
             };
         }
 
@@ -316,13 +344,7 @@ namespace BlazorWebApp.Services
 
         public async Task GetUpscalers()
         {
-            Upscalers = new List<Upscaler>();
-            List<string> builtInUpscalers = new() { "Latent", "Latent (antialiased)", "Latent (bicubic)", "Latent (bicubic antialiased)", "Latent (nearest)", "Latent (nearest-exact)" };
-            foreach (var upscaler in builtInUpscalers)
-            {
-                Upscalers.Add(new Upscaler() { Name = upscaler, ModelName = upscaler, ModelPath = string.Empty, ModelUrl = string.Empty });
-            }
-            Upscalers.AddRange(await _api.GetUpscalers());
+            Upscalers = await _api.GetUpscalers();
         }
 
         public async Task GetFolders()

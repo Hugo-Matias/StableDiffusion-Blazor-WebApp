@@ -1,9 +1,10 @@
 ﻿@inject AppState AppState
 
+<MudText Typo="Typo.button" Style="opacity:0.2;">Control Net</MudText>
 <MudDynamicTabs @ref="@_cnTabs" @bind-ActivePanelIndex="@_cnTabIndex"
                 AddTab="@AddTabCallback" CloseTab="@CloseTabCallback"
                 AddIconToolTip="Add new ControlNet unit" CloseIconToolTip="Close unit. All data will be lost"
-                PanelClass="px-4 py-6" Elevation="4" Rounded ApplyEffectsToContainer>
+                PanelClass="px-4 py-6" Elevation="4" Rounded=true ApplyEffectsToContainer=true>
     @foreach (var tab in _cnUnits)
     {
         <MudTabPanel ID="@tab.Id" Text="@tab.Label">

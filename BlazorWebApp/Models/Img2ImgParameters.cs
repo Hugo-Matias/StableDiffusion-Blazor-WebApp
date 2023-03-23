@@ -41,6 +41,8 @@ namespace BlazorWebApp.Models
             SNoise = clone.SNoise;
             SamplerIndex = clone.SamplerIndex;
             AlwaysOnScripts = clone.AlwaysOnScripts;
+            ScriptName = clone.ScriptName;
+            ScriptArgs = clone.ScriptArgs;
         }
     }
 
@@ -49,5 +51,6 @@ namespace BlazorWebApp.Models
         public List<ScriptParametersControlNet> ControlNet { get; set; }
         public ScriptParametersCutoff Cutoff { get; set; }
         public ScriptParametersDynamicPrompts DynamicPrompts { get; set; }
+        public ScriptParametersUltimateUpscale UltimateUpscale { get; set; }
     }
 }

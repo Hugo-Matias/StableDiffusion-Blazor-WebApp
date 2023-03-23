@@ -103,11 +103,14 @@
         </DialogContent>
         <DialogActions>
             <MudButton OnClick="() => MudDialog.Cancel()">Close</MudButton>
-            <MudButtonGroup Class="m-2" OverrideStyles=false>
-                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Txt2Img)" StartIcon="fa-solid fa-pen-to-square" Color="Color.Warning">Load Txt2Img</MudButton>
-                <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Img2Img)" StartIcon="fa-solid fa-square-pen" Color="Color.Warning">Load Img2Img</MudButton>
-                <MudButton Class="px-4" OnClick=ShowPromptDialog StartIcon="fa-solid fa-floppy-disk" Color="Color.Tertiary">Save Prompt</MudButton>
-            </MudButtonGroup>
+            @if (Image.ModeId != 3)
+            {
+                <MudButtonGroup Class="m-2" OverrideStyles=false>
+                    <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Txt2Img)" StartIcon="fa-solid fa-pen-to-square" Color="Color.Warning">Load Txt2Img</MudButton>
+                    <MudButton Class="px-4" OnClick="() => LoadParameters(ModeType.Img2Img)" StartIcon="fa-solid fa-square-pen" Color="Color.Warning">Load Img2Img</MudButton>
+                    <MudButton Class="px-4" OnClick=ShowPromptDialog StartIcon="fa-solid fa-floppy-disk" Color="Color.Tertiary">Save Prompt</MudButton>
+                </MudButtonGroup>
+            }
         </DialogActions>
     </MudDialog>
 </div>
@@ -125,7 +128,7 @@
     {
         if (Image.Info == null) await WriteImageInfo();
         _infoParams = Parser.ParseInfoParameters(Image.Info);
-        if (!string.IsNullOrWhiteSpace(_infoParams["Seed"]) && Image.Seed != long.Parse(_infoParams["Seed"]))
+        if (_infoParams.ContainsKey("Seed") && !string.IsNullOrWhiteSpace(_infoParams["Seed"]) && Image.Seed != long.Parse(_infoParams["Seed"]))
         {
             Image.Seed = long.Parse(_infoParams["Seed"]);
             await DB.UpdateImage(Image);

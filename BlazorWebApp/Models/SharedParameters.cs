@@ -52,6 +52,10 @@ namespace BlazorWebApp.Models
         public string? SamplerIndex { get; set; }
         [JsonPropertyName("alwayson_scripts")]
         public Dictionary<string, object>? AlwaysOnScripts { get; set; }
+        [JsonPropertyName("script_name")]
+        public string? ScriptName { get; set; }
+        [JsonPropertyName("script_args")]
+        public object? ScriptArgs { get; set; }
 
         public SharedParameters() { }
         public SharedParameters(Txt2ImgParameters clone)

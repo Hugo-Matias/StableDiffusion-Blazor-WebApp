@@ -68,9 +68,12 @@
                     </MudMenu>
                 </ChildContent>
                 <TooltipContent>
-                    <MudText Typo="Typo.caption" Color="Color.Success">@Image.Prompt</MudText>
-                    <br />
-                    <MudText Typo="Typo.caption" Color="Color.Error">@Image.NegativePrompt</MudText>
+                    @if (Image.ModeId != 3)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Success">@Image.Prompt</MudText>
+                        <br />
+                        <MudText Typo="Typo.caption" Color="Color.Error">@Image.NegativePrompt</MudText>
+                    }
                 </TooltipContent>
             </MudTooltip>
         </MudCardActions>
