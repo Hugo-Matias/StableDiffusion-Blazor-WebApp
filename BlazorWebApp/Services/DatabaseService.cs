@@ -549,10 +549,10 @@ namespace BlazorWebApp.Services
             return context.ResourceImages.Where(i => i.CivitaiModelVersionID == id).ToList();
         }
 
-        public async Task<bool> CheckResourceImageExistsByModelVersionId(int id)
+        public async Task<int> ResourceImageByModelVersionIdCount(int id)
         {
             using var context = await _factory.CreateDbContextAsync();
-            return await context.ResourceImages.AnyAsync(i => i.CivitaiModelVersionID == id);
+            return await context.ResourceImages.CountAsync(i => i.CivitaiModelVersionID == id);
         }
     }
 }

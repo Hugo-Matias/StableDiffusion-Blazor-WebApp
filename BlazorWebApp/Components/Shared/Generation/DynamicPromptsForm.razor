@@ -12,12 +12,12 @@
         </MudTooltip>
         <MudTooltip Delay="1600" Duration="600" Placement="Placement.End">
             <ChildContent>
-                <MudCheckBox @bind-Checked=Parameters.UseFixedSeed Label="No Images" />
+                <MudCheckBox @bind-Checked=Parameters.NoImageGeneration Label="No Images" />
             </ChildContent>
             <TooltipContent>Generate text only and disable image generation.<br />One image is still generated to initiate the <i>process</i> function.</TooltipContent>
         </MudTooltip>
         <MudTooltip Text="Enable Jinja templates experimental advanced feature." Delay="1600" Duration="600" Placement="Placement.End">
-            <MudCheckBox @bind-Checked=Parameters.UseFixedSeed Label="Jinja Templates" />
+            <MudCheckBox @bind-Checked=Parameters.EnableJinjaTemplates Label="Jinja Templates" />
         </MudTooltip>
     </MudItem>
     <MudItem xs="12">

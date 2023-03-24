@@ -14,12 +14,12 @@
         {
             <MudTabPanel>
                 <TabContent>
-                    <MudText Class="d-flex align-items-center" Typo="Typo.caption"><MudIcon Style="font-size: 1rem; margin-right: 0.3rem;" Icon="fa-solid fa-server" Color=GetTabIconColor(version.Id).Result /> @version.Name</MudText>
+                    <MudText Class="d-flex align-items-center" Typo="Typo.caption"><MudIcon Style="font-size: 1rem; margin-right: 0.3rem;" Icon="fa-solid fa-server" Color=GetTabIconColor(version).Result /> @version.Name</MudText>
                 </TabContent>
                 <ChildContent>
                     <MudGrid>
                         <MudItem xs="8">
-                            <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version)" Disabled=_isSavingImages>@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
+                            <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version)">@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
                                 <MudGrid Class="images-container">
                                     @foreach (var image in version.Images)
                                 {
@@ -156,13 +156,18 @@
         }
     }
 
-    private async Task<Color> GetTabIconColor(int versionId)
+    private async Task<Color> GetTabIconColor(CivitaiModelVersionDto version)
     {
-        var fileExists = await DB.CheckResourceExistsByModelVersionId(versionId);
-        var imageExists = await DB.CheckResourceImageExistsByModelVersionId(versionId);
+        var fileExists = await DB.CheckResourceExistsByModelVersionId(version.Id);
+        var imageCount = await DB.ResourceImageByModelVersionIdCount(version.Id);
         Color color = Color.Default;
-        if (fileExists) color = Color.Warning;
-        if (imageExists) color = Color.Success;
+        if (fileExists)
+        {
+            if (imageCount == version.Images.Count) color = Color.Success;
+            else if (imageCount == 0) color = Color.Error;
+            else if (imageCount < version.Images.Count) color = Color.Info;
+            else color = Color.Warning;
+        }
         return color;
     }
 }

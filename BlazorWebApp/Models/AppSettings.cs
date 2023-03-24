@@ -417,7 +417,7 @@ namespace BlazorWebApp.Models
     {
         public bool IsEnabled { get; set; } = false;
         public int UpscalerIndex { get; set; } = 0;
-        public int SeamFixType { get; set; } = 2;
+        public int SeamFixType { get; set; } = 0;
         public int TargetSizeType { get; set; } = 2;
         public int RedrawMode { get; set; } = 1;
         public bool SaveUpscaledImage { get; set; } = false;

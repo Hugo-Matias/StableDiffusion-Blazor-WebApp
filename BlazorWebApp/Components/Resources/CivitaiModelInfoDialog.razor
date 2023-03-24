@@ -31,7 +31,9 @@
                 <MudItem xs="2">
                     <MudStack Class="justify-content-center">
                         <MudStack Class="align-items-center justify-content-center" Row>
-                            <MudImage Style="border-radius: 50%; max-width: 3rem; max-height: 3rem;" Src="@Model.Creator.Image" />
+                            <MudAvatar>
+                                <MudImage Style="max-width: 3rem; max-height: 3rem;" Src="@Model.Creator.Image" />
+                            </MudAvatar>
                             <MudText Typo="Typo.button">@Model.Creator.Username</MudText>
                         </MudStack>
                         <MudChip Style=@($"background-color: var(--{Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Model.Type))}); font-weight: 500; color: var(--mud-palette-white);") Label>@Model.Type</MudChip>
