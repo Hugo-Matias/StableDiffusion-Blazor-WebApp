@@ -1,0 +1,37 @@
+﻿@inject AppState AppState
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">MultiDiffusion: Tiled VAE</MudText>
+<MudGrid>
+    <MudItem xs="12">
+        <MudText Typo="Typo.caption">Tile Size:</MudText>
+    </MudItem>
+    <MudItem xs="12">
+        <MudStack Class="mt-n7" Row=true>
+            <MudSlider @bind-Value=Parameters.EncoderTileSize Min=AppState.Settings.Scripts.MultiDiffusion.TiledVae.Encoder.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledVae.Encoder.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledVae.Encoder.Step ValueLabel=true><small>Encoder:</small> @Parameters.EncoderTileSize</MudSlider>
+            <MudSlider @bind-Value=Parameters.DecoderTileSize Min=AppState.Settings.Scripts.MultiDiffusion.TiledVae.Decoder.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledVae.Decoder.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledVae.Decoder.Step ValueLabel=true><small>Decoder:</small> @Parameters.DecoderTileSize</MudSlider>
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        <MudCheckBox @bind-Checked=Parameters.FastEncoder Label="Fast Encoder" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudCheckBox @bind-Checked=Parameters.FastDecoder Label="Fast Decoder" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudTooltip Placement=Placement.End Duration="600" Delay="600">
+            <ChildContent>
+                <MudCheckBox @bind-Checked=Parameters.ColorFix Label="Color Fix" />
+            </ChildContent>
+            <TooltipContent>
+                Fast Encoder may change colors.<br />Using more RAM and lower speed can fix it.
+            </TooltipContent>
+        </MudTooltip>
+    </MudItem>
+    <MudItem xs="6">
+        <MudCheckBox @bind-Checked=Parameters.VaeToGpu Label="Move VAE to GPU" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersMultiDiffusionTiledVae Parameters { get; set; }
+}

@@ -52,6 +52,8 @@ namespace BlazorWebApp.Services
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.Scripts.ControlNet);
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff, "cutoff");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, "Dynamic Prompts v2.8.4");
                         scriptName = CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.UltimateUpscale, "Ultimate SD upscale");
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
@@ -86,6 +88,8 @@ namespace BlazorWebApp.Services
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersTxt2Img.Scripts.ControlNet);
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.Cutoff, "cutoff");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.DynamicPrompts, "Dynamic Prompts v2.8.4");
                         var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
@@ -299,11 +303,14 @@ namespace BlazorWebApp.Services
                 else
                 {
                     var param = Parser.ParseInfoParameters(info["param"]);
-                    if (param != null && !string.IsNullOrWhiteSpace(param["Size"]))
+                    // Handles upscaling scripts (Ultimate Upscale) edge cases where the input image has lower resolution than the output info
+                    if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
                     {
                         var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);
-                        image.Width = int.Parse(size[0].Trim());
-                        image.Height = int.Parse(size[1].Trim());
+                        var sizeW = int.Parse(size[0].Trim());
+                        var sizeH = int.Parse(size[1].Trim());
+                        image.Width = sizeW > _canvasSourceWidth ? sizeW : _canvasSourceWidth;
+                        image.Height = sizeH > _canvasSourceHeight ? sizeH : _canvasSourceHeight;
                     }
                     else
                     {
@@ -314,8 +321,21 @@ namespace BlazorWebApp.Services
             }
             else
             {
-                image.Width = (int)_parsingParams.Width;
-                image.Height = (int)_parsingParams.Height;
+                var param = Parser.ParseInfoParameters(info["param"]);
+                // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
+                if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
+                {
+                    var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);
+                    var sizeW = int.Parse(size[0].Trim());
+                    var sizeH = int.Parse(size[1].Trim());
+                    image.Width = sizeW > _parsingParams.Width ? sizeW : (int)_parsingParams.Width;
+                    image.Height = sizeH > _parsingParams.Height ? sizeH : (int)_parsingParams.Height;
+                }
+                else
+                {
+                    image.Width = (int)_parsingParams.Width;
+                    image.Height = (int)_parsingParams.Height;
+                }
             }
             if (infoPath != null) { image.InfoPath = infoPath; }
             if (outdir != Outdir.Extras)

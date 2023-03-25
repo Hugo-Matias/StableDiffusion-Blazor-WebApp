@@ -52,5 +52,7 @@ namespace BlazorWebApp.Models
         public ScriptParametersCutoff Cutoff { get; set; }
         public ScriptParametersDynamicPrompts DynamicPrompts { get; set; }
         public ScriptParametersUltimateUpscale UltimateUpscale { get; set; }
+        public ScriptParametersMultiDiffusionTiledDiffusion MultiDiffusionTiledDiffusion { get; set; }
+        public ScriptParametersMultiDiffusionTiledVae MultiDiffusionTiledVae { get; set; }
     }
 }

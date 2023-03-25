@@ -178,6 +178,8 @@ namespace BlazorWebApp.Services
                         ControlNet = new() { CreateControlNet() },
                         Cutoff = CreateCutoff(),
                         DynamicPrompts = CreateDynamicPrompts(),
+                        MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
+                        MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
                     }
                 };
 
@@ -196,6 +198,8 @@ namespace BlazorWebApp.Services
                         Cutoff = CreateCutoff(),
                         DynamicPrompts = CreateDynamicPrompts(),
                         UltimateUpscale = CreateUltimateUpscale(),
+                        MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
+                        MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
                     }
                 };
 
@@ -298,6 +302,46 @@ namespace BlazorWebApp.Services
                 CustomWidth = Settings.Scripts.UltimateUpscale.TileResolution.Width,
                 CustomHeight = Settings.Scripts.UltimateUpscale.TileResolution.Heigth,
                 CustomScale = Settings.Scripts.UltimateUpscale.TargetScale.Value
+            };
+        }
+
+        public ScriptParametersMultiDiffusionTiledDiffusion CreateMultiDiffusionTiledDiffusion()
+        {
+            return new ScriptParametersMultiDiffusionTiledDiffusion()
+            {
+                IsAlwaysOn = true,
+                IsEnabled = Settings.Scripts.MultiDiffusion.TiledDiffusion.IsEnabled,
+                Method = Settings.Scripts.MultiDiffusion.TiledDiffusion.Methods[0],
+                OverwriteImageSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.OverwriteImageSize,
+                KeepInputSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.KeepInputSize,
+                ImageWidth = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Width,
+                ImageHeight = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Height,
+                TileWidth = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Width,
+                TileHeight = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Height,
+                Overlap = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Value,
+                TileBatchSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Value,
+                UpscalerIndex = Settings.Scripts.MultiDiffusion.TiledDiffusion.UpscalerIndex,
+                ScaleFactor = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Value,
+                ControlTensorCpu = Settings.Scripts.MultiDiffusion.TiledDiffusion.ControlTensorCpu,
+                EnableBBoxControl = Settings.Scripts.MultiDiffusion.TiledDiffusion.EnableBBoxControl,
+                GlobalMultiplier = Settings.Scripts.MultiDiffusion.TiledDiffusion.BBoxControl.Multiplier.Value,
+                // TODO: Implement BBox Regions
+                BBoxControlStates = null
+            };
+        }
+
+        public ScriptParametersMultiDiffusionTiledVae CreateMultiDiffusionTiledVae()
+        {
+            return new ScriptParametersMultiDiffusionTiledVae()
+            {
+                IsAlwaysOn = true,
+                IsEnabled = Settings.Scripts.MultiDiffusion.TiledVae.IsEnabled,
+                VaeToGpu = Settings.Scripts.MultiDiffusion.TiledVae.VaeToGpu,
+                FastDecoder = Settings.Scripts.MultiDiffusion.TiledVae.FastDecoder,
+                FastEncoder = Settings.Scripts.MultiDiffusion.TiledVae.FastEncoder,
+                ColorFix = Settings.Scripts.MultiDiffusion.TiledVae.ColorFix,
+                EncoderTileSize = Settings.Scripts.MultiDiffusion.TiledVae.Encoder.Value,
+                DecoderTileSize = Settings.Scripts.MultiDiffusion.TiledVae.Decoder.Value
             };
         }
 

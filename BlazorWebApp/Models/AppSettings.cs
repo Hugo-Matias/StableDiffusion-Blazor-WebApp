@@ -217,6 +217,7 @@ namespace BlazorWebApp.Models
         public CutoffSettingsModel Cutoff { get; set; } = new();
         public DynamicPromptsSettingsModel DynamicPrompts { get; set; } = new();
         public UltimateUpscaleSettingsModel UltimateUpscale { get; set; } = new();
+        public MultiDiffusionSettingsModel MultiDiffusion { get; set; } = new();
     }
 
     #region ControlNet
@@ -506,6 +507,149 @@ namespace BlazorWebApp.Models
         public float Max { get; set; } = 1f;
         public float Step { get; set; } = 0.01f;
     }
+    #endregion
+
+    #region MultiDiffusion
+    public class MultiDiffusionSettingsModel
+    {
+        public MultiDiffusionTiledDiffusionSettingsModel TiledDiffusion { get; set; } = new();
+        public MultiDiffusionTiledVaeSettingsModel TiledVae { get; set; } = new();
+    }
+
+    #region Tiled Diffusion
+    public class MultiDiffusionTiledDiffusionSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public List<string> Methods { get; set; } = new()
+        {
+            "MultiDiffusion",
+            "Mixture of Diffusers"
+        };
+
+        public string UpscalerIndex { get; set; } = "None";
+        public bool ControlTensorCpu { get; set; } = false;
+        public bool EnableBBoxControl { get; set; } = false;
+        public MultiDiffusionLatentTileSettingsModel LatentTile { get; set; } = new();
+        public MultiDiffusionImageSettingsModel Image { get; set; } = new();
+        public MultiDiffusionBBoxSettingsModel BBoxControl { get; set; } = new();
+    }
+
+    public class MultiDiffusionLatentTileSettingsModel
+    {
+        public MultiDiffusionLatentTileResolutionSettingsModel Resolution { get; set; } = new();
+        public MultiDiffusionLatentTileOverlapSettingsModel Overlap { get; set; } = new();
+        public MultiDiffusionLatentTileBatchSettingsModel Batch { get; set; } = new();
+    }
+
+    public class MultiDiffusionLatentTileResolutionSettingsModel
+    {
+        public int Width { get; set; } = 96;
+        public int Height { get; set; } = 96;
+        public int Min { get; set; } = 16;
+        public int Max { get; set; } = 256;
+        public int Step { get; set; } = 16;
+    }
+
+    public class MultiDiffusionLatentTileOverlapSettingsModel
+    {
+        public int Value { get; set; } = 48;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 256;
+        public int Step { get; set; } = 4;
+    }
+
+    public class MultiDiffusionLatentTileBatchSettingsModel
+    {
+        public int Value { get; set; } = 1;
+        public int Min { get; set; } = 1;
+        public int Max { get; set; } = 8;
+        public int Step { get; set; } = 1;
+    }
+
+    public class MultiDiffusionImageSettingsModel
+    {
+        // Used in Txt2Img
+        public bool OverwriteImageSize { get; set; } = false;
+        public MultiDiffusionImageResolutionSettingsModel Resolution { get; set; } = new();
+        // Used in Img2Img
+        public bool KeepInputSize { get; set; } = true;
+        public MultiDiffusionScaleSettingsModel Scale { get; set; } = new();
+    }
+
+    public class MultiDiffusionImageResolutionSettingsModel
+    {
+        public int Width { get; set; } = 1024;
+        public int Height { get; set; } = 1024;
+        public int Min { get; set; } = 256;
+        public int Max { get; set; } = 8192;
+        public int Step { get; set; } = 32;
+    }
+
+    public class MultiDiffusionScaleSettingsModel
+    {
+        public float Value { get; set; } = 2;
+        public float Min { get; set; } = 1;
+        public float Max { get; set; } = 8;
+        public float Step { get; set; } = 0.1f;
+    }
+
+    public class MultiDiffusionBBoxSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public string Prompt { get; set; } = string.Empty;
+        public string NegativePrompt { get; set; } = string.Empty;
+        public MultiDiffusionBBoxMultiplierSettingsModel Multiplier { get; set; } = new();
+        public MultiDiffusionBBoxRegionSettingsModel Region { get; set; } = new();
+    }
+
+    public class MultiDiffusionBBoxMultiplierSettingsModel
+    {
+        public float Value { get; set; } = 1f;
+        public float Min { get; set; } = 0f;
+        public float Max { get; set; } = 10f;
+        public float Step { get; set; } = 0.1f;
+    }
+
+    public class MultiDiffusionBBoxRegionSettingsModel
+    {
+        public float CoordX { get; set; } = 0.4f;
+        public float CoordY { get; set; } = 0.4f;
+        public float Width { get; set; } = 0.2f;
+        public float Height { get; set; } = 0.2f;
+        public float Min { get; set; } = 0f;
+        public float Max { get; set; } = 1f;
+        public float Step { get; set; } = 0.01f;
+    }
+    #endregion
+
+    #region Tiled Vae
+    public class MultiDiffusionTiledVaeSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public bool VaeToGpu { get; set; } = false;
+        public bool FastDecoder { get; set; } = true;
+        public bool FastEncoder { get; set; } = true;
+        public bool ColorFix { get; set; } = false;
+        public MultiDiffusionVaeEncoderSettingsModel Encoder { get; set; } = new();
+        public MultiDiffusionVaeDecoderSettingsModel Decoder { get; set; } = new();
+    }
+
+    public class MultiDiffusionVaeEncoderSettingsModel
+    {
+        public int Value { get; set; } = 1536;
+        public int Min { get; set; } = 256;
+        public int Max { get; set; } = 4096;
+        public int Step { get; set; } = 16;
+    }
+
+    public class MultiDiffusionVaeDecoderSettingsModel
+    {
+        public int Value { get; set; } = 96;
+        public int Min { get; set; } = 48;
+        public int Max { get; set; } = 512;
+        public int Step { get; set; } = 16;
+    }
+    #endregion
     #endregion
     #endregion
 

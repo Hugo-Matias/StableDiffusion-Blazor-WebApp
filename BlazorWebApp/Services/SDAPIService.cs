@@ -60,8 +60,8 @@ namespace BlazorWebApp.Services
 
         public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters param)
         {
-            //var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
-            //await File.WriteAllTextAsync("payload.json", json);
+            var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
+            await File.WriteAllTextAsync("payload.json", json);
             using var response = await _httpClient.PostAsJsonAsync(_sdapiRoute + "txt2img", param, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<GeneratedImages>();
