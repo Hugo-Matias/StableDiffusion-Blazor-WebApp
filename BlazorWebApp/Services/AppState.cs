@@ -307,6 +307,11 @@ namespace BlazorWebApp.Services
 
         public ScriptParametersMultiDiffusionTiledDiffusion CreateMultiDiffusionTiledDiffusion()
         {
+            var bboxControls = new List<ScriptParametersMultiDiffusionBBoxControl>();
+            for (int i = 0; i < 8; i++)
+            {
+                bboxControls.Add(new() { BlendMode = "Background" });
+            }
             return new ScriptParametersMultiDiffusionTiledDiffusion()
             {
                 IsAlwaysOn = true,
@@ -324,9 +329,9 @@ namespace BlazorWebApp.Services
                 ScaleFactor = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Value,
                 ControlTensorCpu = Settings.Scripts.MultiDiffusion.TiledDiffusion.ControlTensorCpu,
                 EnableBBoxControl = Settings.Scripts.MultiDiffusion.TiledDiffusion.EnableBBoxControl,
-                GlobalMultiplier = Settings.Scripts.MultiDiffusion.TiledDiffusion.BBoxControl.Multiplier.Value,
+                DrawBackground = Settings.Scripts.MultiDiffusion.TiledDiffusion.DrawBackground,
                 // TODO: Implement BBox Regions
-                BBoxControlStates = null
+                BBoxControlStates = bboxControls
             };
         }
 

@@ -52,9 +52,9 @@ namespace BlazorWebApp.Services
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.Scripts.ControlNet);
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff, "cutoff");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, GetDynamicPromptsVersion());
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, "Dynamic Prompts v2.8.4");
                         scriptName = CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.UltimateUpscale, "Ultimate SD upscale");
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
                         img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
@@ -88,9 +88,9 @@ namespace BlazorWebApp.Services
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersTxt2Img.Scripts.ControlNet);
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.Cutoff, "cutoff");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.DynamicPrompts, GetDynamicPromptsVersion());
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.DynamicPrompts, "Dynamic Prompts v2.8.4");
                         var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
                         if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
@@ -165,6 +165,18 @@ namespace BlazorWebApp.Services
                     var isEnabledValue = tempList[tempList.Count - 1];
                     tempList.RemoveAt(tempList.Count - 1);
                     tempList.Insert(0, isEnabledValue);
+
+                    //Expand MultiDiffusion box region controls
+                    if (payloadKey == "Tiled Diffusion")
+                    {
+                        var controls = tempList[tempList.Count - 1];
+                        tempList.RemoveAt(tempList.Count - 1);
+                        foreach (var control in (List<ScriptParametersMultiDiffusionBBoxControl>)controls)
+                        {
+                            tempList.AddRange(control.GetType().GetProperties().Select(p => p.GetValue(control, null)).ToArray());
+                        }
+                    }
+
                     argsArray = tempList.ToArray();
                     var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
                     if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
@@ -381,6 +393,20 @@ namespace BlazorWebApp.Services
             var size = _magick.GetImageSize(data);
             _canvasSourceWidth = size.Item1;
             _canvasSourceHeight = size.Item2;
+        }
+
+        private string GetDynamicPromptsVersion()
+        {
+            var scriptFile = Path.Combine(_app.CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "sd_dynamic_prompts", "dynamic_prompting.py");
+            foreach (var line in _io.LoadTextLines(scriptFile))
+            {
+                if (line.StartsWith("VERSION = "))
+                {
+                    var version = line.Split(" = ", 2)[1].Replace("\"", "").Trim();
+                    return $"Dynamic Prompts v{version}";
+                }
+            }
+            return string.Empty;
         }
 
         private async void StartProgressChecker(BaseProgress progress)

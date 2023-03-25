@@ -529,6 +529,7 @@ namespace BlazorWebApp.Models
         public string UpscalerIndex { get; set; } = "None";
         public bool ControlTensorCpu { get; set; } = false;
         public bool EnableBBoxControl { get; set; } = false;
+        public bool DrawBackground { get; set; } = false;
         public MultiDiffusionLatentTileSettingsModel LatentTile { get; set; } = new();
         public MultiDiffusionImageSettingsModel Image { get; set; } = new();
         public MultiDiffusionBBoxSettingsModel BBoxControl { get; set; } = new();

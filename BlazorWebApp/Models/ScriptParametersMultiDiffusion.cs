@@ -15,7 +15,7 @@
         public float ScaleFactor { get; set; }
         public bool ControlTensorCpu { get; set; }
         public bool EnableBBoxControl { get; set; }
-        public float GlobalMultiplier { get; set; }
+        public bool DrawBackground { get; set; }
         public List<ScriptParametersMultiDiffusionBBoxControl>? BBoxControlStates { get; set; }
     }
 
@@ -32,12 +32,13 @@
     public class ScriptParametersMultiDiffusionBBoxControl
     {
         public bool IsEnabled { get; set; }
-        public float Multiplier { get; set; }
-        public int CoordX { get; set; }
-        public int CoordY { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
+        public float CoordX { get; set; }
+        public float CoordY { get; set; }
+        public float Width { get; set; }
+        public float Height { get; set; }
         public string Prompt { get; set; }
         public string NegativePrompt { get; set; }
+        public string BlendMode { get; set; }
+        public float FeatherRadius { get; set; }
     }
 }
