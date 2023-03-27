@@ -218,6 +218,7 @@ namespace BlazorWebApp.Models
         public DynamicPromptsSettingsModel DynamicPrompts { get; set; } = new();
         public UltimateUpscaleSettingsModel UltimateUpscale { get; set; } = new();
         public MultiDiffusionSettingsModel MultiDiffusion { get; set; } = new();
+        public RegionalPrompterSettingsModel RegionalPrompter { get; set; } = new();
     }
 
     #region ControlNet
@@ -227,7 +228,7 @@ namespace BlazorWebApp.Models
         public ControlNetPreprocessor Preprocessor { get; set; } = ControlNetPreprocessor.none;
         public string Model { get; set; } = "None";
         public bool IsLowVRam { get; set; } = false;
-        public bool IsGuessMode { get; set; } = true;
+        public bool IsGuessMode { get; set; } = false;
         public string ResizeMode { get; set; } = "Scale to Fit (Inner Fit)";
         public ControlNetWeightSettingsModel Weight { get; set; } = new();
         public ControlNetGuidanceSettingsModel Guidance { get; set; } = new();
@@ -651,6 +652,24 @@ namespace BlazorWebApp.Models
         public int Step { get; set; } = 16;
     }
     #endregion
+    #endregion
+
+    #region Regional Prompter
+    public class RegionalPrompterSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public bool IsDebug { get; set; } = false;
+        public string DivideRatio { get; set; } = "1,1";
+        public string BaseRatio { get; set; } = "0.2";
+        public bool UseBasePrompt { get; set; } = false;
+        public bool UseCommonPrompt { get; set; } = false;
+        public bool UseNegativeCommonPrompt { get; set; } = false;
+        public List<string> Modes { get; set; } = new()
+        {
+            "Horizontal",
+            "Vertical"
+        };
+    }
     #endregion
     #endregion
 

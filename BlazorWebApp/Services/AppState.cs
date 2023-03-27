@@ -180,6 +180,7 @@ namespace BlazorWebApp.Services
                         DynamicPrompts = CreateDynamicPrompts(),
                         MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
                         MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
+                        RegionalPrompter = CreateRegionalPrompter(),
                     }
                 };
 
@@ -200,6 +201,7 @@ namespace BlazorWebApp.Services
                         UltimateUpscale = CreateUltimateUpscale(),
                         MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
                         MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
+                        RegionalPrompter = CreateRegionalPrompter(),
                     }
                 };
 
@@ -347,6 +349,21 @@ namespace BlazorWebApp.Services
                 ColorFix = Settings.Scripts.MultiDiffusion.TiledVae.ColorFix,
                 EncoderTileSize = Settings.Scripts.MultiDiffusion.TiledVae.Encoder.Value,
                 DecoderTileSize = Settings.Scripts.MultiDiffusion.TiledVae.Decoder.Value
+            };
+        }
+
+        public ScriptParametersRegionalPrompter CreateRegionalPrompter()
+        {
+            return new ScriptParametersRegionalPrompter()
+            {
+                IsAlwaysOn = true,
+                IsEnabled = Settings.Scripts.RegionalPrompter.IsEnabled,
+                Mode = Settings.Scripts.RegionalPrompter.Modes[0],
+                DivideRatio = Settings.Scripts.RegionalPrompter.DivideRatio,
+                BaseRatio = Settings.Scripts.RegionalPrompter.BaseRatio,
+                UseBasePrompt = Settings.Scripts.RegionalPrompter.UseBasePrompt,
+                UseCommonPrompt = Settings.Scripts.RegionalPrompter.UseCommonPrompt,
+                UseNegativeCommonPrompt = Settings.Scripts.RegionalPrompter.UseNegativeCommonPrompt,
             };
         }
 

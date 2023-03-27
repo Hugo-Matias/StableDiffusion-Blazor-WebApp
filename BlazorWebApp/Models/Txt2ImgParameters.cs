@@ -53,5 +53,6 @@ namespace BlazorWebApp.Models
         public ScriptParametersDynamicPrompts DynamicPrompts { get; set; }
         public ScriptParametersMultiDiffusionTiledDiffusion MultiDiffusionTiledDiffusion { get; set; }
         public ScriptParametersMultiDiffusionTiledVae MultiDiffusionTiledVae { get; set; }
+        public ScriptParametersRegionalPrompter RegionalPrompter { get; set; }
     }
 }

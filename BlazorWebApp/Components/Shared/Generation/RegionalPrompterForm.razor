@@ -1,0 +1,78 @@
+﻿@inject AppState AppState
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">Regional Prompter</MudText>
+<MudGrid>
+    <MudItem xs="4">
+        <MudSelect @bind-Value=Parameters.Mode Label="Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var mode in AppState.Settings.Scripts.RegionalPrompter.Modes)
+            {
+                <MudSelectItem Value="mode" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4">
+        <MudTextField @bind-Value=Parameters.DivideRatio Label="Divide Ratio" />
+    </MudItem>
+    <MudItem xs="4">
+        <MudTextField @bind-Value=Parameters.BaseRatio Label="Base Ratio" />
+    </MudItem>
+    <MudItem xs="3">
+        <MudCheckBox @bind-Checked=Parameters.UseBasePrompt Label="Base Prompt" />
+    </MudItem>
+    <MudItem xs="3">
+        <MudCheckBox @bind-Checked=Parameters.UseCommonPrompt Label="Common Prompt" />
+    </MudItem>
+    <MudItem xs="4">
+        <MudCheckBox @bind-Checked=Parameters.UseNegativeCommonPrompt Label="Negative Common Prompt" />
+    </MudItem>
+    <MudItem xs="2">
+        <MudCheckBox @bind-Checked=Parameters.IsDebug Label="Debug" />
+    </MudItem>
+    <MudItem xs="12">
+        <MudExpansionPanel Text="Read Me">
+            @_readme
+        </MudExpansionPanel>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersRegionalPrompter Parameters { get; set; }
+
+    private MarkupString _readme = new(@"
+<p>This section explains how to use the following image, explaining how to create the following image.<br><img src=""https://i.imgur.com/mpDeP1I.jpg"" alt=""sample""><br>Here is the prompt.</p>
+<pre><code><span class=""hljs-symbol"">green</span> hair twintail <span class=""hljs-keyword"">BREAK
+</span><span class=""hljs-symbol"">red</span> <span class=""hljs-keyword"">blouse </span><span class=""hljs-keyword"">BREAK
+</span><span class=""hljs-keyword"">blue </span>skirt
+</code></pre><p>setting</p>
+<pre><code>Active : <span class=""hljs-type"">On</span>
+<span class=""hljs-keyword"">Use</span> base prompt : <span class=""hljs-type"">Off</span>
+Divide mode : <span class=""hljs-type"">Vertical</span>
+Divide Ratio : 1,1,1
+Base Ratio :
+`
+</code></pre><p>This setting divides the image vertically into three parts and applies the prompts &quot;green hair twintail&quot; ,&quot;red blouse&quot; ,&quot;blue skirt&quot; from the top to the bottom.</p>
+<h3 id=""prompt"">Prompt</h3>
+<p>Prompts for different areas are separated by &quot;BREAK&quot;. Enter prompts from the left for horizontal prompts and from the top for vertical prompts.
+Negative prompts can also be set for each area by separating them with BREAK, but if BREAK is not entered, the same negative prompt will be set for all areas.</p>
+<h3 id=""use-base-prompt"">Use base prompt</h3>
+<p>Check this if you want to use the base prompt, which is the same prompt for all areas. Use this option if you want the prompt to be consistent across all areas.
+When using base prompt, the first prompt separated by BREAK is treated as the base prompt.
+Therefore, when this option is enabled, one more BRAKE-separated prompt is required than Divide ratios.</p>
+<h3 id=""base-ratio"">Base ratio</h3>
+<p>Sets the ratio of the base prompt; if 0.2 is setted, the base ratio is 0.2. It can also be specified for each region, and can be entered as 0.2, 0.3, 0.5, etc. If a single value is entered, the same value is applied to all areas.</p>
+<h3 id=""divide-ratio"">Divide ratio</h3>
+<p>If you enter 1,1,1, the area will be divided into three parts (33,3%, 33,3%, 33,3%); if you enter 3,1,1, the area will be divided into 60%, 20%, and 20%. Decimal points can also be entered. 0.1,0.1,0.1 is equivalent to 1,1,1.</p>
+<h3 id=""divide-mode"">Divide mode</h3>
+<p>Specifies the direction of division. Horizontal and vertical directions can be specified.</p>
+<h3 id=""use-common-prompt"">Use common prompt</h3>
+<p>If this option enabled, first part of the prompt is added to all part.</p>
+<pre><code><span class=""hljs-keyword"">best </span>quality, <span class=""hljs-number"">20</span>yo lady in garden <span class=""hljs-keyword"">BREAK
+</span><span class=""hljs-symbol"">green</span> hair twintail <span class=""hljs-keyword"">BREAK
+</span><span class=""hljs-symbol"">red</span> <span class=""hljs-keyword"">blouse </span><span class=""hljs-keyword"">BREAK
+</span><span class=""hljs-keyword"">blue </span>skirt
+</code></pre><p>If enabled, this prompt is treated as following,</p>
+<pre><code><span class=""hljs-keyword"">best </span>quality, <span class=""hljs-number"">20</span>yo lady in garden, green hair twintail <span class=""hljs-keyword"">BREAK
+</span><span class=""hljs-keyword"">best </span>quality, <span class=""hljs-number"">20</span>yo lady in garden, red <span class=""hljs-keyword"">blouse </span><span class=""hljs-keyword"">BREAK
+</span><span class=""hljs-keyword"">best </span>quality, <span class=""hljs-number"">20</span>yo lady in garden, <span class=""hljs-keyword"">blue </span>skirt
+</code></pre><p>So you need to set 4 prompts for 3 regions. If Use base prompt is also enabled 5 prompts are needed. The order is as follows, common,base, prompt1,prompt2,...</p>");
+}

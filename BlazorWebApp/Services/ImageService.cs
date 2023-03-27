@@ -55,6 +55,7 @@ namespace BlazorWebApp.Services
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, GetDynamicPromptsVersion());
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
                         CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.RegionalPrompter, "Regional Prompter");
                         scriptName = CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.UltimateUpscale, "Ultimate SD upscale");
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
                         img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
@@ -91,6 +92,7 @@ namespace BlazorWebApp.Services
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.DynamicPrompts, GetDynamicPromptsVersion());
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
                         CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
+                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.RegionalPrompter, "Regional Prompter");
                         var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
                         if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
@@ -214,8 +216,8 @@ namespace BlazorWebApp.Services
                 // These images aren't added to the database.
                 if (i >= _app.ImagesInfo.InfoTexts.Length)
                 {
-                    if ((outdirSamples == Outdir.Txt2ImgSamples && _app.ParametersTxt2Img.AlwaysOnScripts != null && _app.ParametersTxt2Img.AlwaysOnScripts["controlnet"] != null) ||
-                        (outdirSamples == Outdir.Img2ImgSamples && _app.ParametersImg2Img.AlwaysOnScripts != null && _app.ParametersImg2Img.AlwaysOnScripts["controlnet"] != null))
+                    if ((outdirSamples == Outdir.Txt2ImgSamples && _app.ParametersTxt2Img.AlwaysOnScripts != null && _app.ParametersTxt2Img.AlwaysOnScripts.ContainsKey("controlnet") && _app.ParametersTxt2Img.AlwaysOnScripts["controlnet"] != null) ||
+                        (outdirSamples == Outdir.Img2ImgSamples && _app.ParametersImg2Img.AlwaysOnScripts != null && _app.ParametersImg2Img.AlwaysOnScripts.ContainsKey("controlnet") && _app.ParametersImg2Img.AlwaysOnScripts["controlnet"] != null))
                     {
                         var cnImagePath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-ControlNet Annotator.{extension}";
                         await _io.SaveFileToDisk(cnImagePath, Convert.FromBase64String(_app.Images.Images[i]));
