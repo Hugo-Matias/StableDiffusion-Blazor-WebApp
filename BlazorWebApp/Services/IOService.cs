@@ -25,6 +25,24 @@ namespace BlazorWebApp.Services
 
         public string GetJsonAsString(string path) => new string(File.ReadAllText(path));
 
+        public DirectoryInfo? GetFolderByName(string path, string folderName)
+        {
+            var dir = Directory.GetDirectories(path, $"{folderName}*").FirstOrDefault();
+            if (dir == null) return null;
+            return new DirectoryInfo(dir);
+        }
+
+        public FileInfo? GetFileByName(string path, string fileName)
+        {
+            var file = Directory.GetFiles(path, $"{fileName}*").FirstOrDefault();
+            if (file == null) return null;
+            return new FileInfo(file);
+        }
+
+        public void DeleteFolder(DirectoryInfo dir, bool isRecursive) => dir.Delete(isRecursive);
+
+        public void DeleteFile(FileInfo file) => file.Delete();
+
         public IOrderedEnumerable<FileInfo>? GetOrderedFiles(string path)
         {
             if (!Directory.Exists(path)) return null;

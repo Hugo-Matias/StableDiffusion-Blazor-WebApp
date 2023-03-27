@@ -240,7 +240,7 @@
                 confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
                 confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
                 confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
-                confirmParam.Add(nameof(ConfirmationDialog.Content), new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>This action is irreversible!</small>"));
+                confirmParam.Add(nameof(ConfirmationDialog.Content), new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>All preview images associated with this resource will also be removed.<br/>This action is irreversible!</small>"));
                 confirmParam.Add(nameof(ConfirmationDialog.CheckboxEnabled), true);
                 confirmParam.Add(nameof(ConfirmationDialog.CheckboxContent), "Delete files from disk?");
                 confirmParam.Add(nameof(ConfirmationDialog.CheckboxColor), Color.Error);
@@ -251,6 +251,16 @@
                 {
                     if (confirmationResult.Data != null && (bool)confirmationResult.Data == true)
                     {
+                        var subtypeDir = Path.Combine(Configuration["ImagesPathVault"], "Saved", data.Item1.Type.Name);
+                        var modelImagesDir = IO.GetFolderByName(subtypeDir, data.Item1.CivitaiModelId.ToString());
+                        if (modelImagesDir != null)
+                        {
+                            var versionImagesDir = IO.GetFolderByName(modelImagesDir.FullName, data.Item1.CivitaiModelVersionId.ToString());
+                            if (versionImagesDir != null) IO.DeleteFolder(versionImagesDir, true);
+                            var versionImage = IO.GetFileByName(modelImagesDir.FullName, data.Item1.CivitaiModelVersionId.ToString());
+                            if (versionImage != null) IO.DeleteFile(versionImage);
+                        }
+
                         var files = IO.GetFilesByName(file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
                         foreach (var localFile in files)
                         {
@@ -258,6 +268,8 @@
                         }
                     }
                     await DB.DeleteResource(data.Item1.Id);
+                    await DB.DeleteResourceImage((int)data.Item1.CivitaiModelVersionId);
+                    Snackbar.Add("Resource was deleted successfully", Severity.Success);
                 }
             }
         }

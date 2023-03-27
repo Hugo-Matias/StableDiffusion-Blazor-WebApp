@@ -554,5 +554,16 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             return await context.ResourceImages.CountAsync(i => i.CivitaiModelVersionID == id);
         }
+
+        public async Task DeleteResourceImage(int civitaiModelVersionId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var images = context.ResourceImages.Where(i => i.CivitaiModelVersionID == civitaiModelVersionId);
+            foreach (var image in images)
+            {
+                context.ResourceImages.Remove(image);
+            }
+            await context.SaveChangesAsync();
+        }
     }
 }
