@@ -727,6 +727,7 @@ namespace BlazorWebApp.Models
     public class ResourcesSettingsModel
     {
         public bool LoadTriggerWords { get; set; } = true;
+        public ResourceSearchSettingsModel Search { get; set; } = new();
         public ResourceWeightSettingsModel Weight { get; set; } = new();
         public CivitaiSettingsModel Civitai { get; set; } = new();
     }
@@ -737,6 +738,19 @@ namespace BlazorWebApp.Models
         public float Min { get; set; } = 0f;
         public float Max { get; set; } = 2f;
         public float Step { get; set; } = 0.05f;
+    }
+
+    public class ResourceSearchSettingsModel
+    {
+        public ResourceSearchLimitSettingsModel Limit { get; set; } = new();
+    }
+
+    public class ResourceSearchLimitSettingsModel
+    {
+        public int Value { get; set; } = 16;
+        public int Min { get; set; } = 8;
+        public int Max { get; set; } = 256;
+        public int Step { get; set; } = 8;
     }
 
     public class CivitaiSettingsModel

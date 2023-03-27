@@ -16,7 +16,7 @@
     @foreach (var resource in _resources)
     {
         <MudTabPanel Text=@(resource.Key.Name == "TextualInversion" ? "Embedding" : resource.Key.Name)>
-            <ResourceAccordion Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) : LoadResource(r, r.Files[0])) />
+            <ResourcePanel Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) : LoadResource(r, r.Files[0])) />
         </MudTabPanel>
     }
     <MudTabPanel Text="Audit">
