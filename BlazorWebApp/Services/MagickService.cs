@@ -29,26 +29,13 @@ namespace BlazorWebApp.Services
             return result.ToBase64(MagickFormat.Png);
         }
 
-        public string LoadImage(string path)
-        {
-            using var image = new MagickImage(path);
-            if (image.Width > _app.Settings.Gallery.MaxImageWidth || image.Height > _app.Settings.Gallery.MaxImageHeight)
-            {
-                var size = new MagickGeometry(_app.Settings.Gallery.MaxImageWidth, _app.Settings.Gallery.MaxImageHeight);
-
-                image.Resize(size);
-            }
-
-            return image.ToBase64(MagickFormat.Png);
-        }
-
-        public string ResizeImage(byte[] data)
+        public string ResizeImage(byte[] data, bool resize)
         {
             using var image = new MagickImage(data);
-            if (image.Width < _app.Settings.Gallery.MaxImageWidth && image.Height < _app.Settings.Gallery.MaxImageHeight)
+            if (!resize || image.Width < _app.Settings.Img2Img.InputResolution.Width && image.Height < _app.Settings.Img2Img.InputResolution.Height)
                 return image.ToBase64(image.Format);
 
-            var sizeGeom = new MagickGeometry(_app.Settings.Gallery.MaxImageWidth, _app.Settings.Gallery.MaxImageHeight) { IgnoreAspectRatio = false };
+            var sizeGeom = new MagickGeometry(_app.Settings.Img2Img.InputResolution.Width, _app.Settings.Img2Img.InputResolution.Height) { IgnoreAspectRatio = false };
 
             image.Resize(sizeGeom);
             return image.ToBase64(image.Format);

@@ -216,7 +216,7 @@
         using var stream = e.File.OpenReadStream(maxSize);
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
-        var imageString = Magick.ResizeImage(ms.ToArray());
+        var imageString = Magick.ResizeImage(ms.ToArray(), AppState.Settings.Img2Img.DownsizeInput);
         var data = $"data:{e.File.ContentType};base64,{imageString}";
         AppState.CanvasImageData = data;
         await LoadImage();

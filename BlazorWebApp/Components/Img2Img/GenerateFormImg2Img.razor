@@ -22,6 +22,14 @@
                     </MudButtonGroup>
                 </MudStack>
             </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.caption">Max Input Resolution</MudText>
+                <MudStack Row=true>
+                    <MudSlider @bind-Value=AppState.Settings.Img2Img.InputResolution.Width Min=AppState.Settings.Img2Img.InputResolution.Min Max=AppState.Settings.Img2Img.InputResolution.Max Step=AppState.Settings.Img2Img.InputResolution.Step ValueLabel=true><small>Width:</small> @AppState.Settings.Img2Img.InputResolution.Width px</MudSlider>
+                    <MudSlider @bind-Value=AppState.Settings.Img2Img.InputResolution.Height Min=AppState.Settings.Img2Img.InputResolution.Min Max=AppState.Settings.Img2Img.InputResolution.Max Step=AppState.Settings.Img2Img.InputResolution.Step ValueLabel=true><small>Height:</small> @AppState.Settings.Img2Img.InputResolution.Height px</MudSlider>
+                    <MudCheckBox Label="Downsize Input" @bind-Checked=AppState.Settings.Img2Img.DownsizeInput />
+                </MudStack>
+            </MudItem>
             <MudItem xs="4">
                 <MudSlider @bind-Value=Parameters.MaskBlur Min="AppState.Settings.Img2Img.MaskBlur.Min" Max="AppState.Settings.Img2Img.MaskBlur.Max" Step="AppState.Settings.Img2Img.MaskBlur.Step" Variant="Variant.Filled" ValueLabel><small>Mask Blur:</small> @Parameters.MaskBlur</MudSlider>
             </MudItem>

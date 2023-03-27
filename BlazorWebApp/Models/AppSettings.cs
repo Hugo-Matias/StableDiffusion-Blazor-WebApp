@@ -22,8 +22,6 @@ namespace BlazorWebApp.Models
     #region Gallery
     public class GallerySettingsModel
     {
-        public int MaxImageWidth { get; set; } = 2048;
-        public int MaxImageHeight { get; set; } = 2048;
         public GalleryOrderBy OrderBy { get; set; } = GalleryOrderBy.Date;
         public bool OrderDescending { get; set; } = true;
         public bool GalleriesOrderDescending { get; set; } = true;
@@ -170,6 +168,8 @@ namespace BlazorWebApp.Models
         public MaskBlurSettingsModel MaskBlur { get; set; } = new();
         public int ResizeMode { get; set; } = 1;
         public InpaintingSettingsModel Inpainting { get; set; } = new();
+        public bool DownsizeInput { get; set; } = true;
+        public Img2ImgInputResolution InputResolution { get; set; } = new();
     }
 
     public class BrushSettingsModel
@@ -207,6 +207,15 @@ namespace BlazorWebApp.Models
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 40;
         public int Step { get; set; } = 1;
+    }
+
+    public class Img2ImgInputResolution
+    {
+        public int Width { get; set; } = 2048;
+        public int Height { get; set; } = 2048;
+        public int Min { get; set; } = 64;
+        public int Max { get; set; } = 8192;
+        public int Step { get; set; } = 64;
     }
     #endregion
 
