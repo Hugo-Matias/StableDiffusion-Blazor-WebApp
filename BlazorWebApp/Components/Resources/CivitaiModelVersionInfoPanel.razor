@@ -4,6 +4,7 @@
 @inject IOService IO
 @inject DatabaseService DB
 @inject ImageService ImageService
+@inject ProgressService Progress
 @inject IConfiguration Configuration
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
@@ -19,7 +20,7 @@
                 <ChildContent>
                     <MudGrid>
                         <MudItem xs="8">
-                            <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version)">@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
+                            <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version, true)">@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
                                 <MudGrid Class="images-container">
                                     @foreach (var image in version.Images)
                                 {
@@ -90,16 +91,20 @@
                 break;
         }
         await SaveImage(version.Images[0], version.Id, isPreview: true, showSnackbar: false);
-        await SaveAllImages(version);
+        await SaveAllImages(version, false);
         AppState.InvokeDownloadComplete();
     }
 
-    private async Task SaveAllImages(CivitaiModelVersionDto version)
+    private async Task SaveAllImages(CivitaiModelVersionDto version, bool showProgress)
     {
         _isSavingImages = true;
         var index = 1;
+        var progress = new BaseProgress() { BarColor = Color.Secondary };
+        if (showProgress) Progress.Add(progress);
         foreach (var image in version.Images)
         {
+            var currentProgress = (index * 100) / version.Images.Count;
+            if (showProgress) Progress.Update(progress.Id, currentProgress);
             try
             {
                 await SaveImage(image, version.Id, filename: index.ToString(), showSnackbar: false);
@@ -112,6 +117,7 @@
             }
             index++;
         }
+        if (showProgress) Progress.Remove(progress.Id);
         Snackbar.Add("All images saved!\n" + Model.Name, Severity.Success);
         _isSavingImages = false;
     }
