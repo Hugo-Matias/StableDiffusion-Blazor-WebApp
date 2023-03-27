@@ -14,7 +14,7 @@ builder.Services.AddServerSideBlazor().AddHubOptions(opt => { opt.MaximumReceive
 
 builder.Services.AddMudServices(opt =>
 {
-    opt.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopEnd;
+    opt.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomEnd;
     opt.SnackbarConfiguration.PreventDuplicates = false;
 });
 

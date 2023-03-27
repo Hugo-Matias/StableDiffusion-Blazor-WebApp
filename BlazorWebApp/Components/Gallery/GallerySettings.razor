@@ -36,8 +36,8 @@
         <MudGrid>
             <MudItem xs="4">
                 <MudStack>
-                    <MudTextField T="string" @bind-Value="AppState.Settings.Gallery.SearchPrompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus=true Variant="Variant.Text" />
-                    <MudTextField Class="mt-n4" T="string" @bind-Value="AppState.Settings.Gallery.SearchNegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus=true Variant="Variant.Text" />
+                    <MudTextField T="string" @bind-Value="AppState.Settings.Gallery.SearchPrompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true/>
+                    <MudTextField Class="mt-n4" T="string" @bind-Value="AppState.Settings.Gallery.SearchNegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true/>
                 </MudStack>
             </MudItem>
             <MudItem xs="3">

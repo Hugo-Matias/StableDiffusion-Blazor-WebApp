@@ -13,7 +13,7 @@
         </MudStack>
     </TitleContent>
     <DialogContent>
-        <MudStack Row>
+        <MudStack Style="overflow: scroll" Row=true>
             @foreach (var file in Resource.Files)
             {
                 if (AppState.ResourceIsEnabledFilter == null || file.IsEnabled == AppState.ResourceIsEnabledFilter)

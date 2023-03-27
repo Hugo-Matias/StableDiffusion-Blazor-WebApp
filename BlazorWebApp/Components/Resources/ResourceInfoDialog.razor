@@ -13,7 +13,7 @@
                         <MudSelectItem Value="@type">@type.Name</MudSelectItem>
                     }
                 </MudSelect>
-                <MudAutocomplete Label="Sub-Type" @bind-Value=Resource.SubType SearchFunc="async v => await DB.GetResourceSubTypes(v, ordered: true)" ToStringFunc="v => v?.Name" MaxItems="30" CoerceValue ResetValueOnEmptyText Clearable />
+                <MudAutocomplete Label="Sub-Type" @bind-Value=Resource.SubType SearchFunc="async v => await DB.GetResourceSubTypes(v, ordered: true)" ToStringFunc="v => v?.Name" MaxItems="50" MaxHeight="900" TransformOrigin="Origin.BottomLeft" AnchorOrigin="Origin.TopLeft" CoerceValue ResetValueOnEmptyText Clearable />
             </MudStack>
             <MudStack>
                 <MudText Typo="Typo.caption">CivitAI ID</MudText>
