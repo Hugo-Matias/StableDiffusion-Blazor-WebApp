@@ -15,6 +15,7 @@ namespace BlazorWebApp.Services
         private readonly SDAPIService _api;
         private readonly DatabaseService _db;
         private readonly IOService _io;
+        private readonly ProgressService _progress;
         private readonly IConfiguration _configuration;
         private bool _isConverging;
         private int _currentBrushSize;
@@ -118,11 +119,12 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public AppState(SDAPIService api, DatabaseService db, IOService io, IConfiguration configuration)
+        public AppState(SDAPIService api, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration)
         {
             _api = api;
             _db = db;
             _io = io;
+            _progress = progress;
             _configuration = configuration;
 
             GetCmdFlags();
@@ -380,7 +382,10 @@ namespace BlazorWebApp.Services
         {
             CurrentSDModel = "Loading...";
             OnSDModelsChange?.Invoke();
+            var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
+            _progress.Add(progressBar);
             await _api.PostOptions(new() { SDModelCheckpoint = modelTitle });
+            _progress.Remove(progressBar.Id);
             CurrentSDModel = modelTitle;
             OnSDModelsChange?.Invoke();
         }
