@@ -4,13 +4,13 @@
 {
     <MudGrid Class="my-3 pa-2">
         <MudItem xs="4">
-            <MudTextField Label="Title" Value="_searchTitle" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
+            <MudTextField Label="Title" Value="AppState.Settings.Resources.Search.SearchTitle" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
         </MudItem>
         <MudItem xs="2">
-            <MudAutocomplete T="string" Value="_searchSubtype" ValueChanged=HandleSearchSubtype SearchFunc="GetSubtypes" Label="Sub-Type" MaxItems="100" MaxHeight="1200" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-list" ResetValueOnEmptyText Clearable Dense />
+            <MudAutocomplete T="string" Value="AppState.Settings.Resources.Search.SearchSubtype" ValueChanged=HandleSearchSubtype SearchFunc="GetSubtypes" Label="Sub-Type" MaxItems="100" MaxHeight="1200" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-list" ResetValueOnEmptyText Clearable Dense />
         </MudItem>
         <MudItem xs="2">
-            <MudAutocomplete T="string" Value="_searchTag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(_isInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
+            <MudAutocomplete T="string" Value="AppState.Settings.Resources.Search.SearchTag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(AppState.Settings.Resources.Search.IsInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
         </MudItem>
         <MudItem xs="2">
             <MudSlider T=int ValueChanged=@(v => HandleLimitChanged(v)) Value=AppState.Settings.Resources.Search.Limit.Value Min="AppState.Settings.Resources.Search.Limit.Min" Max="AppState.Settings.Resources.Search.Limit.Max" Step="AppState.Settings.Resources.Search.Limit.Step"><small>Quantity:</small> @AppState.Settings.Resources.Search.Limit.Value</MudSlider>
@@ -23,10 +23,10 @@
         </MudItem>
     </MudGrid>
 
-    @if (_totalPages > 1)
+    @if (AppState.Settings.Resources.Search.TotalPages > 1)
     {
         <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=_currentPage BoundaryCount="2" MiddleCount="5" Count=_totalPages />
+            <MudPagination SelectedChanged=HandlePageSelected Selected=AppState.Settings.Resources.Search.CurrentPage BoundaryCount="2" MiddleCount="5" Count=AppState.Settings.Resources.Search.TotalPages />
         </div>
     }
     <MudGrid Spacing="1" Justify="Justify.Center">
@@ -35,10 +35,10 @@
             <ResourceCard Resource=resource OnLoad="@(async () => await OnLoad.InvokeAsync(resource))" />
         }
     </MudGrid>
-    @if (_totalPages > 1)
+    @if (AppState.Settings.Resources.Search.TotalPages > 1)
     {
         <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=_currentPage BoundaryCount="2" MiddleCount="5" Count=_totalPages />
+            <MudPagination SelectedChanged=HandlePageSelected Selected=AppState.Settings.Resources.Search.CurrentPage BoundaryCount="2" MiddleCount="5" Count=AppState.Settings.Resources.Search.TotalPages />
         </div>
     }
 }
@@ -48,19 +48,15 @@
     [Parameter] public EventCallback<LocalResource> OnLoad { get; set; }
 
     private List<LocalResource> _filteredResources;
-    private string _searchTitle, _searchSubtype, _searchTag;
-    private int _currentPage, _totalPages;
-    private bool _isInclusive = true;
 
     protected override void OnParametersSet()
     {
-        _currentPage = 1;
         Search();
     }
 
     private async Task<IEnumerable<string>> GetSubtypes(string value)
     {
-        var query = _filteredResources.Select(r => r.SubType.Name).Distinct();
+        var query = Resources.Select(r => r.SubType.Name).Distinct();
         if (!string.IsNullOrWhiteSpace(value)) query = query.Where(t => t.Equals(value, StringComparison.InvariantCultureIgnoreCase));
         return query.OrderBy(t => t);
     }
@@ -74,25 +70,25 @@
 
     private void HandleSearchTitle(string value)
     {
-        _searchTitle = value;
+        AppState.Settings.Resources.Search.SearchTitle = value;
         Search();
     }
 
     private void HandleSearchSubtype(string value)
     {
-        _searchSubtype = value;
+        AppState.Settings.Resources.Search.SearchSubtype = value;
         Search();
     }
 
     private void HandleSearchTag(string value)
     {
-        _searchTag = value;
+        AppState.Settings.Resources.Search.SearchTag = value;
         Search();
     }
 
     private void HandleTagInclusiveChanged()
     {
-        _isInclusive = !_isInclusive;
+        AppState.Settings.Resources.Search.IsInclusive = !AppState.Settings.Resources.Search.IsInclusive;
         Search();
     }
 
@@ -111,19 +107,19 @@
 
     private void HandlePageSelected(int value)
     {
-        _currentPage = value;
+        AppState.Settings.Resources.Search.CurrentPage = value;
         Search();
     }
 
     private void Search()
     {
         var query = Resources.AsQueryable();
-        if (!string.IsNullOrWhiteSpace(_searchTitle)) query = query.Where(r => r.Title.Contains(_searchTitle, StringComparison.InvariantCultureIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(_searchSubtype)) query = query.Where(r => r.SubType.Name.Equals(_searchSubtype, StringComparison.InvariantCultureIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(_searchTag))
+        if (!string.IsNullOrWhiteSpace(AppState.Settings.Resources.Search.SearchTitle)) query = query.Where(r => r.Title.Contains(AppState.Settings.Resources.Search.SearchTitle, StringComparison.InvariantCultureIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(AppState.Settings.Resources.Search.SearchSubtype)) query = query.Where(r => r.SubType.Name.Equals(AppState.Settings.Resources.Search.SearchSubtype, StringComparison.InvariantCultureIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(AppState.Settings.Resources.Search.SearchTag))
         {
-            if (_isInclusive) query = query.Where(r => r.Tags.Contains(_searchTag));
-            else query = query.Where(r => !r.Tags.Contains(_searchTag));
+            if (AppState.Settings.Resources.Search.IsInclusive) query = query.Where(r => r.Tags.Contains(AppState.Settings.Resources.Search.SearchTag));
+            else query = query.Where(r => !r.Tags.Contains(AppState.Settings.Resources.Search.SearchTag));
         }
         if (AppState.ResourceIsEnabledFilter != null) query = query.Where(r => r.Files.Any(f => f.IsEnabled == AppState.ResourceIsEnabledFilter));
         PaginateResults(query.OrderBy(r => r.Title).ToArray());
@@ -132,7 +128,7 @@
     private void PaginateResults(LocalResource[] resources)
     {
         var limit = AppState.Settings.Resources.Search.Limit.Value;
-        _totalPages = (int)((resources.Length + limit) / limit);
-        _filteredResources = resources.Skip(limit * (_currentPage - 1)).Take(limit).ToList();
+        AppState.Settings.Resources.Search.TotalPages = (int)((resources.Length + limit) / limit);
+        _filteredResources = resources.Skip(limit * (AppState.Settings.Resources.Search.CurrentPage - 1)).Take(limit).ToList();
     }
 }

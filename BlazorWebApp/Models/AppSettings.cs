@@ -760,6 +760,12 @@ namespace BlazorWebApp.Models
 
     public class ResourceSearchSettingsModel
     {
+        public int CurrentPage { get; set; } = 1;
+        public int TotalPages { get; set; } = 1;
+        public string SearchTitle { get; set; } = string.Empty;
+        public string SearchSubtype { get; set; } = string.Empty;
+        public string SearchTag { get; set; } = string.Empty;
+        public bool IsInclusive { get; set; } = true;
         public ResourceSearchLimitSettingsModel Limit { get; set; } = new();
     }
 
