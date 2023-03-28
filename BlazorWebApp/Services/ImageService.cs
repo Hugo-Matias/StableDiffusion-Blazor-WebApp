@@ -111,7 +111,6 @@ namespace BlazorWebApp.Services
                         break;
                 }
 
-
                 if ((bool)_app.Options.SamplesSave)
                 {
                     switch (mode)

@@ -72,12 +72,12 @@ namespace BlazorWebApp.Extensions
             if (mode == ModeType.Extras) param = info;
             else
             {
-                var lines = info.Split('\n');
+                var lines = info.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 foreach (var line in lines)
                 {
                     if (line.StartsWith("Negative prompt:", StringComparison.InvariantCultureIgnoreCase)) negative = Regex.Replace(line, @"^Negative prompt: ", "");
                     else if (line.StartsWith("Steps: ", StringComparison.InvariantCultureIgnoreCase)) param = line;
-                    else prompt = line;
+                    else if (!string.IsNullOrWhiteSpace(line)) prompt = line;
                 }
             }
             return new Dictionary<string, string>() { { "prompt", prompt }, { "negative", negative }, { "param", param } };
