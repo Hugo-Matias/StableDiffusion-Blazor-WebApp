@@ -181,9 +181,9 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Create TriggerWords Text File
-                if (version.TrainedWords != null && version.TrainedWords.Count > 0)
+                var wordsPath = Path.Combine(path, Path.GetFileNameWithoutExtension(file.Name) + ".txt");
+                if (!File.Exists(wordsPath) && version.TrainedWords != null && version.TrainedWords.Count > 0)
                 {
-                    var wordsPath = Path.Combine(path, Path.GetFileNameWithoutExtension(file.Name) + ".txt");
                     _io.SaveText(wordsPath, string.Join("\n", version.TrainedWords));
                 }
                 #endregion
