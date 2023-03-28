@@ -280,7 +280,8 @@ namespace BlazorWebApp.Services
                 NoImageGeneration = Settings.Scripts.DynamicPrompts.NoImageGeneration,
                 MaxGenerations = Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Value,
                 MagicModel = Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList[0],
-                MagicBlocklistRegex = Settings.Scripts.DynamicPrompts.PromptMagic.MagicBlocklistRegex
+                MagicBlocklistRegex = Settings.Scripts.DynamicPrompts.PromptMagic.MagicBlocklistRegex,
+                MagicBatchSize = Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Value
             };
         }
 

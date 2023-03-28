@@ -377,6 +377,7 @@ namespace BlazorWebApp.Models
         public DPPromptMagicLengthSettingsModel Length { get; set; } = new();
         public DPPromptMagicCreativitySettingsModel Creativity { get; set; } = new();
         public string? MagicBlocklistRegex { get; set; } = null;
+        public DPPromptMagicBatchSettingsModel Batch { get; set; } = new();
         public List<string> MagicModelList { get; set; } = new()
         {
             "Gustavosta/MagicPrompt-Stable-Diffusion",
@@ -420,6 +421,14 @@ namespace BlazorWebApp.Models
         public float Min { get; set; } = 0.1f;
         public float Max { get; set; } = 3f;
         public float Step { get; set; } = 0.1f;
+    }
+
+    public class DPPromptMagicBatchSettingsModel
+    {
+        public int Value { get; set; } = 1;
+        public int Min { get; set; } = 1;
+        public int Max { get; set; } = 64;
+        public int Step { get; set; } = 1;
     }
     #endregion
 

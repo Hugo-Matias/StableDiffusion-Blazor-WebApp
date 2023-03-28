@@ -74,11 +74,14 @@
                     <MudCheckBox @bind-Checked=Parameters.DisableNegativePrompt Label="Disable on Negative Prompt" />
                 </MudTooltip>
             </MudItem>
-            <MudItem xs="6">
+            <MudItem xs="4">
                 <MudSlider @bind-Value=Parameters.MinAttention Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Minimum Attention:</small> @Parameters.MinAttention</MudSlider>
             </MudItem>
-            <MudItem xs="6">
+            <MudItem xs="4">
                 <MudSlider @bind-Value=Parameters.MaxAttention Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Maximum Attention:</small> @Parameters.MaxAttention</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider @bind-Value=Parameters.MagicBatchSize Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Step><small>Batch Size:</small> @Parameters.MagicBatchSize</MudSlider>
             </MudItem>
         </MudGrid>
     </MudItem>

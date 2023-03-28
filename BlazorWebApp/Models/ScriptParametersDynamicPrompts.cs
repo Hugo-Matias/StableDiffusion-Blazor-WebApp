@@ -20,5 +20,6 @@
         public int MaxGenerations { get; set; }
         public string MagicModel { get; set; }
         public string? MagicBlocklistRegex { get; set; }
+        public int MagicBatchSize { get; set; }
     }
 }
