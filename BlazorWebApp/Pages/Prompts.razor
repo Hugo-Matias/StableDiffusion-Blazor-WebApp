@@ -1,88 +1,14 @@
 ﻿@page "/prompts"
 @inject AppState AppState
-@inject DatabaseService DB
-@inject IDialogService DialogService
 
-<MudContainer MaxWidth="MaxWidth.Large">
-    <MudPaper Elevation="4" Class="pa-3 mb-4">
-        <MudStack Row>
-            <MudTextField Value=_searchPositive ValueChanged=@(async (v) => await HandleSearch(v, isPositive: true)) T="string" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" Label="Positive" Immediate />
-            <MudTextField Value=_searchNegative ValueChanged=@(async (v) => await HandleSearch(v, isPositive: false)) T="string" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" Label="Negative" Immediate />
-        </MudStack>
-    </MudPaper>
-    <MudGrid Class="pa-3">
-        <MudButton Variant="Variant.Text" Color="Color.Info" Class="pa-5" OnClick="async () => await ShowPromptDialog(null)">
-            <MudStack Class="d-flex flex-column align-items-center">
-                <MudText Typo="Typo.caption">Add Prompt</MudText>
-                <MudIcon Icon="fa-solid fa-plus" Class="mb-4" />
-            </MudStack>
-        </MudButton>
-        @if (_prompts != null)
-        {
-            foreach (var prompt in _prompts)
-            {
-                <ResourceCard Resource="prompt" OnLoad="async () => await ShowPromptDialog(prompt)" />
-            }
-        }
-    </MudGrid>
-</MudContainer>
+<MudTabs @bind-ActivePanelIndex=AppState.State.Prompts.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded=true Centered=true>
+    <MudTabPanel Text="Presets">
+        <PromptsPanel />
+    </MudTabPanel>
+    <MudTabPanel Text="Wildcards">
+        <WildcardsPanel />
+    </MudTabPanel>
+</MudTabs>
 
 @code {
-    private List<PromptResource> _prompts = new();
-    private string _searchPositive, _searchNegative;
-
-    protected async override Task OnInitializedAsync()
-    {
-        await GetPrompts();
-    }
-
-    private async Task GetPrompts()
-    {
-        _prompts.Clear();
-        var response = await DB.GetPrompts(_searchPositive, _searchNegative);
-        foreach (var prompt in response)
-        {
-            _prompts.Add(new(prompt));
-        }
-    }
-
-    private async Task HandleSearch(string value, bool isPositive)
-    {
-        if (isPositive) _searchPositive = value;
-        else _searchNegative = value;
-        await GetPrompts();
-    }
-
-    private async Task ShowPromptDialog(PromptResource? prompt)
-    {
-        if (prompt == null) prompt = new();
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
-        var param = new DialogParameters();
-        param.Add("Prompt", prompt);
-        var dialog = await DialogService.ShowAsync<PromptDialog>("", param, options);
-        var result = await dialog.Result;
-        if (!result.Canceled)
-        {
-            switch (result.Data)
-            {
-                case "Create":
-                    await DB.CreatePrompt(new(prompt));
-                    break;
-                case "Delete":
-                    await DB.DeletePrompt(prompt.Id);
-                    break;
-                case "Txt2Img":
-                    AppState.ParametersTxt2Img.Prompt = Parser.ParsePrompt(AppState.ParametersTxt2Img.Prompt, prompt.Positive);
-                    AppState.ParametersTxt2Img.NegativePrompt = Parser.ParsePrompt(AppState.ParametersTxt2Img.NegativePrompt, prompt.Negative);
-                    break;
-                case "Img2Img":
-                    AppState.ParametersImg2Img.Prompt = Parser.ParsePrompt(AppState.ParametersImg2Img.Prompt, prompt.Positive);
-                    AppState.ParametersImg2Img.NegativePrompt = Parser.ParsePrompt(AppState.ParametersImg2Img.NegativePrompt, prompt.Negative);
-                    break;
-            }
-        }
-        await GetPrompts();
-        await AppState.GetStyles();
-        await InvokeAsync(StateHasChanged);
-    }
 }

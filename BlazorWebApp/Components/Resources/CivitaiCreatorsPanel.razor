@@ -1,24 +1,22 @@
 ﻿@inject AppState AppState
 @inject CivitaiService Api
 
-<MudPaper Class="px-4 mb-7 mt-5">
-    <EditForm Model=Request OnSubmit="Search">
-        <MudGrid>
-            <MudItem xs="5">
-                <MudTextField @bind-Value=Request.Query Label="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
-            </MudItem>
-            <MudItem xs="3">
-                <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
-            </MudItem>
-            <MudItem xs="2">
-                <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
-            </MudItem>
-            <MudItem xs="2">
-                <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
-            </MudItem>
-        </MudGrid>
-    </EditForm>
-</MudPaper>
+<EditForm Model=Request OnSubmit="Search">
+    <MudGrid Class="px-4 mb-7 mt-5">
+        <MudItem xs="5">
+            <MudTextField @bind-Value=Request.Query Label="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
+        </MudItem>
+        <MudItem xs="3">
+            <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
+        </MudItem>
+        <MudItem xs="2">
+            <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
+        </MudItem>
+        <MudItem xs="2">
+            <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
+        </MudItem>
+    </MudGrid>
+</EditForm>
 
 @if (AppState.CivitaiCreators != null)
 {

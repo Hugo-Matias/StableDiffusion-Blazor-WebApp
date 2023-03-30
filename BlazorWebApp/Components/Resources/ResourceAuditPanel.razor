@@ -6,34 +6,34 @@
 <MudStack Row>
     @if (_missing != null)
     {
-        <AuditFileTree Files="_missing" OnFileSelected="async v => await HandleFileSelected(v)">
-            <Title>
-                <MudText Typo="Typo.h6" Color="Color.Error">Missing from Database:</MudText>
-            </Title>
-        </AuditFileTree>
+        <MudStack>
+            <MudText Typo="Typo.h6" Color="Color.Error">Missing from Database:</MudText>
+            <FileTree Files="_missing" OnFileSelected="async v => await HandleFileSelected(v)" StartIndex=@(_resourcesPath.Length + 1) />
+        </MudStack>
     }
     @if (_added != null)
     {
-        <AuditFileTree Files="_added">
-            <Title>
-                <MudText Typo="Typo.h6" Color="Color.Success">Exist in Database:</MudText>
-            </Title>
-        </AuditFileTree>
+        <MudStack>
+            <MudText Typo="Typo.h6" Color="Color.Success">Exist in Database:</MudText>
+            <FileTree Files="_added" StartIndex=@(_resourcesPath.Length + 1) />
+        </MudStack>
     }
 </MudStack>
 
 @code {
     private List<FileInfo> _missing;
     private List<FileInfo> _added;
+    private string _resourcesPath;
 
     protected async override Task OnInitializedAsync()
     {
+        _resourcesPath = Parser.ConvertCloudMount(Configuration["ResourcesPath"]);
         await Audit();
     }
 
     private async Task Audit()
     {
-        var localModels = IO.GetFilesRecursive(Configuration["ResourcesPath"], ".git", extensionsBlacklist: null, extensionsWhitelist: new() { ".pt", ".ckpt", ".safetensors" });
+        var localModels = IO.GetFilesRecursive(_resourcesPath, ".git", extensionsBlacklist: null, extensionsWhitelist: new() { ".pt", ".ckpt", ".safetensors" });
         var dbModels = await DB.GetResources();
         _missing = new();
         _added = new List<FileInfo>();
@@ -44,10 +44,9 @@
         }
     }
 
-    private async Task HandleFileSelected(string path)
+    private async Task HandleFileSelected(FileInfo file)
     {
-        var file = new FileInfo(path);
-        var splitPath = Path.GetRelativePath(Configuration["ResourcesPath"], path).Split("\\");
+        var splitPath = Path.GetRelativePath(_resourcesPath, file.FullName).Split("\\");
         var type = splitPath[0];
         var subType = splitPath[1] != file.Name ? splitPath[1] : string.Empty;
         var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };

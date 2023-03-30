@@ -9,7 +9,7 @@
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<MudTabs Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
+<MudTabs @bind-ActivePanelIndex=AppState.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
     <MudTabPanel Text="CivitAI">
         <CivitaiPanel />
     </MudTabPanel>
@@ -110,7 +110,7 @@
         var fileDir = AppState.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resource.Type.Name, comp)).Value;
         if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
         if (resource.SubType != null) fileDir = Path.Combine(fileDir, resource.SubType.Name);
-        if (File.Exists(Parser.ConvertCloudMount(Path.Combine(fileDir, file.Filename))))
+        if (File.Exists(Path.Combine(fileDir, file.Filename)))
         {
             file.IsEnabled = true;
             file.File = new FileInfo(Path.Combine(fileDir, file.Filename));
@@ -120,7 +120,7 @@
             file.IsEnabled = false;
             var storagePath = Path.Combine(Configuration["ResourcesPath"], "_storage", resource.Type.Name);
             if (resource.SubType != null) storagePath = Path.Combine(storagePath, resource.SubType.Name);
-            storagePath = Parser.ConvertCloudMount(Path.Combine(storagePath, file.Filename));
+            storagePath = Path.Combine(storagePath, file.Filename);
             if (File.Exists(storagePath)) file.File = new FileInfo(storagePath);
             else
             {

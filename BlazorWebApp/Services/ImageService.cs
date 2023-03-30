@@ -51,12 +51,12 @@ namespace BlazorWebApp.Services
                     case ModeType.Img2Img:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersImg2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersImg2Img.Scripts.ControlNet);
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff, "cutoff");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts, GetDynamicPromptsVersion());
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.RegionalPrompter, "Regional Prompter");
-                        scriptName = CreateScriptParameters(ref _parsingParams, _app.ParametersImg2Img.Scripts.UltimateUpscale, "Ultimate SD upscale");
+                        Parser.CreateScriptParameters("cutoff", ref _parsingParams, _app.ParametersImg2Img.Scripts.Cutoff);
+                        Parser.CreateScriptParameters(_app.GetDynamicPromptsVersion(), ref _parsingParams, _app.ParametersImg2Img.Scripts.DynamicPrompts);
+                        Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion);
+                        Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _app.ParametersImg2Img.Scripts.MultiDiffusionTiledVae);
+                        Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _app.ParametersImg2Img.Scripts.RegionalPrompter);
+                        scriptName = Parser.CreateScriptParameters("Ultimate SD upscale", ref _parsingParams, _app.ParametersImg2Img.Scripts.UltimateUpscale);
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
                         img2imgParams.InitImages = _app.ParametersImg2Img.InitImages;
                         img2imgParams.Mask = _app.ParametersImg2Img.Mask;
@@ -88,11 +88,11 @@ namespace BlazorWebApp.Services
                     default:
                         _parsingParams = Parser.ParseParameters(new SharedParameters(_app.ParametersTxt2Img), _app.CurrentStyles);
                         CreateControlNetUnits(ref _parsingParams, _app.ParametersTxt2Img.Scripts.ControlNet);
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.Cutoff, "cutoff");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.DynamicPrompts, GetDynamicPromptsVersion());
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion, "Tiled Diffusion");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae, "Tiled VAE");
-                        CreateScriptParameters(ref _parsingParams, _app.ParametersTxt2Img.Scripts.RegionalPrompter, "Regional Prompter");
+                        Parser.CreateScriptParameters("cutoff", ref _parsingParams, _app.ParametersTxt2Img.Scripts.Cutoff);
+                        Parser.CreateScriptParameters(_app.GetDynamicPromptsVersion(), ref _parsingParams, _app.ParametersTxt2Img.Scripts.DynamicPrompts);
+                        Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion);
+                        Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _app.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
+                        Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _app.ParametersTxt2Img.Scripts.RegionalPrompter);
                         var txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         txt2imgParams.EnableHR = _app.ParametersTxt2Img.EnableHR;
                         if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
@@ -149,52 +149,6 @@ namespace BlazorWebApp.Services
                 }
                 parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ScriptParametersControlNet>>() { { "args", units } } } };
             }
-        }
-
-        private string CreateScriptParameters(ref SharedParameters parameters, BaseScriptParameters scriptParam, string payloadKey)
-        {
-            if (scriptParam != null && scriptParam.IsEnabled)
-            {
-                var argsArray = scriptParam.GetType().GetProperties().Select(p => p.GetValue(scriptParam, null)).ToArray();
-                // Since the shared ScriptParameteresBase properties are loaded last and order is important, we need to reorder them
-                var tempList = argsArray.ToList();
-                if (scriptParam.IsAlwaysOn)
-                {
-                    // Last element at this point is BaseScriptParameters.IsAlwaysOn, since we don't need the value in the payload it's just discarded
-                    tempList.RemoveAt(tempList.Count - 1);
-                    // Last element at this point is BaseScriptParameters.IsEnabled, the value we need move to top
-                    var isEnabledValue = tempList[tempList.Count - 1];
-                    tempList.RemoveAt(tempList.Count - 1);
-                    tempList.Insert(0, isEnabledValue);
-
-                    //Expand MultiDiffusion box region controls
-                    if (payloadKey == "Tiled Diffusion")
-                    {
-                        var controls = tempList[tempList.Count - 1];
-                        tempList.RemoveAt(tempList.Count - 1);
-                        foreach (var control in (List<ScriptParametersMultiDiffusionBBoxControl>)controls)
-                        {
-                            tempList.AddRange(control.GetType().GetProperties().Select(p => p.GetValue(control, null)).ToArray());
-                        }
-                    }
-
-                    argsArray = tempList.ToArray();
-                    var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
-                    if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
-                    else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
-                }
-                else
-                {
-                    // Remove the 2 shared values from the payload since they are not needed on triggered scripts like Ultimate Upscale
-                    tempList.RemoveAt(tempList.Count - 1);
-                    tempList.RemoveAt(tempList.Count - 1);
-                    argsArray = tempList.ToArray();
-                    parameters.ScriptName = payloadKey;
-                    parameters.ScriptArgs = argsArray;
-                    return payloadKey;
-                }
-            }
-            return string.Empty;
         }
 
         public async Task<ImagesDto> SaveImages(Outdir outdirSamples, Outdir? outdirGrid, string scriptName)
@@ -395,20 +349,6 @@ namespace BlazorWebApp.Services
             var size = _magick.GetImageSize(data);
             _canvasSourceWidth = size.Item1;
             _canvasSourceHeight = size.Item2;
-        }
-
-        private string GetDynamicPromptsVersion()
-        {
-            var scriptFile = Path.Combine(_app.CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "sd_dynamic_prompts", "dynamic_prompting.py");
-            foreach (var line in _io.LoadTextLines(scriptFile))
-            {
-                if (line.StartsWith("VERSION = "))
-                {
-                    var version = line.Split(" = ", 2)[1].Replace("\"", "").Trim();
-                    return $"Dynamic Prompts v{version}";
-                }
-            }
-            return string.Empty;
         }
 
         private async void StartProgressChecker(BaseProgress progress)

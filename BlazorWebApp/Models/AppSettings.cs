@@ -17,6 +17,7 @@ namespace BlazorWebApp.Models
         public ResourcesSettingsModel Resources { get; set; } = new();
         public WebuiSettingsModel Webui { get; set; } = new();
         public ScriptsSettingsModel Scripts { get; set; } = new();
+        public PromptsSettingsModel Prompts { get; set; } = new();
     }
 
     #region Gallery
@@ -801,9 +802,28 @@ namespace BlazorWebApp.Models
         public int Max { get; set; } = 200;
         public int Step { get; set; } = 8;
     }
-
     #endregion
 
+    #region Prompts
+    public class PromptsSettingsModel
+    {
+        public PromptsWildcardsSettingsModel Wildcards { get; set; } = new();
+    }
+
+    public class PromptsWildcardsSettingsModel
+    {
+        public int PromptTextfieldLines { get; set; } = 5;
+        public PromptsWildcardsGenerationSettingsModel Generation { get; set; } = new();
+    }
+
+    public class PromptsWildcardsGenerationSettingsModel
+    {
+        public int Value { get; set; } = 10;
+        public int Min { get; set; } = 1;
+        public int Max { get; set; } = 50;
+        public int Step { get; set; } = 1;
+    }
+    #endregion
     #region WebUI
     public class WebuiSettingsModel
     {

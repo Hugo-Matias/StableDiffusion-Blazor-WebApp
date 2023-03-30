@@ -54,6 +54,7 @@ namespace BlazorWebApp.Services
         public Txt2ImgParameters ParametersTxt2Img { get; set; }
         public Img2ImgParameters ParametersImg2Img { get; set; }
         public UpscaleParameters ParametersUpscale { get; set; }
+        public AppStateModel State { get; set; }
         public IEnumerable<PromptStyle> CurrentStyles { get; set; }
         public string CurrentSDModel { get; set; } = "Loading...";
         public string CurrentVae { get; set; }
@@ -132,6 +133,7 @@ namespace BlazorWebApp.Services
             _db.PageSize = Settings.Gallery.PageSize;
             Settings.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
+            State = new(Settings);
             Images = new();
             Progress = new();
             Folders = new();
@@ -411,7 +413,7 @@ namespace BlazorWebApp.Services
             {
                 Styles.Add(new(prompt));
             }
-            CurrentStyles = new List<PromptStyle>();
+            if (CurrentStyles == null) CurrentStyles = new List<PromptStyle>();
         }
 
         public async Task GetUpscalers()
@@ -465,6 +467,20 @@ namespace BlazorWebApp.Services
         }
 
         public async Task GetSamplers() => Samplers = await _api.GetSamplers();
+
+        public string GetDynamicPromptsVersion()
+        {
+            var scriptFile = Path.Combine(CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "sd_dynamic_prompts", "dynamic_prompting.py");
+            foreach (var line in _io.LoadTextLines(scriptFile))
+            {
+                if (line.StartsWith("VERSION = "))
+                {
+                    var version = line.Split(" = ", 2)[1].Replace("\"", "").Trim();
+                    return $"Dynamic Prompts v{version}";
+                }
+            }
+            return string.Empty;
+        }
 
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {

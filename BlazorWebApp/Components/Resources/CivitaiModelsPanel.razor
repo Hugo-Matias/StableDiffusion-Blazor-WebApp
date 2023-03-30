@@ -3,9 +3,8 @@
 @inject IDialogService DialogService
 
 <div>
-    <MudPaper Class="px-4 mb-7 mt-5">
         <EditForm Model=Request OnSubmit="Search">
-            <MudGrid>
+            <MudGrid Class="px-4 mb-7 mt-5">
                 <MudItem xs="3">
                     <MudTextField @bind-Value=Request.Query Label="Title" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
                 </MudItem>
@@ -62,7 +61,6 @@
                 </MudItem>
             </MudGrid>
         </EditForm>
-    </MudPaper>
 </div>
 
 @if (_isSearching)

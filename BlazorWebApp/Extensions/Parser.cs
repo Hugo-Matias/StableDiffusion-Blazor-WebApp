@@ -10,6 +10,52 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
+        public static string CreateScriptParameters(this string payloadKey, ref SharedParameters parameters, BaseScriptParameters scriptParam)
+        {
+            if (scriptParam != null && scriptParam.IsEnabled)
+            {
+                var argsArray = scriptParam.GetType().GetProperties().Select(p => p.GetValue(scriptParam, null)).ToArray();
+                // Since the shared ScriptParameteresBase properties are loaded last and order is important, we need to reorder them
+                var tempList = argsArray.ToList();
+                if (scriptParam.IsAlwaysOn)
+                {
+                    // Last element at this point is BaseScriptParameters.IsAlwaysOn, since we don't need the value in the payload it's just discarded
+                    tempList.RemoveAt(tempList.Count - 1);
+                    // Last element at this point is BaseScriptParameters.IsEnabled, the value we need move to top
+                    var isEnabledValue = tempList[tempList.Count - 1];
+                    tempList.RemoveAt(tempList.Count - 1);
+                    tempList.Insert(0, isEnabledValue);
+
+                    //Expand MultiDiffusion box region controls
+                    if (payloadKey == "Tiled Diffusion")
+                    {
+                        var controls = tempList[tempList.Count - 1];
+                        tempList.RemoveAt(tempList.Count - 1);
+                        foreach (var control in (List<ScriptParametersMultiDiffusionBBoxControl>)controls)
+                        {
+                            tempList.AddRange(control.GetType().GetProperties().Select(p => p.GetValue(control, null)).ToArray());
+                        }
+                    }
+
+                    argsArray = tempList.ToArray();
+                    var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
+                    if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
+                    else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
+                }
+                else
+                {
+                    // Remove the 2 shared values from the payload since they are not needed on triggered scripts like Ultimate Upscale
+                    tempList.RemoveAt(tempList.Count - 1);
+                    tempList.RemoveAt(tempList.Count - 1);
+                    argsArray = tempList.ToArray();
+                    parameters.ScriptName = payloadKey;
+                    parameters.ScriptArgs = argsArray;
+                    return payloadKey;
+                }
+            }
+            return string.Empty;
+        }
+
         public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.').Trim();
 
         public static string NormalizePath(this string path)
@@ -360,7 +406,8 @@ namespace BlazorWebApp.Extensions
             if (number < 1000) return number.ToString();
             else return $"{number / 1000}K";
         }
-        public static string ConvertCloudMount(this string path) => path.Replace(@"H:\O meu disco\", @"Z:\");
+
+        public static string ConvertCloudMount(this string path) => path.Replace(@"Z:\", @"H:\O meu disco\");
 
         public static ModeType ModeTypeFromOutdir(this Outdir outdir)
         {

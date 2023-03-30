@@ -1,0 +1,87 @@
+﻿@inject IConfiguration Configuration
+
+<MudTreeView Items="Items" T="TreeItem" SelectedValueChanged="HandleItemSelected" Hover>
+    <ItemTemplate>
+        <MudTreeViewItem Value="@context" Items="@context.Items" Text="@context.Title" />
+    </ItemTemplate>
+</MudTreeView>
+
+@code {
+    [Parameter] public List<FileInfo> Files { get; set; }
+    [Parameter] public EventCallback<FileInfo> OnFileSelected { get; set; }
+    [Parameter] public EventCallback<DirectoryInfo> OnDirectorySelected { get; set; }
+    [Parameter] public int StartIndex { get; set; }
+
+    public TreeNode Items { get; set; } = new(@"\");
+
+    public class TreeItem
+    {
+        public string Title { get; set; }
+        public FileInfo? File { get; set; }
+        public DirectoryInfo? Directory { get; set; }
+        public TreeNode Items { get; set; }
+
+        public TreeItem(string separator = TreeNode.DefaultSeparator) { this.Items = new TreeNode(separator); }
+    }
+
+    public class TreeNode : HashSet<TreeItem>
+    {
+        public const string DefaultSeparator = "/";
+        public string Separator { get; set; }
+
+        public TreeNode(string separator = DefaultSeparator) { Separator = separator; }
+
+        public void AddItem(string path, FileInfo file, int startIndex)
+        {
+            if (startIndex >= path.Length)
+            {
+                return;
+            }
+
+            var endIndex = path.IndexOf(Separator, startIndex);
+            if (endIndex == -1)
+            {
+                endIndex = path.Length;
+            }
+            var title = path.Substring(startIndex, endIndex - startIndex);
+            var currentPath = path.Substring(0, endIndex);
+            if (string.IsNullOrEmpty(title))
+            {
+                return;
+            }
+
+            TreeItem item;
+            item = this.FirstOrDefault(n => n.Title == title);
+            if (item == null)
+            {
+                item = new TreeItem(Separator) { Title = title };
+                Add(item);
+            }
+            if (File.Exists(currentPath) && item.Title == file.Name) item.File = file;
+            else if (Directory.Exists(currentPath)) item.Directory = new DirectoryInfo(currentPath);
+            item.Items.AddItem(path, file, endIndex + 1);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        GenerateTree();
+    }
+
+    private void GenerateTree()
+    {
+        foreach (var file in Files)
+        {
+            Items.AddItem(file.FullName, file, StartIndex);
+        }
+    }
+
+    private async Task HandleItemSelected(TreeItem item)
+    {
+        if (item != null)
+        {
+            if (item.File != null) await OnFileSelected.InvokeAsync(item.File);
+            else if (item.Directory != null) await OnDirectorySelected.InvokeAsync(item.Directory);
+        }
+    }
+}

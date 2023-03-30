@@ -16,8 +16,6 @@ namespace BlazorWebApp.Services
 
         public void MoveFile(string sourcePath, string destinationPath)
         {
-            sourcePath = Parser.ConvertCloudMount(sourcePath);
-            destinationPath = Parser.ConvertCloudMount(destinationPath);
             var destFile = new FileInfo(destinationPath);
             if (!destFile.Directory.Exists) Directory.CreateDirectory(destFile.DirectoryName);
             File.Move(sourcePath, destinationPath);
