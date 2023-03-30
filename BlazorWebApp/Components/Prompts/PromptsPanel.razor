@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject DatabaseService DB
 @inject IDialogService DialogService
 
@@ -67,17 +67,17 @@
                     await DB.DeletePrompt(prompt.Id);
                     break;
                 case "Txt2Img":
-                    AppState.ParametersTxt2Img.Prompt = Parser.ParsePrompt(AppState.ParametersTxt2Img.Prompt, prompt.Positive);
-                    AppState.ParametersTxt2Img.NegativePrompt = Parser.ParsePrompt(AppState.ParametersTxt2Img.NegativePrompt, prompt.Negative);
+                    M.ParametersTxt2Img.Prompt = Parser.ParsePrompt(M.ParametersTxt2Img.Prompt, prompt.Positive);
+                    M.ParametersTxt2Img.NegativePrompt = Parser.ParsePrompt(M.ParametersTxt2Img.NegativePrompt, prompt.Negative);
                     break;
                 case "Img2Img":
-                    AppState.ParametersImg2Img.Prompt = Parser.ParsePrompt(AppState.ParametersImg2Img.Prompt, prompt.Positive);
-                    AppState.ParametersImg2Img.NegativePrompt = Parser.ParsePrompt(AppState.ParametersImg2Img.NegativePrompt, prompt.Negative);
+                    M.ParametersImg2Img.Prompt = Parser.ParsePrompt(M.ParametersImg2Img.Prompt, prompt.Positive);
+                    M.ParametersImg2Img.NegativePrompt = Parser.ParsePrompt(M.ParametersImg2Img.NegativePrompt, prompt.Negative);
                     break;
             }
         }
         await GetPrompts();
-        await AppState.GetStyles();
+        await M.GetStyles();
         await InvokeAsync(StateHasChanged);
     }
 }

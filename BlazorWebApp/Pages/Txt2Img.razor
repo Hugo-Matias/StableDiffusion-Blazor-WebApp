@@ -1,7 +1,7 @@
 ﻿@page "/txt2img"
 @inject SDAPIService SDAPIService
 @inject JavascriptService JSConsole
-@inject AppState AppState
+@inject ManagerService M
 @inject ImageService ImageService
 
 <PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
@@ -23,13 +23,13 @@
     {
         base.OnInitialized();
 
-        Parameters = AppState.ParametersTxt2Img;
-        SharedParameters = AppState.ParametersTxt2Img;
+        Parameters = M.ParametersTxt2Img;
+        SharedParameters = M.ParametersTxt2Img;
     }
 
     private async void Generate()
     {
-        AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Txt2Img);
+        M.GeneratedImageEntities = await ImageService.GetImages(ModeType.Txt2Img);
     }
 
     private async void Skip() => await SDAPIService.PostSkip();

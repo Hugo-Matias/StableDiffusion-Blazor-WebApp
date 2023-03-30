@@ -1,5 +1,5 @@
 ﻿@using System.Diagnostics;
-@inject AppState AppState
+@inject ManagerService M
 @inject DatabaseService DB
 @inject IOService IO
 @inject ISnackbar Snackbar
@@ -103,16 +103,16 @@
 
     private async Task SetProjectCover()
     {
-        await DB.SetProjectCover(AppState.CurrentProjectId, Image.Path);
+        await DB.SetProjectCover(M.State.Gallery.ProjectId, Image.Path);
         await OnCoverChanged.InvokeAsync();
-        Snackbar.Add($"Cover image selected for project {AppState.CurrentProjectName}.", Severity.Success);
+        Snackbar.Add($"Cover image selected for project {M.State.Gallery.ProjectName}.", Severity.Success);
     }
 
     private void SendTo(bool img2img)
     {
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
-        if (img2img) AppState.CanvasImageData = data;
-        else AppState.UpscaleImageData = data;
+        if (img2img) M.CanvasImageData = data;
+        else M.UpscaleImageData = data;
     }
 
     private async Task<Color> SetSamplerBadgeColor()

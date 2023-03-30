@@ -1,11 +1,11 @@
-﻿@inject IJSRuntime JS
-@inject ISnackbar Snackbar
-@inject AppState AppState
+﻿@inject ManagerService M
 @inject DatabaseService DB
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 
 <div>
     <MudStack Class=@Class>
-        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=AppState.CurrentResourceSubType SearchFunc="DB.GetResourceSubtypeNames" MaxItems="50" MaxHeight="900" CoerceValue ResetValueOnEmptyText Clearable />
+        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=M.State.Civitai.ResourceSubtype SearchFunc="DB.GetResourceSubtypeNames" MaxItems="50" MaxHeight="900" CoerceValue ResetValueOnEmptyText Clearable />
         <MudTextField Label="Filename" @bind-Value=_selected.Name />
         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
             <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">
@@ -114,10 +114,6 @@
         var scanResult = Parser.ParseCivitaiScanResult(_selected.VirusScanResult);
         _color = Parser.ParseCivitaiScanColor(scanResult);
         _icon = Parser.ParseCivitaiScanIcon(scanResult);
-        //_tooltip = new MarkupString($"File is safe!<br />Scanned at: {_selected.ScannedAt:dd/MM/yyyy}");
-        //_tooltip = new MarkupString($"File scan is still pending!");
-        //_tooltip = new MarkupString($"Something went wrong during file scan!<br />Proceed with caution.<br />Scanned at: {_selected.ScannedAt:dd/MM/yyyy}");
-        //_tooltip = new MarkupString($"File contains a virus!<br/>Scanned at: {_selected.ScannedAt:dd/MM/yyyy}");
     }
 
     private void ParseButtonText()

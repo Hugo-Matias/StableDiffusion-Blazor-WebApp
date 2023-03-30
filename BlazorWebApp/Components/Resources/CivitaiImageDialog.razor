@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -151,39 +151,39 @@
 
         if (mode == ModeType.Txt2Img)
         {
-            AppState.InitializeParameters(new ModeType[1] { ModeType.Txt2Img });
-            AppState.ParametersTxt2Img.Prompt = Image.Meta.Prompt;
-            AppState.ParametersTxt2Img.NegativePrompt = Image.Meta.NegativePrompt;
-            AppState.ParametersTxt2Img.Seed = Image.Meta.Seed;
-            AppState.ParametersTxt2Img.SamplerIndex = Image.Meta.Sampler;
-            AppState.ParametersTxt2Img.Steps = Image.Meta.Steps;
-            AppState.ParametersTxt2Img.CfgScale = Image.Meta.CfgScale;
-            AppState.ParametersTxt2Img.Width = width;
-            AppState.ParametersTxt2Img.Height = height;
+            M.InitializeParameters(new ModeType[1] { ModeType.Txt2Img });
+            M.ParametersTxt2Img.Prompt = Image.Meta.Prompt;
+            M.ParametersTxt2Img.NegativePrompt = Image.Meta.NegativePrompt;
+            M.ParametersTxt2Img.Seed = Image.Meta.Seed;
+            M.ParametersTxt2Img.SamplerIndex = Image.Meta.Sampler;
+            M.ParametersTxt2Img.Steps = Image.Meta.Steps;
+            M.ParametersTxt2Img.CfgScale = Image.Meta.CfgScale;
+            M.ParametersTxt2Img.Width = width;
+            M.ParametersTxt2Img.Height = height;
             if (Image.Meta.HighResUpscale != null)
             {
-                AppState.ParametersTxt2Img.EnableHR = true;
-                AppState.ParametersTxt2Img.HRUpscaler = Image.Meta.HighResUpscaler;
-                AppState.ParametersTxt2Img.HRScale = double.Parse(Image.Meta.HighResUpscale);
+                M.ParametersTxt2Img.EnableHR = true;
+                M.ParametersTxt2Img.HRUpscaler = Image.Meta.HighResUpscaler;
+                M.ParametersTxt2Img.HRScale = double.Parse(Image.Meta.HighResUpscale);
                 if (Image.Meta.HighResSteps != null)
-                    AppState.ParametersTxt2Img.HRSecondPassSteps = int.Parse(Image.Meta.HighResSteps);
+                    M.ParametersTxt2Img.HRSecondPassSteps = int.Parse(Image.Meta.HighResSteps);
                 else
-                    AppState.ParametersTxt2Img.HRSecondPassSteps = 0;
-                AppState.ParametersTxt2Img.DenoisingStrength = double.Parse(Image.Meta.DenoisingStrength);
+                    M.ParametersTxt2Img.HRSecondPassSteps = 0;
+                M.ParametersTxt2Img.DenoisingStrength = double.Parse(Image.Meta.DenoisingStrength);
             }
         }
         else if (mode == ModeType.Img2Img)
         {
-            AppState.InitializeParameters(new ModeType[1] { ModeType.Img2Img });
-            AppState.ParametersImg2Img.Prompt = Image.Meta.Prompt;
-            AppState.ParametersImg2Img.NegativePrompt = Image.Meta.NegativePrompt;
-            AppState.ParametersImg2Img.Seed = Image.Meta.Seed;
-            AppState.ParametersImg2Img.SamplerIndex = Image.Meta.Sampler;
-            AppState.ParametersImg2Img.Steps = Image.Meta.Steps;
-            AppState.ParametersImg2Img.CfgScale = Image.Meta.CfgScale;
-            AppState.ParametersImg2Img.DenoisingStrength = double.Parse(Image.Meta.DenoisingStrength);
-            AppState.ParametersImg2Img.Width = width;
-            AppState.ParametersImg2Img.Height = height;
+            M.InitializeParameters(new ModeType[1] { ModeType.Img2Img });
+            M.ParametersImg2Img.Prompt = Image.Meta.Prompt;
+            M.ParametersImg2Img.NegativePrompt = Image.Meta.NegativePrompt;
+            M.ParametersImg2Img.Seed = Image.Meta.Seed;
+            M.ParametersImg2Img.SamplerIndex = Image.Meta.Sampler;
+            M.ParametersImg2Img.Steps = Image.Meta.Steps;
+            M.ParametersImg2Img.CfgScale = Image.Meta.CfgScale;
+            M.ParametersImg2Img.DenoisingStrength = double.Parse(Image.Meta.DenoisingStrength);
+            M.ParametersImg2Img.Width = width;
+            M.ParametersImg2Img.Height = height;
         }
         Snackbar.Add($"Settings copied to {mode}", Severity.Success);
     }

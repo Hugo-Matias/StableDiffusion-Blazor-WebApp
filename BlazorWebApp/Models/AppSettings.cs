@@ -1,15 +1,8 @@
-﻿using BlazorWebApp.Data.Dtos;
-using BlazorWebApp.Data.Entities;
-using MudBlazor;
-
-namespace BlazorWebApp.Models
+﻿namespace BlazorWebApp.Models
 {
     public class AppSettings
     {
         public bool IsDarkMode { get; set; } = true;
-        public int Folder { get; set; } = 0;
-        public int Project { get; set; } = 0;
-        public GallerySettingsModel Gallery { get; set; } = new();
         public SharedSettingsModel Shared { get; set; } = new();
         public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
         public Img2ImgSettingsModel Img2Img { get; set; } = new();
@@ -19,27 +12,6 @@ namespace BlazorWebApp.Models
         public ScriptsSettingsModel Scripts { get; set; } = new();
         public PromptsSettingsModel Prompts { get; set; } = new();
     }
-
-    #region Gallery
-    public class GallerySettingsModel
-    {
-        public GalleryOrderBy OrderBy { get; set; } = GalleryOrderBy.Date;
-        public bool OrderDescending { get; set; } = true;
-        public bool GalleriesOrderDescending { get; set; } = true;
-        public int PageSize { get; set; } = 10;
-        public ModeType Mode { get; set; } = ModeType.Txt2Img;
-        public string SearchPrompt { get; set; } = "";
-        public string SearchNegativePrompt { get; set; } = "";
-        public bool IsFavoritesOnly { get; set; } = false;
-        public bool IsModeTxt2Img { get; set; } = true;
-        public bool IsModeImg2Img { get; set; } = true;
-        public bool IsModeUpscale { get; set; } = true;
-        public DateRange DateRange { get; set; } = new(DateTime.Now.Date, DateTime.Now.Date);
-        public bool FilterByDateRange { get; set; } = false;
-    }
-
-    public enum GalleryOrderBy { Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }
-    #endregion
 
     #region Shared
     public class SharedSettingsModel
@@ -57,7 +29,7 @@ namespace BlazorWebApp.Models
 
     public class StepsSettingsModel
     {
-        public int DefaultValue { get; set; } = 40;
+        public int Value { get; set; } = 40;
         public int Min { get; set; } = 1;
         public int Max { get; set; } = 150;
         public int Step { get; set; } = 1;
@@ -80,7 +52,7 @@ namespace BlazorWebApp.Models
 
     public class BatchCountSettingsModel
     {
-        public int DefaultValue { get; set; } = 1;
+        public int Value { get; set; } = 1;
         public int Min { get; set; } = 1;
         public int Max { get; set; } = 8;
         public int Step { get; set; } = 1;
@@ -88,7 +60,7 @@ namespace BlazorWebApp.Models
 
     public class BatchSizeSettingsModel
     {
-        public int DefaultValue { get; set; } = 4;
+        public int Value { get; set; } = 4;
         public int Min { get; set; } = 1;
         public int Max { get; set; } = 8;
         public int Step { get; set; } = 1;
@@ -96,7 +68,7 @@ namespace BlazorWebApp.Models
 
     public class CfgScaleSettingsModel
     {
-        public float DefaultValue { get; set; } = 9.5f;
+        public float Value { get; set; } = 9.5f;
         public float Min { get; set; } = 1.0f;
         public float Max { get; set; } = 30.0f;
         public float Step { get; set; } = 0.5f;
@@ -104,7 +76,7 @@ namespace BlazorWebApp.Models
 
     public class DenoisingSettingsModel
     {
-        public double DefaultValue { get; set; } = 0.52;
+        public double Value { get; set; } = 0.52;
         public double Min { get; set; } = 0;
         public double Max { get; set; } = 1;
         public double Step { get; set; } = 0.01;
@@ -137,7 +109,7 @@ namespace BlazorWebApp.Models
 
     public class ResizeScaleSettingsModel
     {
-        public double DefaultValue { get; set; } = 2;
+        public double Value { get; set; } = 2;
         public double Min { get; set; } = 1;
         public double Max { get; set; } = 4;
         public double Step { get; set; } = 0.05;
@@ -154,7 +126,7 @@ namespace BlazorWebApp.Models
 
     public class SecondPassStepsSettingsModel
     {
-        public int DefaultValue { get; set; } = 0;
+        public int Value { get; set; } = 0;
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 150;
         public int Step { get; set; } = 1;
@@ -175,7 +147,7 @@ namespace BlazorWebApp.Models
 
     public class BrushSettingsModel
     {
-        public int DefaultValue { get; set; } = 50;
+        public int Value { get; set; } = 50;
         public int Min { get; set; } = 5;
         public int Max { get; set; } = 70;
         public string Color { get; set; } = "#1fbe00";
@@ -184,7 +156,7 @@ namespace BlazorWebApp.Models
 
     public class MaskBlurSettingsModel
     {
-        public int DefaultValue { get; set; } = 2;
+        public int Value { get; set; } = 2;
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 64;
         public int Step { get; set; } = 1;
@@ -199,12 +171,12 @@ namespace BlazorWebApp.Models
 
     public class InpaintingFullResSettingsModel
     {
-        public bool DefaultValue { get; set; } = true;
+        public bool Value { get; set; } = true;
         public InpaintingFullResPaddingSettingsModel Padding { get; set; } = new();
     }
     public class InpaintingFullResPaddingSettingsModel
     {
-        public int DefaultValue { get; set; } = 12;
+        public int Value { get; set; } = 12;
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 40;
         public int Step { get; set; } = 1;
@@ -761,12 +733,6 @@ namespace BlazorWebApp.Models
 
     public class ResourceSearchSettingsModel
     {
-        public int CurrentPage { get; set; } = 1;
-        public int TotalPages { get; set; } = 1;
-        public string SearchTitle { get; set; } = string.Empty;
-        public string SearchSubtype { get; set; } = string.Empty;
-        public string SearchTag { get; set; } = string.Empty;
-        public bool IsInclusive { get; set; } = true;
         public ResourceSearchLimitSettingsModel Limit { get; set; } = new();
     }
 
@@ -780,19 +746,7 @@ namespace BlazorWebApp.Models
 
     public class CivitaiSettingsModel
     {
-        public string Query { get; set; } = string.Empty;
         public CivitaiLimitSettingsModel Limit { get; set; } = new();
-        public int Page { get; set; } = 1;
-        public string Username { get; set; } = string.Empty;
-        public string Tag { get; set; } = string.Empty;
-        public CivitaiModelType? Type { get; set; } = null;
-        public CivitaiSort Sort { get; set; } = CivitaiSort.Highest_Rated;
-        public CivitaiPeriod Period { get; set; } = CivitaiPeriod.AllTime;
-        public int Rating { get; set; } = -1;
-        public bool Favorites { get; set; } = false;
-        public bool Hidden { get; set; } = false;
-        public bool IsPrimaryFileOnly { get; set; } = false;
-        public string Hash { get; set; } = string.Empty;
     }
 
     public class CivitaiLimitSettingsModel
@@ -824,6 +778,7 @@ namespace BlazorWebApp.Models
         public int Step { get; set; } = 1;
     }
     #endregion
+
     #region WebUI
     public class WebuiSettingsModel
     {

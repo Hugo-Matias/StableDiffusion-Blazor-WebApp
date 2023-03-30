@@ -229,26 +229,26 @@ namespace BlazorWebApp.Services
             };
         }
 
-        public async Task<ImagesDto> GetSortedImages(int page, int projectId, GallerySettingsModel settings)
+        public async Task<ImagesDto> GetSortedImages(int page, int projectId, AppStateGallery state)
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
 
             var query = context.Images.Where(i => i.ProjectId == projectId);
-            if (!string.IsNullOrWhiteSpace(settings.SearchPrompt))
-                query = query.Where(i => i.Prompt.ToLower().Contains(settings.SearchPrompt.ToLower()));
-            if (!string.IsNullOrWhiteSpace(settings.SearchNegativePrompt))
-                query = query.Where(i => i.NegativePrompt.ToLower().Contains(settings.SearchNegativePrompt.ToLower()));
-            if (settings.IsFavoritesOnly) query = query.Where(i => i.Favorite);
-            if (settings.FilterByDateRange) query = query.Where(i => i.DateCreated >= settings.DateRange.Start && i.DateCreated <= settings.DateRange.End.Value.AddDays(1));
+            if (!string.IsNullOrWhiteSpace(state.Prompt))
+                query = query.Where(i => i.Prompt.ToLower().Contains(state.Prompt.ToLower()));
+            if (!string.IsNullOrWhiteSpace(state.NegativePrompt))
+                query = query.Where(i => i.NegativePrompt.ToLower().Contains(state.NegativePrompt.ToLower()));
+            if (state.IsFavoritesOnly) query = query.Where(i => i.Favorite);
+            if (state.FilterByDateRange) query = query.Where(i => i.DateCreated >= state.DateRange.Start && i.DateCreated <= state.DateRange.End.Value.AddDays(1));
 
             List<int> modes = new();
-            if (settings.IsModeTxt2Img) modes.Add(1);
-            if (settings.IsModeImg2Img) modes.Add(2);
-            if (settings.IsModeUpscale) modes.Add(3);
+            if (state.IsModeTxt2Img) modes.Add(1);
+            if (state.IsModeImg2Img) modes.Add(2);
+            if (state.IsModeUpscale) modes.Add(3);
             query = query.Where(i => modes.Contains(i.ModeId));
 
-            switch (settings.OrderBy)
+            switch (state.OrderBy)
             {
                 case GalleryOrderBy.Date:
                     query = query.OrderBy(i => i.DateCreated);
@@ -283,7 +283,7 @@ namespace BlazorWebApp.Services
             }
 
             var images = await query.ToListAsync();
-            if (settings.OrderDescending) images.Reverse();
+            if (state.OrderDescending) images.Reverse();
 
             var pageCount = Math.Ceiling(images.Count / (float)PageSize);
 

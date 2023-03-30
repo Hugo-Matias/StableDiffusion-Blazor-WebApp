@@ -1,6 +1,6 @@
 ﻿@page "/"
 @inject DatabaseService DB
-@inject AppState AppState
+@inject ManagerService M
 @inject ProgressService ProgressService
 @implements IDisposable
 
@@ -10,7 +10,7 @@
 {
     <LoadingSpinner />
 }
-else if (_projects.Count() == 0 && AppState.CurrentFolderId == 0)
+else if (_projects.Count() == 0 && M.State.Gallery.FolderId == 0)
 {
     <MudContainer Class="d-flex flex-column align-items-center justify-content-center" Style="height: 50vh">
         <MudPaper Class="pa-10 d-flex flex-column align-items-center" MaxWidth="30vw" Elevation="5">
@@ -53,22 +53,22 @@ else
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        AppState.OnProjectChangeTask += HandleProjectChanged;
-        AppState.OnStateHasChanged += Refresh;
+        M.OnProjectChangeTask += HandleProjectChanged;
+        M.OnStateHasChanged += Refresh;
         await LoadProjects();
     }
 
     private async Task FilterImages(bool resetFilter)
     {
         currentImgPage = 1;
-        AppState.IsGalleryFiltered = !resetFilter;
+        M.IsGalleryFiltered = !resetFilter;
         await LoadImages();
     }
 
     private async Task LoadProjects()
     {
-        _projects = await DB.GetProjects(AppState.CurrentFolderId);
-        await AppState.GetProjects();
+        _projects = await DB.GetProjects(M.State.Gallery.FolderId);
+        await M.GetProjects();
         currentImgPage = 1;
         await LoadImages();
     }
@@ -82,8 +82,8 @@ else
     private async Task LoadImages()
     {
         if (images != null && images.Images != null) images.Images.Clear();
-        if (AppState.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, AppState.CurrentProjectId, AppState.Settings.Gallery);
-        else images = await DB.GetImages(currentImgPage, AppState.CurrentProjectId);
+        if (M.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, M.State.Gallery.ProjectId, M.State.Gallery);
+        else images = await DB.GetImages(currentImgPage, M.State.Gallery.ProjectId);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -103,7 +103,7 @@ else
 
     public void Dispose()
     {
-        AppState.OnProjectChangeTask -= HandleProjectChanged;
-        AppState.OnStateHasChanged -= Refresh;
+        M.OnProjectChangeTask -= HandleProjectChanged;
+        M.OnStateHasChanged -= Refresh;
     }
 }

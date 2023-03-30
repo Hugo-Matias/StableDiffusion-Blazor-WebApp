@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject DatabaseService DB
 @inject IOService IO
 @inject ISnackbar Snackbar
@@ -161,14 +161,14 @@
 
     private async Task LoadParameters(ModeType mode)
     {
-        await AppState.LoadImageInfoParameters(Image, mode);
+        await M.LoadImageInfoParameters(Image, mode);
         Snackbar.Add($"All parameters copied to {(mode == ModeType.Img2Img ? "Img2Img" : "Txt2Img")}.");
         MudDialog.Cancel();
     }
 
     private void CopyParameter(string parameter, bool isImg2Img)
     {
-        SharedParameters param = isImg2Img ? AppState.ParametersImg2Img : AppState.ParametersTxt2Img;
+        SharedParameters param = isImg2Img ? M.ParametersImg2Img : M.ParametersTxt2Img;
         switch (parameter)
         {
             case nameof(SharedParameters.Prompt):

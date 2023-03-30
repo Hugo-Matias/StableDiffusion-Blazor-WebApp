@@ -1,9 +1,9 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject DatabaseService DB
 @inject IOService IO
 
 <div>
-    <MudCard Elevation="4" Class="@("project-card" + (AppState.CurrentProjectId == ProjectId ? " selected" : ""))">
+    <MudCard Elevation="4" Class="@("project-card" + (M.State.Gallery.ProjectId == ProjectId ? " selected" : ""))">
         <MudCardMedia Image="@_image" />
         <MudCardContent>
             <MudText Typo="Typo.h6" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@Name</MudText>

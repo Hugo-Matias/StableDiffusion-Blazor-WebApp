@@ -1,10 +1,10 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Regional Prompter</MudText>
 <MudGrid>
     <MudItem xs="4">
         <MudSelect @bind-Value=Parameters.Mode Label="Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var mode in AppState.Settings.Scripts.RegionalPrompter.Modes)
+            @foreach (var mode in M.Settings.Scripts.RegionalPrompter.Modes)
             {
                 <MudSelectItem Value="mode" />
             }

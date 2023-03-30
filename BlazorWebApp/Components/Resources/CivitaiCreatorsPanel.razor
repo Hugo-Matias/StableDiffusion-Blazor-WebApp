@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject CivitaiService Api
 
 <EditForm Model=Request OnSubmit="Search">
@@ -7,7 +7,7 @@
             <MudTextField @bind-Value=Request.Query Label="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
         </MudItem>
         <MudItem xs="3">
-            <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
+            <MudSlider @bind-Value=Request.Limit Min="M.Settings.Resources.Civitai.Limit.Min" Max="M.Settings.Resources.Civitai.Limit.Max" Step="M.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
         </MudItem>
         <MudItem xs="2">
             <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
@@ -18,9 +18,9 @@
     </MudGrid>
 </EditForm>
 
-@if (AppState.CivitaiCreators != null)
+@if (M.CivitaiCreators != null)
 {
-    <MudTable Items=@AppState.CivitaiCreators.Creators Loading=_isSearching Dense Hover>
+    <MudTable Items=@M.CivitaiCreators.Creators Loading=_isSearching Dense Hover>
     <HeaderContent>
         <MudTh>Username</MudTh>
         <MudTh>Model Count</MudTh>
@@ -33,12 +33,12 @@
     </RowTemplate>
     <PagerContent>
         <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="AppState.CivitaiCreators.Metadata.TotalPages" />
+            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="M.CivitaiCreators.Metadata.TotalPages" />
         </div>
     </PagerContent>
 </MudTable>
 }
-else if (AppState.CivitaiCreators == null && _isSearching)
+else if (M.CivitaiCreators == null && _isSearching)
 {
     <LoadingSpinner />
 }
@@ -50,7 +50,7 @@ else if (AppState.CivitaiCreators == null && _isSearching)
 
     protected override void OnInitialized()
     {
-        LoadSettings();
+        LoadState();
     }
 
     private async Task HandlePageSelected(int selection)
@@ -62,24 +62,23 @@ else if (AppState.CivitaiCreators == null && _isSearching)
     private async Task Search()
     {
         _isSearching = true;
-        SaveSettings();
-        AppState.CivitaiCreators = await Api.GetCreators(Request);
+        SetState();
+        M.CivitaiCreators = await Api.GetCreators(Request);
         _isSearching = false;
     }
 
-    private void LoadSettings()
+    private void LoadState()
     {
         Request = new();
-        Request.Query = AppState.Settings.Resources.Civitai.Query;
-        Request.Limit = AppState.Settings.Resources.Civitai.Limit.Value;
-        Request.Page = AppState.Settings.Resources.Civitai.Page;
+        Request.Query = M.State.Civitai.Creators.Shared.Query;
+        Request.Limit = M.State.Civitai.Creators.Shared.Limit;
+        Request.Page = M.State.Civitai.Creators.Shared.Page;
     }
 
-    private void SaveSettings()
+    private void SetState()
     {
-        AppState.Settings.Resources.Civitai.Query = Request.Query;
-        AppState.Settings.Resources.Civitai.Limit.Value = (int)Request.Limit;
-        AppState.Settings.Resources.Civitai.Page = (int)Request.Page;
-        AppState.SaveSettings();
+        M.State.Civitai.Creators.Shared.Query = Request.Query;
+        M.State.Civitai.Creators.Shared.Limit = (int)Request.Limit;
+        M.State.Civitai.Creators.Shared.Page = (int)Request.Page;
     }
 }

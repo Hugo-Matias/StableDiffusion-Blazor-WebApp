@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject CivitaiService Api
 @inject IDialogService DialogService
 
@@ -12,7 +12,7 @@
                     <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" Clearable />
                 </MudItem>
                 <MudItem xs="2">
-                    <MudSlider @bind-Value=Request.Limit Min="AppState.Settings.Resources.Civitai.Limit.Min" Max="AppState.Settings.Resources.Civitai.Limit.Max" Step="AppState.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
+                    <MudSlider @bind-Value=Request.Limit Min="M.Settings.Resources.Civitai.Limit.Min" Max="M.Settings.Resources.Civitai.Limit.Max" Step="M.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
                 </MudItem>
                 <MudItem xs="1">
                     <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 Class="page-number" AdornmentIcon="fa-solid fa-rotate-left" Adornment=Adornment.End OnAdornmentClick="() => Request.Page = 1" />
@@ -68,26 +68,26 @@
     <LoadingSpinner />
 
 }
-else if (AppState.CivitaiModels != null)
+else if (M.CivitaiModels != null)
 {
-    @if (AppState.CivitaiModels.Metadata.TotalPages > 1)
+    @if (M.CivitaiModels.Metadata.TotalPages > 1)
     {
         <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="AppState.CivitaiModels.Metadata.TotalPages" />
+            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="M.CivitaiModels.Metadata.TotalPages" />
         </div>
     }
 
     <MudGrid Spacing="1" Justify="Justify.Center">
-        @foreach (var model in AppState.CivitaiModels.Models)
+        @foreach (var model in M.CivitaiModels.Models)
         {
             <ResourceCard Resource="CreateResourceCard(model)" HoverColor=@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type))) OnLoad="@(async () => await ShowInfo(model))" />
         }
     </MudGrid>
 
-    @if (AppState.CivitaiModels.Metadata.TotalPages > 1)
+    @if (M.CivitaiModels.Metadata.TotalPages > 1)
     {
         <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="AppState.CivitaiModels.Metadata.TotalPages" />
+            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="M.CivitaiModels.Metadata.TotalPages" />
         </div>
     }
 }
@@ -98,14 +98,14 @@ else if (AppState.CivitaiModels != null)
 
     protected override void OnInitialized()
     {
-        LoadSettings();
+        LoadState();
     }
 
     private async Task Search()
     {
         _isSearching = true;
-        SaveSettings();
-        AppState.CivitaiModels = await Api.GetModels(Request);
+        SetState();
+        M.CivitaiModels = await Api.GetModels(Request);
         _isSearching = false;
     }
 
@@ -147,39 +147,38 @@ else if (AppState.CivitaiModels != null)
         }
     }
 
-    private void LoadSettings()
+    private void LoadState()
     {
         Request = new();
-        Request.Query = AppState.Settings.Resources.Civitai.Query;
-        Request.Limit = AppState.Settings.Resources.Civitai.Limit.Value;
-        Request.Page = AppState.Settings.Resources.Civitai.Page;
-        Request.Username = AppState.Settings.Resources.Civitai.Username;
-        Request.Tag = AppState.Settings.Resources.Civitai.Tag;
-        Request.Type = AppState.Settings.Resources.Civitai.Type;
-        Request.Sort = AppState.Settings.Resources.Civitai.Sort;
-        Request.Period = AppState.Settings.Resources.Civitai.Period;
-        Request.Rating = AppState.Settings.Resources.Civitai.Rating;
-        Request.Favorites = AppState.Settings.Resources.Civitai.Favorites;
-        Request.Hidden = AppState.Settings.Resources.Civitai.Hidden;
-        Request.IsPrimaryFileOnly = AppState.Settings.Resources.Civitai.IsPrimaryFileOnly;
-        Request.Hash = AppState.Settings.Resources.Civitai.Hash;
+        Request.Query = M.State.Civitai.Models.Shared.Query;
+        Request.Limit = M.State.Civitai.Models.Shared.Limit;
+        Request.Page = M.State.Civitai.Models.Shared.Page;
+        Request.Username = M.State.Civitai.Models.Username;
+        Request.Tag = M.State.Civitai.Models.Tag;
+        Request.Type = M.State.Civitai.Models.Type;
+        Request.Sort = M.State.Civitai.Models.Sort;
+        Request.Period = M.State.Civitai.Models.Period;
+        Request.Rating = M.State.Civitai.Models.Rating;
+        Request.Favorites = M.State.Civitai.Models.Favorites;
+        Request.Hidden = M.State.Civitai.Models.Hidden;
+        Request.IsPrimaryFileOnly = M.State.Civitai.Models.IsPrimaryFileOnly;
+        Request.Hash = M.State.Civitai.Models.Hash;
     }
 
-    private void SaveSettings()
+    private void SetState()
     {
-        AppState.Settings.Resources.Civitai.Query = Request.Query;
-        AppState.Settings.Resources.Civitai.Limit.Value = (int)Request.Limit;
-        AppState.Settings.Resources.Civitai.Page = (int)Request.Page;
-        AppState.Settings.Resources.Civitai.Username = Request.Username;
-        AppState.Settings.Resources.Civitai.Tag = Request.Tag;
-        AppState.Settings.Resources.Civitai.Type = Request.Type;
-        AppState.Settings.Resources.Civitai.Sort = (CivitaiSort)Request.Sort;
-        AppState.Settings.Resources.Civitai.Period = (CivitaiPeriod)Request.Period;
-        AppState.Settings.Resources.Civitai.Rating = (int)Request.Rating;
-        AppState.Settings.Resources.Civitai.Favorites = (bool)Request.Favorites;
-        AppState.Settings.Resources.Civitai.Hidden = (bool)Request.Hidden;
-        AppState.Settings.Resources.Civitai.IsPrimaryFileOnly = (bool)Request.IsPrimaryFileOnly;
-        AppState.Settings.Resources.Civitai.Hash = Request.Hash;
-        AppState.SaveSettings();
+        M.State.Civitai.Models.Shared.Query = Request.Query;
+        M.State.Civitai.Models.Shared.Limit= (int)Request.Limit;
+        M.State.Civitai.Models.Shared.Page = (int)Request.Page;
+        M.State.Civitai.Models.Username = Request.Username;
+        M.State.Civitai.Models.Tag = Request.Tag;
+        M.State.Civitai.Models.Type = Request.Type;
+        M.State.Civitai.Models.Sort = (CivitaiSort)Request.Sort;
+        M.State.Civitai.Models.Period = (CivitaiPeriod)Request.Period;
+        M.State.Civitai.Models.Rating = (int)Request.Rating;
+        M.State.Civitai.Models.Favorites = (bool)Request.Favorites;
+        M.State.Civitai.Models.Hidden = (bool)Request.Hidden;
+        M.State.Civitai.Models.IsPrimaryFileOnly = (bool)Request.IsPrimaryFileOnly;
+        M.State.Civitai.Models.Hash = Request.Hash;
     }
 }

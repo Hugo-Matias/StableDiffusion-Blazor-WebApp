@@ -22,7 +22,7 @@ builder.Services.AddHttpClient<SDAPIService>();
 builder.Services.AddHttpClient<CivitaiService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
 
-builder.Services.AddSingleton<AppState>();
+builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<IOService>();

@@ -1,10 +1,10 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">MultiDiffusion: Tiled Diffusion</MudText>
 <MudGrid>
     <MudItem xs="6">
         <MudSelect @bind-Value=Parameters.Method Label="Method" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var method in AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Methods)
+            @foreach (var method in M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Methods)
             {
                 <MudSelectItem Value="method" />
             }
@@ -24,8 +24,8 @@
     {
         <MudItem xs="12">
             <MudStack Row=true>
-                <MudSlider @bind-Value=Parameters.ImageWidth Min=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Step ValueLabel=true><small>Width:</small> @Parameters.ImageWidth px</MudSlider>
-                <MudSlider @bind-Value=Parameters.ImageHeight Min=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Step ValueLabel=true><small>Height:</small> @Parameters.ImageHeight px</MudSlider>
+                <MudSlider @bind-Value=Parameters.ImageWidth Min=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Min Max=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Max Step=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Step ValueLabel=true><small>Width:</small> @Parameters.ImageWidth px</MudSlider>
+                <MudSlider @bind-Value=Parameters.ImageHeight Min=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Min Max=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Max Step=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Step ValueLabel=true><small>Height:</small> @Parameters.ImageHeight px</MudSlider>
             </MudStack>
         </MudItem>
     }
@@ -34,23 +34,23 @@
     </MudItem>
     <MudItem xs="12">
         <MudStack Class="mt-n6" Row=true>
-            <MudSlider @bind-Value=Parameters.TileWidth Min=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Step ValueLabel=true><small>Width:</small> @Parameters.TileWidth px</MudSlider>
-            <MudSlider @bind-Value=Parameters.TileHeight Min=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Step ValueLabel=true><small>Height:</small> @Parameters.TileHeight px</MudSlider>
+            <MudSlider @bind-Value=Parameters.TileWidth Min=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Min Max=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Max Step=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Step ValueLabel=true><small>Width:</small> @Parameters.TileWidth px</MudSlider>
+            <MudSlider @bind-Value=Parameters.TileHeight Min=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Min Max=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Max Step=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Step ValueLabel=true><small>Height:</small> @Parameters.TileHeight px</MudSlider>
         </MudStack>
     </MudItem>
     <MudItem xs="12">
         <MudStack Row=true>
-            <MudSlider @bind-Value=Parameters.Overlap Min=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Step ValueLabel=true><small>Overlap:</small> @Parameters.Overlap px</MudSlider>
-            <MudSlider @bind-Value=Parameters.TileBatchSize Min=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Step ValueLabel=true><small>Batch Size:</small> @Parameters.TileBatchSize</MudSlider>
+            <MudSlider @bind-Value=Parameters.Overlap Min=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Min Max=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Max Step=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Step ValueLabel=true><small>Overlap:</small> @Parameters.Overlap px</MudSlider>
+            <MudSlider @bind-Value=Parameters.TileBatchSize Min=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Min Max=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Max Step=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Step ValueLabel=true><small>Batch Size:</small> @Parameters.TileBatchSize</MudSlider>
         </MudStack>
     </MudItem>
     @if (IsImg2Img)
     {
-        if (AppState.Upscalers != null)
+        if (M.Upscalers != null)
         {
             <MudItem xs="6">
                 <MudSelect @bind-Value=Parameters.UpscalerIndex Label="Upscaler" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @foreach (var upscaler in AppState.Upscalers)
+                    @foreach (var upscaler in M.Upscalers)
                     {
                         <MudSelectItem Value="upscaler.Name" />
                     }
@@ -58,7 +58,7 @@
             </MudItem>
         }
         <MudItem xs="6">
-            <MudSlider @bind-Value=Parameters.ScaleFactor Min=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Min Max=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Max Step=AppState.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Step ValueLabel=true><small>Scale Factor:</small> @Parameters.ScaleFactor</MudSlider>
+            <MudSlider @bind-Value=Parameters.ScaleFactor Min=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Min Max=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Max Step=M.Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Step ValueLabel=true><small>Scale Factor:</small> @Parameters.ScaleFactor</MudSlider>
         </MudItem>
     }
     <MudItem xs="12">
@@ -72,6 +72,6 @@
 
     protected async override Task OnInitializedAsync()
     {
-        if (AppState.Upscalers == null) await AppState.GetUpscalers();
+        if (M.Upscalers == null) await M.GetUpscalers();
     }
 }

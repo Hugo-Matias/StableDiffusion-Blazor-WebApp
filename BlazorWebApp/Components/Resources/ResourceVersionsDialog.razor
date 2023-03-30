@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 
 <MudDialog Class="pa-4">
     <TitleContent>
@@ -16,7 +16,7 @@
         <MudStack Style="overflow: scroll" Row=true>
             @foreach (var file in Resource.Files)
             {
-                if (AppState.ResourceIsEnabledFilter == null || file.IsEnabled == AppState.ResourceIsEnabledFilter)
+                if (M.State.Resources.ResourceIsEnabledFilter == null || file.IsEnabled == M.State.Resources.ResourceIsEnabledFilter)
                 {
                     <ResourceCard Resource="file" Title=@(file.Title.Split("_", 2, StringSplitOptions.RemoveEmptyEntries).LastOrDefault()) OnLoad=@(() => Load(file)) />
                 }

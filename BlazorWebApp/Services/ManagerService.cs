@@ -9,7 +9,7 @@ namespace BlazorWebApp.Services
 {
     public enum Outdir { Txt2ImgSamples, Txt2ImgGrid, Img2ImgSamples, Img2ImgGrid, Extras }
 
-    public class AppState
+    public class ManagerService
     {
         private readonly string _settingsFile = "BlazorDiffusion.json";
         private readonly SDAPIService _api;
@@ -17,18 +17,14 @@ namespace BlazorWebApp.Services
         private readonly IOService _io;
         private readonly ProgressService _progress;
         private readonly IConfiguration _configuration;
-        private bool _isConverging;
-        private int _currentBrushSize;
-        private string _currentBrushColor;
         private int _currentProgress;
+        private bool _isConverging;
         private bool _isWebuiUp;
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
         public event Action OnStyleChange;
         public event Action OnConverging;
-        public event Action OnBrushSizeChange;
-        public event Action OnBrushColorChange;
         public event Action OnFolderChange;
         public event Action OnProjectsChange;
         public event Action OnProjectChange;
@@ -54,38 +50,13 @@ namespace BlazorWebApp.Services
         public Txt2ImgParameters ParametersTxt2Img { get; set; }
         public Img2ImgParameters ParametersImg2Img { get; set; }
         public UpscaleParameters ParametersUpscale { get; set; }
-        public AppStateModel State { get; set; }
-        public IEnumerable<PromptStyle> CurrentStyles { get; set; }
-        public string CurrentSDModel { get; set; } = "Loading...";
-        public string CurrentVae { get; set; }
-        public int CurrentFolderId { get; set; }
-        public string CurrentFolderName { get; set; }
-        public int CurrentProjectId { get; set; }
-        public string CurrentProjectName { get; set; }
-        public string CurrentResourceSubType { get; set; }
-        public long CurrentSeed { get; set; }
+        public AppState State { get; set; }
         public int CurrentProgress
         {
             get => _currentProgress; set
             {
                 _currentProgress = value;
                 OnProgressChanged?.Invoke();
-            }
-        }
-        public int CurrentBrushSize
-        {
-            get => _currentBrushSize; set
-            {
-                _currentBrushSize = value;
-                OnBrushSizeChange?.Invoke();
-            }
-        }
-        public string CurrentBrushColor
-        {
-            get => _currentBrushColor; set
-            {
-                _currentBrushColor = value;
-                OnBrushColorChange?.Invoke();
             }
         }
         public List<string> CanvasStates { get; set; } = new();
@@ -100,7 +71,6 @@ namespace BlazorWebApp.Services
         public CivitaiModelsDto CivitaiModels { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
         public Dictionary<string, string> ResourceTypeDirectories { get; set; }
-        public bool? ResourceIsEnabledFilter { get; set; }
         public bool IsConverging
         {
             get => _isConverging;
@@ -120,7 +90,7 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public AppState(SDAPIService api, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration)
+        public ManagerService(SDAPIService api, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration)
         {
             _api = api;
             _db = db;
@@ -128,40 +98,35 @@ namespace BlazorWebApp.Services
             _progress = progress;
             _configuration = configuration;
 
-            GetCmdFlags();
             LoadSettings();
-            _db.PageSize = Settings.Gallery.PageSize;
-            Settings.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
             State = new(Settings);
             Images = new();
             Progress = new();
             Folders = new();
             Projects = new();
-            CurrentBrushSize = Settings.Img2Img.Brush.DefaultValue;
-            CurrentBrushColor = Settings.Img2Img.Brush.Color;
+            _db.PageSize = State.Gallery.PageSize;
+            State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
+            GetCmdFlags();
             GetButtonTags();
             ModeType[] modes = new ModeType[3] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras };
             InitializeParameters(modes);
-
-            if (Settings.Folder > 0) SetCurrentFolder(Settings.Folder);
-            if (Settings.Project > 0) SetCurrentProject(Settings.Project);
         }
 
         public void InitializeParameters(ModeType[] modes)
         {
             var defaultParameters = new SharedParameters()
             {
-                Steps = Settings.Shared.Steps.DefaultValue,
+                Steps = Settings.Shared.Steps.Value,
                 SamplerIndex = Settings.Shared.Sampler,
                 Seed = Settings.Shared.Seed,
-                CfgScale = Settings.Shared.CfgScale.DefaultValue,
+                CfgScale = Settings.Shared.CfgScale.Value,
                 Width = Settings.Shared.Resolution.Width,
                 Height = Settings.Shared.Resolution.Height,
-                NIter = Settings.Shared.Batch.Count.DefaultValue,
-                BatchSize = Settings.Shared.Batch.Size.DefaultValue,
-                DenoisingStrength = Settings.Shared.Denoising.DefaultValue,
+                NIter = Settings.Shared.Batch.Count.Value,
+                BatchSize = Settings.Shared.Batch.Size.Value,
+                DenoisingStrength = Settings.Shared.Denoising.Value,
                 RestoreFaces = Settings.Shared.FaceRestoration,
                 Tiling = Settings.Shared.Tilling,
             };
@@ -173,10 +138,10 @@ namespace BlazorWebApp.Services
                     FirstphaseWidth = Settings.Txt2Img.HighRes.FirstPass.Width,
                     FirstphaseHeight = Settings.Txt2Img.HighRes.FirstPass.Height,
                     HRUpscaler = Settings.Txt2Img.HighRes.Upscaler,
-                    HRScale = Settings.Txt2Img.HighRes.Scale.DefaultValue,
+                    HRScale = Settings.Txt2Img.HighRes.Scale.Value,
                     HRWidth = Settings.Txt2Img.HighRes.Resolution.Width,
                     HRHeight = Settings.Txt2Img.HighRes.Resolution.Height,
-                    HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.DefaultValue,
+                    HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.Value,
                     Scripts = new()
                     {
                         ControlNet = new() { CreateControlNet() },
@@ -191,11 +156,11 @@ namespace BlazorWebApp.Services
             if (modes.Contains(ModeType.Img2Img))
                 ParametersImg2Img = new Img2ImgParameters(defaultParameters)
                 {
-                    MaskBlur = Settings.Img2Img.MaskBlur.DefaultValue,
+                    MaskBlur = Settings.Img2Img.MaskBlur.Value,
                     ResizeMode = Settings.Img2Img.ResizeMode,
                     InpaintingFill = Settings.Img2Img.Inpainting.Fill,
-                    InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.DefaultValue,
-                    InpaintFullResPadding = Settings.Img2Img.Inpainting.FullRes.Padding.DefaultValue,
+                    InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.Value,
+                    InpaintFullResPadding = Settings.Img2Img.Inpainting.FullRes.Padding.Value,
                     InpaintingMaskInvert = Settings.Img2Img.Inpainting.MaskInvert,
                     Scripts = new()
                     {
@@ -383,19 +348,19 @@ namespace BlazorWebApp.Services
 
         public async Task SetSDModel(string modelTitle)
         {
-            CurrentSDModel = "Loading...";
+            State.Generation.SDModel = "Loading...";
             OnSDModelsChange?.Invoke();
             var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
             _progress.Add(progressBar);
             await _api.PostOptions(new() { SDModelCheckpoint = modelTitle });
             _progress.Remove(progressBar.Id);
-            CurrentSDModel = modelTitle;
+            State.Generation.SDModel = modelTitle;
             OnSDModelsChange?.Invoke();
         }
 
         public async Task SetVae(string vae)
         {
-            CurrentVae = vae;
+            State.Generation.Vae = vae;
             await _api.PostOptions(new() { SDVae = vae });
         }
 
@@ -413,7 +378,7 @@ namespace BlazorWebApp.Services
             {
                 Styles.Add(new(prompt));
             }
-            if (CurrentStyles == null) CurrentStyles = new List<PromptStyle>();
+            if (State.Generation.Styles == null) State.Generation.Styles = new List<PromptStyle>();
         }
 
         public async Task GetUpscalers()
@@ -428,8 +393,8 @@ namespace BlazorWebApp.Services
 
         public async Task GetProjects()
         {
-            Projects = await _db.GetProjects(CurrentFolderId);
-            if (Settings.Gallery.GalleriesOrderDescending) Projects.Reverse();
+            Projects = await _db.GetProjects(State.Gallery.FolderId);
+            if (State.Gallery.GalleriesOrderDescending) Projects.Reverse();
             OnProjectsChange?.Invoke();
         }
 
@@ -440,15 +405,14 @@ namespace BlazorWebApp.Services
             if (id > 0)
             {
                 await GetFolders();
-                CurrentFolderId = id;
-                CurrentFolderName = Folders.FirstOrDefault(f => f.Id == id)!.Name;
+                State.Gallery.FolderId = id;
+                State.Gallery.FolderName = Folders.FirstOrDefault(f => f.Id == id)!.Name;
             }
             else
             {
-                CurrentFolderId = 0;
-                CurrentFolderName = "All";
+                State.Gallery.FolderId = 0;
+                State.Gallery.FolderName = "All";
             }
-            Settings.Folder = CurrentFolderId;
             SaveSettings();
             await GetProjects();
             OnFolderChange?.Invoke();
@@ -458,9 +422,8 @@ namespace BlazorWebApp.Services
         {
             await GetFolders();
             await GetProjects();
-            CurrentProjectId = id;
-            CurrentProjectName = Projects.FirstOrDefault(p => p.Id == id)?.Name;
-            Settings.Project = CurrentProjectId;
+            State.Gallery.ProjectId = id;
+            State.Gallery.ProjectName = Projects.FirstOrDefault(p => p.Id == id)?.Name;
             SaveSettings();
             OnProjectChange?.Invoke();
             OnProjectChangeTask?.Invoke();
@@ -563,7 +526,7 @@ namespace BlazorWebApp.Services
                     case "[sampler]":
                         return ParametersTxt2Img.SamplerIndex;
                     case "[seed]":
-                        return CurrentSeed.ToString();
+                        return State.Generation.Seed.ToString();
                     case "[steps]":
                         return ParametersTxt2Img.Steps.ToString();
                     case "[cfg]":
@@ -578,7 +541,7 @@ namespace BlazorWebApp.Services
                     case "[sampler]":
                         return ParametersImg2Img.SamplerIndex;
                     case "[seed]":
-                        return CurrentSeed.ToString();
+                        return State.Generation.Seed.ToString();
                     case "[steps]":
                         return ParametersImg2Img.Steps.ToString();
                     case "[cfg]":

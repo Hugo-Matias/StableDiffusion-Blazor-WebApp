@@ -15,17 +15,17 @@ namespace BlazorWebApp.Services
         private readonly IConfiguration _configuration;
         private readonly ImageService _img;
         private readonly IOService _io;
-        private readonly AppState _app;
+        private readonly ManagerService _m;
         private readonly DatabaseService _db;
         private readonly ProgressService _progress;
         private readonly List<CivitaiModelType> _ignoreDatabaseTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
 
-        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, AppState app, DatabaseService db, ProgressService progress)
+        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, ManagerService m, DatabaseService db, ProgressService progress)
         {
             _configuration = configuration;
             _img = img;
             _io = io;
-            _app = app;
+            _m  = m;
             _db = db;
             _progress = progress;
             _httpClient = httpClient;
@@ -232,7 +232,7 @@ namespace BlazorWebApp.Services
             foreach (var entity in resources.Where(r => r.CivitaiModelVersionId != null))
             {
                 index++;
-                _app.CurrentProgress = (index * 100) / resources.Count;
+                _m.CurrentProgress = (index * 100) / resources.Count;
                 var resource = await GetModelVersion((int)entity.CivitaiModelVersionId);
                 if (resource != null)
                 {
@@ -240,7 +240,7 @@ namespace BlazorWebApp.Services
                     await _db.UpdateResource(entity);
                 }
             }
-            _app.CurrentProgress = 0;
+            _m.CurrentProgress = 0;
         }
 
         public async Task UpdateResourceState()

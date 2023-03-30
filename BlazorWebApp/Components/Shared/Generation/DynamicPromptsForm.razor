@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject IOService IO
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Dynamic Prompts</MudText>
@@ -31,21 +31,21 @@
         </MudChipSet>
     </MudItem>
     <MudItem xs="12" Class="@($"collapse {(Parameters.IsCombinatorial ? "show" : "")}")">
-        <MudSlider @bind-Value=Parameters.MaxGenerations Min=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Min Max=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Max Step=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Step><small>Max Generations:</small> @GetMaxGenerationsValue()</MudSlider>
-        <MudSlider @bind-Value=Parameters.CombinatorialBatches Min=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Min Max=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Max Step=AppState.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Step><small>Batches:</small> @Parameters.CombinatorialBatches</MudSlider>
+        <MudSlider @bind-Value=Parameters.MaxGenerations Min=M.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Min Max=M.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Max Step=M.Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Step><small>Max Generations:</small> @GetMaxGenerationsValue()</MudSlider>
+        <MudSlider @bind-Value=Parameters.CombinatorialBatches Min=M.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Min Max=M.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Max Step=M.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Step><small>Batches:</small> @Parameters.CombinatorialBatches</MudSlider>
         <MudText Style="opacity: 0.5;" Typo="Typo.caption">Re-run combinatorial batch @Parameters.CombinatorialBatches times with a different seed each time.</MudText>
     </MudItem>
     <MudItem xs="12" Class="@($"collapse {(Parameters.IsMagicPrompt ? "show" : "")}")">
         <MudGrid>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.MagicPromptLength Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Step><small>Maximum Length:</small> @Parameters.MagicPromptLength tokens</MudSlider>
+                <MudSlider @bind-Value=Parameters.MagicPromptLength Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Step><small>Maximum Length:</small> @Parameters.MagicPromptLength tokens</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.MagicPromptCreativity Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Step><small>Creativity:</small> @Parameters.MagicPromptCreativity</MudSlider>
+                <MudSlider @bind-Value=Parameters.MagicPromptCreativity Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Step><small>Creativity:</small> @Parameters.MagicPromptCreativity</MudSlider>
             </MudItem>
             <MudItem xs="12">
                 <MudSelect @bind-Value=Parameters.MagicModel Label="Model" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
-                    @foreach (var model in AppState.Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList)
+                    @foreach (var model in M.Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList)
                     {
                         <MudSelectItem Value="model">@model</MudSelectItem>
                     }
@@ -75,13 +75,13 @@
                 </MudTooltip>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MinAttention Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Minimum Attention:</small> @Parameters.MinAttention</MudSlider>
+                <MudSlider @bind-Value=Parameters.MinAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Minimum Attention:</small> @Parameters.MinAttention</MudSlider>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MaxAttention Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Maximum Attention:</small> @Parameters.MaxAttention</MudSlider>
+                <MudSlider @bind-Value=Parameters.MaxAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Maximum Attention:</small> @Parameters.MaxAttention</MudSlider>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MagicBatchSize Min=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Min Max=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Max Step=AppState.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Step><small>Batch Size:</small> @Parameters.MagicBatchSize</MudSlider>
+                <MudSlider @bind-Value=Parameters.MagicBatchSize Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Step><small>Batch Size:</small> @Parameters.MagicBatchSize</MudSlider>
             </MudItem>
         </MudGrid>
     </MudItem>
@@ -98,9 +98,9 @@
 
     protected override void OnInitialized()
     {
-        if (AppState.CmdFlags != null && !string.IsNullOrWhiteSpace(AppState.CmdFlags.BaseDir))
+        if (M.CmdFlags != null && !string.IsNullOrWhiteSpace(M.CmdFlags.BaseDir))
         {
-            var path = Path.Combine(AppState.CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "helptext.html");
+            var path = Path.Combine(M.CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "helptext.html");
             if (File.Exists(path)) _helpText = (MarkupString)IO.LoadText(path).Replace("$$", "$");
         }
     }

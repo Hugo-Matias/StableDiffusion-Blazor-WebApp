@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Control Net</MudText>
 <MudDynamicTabs @ref="@_cnTabs" @bind-ActivePanelIndex="@_cnTabIndex"
@@ -44,7 +44,7 @@
     public async Task AddTab(Guid id)
     {
         _unitCount++;
-        var parameters = AppState.CreateControlNet();
+        var parameters = M.CreateControlNet();
         Units.Add(parameters);
         _cnUnits.Add(new ControlNetUnit { Id = id, Label = $"Unit {_unitCount}", Parameters = parameters });
         //_cnTabIndex = _cnUnits.Count - 1;

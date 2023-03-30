@@ -1,20 +1,20 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject ImageService ImageService
 @implements IDisposable
 
 <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" Rounded Centered>
     <MudTabPanel Text="Preview">
-        @if (AppState.GeneratedImageEntities != null && AppState.GeneratedImageEntities.Images != null)
+        @if (M.GeneratedImageEntities != null && M.GeneratedImageEntities.Images != null)
         {
-            <ImageCarousel Images="AppState.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
+            <ImageCarousel Images="M.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
             <br />
-            @if (AppState.ImagesInfo != null)
+            @if (M.ImagesInfo != null)
             {
-                <span class="generation-info-text"><small>@AppState.ImagesInfo.InfoTexts[0]</small></span>
+                <span class="generation-info-text"><small>@M.ImagesInfo.InfoTexts[0]</small></span>
             }
-            else if (AppState.GeneratedUpscaleImage.Info != null)
+            else if (M.GeneratedUpscaleImage.Info != null)
             {
-                <span class="generation-info-text"><small>@AppState.GeneratedUpscaleImage.Info</small></span>
+                <span class="generation-info-text"><small>@M.GeneratedUpscaleImage.Info</small></span>
             }
         }
         else
@@ -23,9 +23,9 @@
         }
     </MudTabPanel>
     <MudTabPanel Text="Generated">
-        @if (AppState.GeneratedImageEntities != null)
+        @if (M.GeneratedImageEntities != null)
         {
-            <ImagesContainer Images="AppState.GeneratedImageEntities" />
+            <ImagesContainer Images="M.GeneratedImageEntities" />
         }
         else
         {
@@ -33,21 +33,21 @@
         }
     </MudTabPanel>
     <MudTabPanel Text="Progress">
-        @if (AppState.Progress.State != null && AppState.IsConverging)
+        @if (M.Progress.State != null && M.IsConverging)
         {
-            var value = AppState.Progress.Value * 100;
+            var value = M.Progress.Value * 100;
             <MudProgressLinear Style="height: 1.3rem !important;" Color="Color.Secondary" Value="@value" Min=0 Max=100 Class="mb-5" Rounded>
             <MudText Typo="Typo.caption" Class="py-2">
                 <strong>@((int)value)%</strong>
-                    @if (!string.IsNullOrWhiteSpace(AppState.Progress.State.Job))
+                    @if (!string.IsNullOrWhiteSpace(M.Progress.State.Job))
                     {
-                        <small> | @AppState.Progress.State.Job</small>
+                        <small> | @M.Progress.State.Job</small>
                     }
                 </MudText>
             </MudProgressLinear>
-            if (AppState.Progress.CurrentImage != null)
+            if (M.Progress.CurrentImage != null)
             {
-                <MudImage Src=@($"data:image/png;base64,{AppState.Progress.CurrentImage}") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+                <MudImage Src=@($"data:image/png;base64,{M.Progress.CurrentImage}") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
             }
         }
         else

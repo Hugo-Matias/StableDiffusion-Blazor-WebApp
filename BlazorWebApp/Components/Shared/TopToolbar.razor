@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject SDAPIService SD
 @inject DatabaseService DB
 @inject IOService IO
@@ -7,28 +7,28 @@
 <div class="mt-6">
     <MudGrid Justify="Justify.FlexEnd">
         <MudItem xs="6">
-            <MudSelect T=string Value=AppState.CurrentFolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect T=string Value=M.State.Gallery.FolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 <MudSelectItem Value=@("")>All</MudSelectItem>
-                @foreach (var folder in AppState.Folders)
+                @foreach (var folder in M.Folders)
                 {
                     <MudSelectItem Value="@folder.Name">@folder.Name</MudSelectItem>
                 }
             </MudSelect>
         </MudItem>
         <MudItem xs="6">
-            <MudSelect T=string Value=AppState.CurrentProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                @foreach (var project in AppState.Projects)
+            <MudSelect T=string Value=M.State.Gallery.ProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                @foreach (var project in M.Projects)
                 {
                     <MudSelectItem Value="@project.Name">@project.Name</MudSelectItem>
                 }
             </MudSelect>
         </MudItem>
-        @if (AppState.Options != null)
+        @if (M.Options != null)
         {
             <MudItem xs="12">
                 <MudGrid>
                     <MudItem xs="4">
-                        @if (AppState.CurrentSDModel == "Loading...")
+                        @if (M.State.Generation.SDModel == "Loading...")
                         {
                             <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
                                 <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading...</MudText>
@@ -37,10 +37,10 @@
                         }
                         else
                         {
-                            <MudSelect Value="AppState.CurrentSDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" OnAdornmentClick="async () => await RefreshModels()" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="600">
-                                @if (AppState.SDModels != null)
+                            <MudSelect Value="M.State.Generation.SDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" OnAdornmentClick="async () => await RefreshModels()" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="600">
+                                @if (M.SDModels != null)
                                 {
-                                    @foreach (var model in AppState.SDModels)
+                                    @foreach (var model in M.SDModels)
                                     {
                                         <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
                                     }
@@ -49,7 +49,7 @@
                         }
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSelect Value="AppState.CurrentVae" T="string" ValueChanged="HandleVaeSelected" Label="VAE" AdornmentIcon="fa-solid fa-wand-sparkles" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
+                        <MudSelect Value="M.State.Generation.Vae" T="string" ValueChanged="HandleVaeSelected" Label="VAE" AdornmentIcon="fa-solid fa-wand-sparkles" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
                             <MudSelectItem Value=@("None")>None</MudSelectItem>
                             <MudSelectItem Value=@("Automatic")>Automatic</MudSelectItem>
                             @foreach (var file in IO.GetFilesRecursive(_vaeDir))
@@ -59,7 +59,7 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider Value="_clipSkip" T="int" ValueChanged=@((v) => HandleClipSkipChanged(v)) Min="AppState.Settings.Webui.ClipSkip.Min" Max="AppState.Settings.Webui.ClipSkip.Max" Step="AppState.Settings.Webui.ClipSkip.Step" TickMarks ValueLabel><small>Clip Skip:</small> @AppState.Options.ClipSkip</MudSlider>
+                        <MudSlider Value="_clipSkip" T="int" ValueChanged=@((v) => HandleClipSkipChanged(v)) Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks ValueLabel><small>Clip Skip:</small> @M.Options.ClipSkip</MudSlider>
                 </MudItem>
             </MudGrid>
         </MudItem>
@@ -74,32 +74,32 @@
 
     protected async override Task OnInitializedAsync()
     {
-        AppState.OnWebuiStateChanged += Refresh;
-        AppState.OnConverging += Refresh;
-        AppState.OnOptionsChange += Refresh;
-        AppState.OnFolderChange += Refresh;
-        AppState.OnProjectChange += Refresh;
-        AppState.OnProjectsChange += Refresh;
-        AppState.OnStateHasChanged += Refresh;
-        AppState.OnSDModelsChange += Refresh;
+        M.OnWebuiStateChanged += Refresh;
+        M.OnConverging += Refresh;
+        M.OnOptionsChange += Refresh;
+        M.OnFolderChange += Refresh;
+        M.OnProjectChange += Refresh;
+        M.OnProjectsChange += Refresh;
+        M.OnStateHasChanged += Refresh;
+        M.OnSDModelsChange += Refresh;
 
-        await AppState.GetFolders();
-        await AppState.GetProjects();
-        if (AppState.Projects != null && AppState.Projects.Count > 0)
+        await M.GetFolders();
+        await M.GetProjects();
+        if (M.Projects != null && M.Projects.Count > 0)
         {
-            if (AppState.CurrentProjectId == 0)
+            if (M.State.Gallery.ProjectId == 0)
             {
                 var latestProject = await DB.GetLatestProject();
-                await AppState.SetCurrentProject(latestProject.Id);
+                await M.SetCurrentProject(latestProject.Id);
             }
             else
             {
-                await AppState.SetCurrentProject(AppState.CurrentProjectId);
+                await M.SetCurrentProject(M.State.Gallery.ProjectId);
             }
         }
         else
         {
-            AppState.CurrentProjectName = "Create New Project...";
+            M.State.Gallery.ProjectName = "Create New Project...";
         }
 
         await InitializeWebui();
@@ -107,66 +107,66 @@
 
     private async Task InitializeWebui()
     {
-        if (!AppState.IsWebuiUp) return;
+        if (!M.IsWebuiUp) return;
 
-        await AppState.GetOptions();
-        await AppState.GetSDModels();
-        await AppState.GetSamplers();
-        await AppState.GetStyles();
+        await M.GetOptions();
+        await M.GetSDModels();
+        await M.GetSamplers();
+        await M.GetStyles();
 
-        _vaeDir = string.IsNullOrWhiteSpace(AppState.CmdFlags.VaeDir) ? Path.Join(AppState.CmdFlags.BaseDir, @"models/VAE") : AppState.CmdFlags.VaeDir;
-        _clipSkip = (int)AppState.Options.ClipSkip;
+        _vaeDir = string.IsNullOrWhiteSpace(M.CmdFlags.VaeDir) ? Path.Join(M.CmdFlags.BaseDir, @"models/VAE") : M.CmdFlags.VaeDir;
+        _clipSkip = (int)M.Options.ClipSkip;
 
-        AppState.CurrentSDModel = AppState.Options.SDModelCheckpoint;
-        AppState.CurrentVae = AppState.Options.SDVae;
+        M.State.Generation.SDModel = M.Options.SDModelCheckpoint;
+        M.State.Generation.Vae = M.Options.SDVae;
 
         _isWebuiInitialized = true;
     }
 
-    private async Task HandleModelSelected(string selected) => await AppState.SetSDModel(selected);
+    private async Task HandleModelSelected(string selected) => await M.SetSDModel(selected);
 
     private async Task RefreshModels()
     {
-        var currentModel = AppState.CurrentSDModel;
-        AppState.CurrentSDModel = "Loading...";
+        var currentModel = M.State.Generation.SDModel;
+        M.State.Generation.SDModel = "Loading...";
         Refresh();
         _ = await SD.PostRefreshModels();
-        await AppState.GetSDModels();
-        AppState.CurrentSDModel = currentModel;
+        await M.GetSDModels();
+        M.State.Generation.SDModel = currentModel;
         Refresh();
     }
 
     private async Task HandleProjectSelected(string selected)
     {
-        await AppState.SetCurrentProject(DB.GetProject(selected).Result.Id);
+        await M.SetCurrentProject(DB.GetProject(selected).Result.Id);
         Refresh();
     }
 
     private async Task HandleFolderSelected(string selected)
     {
-        if (string.IsNullOrWhiteSpace(selected)) await AppState.SetCurrentFolder(0);
-        else await AppState.SetCurrentFolder(DB.GetFolder(selected).Result.Id);
+        if (string.IsNullOrWhiteSpace(selected)) await M.SetCurrentFolder(0);
+        else await M.SetCurrentFolder(DB.GetFolder(selected).Result.Id);
         Refresh();
     }
 
-    private async Task HandleVaeSelected(string selected) => await AppState.SetVae(selected);
+    private async Task HandleVaeSelected(string selected) => await M.SetVae(selected);
 
     private async Task HandleClipSkipChanged(int value)
     {
         _clipSkip = value;
-        await AppState.PostOptions(new() { ClipSkip = (float)_clipSkip });
+        await M.PostOptions(new() { ClipSkip = (float)_clipSkip });
     }
 
     public void Dispose()
     {
-        AppState.OnWebuiStateChanged -= Refresh;
-        AppState.OnConverging -= Refresh;
-        AppState.OnOptionsChange -= Refresh;
-        AppState.OnFolderChange -= Refresh;
-        AppState.OnProjectChange -= Refresh;
-        AppState.OnProjectsChange -= Refresh;
-        AppState.OnStateHasChanged -= Refresh;
-        AppState.OnSDModelsChange -= Refresh;
+        M.OnWebuiStateChanged -= Refresh;
+        M.OnConverging -= Refresh;
+        M.OnOptionsChange -= Refresh;
+        M.OnFolderChange -= Refresh;
+        M.OnProjectChange -= Refresh;
+        M.OnProjectsChange -= Refresh;
+        M.OnStateHasChanged -= Refresh;
+        M.OnSDModelsChange -= Refresh;
     }
 
     private async void Refresh()

@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject MagickService Magick
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -65,10 +65,10 @@
             _ctxWork = await _canvasWork.GetContext2DAsync();
             _ctxPointer = await _canvasPointer.GetContext2DAsync();
 
-            AppState.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-            AppState.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+            M.State.Generation.Img2Img.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+            M.State.Generation.Img2Img.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
 
-            if (!string.IsNullOrEmpty(AppState.CanvasImageData)) { await LoadImage(); }
+            if (!string.IsNullOrEmpty(M.CanvasImageData)) { await LoadImage(); }
         }
     }
 
@@ -85,7 +85,7 @@
         if (!_isDrawing) return;
         await _ctx.StrokeAsync();
         var image = await _ctx.GetImageDataAsync(0, 0, _canvasWidth, _canvasHeight);
-        AppState.CanvasStates.Add(image); // Add state to array for undoing
+        M.CanvasStates.Add(image); // Add state to array for undoing
         _isDrawing = false;
     }
 
@@ -102,8 +102,8 @@
 
         await using (var cctx = _ctx.CreateBatch())
         {
-            await cctx.StrokeStyleAsync(AppState.CurrentBrushColor);
-            await cctx.LineWidthAsync(AppState.CurrentBrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2);
+            await cctx.StrokeStyleAsync(M.State.Generation.Img2Img.BrushColor);
+            await cctx.LineWidthAsync(M.State.Generation.Img2Img.BrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2);
             await cctx.LineCapAsync(LineCap.Round);
             await cctx.LineJoinAsync(LineJoin.Round);
             await cctx.LineToAsync(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
@@ -119,8 +119,8 @@
         {
             await batch.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
             await batch.BeginPathAsync();
-            await batch.ArcAsync(x, y, AppState.CurrentBrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2 / 2, 0, Math.PI * 2);
-            await batch.FillStyleAsync(AppState.CurrentBrushColor);
+            await batch.ArcAsync(x, y, M.State.Generation.Img2Img.BrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2 / 2, 0, Math.PI * 2);
+            await batch.FillStyleAsync(M.State.Generation.Img2Img.BrushColor);
             await batch.FillAsync(FillRule.NonZero);
             await batch.StrokeStyleAsync("white");
             await batch.StrokeAsync();
@@ -129,21 +129,21 @@
 
     private async Task LoadImage()
     {
-        await _canvasInstance.InvokeVoidAsync("loadImage", AppState.CanvasImageData);
+        await _canvasInstance.InvokeVoidAsync("loadImage", M.CanvasImageData);
         await OnImageChanged.InvokeAsync();
     }
 
     [JSInvokable]
     public void LoadImageData(string img, string? mask = null)
     {
-        if (!string.IsNullOrWhiteSpace(mask)) { AppState.CanvasMaskData = mask; }
-        AppState.CanvasImageData = img;
+        if (!string.IsNullOrWhiteSpace(mask)) { M.CanvasMaskData = mask; }
+        M.CanvasImageData = img;
         OnImageChanged.InvokeAsync();
     }
 
     private async Task LoadCanvasState()
     {
-        await _ctx.PutImageDataAsync(AppState.CanvasStates.LastOrDefault(), 0, 0);
+        await _ctx.PutImageDataAsync(M.CanvasStates.LastOrDefault(), 0, 0);
     }
 
     private async Task LoadImage(string file)
@@ -161,7 +161,7 @@
 
     public async Task Generate()
     {
-        if (AppState.Settings.Img2Img.Mode == "Paint")
+        if (M.State.Generation.Img2Img.Mode == "Paint")
         {
             await _canvasInstance.InvokeAsync<string>("saveInpaint");
         }
@@ -177,25 +177,25 @@
 
     public async Task Undo()
     {
-        if (AppState.CanvasStates.Count <= 0) return;
+        if (M.CanvasStates.Count <= 0) return;
 
-        if (AppState.CanvasStates.Count == 1)
+        if (M.CanvasStates.Count == 1)
         {
             await Clear();
         }
         else
         {
-            AppState.CanvasStates.RemoveAt(AppState.CanvasStates.Count - 1);
-            await _ctx.PutImageDataAsync(AppState.CanvasStates.LastOrDefault(), 0, 0);
+            M.CanvasStates.RemoveAt(M.CanvasStates.Count - 1);
+            await _ctx.PutImageDataAsync(M.CanvasStates.LastOrDefault(), 0, 0);
         }
     }
 
     public async Task Clear()
     {
-        AppState.CanvasStates.Clear();
+        M.CanvasStates.Clear();
         await _ctx.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
         await _canvasInstance.InvokeVoidAsync("clearData");
-        AppState.CanvasMaskData = null;
+        M.CanvasMaskData = null;
     }
 
     [JSInvokable]
@@ -216,16 +216,16 @@
         using var stream = e.File.OpenReadStream(maxSize);
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
-        var imageString = Magick.ResizeImage(ms.ToArray(), AppState.Settings.Img2Img.DownsizeInput);
+        var imageString = Magick.ResizeImage(ms.ToArray(), M.State.Generation.Img2Img.DownsizeInput);
         var data = $"data:{e.File.ContentType};base64,{imageString}";
-        AppState.CanvasImageData = data;
+        M.CanvasImageData = data;
         await LoadImage();
     }
 
     public async ValueTask DisposeAsync()
     {
-        AppState.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-        AppState.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+        M.State.Generation.Img2Img.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+        M.State.Generation.Img2Img.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
 
         if (_canvasInstance != null)
         {

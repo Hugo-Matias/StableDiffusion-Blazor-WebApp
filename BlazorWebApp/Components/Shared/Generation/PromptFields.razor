@@ -1,6 +1,6 @@
 ﻿@using System.Text.Json;
 @inject IOService IO
-@inject AppState AppState
+@inject ManagerService M
 
 <div>
     <EditForm Model="Parameters">
@@ -15,18 +15,18 @@
                 <MudItem xs="3">
                     <MudStack Class="h-100 w-100">
                         <MudChipSet Style="height: 10vh; overflow: scroll;" ReadOnly>
-                            @if (AppState.CurrentStyles != null && AppState.CurrentStyles.Count() > 0)
+                            @if (M.State.Generation.Styles != null && M.State.Generation.Styles.Count() > 0)
                             {
-                                @foreach (var style in AppState.CurrentStyles)
+                                @foreach (var style in M.State.Generation.Styles)
                                 {
                                     <MudChip Color="Color.Primary">@style.Name</MudChip>
                                 }
                             }
                         </MudChipSet>
-                        <MudSelect Label="Styles" Text="" SelectedValues="AppState.CurrentStyles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
-                            @if (AppState.Styles != null)
+                        <MudSelect Label="Styles" Text="" SelectedValues="M.State.Generation.Styles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
+                            @if (M.Styles != null)
                             {
-                                @foreach (var style in AppState.Styles)
+                                @foreach (var style in M.Styles)
                                 {
                                     if (!(string.IsNullOrWhiteSpace(style.Prompt) && string.IsNullOrWhiteSpace(style.NegativePrompt)))
                                     {
@@ -43,8 +43,8 @@
     </EditForm>
 </div>
 
-<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags=AppState.ButtonTags />
-<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags=AppState.ButtonTags />
+<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags=M.ButtonTags />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags=M.ButtonTags />
 
 @code {
     [Parameter]
@@ -74,11 +74,11 @@
 
     protected override void OnInitialized()
     {
-        if (AppState.ButtonTags == null) AppState.GetButtonTags();
+        if (M.ButtonTags == null) M.GetButtonTags();
     }
 
     private void HandleStylesChanged(IEnumerable<PromptStyle> styles)
     {
-        AppState.CurrentStyles = styles;
+        M.State.Generation.Styles = styles;
     }
 }

@@ -1,5 +1,5 @@
 ﻿@page "/upscale"
-@inject AppState AppState
+@inject ManagerService M
 @inject ImageService IM
 
 <EditForm Model="Parameters" OnSubmit="Generate">
@@ -12,7 +12,7 @@
             </MudRadioGroup>
             @if (Parameters.ResizeMode == 0)
             {
-                <MudSlider Class="mt-n2" @bind-Value=Parameters.UpscalingMultiplier Min="AppState.Settings.Upscale.UpscalingMultiplier.Min" Max="AppState.Settings.Upscale.UpscalingMultiplier.Max" Step="AppState.Settings.Upscale.UpscalingMultiplier.Step" Variant="Variant.Filled" ValueLabel><small>Value:</small> @(Parameters.UpscalingMultiplier)x</MudSlider>
+                <MudSlider Class="mt-n2" @bind-Value=Parameters.UpscalingMultiplier Min="M.Settings.Upscale.UpscalingMultiplier.Min" Max="M.Settings.Upscale.UpscalingMultiplier.Max" Step="M.Settings.Upscale.UpscalingMultiplier.Step" Variant="Variant.Filled" ValueLabel><small>Value:</small> @(Parameters.UpscalingMultiplier)x</MudSlider>
             }
             else
             {
@@ -24,9 +24,9 @@
         </MudItem>
         <MudItem xs="2">
             <MudSelect Label="Upscaler Primary" @bind-Value=Parameters.UpscalerPrimary AnchorOrigin=Origin.BottomLeft TransformOrigin="Origin.TopLeft" T="string">
-                @if (AppState.Upscalers != null && AppState.Upscalers.Count > 0)
+                @if (M.Upscalers != null && M.Upscalers.Count > 0)
                 {
-                    @foreach (var upscaler in AppState.Upscalers)
+                    @foreach (var upscaler in M.Upscalers)
                     {
                         <MudSelectItem Value="@upscaler.Name" />
                     }
@@ -40,9 +40,9 @@
         </MudItem>
         <MudItem xs="2">
             <MudSelect Label="Upscaler Secondary" @bind-Value=Parameters.UpscalerSecondary AnchorOrigin=Origin.BottomLeft TransformOrigin="Origin.TopLeft" T="string">
-                @if (AppState.Upscalers != null && AppState.Upscalers.Count > 0)
+                @if (M.Upscalers != null && M.Upscalers.Count > 0)
                 {
-                    @foreach (var upscaler in AppState.Upscalers)
+                    @foreach (var upscaler in M.Upscalers)
                     {
                         <MudSelectItem Value="@upscaler.Name" />
                     }
@@ -50,40 +50,40 @@
             </MudSelect>
             @if (Parameters.UpscalerSecondary != "None")
             {
-                <MudSlider Class="mt-2" @bind-Value=Parameters.UpscalerSecondaryVisibility Min="AppState.Settings.Upscale.UpscalerSecondary.Min" Max="AppState.Settings.Upscale.UpscalerSecondary.Max" Step="AppState.Settings.Upscale.UpscalerSecondary.Step" Variant="Variant.Filled" ValueLabel><small>Visibility:</small> @Parameters.UpscalerSecondaryVisibility</MudSlider>
+                <MudSlider Class="mt-2" @bind-Value=Parameters.UpscalerSecondaryVisibility Min="M.Settings.Upscale.UpscalerSecondary.Min" Max="M.Settings.Upscale.UpscalerSecondary.Max" Step="M.Settings.Upscale.UpscalerSecondary.Step" Variant="Variant.Filled" ValueLabel><small>Visibility:</small> @Parameters.UpscalerSecondaryVisibility</MudSlider>
             }
         </MudItem>
         <MudItem xs="4">
-            <MudSlider @bind-Value=Parameters.GfpganVisibility Min="AppState.Settings.Upscale.FaceRestoration.Min" Max="AppState.Settings.Upscale.FaceRestoration.Max" Step="AppState.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>GFPGAN </strong><small>Visibility:</small> @Parameters.GfpganVisibility</MudSlider>
+            <MudSlider @bind-Value=Parameters.GfpganVisibility Min="M.Settings.Upscale.FaceRestoration.Min" Max="M.Settings.Upscale.FaceRestoration.Max" Step="M.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>GFPGAN </strong><small>Visibility:</small> @Parameters.GfpganVisibility</MudSlider>
             <MudStack Row>
-                <MudSlider @bind-Value=Parameters.CodeformerVisibility Min="AppState.Settings.Upscale.FaceRestoration.Min" Max="AppState.Settings.Upscale.FaceRestoration.Max" Step="AppState.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>CodeFormer </strong><small>Visibility:</small> @Parameters.CodeformerVisibility</MudSlider>
-                <MudSlider @bind-Value=Parameters.CodeformerWeight Min="AppState.Settings.Upscale.FaceRestoration.Min" Max="AppState.Settings.Upscale.FaceRestoration.Max" Step="AppState.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><small>Attenuation:</small> @Parameters.CodeformerWeight</MudSlider>
+                <MudSlider @bind-Value=Parameters.CodeformerVisibility Min="M.Settings.Upscale.FaceRestoration.Min" Max="M.Settings.Upscale.FaceRestoration.Max" Step="M.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>CodeFormer </strong><small>Visibility:</small> @Parameters.CodeformerVisibility</MudSlider>
+                <MudSlider @bind-Value=Parameters.CodeformerWeight Min="M.Settings.Upscale.FaceRestoration.Min" Max="M.Settings.Upscale.FaceRestoration.Max" Step="M.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><small>Attenuation:</small> @Parameters.CodeformerWeight</MudSlider>
             </MudStack>
         </MudItem>
         <MudItem xs="1" Class="d-flex">
-            <MudButton Color=Color.Success Variant=Variant.Filled Disabled=@(AppState.UpscaleImageData == null || AppState.IsConverging) ButtonType="ButtonType.Submit">Upscale</MudButton>
+            <MudButton Color=Color.Success Variant=Variant.Filled Disabled=@(M.UpscaleImageData == null || M.IsConverging) ButtonType="ButtonType.Submit">Upscale</MudButton>
         </MudItem>
     </MudGrid>
 </EditForm>
 
 <MudGrid>
     <MudItem xs="6" Class="d-flex flex-column align-items-center">
-        <ImageDropzone ImageData=@AppState.UpscaleImageData OnImageChanged="@(Refresh)" />
+        <ImageDropzone ImageData=@M.UpscaleImageData OnImageChanged="@(Refresh)" />
     </MudItem>
     <MudItem xs="6">
         <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-cente" Rounded Centered>
             <MudTabPanel Text="Preview">
-                @if (AppState.GeneratedUpscaleImage != null)
+                @if (M.GeneratedUpscaleImage != null)
                 {
-                    <MudImage Src=@($"data:image/png;base64,{AppState.GeneratedUpscaleImage.Image}") Width="512" Height="512" ObjectFit="ObjectFit.Contain" Fluid />
+                    <MudImage Src=@($"data:image/png;base64,{M.GeneratedUpscaleImage.Image}") Width="512" Height="512" ObjectFit="ObjectFit.Contain" Fluid />
                     <br />
-                    <span class="generation-info-text"><small>@AppState.GeneratedUpscaleImage.Info</small></span>
+                    <span class="generation-info-text"><small>@M.GeneratedUpscaleImage.Info</small></span>
                 }
             </MudTabPanel>
             <MudTabPanel Text="Generated">
-                @if (AppState.GeneratedImageEntities != null)
+                @if (M.GeneratedImageEntities != null)
                 {
-                    <ImagesContainer Images=AppState.GeneratedImageEntities />
+                    <ImagesContainer Images=M.GeneratedImageEntities />
                 }
             </MudTabPanel>
         </MudTabs>
@@ -95,22 +95,22 @@
 
     protected async override Task OnInitializedAsync()
     {
-        await AppState.GetUpscalers();
-        Parameters = AppState.ParametersUpscale;
+        await M.GetUpscalers();
+        Parameters = M.ParametersUpscale;
     }
 
     private string ParseResizeMode(int value) => value == 0 ? "Multiplier" : "Resolution";
 
     private async Task Refresh(string data)
     {
-        AppState.UpscaleImageData = data;
+        M.UpscaleImageData = data;
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task Generate()
     {
-        Parameters.Image = AppState.UpscaleImageData;
-        AppState.GeneratedImageEntities = await IM.GetImages(ModeType.Extras);
+        Parameters.Image = M.UpscaleImageData;
+        M.GeneratedImageEntities = await IM.GetImages(ModeType.Extras);
         await InvokeAsync(StateHasChanged);
     }
 }

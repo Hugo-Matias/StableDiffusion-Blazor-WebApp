@@ -1,5 +1,5 @@
 ﻿@page "/resources"
-@inject AppState AppState
+@inject ManagerService M
 @inject SDAPIService SD
 @inject IOService IO
 @inject DatabaseService DB
@@ -9,7 +9,7 @@
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<MudTabs @bind-ActivePanelIndex=AppState.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
+<MudTabs @bind-ActivePanelIndex=M.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
     <MudTabPanel Text="CivitAI">
         <CivitaiPanel />
     </MudTabPanel>
@@ -30,9 +30,9 @@
 
     protected async override Task OnInitializedAsync()
     {
-        AppState.OnWebuiStateChanged += Refresh;
-        AppState.OnDownloadCompleted += Refresh;
-        if (AppState.ResourceTypeDirectories == null) await AppState.GetResourceTypeDirectories();
+        M.OnWebuiStateChanged += Refresh;
+        M.OnDownloadCompleted += Refresh;
+        if (M.ResourceTypeDirectories == null) await M.GetResourceTypeDirectories();
         await InitializeResourceDictionary();
     }
 
@@ -102,12 +102,12 @@
         var comp = StringComparison.InvariantCultureIgnoreCase;
         if (resource.Type.Name.Equals("vae", comp))
         {
-            if (!AppState.IsWebuiUp) return;
-            await AppState.PostOptions(new() { SDVae = resource.Title });
+            if (!M.IsWebuiUp) return;
+            await M.PostOptions(new() { SDVae = resource.Title });
             return;
         }
 
-        var fileDir = AppState.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resource.Type.Name, comp)).Value;
+        var fileDir = M.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resource.Type.Name, comp)).Value;
         if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
         if (resource.SubType != null) fileDir = Path.Combine(fileDir, resource.SubType.Name);
         if (File.Exists(Path.Combine(fileDir, file.Filename)))
@@ -154,30 +154,30 @@
                 }
             }
 
-            if (!AppState.IsWebuiUp) return;
+            if (!M.IsWebuiUp) return;
 
             // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
             if (resource.Type.Name.Equals("Checkpoint", comp) && result.Data != null)
             {
                 if (result.Data.ToString() == "Load")
                 {
-                    await AppState.GetSDModels(refresh: true);
-                    var model = AppState.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
-                    await AppState.SetSDModel(model.Title);
+                    await M.GetSDModels(refresh: true);
+                    var model = M.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
+                    await M.SetSDModel(model.Title);
                     return;
                 }
             }
 
             var keyword = string.Empty;
             var triggerWords = string.Empty;
-            var weight = AppState.Settings.Resources.Weight.Value;
+            var weight = M.State.Resources.Weight;
             var target = (ValueTuple<ModeType, bool>)result.Data;
 
             if (resource.Type.Name.Equals("TextualInversion", comp)) keyword = weight != 1 ? $", ({filename}:{weight})" : filename;
             else if (resource.Type.Name.Equals("Hypernetwork", comp)) keyword = $", <hypernet:{filename}:{weight}>";
             else if (resource.Type.Name.Equals("LORA", comp) || resource.Type.Name.Equals("LoCon", comp)) keyword = $", <lora:{filename}:{weight}>";
 
-            if (AppState.Settings.Resources.LoadTriggerWords && file.TriggerWords != null)
+            if (M.State.Resources.LoadTriggerWords && file.TriggerWords != null)
             {
                 triggerWords = ", ";
                 triggerWords += string.Join(", ", file.TriggerWords);
@@ -185,13 +185,13 @@
 
             if (target.Item1 == ModeType.Txt2Img)
             {
-                if (target.Item2 == true) AppState.ParametersTxt2Img.Prompt += $"{keyword}{triggerWords}";
-                else AppState.ParametersTxt2Img.NegativePrompt += $", {keyword}{triggerWords}";
+                if (target.Item2 == true) M.ParametersTxt2Img.Prompt += $"{keyword}{triggerWords}";
+                else M.ParametersTxt2Img.NegativePrompt += $", {keyword}{triggerWords}";
             }
             else if (target.Item1 == ModeType.Img2Img)
             {
-                if (target.Item2 == true) AppState.ParametersImg2Img.Prompt += $"{keyword}{triggerWords}";
-                else AppState.ParametersImg2Img.NegativePrompt += $"{keyword}{triggerWords}";
+                if (target.Item2 == true) M.ParametersImg2Img.Prompt += $"{keyword}{triggerWords}";
+                else M.ParametersImg2Img.NegativePrompt += $"{keyword}{triggerWords}";
             }
         }
     }
@@ -211,7 +211,7 @@
             if (data.Item2 == "Update")
             {
                 var fileInfos = IO.GetFilesByName(file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
-                var baseDestPath = file.IsEnabled ? AppState.ResourceTypeDirectories[data.Item1.Type.Name] : Path.Combine(Configuration["ResourcesPath"], "_storage", data.Item1.Type.Name);
+                var baseDestPath = file.IsEnabled ? M.ResourceTypeDirectories[data.Item1.Type.Name] : Path.Combine(Configuration["ResourcesPath"], "_storage", data.Item1.Type.Name);
                 if (data.Item1.SubType != null) baseDestPath = Path.Combine(baseDestPath, data.Item1.SubType.Name);
                 // Update other files linked to the model that must share the same name, ie. yaml configs or txt info
                 foreach (var fileInfo in fileInfos)
@@ -278,13 +278,13 @@
     private async void Refresh()
     {
         await InitializeResourceDictionary();
-        await AppState.GetResourceTypeDirectories();
+        await M.GetResourceTypeDirectories();
         await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        AppState.OnWebuiStateChanged -= Refresh;
-        AppState.OnDownloadCompleted -= Refresh;
+        M.OnWebuiStateChanged -= Refresh;
+        M.OnDownloadCompleted -= Refresh;
     }
 }

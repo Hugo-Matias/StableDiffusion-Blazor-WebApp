@@ -1,4 +1,4 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @inject SDAPIService API
 
 <MudGrid>
@@ -23,17 +23,17 @@
         </MudSelect>
     </MudItem>
     <MudItem xs=12>
-        <MudSlider @bind-Value=Parameters.Weight Min=AppState.Settings.Scripts.ControlNet.Weight.Min Max=AppState.Settings.Scripts.ControlNet.Weight.Max Step=AppState.Settings.Scripts.ControlNet.Weight.Step ValueLabel><small>Weight:</small> @Parameters.Weight</MudSlider>
+        <MudSlider @bind-Value=Parameters.Weight Min=M.Settings.Scripts.ControlNet.Weight.Min Max=M.Settings.Scripts.ControlNet.Weight.Max Step=M.Settings.Scripts.ControlNet.Weight.Step ValueLabel><small>Weight:</small> @Parameters.Weight</MudSlider>
     </MudItem>
     <MudItem xs=12>
         <MudText Typo="Typo.caption">Guidance</MudText>
         <MudStack Row>
-            <MudSlider @bind-Value=Parameters.Guidance Min=AppState.Settings.Scripts.ControlNet.Guidance.Min Max=AppState.Settings.Scripts.ControlNet.Guidance.Max Step=AppState.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Strength:</small> @Parameters.Guidance</MudSlider>
-            <MudSlider @bind-Value=Parameters.GuidanceStart Min=AppState.Settings.Scripts.ControlNet.Guidance.Min Max=AppState.Settings.Scripts.ControlNet.Guidance.Max Step=AppState.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Start:</small> @Parameters.GuidanceStart</MudSlider>
-            <MudSlider @bind-Value=Parameters.GuidanceEnd Min=AppState.Settings.Scripts.ControlNet.Guidance.Min Max=AppState.Settings.Scripts.ControlNet.Guidance.Max Step=AppState.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>End:</small> @Parameters.GuidanceEnd</MudSlider>
+            <MudSlider @bind-Value=Parameters.Guidance Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Strength:</small> @Parameters.Guidance</MudSlider>
+            <MudSlider @bind-Value=Parameters.GuidanceStart Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Start:</small> @Parameters.GuidanceStart</MudSlider>
+            <MudSlider @bind-Value=Parameters.GuidanceEnd Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>End:</small> @Parameters.GuidanceEnd</MudSlider>
         </MudStack>
     </MudItem>
-    @if (Parameters.Preprocessor != ControlNetPreprocessor.none && AppState.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor] != null)
+    @if (Parameters.Preprocessor != ControlNetPreprocessor.none && M.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor] != null)
     {
         <MudItem xs=12>
             <MudStack>
@@ -90,7 +90,7 @@
 
     protected override void OnParametersSet()
     {
-        _processor = AppState.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor]!;
+        _processor = M.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor]!;
         if (!string.IsNullOrWhiteSpace(Parameters.InputImage) && !Parameters.InputImage.StartsWith("data:")) Parameters.InputImage = $"data:image/png;base64,{Parameters.InputImage}";
     }
 
@@ -102,7 +102,7 @@
     private async Task HandlePreprocessorChanged(ControlNetPreprocessor value)
     {
         Parameters.Preprocessor = value;
-        _processor = AppState.Settings.Scripts.ControlNet.PreprocessorSettings[value]!;
+        _processor = M.Settings.Scripts.ControlNet.PreprocessorSettings[value]!;
         if (_processor.Resolution != null) Parameters.ProcessorResolution = _processor.Resolution.Value;
         if (_processor.Threshold != null)
         {

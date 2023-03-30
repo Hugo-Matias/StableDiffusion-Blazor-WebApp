@@ -1,16 +1,16 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 
 <div style="margin-bottom:15rem;">
     <EditForm Model="@Parameters">
         <MudGrid Class="pa-5">
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.Steps Min=AppState.Settings.Shared.Steps.Min Max=AppState.Settings.Shared.Steps.Max Step=AppState.Settings.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
+                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Shared.Steps.Min Max=M.Settings.Shared.Steps.Max Step=M.Settings.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
             </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerIndex AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (AppState.Samplers != null)
+                    @if (M.Samplers != null)
                     {
-                        @foreach (var sampler in AppState.Samplers)
+                        @foreach (var sampler in M.Samplers)
                         {
                             <MudSelectItem Value=@sampler.Name />
                         }
@@ -18,7 +18,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.CfgScale Min=AppState.Settings.Shared.CfgScale.Min Max=AppState.Settings.Shared.CfgScale.Max Step=AppState.Settings.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
+                <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Shared.CfgScale.Min Max=M.Settings.Shared.CfgScale.Max Step=M.Settings.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
             </MudItem>
             <MudItem xs="5">
                 <MudNumericField @bind-Value=Parameters.Seed Label="Seed" Min="-1" Max="long.MaxValue" />
@@ -30,16 +30,16 @@
                 </MudButtonGroup>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=AppState.Settings.Shared.Resolution.Min Max=AppState.Settings.Shared.Resolution.Max Step=AppState.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=M.Settings.Shared.Resolution.Min Max=M.Settings.Shared.Resolution.Max Step=M.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=AppState.Settings.Shared.Resolution.Min Max=AppState.Settings.Shared.Resolution.Max Step=AppState.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=M.Settings.Shared.Resolution.Min Max=M.Settings.Shared.Resolution.Max Step=M.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.NIter Min=AppState.Settings.Shared.Batch.Count.Min Max=AppState.Settings.Shared.Batch.Count.Max Step=AppState.Settings.Shared.Batch.Count.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Count:</small> @Parameters.NIter</MudSlider>
+                <MudSlider @bind-Value=Parameters.NIter Min=M.Settings.Shared.Batch.Count.Min Max=M.Settings.Shared.Batch.Count.Max Step=M.Settings.Shared.Batch.Count.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Count:</small> @Parameters.NIter</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.BatchSize Min=AppState.Settings.Shared.Batch.Size.Min Max=AppState.Settings.Shared.Batch.Size.Max Step=AppState.Settings.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
+                <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Shared.Batch.Size.Min Max=M.Settings.Shared.Batch.Size.Max Step=M.Settings.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
             </MudItem>
             <MudItem xs="12">
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>
@@ -51,7 +51,7 @@
                     <MudChip Text="Cutoff" Default="Parameters.Scripts.Cutoff.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Cutoff</MudChip>
                     <MudChip Text="Regional Prompter" Default="Parameters.Scripts.RegionalPrompter.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Regional Prompter</MudChip>
                     <MudChip Text="Dynamic Prompts" Default="Parameters.Scripts.DynamicPrompts.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Dynamic Prompts</MudChip>
-                    <MudChip Text="ControlNet" Default="AppState.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
+                    <MudChip Text="ControlNet" Default="M.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
                 </MudChipSet>
             </MudItem>
             <MudItem xs="12">
@@ -61,7 +61,7 @@
                     </MudItem>
                     <MudItem xs="4">
                         <MudSelect T="string" Label="Upscaler" @bind-Value=Parameters.HRUpscaler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                            @if (AppState.Upscalers != null && AppState.Upscalers.Count > 0)
+                            @if (M.Upscalers != null && M.Upscalers.Count > 0)
                             {
                                 @foreach (var upscaler in _hiresUpscalers)
                                 {
@@ -71,19 +71,19 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider @bind-Value=Parameters.HRSecondPassSteps Min=AppState.Settings.Txt2Img.HighRes.SecondPassSteps.Min Max=AppState.Settings.Txt2Img.HighRes.SecondPassSteps.Max Step=AppState.Settings.Txt2Img.HighRes.SecondPassSteps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @($"{(Parameters.HRSecondPassSteps > 0 ? Parameters.HRSecondPassSteps : $"Original ({Parameters.Steps})")}")</MudSlider>
+                        <MudSlider @bind-Value=Parameters.HRSecondPassSteps Min=M.Settings.Txt2Img.HighRes.SecondPassSteps.Min Max=M.Settings.Txt2Img.HighRes.SecondPassSteps.Max Step=M.Settings.Txt2Img.HighRes.SecondPassSteps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @($"{(Parameters.HRSecondPassSteps > 0 ? Parameters.HRSecondPassSteps : $"Original ({Parameters.Steps})")}")</MudSlider>
                         </MudItem>
                         <MudItem xs="4">
-                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=AppState.Settings.Shared.Denoising.Min Max=AppState.Settings.Shared.Denoising.Max Step=AppState.Settings.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
+                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Shared.Denoising.Min Max=M.Settings.Shared.Denoising.Max Step=M.Settings.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=AppState.Settings.Txt2Img.HighRes.Scale.Min Max=AppState.Settings.Txt2Img.HighRes.Scale.Max Step=AppState.Settings.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
+                        <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=M.Settings.Txt2Img.HighRes.Scale.Min Max=M.Settings.Txt2Img.HighRes.Scale.Max Step=M.Settings.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=AppState.Settings.Txt2Img.HighRes.Resolution.Min Max=AppState.Settings.Txt2Img.HighRes.Resolution.Max Step=AppState.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=M.Settings.Txt2Img.HighRes.Resolution.Min Max=M.Settings.Txt2Img.HighRes.Resolution.Max Step=M.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=AppState.Settings.Txt2Img.HighRes.Resolution.Min Max=AppState.Settings.Txt2Img.HighRes.Resolution.Max Step=AppState.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=M.Settings.Txt2Img.HighRes.Resolution.Min Max=M.Settings.Txt2Img.HighRes.Resolution.Max Step=M.Settings.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
                     </MudItem>
                 </MudGrid>
             </MudItem>
@@ -102,7 +102,7 @@
             <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.DynamicPrompts.IsEnabled ? "show" : "")}")">
                 <DynamicPromptsForm Parameters=Parameters.Scripts.DynamicPrompts />
             </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(AppState.ControlNetEnabled ? "show" : "")}")">
+            <MudItem xs="12" Class="@($"collapse {(M.ControlNetEnabled ? "show" : "")}")">
                 <ControlNetTabs Units="Parameters.Scripts.ControlNet" />
             </MudItem>
         </MudGrid>
@@ -120,8 +120,8 @@
 
     protected async override Task OnInitializedAsync()
     {
-        _options = AppState.Options;
-        if (AppState.Upscalers == null || AppState.Upscalers.Count == 0) await AppState.GetUpscalers();
+        _options = M.Options;
+        if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
         RefreshHighresInfo();
         InitializeUpscalers();
     }
@@ -132,15 +132,15 @@
         {
             _hiresUpscalers.Add(new Upscaler() { Name = upscaler, ModelName = upscaler, ModelPath = string.Empty, ModelUrl = string.Empty });
         }
-        _hiresUpscalers.AddRange(AppState.Upscalers);
+        _hiresUpscalers.AddRange(M.Upscalers);
     }
 
     private void SetRandomSeed() => Parameters.Seed = -1;
 
     private void RestoreSeed()
     {
-        if (AppState.ImagesInfo != null && AppState.ImagesInfo.Seed != null)
-            Parameters.Seed = AppState.ImagesInfo.Seed;
+        if (M.ImagesInfo != null && M.ImagesInfo.Seed != null)
+            Parameters.Seed = M.ImagesInfo.Seed;
     }
 
     private void HandleParameterChecked(MudChip[] checkboxes)
@@ -153,7 +153,7 @@
         Parameters.Scripts.Cutoff.IsEnabled = false;
         Parameters.Scripts.RegionalPrompter.IsEnabled = false;
         Parameters.Scripts.DynamicPrompts.IsEnabled = false;
-        AppState.ControlNetEnabled = false;
+        M.ControlNetEnabled = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
         foreach (var check in checkboxes)
@@ -185,7 +185,7 @@
                     Parameters.Scripts.DynamicPrompts.IsEnabled = true;
                     break;
                 case "ControlNet":
-                    AppState.ControlNetEnabled = true;
+                    M.ControlNetEnabled = true;
                     break;
             }
         }

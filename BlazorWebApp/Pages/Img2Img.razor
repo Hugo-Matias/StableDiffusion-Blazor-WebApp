@@ -1,7 +1,7 @@
 ﻿@page "/img2img"
 @inject SDAPIService SDAPIService
 @inject JavascriptService JS
-@inject AppState AppState
+@inject ManagerService M
 @inject ImageService ImageService
 @inject ISnackbar Snackbar
 
@@ -27,8 +27,8 @@
     {
         base.OnInitialized();
 
-        Parameters = AppState.ParametersImg2Img;
-        SharedParameters = AppState.ParametersImg2Img;
+        Parameters = M.ParametersImg2Img;
+        SharedParameters = M.ParametersImg2Img;
     }
 
     private async Task OnSet() => await canvasRef.SetInpaint();
@@ -39,17 +39,17 @@
     private async void Generate()
     {
         await canvasRef.Generate();
-        if (AppState.Settings.Img2Img.Mode == "Mask" && AppState.CanvasMaskData == null)
+        if (M.State.Generation.Img2Img.Mode == "Mask" && M.CanvasMaskData == null)
         {
             Snackbar.Add("Mask is empty! Use the canvas to draw the area you want to change.", Severity.Warning);
             return;
         }
-        Parameters.InitImages = new() { AppState.CanvasImageData };
-        Parameters.Mask = AppState.CanvasMaskData;
-        AppState.GeneratedImageEntities = await ImageService.GetImages(ModeType.Img2Img);
+        Parameters.InitImages = new() { M.CanvasImageData };
+        Parameters.Mask = M.CanvasMaskData;
+        M.GeneratedImageEntities = await ImageService.GetImages(ModeType.Img2Img);
     }
 
-    private bool CheckCanvasState() => AppState.CanvasImageData == null;
+    private bool CheckCanvasState() => M.CanvasImageData == null;
 
     private async void Skip() => await SDAPIService.PostSkip();
 

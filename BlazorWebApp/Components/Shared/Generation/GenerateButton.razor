@@ -1,9 +1,9 @@
-﻿@inject AppState AppState
+﻿@inject ManagerService M
 @implements IDisposable
 
 <EditForm Model="Parameters" OnSubmit="@Generate" class="d-flex flex-column justify-content-center">
     <MudStack Class="d-flex flex-column justify-content-center align-items-center w-100 h-100">
-        @if (!AppState.IsConverging)
+        @if (!M.IsConverging)
         {
             <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" Disabled=ButtonDisabled FullWidth>Generate</MudButton>
         }
@@ -26,7 +26,7 @@
 
     protected override void OnInitialized()
     {
-        AppState.OnConverging += Refresh;
+        M.OnConverging += Refresh;
     }
 
     public async void Generate()
@@ -36,5 +36,5 @@
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
-    public void Dispose() => AppState.OnConverging -= Refresh;
+    public void Dispose() => M.OnConverging -= Refresh;
 }

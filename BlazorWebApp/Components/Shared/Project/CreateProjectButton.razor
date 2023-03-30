@@ -1,5 +1,5 @@
-﻿@inject DatabaseService DB
-@inject AppState AppState
+﻿@inject ManagerService M
+@inject DatabaseService DB
 @inject IDialogService DialogService
 
 <MudButton OnClick=@(async () => await ShowModal()) ButtonType="ButtonType.Button" Variant="Variant" Color="Color">
@@ -29,8 +29,8 @@
         if (string.IsNullOrWhiteSpace(_newProject.Name)) return;
         _newProject.CreationTime = DateTime.Now;
         var projectEntity = await DB.CreateProject(new() { Name = _newProject.Name, Folder = _newProject.Folder, CreationTime = _newProject.CreationTime });
-        await AppState.GetProjects();
-        await AppState.SetCurrentProject(projectEntity.Id);
+        await M.GetProjects();
+        await M.SetCurrentProject(projectEntity.Id);
         await OnProjectCreated.InvokeAsync();
     }
 }

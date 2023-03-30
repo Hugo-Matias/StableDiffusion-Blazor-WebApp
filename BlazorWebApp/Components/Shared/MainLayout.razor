@@ -1,11 +1,11 @@
 ﻿@inherits LayoutComponentBase
-@inject AppState AppState
+@inject ManagerService M
 @inject SDAPIService API
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
 
-<MudThemeProvider @bind-IsDarkMode=AppState.Settings.IsDarkMode />
+<MudThemeProvider @bind-IsDarkMode=M.State.IsDarkMode />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
@@ -16,7 +16,7 @@
             <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" />
             <NavBar />
             <MudSpacer />
-            <MudIconButton Class=@(AppState.CurrentSDModel == "Loading..." ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(AppState.CurrentSDModel == "Loading..." ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
+            <MudIconButton Class=@(M.State.Generation.SDModel == "Loading..." ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(M.State.Generation.SDModel == "Loading..." ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
         </MudAppBar>
         <MudExpansionPanels Style="position: fixed; width:100%; z-index:100;">
             <MudExpansionPanel HideIcon=true IsExpanded="_isToolbarOpen">
@@ -36,11 +36,11 @@
 
     protected override void OnInitialized()
     {
-        AppState.OnProgressChanged += Refresh;
-        AppState.OnSDModelsChange += Refresh;
+        M.OnProgressChanged += Refresh;
+        M.OnSDModelsChange += Refresh;
     }
 
-    protected async override Task OnInitializedAsync() => AppState.IsWebuiUp = await API.CheckWebuiState();
+    protected async override Task OnInitializedAsync() => M.IsWebuiUp = await API.CheckWebuiState();
 
     private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
 
@@ -48,7 +48,7 @@
 
     public void Dispose()
     {
-        AppState.OnProgressChanged -= Refresh;
-        AppState.OnSDModelsChange += Refresh;
+        M.OnProgressChanged -= Refresh;
+        M.OnSDModelsChange += Refresh;
     }
 }
