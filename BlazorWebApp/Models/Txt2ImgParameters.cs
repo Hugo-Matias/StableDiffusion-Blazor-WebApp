@@ -12,7 +12,7 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("hr_second_pass_steps")] public int HRSecondPassSteps { get; set; }
         [JsonPropertyName("hr_resize_x")] public int HRWidth { get; set; }
         [JsonPropertyName("hr_resize_y")] public int HRHeight { get; set; }
-        [JsonIgnore] public Txt2ImgScriptParameters Scripts { get; set; }
+        public Txt2ImgScriptParameters Scripts { get; set; }
 
         public Txt2ImgParameters() { }
         public Txt2ImgParameters(SharedParameters clone)

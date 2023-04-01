@@ -62,6 +62,7 @@ else
     {
         currentImgPage = 1;
         M.IsGalleryFiltered = !resetFilter;
+        await M.SaveState();
         await LoadImages();
     }
 

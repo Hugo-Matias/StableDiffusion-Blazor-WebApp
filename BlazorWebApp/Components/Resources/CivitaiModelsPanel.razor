@@ -106,6 +106,7 @@ else if (M.CivitaiModels != null)
         _isSearching = true;
         SetState();
         M.CivitaiModels = await Api.GetModels(Request);
+        await M.SaveState();
         _isSearching = false;
     }
 

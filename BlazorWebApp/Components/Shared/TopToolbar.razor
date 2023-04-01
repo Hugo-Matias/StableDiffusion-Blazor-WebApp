@@ -2,6 +2,7 @@
 @inject SDAPIService SD
 @inject DatabaseService DB
 @inject IOService IO
+@inject IDialogService DialogService
 @implements IDisposable
 
 <div class="mt-6">
@@ -32,7 +33,7 @@
                         {
                             <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
                                 <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading...</MudText>
-                                <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate Rounded />
+                                <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate=true Rounded=true />
                             </MudStack>
                         }
                         else
@@ -59,11 +60,26 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider Value="_clipSkip" T="int" ValueChanged=@((v) => HandleClipSkipChanged(v)) Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks ValueLabel><small>Clip Skip:</small> @M.Options.ClipSkip</MudSlider>
-                </MudItem>
-            </MudGrid>
-        </MudItem>
+                        <MudSlider Value="_clipSkip" T="int" ValueChanged=HandleClipSkipChanged Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks=true ValueLabel=true><small>Clip Skip:</small> @M.Options.ClipSkip </MudSlider>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
         }
+        <MudItem xs="10">
+            <MudSelect @bind-Value=_selectedState T="State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent">
+                @foreach (var state in _states)
+                {
+                    <MudSelectItem Value="state">@state.Title</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="2">
+            <MudButtonGroup Class="w-100" OverrideStyles=false>
+                <MudIconButton Style="flex:1;" Icon="fa-solid fa-plus" Color=Color.Primary OnClick=@(() => ShowStateDialog(new())) />
+                <MudIconButton Style="flex:1;" Icon="fa-solid fa-pen" Color=Color.Info OnClick=@(() => ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) />
+                <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() => M.LoadState(_selectedState)) Disabled=@(_selectedState == null) />
+            </MudButtonGroup>
+        </MudItem>
     </MudGrid>
 </div>
 
@@ -71,6 +87,8 @@
     private string _vaeDir;
     private int _clipSkip;
     private bool _isWebuiInitialized;
+    private State _selectedState;
+    private List<State> _states = new();
 
     protected async override Task OnInitializedAsync()
     {
@@ -82,7 +100,7 @@
         M.OnProjectsChange += Refresh;
         M.OnStateHasChanged += Refresh;
         M.OnSDModelsChange += Refresh;
-
+        await InitializeStates();
         await M.GetFolders();
         await M.GetProjects();
         if (M.Projects != null && M.Projects.Count > 0)
@@ -101,8 +119,14 @@
         {
             M.State.Gallery.ProjectName = "Create New Project...";
         }
-
         await InitializeWebui();
+    }
+
+    private async Task InitializeStates()
+    {
+        _states = await DB.GetStates();
+        _states.RemoveAt(0);
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task InitializeWebui()
@@ -121,6 +145,16 @@
         M.State.Generation.Vae = M.Options.SDVae;
 
         _isWebuiInitialized = true;
+    }
+
+    private async Task ShowStateDialog(State state)
+    {
+        var options = new DialogOptions() { CloseButton = true, CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
+        var param = new DialogParameters();
+        param.Add("State", state);
+        var dialog = await DialogService.ShowAsync<StateDialog>("", param, options);
+        await dialog.Result;
+        await InitializeStates();
     }
 
     private async Task HandleModelSelected(string selected) => await M.SetSDModel(selected);

@@ -32,6 +32,7 @@
     public async void Generate()
     {
         await OnGenerate.InvokeAsync(Parameters);
+        await M.SaveState();
     }
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);

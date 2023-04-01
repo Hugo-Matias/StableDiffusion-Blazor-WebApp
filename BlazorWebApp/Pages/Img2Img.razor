@@ -4,13 +4,14 @@
 @inject ManagerService M
 @inject ImageService ImageService
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" ButtonDisabled=CheckCanvasState() />
 
 <MudGrid>
     <MudItem xs="6" Class="d-flex flex-column align-items-center">
         <Img2ImgCanvas @ref="canvasRef" OnImageChanged=@(async () => await InvokeAsync(StateHasChanged)) />
-        <GenerateFormImg2Img Parameters="@Parameters" OnDelete="OnDelete" OnSet="OnSet" OnClear="OnClear" OnUndo="OnUndo" />
+        <GenerateFormImg2Img @bind-Parameters="Parameters" OnDelete="OnDelete" OnSet="OnSet" OnClear="OnClear" OnUndo="OnUndo" />
     </MudItem>
     <MudItem xs="6">
         <GeneratedImageTabs />
@@ -26,9 +27,8 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
-        Parameters = M.ParametersImg2Img;
-        SharedParameters = M.ParametersImg2Img;
+        M.OnImg2ImgParametersChanged += InitializeParameters;
+        InitializeParameters();
     }
 
     private async Task OnSet() => await canvasRef.SetInpaint();
@@ -69,4 +69,15 @@
         }
     }
 
+    private async void InitializeParameters()
+    {
+        Parameters = M.ParametersImg2Img;
+        SharedParameters = M.ParametersImg2Img;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        M.OnImg2ImgParametersChanged -= InitializeParameters;
+    }
 }

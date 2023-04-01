@@ -149,8 +149,8 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public Img2ImgParameters Parameters { get; set; }
+    [Parameter] public Img2ImgParameters Parameters { get; set; }
+    [Parameter] public EventCallback<Img2ImgParameters> ParametersChanged { get; set; }
 
     [Parameter, EditorRequired]
     public EventCallback OnSet { get; set; }

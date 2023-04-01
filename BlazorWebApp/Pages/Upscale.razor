@@ -1,6 +1,7 @@
 ﻿@page "/upscale"
 @inject ManagerService M
 @inject ImageService IM
+@implements IDisposable
 
 <EditForm Model="Parameters" OnSubmit="Generate">
     <MudGrid Class="mb-3 px-4">
@@ -96,7 +97,8 @@
     protected async override Task OnInitializedAsync()
     {
         await M.GetUpscalers();
-        Parameters = M.ParametersUpscale;
+        M.OnUpscaleParametersChanged += InitializeParameters;
+        InitializeParameters();
     }
 
     private string ParseResizeMode(int value) => value == 0 ? "Multiplier" : "Resolution";
@@ -111,6 +113,18 @@
     {
         Parameters.Image = M.UpscaleImageData;
         M.GeneratedImageEntities = await IM.GetImages(ModeType.Extras);
+        await M.SaveState();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async void InitializeParameters()
+    {
+        Parameters = M.ParametersUpscale;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        M.OnUpscaleParametersChanged -= InitializeParameters;
     }
 }

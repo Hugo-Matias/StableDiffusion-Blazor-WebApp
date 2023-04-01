@@ -1,0 +1,85 @@
+﻿@inject ManagerService M
+@inject DatabaseService DB
+@inject IConfiguration Configuration
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(State.Id > 0 ? "Edit State Preset" : "Create State Preset")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="State">
+            <MudTextField @bind-Value=State.Title Label="Title" Class="mb-4" Clearable=true />
+            <MudText Typo="Typo.caption">Save:</MudText>
+            <MudStack Row=true>
+                <MudCheckBox Label="App State" @bind-Checked=_saveAppstate />
+                <MudCheckBox Label="Txt2Img" @bind-Checked=_saveTxt2img />
+                <MudCheckBox Label="Img2Img" @bind-Checked=_saveImg2img />
+                <MudCheckBox Label="Upscale" @bind-Checked=_saveUpscale />
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        @if (State.Id > 0)
+        {
+            <MudButton ButtonType="ButtonType.Button" OnClick="DeleteState" Color="Color.Error" Variant="Variant.Text">Delete</MudButton>
+            <MudButton ButtonType="ButtonType.Button" OnClick="UpdateState" Color="Color.Info" Variant="Variant.Filled">Update</MudButton>
+        }
+        else
+        {
+            <MudButton ButtonType="ButtonType.Button" OnClick="CreateState" Color="Color.Success" Variant="Variant.Filled">Create</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public State State { get; set; }
+
+    private bool _saveAppstate, _saveTxt2img, _saveImg2img, _saveUpscale;
+
+    private void WriteState()
+    {
+        if (_saveAppstate) State.AppState = M.State;
+        if (_saveTxt2img) State.Txt2ImgParameters = M.ParametersTxt2Img;
+        if (_saveImg2img) State.Img2ImgParameters = M.ParametersImg2Img;
+        if (_saveUpscale) State.UpscaleParameters = M.ParametersUpscale;
+        State.CreationDate = DateTime.Now;
+        State.Version = int.Parse(Configuration["StateVersion"]);
+    }
+
+    private async Task CreateState()
+    {
+        WriteState();
+        await DB.CreateState(State);
+        Snackbar.Add("State preset created successfully!", Severity.Success);
+        MudDialog.Close();
+    }
+
+    private async Task UpdateState()
+    {
+        WriteState();
+        await DB.UpdateState(State);
+        Snackbar.Add("State preset updated successfully!", Severity.Success);
+        MudDialog.Close();
+    }
+
+    private async Task DeleteState()
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+        var param = new DialogParameters();
+        param.Add("OkButtonText", "Yes");
+        param.Add("CancelButtonText", "No");
+        param.Add("OkButtonColor", Color.Error);
+        param.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this state preset?<br /></span><br/><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Folder", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await DB.DeleteState(State.Id);
+            MudDialog.Close();
+            Snackbar.Add("State preset deleted successfully!", Severity.Success);
+        }
+    }
+}

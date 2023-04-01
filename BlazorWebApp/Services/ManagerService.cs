@@ -33,6 +33,10 @@ namespace BlazorWebApp.Services
         public event Action OnProgressChanged;
         public event Action OnDownloadCompleted;
         public event Action OnWebuiStateChanged;
+        public event Action OnAppStateChanged;
+        public event Action OnTxt2ImgParametersChanged;
+        public event Action OnImg2ImgParametersChanged;
+        public event Action OnUpscaleParametersChanged;
 
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
@@ -99,8 +103,9 @@ namespace BlazorWebApp.Services
             _configuration = configuration;
 
             LoadSettings();
+            LoadState();
 
-            State = new(Settings);
+            GetUpscalers();
             Images = new();
             Progress = new();
             Folders = new();
@@ -108,10 +113,8 @@ namespace BlazorWebApp.Services
             _db.PageSize = State.Gallery.PageSize;
             State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
-            GetCmdFlags();
             GetButtonTags();
-            ModeType[] modes = new ModeType[3] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras };
-            InitializeParameters(modes);
+            GetCmdFlags();
         }
 
         public void InitializeParameters(ModeType[] modes)
@@ -356,6 +359,7 @@ namespace BlazorWebApp.Services
             _progress.Remove(progressBar.Id);
             State.Generation.SDModel = modelTitle;
             OnSDModelsChange?.Invoke();
+            SaveState();
         }
 
         public async Task SetVae(string vae)
@@ -413,7 +417,7 @@ namespace BlazorWebApp.Services
                 State.Gallery.FolderId = 0;
                 State.Gallery.FolderName = "All";
             }
-            SaveSettings();
+            SaveState();
             await GetProjects();
             OnFolderChange?.Invoke();
         }
@@ -424,7 +428,7 @@ namespace BlazorWebApp.Services
             await GetProjects();
             State.Gallery.ProjectId = id;
             State.Gallery.ProjectName = Projects.FirstOrDefault(p => p.Id == id)?.Name;
-            SaveSettings();
+            SaveState();
             OnProjectChange?.Invoke();
             OnProjectChangeTask?.Invoke();
         }
@@ -617,10 +621,61 @@ namespace BlazorWebApp.Services
             else { Settings = new(); SaveSettings(); }
         }
 
+        public async Task LoadState(State? state = null)
+        {
+            if (state == null)
+            {
+                state = await _db.GetState(1);
+                State = new(Settings);
+                ModeType[] modes = new ModeType[3] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras };
+                InitializeParameters(modes);
+            }
+
+            if (state != null)
+            {
+                if (state.AppState != null)
+                {
+                    State = state.AppState;
+                    OnAppStateChanged?.Invoke();
+                }
+                if (state.Txt2ImgParameters != null)
+                {
+                    ParametersTxt2Img = state.Txt2ImgParameters;
+                    OnTxt2ImgParametersChanged?.Invoke();
+                }
+                if (state.Img2ImgParameters != null)
+                {
+                    ParametersImg2Img = state.Img2ImgParameters;
+                    OnImg2ImgParametersChanged?.Invoke();
+                }
+                if (state.UpscaleParameters != null)
+                {
+                    ParametersUpscale = state.UpscaleParameters;
+                    OnUpscaleParametersChanged?.Invoke();
+                }
+            }
+            else await SaveState();
+        }
+
         public void SaveSettings()
         {
             var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions() { WriteIndented = true });
             _io.SaveText(_settingsFile, json);
+        }
+
+        public async Task SaveState(State? state = null)
+        {
+            if (state == null)
+            {
+                var entity = await _db.GetState(1);
+                if (entity == null) entity = new() { Title = "AutoSave", CreationDate = DateTime.Now, Version = int.Parse(_configuration["StateVersion"]) };
+                entity.AppState = State;
+                entity.Txt2ImgParameters = ParametersTxt2Img;
+                entity.Img2ImgParameters = ParametersImg2Img;
+                entity.UpscaleParameters = ParametersUpscale;
+                await _db.UpdateState(entity);
+            }
+            else await _db.UpdateState(state);
         }
     }
 }

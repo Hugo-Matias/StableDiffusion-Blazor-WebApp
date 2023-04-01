@@ -110,8 +110,8 @@
 </div>
 
 @code {
-    [Parameter]
-    public Txt2ImgParameters Parameters { get; set; }
+    [Parameter] public Txt2ImgParameters Parameters { get; set; }
+    [Parameter] public EventCallback<Txt2ImgParameters> ParametersChanged { get; set; }
 
     private Options _options;
     private MarkupString _resizeInfo;
@@ -212,4 +212,5 @@
     }
 
     private void RefreshHighresInfo() => _resizeInfo = Parser.ParseHighresFixResizeInfo(Parameters);
+
 }

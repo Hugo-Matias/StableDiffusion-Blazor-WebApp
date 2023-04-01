@@ -10,12 +10,15 @@ namespace BlazorWebApp.Services
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
         private readonly SDAPIService _api;
+        private readonly IConfiguration _configuration;
+
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, IConfiguration configuration)
         {
             _factory = factory;
             _api = api;
+            _configuration = configuration;
             PageSize = 5;
 
             InitializeDatabase();
@@ -563,6 +566,47 @@ namespace BlazorWebApp.Services
             {
                 context.ResourceImages.Remove(image);
             }
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<State> CreateState(State state)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = context.States.Add(state);
+            await context.SaveChangesAsync();
+            return entity.Entity;
+        }
+
+        public async Task<List<State>> GetStates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.States.ToListAsync();
+        }
+
+        public async Task<State?> GetState(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync(s => s.Id == id);
+            if (state == null && id == 1)
+            {
+                state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync();
+            }
+            return state;
+        }
+
+        public async Task<State> UpdateState(State state)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var response = context.Update(state);
+            await context.SaveChangesAsync();
+            return response.Entity;
+        }
+
+        public async Task DeleteState(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var state = await context.States.FirstOrDefaultAsync(r => r.Id == id);
+            if (state != null) context.States.Remove(state);
             await context.SaveChangesAsync();
         }
     }

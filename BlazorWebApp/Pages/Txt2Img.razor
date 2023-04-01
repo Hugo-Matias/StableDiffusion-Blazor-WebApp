@@ -3,12 +3,13 @@
 @inject JavascriptService JSConsole
 @inject ManagerService M
 @inject ImageService ImageService
+@implements IDisposable
 
 <PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
 
 <MudGrid>
     <MudItem xs="6">
-        <GenerateFormTxt2Img Parameters="@Parameters" />
+        <GenerateFormTxt2Img @bind-Parameters="@Parameters" />
     </MudItem>
     <MudItem xs="6">
         <GeneratedImageTabs />
@@ -22,9 +23,8 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
-        Parameters = M.ParametersTxt2Img;
-        SharedParameters = M.ParametersTxt2Img;
+        M.OnTxt2ImgParametersChanged += InitializeParameters;
+        InitializeParameters();
     }
 
     private async void Generate()
@@ -48,5 +48,17 @@
             if (tags.IsPrefix) Parameters.Prompt = tags.Tags + (string.IsNullOrEmpty(Parameters.Prompt) ? "" : ", " + Parameters.Prompt);
             else Parameters.Prompt += (string.IsNullOrEmpty(Parameters.Prompt) ? "" : ", ") + tags.Tags;
         }
+    }
+
+    private async void InitializeParameters()
+    {
+        Parameters = M.ParametersTxt2Img;
+        SharedParameters = M.ParametersTxt2Img;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        M.OnTxt2ImgParametersChanged -= InitializeParameters;
     }
 }
