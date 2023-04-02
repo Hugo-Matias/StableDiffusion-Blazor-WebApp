@@ -168,6 +168,8 @@
                     break;
                 case "Highres Fix":
                     Parameters.EnableHR = true;
+                    Parameters.Scripts.MultiDiffusionTiledVae.IsEnabled = true;
+                    StateHasChanged();
                     break;
                 case "Tiled Diffusion":
                     Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled = true;
