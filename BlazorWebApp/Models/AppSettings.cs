@@ -746,6 +746,11 @@
 
     public class CivitaiSettingsModel
     {
+        public float ExistsButtonOpacity { get; set; } = 0.3f;
+        public string ImageNoneFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(300deg)";
+        public string ImageMissingFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(125deg)";
+        public string ImageExtraFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(25deg)";
+        public string ImageOkFilter { get; set; } = "grayscale(70%) brightness(70%)";
         public CivitaiLimitSettingsModel Limit { get; set; } = new();
     }
 
