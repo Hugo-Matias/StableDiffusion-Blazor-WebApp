@@ -23,18 +23,24 @@
                                 }
                             }
                         </MudChipSet>
-                        <MudSelect Label="Styles" Text="" SelectedValues="M.State.Generation.Styles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
-                            @if (M.Styles != null)
-                            {
-                                @foreach (var style in M.Styles)
+                        <MudStack Row=true>
+                            <MudSelect Label="Styles" Text="" SelectedValues="M.State.Generation.Styles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
+
+                                @if (M.Styles != null)
                                 {
-                                    if (!(string.IsNullOrWhiteSpace(style.Prompt) && string.IsNullOrWhiteSpace(style.NegativePrompt)))
+                                    @foreach (var style in M.Styles)
                                     {
-                                        <MudSelectItem Value=style T="PromptStyle">@style.Name</MudSelectItem>
+                                        if (!(string.IsNullOrWhiteSpace(style.Prompt) && string.IsNullOrWhiteSpace(style.NegativePrompt)))
+                                        {
+                                            <MudSelectItem Value=style T="PromptStyle">@style.Name</MudSelectItem>
+                                        }
                                     }
                                 }
-                            }
-                        </MudSelect>
+                            </MudSelect>
+                            <MudTooltip Delay="1600" Duration="600" Text="Write selected styles to the prompts and clear the list." Placement="Placement.Start">
+                                <MudIconButton Icon="fa-solid fa-pencil" OnClick="WritePrompts" />
+                            </MudTooltip>
+                        </MudStack>
                         <GenerateButton Parameters="Parameters" OnGenerate="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" ButtonDisabled=ButtonDisabled />
                     </MudStack>
                 </MudItem>
@@ -77,8 +83,11 @@
         if (M.ButtonTags == null) M.GetButtonTags();
     }
 
-    private void HandleStylesChanged(IEnumerable<PromptStyle> styles)
+    private void HandleStylesChanged(IEnumerable<PromptStyle> styles) => M.State.Generation.Styles = styles;
+
+    private void WritePrompts()
     {
-        M.State.Generation.Styles = styles;
+        Parser.ParseParameters(Parameters, M.State.Generation.Styles);
+        HandleStylesChanged(Array.Empty<PromptStyle>());
     }
 }
