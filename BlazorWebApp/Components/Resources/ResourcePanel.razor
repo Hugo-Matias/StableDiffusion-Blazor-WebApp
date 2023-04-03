@@ -68,51 +68,56 @@
         return query.OrderBy(t => t);
     }
 
-    private void HandleSearchTitle(string value)
+    private async Task HandleSearchTitle(string value)
     {
         M.State.Resources.Title = value;
-
-        Search();
+        M.State.Resources.Page = 1;
+        await Search();
     }
 
-    private void HandleSearchSubtype(string value)
+    private async Task HandleSearchSubtype(string value)
     {
         M.State.Resources.Subtype = value;
-        Search();
+        M.State.Resources.Page = 1;
+        await Search();
     }
 
-    private void HandleSearchTag(string value)
+    private async Task HandleSearchTag(string value)
     {
         M.State.Resources.Tag = value;
-        Search();
+        M.State.Resources.Page = 1;
+        await Search();
     }
 
-    private void HandleTagInclusiveChanged()
+    private async Task HandleTagInclusiveChanged()
     {
         M.State.Resources.IsInclusive = !M.State.Resources.IsInclusive;
-        Search();
+        M.State.Resources.Page = 1;
+        await Search();
     }
 
-    private void HandleLimitChanged(int value)
+    private async Task HandleLimitChanged(int value)
     {
         M.State.Resources.Limit = value;
+        M.State.Resources.Page = 1;
         M.SaveSettings();
-        Search();
+        await Search();
     }
 
-    private void HandleEnabledChecked(bool? value)
+    private async Task HandleEnabledChecked(bool? value)
     {
         M.State.Resources.ResourceIsEnabledFilter = value;
-        Search();
+        M.State.Resources.Page = 1;
+        await Search();
     }
 
-    private void HandlePageSelected(int value)
+    private async Task HandlePageSelected(int value)
     {
         M.State.Resources.Page = value;
-        Search();
+        await Search();
     }
 
-    private void Search()
+    private async Task Search()
     {
         var query = Resources.AsQueryable();
         if (!string.IsNullOrWhiteSpace(M.State.Resources.Title)) query = query.Where(r => r.Title.Contains(M.State.Resources.Title, StringComparison.InvariantCultureIgnoreCase));
@@ -124,6 +129,7 @@
         }
         if (M.State.Resources.ResourceIsEnabledFilter != null) query = query.Where(r => r.Files.Any(f => f.IsEnabled == M.State.Resources.ResourceIsEnabledFilter));
         PaginateResults(query.OrderBy(r => r.Title).ToArray());
+        await M.SaveState();
     }
 
     private void PaginateResults(LocalResource[] resources)
