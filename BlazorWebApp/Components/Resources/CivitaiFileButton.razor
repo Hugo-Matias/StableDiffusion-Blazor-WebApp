@@ -16,7 +16,7 @@
                 <MudMenu Color="_color" Icon="@Icons.Material.Filled.KeyboardArrowDown" TransformOrigin="Origin.TopRight" AnchorOrigin="Origin.BottomRight">
                     @foreach (var file in Files)
                     {
-                        <MudMenuItem OnClick=@(() => SelectFile(file)) IconColor=GetVersionButtonColor(file) Icon="@Parser.ParseCivitaiScanIcon(Parser.ParseCivitaiScanResult(file.VirusScanResult))">@($"{file.Type}{(file.Format != "Other" ? $" {file.Format}" : "")} ({Parser.ParseCivitaiFilesize(file.SizeKb)})")</MudMenuItem>
+                        <MudMenuItem OnClick=@(() => SelectFile(file)) IconColor=GetVersionButtonColor(file) Icon="@Parser.ParseCivitaiScanIcon(Parser.ParseCivitaiScanResult(file.VirusScanResult))">@($"{file.Type}{(file.Metadata.Format != "Other" ? $" {file.Metadata.Format }" : "")} ({Parser.ParseCivitaiFilesize(file.SizeKb)})")</MudMenuItem>
                     }
                 </MudMenu>
             }
@@ -118,21 +118,21 @@
 
     private void ParseButtonText()
     {
-        if (_selected.Format == "Other")
+        if (_selected.Metadata.Format == "Other")
             _buttonText = _selected.Type;
-        else if (_selected.Type == "Model") _buttonText = _selected.Format;
-        else if (_selected.Type == "Pruned Model") _buttonText = $"{_selected.Format} (Pruned)";
-        else _buttonText = $"{_selected.Format} | {_selected.Type}";
+        else if (_selected.Type == "Model") _buttonText = _selected.Metadata.Format;
+        else if (_selected.Type == "Pruned Model") _buttonText = $"{_selected.Metadata.Format} (Pruned)";
+        else _buttonText = $"{_selected.Metadata.Format} | {_selected.Type}";
     }
 
     private Color GetVersionButtonColor(CivitaiModelVersionFileDto file)
     {
-        if (file.Format == "Other")
+        if (file.Metadata.Format == "Other")
         {
             if (file.Type == "Config") return Color.Info;
             else if (file.Type == "Training Data") return Color.Secondary;
         }
-        else if (file.Format == "SafeTensor") return Color.Primary;
+        else if (file.Metadata.Format == "SafeTensor") return Color.Primary;
         return Color.Default;
     }
 

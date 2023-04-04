@@ -25,7 +25,7 @@ namespace BlazorWebApp.Services
             _configuration = configuration;
             _img = img;
             _io = io;
-            _m  = m;
+            _m = m;
             _db = db;
             _progress = progress;
             _httpClient = httpClient;
@@ -163,7 +163,7 @@ namespace BlazorWebApp.Services
             CivitaiDownloadStatus status;
             try
             {
-                var url = $"download/models/{version.Id}?type={file.Type}&format={file.Format}";
+                var url = $"download/models/{version.Id}?type={file.Type}&format={file.Metadata.Format}";
 
                 #region Initialize HTTPClient
                 var progressBar = new BaseProgress() { BarColor = Parser.ParseCivitaiResourceColorAsColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)), Value = 0 };

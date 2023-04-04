@@ -30,7 +30,7 @@
     public class CivitaiBaseModelVersionFileDto
     {
         public double SizeKb { get; set; }
-        public string Format { get; set; }
+        public CivitaiBaseModelVersionMetadataDto Metadata { get; set; }
         public string PickleScanResult { get; set; }
         public string VirusScanResult { get; set; }
         public DateTime? ScannedAt { get; set; }
@@ -40,12 +40,19 @@
         public CivitaiBaseModelVersionFileDto(CivitaiModelVersionFileDto file)
         {
             SizeKb = file.SizeKb;
-            Format = file.Format;
+            Metadata = file.Metadata;
             PickleScanResult = file.PickleScanResult;
             VirusScanResult = file.VirusScanResult;
             ScannedAt = file.ScannedAt;
             Primary = file.Primary;
         }
+    }
+
+    public class CivitaiBaseModelVersionMetadataDto
+    {
+        public string Fp { get; set; }
+        public string Size { get; set; }
+        public string Format { get; set; }
     }
 
     public class CivitaiBaseModelVersionImageDto
