@@ -55,6 +55,7 @@ else
         if (!firstRender) return;
         M.OnProjectChangeTask += HandleProjectChanged;
         M.OnStateHasChanged += Refresh;
+        M.OnSelectedImagesChanged += Refresh;
         await LoadProjects();
     }
 
@@ -84,13 +85,17 @@ else
     {
         if (images != null && images.Images != null) images.Images.Clear();
         if (M.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, M.State.Gallery.ProjectId, M.State.Gallery);
-        else images = await DB.GetImages(currentImgPage, M.State.Gallery.ProjectId);
+        else images = await DB.GetPagedImages(currentImgPage, M.State.Gallery.ProjectId);
         await InvokeAsync(StateHasChanged);
+        // Hack to hold execution before ImageCard checked state is updated. 
+        // Without the delay the event triggers too soon and the ImagesContainer is still populated with pre fetching data.
+        await Task.Delay(5);
+        M.RefreshImagesContainer();
     }
 
     private async Task RefreshProjects()
     {
-        LoadProjects();
+        await LoadProjects();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -100,11 +105,12 @@ else
         await LoadImages();
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async void Refresh() => await LoadImages();
 
     public void Dispose()
     {
         M.OnProjectChangeTask -= HandleProjectChanged;
         M.OnStateHasChanged -= Refresh;
+        M.OnSelectedImagesChanged -= Refresh;
     }
 }

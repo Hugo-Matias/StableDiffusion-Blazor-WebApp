@@ -37,7 +37,15 @@ namespace BlazorWebApp.Services
         public event Action OnTxt2ImgParametersChanged;
         public event Action OnImg2ImgParametersChanged;
         public event Action OnUpscaleParametersChanged;
+        public event Action OnSelectedImagesChanged;
+        public event Action OnRefreshImagesContainer;
 
+        public AppState State { get; set; }
+        public AppSettings Settings { get; set; }
+        public Options Options { get; set; }
+        public Txt2ImgParameters ParametersTxt2Img { get; set; }
+        public Img2ImgParameters ParametersImg2Img { get; set; }
+        public UpscaleParameters ParametersUpscale { get; set; }
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
         public ImagesDto GeneratedImageEntities { get; set; }
@@ -49,12 +57,7 @@ namespace BlazorWebApp.Services
         public List<Upscaler> Upscalers { get; set; }
         public List<Folder>? Folders { get; set; }
         public List<Project>? Projects { get; set; }
-        public Options Options { get; set; }
-        public AppSettings Settings { get; set; }
-        public Txt2ImgParameters ParametersTxt2Img { get; set; }
-        public Img2ImgParameters ParametersImg2Img { get; set; }
-        public UpscaleParameters ParametersUpscale { get; set; }
-        public AppState State { get; set; }
+        public List<int> SelectedImageIds { get; set; }
         public int CurrentProgress
         {
             get => _currentProgress; set
@@ -110,6 +113,7 @@ namespace BlazorWebApp.Services
             Progress = new();
             Folders = new();
             Projects = new();
+            SelectedImageIds = new();
             _db.PageSize = State.Gallery.PageSize;
             State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
@@ -607,6 +611,26 @@ namespace BlazorWebApp.Services
         public async Task GetCmdFlags() => CmdFlags = await _api.GetCmdFlags();
 
         public void InvokeDownloadComplete() => OnDownloadCompleted?.Invoke();
+
+        public void AddSelectedImage(int id)
+        {
+            SelectedImageIds.Add(id);
+            OnSelectedImagesChanged?.Invoke();
+        }
+
+        public void RemoveSelectedImage(int id)
+        {
+            SelectedImageIds.Remove(id);
+            OnSelectedImagesChanged?.Invoke();
+        }
+
+        public void ClearSelectedImages()
+        {
+            SelectedImageIds.Clear();
+            OnSelectedImagesChanged?.Invoke();
+        }
+
+        public void RefreshImagesContainer() => OnRefreshImagesContainer?.Invoke();
 
         public void LoadSettings()
         {

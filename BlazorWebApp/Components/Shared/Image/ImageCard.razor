@@ -4,6 +4,7 @@
 @inject IOService IO
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@implements IDisposable
 
 <div>
     @if (Image.ModeId != 3)
@@ -15,6 +16,7 @@
         @*Spacing element to keep top margin consistency*@
         <MudBadge Style="opacity: 0;" Content="null" Overlap />
     }
+    <MudCheckBox Class=@($"select-checkbox {(_isSelected ? "selected" : "")}") Checked=_isSelected T="bool" CheckedChanged="HandleSelected" Color="Color.Success" UnCheckedColor="Color.Default" />
     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
         <MudCardMedia Image=@IO.GetImageStaticFile(Image.Path) />
         <MudCardContent Class="pb-n4">
@@ -54,7 +56,7 @@
             <MudTooltip Color="Color.Dark" Style="max-width:50vw">
                 <ChildContent>
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                        <MudMenuItem OnClick=ShowSwitchProjectDialog Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Switch Project</MudMenuItem>
+                        <MudMenuItem OnClick=ShowSwitchProjectDialog Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Set Project</MudMenuItem>
                         <MudDivider />
                         <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
                         <MudDivider />
@@ -81,16 +83,20 @@
 </div>
 
 @code {
-    [Parameter]
-    public Image Image { get; set; }
-    [Parameter]
-    public string Target { get; set; }
-    [Parameter]
-    public EventCallback<Image> OnSelectImage { get; set; }
-    [Parameter]
-    public EventCallback<Image> OnDeleteImage { get; set; }
-    [Parameter]
-    public EventCallback OnCoverChanged { get; set; }
+    [Parameter] public Image Image { get; set; }
+    [Parameter] public string Target { get; set; }
+    [Parameter] public EventCallback<Image> OnSelectImage { get; set; }
+    [Parameter] public EventCallback<Image> OnDeleteImage { get; set; }
+    [Parameter] public EventCallback OnCoverChanged { get; set; }
+
+    private bool _isSelected;
+
+    protected override void OnInitialized()
+    {
+        _isSelected = M.SelectedImageIds.Contains(Image.ProjectId);
+        M.OnSelectedImagesChanged += Refresh;
+        M.OnRefreshImagesContainer += Refresh;
+    }
 
     private async Task ToggleFavorite(bool isChecked)
     {
@@ -153,14 +159,37 @@
     private async Task ShowSwitchProjectDialog()
     {
         var param = new DialogParameters();
-        param.Add("Image", Image);
+        param.Add("Images", new List<Image>() { Image });
         var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            await DB.UpdateImage((Image)result.Data);
+            var updatedImages = (List<Image>)result.Data;
+            foreach (var image in updatedImages)
+            {
+                await DB.UpdateImage(image);
+            }
             Snackbar.Add("Image project was changed.", Severity.Success);
         }
+    }
+
+    private void HandleSelected(bool isChecked)
+    {
+        if (isChecked) M.AddSelectedImage(Image.Id);
+        else M.RemoveSelectedImage(Image.Id);
+        _isSelected = isChecked;
+    }
+
+    private async void Refresh()
+    {
+        _isSelected = M.SelectedImageIds.Contains(Image.Id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        M.OnSelectedImagesChanged -= Refresh;
+        M.OnRefreshImagesContainer -= Refresh;
     }
 }

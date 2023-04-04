@@ -9,7 +9,7 @@
                 <MudSelectItem Value="@folder.Id">@folder.Name</MudSelectItem>
             }
         </MudSelect>
-        <MudSelect Label="Project" @bind-Value=Image.ProjectId T="int">
+        <MudSelect Label="Project" Value=_currentProjectId ValueChanged=HandleProjectChanged T="int">
             @foreach (var project in _projects)
             {
                 <MudSelectItem Value="@project.Id">@project.Name</MudSelectItem>
@@ -17,21 +17,23 @@
         </MudSelect>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick=@(() => MudDialog.Close(DialogResult.Ok(Image))) Variant=Variant.Filled Color="Color.Success">Save</MudButton>
+        <MudButton OnClick=@(() => MudDialog.Close(DialogResult.Ok(Images))) Variant=Variant.Filled Color="Color.Success">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-    [Parameter] public Image Image { get; set; }
+    [Parameter] public List<Image> Images { get; set; }
     private int _currentFolderId;
+    private int _currentProjectId;
     private List<Folder> _folders;
     private List<Project> _projects;
 
     protected async override Task OnInitializedAsync()
     {
         _folders = await DB.GetFolders();
-        var imageProject = await DB.GetProject(Image.ProjectId);
+        _currentProjectId = Images[0].ProjectId;
+        var imageProject = await DB.GetProject(_currentProjectId);
         _currentFolderId = imageProject.FolderId ?? 0;
         await GetProjects();
     }
@@ -42,5 +44,14 @@
     {
         _currentFolderId = id;
         await GetProjects();
+    }
+
+    private void HandleProjectChanged(int id)
+    {
+        _currentProjectId = id;
+        foreach (var image in Images)
+        {
+            image.ProjectId = id;
+        }
     }
 }

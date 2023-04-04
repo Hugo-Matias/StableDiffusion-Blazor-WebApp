@@ -1,23 +1,34 @@
-﻿@inject DatabaseService DB
+﻿@inject ManagerService M
+@inject DatabaseService DB
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <div style="@Style">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudStack AlignItems="AlignItems.Center">
             @if (Images.Images is not null && Images.Images.Count > 0)
             {
-                if (Images.PageCount > 1)
+                @if (Images.PageCount > 1)
                 {
                     <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
                 }
-                <MudButton OnClick="ShowAllImagesViewerModal" Color="Color.Secondary">Fullscreen</MudButton>
+                <MudStack Row=true>
+                    <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
+                    @if (M.SelectedImageIds.Count > 0)
+                    {
+                        <MudButtonGroup OverrideStyles=false>
+                            <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
+                            <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
+                        </MudButtonGroup>
+                    }
+                </MudStack>
                 <MudGrid Class="mt-n7" Spacing="1" Justify="Justify.Center">
                     @if (Images.Images.Count > 0)
                     {
                         @foreach (var image in Images.Images)
                         {
-                            <ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowImageViewerModal" OnDeleteImage="ShowDeleteImageModal" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
+                            <ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowImageViewerDialog" OnDeleteImage="ShowDeleteImageDialog" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
                         }
                     }
                 </MudGrid>
@@ -35,18 +46,18 @@
 </div>
 
 @code {
-    [Parameter]
-    public ImagesDto Images { get; set; }
-    [Parameter]
-    public EventCallback<int> OnPageSelected { get; set; }
-    [Parameter]
-    public EventCallback OnDeleteImage { get; set; }
-    [Parameter]
-    public EventCallback OnCoverChanged { get; set; }
-    [Parameter]
-    public string Style { get; set; }
+    [Parameter] public ImagesDto Images { get; set; }
+    [Parameter] public EventCallback<int> OnPageSelected { get; set; }
+    [Parameter] public EventCallback OnDeleteImage { get; set; }
+    [Parameter] public EventCallback OnCoverChanged { get; set; }
+    [Parameter] public string Style { get; set; }
 
     private int _currentPage = 1;
+
+    protected override void OnInitialized()
+    {
+        M.OnSelectedImagesChanged += Refresh;
+    }
 
     private void HandlePageChanged(int page)
     {
@@ -54,16 +65,15 @@
         OnPageSelected.InvokeAsync(page);
     }
 
-    private async Task ShowImageViewerModal(Image image)
+    private void ShowImageViewerDialog(Image image)
     {
         var param = new DialogParameters();
         var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
         param.Add("Images", new List<Image>() { image });
         DialogService.Show<ImageViewerDialog>("", param, options);
-        //Refresh();
     }
 
-    private void ShowAllImagesViewerModal()
+    private void ShowAllImagesViewerDialog()
     {
         var param = new DialogParameters();
         var options = new DialogOptions() { MaxWidth = MaxWidth.ExtraLarge, CloseButton = true };
@@ -71,7 +81,7 @@
         DialogService.Show<ImageViewerDialog>("", param, options);
     }
 
-    private async Task ShowDeleteImageModal(Image image)
+    private async Task ShowDeleteImageDialog(Image image)
     {
         var parameters = new DialogParameters();
         parameters.Add("OkButtonText", "Yes");
@@ -80,15 +90,64 @@
         parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this image?<br /></span><small>This action is irreversible!</small>"));
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Image", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
-        if (!result.Canceled) await DeleteImage(image);
+        if (!result.Canceled) await DeleteImage(image, true);
+        Refresh();
     }
 
-    private async Task DeleteImage(Image image)
+    private async Task ShowDeleteImagesDialog()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected images?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Images", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            foreach (var image in selectedImages)
+            {
+                await DeleteImage(image, false);
+            }
+            Snackbar.Add("All selected images deleted successfully.", Severity.Success);
+            M.ClearSelectedImages();
+            Refresh();
+        }
+    }
+
+    private async Task DeleteImage(Image image, bool showSnack)
     {
         var response = await DB.DeleteImage(image);
         await OnDeleteImage.InvokeAsync();
-        Snackbar.Add("Image deleted successfuly.", Severity.Success);
+        if (showSnack) Snackbar.Add("Image deleted successfuly.", Severity.Success);
     }
 
-    private async Task Refresh() => await InvokeAsync(StateHasChanged);
+    private async Task ShowSwitchProjectDialog()
+    {
+        var param = new DialogParameters();
+        var selectedImages = await DB.GetImages(M.SelectedImageIds);
+        param.Add("Images", selectedImages);
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var updatedImages = (List<Image>)result.Data;
+            foreach (var image in updatedImages)
+            {
+                await DB.UpdateImage(image);
+            }
+            Snackbar.Add("Images projects were changed.", Severity.Success);
+            M.ClearSelectedImages();
+            Refresh();
+        }
+    }
+
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        M.OnSelectedImagesChanged -= Refresh;
+    }
 }

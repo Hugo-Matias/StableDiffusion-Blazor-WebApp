@@ -192,7 +192,13 @@ namespace BlazorWebApp.Services
             return await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path);
         }
 
-        public async Task<ImagesDto> GetImages(int page)
+        public async Task<List<Image>> GetImages(List<int> imageIds)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
+        }
+
+        public async Task<ImagesDto> GetPagedImages(int page)
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
@@ -211,13 +217,34 @@ namespace BlazorWebApp.Services
             };
         }
 
-        public async Task<ImagesDto> GetImages(int page, int projectId)
+        public async Task<ImagesDto> GetPagedImages(int page, int projectId)
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
             var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)PageSize);
             var images = await context.Images
                 .Where(i => i.ProjectId == projectId)
+                .OrderByDescending(i => i.Id)
+                .Skip((page - 1) * PageSize)
+                .Take(PageSize)
+                .ToListAsync();
+            return new ImagesDto
+            {
+                Images = images,
+                CurrentPage = page,
+                PageCount = (int)pageCount,
+                HasNext = (int)pageCount > 1 && page < (int)pageCount,
+                HasPrev = page > 1
+            };
+        }
+
+        public async Task<ImagesDto> GetPagedImages(int page, List<int> imageIds)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (context.Images == null) return null;
+            var pageCount = Math.Ceiling(context.Images.Count(i => imageIds.Contains(i.Id)) / (float)PageSize);
+            var images = await context.Images
+                .Where(i => imageIds.Contains(i.Id))
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
