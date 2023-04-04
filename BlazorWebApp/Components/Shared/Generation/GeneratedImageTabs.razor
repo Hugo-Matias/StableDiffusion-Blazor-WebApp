@@ -1,5 +1,6 @@
 ﻿@inject ManagerService M
 @inject ImageService ImageService
+@inject DatabaseService DB
 @implements IDisposable
 
 <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" Rounded Centered>
@@ -55,15 +56,42 @@
             <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
         }
     </MudTabPanel>
+    @if (_selectedImages.Images.Count > 0)
+    {
+        <MudTabPanel Text="Selected">
+            <ImagesContainer OnPageSelected=LoadPage Images="_selectedImages" />
+        </MudTabPanel>
+    }
 </MudTabs>
 
 @code {
-    protected override void OnInitialized()
+    private ImagesDto _selectedImages;
+    private int _currentSelectedImagesPage;
+
+    protected async override Task OnInitializedAsync()
     {
+        await LoadPage(1);
         ImageService.OnChange += Refresh;
+        M.OnSelectedImagesChanged += Refresh;
     }
 
-    public void Dispose() => ImageService.OnChange -= Refresh;
+    private async Task LoadPage(int page)
+    {
+        _currentSelectedImagesPage = page;
+        await LoadSelectedImages();
+    }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async Task LoadSelectedImages() => _selectedImages = await DB.GetPagedImages(_currentSelectedImagesPage, M.SelectedImageIds);
+
+    private async void Refresh()
+    {
+        await LoadSelectedImages();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ImageService.OnChange -= Refresh;
+        M.OnSelectedImagesChanged -= Refresh;
+    }
 }

@@ -67,6 +67,7 @@
 
             M.State.Generation.Img2Img.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
             M.State.Generation.Img2Img.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+            M.OnCanvasImageDataChanged += Refresh;
 
             if (!string.IsNullOrEmpty(M.CanvasImageData)) { await LoadImage(); }
         }
@@ -222,10 +223,17 @@
         await LoadImage();
     }
 
+    private async void Refresh()
+    {
+        await LoadImage();
+        await InvokeAsync(StateHasChanged);
+    }
+
     public async ValueTask DisposeAsync()
     {
         M.State.Generation.Img2Img.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
         M.State.Generation.Img2Img.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+        M.OnCanvasImageDataChanged -= Refresh;
 
         if (_canvasInstance != null)
         {

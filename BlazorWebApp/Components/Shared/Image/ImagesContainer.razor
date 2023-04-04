@@ -15,7 +15,7 @@
                 }
                 <MudStack Row=true>
                     <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
-                    @if (M.SelectedImageIds.Count > 0)
+                    @if (CanSelect && M.SelectedImageIds.Count > 0)
                     {
                         <MudButtonGroup OverrideStyles=false>
                             <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
@@ -28,7 +28,7 @@
                     {
                         @foreach (var image in Images.Images)
                         {
-                            <ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowImageViewerDialog" OnDeleteImage="ShowDeleteImageDialog" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" />
+                            <ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowImageViewerDialog" OnDeleteImage="ShowDeleteImageDialog" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" ShowSelectionCheckbox=CanSelect />
                         }
                     }
                 </MudGrid>
@@ -51,6 +51,7 @@
     [Parameter] public EventCallback OnDeleteImage { get; set; }
     [Parameter] public EventCallback OnCoverChanged { get; set; }
     [Parameter] public string Style { get; set; }
+    [Parameter] public bool CanSelect { get; set; }
 
     private int _currentPage = 1;
 

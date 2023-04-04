@@ -16,7 +16,10 @@
         @*Spacing element to keep top margin consistency*@
         <MudBadge Style="opacity: 0;" Content="null" Overlap />
     }
-    <MudCheckBox Class=@($"select-checkbox {(_isSelected ? "selected" : "")}") Checked=_isSelected T="bool" CheckedChanged="HandleSelected" Color="Color.Success" UnCheckedColor="Color.Default" />
+    @if (ShowSelectionCheckbox)
+    {
+        <MudCheckBox Class=@($"select-checkbox {(_isSelected ? "selected" : "")}") Checked=_isSelected T="bool" CheckedChanged="HandleSelected" Color="Color.Success" UnCheckedColor="Color.Default" />
+    }
     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
         <MudCardMedia Image=@IO.GetImageStaticFile(Image.Path) />
         <MudCardContent Class="pb-n4">
@@ -88,6 +91,7 @@
     [Parameter] public EventCallback<Image> OnSelectImage { get; set; }
     [Parameter] public EventCallback<Image> OnDeleteImage { get; set; }
     [Parameter] public EventCallback OnCoverChanged { get; set; }
+    [Parameter] public bool ShowSelectionCheckbox { get; set; }
 
     private bool _isSelected;
 

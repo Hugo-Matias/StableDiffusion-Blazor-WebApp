@@ -2,6 +2,7 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using MudBlazor;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -20,6 +21,7 @@ namespace BlazorWebApp.Services
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
+        private string _canvasImageData;
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -39,6 +41,7 @@ namespace BlazorWebApp.Services
         public event Action OnUpscaleParametersChanged;
         public event Action OnSelectedImagesChanged;
         public event Action OnRefreshImagesContainer;
+        public event Action OnCanvasImageDataChanged;
 
         public AppState State { get; set; }
         public AppSettings Settings { get; set; }
@@ -67,7 +70,14 @@ namespace BlazorWebApp.Services
             }
         }
         public List<string> CanvasStates { get; set; } = new();
-        public string CanvasImageData { get; set; }
+        public string CanvasImageData
+        {
+            get => _canvasImageData; set
+            {
+                _canvasImageData = value;
+                OnCanvasImageDataChanged?.Invoke();
+            }
+        }
         public string CanvasMaskData { get; set; }
         public string UpscaleImageData { get; set; }
         public bool ControlNetEnabled { get; set; }
@@ -104,7 +114,6 @@ namespace BlazorWebApp.Services
             _io = io;
             _progress = progress;
             _configuration = configuration;
-
             LoadSettings();
             LoadState();
 
@@ -631,6 +640,46 @@ namespace BlazorWebApp.Services
         }
 
         public void RefreshImagesContainer() => OnRefreshImagesContainer?.Invoke();
+
+        public void SetGenerationParameter(Image source, string parameter, bool isImg2Img)
+        {
+            string GetSampler() => _db.GetSampler(source.SamplerId).Result;
+
+            SharedParameters param = isImg2Img ? ParametersImg2Img : ParametersTxt2Img;
+            switch (parameter)
+            {
+                case nameof(SharedParameters.Prompt):
+                    param.Prompt = source.Prompt;
+                    break;
+                case nameof(SharedParameters.NegativePrompt):
+                    param.NegativePrompt = source.NegativePrompt;
+                    break;
+                case nameof(SharedParameters.SamplerIndex):
+                    param.SamplerIndex = GetSampler();
+                    break;
+                case nameof(SharedParameters.Seed):
+                    param.Seed = source.Seed;
+                    break;
+                case nameof(SharedParameters.Steps):
+                    param.Steps = source.Steps;
+                    break;
+                case nameof(SharedParameters.CfgScale):
+                    param.CfgScale = source.CfgScale;
+                    break;
+                case nameof(SharedParameters.Width):
+                    param.Width = source.Width;
+                    break;
+                case nameof(SharedParameters.Height):
+                    param.Height = source.Height;
+                    break;
+                case nameof(SharedParameters.DenoisingStrength):
+                    param.DenoisingStrength = source.DenoisingStrength;
+                    break;
+            }
+
+            if (isImg2Img) OnImg2ImgParametersChanged?.Invoke();
+            else OnTxt2ImgParametersChanged?.Invoke();
+        }
 
         public void LoadSettings()
         {
