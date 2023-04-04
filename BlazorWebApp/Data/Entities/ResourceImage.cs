@@ -69,9 +69,12 @@ namespace BlazorWebApp.Data.Entities
                 }
             }
             Tags = new();
-            foreach (var tag in image.Tags)
+            if (image.Tags != null)
             {
-                Tags.Add(tag.Tag.Name);
+                foreach (var tag in image.Tags)
+                {
+                    Tags.Add(tag.Tag.Name);
+                }
             }
         }
     }
