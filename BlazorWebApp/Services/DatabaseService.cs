@@ -467,6 +467,12 @@ namespace BlazorWebApp.Services
             return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Id == id);
         }
 
+        public async Task<Resource> GetResourceByCivitaiModelId(int civitaiId)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.CivitaiModelId == civitaiId);
+        }
+
         public async Task<Resource> GetResourceByFilename(string filename)
         {
             using var context = _factory.CreateDbContext();

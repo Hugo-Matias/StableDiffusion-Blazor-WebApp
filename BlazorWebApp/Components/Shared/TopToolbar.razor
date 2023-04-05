@@ -96,11 +96,11 @@
         M.OnWebuiStateChanged += Refresh;
         M.OnConverging += Refresh;
         M.OnOptionsChange += Refresh;
-        M.OnFolderChange += Refresh;
-        M.OnProjectChange += Refresh;
-        M.OnProjectsChange += Refresh;
-        M.OnStateHasChanged += Refresh;
-        M.OnSDModelsChange += Refresh;
+        //M.OnFolderChange += Refresh;
+        //M.OnProjectChange += Refresh;
+        //M.OnProjectsChange += Refresh;
+        //M.OnStateHasChanged += Refresh;
+        //M.OnSDModelsChange += Refresh;
         await InitializeStates();
         await M.GetFolders();
         await M.GetProjects();
@@ -197,11 +197,11 @@
         M.OnWebuiStateChanged -= Refresh;
         M.OnConverging -= Refresh;
         M.OnOptionsChange -= Refresh;
-        M.OnFolderChange -= Refresh;
-        M.OnProjectChange -= Refresh;
-        M.OnProjectsChange -= Refresh;
-        M.OnStateHasChanged -= Refresh;
-        M.OnSDModelsChange -= Refresh;
+        //M.OnFolderChange -= Refresh;
+        //M.OnProjectChange -= Refresh;
+        //M.OnProjectsChange -= Refresh;
+        //M.OnStateHasChanged -= Refresh;
+        //M.OnSDModelsChange -= Refresh;
     }
 
     private async void Refresh()

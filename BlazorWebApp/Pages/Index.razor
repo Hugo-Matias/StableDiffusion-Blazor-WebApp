@@ -35,7 +35,7 @@ else
     else
     {
         <MudStack Row Justify="Justify.Center" Style="margin-top: 10rem;">
-        <MudProgressCircular Color="Color.Info" Indeterminate />
+        <MudProgressCircular Color="Color.Success" Indeterminate />
         </MudStack>
     }
 }
@@ -89,7 +89,8 @@ else
         await InvokeAsync(StateHasChanged);
         // Hack to hold execution before ImageCard checked state is updated.
         // Without the delay the event triggers too soon and the ImagesContainer is still populated with pre fetching data.
-        await Task.Delay(5);
+        // https://stackoverflow.com/questions/75933636/awaiting-re-render-of-invokeasyncstatehaschanged
+        await Task.Yield();
         M.RefreshImagesContainer();
     }
 

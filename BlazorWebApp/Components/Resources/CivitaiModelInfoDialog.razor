@@ -1,4 +1,7 @@
-﻿<div>
+﻿@inject ManagerService M
+@inject DatabaseService DB
+
+<div>
     <MudDialog Style="min-width: 90vw; min-height: 90vh;" Class="pa-5">
         <TitleContent>
             <MudText Style="display: flex; justify-content: space-between;" Typo="Typo.h4">
@@ -69,4 +72,10 @@
 @code {
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
     [Parameter] public CivitaiModelDto Model { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        var entity = await DB.GetResourceByCivitaiModelId(Model.Id);
+        if (entity != null) M.State.Civitai.ResourceSubtype = entity.SubType != null ? entity.SubType.Name : "";
+    }
 }
