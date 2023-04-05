@@ -36,13 +36,13 @@
         <MudGrid>
             <MudItem xs="4">
                 <MudStack>
-                    <MudTextField T="string" @bind-Value="M.State.Gallery.Prompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true/>
-                    <MudTextField Class="mt-n4" T="string" @bind-Value="M.State.Gallery.NegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true/>
+                    <MudTextField T="string" @bind-Value="M.State.Gallery.Prompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true />
+                    <MudTextField Class="mt-n4" T="string" @bind-Value="M.State.Gallery.NegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true />
                 </MudStack>
             </MudItem>
             <MudItem xs="3">
-                <MudCheckBox Class="mt-4" Label="Favorites Only" @bind-Checked="M.State.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
-                <MudStack Class="mt-2" Row=true>
+                <MudNumericField T="int" ValueChanged="HandlePageChanged" Label="Page" />
+                <MudStack Class="mt-4" Row=true>
                     <MudSelect Label="Order by" @bind-Value="M.State.Gallery.OrderBy">
                         @foreach (GalleryOrderBy order in Enum.GetValues(typeof(GalleryOrderBy)))
                         {
@@ -66,7 +66,14 @@
                     <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Warning">Filter</MudButton>
                     <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Error">Reset</MudButton>
                 </MudButtonGroup>
-                <MudCheckBox Class="mt-4" Label="DateRange" CheckedIcon="fa-solid fa-calendar" Color="Color.Success" UncheckedIcon="fa-regular fa-calendar" UnCheckedColor="Color.Error" @bind-Checked=M.State.Gallery.FilterByDateRange />
+                <MudStack Row=true>
+                    <MudTooltip Text="Use Date Range to filter images" Delay="1600" Duration="600">
+                        <MudCheckBox Class="mt-4" CheckedIcon="fa-solid fa-calendar" Color="Color.Success" UncheckedIcon="fa-regular fa-calendar" UnCheckedColor="Color.Error" @bind-Checked=M.State.Gallery.FilterByDateRange />
+                    </MudTooltip>
+                    <MudTooltip Text="Show favorites only" Delay="1600" Duration="600">
+                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
+                    </MudTooltip>
+                </MudStack>
             </MudItem>
         </MudGrid>
     </MudContainer>
@@ -77,6 +84,7 @@
     [Parameter] public EventCallback OnFilterImages { get; set; }
     [Parameter] public EventCallback OnResetFilters { get; set; }
     [Parameter] public EventCallback OnProjectDeleted { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
 
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
 
@@ -97,6 +105,8 @@
         M.State.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "Img2Img");
         M.State.Gallery.IsModeUpscale = chips.Any(c => c.Text == "Upscale");
     }
+
+    private void HandlePageChanged(int page) => OnPageChanged.InvokeAsync(page);
 
     private async Task ShowDeleteProjectModal(int projectId)
     {

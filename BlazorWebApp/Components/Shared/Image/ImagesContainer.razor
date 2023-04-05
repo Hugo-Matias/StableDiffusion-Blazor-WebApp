@@ -60,7 +60,7 @@
         M.OnSelectedImagesChanged += Refresh;
     }
 
-    private void HandlePageChanged(int page)
+    public void HandlePageChanged(int page)
     {
         _currentPage = page;
         OnPageSelected.InvokeAsync(page);
