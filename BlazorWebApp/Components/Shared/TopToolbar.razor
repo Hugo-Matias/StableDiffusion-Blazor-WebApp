@@ -3,6 +3,7 @@
 @inject DatabaseService DB
 @inject IOService IO
 @inject IDialogService DialogService
+@inject IConfiguration Configuration
 @implements IDisposable
 
 <div class="mt-6">
@@ -66,7 +67,7 @@
             </MudItem>
         }
         <MudItem xs="10">
-            <MudSelect @bind-Value=_selectedState T="State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent">
+            <MudSelect @bind-Value=_selectedState T="State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 @foreach (var state in _states)
                 {
                     <MudSelectItem Value="state">@state.Title</MudSelectItem>
@@ -124,7 +125,7 @@
 
     private async Task InitializeStates()
     {
-        _states = await DB.GetStates();
+        _states = await DB.GetStates(int.Parse(Configuration["StateVersion"]));
         _states.RemoveAt(0);
         await InvokeAsync(StateHasChanged);
     }

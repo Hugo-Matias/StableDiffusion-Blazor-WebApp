@@ -52,6 +52,7 @@
                     <MudChip Text="Regional Prompter" Default="Parameters.Scripts.RegionalPrompter.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Regional Prompter</MudChip>
                     <MudChip Text="Dynamic Prompts" Default="Parameters.Scripts.DynamicPrompts.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Dynamic Prompts</MudChip>
                     <MudChip Text="ControlNet" Default="M.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
+                    <MudChip Text="XYZ Plot" Default="Parameters.Scripts.XYZPlot.IsEnabled" Variant="Variant.Text" Color="Color.Primary">X/Y/Z Plot</MudChip>
                 </MudChipSet>
             </MudItem>
             <MudItem xs="12">
@@ -105,6 +106,9 @@
             <MudItem xs="12" Class="@($"collapse {(M.ControlNetEnabled ? "show" : "")}")">
                 <ControlNetTabs Units="Parameters.Scripts.ControlNet" />
             </MudItem>
+            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.XYZPlot.IsEnabled ? "show" : "")}")">
+                <XYZPlotForm Parameters="Parameters.Scripts.XYZPlot" IsImg2Img=false />
+            </MudItem>
         </MudGrid>
     </EditForm>
 </div>
@@ -154,6 +158,7 @@
         Parameters.Scripts.RegionalPrompter.IsEnabled = false;
         Parameters.Scripts.DynamicPrompts.IsEnabled = false;
         M.ControlNetEnabled = false;
+        Parameters.Scripts.XYZPlot.IsEnabled = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
         foreach (var check in checkboxes)
@@ -188,6 +193,9 @@
                     break;
                 case "ControlNet":
                     M.ControlNetEnabled = true;
+                    break;
+                case "XYZ Plot":
+                    Parameters.Scripts.XYZPlot.IsEnabled = true;
                     break;
             }
         }

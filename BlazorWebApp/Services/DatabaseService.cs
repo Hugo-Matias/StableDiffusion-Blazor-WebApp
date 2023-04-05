@@ -604,10 +604,10 @@ namespace BlazorWebApp.Services
             return entity.Entity;
         }
 
-        public async Task<List<State>> GetStates()
+        public async Task<List<State>> GetStates(int stateVersion)
         {
             using var context = await _factory.CreateDbContextAsync();
-            return await context.States.ToListAsync();
+            return await context.States.Where(s => s.Version == stateVersion).ToListAsync();
         }
 
         public async Task<State?> GetState(int id)

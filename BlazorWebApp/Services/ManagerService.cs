@@ -166,6 +166,7 @@ namespace BlazorWebApp.Services
                         MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
                         MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
                         RegionalPrompter = CreateRegionalPrompter(),
+                        XYZPlot = CreateXYZPlot(),
                     }
                 };
 
@@ -187,6 +188,7 @@ namespace BlazorWebApp.Services
                         MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
                         MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
                         RegionalPrompter = CreateRegionalPrompter(),
+                        XYZPlot = CreateXYZPlot(),
                     }
                 };
 
@@ -350,6 +352,25 @@ namespace BlazorWebApp.Services
                 UseBasePrompt = Settings.Scripts.RegionalPrompter.UseBasePrompt,
                 UseCommonPrompt = Settings.Scripts.RegionalPrompter.UseCommonPrompt,
                 UseNegativeCommonPrompt = Settings.Scripts.RegionalPrompter.UseNegativeCommonPrompt,
+            };
+        }
+
+        public ScriptParametersXYZPlot CreateXYZPlot()
+        {
+            return new ScriptParametersXYZPlot()
+            {
+                IsAlwaysOn = false,
+                XTypeIndex = 0,
+                XValues = string.Empty,
+                YTypeIndex = 0,
+                YValues = string.Empty,
+                ZTypeIndex = 0,
+                ZValues = string.Empty,
+                DrawLegend = Settings.Scripts.XYZPlot.DrawLegend,
+                IncludeSubImages = Settings.Scripts.XYZPlot.IncludeSubImages,
+                IncludeSubGrids = Settings.Scripts.XYZPlot.IncludeSubGrids,
+                RandomSeed = Settings.Scripts.XYZPlot.RandomSeed,
+                Margin = Settings.Scripts.XYZPlot.Margin.Value,
             };
         }
 

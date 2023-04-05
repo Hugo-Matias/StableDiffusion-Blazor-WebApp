@@ -1,0 +1,75 @@
+﻿@inject ManagerService M
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">X/Y/Z Plot</MudText>
+<MudGrid>
+    <MudItem xs="6">
+        <MudSelect Label="X Type" @bind-Value=Parameters.XTypeIndex>
+            @{
+                var index = 0;
+                foreach (var type in M.Settings.Scripts.XYZPlot.AxisTypes)
+                {
+                    if (type.IsImg2Img == null || type.IsImg2Img == IsImg2Img)
+                    {
+                        <MudSelectItem Value="index">@type.Name</MudSelectItem>
+                    }
+                    index++;
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudTextField Label="X Values" @bind-Value=Parameters.XValues />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect Label="Y Type" @bind-Value=Parameters.YTypeIndex>
+            @{
+                var index = 0;
+                foreach (var type in M.Settings.Scripts.XYZPlot.AxisTypes)
+                {
+                    if (type.IsImg2Img == null || type.IsImg2Img == IsImg2Img)
+                    {
+                        <MudSelectItem Value="index">@type.Name</MudSelectItem>
+                    }
+                    index++;
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudTextField Label="Y Values" @bind-Value=Parameters.YValues />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect Label="Z Type" @bind-Value=Parameters.ZTypeIndex>
+            @{
+                var index = 0;
+                foreach (var type in M.Settings.Scripts.XYZPlot.AxisTypes)
+                {
+                    if (type.IsImg2Img == null || type.IsImg2Img == IsImg2Img)
+                    {
+                        <MudSelectItem Value="index">@type.Name</MudSelectItem>
+                    }
+                    index++;
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudTextField Label="Z Values" @bind-Value=Parameters.ZValues />
+    </MudItem>
+    <MudItem xs="12">
+        <MudSlider @bind-Value=Parameters.Margin Min=M.Settings.Scripts.XYZPlot.Margin.Min Max=M.Settings.Scripts.XYZPlot.Margin.Max Step=M.Settings.Scripts.XYZPlot.Margin.Step ValueLabel=true><small>Margin:</small> @Parameters.Margin px</MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudStack Row=true>
+            <MudCheckBox @bind-Checked=Parameters.DrawLegend Label="Draw Legend" />
+            <MudCheckBox @bind-Checked=Parameters.RandomSeed Label="Random Seed" />
+            <MudCheckBox @bind-Checked=Parameters.IncludeSubImages Label="Save Images" />
+            <MudCheckBox @bind-Checked=Parameters.IncludeSubGrids Label="Save Grids" />
+        </MudStack>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersXYZPlot Parameters { get; set; }
+    [Parameter] public bool IsImg2Img { get; set; }
+}

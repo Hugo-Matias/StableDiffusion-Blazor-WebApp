@@ -201,6 +201,7 @@
         public UltimateUpscaleSettingsModel UltimateUpscale { get; set; } = new();
         public MultiDiffusionSettingsModel MultiDiffusion { get; set; } = new();
         public RegionalPrompterSettingsModel RegionalPrompter { get; set; } = new();
+        public XYZPlotSettingsModel XYZPlot { get; set; } = new();
     }
 
     #region ControlNet
@@ -660,6 +661,78 @@
             "Horizontal",
             "Vertical"
         };
+    }
+    #endregion
+
+    #region XYZ Plot
+    public class XYZPlotSettingsModel
+    {
+        public bool DrawLegend { get; set; } = true;
+        public bool IncludeSubImages { get; set; } = false;
+        public bool IncludeSubGrids { get; set; } = false;
+        public bool RandomSeed { get; set; } = false;
+        public XYZPlotMarginSettingsModel Margin { get; set; } = new();
+
+        public List<XYZPlotType> AxisTypes { get; set; } = new()
+        {
+            new() { Name = "None", IsImg2Img = null },
+            new() { Name = "Seed", IsImg2Img = null },
+            new() { Name = "Var. Seed", IsImg2Img = null },
+            new() { Name = "Var. Strenght", IsImg2Img = null },
+            new() { Name = "Steps", IsImg2Img = null },
+            new() { Name = "Hires Steps", IsImg2Img = false },
+            new() { Name = "CFG Scale", IsImg2Img = null },
+            new() { Name = "Image CFG Scale", IsImg2Img = true },
+            new() { Name = "Prompt S/R", IsImg2Img = null },
+            new() { Name = "Prompt Order", IsImg2Img = null },
+            new() { Name = "Sampler", IsImg2Img = null },
+            new() { Name = "Checkpoint Name", IsImg2Img = null },
+            new() { Name = "Sigma Churn", IsImg2Img = null },
+            new() { Name = "Sigma Min", IsImg2Img = null },
+            new() { Name = "Sigma Max", IsImg2Img = null },
+            new() { Name = "Sigma Noise", IsImg2Img = null },
+            new() { Name = "ETA", IsImg2Img = null },
+            new() { Name = "Clip Skip", IsImg2Img = null },
+            new() { Name = "Denoising", IsImg2Img = null },
+            new() { Name = "Hires Upscaler", IsImg2Img = false },
+            new() { Name = "Cond. Image Mask Weight", IsImg2Img = true },
+            new() { Name = "VAE", IsImg2Img = null },
+            new() { Name = "Styles", IsImg2Img = null },
+            new() { Name = "UniPC Order", IsImg2Img = null },
+            new() { Name = "Face Restore", IsImg2Img = null },
+            new() { Name = "ControlNet Enabled", IsImg2Img = null },
+            new() { Name = "ControlNet Model", IsImg2Img = null },
+            new() { Name = "ControlNet Weight", IsImg2Img = null },
+            new() { Name = "ControlNet Guidance Start", IsImg2Img = null },
+            new() { Name = "ControlNet Guidance End", IsImg2Img = null },
+            new() { Name = "ControlNet Resize Mode", IsImg2Img = null },
+            new() { Name = "ControlNet Preprocessor", IsImg2Img = null },
+            new() { Name = "ControlNet Pre Resolution", IsImg2Img = null },
+            new() { Name = "ControlNet Pre Threshold A", IsImg2Img = null },
+            new() { Name = "ControlNet Pre Threshold B", IsImg2Img = null },
+            new() { Name = "Cutoff Enabled", IsImg2Img = null },
+            new() { Name = "Cutoff Targets", IsImg2Img = null },
+            new() { Name = "Cutoff Weight", IsImg2Img = null },
+            new() { Name = "Cutoff Disable Negative Prompt", IsImg2Img = null },
+            new() { Name = "Cutoff Strong", IsImg2Img = null },
+            new() { Name = "Cutoff Padding", IsImg2Img = null },
+            new() { Name = "Cutoff Interpolation", IsImg2Img = null },
+        };
+    }
+
+    public class XYZPlotType
+    {
+        public string Name { get; set; }
+        // Null == both modes | False == Txt2Img only | True == Img2Img only
+        public bool? IsImg2Img { get; set; }
+    }
+
+    public class XYZPlotMarginSettingsModel
+    {
+        public int Value { get; set; } = 0;
+        public int Min { get; set; } = 0;
+        public int Max { get; set; } = 100;
+        public int Step { get; set; } = 1;
     }
     #endregion
     #endregion
