@@ -16,14 +16,14 @@
             <MudStack Class="mt-2 align-items-center" Row>
                 <MudText Color="Color.Info">
                     <MudIcon Size=Size.Small Icon="fa-solid fa-download" />
-                    @(Parser.CollapseInteger(Model.Rank.DownloadCountAllTime))
+                    @(Parser.CollapseInteger(Model.Stats.DownloadCount))
                 </MudText>
                 <MudText Color="Color.Error">
                     <MudIcon Size=Size.Small Icon="fa-solid fa-heart" />
-                    @(Parser.CollapseInteger(Model.Rank.FavoriteCountAllTime))
+                    @(Parser.CollapseInteger(Model.Stats.FavoriteCount))
                 </MudText>
-                <MudRating Class="me-n2" SelectedValue="@((int)Math.Round(Model.Rank.RatingAllTime))" ReadOnly />
-                <MudText Color="Color.Warning">(@(Parser.CollapseInteger(Model.Rank.RatingCountAllTime)))</MudText>
+                <MudRating Class="me-n2" SelectedValue="@((int)Math.Round(Model.Stats.Rating))" ReadOnly />
+                <MudText Color="Color.Warning">(@(Parser.CollapseInteger(Model.Stats.RatingCount)))</MudText>
             </MudStack>
         </TitleContent>
         <DialogContent>
@@ -44,7 +44,7 @@
                         <MudChipSet Filter=false>
                             @foreach (var tag in Model.Tags)
                             {
-                                <MudChip>@tag</MudChip>
+                                <MudChip>@tag.Name</MudChip>
                             }
                         </MudChipSet>
                     </MudStack>

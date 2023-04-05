@@ -10,17 +10,23 @@ namespace BlazorWebApp.Data.Dtos
         public string AllowCommercialUse { get; set; }
         public bool AllowDerivatives { get; set; }
         public bool AllowDifferentLicense { get; set; }
-        public CivitaiModelRankDto Rank { get; set; }
+        public CivitaiModelStatsDto Stats { get; set; }
+        public List<CivitaiModelTagDto> Tags { get; set; }
         public List<CivitaiModelVersionDto> ModelVersions { get; set; }
     }
 
-    public class CivitaiModelRankDto
+    public class CivitaiModelTagDto
     {
-        public int DownloadCountAllTime { get; set; }
-        public int CommentCountAllTime { get; set; }
-        public int FavoriteCountAllTime { get; set; }
-        public int RatingCountAllTime { get; set; }
-        public double RatingAllTime { get; set; }
+        public string Name { get; set; }
+    }
+
+    public class CivitaiModelStatsDto
+    {
+        public int DownloadCount { get; set; }
+        public int CommentCount { get; set; }
+        public int FavoriteCount { get; set; }
+        public int RatingCount { get; set; }
+        public double Rating { get; set; }
     }
 
     public class CivitaiModelVersionDto : CivitaiBaseModelVersionDto
