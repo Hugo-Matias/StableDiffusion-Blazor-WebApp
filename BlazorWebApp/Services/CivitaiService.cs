@@ -18,7 +18,8 @@ namespace BlazorWebApp.Services
         private readonly ManagerService _m;
         private readonly DatabaseService _db;
         private readonly ProgressService _progress;
-        private readonly List<CivitaiModelType> _ignoreDatabaseTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
+        private readonly List<string> _ignoreFileType = new() { "config" };
+        private readonly List<CivitaiModelType> _ignoreModelTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
 
         public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, ManagerService m, DatabaseService db, ProgressService progress)
         {
@@ -207,7 +208,7 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Add to DB
-                if (!_ignoreDatabaseTypes.Contains((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)))
+                if (!_ignoreModelTypes.Contains((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)) && !_ignoreFileType.Contains(file.Type.ToLower()))
                 {
                     var entity = new Resource(model, version, file);
                     if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };

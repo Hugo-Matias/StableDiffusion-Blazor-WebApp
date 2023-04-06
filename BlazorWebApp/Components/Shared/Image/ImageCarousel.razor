@@ -2,7 +2,7 @@
 @inject IOService IO
 
 <div>
-    <MudCarousel @ref=Reference Class="mud-width-full" Style=@($"width: {_width}; height: {_height}; max-width: {MaxWidth}; max-height: {MaxHeight}") ShowArrows="ShowControls" ShowBullets=false TData="Image" AutoCycle=AutoCycle>
+    <MudCarousel @ref=Reference Class="mud-width-full" Style=@($"width: {_width}; height: {_height}; max-width: {MaxWidth}; max-height: {MaxHeight}") ShowArrows="ShowControls" ShowBullets=false TData="Image" AutoCycle=AutoCycle SelectedIndexChanged=@(v => OnImageChanged.InvokeAsync(v))>
         @foreach (var image in Images)
         {
             <MudCarouselItem Style=@($"width: 100%; height: 100%; max-width: {MaxWidth}; max-height: {MaxHeight};") Transition="Transition.Fade">
@@ -27,6 +27,7 @@
     [Parameter] public string MaxWidth { get; set; }
     [Parameter] public string MaxHeight { get; set; }
     [Parameter] public bool IsExpanded { get; set; }
+    [Parameter] public EventCallback<int> OnImageChanged { get; set; }
 
     public MudCarousel<Image>? Reference { get; set; } = new();
 

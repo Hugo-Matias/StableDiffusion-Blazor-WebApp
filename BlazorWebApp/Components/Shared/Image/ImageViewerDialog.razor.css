@@ -1,0 +1,15 @@
+﻿::deep .carousel-container:hover .image-info {
+	opacity:1;
+}
+
+::deep .image-info {
+	position:absolute;
+	text-align: center;
+	bottom: 2rem;
+	max-width: 90%;
+	background: rgba(0,0,0,0.85);
+	border-radius: 1rem;
+	padding: 1rem !important;
+	opacity: 0;
+	transition: opacity 0.2s ease-in-out;
+}

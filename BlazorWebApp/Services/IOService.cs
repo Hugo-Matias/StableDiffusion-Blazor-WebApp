@@ -18,7 +18,7 @@ namespace BlazorWebApp.Services
         {
             var destFile = new FileInfo(destinationPath);
             if (!destFile.Directory.Exists) Directory.CreateDirectory(destFile.DirectoryName);
-            File.Move(sourcePath, destinationPath);
+            File.Move(sourcePath, destinationPath, true);
         }
 
         public string GetJsonAsString(string path) => new string(File.ReadAllText(path));

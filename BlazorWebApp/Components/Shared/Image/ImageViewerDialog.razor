@@ -17,7 +17,13 @@
             </MudContainer>
         </TitleContent>
         <DialogContent>
-            <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="95vw" MaxHeight="90vh" />
+            <MudStack AlignItems="AlignItems.Center" Class="carousel-container">
+                <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="95vw" MaxHeight="90vh" OnImageChanged="UpdateImageInfo" />
+                <MudStack Class="image-info">
+                    <MudText Style="text-align: center;" Typo="Typo.caption" Color="MudBlazor.Color.Success">@_prompt</MudText>
+                    <MudText Typo="Typo.caption" Color="MudBlazor.Color.Error">@_negativePrompt</MudText>
+                </MudStack>
+            </MudStack>
         </DialogContent>
     </MudDialog>
 </div>
@@ -31,6 +37,19 @@
 
     private bool _autoCycle;
     private bool _expand;
+    private string _prompt;
+    private string _negativePrompt;
+
+    protected override void OnInitialized()
+    {
+        UpdateImageInfo(0);
+    }
+
+    private void UpdateImageInfo(int index)
+    {
+        _prompt = Images[index].Prompt;
+        _negativePrompt = Images[index].NegativePrompt;
+    }
 
     private void ExpandCarousel()
     {
