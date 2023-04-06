@@ -203,7 +203,16 @@ namespace BlazorWebApp.Services
 
         public int GetFileIndex(string path, Outdir dir)
         {
-            FileInfo? lastFile = GetLastSavedFile(path);
+            var files = GetOrderedFiles(path);
+            files.Reverse();
+            FileInfo? lastFile = null;
+            while (lastFile == null)
+            {
+                foreach (var file in files)
+                {
+                    if (!file.Name.StartsWith("xyz_grid", StringComparison.InvariantCultureIgnoreCase)) lastFile = file;
+                }
+            }
             int fileIndex;
 
             if (lastFile != null)
@@ -233,8 +242,6 @@ namespace BlazorWebApp.Services
 
             return fileIndex;
         }
-
-        private FileInfo? GetLastSavedFile(string path) => GetOrderedFiles(path).LastOrDefault();
 
         public string[]? LoadTextLines(string path)
         {

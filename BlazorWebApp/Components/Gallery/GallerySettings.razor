@@ -68,13 +68,13 @@
                 </MudButtonGroup>
                 <MudStack Row=true>
                     <MudTooltip Text="Use Date Range to filter images" Placement=Placement.Start Delay="1600" Duration="600">
-                        <MudCheckBox Class="mt-4" CheckedIcon="fa-solid fa-calendar" Color="Color.Success" UncheckedIcon="fa-regular fa-calendar" UnCheckedColor="Color.Error" @bind-Checked=M.State.Gallery.FilterByDateRange />
+                        <MudCheckBox Class="mt-4" CheckedIcon="fa-solid fa-calendar" Color="Color.Success" UncheckedIcon="fa-regular fa-calendar" UnCheckedColor="Color.Default" @bind-Checked=M.State.Gallery.FilterByDateRange />
                     </MudTooltip>
                     <MudTooltip Text="Show selected images only" Placement=Placement.Start Delay="1600" Duration="600">
-                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsSelectedOnly" Color="Color.Success" CheckedIcon="fa-solid fa-square-check" UncheckedIcon="fa-regular fa-square-check" UnCheckedColor="Color.Error" />
+                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsSelectedOnly" Color="Color.Success" CheckedIcon="fa-solid fa-square-check" UncheckedIcon="fa-regular fa-square-check" UnCheckedColor="Color.Default" />
                     </MudTooltip>
                     <MudTooltip Text="Show favorites only" Placement=Placement.Start Delay="1600" Duration="600">
-                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" />
+                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" UnCheckedColor="Color.Default" />
                     </MudTooltip>
                 </MudStack>
             </MudItem>
