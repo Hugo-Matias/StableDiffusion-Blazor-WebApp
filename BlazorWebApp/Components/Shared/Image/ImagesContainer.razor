@@ -21,6 +21,10 @@
                             <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
                             <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
                         </MudButtonGroup>
+                        <MudButtonGroup OverrideStyles=false>
+                            <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">Clear</MudButton>
+                            <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
+                        </MudButtonGroup>
                     }
                 </MudStack>
                 <MudGrid Class="mt-n7" Spacing="1" Justify="Justify.Center">
@@ -114,6 +118,15 @@
             Snackbar.Add("All selected images deleted successfully.", Severity.Success);
             M.ClearSelectedImages();
             Refresh();
+        }
+    }
+
+    private void SelectAll()
+    {
+        var ids = Images.Images.Select(i => i.Id).ToList();
+        foreach (var id in ids)
+        {
+            M.AddSelectedImage(id);
         }
     }
 

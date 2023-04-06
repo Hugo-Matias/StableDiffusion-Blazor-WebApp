@@ -50,9 +50,8 @@ else
     private List<Project>? _projects;
     private int currentImgPage;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (!firstRender) return;
         M.OnProjectChangeTask += HandleProjectChanged;
         M.OnStateHasChanged += Refresh;
         M.OnSelectedImagesChanged += Refresh;
@@ -84,12 +83,21 @@ else
     private async Task LoadImages()
     {
         if (images != null && images.Images != null) images.Images.Clear();
-        if (M.IsGalleryFiltered) images = await DB.GetSortedImages(currentImgPage, M.State.Gallery.ProjectId, M.State.Gallery);
+        if (M.IsGalleryFiltered)
+        {
+            if (M.State.Gallery.IsSelectedOnly)
+            {
+                images = await DB.GetPagedImages(currentImgPage, M.SelectedImageIds);
+            }
+            else
+            {
+                images = await DB.GetSortedImages(currentImgPage, M.State.Gallery.ProjectId, M.State.Gallery);
+            }
+        }
         else images = await DB.GetPagedImages(currentImgPage, M.State.Gallery.ProjectId);
         await InvokeAsync(StateHasChanged);
         // Hack to hold execution before ImageCard checked state is updated.
         // Without the delay the event triggers too soon and the ImagesContainer is still populated with pre fetching data.
-        // https://stackoverflow.com/questions/75933636/awaiting-re-render-of-invokeasyncstatehaschanged
         await Task.Yield();
         M.RefreshImagesContainer();
     }
