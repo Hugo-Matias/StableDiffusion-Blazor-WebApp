@@ -119,15 +119,34 @@
         {
             file.IsEnabled = false;
             var storagePath = Path.Combine(Configuration["ResourcesPath"], "_storage", resource.Type.Name);
-            if (resource.SubType != null) storagePath = Path.Combine(storagePath, resource.SubType.Name);
+            var activePath = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
+            if (resource.SubType != null)
+            {
+                storagePath = Path.Combine(storagePath, resource.SubType.Name);
+                activePath = Path.Combine(activePath, resource.SubType.Name);
+            }
             storagePath = Path.Combine(storagePath, file.Filename);
+            activePath = Path.Combine(activePath, file.Filename);
             if (File.Exists(storagePath)) file.File = new FileInfo(storagePath);
+            else if (File.Exists(activePath))
+            {
+                file.File = new FileInfo(activePath);
+                file.IsEnabled = true;
+            }
             else
             {
                 Snackbar.Add($"Resource is disabled and was not found in the storage folder!\nExpected path: {storagePath}", Severity.Error);
                 return;
             }
         }
+        if (file.SizeKb <= 0 && file.CivitaiId != null && file.CivitaiId > 0)
+        {
+            file.SizeKb = file.File.Length / 1024;
+            var entity = await DB.GetResourceById(file.ResourceId);
+            entity.SizeKb = file.SizeKb;
+            await DB.UpdateResource(entity);
+        }
+
         var filename = file.File.Name.Replace(file.File.Extension, "");
 
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };

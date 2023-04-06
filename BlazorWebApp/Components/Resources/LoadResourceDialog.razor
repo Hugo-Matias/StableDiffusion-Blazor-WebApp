@@ -25,8 +25,8 @@
     <DialogContent>
         <MudTabs Elevation="0" PanelClass="mt-4" Rounded Centered>
             <MudTabPanel Text="Data">
-                <MudText Class="mb-4" Style="text-align:center;" Color="Color.Primary" Typo="Typo.button">@File.Filename</MudText>
-                @if (File.Description != null)
+                <MudText Class="mb-4" Style="text-align:center;" Color="Color.Primary" Typo="Typo.button">@File.Filename @((File.SizeKb != 0 ? $"({Parser.ParseSizeKb(File.SizeKb)})" : ""))</MudText>
+                    @if (File.Description != null)
                 {
                     <MudContainer Class="my-4" Style="max-height: 200px; overflow: scroll;">
                         @((MarkupString)File.Description)
@@ -105,7 +105,7 @@
 
     private void HandleResourceWeightChanged(float value)
     {
-        M.State.Resources.Weight= value;
+        M.State.Resources.Weight = value;
         M.SaveSettings();
     }
 

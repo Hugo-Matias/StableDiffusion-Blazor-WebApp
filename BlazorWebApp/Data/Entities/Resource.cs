@@ -16,6 +16,7 @@ namespace BlazorWebApp.Data.Entities
         public List<string>? TriggerWords { get; set; }
         public string? Description { get; set; }
         public bool IsEnabled { get; set; }
+        public double SizeKb { get; set; }
 
         public Resource() { }
         public Resource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
@@ -31,6 +32,7 @@ namespace BlazorWebApp.Data.Entities
             else Description = model.Description;
             IsEnabled = false;
             if (version.TrainedWords != null) TriggerWords = version.TrainedWords;
+            SizeKb = file.SizeKb;
         }
     }
 

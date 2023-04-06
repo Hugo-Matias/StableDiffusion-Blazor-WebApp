@@ -345,8 +345,9 @@ namespace BlazorWebApp.Extensions
             };
         }
 
-        public static string ParseCivitaiFilesize(this double filesize)
+        public static string ParseSizeKb(this double filesize)
         {
+            if (filesize <= 0) return "N/D";
             if (filesize < 1024)
                 return $"{filesize:#.##} KB";
             else if (filesize / 1024 < 1024)

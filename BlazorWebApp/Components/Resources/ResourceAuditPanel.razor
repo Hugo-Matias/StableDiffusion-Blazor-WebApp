@@ -58,7 +58,8 @@
                 Type = new() { Name = type },
                 SubType = new() { Name = subType },
                 Tags = new(),
-                TriggerWords = new()
+                TriggerWords = new(),
+                SizeKb = file.Length / 1024
             };
         param.Add("Resource", resource);
         var dialog = await DialogService.ShowAsync<ResourceInfoDialog>("Resource", param, options);

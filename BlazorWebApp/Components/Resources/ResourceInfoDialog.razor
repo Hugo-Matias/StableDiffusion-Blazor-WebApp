@@ -5,6 +5,7 @@
         <MudStack Row>
             <MudStack>
                 <MudTextField Label="File" @bind-Value=Resource.Filename />
+                <MudTextField Label="Size" Value=Parser.ParseSizeKb(Resource.SizeKb) ReadOnly=true/>
                 <MudTextField Label="Title" @bind-Value=Resource.Title Clearable />
                 <MudTextField Label="Author" @bind-Value=Resource.Author Clearable />
                 <MudSelect Label="Type" @bind-Value=Resource.Type ToStringFunc="v => v?.Name">
@@ -13,7 +14,7 @@
                         <MudSelectItem Value="@type">@type.Name</MudSelectItem>
                     }
                 </MudSelect>
-                <MudAutocomplete Label="Sub-Type" @bind-Value=Resource.SubType SearchFunc="async v => await DB.GetResourceSubTypes(v, ordered: true)" ToStringFunc="v => v?.Name" MaxItems="50" MaxHeight="900" TransformOrigin="Origin.BottomLeft" AnchorOrigin="Origin.TopLeft" CoerceValue ResetValueOnEmptyText Clearable />
+                <MudAutocomplete Label="Sub-Type" @bind-Value=Resource.SubType SearchFunc="async v => await DB.GetResourceSubTypes(v, ordered: true)" ToStringFunc="v => v?.Name" MaxItems="50" MaxHeight="900" TransformOrigin="Origin.BottomLeft" AnchorOrigin="Origin.TopLeft" CoerceValue=true ResetValueOnEmptyText Clearable />
             </MudStack>
             <MudStack>
                 <MudText Typo="Typo.caption">CivitAI ID</MudText>

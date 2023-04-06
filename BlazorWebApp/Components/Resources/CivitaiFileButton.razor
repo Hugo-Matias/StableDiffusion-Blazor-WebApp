@@ -16,7 +16,7 @@
                 <MudMenu Color="_color" Icon="@Icons.Material.Filled.KeyboardArrowDown" TransformOrigin="Origin.TopRight" AnchorOrigin="Origin.BottomRight">
                     @foreach (var file in Files)
                     {
-                        <MudMenuItem OnClick=@(() => SelectFile(file)) IconColor=GetVersionButtonColor(file) Icon="@Parser.ParseCivitaiScanIcon(Parser.ParseCivitaiScanResult(file.VirusScanResult))">@($"{file.Type}{(file.Metadata.Format != "Other" ? $" {file.Metadata.Format }" : "")} ({Parser.ParseCivitaiFilesize(file.SizeKb)})")</MudMenuItem>
+                        <MudMenuItem OnClick=@(() => SelectFile(file)) IconColor=GetVersionButtonColor(file) Icon="@Parser.ParseCivitaiScanIcon(Parser.ParseCivitaiScanResult(file.VirusScanResult))">@($"{file.Type}{(file.Metadata.Format != "Other" ? $" {file.Metadata.Format }" : "")} ({Parser.ParseSizeKb(file.SizeKb)})")</MudMenuItem>
                     }
                 </MudMenu>
             }
@@ -44,7 +44,7 @@
             <MudSpacer />
             <MudStack>
                 <MudText Class="meta-label" Typo="Typo.caption">Size</MudText>
-                <MudText Typo="Typo.subtitle2">@Parser.ParseCivitaiFilesize(_selected.SizeKb)</MudText>
+                <MudText Typo="Typo.subtitle2">@Parser.ParseSizeKb(_selected.SizeKb)</MudText>
             </MudStack>
         </MudStack>
         @if (_selected.Hashes != null)

@@ -23,7 +23,7 @@ else if (_projects.Count() == 0 && M.State.Gallery.FolderId == 0)
 }
 else
 {
-    @*<GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" OnProjectDeleted="async () => await RefreshProjects()" OnPageChanged="HandlePageSelected" />*@
+    <GallerySettings OnFilterImages="async () => await FilterImages(false)" OnResetFilters="async () => await FilterImages(true)" OnProjectDeleted="async () => await RefreshProjects()" OnPageChanged="HandlePageSelected" />
     if (images != null && images.Images != null && images.Images.Count > 0)
     {
         <ImagesContainer @ref=_imagesContainer Style="margin-bottom: 2rem;" Images="@images" OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages()" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" CanSelect=true />

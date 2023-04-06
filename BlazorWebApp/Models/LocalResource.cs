@@ -35,6 +35,7 @@ namespace BlazorWebApp.Models
         public List<string>? TriggerWords { get; set; }
         public bool IsEnabled { get; set; }
         public string? Description { get; set; }
+        public double SizeKb { get; set; }
 
         public LocalResourceFile() { }
         public LocalResourceFile(Resource resourceEntity)
@@ -44,6 +45,7 @@ namespace BlazorWebApp.Models
             Filename = resourceEntity.Filename;
             TriggerWords = resourceEntity.TriggerWords;
             Description = resourceEntity.Description;
+            SizeKb = resourceEntity.SizeKb;
         }
     }
 }
