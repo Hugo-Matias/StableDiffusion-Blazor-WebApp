@@ -3,22 +3,25 @@
 @if (Resources != null)
 {
     <MudGrid Class="my-3 pa-2">
-        <MudItem xs="4">
-            <MudTextField Label="Title" Value="M.State.Resources.Title" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
+        <MudItem xs="5">
+            <MudStack>
+                <MudTextField Label="Title" Value="M.State.Resources.Title" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
+                <MudStack Row=true>
+                    <MudAutocomplete T="string" Value="M.State.Resources.Subtype" ValueChanged=HandleSearchSubtype SearchFunc="GetSubtypes" Label="Sub-Type" MaxItems="100" MaxHeight="1200" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-list" ResetValueOnEmptyText Clearable Dense />
+                    <MudAutocomplete T="string" Value="M.State.Resources.Tag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(M.State.Resources.IsInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
+                </MudStack>
+            </MudStack>
+        </MudItem>
+        <MudItem xs="5">
+            <MudStack>
+                <ResourceTemplatesBar />
+                <MudStack Row=true>
+                    <MudSlider T=int ValueChanged=@(v => HandleLimitChanged(v)) Value=M.State.Resources.Limit Min="M.Settings.Resources.Search.Limit.Min" Max="M.Settings.Resources.Search.Limit.Max" Step="M.Settings.Resources.Search.Limit.Step"><small>Quantity:</small> @M.State.Resources.Limit</MudSlider>
+                    <MudCheckBox T="bool?" Checked=M.State.Resources.ResourceIsEnabledFilter CheckedChanged=@(v => HandleEnabledChecked(v)) Color=@(M.State.Resources.ResourceIsEnabledFilter == null ? Color.Default : (bool)M.State.Resources.ResourceIsEnabledFilter ? Color.Success : Color.Error) TriState=true>Active</MudCheckBox>
+                </MudStack>
+            </MudStack>
         </MudItem>
         <MudItem xs="2">
-            <MudAutocomplete T="string" Value="M.State.Resources.Subtype" ValueChanged=HandleSearchSubtype SearchFunc="GetSubtypes" Label="Sub-Type" MaxItems="100" MaxHeight="1200" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-list" ResetValueOnEmptyText Clearable Dense />
-        </MudItem>
-        <MudItem xs="2">
-            <MudAutocomplete T="string" Value="M.State.Resources.Tag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(M.State.Resources.IsInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
-        </MudItem>
-        <MudItem xs="2">
-            <MudSlider T=int ValueChanged=@(v => HandleLimitChanged(v)) Value=M.State.Resources.Limit Min="M.Settings.Resources.Search.Limit.Min" Max="M.Settings.Resources.Search.Limit.Max" Step="M.Settings.Resources.Search.Limit.Step"><small>Quantity:</small> @M.State.Resources.Limit</MudSlider>
-        </MudItem>
-        <MudItem xs="1">
-            <MudCheckBox T="bool?" Checked=M.State.Resources.ResourceIsEnabledFilter CheckedChanged=@(v => HandleEnabledChecked(v)) Color=@(M.State.Resources.ResourceIsEnabledFilter == null ? Color.Default : (bool)M.State.Resources.ResourceIsEnabledFilter ? Color.Success : Color.Error) TriState=true>Active</MudCheckBox>
-        </MudItem>
-        <MudItem xs="1">
             <MudButton Style="width:100%; height:100%;" OnClick="Search" Color="Color.Success">Search</MudButton>
         </MudItem>
     </MudGrid>

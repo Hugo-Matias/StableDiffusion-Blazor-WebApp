@@ -1,0 +1,81 @@
+﻿@inject ManagerService M
+@inject DatabaseService DB
+@inject ResourcesService ResourcesService
+@inject ProgressService ProgressService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudGrid>
+    <MudItem xs="9">
+        <MudSelect @bind-Value=_selectedTemplate Label="Templates" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var template in _templates)
+            {
+                <MudSelectItem Value="template">@template.Title</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="3">
+        <MudButtonGroup OverrideStyles=false>
+            <MudIconButton OnClick=HandleCreate Icon="fa-solid fa-plus" Color="Color.Primary" />
+            <MudIconButton OnClick=HandleEdit Icon="fa-solid fa-pen" Color="Color.Info" Disabled=@(_selectedTemplate == null) />
+            <MudIconButton OnClick=HandleActivate Icon="fa-solid fa-play" Color="Color.Success" Disabled=@(_selectedTemplate == null) />
+        </MudButtonGroup>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private ResourceTemplate _selectedTemplate;
+    private List<ResourceTemplate> _templates;
+
+    protected async override Task OnInitializedAsync()
+    {
+        await GetTemplates();
+    }
+
+    private async Task GetTemplates() => _templates = await DB.GetResourceTemplates();
+
+    private async Task HandleCreate()
+    {
+        await ShowTemplateDialog(new());
+        await GetTemplates();
+    }
+
+    private async Task HandleEdit()
+    {
+        await ShowTemplateDialog(_selectedTemplate);
+        await GetTemplates();
+    }
+
+    private async Task HandleActivate()
+    {
+        var resources = await DB.GetResources();
+        var progress = new BaseProgress() { BarColor = Color.Tertiary, MaxValue = resources.Count };
+        ProgressService.Add(progress);
+        var index = 1;
+        foreach (var resource in resources)
+        {
+            var activate = _selectedTemplate.ResourceIds.Contains(resource.Id);
+            if ((activate && !resource.IsEnabled) || (!activate && resource.IsEnabled))
+            {
+                var localResource = ResourcesService.CreateLocalResourceByEntity(resource);
+                var resourceType = resource.Type.Name;
+                var resourceSubtype = resource.SubType != null ? resource.SubType.Name : null;
+                localResource.Files[0] = await ResourcesService.GetResourceFileInfo(resourceType, resourceSubtype, localResource.Files[0]);
+                await ResourcesService.ToggleResource(localResource, localResource.Files[0]);
+            }
+            index++;
+            ProgressService.Update(progress.Id, index);
+        }
+        Snackbar.Add("All resources managed.", Severity.Success);
+        M.InvokeResourcesStateChanged();
+    }
+
+    private async Task ShowTemplateDialog(ResourceTemplate template)
+    {
+        var options = new DialogOptions() { CloseButton = true, CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
+        var param = new DialogParameters();
+        param.Add("Template", template);
+        var dialog = await DialogService.ShowAsync<ResourceTemplateDialog>("", param, options);
+        await dialog.Result;
+    }
+}

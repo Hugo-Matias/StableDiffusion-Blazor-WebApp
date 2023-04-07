@@ -1,0 +1,71 @@
+﻿@inject DatabaseService DB
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Template.Id > 0 ? "Edit State Preset" : "Create State Preset") </MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="Template">
+            <MudTextField @bind-Value=Template.Title Label="Title" Class="mb-4" Clearable=true />
+        </EditForm>
+        <MudText Typo="Typo.caption">Currently active resources will be saved in the template.<br />Update the template if you want to redefine a new set of resources.</MudText>
+    </DialogContent>
+    <DialogActions>
+        @if (Template.Id > 0)
+        {
+            <MudButton ButtonType="ButtonType.Button" OnClick="DeleteTemplate" Color="Color.Error" Variant="Variant.Text">Delete</MudButton>
+            <MudButton ButtonType="ButtonType.Button" OnClick="UpdateTemplate" Color="Color.Info" Variant="Variant.Filled">Update</MudButton>
+        }
+        else
+        {
+            <MudButton ButtonType="ButtonType.Button" OnClick="CreateTemplate" Color="Color.Success" Variant="Variant.Filled">Create</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public ResourceTemplate Template { get; set; }
+
+    private async Task WriteTemplate()
+    {
+        Template.ResourceIds = await DB.GetActiveResourceIds();
+    }
+
+    private async Task CreateTemplate()
+    {
+        await WriteTemplate();
+        await DB.CreateResourceTemplate(Template);
+        Snackbar.Add("Resource template created successfully!", Severity.Success);
+        MudDialog.Close();
+    }
+
+    private async Task UpdateTemplate()
+    {
+        await WriteTemplate();
+        await DB.UpdateResourceTemplate(Template);
+        Snackbar.Add("Resource template updated successfully!", Severity.Success);
+        MudDialog.Close();
+    }
+
+    private async Task DeleteTemplate()
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+        var param = new DialogParameters();
+        var msg = new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this resource template?<br /></span><br/><small>This action is irreversible!</small>");
+        param.Add("OkButtonText", "Yes");
+        param.Add("CancelButtonText", "No");
+        param.Add("OkButtonColor", Color.Error);
+        param.Add("Content", msg);
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Template", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await DB.DeleteResourceTemplate(Template.Id);
+            MudDialog.Close();
+            Snackbar.Add("Resource template deleted successfully!", Severity.Success);
+        }
+    }
+}

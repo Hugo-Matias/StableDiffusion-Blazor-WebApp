@@ -34,6 +34,8 @@ namespace BlazorWebApp.Data
             var txt2imgConverter = new ValueConverter<Txt2ImgParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Txt2ImgParameters>(v, opt));
             var img2imgConverter = new ValueConverter<Img2ImgParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Img2ImgParameters>(v, opt));
             var upscaleConverter = new ValueConverter<UpscaleParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<UpscaleParameters>(v, opt));
+            var listIntConverter = new ValueConverter<List<int>, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<List<int>>(v, opt));
+            var listIntComparer = new ValueComparer<List<int>>((c1, c2) => c1.SequenceEqual(c2), c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())), c => c.ToList());
 
             modelBuilder.Entity<Project>()
                 .HasMany(p => p.Images)
@@ -53,6 +55,7 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<Resource>().Property(nameof(Resource.Tags)).HasConversion(listStringConverter, listStringComparer);
             modelBuilder.Entity<Resource>().Property(nameof(Resource.TriggerWords)).HasConversion(listStringConverter, listStringComparer);
             modelBuilder.Entity<ResourceImage>().Property(nameof(ResourceImage.Tags)).HasConversion(listStringConverter, listStringComparer);
+            modelBuilder.Entity<ResourceTemplate>().Property(nameof(ResourceTemplate.ResourceIds)).HasConversion(listIntConverter, listIntComparer);
             modelBuilder.Entity<State>().Property(nameof(State.AppState)).HasConversion(stateConverter);
             modelBuilder.Entity<State>().Property(nameof(State.Txt2ImgParameters)).HasConversion(txt2imgConverter);
             modelBuilder.Entity<State>().Property(nameof(State.Img2ImgParameters)).HasConversion(img2imgConverter);
@@ -69,6 +72,7 @@ namespace BlazorWebApp.Data
         public DbSet<ResourceType> ResourceTypes { get; set; }
         public DbSet<ResourceSubType> ResourceSubTypes { get; set; }
         public DbSet<ResourceImage> ResourceImages { get; set; }
+        public DbSet<ResourceTemplate> ResourceTemplates { get; set; }
         public DbSet<State> States { get; set; }
     }
 }

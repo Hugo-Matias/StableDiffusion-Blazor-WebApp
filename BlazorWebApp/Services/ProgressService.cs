@@ -18,7 +18,7 @@ namespace BlazorWebApp.Services
             var progress = Progresses.FirstOrDefault(p => p.Id == id);
             if (progress != null)
             {
-                if (value < 0 || value > 100) { Remove(id); return; }
+                if (value < 0 || value > progress.MaxValue) { Remove(id); return; }
                 else progress.Value = value;
             }
             Refresh();

@@ -1,6 +1,7 @@
 ﻿@inject ManagerService M
 @inject IOService IO
 @inject DatabaseService DB
+@inject ResourcesService ResourcesService
 @inject IConfiguration Configuration
 @inject IDialogService DialogService
 
@@ -117,14 +118,7 @@
 
     private async Task ToggleFile()
     {
-        if (M.ResourceTypeDirectories == null) await M.GetResourceTypeDirectories();
-        string destPath = string.Empty;
-        if (File.IsEnabled) destPath = Path.Combine(Configuration["ResourcesPath"], "_storage", Resource.Type.Name);
-        else destPath = M.ResourceTypeDirectories.FirstOrDefault(p => p.Key.Equals(Resource.Type.Name, StringComparison.InvariantCultureIgnoreCase)).Value;
-        if (Resource.SubType != null) destPath = Path.Combine(destPath, Resource.SubType.Name);
-        destPath = Path.Combine(destPath, File.Filename);
-        IO.MoveFile(File.File.FullName, destPath);
-        await DB.ToggleResourceState(File.ResourceId);
+        await ResourcesService.ToggleResource(Resource, File);
         MudDialog.Close("Toggle");
     }
 }

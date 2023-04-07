@@ -642,5 +642,49 @@ namespace BlazorWebApp.Services
             if (state != null) context.States.Remove(state);
             await context.SaveChangesAsync();
         }
+
+        public async Task<ResourceTemplate> CreateResourceTemplate(ResourceTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = context.ResourceTemplates.Add(template);
+            await context.SaveChangesAsync();
+            return entity.Entity;
+        }
+
+        public async Task<List<int>> GetActiveResourceIds()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Resources.Where(r => r.IsEnabled).Select(r => r.Id).ToListAsync();
+        }
+
+        public async Task<List<ResourceTemplate>> GetResourceTemplates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.ResourceTemplates.ToListAsync();
+        }
+
+        public async Task<ResourceTemplate?> GetResourceTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var state = await context.ResourceTemplates.FirstOrDefaultAsync(s => s.Id == id);
+            return state;
+        }
+
+        public async Task<ResourceTemplate> UpdateResourceTemplate(ResourceTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var response = context.Update(template);
+            await context.SaveChangesAsync();
+            return response.Entity;
+        }
+
+        public async Task DeleteResourceTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var template = await context.ResourceTemplates.FirstOrDefaultAsync(r => r.Id == id);
+            if (template != null) context.ResourceTemplates.Remove(template);
+            await context.SaveChangesAsync();
+        }
+
     }
 }

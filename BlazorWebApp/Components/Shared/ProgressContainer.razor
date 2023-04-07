@@ -6,7 +6,7 @@
     {
         @foreach (var progress in ProgressService.Progresses)
         {
-            <MudProgressLinear Min="0" Max="100" @bind-Value="progress.Value" Indeterminate=progress.IsIndeterminate Color="progress.BarColor">
+            <MudProgressLinear Min="0" Max="progress.MaxValue" @bind-Value="progress.Value" Indeterminate=progress.IsIndeterminate Color="progress.BarColor">
                 @progress.Label
             </MudProgressLinear>
         }

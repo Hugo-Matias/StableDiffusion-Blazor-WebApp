@@ -28,6 +28,7 @@ builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<IOService>();
 builder.Services.AddSingleton<CsvService>();
 builder.Services.AddSingleton<ProgressService>();
+builder.Services.AddSingleton<ResourcesService>();
 //builder.Services.AddSingleton<DynamicPromptsService>();
 
 builder.Services.AddScoped<JavascriptService>();

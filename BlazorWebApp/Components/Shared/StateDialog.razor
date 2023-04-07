@@ -73,7 +73,7 @@
         param.Add("CancelButtonText", "No");
         param.Add("OkButtonColor", Color.Error);
         param.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this state preset?<br /></span><br/><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Folder", param, options);
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete State", param, options);
         var result = await dialog.Result;
         if (!result.Canceled)
         {

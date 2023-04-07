@@ -99,7 +99,7 @@ else
         // Hack to hold execution before ImageCard checked state is updated.
         // Without the delay the event triggers too soon and the ImagesContainer is still populated with pre fetching data.
         await Task.Yield();
-        M.RefreshImagesContainer();
+        M.InvokeRefreshImagesContainer();
     }
 
     private async Task RefreshProjects()

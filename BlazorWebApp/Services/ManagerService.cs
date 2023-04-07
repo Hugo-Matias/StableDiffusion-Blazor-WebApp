@@ -42,6 +42,7 @@ namespace BlazorWebApp.Services
         public event Action OnSelectedImagesChanged;
         public event Action OnRefreshImagesContainer;
         public event Action OnCanvasImageDataChanged;
+        public event Action OnResourcesStateChanged;
 
         public AppState State { get; set; }
         public AppSettings Settings { get; set; }
@@ -129,6 +130,12 @@ namespace BlazorWebApp.Services
             GetButtonTags();
             GetCmdFlags();
         }
+
+        public void InvokeDownloadComplete() => OnDownloadCompleted?.Invoke();
+
+        public void InvokeRefreshImagesContainer() => OnRefreshImagesContainer?.Invoke();
+
+        public void InvokeResourcesStateChanged() => OnResourcesStateChanged?.Invoke();
 
         public void InitializeParameters(ModeType[] modes)
         {
@@ -640,8 +647,6 @@ namespace BlazorWebApp.Services
 
         public async Task GetCmdFlags() => CmdFlags = await _api.GetCmdFlags();
 
-        public void InvokeDownloadComplete() => OnDownloadCompleted?.Invoke();
-
         public void AddSelectedImage(int id)
         {
             SelectedImageIds.Add(id);
@@ -659,8 +664,6 @@ namespace BlazorWebApp.Services
             SelectedImageIds.Clear();
             OnSelectedImagesChanged?.Invoke();
         }
-
-        public void RefreshImagesContainer() => OnRefreshImagesContainer?.Invoke();
 
         public void SetGenerationParameter(Image source, string parameter, bool isImg2Img)
         {

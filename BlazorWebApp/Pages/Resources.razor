@@ -3,6 +3,7 @@
 @inject SDAPIService SD
 @inject IOService IO
 @inject DatabaseService DB
+@inject ResourcesService ResourcesService
 @inject CivitaiService Civitai
 @inject IConfiguration Configuration
 @inject IDialogService DialogService
@@ -32,6 +33,7 @@
     {
         M.OnWebuiStateChanged += Refresh;
         M.OnDownloadCompleted += Refresh;
+        M.OnResourcesStateChanged += Refresh;
         if (M.ResourceTypeDirectories == null) await M.GetResourceTypeDirectories();
         await InitializeResourceDictionary();
     }
@@ -42,49 +44,8 @@
         _resources = new();
         foreach (var type in resourceTypes)
         {
-            _resources.Add(type, await CreateResourceEntities(type.Id));
+            _resources.Add(type, await ResourcesService.CreateLocalResourcesByType(type.Id));
         }
-    }
-
-    private async Task<List<LocalResource>> CreateResourceEntities(int typeId)
-    {
-        List<LocalResource> resources = new();
-        var entities = await DB.GetResources(typeId);
-        if (entities != null && entities.Count > 0)
-        {
-            var type = entities.FirstOrDefault()!.Type.Name;
-            if (type.Equals("vae", StringComparison.InvariantCultureIgnoreCase))
-            {
-                resources.AddRange(new List<LocalResource> {
-                new() { Title = "None", Type = new() { Name = type } },
-                new() { Title = "Automatic", Type = new() { Name = type } }});
-            }
-            foreach (var entity in entities)
-            {
-                if (resources.Any(r => r.Title == entity.Title))
-                {
-                    var createdResource = resources.FirstOrDefault(r => r.Title == entity.Title);
-                    var file = new LocalResourceFile(entity);
-                    file.ImageSrc = IO.GetResourceImagePath(createdResource.Type.Name, file.Filename);
-                    file.Title = Path.GetFileNameWithoutExtension(file.Filename);
-                    file.IsEnabled = entity.IsEnabled;
-                    createdResource.Files.Insert(0, file);
-                    createdResource.ImageSrc = file.ImageSrc;
-                }
-                else
-                {
-                    var resource = new LocalResource(entity);
-                    var file = new LocalResourceFile(entity);
-                    file.ImageSrc = IO.GetResourceImagePath(resource.Type.Name, file.Filename);
-                    file.Title = Path.GetFileNameWithoutExtension(file.Filename);
-                    file.IsEnabled = entity.IsEnabled;
-                    resource.ImageSrc = file.ImageSrc;
-                    resource.Files = new() { file };
-                    resources.Add(resource);
-                }
-            }
-        }
-        return resources.OrderBy(r => r.Title).ToList();
     }
 
     private async Task ShowResourceVersionsDialog(LocalResource resource)
@@ -97,58 +58,30 @@
         if (!result.Canceled) await LoadResource(resource, (LocalResourceFile)result.Data);
     }
 
-    private async Task LoadResource(LocalResource resource, LocalResourceFile file)
+    private async Task LoadResource(LocalResource resource, LocalResourceFile resourceFile)
     {
-        var comp = StringComparison.InvariantCultureIgnoreCase;
-        if (resource.Type.Name.Equals("vae", comp))
+        if (resource.Type.Name.Equals("vae", StringComparison.InvariantCultureIgnoreCase))
         {
             if (!M.IsWebuiUp) return;
             await M.PostOptions(new() { SDVae = resource.Title });
             return;
         }
 
-        var fileDir = M.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resource.Type.Name, comp)).Value;
-        if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
-        if (resource.SubType != null) fileDir = Path.Combine(fileDir, resource.SubType.Name);
-        if (File.Exists(Path.Combine(fileDir, file.Filename)))
+        var subtype = resource.SubType != null ? resource.SubType.Name : null;
+        var file = await ResourcesService.GetResourceFileInfo(resource.Type.Name, subtype, resourceFile);
+
+        if (file == null)
         {
-            file.IsEnabled = true;
-            file.File = new FileInfo(Path.Combine(fileDir, file.Filename));
-        }
-        else
-        {
-            file.IsEnabled = false;
-            var storagePath = Path.Combine(Configuration["ResourcesPath"], "_storage", resource.Type.Name);
-            var activePath = Path.Combine(Configuration["ResourcesPath"], resource.Type.Name);
-            if (resource.SubType != null)
-            {
-                storagePath = Path.Combine(storagePath, resource.SubType.Name);
-                activePath = Path.Combine(activePath, resource.SubType.Name);
-            }
-            storagePath = Path.Combine(storagePath, file.Filename);
-            activePath = Path.Combine(activePath, file.Filename);
-            if (File.Exists(storagePath)) file.File = new FileInfo(storagePath);
-            else if (File.Exists(activePath))
-            {
-                file.File = new FileInfo(activePath);
-                file.IsEnabled = true;
-            }
-            else
-            {
-                Snackbar.Add($"Resource is disabled and was not found in the storage folder!\nExpected path: {storagePath}", Severity.Error);
-                return;
-            }
-        }
-        if (file.SizeKb <= 0 && file.CivitaiId != null && file.CivitaiId > 0)
-        {
-            file.SizeKb = file.File.Length / 1024;
-            var entity = await DB.GetResourceById(file.ResourceId);
-            entity.SizeKb = file.SizeKb;
-            await DB.UpdateResource(entity);
+            Snackbar.Add($"Couldn't get file info!\nFile: {resourceFile.Filename} | Type: {resource.Type.Name} | SubType: {subtype}", Severity.Error);
+            return;
         }
 
-        var filename = file.File.Name.Replace(file.File.Extension, "");
+        await ShowLoadResourceDialog(resource, file);
+    }
 
+    private async Task ShowLoadResourceDialog(LocalResource resource, LocalResourceFile file)
+    {
+        var comp = StringComparison.InvariantCultureIgnoreCase;
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
         var dialogParam = new DialogParameters();
         dialogParam.Add("Resource", resource);
@@ -160,57 +93,28 @@
         {
             if (result.Data != null)
             {
-                if (result.Data.ToString().Equals("Edit"))
+                var command = result.Data.ToString();
+                if (string.IsNullOrEmpty(command)) return;
+                if (command.Equals("Edit", comp))
                 {
                     await ShowResourceInfoDialog(file);
                     Refresh();
-                    return;
                 }
-                else if (result.Data.ToString() == "Toggle")
-                {
-                    Refresh();
-                    return;
-                }
-            }
-
-            if (!M.IsWebuiUp) return;
-
-            // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
-            if (resource.Type.Name.Equals("Checkpoint", comp) && result.Data != null)
-            {
-                if (result.Data.ToString() == "Load")
+                else if (command == "Toggle") Refresh();
+                else if (!M.IsWebuiUp) return;
+                // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
+                else if (command.Equals("Load", comp) && resource.Type.Name.Equals("Checkpoint", comp))
                 {
                     await M.GetSDModels(refresh: true);
+                    var filename = file.File.Name.Replace(file.File.Extension, "");
                     var model = M.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
                     await M.SetSDModel(model.Title);
-                    return;
                 }
-            }
-
-            var keyword = string.Empty;
-            var triggerWords = string.Empty;
-            var weight = M.State.Resources.Weight;
-            var target = (ValueTuple<ModeType, bool>)result.Data;
-
-            if (resource.Type.Name.Equals("TextualInversion", comp)) keyword = weight != 1 ? $", ({filename}:{weight})" : filename;
-            else if (resource.Type.Name.Equals("Hypernetwork", comp)) keyword = $", <hypernet:{filename}:{weight}>";
-            else if (resource.Type.Name.Equals("LORA", comp) || resource.Type.Name.Equals("LoCon", comp)) keyword = $", <lora:{filename}:{weight}>";
-
-            if (M.State.Resources.LoadTriggerWords && file.TriggerWords != null)
-            {
-                triggerWords = ", ";
-                triggerWords += string.Join(", ", file.TriggerWords);
-            }
-
-            if (target.Item1 == ModeType.Txt2Img)
-            {
-                if (target.Item2 == true) M.ParametersTxt2Img.Prompt += $"{keyword}{triggerWords}";
-                else M.ParametersTxt2Img.NegativePrompt += $", {keyword}{triggerWords}";
-            }
-            else if (target.Item1 == ModeType.Img2Img)
-            {
-                if (target.Item2 == true) M.ParametersImg2Img.Prompt += $"{keyword}{triggerWords}";
-                else M.ParametersImg2Img.NegativePrompt += $"{keyword}{triggerWords}";
+                else
+                {
+                    var target = (ValueTuple<ModeType, bool>)result.Data;
+                    await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
+                }
             }
         }
     }
@@ -229,68 +133,39 @@
             var data = (ValueTuple<Resource, string>)result.Data;
             if (data.Item2 == "Update")
             {
-                var fileInfos = IO.GetFilesByName(file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
-                var baseDestPath = file.IsEnabled ? M.ResourceTypeDirectories[data.Item1.Type.Name] : Path.Combine(Configuration["ResourcesPath"], "_storage", data.Item1.Type.Name);
-                if (data.Item1.SubType != null) baseDestPath = Path.Combine(baseDestPath, data.Item1.SubType.Name);
-                // Update other files linked to the model that must share the same name, ie. yaml configs or txt info
-                foreach (var fileInfo in fileInfos)
-                {
-                    var currentFile = new FileInfo(data.Item1.Filename);
-                    var filename = currentFile.Name.Replace(currentFile.Extension, fileInfo.Extension);
-                    var sourcePath = fileInfo.FullName;
-                    var destinationPath = Path.Combine(baseDestPath, filename);
-                    IO.MoveFile(sourcePath, destinationPath);
-                }
-                // Update resource preview
-                var resourceEntity = await DB.GetResourceById(file.ResourceId);
-                var previewFiles = IO.GetFilesByName(Path.Combine(Configuration["ResourcePreviewsPath"], resourceEntity.Type.Name), file.File.Name.Replace(file.File.Extension, "")).ToArray();
-                if (previewFiles != null)
-                {
-                    if (previewFiles.Length > 1) Snackbar.Add("More than one resource preview found.", Severity.Warning);
-                    var previewFilename = new FileInfo(data.Item1.Filename);
-                    var previewDestination = Path.Combine(Configuration["ResourcePreviewsPath"], data.Item1.Type.Name, previewFilename.Name.Replace(previewFilename.Extension, previewFiles[0].Extension));
-                    IO.MoveFile(previewFiles[0].FullName, previewDestination);
-                }
-                await DB.UpdateResource(data.Item1);
+                var directory = file.File.Directory.FullName;
+                var filename = file.File.Name.Replace(file.File.Extension, "");
+                var resourceId = file.ResourceId;
+                var isEnabled = file.IsEnabled;
+                await ResourcesService.UpdateResource(data.Item1, directory, filename, resourceId, isEnabled);
             }
             else if (data.Item2 == "Delete")
             {
-                var confirmParam = new DialogParameters();
-                confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
-                confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
-                confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
-                confirmParam.Add(nameof(ConfirmationDialog.Content), new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>All preview images associated with this resource will also be removed.<br/>This action is irreversible!</small>"));
-                confirmParam.Add(nameof(ConfirmationDialog.CheckboxEnabled), true);
-                confirmParam.Add(nameof(ConfirmationDialog.CheckboxContent), "Delete files from disk?");
-                confirmParam.Add(nameof(ConfirmationDialog.CheckboxColor), Color.Error);
-                options.MaxWidth = MaxWidth.Small;
-                var confirmationDialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", confirmParam, options);
-                var confirmationResult = await confirmationDialog.Result;
-                if (!confirmationResult.Canceled)
-                {
-                    if (confirmationResult.Data != null && (bool)confirmationResult.Data == true)
-                    {
-                        var subtypeDir = Path.Combine(Configuration["ImagesPathVault"], "Saved", data.Item1.Type.Name);
-                        var modelImagesDir = IO.GetFolderByName(subtypeDir, data.Item1.CivitaiModelId.ToString());
-                        if (modelImagesDir != null)
-                        {
-                            var versionImagesDir = IO.GetFolderByName(modelImagesDir.FullName, data.Item1.CivitaiModelVersionId.ToString());
-                            if (versionImagesDir != null) IO.DeleteFolder(versionImagesDir, true);
-                            var versionImage = IO.GetFileByName(modelImagesDir.FullName, data.Item1.CivitaiModelVersionId.ToString());
-                            if (versionImage != null) IO.DeleteFile(versionImage);
-                        }
-
-                        var files = IO.GetFilesByName(file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
-                        foreach (var localFile in files)
-                        {
-                            IO.DeleteFile(localFile.FullName);
-                        }
-                    }
-                    await DB.DeleteResource(data.Item1.Id);
-                    await DB.DeleteResourceImage((int)data.Item1.CivitaiModelVersionId);
-                    Snackbar.Add("Resource was deleted successfully", Severity.Success);
-                }
+                await ShowDeleteDialog(data.Item1, file);
             }
+        }
+    }
+
+    private async Task ShowDeleteDialog(Resource resource, LocalResourceFile file)
+    {
+        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
+        var confirmParam = new DialogParameters();
+        var msg = new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>All preview images associated with this resource will also be removed.<br/>This action is irreversible!</small>");
+        confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
+        confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
+        confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
+        confirmParam.Add(nameof(ConfirmationDialog.Content), msg);
+        confirmParam.Add(nameof(ConfirmationDialog.CheckboxEnabled), true);
+        confirmParam.Add(nameof(ConfirmationDialog.CheckboxContent), "Delete files from disk?");
+        confirmParam.Add(nameof(ConfirmationDialog.CheckboxColor), Color.Error);
+        options.MaxWidth = MaxWidth.Small;
+        var confirmationDialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", confirmParam, options);
+        var confirmationResult = await confirmationDialog.Result;
+        if (!confirmationResult.Canceled)
+        {
+            var deleteFiles = confirmationResult.Data != null && (bool)confirmationResult.Data == true;
+            await ResourcesService.DeleteResource(resource, deleteFiles, file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
+            Snackbar.Add(deleteFiles ? "Resource and files were" : "Resource was" + " deleted successfully.", Severity.Success);
         }
     }
 
@@ -305,5 +180,6 @@
     {
         M.OnWebuiStateChanged -= Refresh;
         M.OnDownloadCompleted -= Refresh;
+        M.OnResourcesStateChanged -= Refresh;
     }
 }
