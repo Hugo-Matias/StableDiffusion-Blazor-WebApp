@@ -213,8 +213,12 @@ namespace BlazorWebApp.Services
                 {
                     foreach (var file in files)
                     {
-                        if (!file.Name.StartsWith("xyz_grid", StringComparison.InvariantCultureIgnoreCase)) lastFile = file;
                         index++;
+                        if (!file.Name.StartsWith("xyz_grid", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            lastFile = file;
+                            break;
+                        }
                     }
                 }
             }
