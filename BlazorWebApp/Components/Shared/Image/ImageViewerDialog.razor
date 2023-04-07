@@ -4,7 +4,7 @@
 <div>
     <MudDialog Style=@($"max-width: 98vw; max-height: 98vh; background-color: var(--mud-palette-{Color});")>
         <TitleContent>
-            <MudContainer Class="d-flex flex-row justify-content-center">
+            <MudContainer Class="mb-4 d-flex flex-row justify-content-center">
                 <MudButtonGroup>
                     @if (Images.Count > 1)
                     {
@@ -12,6 +12,7 @@
                         <MudIconButton OnClick="@(() => _autoCycle = !_autoCycle)" Style="border:none" Icon=@("fa-solid fa-play") />
                         <MudIconButton OnClick="@(() => Carousel.Reference.Next())" Style="border:none" Icon="fa-solid fa-chevron-right" />
                     }
+                    <MudIconButton OnClick=@(() => _showInfo = !_showInfo) Style="border: none; position: absolute; right: 6rem;" Icon=@("fa-solid fa-info") />
                     <MudIconButton OnClick=ExpandCarousel Style="border: none; position: absolute; right: 3.5rem;" Icon=@("fa-regular fa-window-maximize") />
                 </MudButtonGroup>
             </MudContainer>
@@ -19,7 +20,7 @@
         <DialogContent>
             <MudStack AlignItems="AlignItems.Center" Class="carousel-container">
                 <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="95vw" MaxHeight="90vh" OnImageChanged="UpdateImageInfo" />
-                <MudStack Class="image-info">
+                <MudStack Class=@($"image-info {(_showInfo ? "show" : "")}")>
                     <MudText Style="text-align: center;" Typo="Typo.caption" Color="MudBlazor.Color.Success">@_prompt</MudText>
                     <MudText Typo="Typo.caption" Color="MudBlazor.Color.Error">@_negativePrompt</MudText>
                 </MudStack>
@@ -37,6 +38,7 @@
 
     private bool _autoCycle;
     private bool _expand;
+    private bool _showInfo;
     private string _prompt;
     private string _negativePrompt;
 

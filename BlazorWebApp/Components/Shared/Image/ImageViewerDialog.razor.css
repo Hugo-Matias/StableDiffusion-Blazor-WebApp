@@ -1,9 +1,9 @@
-﻿::deep .carousel-container:hover .image-info {
-	opacity:1;
+﻿::deep .image-info.show {
+	opacity: 1;
 }
 
 ::deep .image-info {
-	position:absolute;
+	position: absolute;
 	text-align: center;
 	bottom: 2rem;
 	max-width: 90%;
