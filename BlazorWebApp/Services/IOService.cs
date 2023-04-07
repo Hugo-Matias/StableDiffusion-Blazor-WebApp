@@ -203,18 +203,22 @@ namespace BlazorWebApp.Services
 
         public int GetFileIndex(string path, Outdir dir)
         {
-            var files = GetOrderedFiles(path);
-            files.Reverse();
+            var files = GetOrderedFiles(path).ToList();
             FileInfo? lastFile = null;
-            while (lastFile == null)
+            if (files != null && files.Count > 0)
             {
-                foreach (var file in files)
+                files.Reverse();
+                var index = 1;
+                while (lastFile == null && index <= files.Count)
                 {
-                    if (!file.Name.StartsWith("xyz_grid", StringComparison.InvariantCultureIgnoreCase)) lastFile = file;
+                    foreach (var file in files)
+                    {
+                        if (!file.Name.StartsWith("xyz_grid", StringComparison.InvariantCultureIgnoreCase)) lastFile = file;
+                        index++;
+                    }
                 }
             }
             int fileIndex;
-
             if (lastFile != null)
             {
                 var pattern = string.Empty;
