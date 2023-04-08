@@ -13,6 +13,12 @@
                         <MudIcon Icon="fa-solid fa-plus" />
                     </MudStack>
                 </CreateProjectButton>
+                <MudButton OnClick=RemoveProjectCover Color=Color.Error>
+                    <MudStack Class="d-flex flex-column align-items-center">
+                        <MudText Typo="Typo.caption">Remove Project Cover</MudText>
+                        <MudIcon Icon="fa-solid fa-image-portrait" />
+                    </MudStack>
+                </MudButton>
                 @if (M.State.Gallery.FolderId > 0)
                 {
                     <MudButton OnClick="ShowDeleteFolderModal" Variant="Variant.Text" Color="Color.Error">
@@ -110,6 +116,13 @@
     }
 
     private void HandlePageChanged(int page) => OnPageChanged.InvokeAsync(page);
+
+    private async Task RemoveProjectCover()
+    {
+        var project = await DB.GetProject(M.State.Gallery.ProjectId);
+        project.SampleImagePath = null;
+        await DB.UpdateProject(project);
+    }
 
     private async Task ShowDeleteProjectModal(int projectId)
     {

@@ -127,6 +127,14 @@ namespace BlazorWebApp.Services
             return project;
         }
 
+        public async Task<Project> UpdateProject(Project project)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = context.Projects.Update(project);
+            await context.SaveChangesAsync();
+            return entity.Entity;
+        }
+
         public async Task DeleteFolder(int folderId)
         {
             using var context = await _factory.CreateDbContextAsync();
