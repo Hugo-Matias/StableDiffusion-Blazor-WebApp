@@ -82,12 +82,14 @@
     private DirectoryInfo? _dir;
     private FileInfo? _file;
     private string _wildcardText;
+    private ScriptParametersDynamicPrompts _scriptParameters;
 
     protected async override Task OnInitializedAsync()
     {
         if (M.CmdFlags == null) await M.GetCmdFlags();
         _wildcardsPath = Path.Combine(M.CmdFlags.BaseDir, Configuration["WildcardsPath"]);
         _files = IO.GetFilesRecursive(_wildcardsPath, extensionsWhitelist: new() { ".txt" }).ToList();
+        _scriptParameters = new ScriptParametersDynamicPrompts() { IsEnabled = true, IsAlwaysOn = true, NoImageGeneration = true, DisableNegativePrompt = true };
     }
 
     private async Task HandleDirectorySelected(DirectoryInfo dir)
@@ -143,7 +145,7 @@
 
     private async Task GeneratePrompts()
     {
-        M.State.Prompts.Wildcards.GeneratedPrompts = await SD.GeneratePrompts(M.GetDynamicPromptsVersion(), GetPrompt(), M.State.Prompts.Wildcards.GenerationAmount);
+        M.State.Prompts.Wildcards.GeneratedPrompts = await SD.GeneratePrompts(M.GetDynamicPromptsVersion(), GetPrompt(), M.State.Prompts.Wildcards.GenerationAmount, _scriptParameters);
     }
 
     private string GetPrompt()

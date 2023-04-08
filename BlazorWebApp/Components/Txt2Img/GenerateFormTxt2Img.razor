@@ -101,7 +101,7 @@
                 <RegionalPrompterForm Parameters=Parameters.Scripts.RegionalPrompter />
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.DynamicPrompts.IsEnabled ? "show" : "")}")">
-                <DynamicPromptsForm Parameters=Parameters.Scripts.DynamicPrompts />
+                <DynamicPromptsForm Parameters=Parameters.Scripts.DynamicPrompts IsImg2Img=false />
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(M.ControlNetEnabled ? "show" : "")}")">
                 <ControlNetTabs Units="Parameters.Scripts.ControlNet" />

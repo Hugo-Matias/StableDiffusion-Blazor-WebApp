@@ -1,5 +1,6 @@
 ﻿@inject ManagerService M
 @inject IOService IO
+@inject SDAPIService SD
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Dynamic Prompts</MudText>
 <MudGrid>
@@ -26,7 +27,7 @@
                 <MudChip Text="Combinatorial" Default="Parameters.IsCombinatorial" Variant="Variant.Text" Color="Color.Primary">Combinatorial Generation</MudChip>
             </MudTooltip>
             <MudTooltip Text="Automaticaly update the prompt with interesting modifiers." Delay="1600" Duration="600">
-                <MudChip Text="Prompt Magic" Default="Parameters.IsMagicPrompt" Variant="Variant.Text" Color="Color.Primary">Prompt Magic</MudChip>
+                <MudChip Text="Prompt Magic" Default="M.State.Scripts.DynamicPrompts.EnablePromptMagic" Variant="Variant.Text" Color="Color.Primary">Prompt Magic</MudChip>
             </MudTooltip>
         </MudChipSet>
     </MudItem>
@@ -35,31 +36,14 @@
         <MudSlider @bind-Value=Parameters.CombinatorialBatches Min=M.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Min Max=M.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Max Step=M.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Step><small>Batches:</small> @Parameters.CombinatorialBatches</MudSlider>
         <MudText Style="opacity: 0.5;" Typo="Typo.caption">Re-run combinatorial batch @Parameters.CombinatorialBatches times with a different seed each time.</MudText>
     </MudItem>
-    <MudItem xs="12" Class="@($"collapse {(Parameters.IsMagicPrompt ? "show" : "")}")">
+    <MudItem xs="12" Class="@($"collapse {(M.State.Scripts.DynamicPrompts.EnablePromptMagic ? "show" : "")}")">
         <MudGrid>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.MagicPromptLength Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Step><small>Maximum Length:</small> @Parameters.MagicPromptLength tokens</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.MagicPromptCreativity Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Step><small>Creativity:</small> @Parameters.MagicPromptCreativity</MudSlider>
-            </MudItem>
-            <MudItem xs="12">
-                <MudSelect @bind-Value=Parameters.MagicModel Label="Model" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
-                    @foreach (var model in M.Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList)
-                    {
-                        <MudSelectItem Value="model">@model</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField @bind-Value=Parameters.MagicBlocklistRegex Lines=3 Label="Blocklist Regex" Placeholder=@("Regular expression pattern for blocking terms out of the generated prompt, case insensitive. For instance, to block both \"purple\" and \"interdimensional\", use the pattern \"purple|interdimensional\"") Clearable=true />
-            </MudItem>
-            <MudItem xs="4">
-                <MudTooltip Text="Add emphasis to a randomly selected keyword in the prompt" Placement="Placement.End" Delay="1600" Duration="600">
-                    <MudCheckBox @bind-Checked=Parameters.IsAttentionGrabber Label="Attention Grabber" />
+                <MudTooltip Text="Adds interesting modifiers to the prompt using text models" Placement="Placement.End" Delay="1600" Duration="600">
+                    <MudCheckBox @bind-Checked=Parameters.IsMagicPrompt Label="Magic Prompt" />
                 </MudTooltip>
             </MudItem>
-            <MudItem xs="4">
+            <MudItem xs="6">
                 <MudTooltip Placement="Placement.End" Delay="1600" Duration="600">
                     <ChildContent>
                         <MudCheckBox @bind-Checked=Parameters.IsFeelingLucky Label="I'm Feeling Lucky" />
@@ -69,23 +53,71 @@
                     </TooltipContent>
                 </MudTooltip>
             </MudItem>
-            <MudItem xs="4">
+            <MudItem xs="12" Class="@($"collapse {(Parameters.IsMagicPrompt ? "show" : "")}")">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.MagicPromptLength Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Step><small>Maximum Length:</small> @Parameters.MagicPromptLength tokens</MudSlider>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.MagicPromptCreativity Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Step><small>Creativity:</small> @Parameters.MagicPromptCreativity</MudSlider>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value=Parameters.MagicModel Label="Model" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
+                            @foreach (var model in M.Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList)
+                            {
+                                <MudSelectItem Value="model">@model</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value=Parameters.MagicBlocklistRegex Lines=3 Label="Blocklist Regex" Placeholder=@("Regular expression pattern for blocking terms out of the generated prompt, case insensitive. For instance, to block both \"purple\" and \"interdimensional\", use the pattern \"purple|interdimensional\"") Clearable=true />
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
+            <MudItem xs="6">
+                <MudTooltip Text="Add emphasis to a randomly selected keyword in the prompt" Placement="Placement.End" Delay="1600" Duration="600">
+                    <MudCheckBox @bind-Checked=Parameters.IsAttentionGrabber Label="Attention Grabber" />
+                </MudTooltip>
+            </MudItem>
+            <MudItem xs="6">
                 <MudTooltip Text="Don't use Prompt Magic on Negative Prompt" Placement="Placement.End" Delay="1600" Duration="600">
                     <MudCheckBox @bind-Checked=Parameters.DisableNegativePrompt Label="Disable on Negative Prompt" />
                 </MudTooltip>
             </MudItem>
-            <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MinAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Minimum Attention:</small> @Parameters.MinAttention</MudSlider>
-            </MudItem>
-            <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MaxAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Maximum Attention:</small> @Parameters.MaxAttention</MudSlider>
-            </MudItem>
-            <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MagicBatchSize Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Step><small>Batch Size:</small> @Parameters.MagicBatchSize</MudSlider>
+            <MudItem xs="12" Class="@($"collapse {(Parameters.IsAttentionGrabber ? "show" : "")}")">
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudSlider @bind-Value=Parameters.MinAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Minimum Attention:</small> @Parameters.MinAttention</MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider @bind-Value=Parameters.MaxAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Maximum Attention:</small> @Parameters.MaxAttention</MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider @bind-Value=Parameters.MagicBatchSize Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Step><small>Batch Size:</small> @Parameters.MagicBatchSize</MudSlider>
+                    </MudItem>
+                </MudGrid>
             </MudItem>
         </MudGrid>
     </MudItem>
     <MudItem xs="12">
+        <MudExpansionPanel Text="Preview">
+            <MudStack Row=true>
+                <MudSlider @bind-Value=M.State.Prompts.Wildcards.GenerationAmount Min=M.Settings.Prompts.Wildcards.Generation.Min Max=M.Settings.Prompts.Wildcards.Generation.Max Step=M.Settings.Prompts.Wildcards.Generation.Step ValueLabel=true><small>Amount:</small> @M.State.Prompts.Wildcards.GenerationAmount</MudSlider>
+                <MudButton Class="ma-4 w-100 h-100" OnClick=GeneratePrompts Color="Color.Success">Generate Prompts</MudButton>
+            </MudStack>
+            @if (_promptPreviews != null && _promptPreviews.Count > 0)
+            {
+                <MudStack>
+                    @foreach (var preview in _promptPreviews)
+                    {
+                        <MudStack Row=true>
+                            <MudIconButton OnClick=@(()=>CopyPreviewPrompt(preview)) Icon="fa-solid fa-copy" />
+                            <MudText Typo="Typo.caption">@preview</MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+            }
+        </MudExpansionPanel>
         <MudExpansionPanel Text="Read Me">
             @_helpText
         </MudExpansionPanel>
@@ -94,7 +126,9 @@
 
 @code {
     [Parameter] public ScriptParametersDynamicPrompts Parameters { get; set; }
+    [Parameter] public bool IsImg2Img { get; set; }
     private MarkupString _helpText;
+    private List<string> _promptPreviews;
 
     protected override void OnInitialized()
     {
@@ -108,7 +142,7 @@
     private void HandleParameterChecked(MudChip[] checkboxes)
     {
         Parameters.IsCombinatorial = false;
-        Parameters.IsMagicPrompt = false;
+        M.State.Scripts.DynamicPrompts.EnablePromptMagic = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
         foreach (var check in checkboxes)
@@ -119,7 +153,7 @@
                     Parameters.IsCombinatorial = true;
                     break;
                 case "Prompt Magic":
-                    Parameters.IsMagicPrompt = true;
+                    M.State.Scripts.DynamicPrompts.EnablePromptMagic = true;
                     break;
             }
         }
@@ -127,4 +161,17 @@
 
     // Using a Lambda for this currently messes the formatter.
     private string GetMaxGenerationsValue() => Parameters.MaxGenerations > 0 ? Parameters.MaxGenerations.ToString() : "All";
+
+    private async Task GeneratePrompts()
+    {
+        var previewParams = new ScriptParametersDynamicPrompts(Parameters) { IsEnabled = true, IsAlwaysOn = true, NoImageGeneration = true, DisableNegativePrompt = true };
+        _promptPreviews = await SD.GeneratePrompts(M.GetDynamicPromptsVersion(), IsImg2Img ? M.ParametersImg2Img.Prompt : M.ParametersTxt2Img.Prompt, M.State.Prompts.Wildcards.GenerationAmount, previewParams);
+    }
+
+    private void CopyPreviewPrompt(string prompt)
+    {
+        if (IsImg2Img) M.ParametersImg2Img.Prompt = prompt;
+        else M.ParametersTxt2Img.Prompt = prompt;
+        M.InvokeParametersChanged(IsImg2Img);
+    }
 }

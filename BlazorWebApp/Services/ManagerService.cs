@@ -137,6 +137,12 @@ namespace BlazorWebApp.Services
 
         public void InvokeResourcesStateChanged() => OnResourcesStateChanged?.Invoke();
 
+        public void InvokeParametersChanged(bool isImg2Img)
+        {
+            if (isImg2Img) OnImg2ImgParametersChanged?.Invoke();
+            else OnTxt2ImgParametersChanged?.Invoke();
+        }
+
         public void InitializeParameters(ModeType[] modes)
         {
             var defaultParameters = new SharedParameters()

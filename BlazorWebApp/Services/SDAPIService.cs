@@ -96,11 +96,10 @@ namespace BlazorWebApp.Services
             return await response.Content.ReadAsStringAsync();
         }
 
-        public async Task<List<string>> GeneratePrompts(string dynamicPromptsTitle, string prompt, int amount)
+        public async Task<List<string>> GeneratePrompts(string dynamicPromptsTitle, string prompt, int amount, ScriptParametersDynamicPrompts scriptParam)
         {
             var param = new SharedParameters() { Prompt = prompt, BatchSize = amount, Height = 16, Width = 16, Steps = 1, SamplerIndex = "Euler" };
-            var dp = new ScriptParametersDynamicPrompts() { IsEnabled = true, IsAlwaysOn = true, NoImageGeneration = true, DisableNegativePrompt = true };
-            Parser.CreateScriptParameters(dynamicPromptsTitle, ref param, dp);
+            Parser.CreateScriptParameters(dynamicPromptsTitle, ref param, scriptParam);
             using var response = await _httpClient.PostAsJsonAsync(_sdapiRoute + "txt2img", param, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
             var result = await response.Content.ReadFromJsonAsync<GeneratedImages>();

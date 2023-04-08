@@ -13,6 +13,7 @@ namespace BlazorWebApp.Models
         public AppStatePrompts Prompts { get; set; } = new();
         public AppStateResources Resources { get; set; } = new();
         public AppStateCivitai Civitai { get; set; } = new();
+        public AppStateScripts Scripts { get; set; } = new();
 
         public AppState() { }
         public AppState(AppSettings settings)
@@ -173,5 +174,15 @@ namespace BlazorWebApp.Models
         public string Template { get; set; } = string.Empty;
         public int ActivePromptTabIndex { get; set; } = 0;
         public int ActiveActionTabIndex { get; set; } = 0;
+    }
+
+    public class AppStateScripts
+    {
+        public AppStateScriptsDynamicPrompts DynamicPrompts { get; set; } = new();
+    }
+
+    public class AppStateScriptsDynamicPrompts
+    {
+        public bool EnablePromptMagic { get; set; } = false;
     }
 }
