@@ -3,8 +3,8 @@
 @inject DatabaseService DB
 @implements IDisposable
 
-<MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" Rounded Centered>
-    <MudTabPanel Text="Preview">
+<MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" MinimumTabWidth="100px" Rounded Centered>
+    <MudTabPanel Icon="fa-solid fa-play">
         @if (M.GeneratedImageEntities != null && M.GeneratedImageEntities.Images != null)
         {
             <ImageCarousel Images="M.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
@@ -23,7 +23,7 @@
             <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
         }
     </MudTabPanel>
-    <MudTabPanel Text="Generated">
+    <MudTabPanel Icon="fa-solid fa-image">
         @if (M.GeneratedImageEntities != null)
         {
             <ImagesContainer Images="M.GeneratedImageEntities" />
@@ -33,7 +33,7 @@
             <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
         }
     </MudTabPanel>
-    <MudTabPanel Text="Progress">
+    <MudTabPanel Icon="fa-solid fa-spinner">
         @if (M.Progress.State != null && M.IsConverging)
         {
             var value = M.Progress.Value * 100;
@@ -56,32 +56,76 @@
             <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
         }
     </MudTabPanel>
-    @if (_selectedImages.Images.Count > 0)
-    {
-        <MudTabPanel Text="Selected">
-            <ImagesContainer OnPageSelected=LoadPage Images="_selectedImages" />
-        </MudTabPanel>
-    }
+    <MudTabPanel Icon="fa-solid fa-shuffle">
+        <MudStack>
+            <MudText Typo="Typo.caption">Source:</MudText>
+            <MudRadioGroup @bind-SelectedOption=@M.State.Generation.RandomImagesSource>
+                <MudRadio Option=@("generated") Color="Color.Primary">Generated</MudRadio>
+                <MudRadio Option=@("resource") Color="Color.Secondary">Resource</MudRadio>
+            </MudRadioGroup>
+            <MudStack Row=true>
+                <MudSlider @bind-Value=M.State.Generation.RandomImagesAmount Min=M.Settings.Generation.RandomImages.Min Max=M.Settings.Generation.RandomImages.Max Step=M.Settings.Generation.RandomImages.Step ValueLabel=true>
+                    <small>Amount: </small>@M.State.Generation.RandomImagesAmount
+                </MudSlider>
+                <MudButton OnClick="LoadRandomImages" Color="Color.Success">Random</MudButton>
+            </MudStack>
+        </MudStack>
+        @if (_randomImages != null && _randomImages.Images.Count > 0)
+        {
+            <ImagesContainer OnPageSelected=LoadRandomImages Images="_randomImages" />
+        }
+        else
+        {
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+        }
+    </MudTabPanel>
+    <MudTabPanel Icon="fa-regular fa-square-check">
+        @if (_selectedImages != null && _selectedImages.Images.Count > 0)
+        {
+            <ImagesContainer OnPageSelected=LoadSelectedPage Images="_selectedImages" />
+        }
+        else
+        {
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+        }
+    </MudTabPanel>
 </MudTabs>
 
 @code {
     private ImagesDto _selectedImages;
-    private int _currentSelectedImagesPage;
+    private ImagesDto _randomImages;
+    private int _selectedImagesPage;
 
     protected async override Task OnInitializedAsync()
     {
-        await LoadPage(1);
+        await LoadSelectedPage(1);
         ImageService.OnChange += Refresh;
         M.OnSelectedImagesChanged += Refresh;
     }
 
-    private async Task LoadPage(int page)
+    private async Task LoadSelectedPage(int page)
     {
-        _currentSelectedImagesPage = page;
+        _selectedImagesPage = page;
         await LoadSelectedImages();
     }
 
-    private async Task LoadSelectedImages() => _selectedImages = await DB.GetPagedImages(_currentSelectedImagesPage, M.SelectedImageIds);
+    private async Task LoadSelectedImages() => _selectedImages = await DB.GetPagedImages(_selectedImagesPage, M.SelectedImageIds);
+
+    private async Task LoadRandomImages()
+    {
+        switch (M.State.Generation.RandomImagesSource)
+        {
+            case "generated":
+                _randomImages = await DB.GetRandomImages(M.State.Generation.RandomImagesAmount);
+                break;
+            case "resource":
+                _randomImages = await DB.GetRandomResourceImages(M.State.Generation.RandomImagesAmount);
+                break;
+            default:
+                break;
+        }
+        await M.SaveState();
+    }
 
     private async void Refresh()
     {

@@ -25,16 +25,16 @@
             <MudItem xs="12">
                 <MudText Typo="Typo.caption">Max Input Resolution</MudText>
                 <MudStack Row=true>
-                    <MudSlider @bind-Value=M.State.Generation.Img2Img.MaxInputWidth Min=M.Settings.Img2Img.InputResolution.Min Max=M.Settings.Img2Img.InputResolution.Max Step=M.Settings.Img2Img.InputResolution.Step ValueLabel=true><small>Width:</small> @M.State.Generation.Img2Img.MaxInputWidth px</MudSlider>
-                    <MudSlider @bind-Value=M.State.Generation.Img2Img.MaxInputHeight Min=M.Settings.Img2Img.InputResolution.Min Max=M.Settings.Img2Img.InputResolution.Max Step=M.Settings.Img2Img.InputResolution.Step ValueLabel=true><small>Height:</small> @M.State.Generation.Img2Img.MaxInputHeight px</MudSlider>
+                    <MudSlider @bind-Value=M.State.Generation.Img2Img.MaxInputWidth Min=M.Settings.Generation.Img2Img.InputResolution.Min Max=M.Settings.Generation.Img2Img.InputResolution.Max Step=M.Settings.Generation.Img2Img.InputResolution.Step ValueLabel=true><small>Width:</small> @M.State.Generation.Img2Img.MaxInputWidth px</MudSlider>
+                    <MudSlider @bind-Value=M.State.Generation.Img2Img.MaxInputHeight Min=M.Settings.Generation.Img2Img.InputResolution.Min Max=M.Settings.Generation.Img2Img.InputResolution.Max Step=M.Settings.Generation.Img2Img.InputResolution.Step ValueLabel=true><small>Height:</small> @M.State.Generation.Img2Img.MaxInputHeight px</MudSlider>
                     <MudCheckBox Label="Downsize Input" @bind-Checked=M.State.Generation.Img2Img.DownsizeInput />
                 </MudStack>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider @bind-Value=Parameters.MaskBlur Min="M.Settings.Img2Img.MaskBlur.Min" Max="M.Settings.Img2Img.MaskBlur.Max" Step="M.Settings.Img2Img.MaskBlur.Step" Variant="Variant.Filled" ValueLabel><small>Mask Blur:</small> @Parameters.MaskBlur</MudSlider>
+                <MudSlider @bind-Value=Parameters.MaskBlur Min="M.Settings.Generation.Img2Img.MaskBlur.Min" Max="M.Settings.Generation.Img2Img.MaskBlur.Max" Step="M.Settings.Generation.Img2Img.MaskBlur.Step" Variant="Variant.Filled" ValueLabel><small>Mask Blur:</small> @Parameters.MaskBlur</MudSlider>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider @bind-Value=M.State.Generation.Img2Img.BrushSize Min="M.Settings.Img2Img.Brush.Min" Max="M.Settings.Img2Img.Brush.Max" Variant=Variant.Filled ValueLabel><small>Brush Size:</small> @M.State.Generation.Img2Img.BrushSize</MudSlider>
+                <MudSlider @bind-Value=M.State.Generation.Img2Img.BrushSize Min="M.Settings.Generation.Img2Img.Brush.Min" Max="M.Settings.Generation.Img2Img.Brush.Max" Variant=Variant.Filled ValueLabel><small>Brush Size:</small> @M.State.Generation.Img2Img.BrushSize</MudSlider>
             </MudItem>
             <MudItem xs="4">
                 <MudColorPicker AnchorOrigin=Origin.BottomRight TransformOrigin=Origin.TopRight Label="Brush Color" @bind-Text="M.State.Generation.Img2Img.BrushColor" DisableAlpha />
@@ -65,12 +65,12 @@
                 </MudChipSet>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.InpaintFullResPadding Min="M.Settings.Img2Img.Inpainting.FullRes.Padding.Min" Max="M.Settings.Img2Img.Inpainting.FullRes.Padding.Max" Step="M.Settings.Img2Img.Inpainting.FullRes.Padding.Step" Variant="Variant.Filled" ValueLabel>
+                <MudSlider @bind-Value=Parameters.InpaintFullResPadding Min="M.Settings.Generation.Img2Img.Inpainting.FullRes.Padding.Min" Max="M.Settings.Generation.Img2Img.Inpainting.FullRes.Padding.Max" Step="M.Settings.Generation.Img2Img.Inpainting.FullRes.Padding.Step" Variant="Variant.Filled" ValueLabel>
                     <small>Full Res Padding:</small> @Parameters.InpaintFullResPadding
                 </MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Shared.Steps.Min Max=M.Settings.Shared.Steps.Max Step=M.Settings.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
+                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Generation.Shared.Steps.Min Max=M.Settings.Generation.Shared.Steps.Max Step=M.Settings.Generation.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
             </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerIndex AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
@@ -84,22 +84,22 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Shared.CfgScale.Min Max=M.Settings.Shared.CfgScale.Max Step=M.Settings.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
+                <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Shared.Denoising.Min Max=M.Settings.Shared.Denoising.Max Step=M.Settings.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
+                <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Generation.Shared.Denoising.Min Max=M.Settings.Generation.Shared.Denoising.Max Step=M.Settings.Generation.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.Width Min=M.Settings.Shared.Resolution.Min Max=M.Settings.Shared.Resolution.Max Step=M.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
+                <MudSlider @bind-Value=Parameters.Width Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.Height Min=M.Settings.Shared.Resolution.Min Max=M.Settings.Shared.Resolution.Max Step=M.Settings.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
+                <MudSlider @bind-Value=Parameters.Height Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.NIter Min=M.Settings.Shared.Batch.Count.Min Max=M.Settings.Shared.Batch.Count.Max Step=M.Settings.Shared.Batch.Count.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Count:</small> @Parameters.NIter</MudSlider>
+                <MudSlider @bind-Value=Parameters.NIter Min=M.Settings.Generation.Shared.Batch.Count.Min Max=M.Settings.Generation.Shared.Batch.Count.Max Step=M.Settings.Generation.Shared.Batch.Count.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Count:</small> @Parameters.NIter</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Shared.Batch.Size.Min Max=M.Settings.Shared.Batch.Size.Max Step=M.Settings.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
+                <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
             </MudItem>
             <MudItem xs="11">
                 <MudNumericField @bind-Value=Parameters.Seed Label="Seed" Min="-1" Max="long.MaxValue" />

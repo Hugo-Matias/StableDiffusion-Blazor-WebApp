@@ -343,6 +343,21 @@ namespace BlazorWebApp.Services
             else return string.Empty;
         }
 
+        public async Task<ImagesDto> GetRandomImages(int amount)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (context.Images == null) return null;
+            var images = await context.Images.OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
+            return new ImagesDto
+            {
+                Images = images,
+                CurrentPage = 1,
+                PageCount = 1,
+                HasNext = false,
+                HasPrev = false
+            };
+        }
+
         public async Task<Image> GetRandomFavorite(int projectId)
         {
             using var context = await _factory.CreateDbContextAsync();
@@ -591,6 +606,21 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             return context.ResourceImages.Where(i => i.CivitaiModelVersionID == id).ToList();
+        }
+
+        public async Task<ImagesDto> GetRandomResourceImages(int amount)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (context.ResourceImages == null) return null;
+            var images = await context.ResourceImages.OrderBy(i => EF.Functions.Random()).Take(amount).Select(i => new Image(i)).ToListAsync();
+            return new ImagesDto
+            {
+                Images = images,
+                CurrentPage = 1,
+                PageCount = 1,
+                HasNext = false,
+                HasPrev = false
+            };
         }
 
         public async Task<int> ResourceImageByModelVersionIdCount(int id)

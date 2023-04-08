@@ -21,15 +21,17 @@ namespace BlazorWebApp.Models
             IsDarkMode = settings.IsDarkMode;
             Generation = new()
             {
+                RandomImagesAmount = settings.Generation.RandomImages.Value,
+                RandomImagesSource = settings.Generation.RandomImages.Source,
                 Img2Img = new()
                 {
-                    BrushSize = settings.Img2Img.Brush.Value,
-                    BrushColor = settings.Img2Img.Brush.Color,
-                    BrushOutlineColor = settings.Img2Img.Brush.PointerOutline,
-                    Mode = settings.Img2Img.Mode,
-                    DownsizeInput = settings.Img2Img.DownsizeInput,
-                    MaxInputWidth = settings.Img2Img.InputResolution.Width,
-                    MaxInputHeight = settings.Img2Img.InputResolution.Height,
+                    BrushSize = settings.Generation.Img2Img.Brush.Value,
+                    BrushColor = settings.Generation.Img2Img.Brush.Color,
+                    BrushOutlineColor = settings.Generation.Img2Img.Brush.PointerOutline,
+                    Mode = settings.Generation.Img2Img.Mode,
+                    DownsizeInput = settings.Generation.Img2Img.DownsizeInput,
+                    MaxInputWidth = settings.Generation.Img2Img.InputResolution.Width,
+                    MaxInputHeight = settings.Generation.Img2Img.InputResolution.Height,
                 },
             };
             Resources = new()
@@ -50,6 +52,8 @@ namespace BlazorWebApp.Models
 
     public class AppStateGeneration
     {
+        public int RandomImagesAmount { get; set; }
+        public string RandomImagesSource { get; set; }
         public AppStateGenerationImg2Img Img2Img { get; set; }
         public IEnumerable<PromptStyle> Styles { get; set; }
         public string SDModel { get; set; } = "Loading...";

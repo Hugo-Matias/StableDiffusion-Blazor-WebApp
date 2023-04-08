@@ -32,10 +32,10 @@ namespace BlazorWebApp.Services
         public string ResizeImage(byte[] data, bool resize)
         {
             using var image = new MagickImage(data);
-            if (!resize || image.Width < _m.Settings.Img2Img.InputResolution.Width && image.Height < _m.Settings.Img2Img.InputResolution.Height)
+            if (!resize || image.Width < _m.Settings.Generation.Img2Img.InputResolution.Width && image.Height < _m.Settings.Generation.Img2Img.InputResolution.Height)
                 return image.ToBase64(image.Format);
 
-            var sizeGeom = new MagickGeometry(_m.Settings.Img2Img.InputResolution.Width, _m.Settings.Img2Img.InputResolution.Height) { IgnoreAspectRatio = false };
+            var sizeGeom = new MagickGeometry(_m.Settings.Generation.Img2Img.InputResolution.Width, _m.Settings.Generation.Img2Img.InputResolution.Height) { IgnoreAspectRatio = false };
 
             image.Resize(sizeGeom);
             return image.ToBase64(image.Format);

@@ -13,7 +13,7 @@
             </MudRadioGroup>
             @if (Parameters.ResizeMode == 0)
             {
-                <MudSlider Class="mt-n2" @bind-Value=Parameters.UpscalingMultiplier Min="M.Settings.Upscale.UpscalingMultiplier.Min" Max="M.Settings.Upscale.UpscalingMultiplier.Max" Step="M.Settings.Upscale.UpscalingMultiplier.Step" Variant="Variant.Filled" ValueLabel><small>Value:</small> @(Parameters.UpscalingMultiplier)x</MudSlider>
+                <MudSlider Class="mt-n2" @bind-Value=Parameters.UpscalingMultiplier Min="M.Settings.Generation.Upscale.UpscalingMultiplier.Min" Max="M.Settings.Generation.Upscale.UpscalingMultiplier.Max" Step="M.Settings.Generation.Upscale.UpscalingMultiplier.Step" Variant="Variant.Filled" ValueLabel><small>Value:</small> @(Parameters.UpscalingMultiplier)x</MudSlider>
             }
             else
             {
@@ -51,14 +51,14 @@
             </MudSelect>
             @if (Parameters.UpscalerSecondary != "None")
             {
-                <MudSlider Class="mt-2" @bind-Value=Parameters.UpscalerSecondaryVisibility Min="M.Settings.Upscale.UpscalerSecondary.Min" Max="M.Settings.Upscale.UpscalerSecondary.Max" Step="M.Settings.Upscale.UpscalerSecondary.Step" Variant="Variant.Filled" ValueLabel><small>Visibility:</small> @Parameters.UpscalerSecondaryVisibility</MudSlider>
+                <MudSlider Class="mt-2" @bind-Value=Parameters.UpscalerSecondaryVisibility Min="M.Settings.Generation.Upscale.UpscalerSecondary.Min" Max="M.Settings.Generation.Upscale.UpscalerSecondary.Max" Step="M.Settings.Generation.Upscale.UpscalerSecondary.Step" Variant="Variant.Filled" ValueLabel><small>Visibility:</small> @Parameters.UpscalerSecondaryVisibility</MudSlider>
             }
         </MudItem>
         <MudItem xs="4">
-            <MudSlider @bind-Value=Parameters.GfpganVisibility Min="M.Settings.Upscale.FaceRestoration.Min" Max="M.Settings.Upscale.FaceRestoration.Max" Step="M.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>GFPGAN </strong><small>Visibility:</small> @Parameters.GfpganVisibility</MudSlider>
+            <MudSlider @bind-Value=Parameters.GfpganVisibility Min="M.Settings.Generation.Upscale.FaceRestoration.Min" Max="M.Settings.Generation.Upscale.FaceRestoration.Max" Step="M.Settings.Generation.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>GFPGAN </strong><small>Visibility:</small> @Parameters.GfpganVisibility</MudSlider>
             <MudStack Row>
-                <MudSlider @bind-Value=Parameters.CodeformerVisibility Min="M.Settings.Upscale.FaceRestoration.Min" Max="M.Settings.Upscale.FaceRestoration.Max" Step="M.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>CodeFormer </strong><small>Visibility:</small> @Parameters.CodeformerVisibility</MudSlider>
-                <MudSlider @bind-Value=Parameters.CodeformerWeight Min="M.Settings.Upscale.FaceRestoration.Min" Max="M.Settings.Upscale.FaceRestoration.Max" Step="M.Settings.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><small>Attenuation:</small> @Parameters.CodeformerWeight</MudSlider>
+                <MudSlider @bind-Value=Parameters.CodeformerVisibility Min="M.Settings.Generation.Upscale.FaceRestoration.Min" Max="M.Settings.Generation.Upscale.FaceRestoration.Max" Step="M.Settings.Generation.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><strong>CodeFormer </strong><small>Visibility:</small> @Parameters.CodeformerVisibility</MudSlider>
+                <MudSlider @bind-Value=Parameters.CodeformerWeight Min="M.Settings.Generation.Upscale.FaceRestoration.Min" Max="M.Settings.Generation.Upscale.FaceRestoration.Max" Step="M.Settings.Generation.Upscale.FaceRestoration.Step" Variant="Variant.Filled" ValueLabel><small>Attenuation:</small> @Parameters.CodeformerWeight</MudSlider>
             </MudStack>
         </MudItem>
         <MudItem xs="1" Class="d-flex">

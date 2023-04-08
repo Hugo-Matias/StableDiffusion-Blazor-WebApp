@@ -3,14 +3,30 @@
     public class AppSettings
     {
         public bool IsDarkMode { get; set; } = true;
-        public SharedSettingsModel Shared { get; set; } = new();
-        public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
-        public Img2ImgSettingsModel Img2Img { get; set; } = new();
-        public UpscaleSettingsModel Upscale { get; set; } = new();
+        public GenerationSettingsModel Generation { get; set; } = new();
         public ResourcesSettingsModel Resources { get; set; } = new();
         public WebuiSettingsModel Webui { get; set; } = new();
         public ScriptsSettingsModel Scripts { get; set; } = new();
         public PromptsSettingsModel Prompts { get; set; } = new();
+    }
+
+    #region Generation
+    public class GenerationSettingsModel
+    {
+        public RandomImagesSettingsModel RandomImages { get; set; } = new();
+        public SharedSettingsModel Shared { get; set; } = new();
+        public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
+        public Img2ImgSettingsModel Img2Img { get; set; } = new();
+        public UpscaleSettingsModel Upscale { get; set; } = new();
+    }
+
+    public class RandomImagesSettingsModel
+    {
+        public string Source { get; set; } = "generated";
+        public int Value { get; set; } = 10;
+        public int Min { get; set; } = 1;
+        public int Max { get; set; } = 100;
+        public int Step { get; set; } = 1;
     }
 
     #region Shared
@@ -190,6 +206,7 @@
         public int Max { get; set; } = 8192;
         public int Step { get; set; } = 64;
     }
+    #endregion
     #endregion
 
     #region Scripts

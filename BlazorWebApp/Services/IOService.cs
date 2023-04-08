@@ -155,6 +155,7 @@ namespace BlazorWebApp.Services
 
         public string GetImageStaticFile(string path)
         {
+            if (path.StartsWith("/image/")) return path;
             foreach (var imagePath in _imagePaths)
             {
                 var normalizedPath = Parser.NormalizePath(path);

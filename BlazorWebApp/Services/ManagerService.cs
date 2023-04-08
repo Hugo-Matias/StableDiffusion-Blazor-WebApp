@@ -147,30 +147,30 @@ namespace BlazorWebApp.Services
         {
             var defaultParameters = new SharedParameters()
             {
-                Steps = Settings.Shared.Steps.Value,
-                SamplerIndex = Settings.Shared.Sampler,
-                Seed = Settings.Shared.Seed,
-                CfgScale = Settings.Shared.CfgScale.Value,
-                Width = Settings.Shared.Resolution.Width,
-                Height = Settings.Shared.Resolution.Height,
-                NIter = Settings.Shared.Batch.Count.Value,
-                BatchSize = Settings.Shared.Batch.Size.Value,
-                DenoisingStrength = Settings.Shared.Denoising.Value,
-                RestoreFaces = Settings.Shared.FaceRestoration,
-                Tiling = Settings.Shared.Tilling,
+                Steps = Settings.Generation.Shared.Steps.Value,
+                SamplerIndex = Settings.Generation.Shared.Sampler,
+                Seed = Settings.Generation.Shared.Seed,
+                CfgScale = Settings.Generation.Shared.CfgScale.Value,
+                Width = Settings.Generation.Shared.Resolution.Width,
+                Height = Settings.Generation.Shared.Resolution.Height,
+                NIter = Settings.Generation.Shared.Batch.Count.Value,
+                BatchSize = Settings.Generation.Shared.Batch.Size.Value,
+                DenoisingStrength = Settings.Generation.Shared.Denoising.Value,
+                RestoreFaces = Settings.Generation.Shared.FaceRestoration,
+                Tiling = Settings.Generation.Shared.Tilling,
             };
 
             if (modes.Contains(ModeType.Txt2Img))
                 ParametersTxt2Img = new Txt2ImgParameters(defaultParameters)
                 {
-                    EnableHR = Settings.Txt2Img.HighRes.Enabled,
-                    FirstphaseWidth = Settings.Txt2Img.HighRes.FirstPass.Width,
-                    FirstphaseHeight = Settings.Txt2Img.HighRes.FirstPass.Height,
-                    HRUpscaler = Settings.Txt2Img.HighRes.Upscaler,
-                    HRScale = Settings.Txt2Img.HighRes.Scale.Value,
-                    HRWidth = Settings.Txt2Img.HighRes.Resolution.Width,
-                    HRHeight = Settings.Txt2Img.HighRes.Resolution.Height,
-                    HRSecondPassSteps = Settings.Txt2Img.HighRes.SecondPassSteps.Value,
+                    EnableHR = Settings.Generation.Txt2Img.HighRes.Enabled,
+                    FirstphaseWidth = Settings.Generation.Txt2Img.HighRes.FirstPass.Width,
+                    FirstphaseHeight = Settings.Generation.Txt2Img.HighRes.FirstPass.Height,
+                    HRUpscaler = Settings.Generation.Txt2Img.HighRes.Upscaler,
+                    HRScale = Settings.Generation.Txt2Img.HighRes.Scale.Value,
+                    HRWidth = Settings.Generation.Txt2Img.HighRes.Resolution.Width,
+                    HRHeight = Settings.Generation.Txt2Img.HighRes.Resolution.Height,
+                    HRSecondPassSteps = Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Value,
                     Scripts = new()
                     {
                         ControlNet = new() { CreateControlNet() },
@@ -186,12 +186,12 @@ namespace BlazorWebApp.Services
             if (modes.Contains(ModeType.Img2Img))
                 ParametersImg2Img = new Img2ImgParameters(defaultParameters)
                 {
-                    MaskBlur = Settings.Img2Img.MaskBlur.Value,
-                    ResizeMode = Settings.Img2Img.ResizeMode,
-                    InpaintingFill = Settings.Img2Img.Inpainting.Fill,
-                    InpaintFullRes = Settings.Img2Img.Inpainting.FullRes.Value,
-                    InpaintFullResPadding = Settings.Img2Img.Inpainting.FullRes.Padding.Value,
-                    InpaintingMaskInvert = Settings.Img2Img.Inpainting.MaskInvert,
+                    MaskBlur = Settings.Generation.Img2Img.MaskBlur.Value,
+                    ResizeMode = Settings.Generation.Img2Img.ResizeMode,
+                    InpaintingFill = Settings.Generation.Img2Img.Inpainting.Fill,
+                    InpaintFullRes = Settings.Generation.Img2Img.Inpainting.FullRes.Value,
+                    InpaintFullResPadding = Settings.Generation.Img2Img.Inpainting.FullRes.Padding.Value,
+                    InpaintingMaskInvert = Settings.Generation.Img2Img.Inpainting.MaskInvert,
                     Scripts = new()
                     {
                         ControlNet = new() { CreateControlNet() },
@@ -208,19 +208,19 @@ namespace BlazorWebApp.Services
             if (modes.Contains(ModeType.Extras))
                 ParametersUpscale = new UpscaleParameters(defaultParameters)
                 {
-                    ResizeMode = Settings.Upscale.ResizeMode,
-                    ShowResults = Settings.Upscale.ShowResults,
-                    GfpganVisibility = Settings.Upscale.FaceRestoration.GfpganVisibility,
-                    CodeformerVisibility = Settings.Upscale.FaceRestoration.CodeformerVisibility,
-                    CodeformerWeight = Settings.Upscale.FaceRestoration.CodeformerWeight,
-                    UpscalingMultiplier = Settings.Upscale.UpscalingMultiplier.DefaultValue,
-                    UpscalingWidth = Settings.Upscale.UpscalingResolution.Width,
-                    UpscalingHeight = Settings.Upscale.UpscalingResolution.Height,
-                    UpscalingCrop = Settings.Upscale.UpscalingResolution.CropToFit,
-                    UpscalerPrimary = Settings.Upscale.UpscalerPrimary,
-                    UpscalerSecondary = Settings.Upscale.UpscalerSecondary.Name,
-                    UpscalerSecondaryVisibility = Settings.Upscale.UpscalerSecondary.DefaultValue,
-                    UpscalePriority = Settings.Upscale.FaceRestoration.UpscaleBeforeRestoration
+                    ResizeMode = Settings.Generation.Upscale.ResizeMode,
+                    ShowResults = Settings.Generation.Upscale.ShowResults,
+                    GfpganVisibility = Settings.Generation.Upscale.FaceRestoration.GfpganVisibility,
+                    CodeformerVisibility = Settings.Generation.Upscale.FaceRestoration.CodeformerVisibility,
+                    CodeformerWeight = Settings.Generation.Upscale.FaceRestoration.CodeformerWeight,
+                    UpscalingMultiplier = Settings.Generation.Upscale.UpscalingMultiplier.DefaultValue,
+                    UpscalingWidth = Settings.Generation.Upscale.UpscalingResolution.Width,
+                    UpscalingHeight = Settings.Generation.Upscale.UpscalingResolution.Height,
+                    UpscalingCrop = Settings.Generation.Upscale.UpscalingResolution.CropToFit,
+                    UpscalerPrimary = Settings.Generation.Upscale.UpscalerPrimary,
+                    UpscalerSecondary = Settings.Generation.Upscale.UpscalerSecondary.Name,
+                    UpscalerSecondaryVisibility = Settings.Generation.Upscale.UpscalerSecondary.DefaultValue,
+                    UpscalePriority = Settings.Generation.Upscale.FaceRestoration.UpscaleBeforeRestoration
                 };
         }
 
