@@ -3,6 +3,11 @@
     public class ScriptParametersMultiDiffusionTiledDiffusion : BaseScriptParameters
     {
         public string Method { get; set; }
+        public bool IsNoiseInverse { get; set; }
+        public int NoiseInverseSteps { get; set; }
+        public float NoiseInverseRetouch { get; set; }
+        public float NoiseInverseRenoiseStrength { get; set; }
+        public int NoiseInverseRenoiseKernel { get; set; }
         public bool OverwriteImageSize { get; set; }
         public bool KeepInputSize { get; set; }
         public int ImageWidth { get; set; }
@@ -16,6 +21,7 @@
         public bool ControlTensorCpu { get; set; }
         public bool EnableBBoxControl { get; set; }
         public bool DrawBackground { get; set; }
+        public bool CasualLayers { get; set; }
         public List<ScriptParametersMultiDiffusionBBoxControl>? BBoxControlStates { get; set; }
     }
 
@@ -40,5 +46,6 @@
         public string NegativePrompt { get; set; }
         public string BlendMode { get; set; }
         public float FeatherRadius { get; set; }
+        public int Seed { get; set; }
     }
 }

@@ -535,14 +535,61 @@
             "MultiDiffusion",
             "Mixture of Diffusers"
         };
-
         public string UpscalerIndex { get; set; } = "None";
         public bool ControlTensorCpu { get; set; } = false;
         public bool EnableBBoxControl { get; set; } = false;
         public bool DrawBackground { get; set; } = false;
+        public bool CasualLayers { get; set; } = false;
+        public MultiDiffusionNoiseInverseSettingsModel NoiseInverse { get; set; } = new();
         public MultiDiffusionLatentTileSettingsModel LatentTile { get; set; } = new();
         public MultiDiffusionImageSettingsModel Image { get; set; } = new();
         public MultiDiffusionBBoxSettingsModel BBoxControl { get; set; } = new();
+    }
+
+    public class MultiDiffusionNoiseInverseSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public MultiDiffusionNoiseInverseStepsSettingsModel Steps { get; set; } = new();
+        public MultiDiffusionNoiseInverseRetouchSettingsModel Retouch { get; set; } = new();
+        public MultiDiffusionNoiseInverseRenoiseSettingsModel Renoise { get; set; } = new();
+    }
+
+    public class MultiDiffusionNoiseInverseStepsSettingsModel
+    {
+        public int Value { get; set; } = 10;
+        public int Min { get; set; } = 1;
+        public int Max { get; set; } = 100;
+        public int Step { get; set; } = 1;
+    }
+
+    public class MultiDiffusionNoiseInverseRetouchSettingsModel
+    {
+        public float Value { get; set; } = 1;
+        public float Min { get; set; } = 1;
+        public float Max { get; set; } = 100;
+        public float Step { get; set; } = 0.1f;
+    }
+
+    public class MultiDiffusionNoiseInverseRenoiseSettingsModel
+    {
+        public MultiDiffusionNoiseInverseRenoiseStrengthSettingsModel Strength { get; set; } = new();
+        public MultiDiffusionNoiseInverseRenoiseKernelSettingsModel Kernel { get; set; } = new();
+    }
+
+    public class MultiDiffusionNoiseInverseRenoiseStrengthSettingsModel
+    {
+        public float Value { get; set; } = 1;
+        public float Min { get; set; } = 0;
+        public float Max { get; set; } = 2;
+        public float Step { get; set; } = 0.01f;
+    }
+
+    public class MultiDiffusionNoiseInverseRenoiseKernelSettingsModel
+    {
+        public int Value { get; set; } = 64;
+        public int Min { get; set; } = 2;
+        public int Max { get; set; } = 512;
+        public int Step { get; set; } = 1;
     }
 
     public class MultiDiffusionLatentTileSettingsModel
@@ -609,6 +656,7 @@
         public bool IsEnabled { get; set; } = false;
         public string Prompt { get; set; } = string.Empty;
         public string NegativePrompt { get; set; } = string.Empty;
+        public int Seed { get; set; } = -1;
         public MultiDiffusionBBoxMultiplierSettingsModel Multiplier { get; set; } = new();
         public MultiDiffusionBBoxRegionSettingsModel Region { get; set; } = new();
     }

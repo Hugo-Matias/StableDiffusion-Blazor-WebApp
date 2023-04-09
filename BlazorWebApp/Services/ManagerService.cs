@@ -320,6 +320,11 @@ namespace BlazorWebApp.Services
                 IsAlwaysOn = true,
                 IsEnabled = Settings.Scripts.MultiDiffusion.TiledDiffusion.IsEnabled,
                 Method = Settings.Scripts.MultiDiffusion.TiledDiffusion.Methods[0],
+                IsNoiseInverse = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.IsEnabled,
+                NoiseInverseSteps = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Steps.Value,
+                NoiseInverseRetouch = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Retouch.Value,
+                NoiseInverseRenoiseStrength = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Renoise.Strength.Value,
+                NoiseInverseRenoiseKernel = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Renoise.Kernel.Value,
                 OverwriteImageSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.OverwriteImageSize,
                 KeepInputSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.KeepInputSize,
                 ImageWidth = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Width,
@@ -333,6 +338,7 @@ namespace BlazorWebApp.Services
                 ControlTensorCpu = Settings.Scripts.MultiDiffusion.TiledDiffusion.ControlTensorCpu,
                 EnableBBoxControl = Settings.Scripts.MultiDiffusion.TiledDiffusion.EnableBBoxControl,
                 DrawBackground = Settings.Scripts.MultiDiffusion.TiledDiffusion.DrawBackground,
+                CasualLayers = Settings.Scripts.MultiDiffusion.TiledDiffusion.CasualLayers,
                 // TODO: Implement BBox Regions
                 BBoxControlStates = bboxControls
             };
