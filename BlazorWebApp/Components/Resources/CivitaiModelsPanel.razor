@@ -163,6 +163,7 @@ else if (M.CivitaiModels != null)
 
     private async Task<string> CheckVersionImagesExist(CivitaiModelsModelDto model)
     {
+        if (model.ModelVersions.Count == 0) return string.Empty;
         var versionId = model.ModelVersions[0].Id;
         var versionExists = await DB.CheckResourceExistsByModelVersionId(versionId);
         if (versionExists)

@@ -1,69 +1,19 @@
 ﻿@inject ManagerService M
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Control Net</MudText>
-<MudDynamicTabs @ref="@_cnTabs" @bind-ActivePanelIndex="@_cnTabIndex"
-                AddTab="@AddTabCallback" CloseTab="@CloseTabCallback"
-                AddIconToolTip="Add new ControlNet unit" CloseIconToolTip="Close unit. All data will be lost"
-                PanelClass="px-4 py-6" Elevation="4" Rounded=true ApplyEffectsToContainer=true>
-    @foreach (var tab in _cnUnits)
-    {
-        <MudTabPanel ID="@tab.Id" Text="@tab.Label">
-            <ControlNetForm Parameters="@tab.Parameters" />
-        </MudTabPanel>
-    }
-</MudDynamicTabs>
-
-@code {
-    public class ControlNetUnit
-    {
-        public string Label { get; set; }
-        public ScriptParametersControlNet Parameters { get; set; }
-        public Guid Id { get; set; }
-    }
-
-    [Parameter] public List<ScriptParametersControlNet> Units { get; set; }
-    private MudDynamicTabs _cnTabs;
-    private List<ControlNetUnit> _cnUnits = new();
-    private int _cnTabIndex;
-    private int _unitCount;
-
-    protected async override Task OnInitializedAsync()
-    {
-        await InitializeControlNet();
-    }
-
-    private async Task InitializeControlNet()
-    {
-        _unitCount = 1;
-        _cnUnits.Clear();
-        _cnUnits.Add(new ControlNetUnit { Id = Guid.NewGuid(), Label = $"Unit {_unitCount}", Parameters = Units[0] });
-        _cnTabIndex = 0;
-        await InvokeAsync(StateHasChanged);
-    }
-
-    public async Task AddTab(Guid id)
-    {
-        _unitCount++;
-        var parameters = M.CreateControlNet();
-        Units.Add(parameters);
-        _cnUnits.Add(new ControlNetUnit { Id = id, Label = $"Unit {_unitCount}", Parameters = parameters });
-        //_cnTabIndex = _cnUnits.Count - 1;
-        await InvokeAsync(StateHasChanged);
-    }
-
-    public async Task RemoveTab(Guid id)
-    {
-        var unit = _cnUnits.SingleOrDefault((u) => Equals(u.Id, id));
-        if (unit != null)
+<MudTabs PanelClass="px-4 py-6" Elevation="4" Rounded=true ApplyEffectsToContainer=true>
+    @{
+        var index = 1;
+        @foreach (var tab in Units)
         {
-            _cnUnits.Remove(unit);
-            Units.Remove(unit.Parameters);
-            await InvokeAsync(StateHasChanged);
+            <MudTabPanel Text=@($"Unit {index}")>
+                <ControlNetForm Parameters="@tab" />
+            </MudTabPanel>
+            index++;
         }
     }
+</MudTabs>
 
-    private async Task AddTabCallback() => await AddTab(Guid.NewGuid());
-    private async Task CloseTabCallback(MudTabPanel panel) => await RemoveTab((Guid)panel.ID);
-
-
+@code {
+    [Parameter] public List<ScriptParametersControlNet> Units { get; set; }
 }

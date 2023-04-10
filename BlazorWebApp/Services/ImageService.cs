@@ -145,11 +145,17 @@ namespace BlazorWebApp.Services
         {
             if (_m.ControlNetEnabled && units != null && units.Count > 0)
             {
+                var nulledUnits = new List<ScriptParametersControlNet?>();
                 foreach (var unit in units)
                 {
-                    unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
+                    if (unit.Model == "None" && unit.Preprocessor == ControlNetPreprocessor.none) nulledUnits.Add(null);
+                    else
+                    {
+                        unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
+                        nulledUnits.Add(unit);
+                    }
                 }
-                parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ScriptParametersControlNet>>() { { "args", units } } } };
+                parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ScriptParametersControlNet>>() { { "args", nulledUnits } } } };
             }
         }
 

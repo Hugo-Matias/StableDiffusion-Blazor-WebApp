@@ -721,10 +721,16 @@
         public bool UseBasePrompt { get; set; } = false;
         public bool UseCommonPrompt { get; set; } = false;
         public bool UseNegativeCommonPrompt { get; set; } = false;
+        public bool DisableConvertAND { get; set; } = false;
         public List<string> Modes { get; set; } = new()
         {
             "Horizontal",
             "Vertical"
+        };
+        public List<string> GenerationModes { get; set; } = new()
+        {
+            "Attention",
+            "Latent"
         };
     }
     #endregion

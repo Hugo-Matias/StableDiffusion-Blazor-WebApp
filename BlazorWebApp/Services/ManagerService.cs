@@ -173,7 +173,7 @@ namespace BlazorWebApp.Services
                     HRSecondPassSteps = Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Value,
                     Scripts = new()
                     {
-                        ControlNet = new() { CreateControlNet() },
+                        ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
                         Cutoff = CreateCutoff(),
                         DynamicPrompts = CreateDynamicPrompts(),
                         MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
@@ -194,7 +194,7 @@ namespace BlazorWebApp.Services
                     InpaintingMaskInvert = Settings.Generation.Img2Img.Inpainting.MaskInvert,
                     Scripts = new()
                     {
-                        ControlNet = new() { CreateControlNet() },
+                        ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
                         Cutoff = CreateCutoff(),
                         DynamicPrompts = CreateDynamicPrompts(),
                         UltimateUpscale = CreateUltimateUpscale(),
@@ -371,6 +371,8 @@ namespace BlazorWebApp.Services
                 UseBasePrompt = Settings.Scripts.RegionalPrompter.UseBasePrompt,
                 UseCommonPrompt = Settings.Scripts.RegionalPrompter.UseCommonPrompt,
                 UseNegativeCommonPrompt = Settings.Scripts.RegionalPrompter.UseNegativeCommonPrompt,
+                GenerationMode = Settings.Scripts.RegionalPrompter.GenerationModes[0],
+                DisableConvertAND = Settings.Scripts.RegionalPrompter.DisableConvertAND
             };
         }
 

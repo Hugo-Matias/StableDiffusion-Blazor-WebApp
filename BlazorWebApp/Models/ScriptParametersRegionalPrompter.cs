@@ -9,5 +9,7 @@
         public bool UseBasePrompt { get; set; }
         public bool UseCommonPrompt { get; set; }
         public bool UseNegativeCommonPrompt { get; set; }
+        public string GenerationMode { get; set; }
+        public bool DisableConvertAND { get; set; }
     }
 }

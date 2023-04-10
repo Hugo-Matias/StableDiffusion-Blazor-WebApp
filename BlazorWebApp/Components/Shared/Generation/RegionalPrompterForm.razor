@@ -2,7 +2,7 @@
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Regional Prompter</MudText>
 <MudGrid>
-    <MudItem xs="4">
+    <MudItem xs="6">
         <MudSelect @bind-Value=Parameters.Mode Label="Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
             @foreach (var mode in M.Settings.Scripts.RegionalPrompter.Modes)
             {
@@ -10,22 +10,33 @@
             }
         </MudSelect>
     </MudItem>
-    <MudItem xs="4">
+    <MudItem xs="6">
+        <MudSelect @bind-Value=Parameters.GenerationMode Label="Generation Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var mode in M.Settings.Scripts.RegionalPrompter.GenerationModes)
+            {
+                <MudSelectItem Value="mode" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
         <MudTextField @bind-Value=Parameters.DivideRatio Label="Divide Ratio" />
     </MudItem>
-    <MudItem xs="4">
+    <MudItem xs="6">
         <MudTextField @bind-Value=Parameters.BaseRatio Label="Base Ratio" />
     </MudItem>
-    <MudItem xs="3">
+    <MudItem xs="4">
         <MudCheckBox @bind-Checked=Parameters.UseBasePrompt Label="Base Prompt" />
     </MudItem>
-    <MudItem xs="3">
+    <MudItem xs="4">
         <MudCheckBox @bind-Checked=Parameters.UseCommonPrompt Label="Common Prompt" />
     </MudItem>
     <MudItem xs="4">
         <MudCheckBox @bind-Checked=Parameters.UseNegativeCommonPrompt Label="Negative Common Prompt" />
     </MudItem>
-    <MudItem xs="2">
+    <MudItem xs="9">
+        <MudCheckBox @bind-Checked=Parameters.DisableConvertAND Label="Disable 'AND' to 'BREAK' Conversion" />
+    </MudItem>
+    <MudItem xs="3">
         <MudCheckBox @bind-Checked=Parameters.IsDebug Label="Debug" />
     </MudItem>
     <MudItem xs="12">
