@@ -56,6 +56,16 @@
             <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
         }
     </MudTabPanel>
+    <MudTabPanel Icon="fa-regular fa-square-check">
+        @if (_selectedImages != null && _selectedImages.Images.Count > 0)
+        {
+            <ImagesContainer OnPageSelected=LoadSelectedPage Images="_selectedImages" />
+        }
+        else
+        {
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+        }
+    </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-shuffle">
         <MudStack>
             <MudText Typo="Typo.caption">Source:</MudText>
@@ -73,16 +83,6 @@
         @if (_randomImages != null && _randomImages.Images.Count > 0)
         {
             <ImagesContainer OnPageSelected=LoadRandomImages Images="_randomImages" />
-        }
-        else
-        {
-            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
-        }
-    </MudTabPanel>
-    <MudTabPanel Icon="fa-regular fa-square-check">
-        @if (_selectedImages != null && _selectedImages.Images.Count > 0)
-        {
-            <ImagesContainer OnPageSelected=LoadSelectedPage Images="_selectedImages" />
         }
         else
         {

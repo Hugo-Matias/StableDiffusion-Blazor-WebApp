@@ -391,6 +391,7 @@ namespace BlazorWebApp.Services
 
         public async Task<int> GetSampler(string samplerName)
         {
+            if (string.IsNullOrWhiteSpace(samplerName)) return 0;
             using var context = await _factory.CreateDbContextAsync();
             var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name == samplerName);
             return sampler.Id;
@@ -612,7 +613,16 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.ResourceImages == null) return null;
-            var images = await context.ResourceImages.OrderBy(i => EF.Functions.Random()).Take(amount).Select(i => new Image(i)).ToListAsync();
+            var resourceImages = await context.ResourceImages.OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
+            var images = new List<Image>();
+            foreach (var resourceImage in resourceImages)
+            {
+                var image = new Image(resourceImage)
+                {
+                    SamplerId = await GetSampler(resourceImage.Sampler)
+                };
+                images.Add(image);
+            }
             return new ImagesDto
             {
                 Images = images,

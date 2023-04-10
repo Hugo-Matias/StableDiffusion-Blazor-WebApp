@@ -65,18 +65,21 @@
                             <MudTextField Label="Created Date" Text="@Image.DateCreated.ToString()" T="string" ReadOnly=true />
                         </MudStack>
                     </MudTabPanel>
-                    <MudTabPanel Text="Info Table">
-                        <MudTable Items=_infoParams Style="max-height: 40vh; overflow: scroll;" Hover=true>
-                            <HeaderContent>
-                                <MudTh>Parameter</MudTh>
-                                <MudTh>Value</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="Parameter">@context.Key</MudTd>
-                                <MudTd DataLabel="Value">@context.Value</MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    </MudTabPanel>
+                    @if (_infoParams != null)
+                    {
+                        <MudTabPanel Text="Info Table">
+                            <MudTable Items=_infoParams Style="max-height: 40vh; overflow: scroll;" Hover=true>
+                                <HeaderContent>
+                                    <MudTh>Parameter</MudTh>
+                                    <MudTh>Value</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Parameter">@context.Key</MudTd>
+                                    <MudTd DataLabel="Value">@context.Value</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudTabPanel>
+                    }
                 </MudTabs>
             }
             else
@@ -126,7 +129,9 @@
 
     protected async override Task OnInitializedAsync()
     {
-        if (Image.Info == null) await WriteImageInfo();
+        // If InfoPath is null it means the image is a ResourceImage and we must ignore the Info property
+        if (string.IsNullOrWhiteSpace(Image.InfoPath)) return;
+        if (string.IsNullOrWhiteSpace(Image.Info)) await WriteImageInfo();
         _infoParams = Parser.ParseInfoParameters(Image.Info);
         if (_infoParams.ContainsKey("Seed") && !string.IsNullOrWhiteSpace(_infoParams["Seed"]) && Image.Seed != long.Parse(_infoParams["Seed"]))
         {

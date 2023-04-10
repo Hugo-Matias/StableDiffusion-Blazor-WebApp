@@ -26,11 +26,11 @@
             Path = resourceImage.Path;
             Prompt = resourceImage.Prompt;
             NegativePrompt = resourceImage.NegativePrompt;
-            Steps = resourceImage.Steps != null ? (int)resourceImage.Steps : 25;
+            Steps = resourceImage.Steps != null ? (int)resourceImage.Steps : 0;
             Seed = resourceImage.Seed != null ? (long)resourceImage.Seed : -1;
-            CfgScale = resourceImage.CfgScale != null ? (float)resourceImage.CfgScale : 7.5f;
-            Width = resourceImage.Width != null ? (int)resourceImage.Width : 512;
-            Height = resourceImage.Height != null ? (int)resourceImage.Height : 768;
+            CfgScale = resourceImage.CfgScale != null ? (float)resourceImage.CfgScale : 0;
+            Width = resourceImage.Width != null ? (int)resourceImage.Width : 0;
+            Height = resourceImage.Height != null ? (int)resourceImage.Height : 0;
             DenoisingStrength = resourceImage.DenoisingStrength != null ? double.Parse(resourceImage.DenoisingStrength) : null;
         }
     }
