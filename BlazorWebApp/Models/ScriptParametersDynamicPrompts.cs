@@ -20,7 +20,6 @@
         public int MaxGenerations { get; set; }
         public string MagicModel { get; set; }
         public string? MagicBlocklistRegex { get; set; }
-        public int MagicBatchSize { get; set; }
 
         public ScriptParametersDynamicPrompts() { }
         public ScriptParametersDynamicPrompts(ScriptParametersDynamicPrompts clone)
@@ -42,7 +41,6 @@
             MaxGenerations = clone.MaxGenerations;
             MagicModel = clone.MagicModel;
             MagicBlocklistRegex = clone.MagicBlocklistRegex;
-            MagicBatchSize = clone.MagicBatchSize;
         }
     }
 }

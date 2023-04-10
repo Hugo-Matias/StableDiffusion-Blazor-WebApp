@@ -86,14 +86,11 @@
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(Parameters.IsAttentionGrabber ? "show" : "")}")">
                 <MudGrid>
-                    <MudItem xs="4">
+                    <MudItem xs="6">
                         <MudSlider @bind-Value=Parameters.MinAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Minimum Attention:</small> @Parameters.MinAttention</MudSlider>
                     </MudItem>
-                    <MudItem xs="4">
+                    <MudItem xs="6">
                         <MudSlider @bind-Value=Parameters.MaxAttention Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.Step Disabled=!Parameters.IsAttentionGrabber><small>Maximum Attention:</small> @Parameters.MaxAttention</MudSlider>
-                    </MudItem>
-                    <MudItem xs="4">
-                        <MudSlider @bind-Value=Parameters.MagicBatchSize Min=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Min Max=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Max Step=M.Settings.Scripts.DynamicPrompts.PromptMagic.Batch.Step><small>Batch Size:</small> @Parameters.MagicBatchSize</MudSlider>
                     </MudItem>
                 </MudGrid>
             </MudItem>
