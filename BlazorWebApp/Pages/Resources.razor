@@ -109,11 +109,13 @@
                     var filename = file.File.Name.Replace(file.File.Extension, "");
                     var model = M.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
                     await M.SetSDModel(model.Title);
+                    await DB.UpdateResourceLoadedDate(file.ResourceId);
                 }
                 else
                 {
                     var target = (ValueTuple<ModeType, bool>)result.Data;
                     await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
+                    await DB.UpdateResourceLoadedDate(file.ResourceId);
                 }
             }
         }

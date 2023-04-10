@@ -559,6 +559,15 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
             return response.Entity;
         }
+
+        public async Task UpdateResourceLoadedDate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == id);
+            resource.LastLoadedDate = DateTime.Now;
+            await context.SaveChangesAsync();
+        }
+
         public async Task DeleteResource(int resourceId)
         {
             using var context = await _factory.CreateDbContextAsync();

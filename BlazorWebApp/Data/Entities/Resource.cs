@@ -17,8 +17,10 @@ namespace BlazorWebApp.Data.Entities
         public string? Description { get; set; }
         public bool IsEnabled { get; set; }
         public double SizeKb { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public DateTime? LastLoadedDate { get; set; }
 
-        public Resource() { }
+        public Resource() { CreatedDate = DateTime.Now; }
         public Resource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
         {
             Title = model.Name;
@@ -33,6 +35,7 @@ namespace BlazorWebApp.Data.Entities
             IsEnabled = false;
             if (version.TrainedWords != null) TriggerWords = version.TrainedWords;
             SizeKb = file.SizeKb;
+            CreatedDate = DateTime.Now;
         }
     }
 

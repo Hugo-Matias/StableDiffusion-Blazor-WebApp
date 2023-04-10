@@ -856,6 +856,14 @@
         public ResourceSearchSettingsModel Search { get; set; } = new();
         public ResourceWeightSettingsModel Weight { get; set; } = new();
         public CivitaiSettingsModel Civitai { get; set; } = new();
+        public bool OrderByDescending { get; set; } = false;
+        public List<string> OrderByOptions { get; set; } = new()
+        {
+            "Title",
+            "Author",
+            "Creation Date",
+            "Load Date"
+        };
     }
 
     public class ResourceWeightSettingsModel

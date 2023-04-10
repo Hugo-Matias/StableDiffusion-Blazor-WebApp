@@ -57,7 +57,7 @@
             var activate = _selectedTemplate.ResourceIds.Contains(resource.Id);
             if ((activate && !resource.IsEnabled) || (!activate && resource.IsEnabled))
             {
-                var localResource = ResourcesService.CreateLocalResourceByEntity(resource);
+                var localResource = await ResourcesService.CreateLocalResourceByEntity(resource);
                 var resourceType = resource.Type.Name;
                 var resourceSubtype = resource.SubType != null ? resource.SubType.Name : null;
                 localResource.Files[0] = await ResourcesService.GetResourceFileInfo(resourceType, resourceSubtype, localResource.Files[0]);

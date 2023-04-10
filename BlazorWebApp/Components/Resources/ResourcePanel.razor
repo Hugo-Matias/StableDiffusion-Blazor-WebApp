@@ -3,13 +3,24 @@
 @if (Resources != null)
 {
     <MudGrid Class="my-3 pa-2">
-        <MudItem xs="5">
+        <MudItem xs="4">
             <MudStack>
                 <MudTextField Label="Title" Value="M.State.Resources.Title" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
                 <MudStack Row=true>
                     <MudAutocomplete T="string" Value="M.State.Resources.Subtype" ValueChanged=HandleSearchSubtype SearchFunc="GetSubtypes" Label="Sub-Type" MaxItems="100" MaxHeight="1200" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-list" ResetValueOnEmptyText Clearable Dense />
                     <MudAutocomplete T="string" Value="M.State.Resources.Tag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(M.State.Resources.IsInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
                 </MudStack>
+            </MudStack>
+        </MudItem>
+        <MudItem xs="1">
+            <MudStack>
+                <MudSelect Label="Order By" Value="M.State.Resources.OrderBy" ValueChanged=HandleOrderChanged T="string">
+                    @foreach (var option in M.Settings.Resources.OrderByOptions)
+                    {
+                        <MudSelectItem Value="option" />
+                    }
+                </MudSelect>
+                <MudCheckBox Checked=M.State.Resources.OrderByDescending CheckedChanged=HandleOrderDescendingChanged T="bool" Label=@(M.State.Resources.OrderByDescending ? "Desc" : "Asc") CheckedIcon="fa-solid fa-arrow-down-wide-short" UncheckedIcon="fa-solid fa-arrow-down-short-wide" />
             </MudStack>
         </MudItem>
         <MudItem xs="5">
@@ -103,7 +114,6 @@
     {
         M.State.Resources.Limit = value;
         M.State.Resources.Page = 1;
-        M.SaveSettings();
         await Search();
     }
 
@@ -120,6 +130,18 @@
         await Search();
     }
 
+    private async Task HandleOrderChanged(string value)
+    {
+        M.State.Resources.OrderBy = value;
+        await Search();
+    }
+
+    private async Task HandleOrderDescendingChanged(bool value)
+    {
+        M.State.Resources.OrderByDescending = value;
+        await Search();
+    }
+
     private async Task Search()
     {
         var query = Resources.AsQueryable();
@@ -131,7 +153,23 @@
             else query = query.Where(r => !r.Tags.Contains(M.State.Resources.Tag));
         }
         if (M.State.Resources.ResourceIsEnabledFilter != null) query = query.Where(r => r.Files.Any(f => f.IsEnabled == M.State.Resources.ResourceIsEnabledFilter));
-        PaginateResults(query.OrderBy(r => r.Title).ToArray());
+        switch (M.State.Resources.OrderBy)
+        {
+            case "Title":
+                query = query.OrderBy(r => r.Title);
+                break;
+            case "Author":
+                query = query.OrderBy(r => r.Author);
+                break;
+            case "Creation Date":
+                query = query.OrderBy(r => r.CreatedDate);
+                break;
+            case "Load Date":
+                query = query.OrderBy(r => r.LastLoadedDate);
+                break;
+        }
+        var result = M.State.Resources.OrderByDescending ? query.Reverse().ToArray() : query.ToArray();
+        PaginateResults(result);
         await M.SaveState();
     }
 

@@ -46,14 +46,14 @@ namespace BlazorWebApp.Services
                     }
                     else
                     {
-                        resources.Add(CreateLocalResourceByEntity(entity));
+                        resources.Add(await CreateLocalResourceByEntity(entity));
                     }
                 }
             }
             return resources.OrderBy(r => r.Title).ToList();
         }
 
-        public LocalResource CreateLocalResourceByEntity(Resource entity)
+        public async Task<LocalResource> CreateLocalResourceByEntity(Resource entity)
         {
             var resource = new LocalResource(entity);
             var file = new LocalResourceFile(entity);
@@ -62,6 +62,14 @@ namespace BlazorWebApp.Services
             file.IsEnabled = entity.IsEnabled;
             resource.ImageSrc = file.ImageSrc;
             resource.Files = new() { file };
+            if (entity.CreatedDate == DateTime.MinValue)
+            {
+                var subtype = entity.SubType != null && !string.IsNullOrWhiteSpace(entity.SubType.Name) ? entity.SubType.Name : null;
+                var localFile = await GetResourceFileInfo(entity.Type.Name, subtype, file);
+                entity.CreatedDate = localFile.File.LastWriteTimeUtc;
+                await _db.UpdateResource(entity);
+                await Console.Out.WriteLineAsync($"Updated CreatedDate for: {entity.Id}-{entity.Title} ({entity.Type.Name}/{entity.SubType?.Name})");
+            }
             return resource;
         }
 

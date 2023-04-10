@@ -11,6 +11,8 @@ namespace BlazorWebApp.Models
         public ResourceType Type { get; set; }
         public ResourceSubType? SubType { get; set; }
         public List<string>? Tags { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public DateTime? LastLoadedDate { get; set; }
 
         public LocalResource() { }
         public LocalResource(Resource resourceEntity)
@@ -23,6 +25,8 @@ namespace BlazorWebApp.Models
             Type = resourceEntity.Type;
             SubType = resourceEntity.SubType;
             Tags = resourceEntity.Tags;
+            CreatedDate = resourceEntity.CreatedDate;
+            LastLoadedDate = resourceEntity.LastLoadedDate;
         }
     }
 

@@ -39,6 +39,8 @@ namespace BlazorWebApp.Models
                 Limit = settings.Resources.Search.Limit.Value,
                 LoadTriggerWords = settings.Resources.LoadTriggerWords,
                 Weight = settings.Resources.Weight.Value,
+                OrderBy = settings.Resources.OrderByOptions[0],
+                OrderByDescending = settings.Resources.OrderByDescending
             };
             Prompts = new()
             {
@@ -129,6 +131,8 @@ namespace BlazorWebApp.Models
         public bool LoadTriggerWords { get; set; }
         public float Weight { get; set; }
         public bool? ResourceIsEnabledFilter { get; set; }
+        public string OrderBy { get; set; }
+        public bool OrderByDescending { get; set; }
     }
 
     public class AppStateCivitai
