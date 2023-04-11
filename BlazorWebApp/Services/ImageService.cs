@@ -17,6 +17,7 @@ namespace BlazorWebApp.Services
         private readonly ProgressService _progress;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
+        private Txt2ImgParameters _txt2imgParams;
         private int _canvasSourceWidth;
         private int _canvasSourceHeight;
 
@@ -95,20 +96,20 @@ namespace BlazorWebApp.Services
                         Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
                         Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersTxt2Img.Scripts.RegionalPrompter);
                         scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersTxt2Img.Scripts.XYZPlot);
-                        var txt2imgParams = new Txt2ImgParameters(_parsingParams);
-                        txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
-                        if (txt2imgParams.EnableHR != null && (bool)txt2imgParams.EnableHR)
+                        _txt2imgParams = new Txt2ImgParameters(_parsingParams);
+                        _txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
+                        if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
                         {
-                            txt2imgParams.FirstphaseWidth = _m.ParametersTxt2Img.Width;
-                            txt2imgParams.FirstphaseHeight = _m.ParametersTxt2Img.Height;
-                            txt2imgParams.HRUpscaler = _m.ParametersTxt2Img.HRUpscaler;
-                            txt2imgParams.HRScale = _m.ParametersTxt2Img.HRScale;
-                            txt2imgParams.HRWidth = _m.ParametersTxt2Img.HRWidth;
-                            txt2imgParams.HRHeight = _m.ParametersTxt2Img.HRHeight;
-                            txt2imgParams.HRSecondPassSteps = _m.ParametersTxt2Img.HRSecondPassSteps;
-                            txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
+                            _txt2imgParams.FirstphaseWidth = _m.ParametersTxt2Img.Width;
+                            _txt2imgParams.FirstphaseHeight = _m.ParametersTxt2Img.Height;
+                            _txt2imgParams.HRUpscaler = _m.ParametersTxt2Img.HRUpscaler;
+                            _txt2imgParams.HRScale = _m.ParametersTxt2Img.HRScale;
+                            _txt2imgParams.HRWidth = _m.ParametersTxt2Img.HRWidth;
+                            _txt2imgParams.HRHeight = _m.ParametersTxt2Img.HRHeight;
+                            _txt2imgParams.HRSecondPassSteps = _m.ParametersTxt2Img.HRSecondPassSteps;
+                            _txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
                         }
-                        _m.Images = await _api.PostTxt2Img(txt2imgParams);
+                        _m.Images = await _api.PostTxt2Img(_txt2imgParams);
                         _m.SerializeInfo();
                         break;
                 }
@@ -178,10 +179,10 @@ namespace BlazorWebApp.Services
                 // These images aren't added to the database.
                 if (i >= _m.ImagesInfo.InfoTexts.Length)
                 {
-                    if ((outdirSamples == Outdir.Txt2ImgSamples && _m.ParametersTxt2Img.AlwaysOnScripts != null && _m.ParametersTxt2Img.AlwaysOnScripts.ContainsKey("controlnet") && _m.ParametersTxt2Img.AlwaysOnScripts["controlnet"] != null) ||
+                    if ((outdirSamples == Outdir.Txt2ImgSamples && _txt2imgParams.AlwaysOnScripts != null && _txt2imgParams.AlwaysOnScripts.ContainsKey("controlnet") && _txt2imgParams.AlwaysOnScripts["controlnet"] != null) ||
                         (outdirSamples == Outdir.Img2ImgSamples && _m.ParametersImg2Img.AlwaysOnScripts != null && _m.ParametersImg2Img.AlwaysOnScripts.ContainsKey("controlnet") && _m.ParametersImg2Img.AlwaysOnScripts["controlnet"] != null))
                     {
-                        var cnImagePath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-ControlNet Annotator.{extension}";
+                        var cnImagePath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-ControlNet Annotator {i - _m.ImagesInfo.InfoTexts.Length + 1}.{extension}";
                         await _io.SaveFileToDisk(cnImagePath, Convert.FromBase64String(_m.Images.Images[i]));
                     }
                     else if (outdirSamples == Outdir.Img2ImgSamples && scriptName == "Ultimate SD upscale")
@@ -189,7 +190,7 @@ namespace BlazorWebApp.Services
                         var seamfixPath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-SeamFix.{extension}";
                         await _io.SaveFileToDisk(seamfixPath, Convert.FromBase64String(_m.Images.Images[i]));
                     }
-                    break;
+                    continue;
                 }
                 var info = Parser.ParseInfoStrings(_m.ImagesInfo.InfoTexts[i], mode);
                 Dictionary<string, string>? param = null;
@@ -262,9 +263,9 @@ namespace BlazorWebApp.Services
             image.Path = path;
             image.ProjectId = _m.State.Gallery.ProjectId;
             if (info != null) image.Info = info["param"];
-            if (outdir == Outdir.Txt2ImgSamples && _m.ParametersTxt2Img.EnableHR == true)
+            if (outdir == Outdir.Txt2ImgSamples && _txt2imgParams.EnableHR == true)
             {
-                var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _m.ParametersTxt2Img.HRWidth, _m.ParametersTxt2Img.HRHeight, _m.ParametersTxt2Img.HRScale);
+                var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _txt2imgParams.HRWidth, _txt2imgParams.HRHeight, _txt2imgParams.HRScale);
                 image.Width = resizeRes.Item1;
                 image.Height = resizeRes.Item2;
             }

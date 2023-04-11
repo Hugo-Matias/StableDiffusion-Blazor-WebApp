@@ -37,25 +37,28 @@
     {
         <MudItem xs=12>
             <MudStack>
-                @if (_processor.Resolution != null)
+                @if (_processor != null)
                 {
-                    <MudSlider @bind-Value=Parameters.ProcessorResolution T="int?" Min=_processor.Resolution.Min Max=_processor.Resolution.Max Step=_processor.Resolution.Step ValueLabel>
-                    <small>@_processor.Resolution.Label:</small> @Parameters.ProcessorResolution
-                </MudSlider>
-                }
-                @if (_processor.Threshold != null)
-                {
-                    @if (_processor.Threshold.A != null)
+                    @if (_processor.Resolution != null)
                     {
-                        <MudSlider @bind-Value=Parameters.ThresholdA T="float?" Min=_processor.Threshold.A.Min Max=_processor.Threshold.A.Max Step=_processor.Threshold.A.Step ValueLabel>
-                        <small>@_processor.Threshold.A.Label:</small> @Parameters.ThresholdA
+                        <MudSlider @bind-Value=Parameters.ProcessorResolution T="int?" Min=_processor.Resolution.Min Max=_processor.Resolution.Max Step=_processor.Resolution.Step ValueLabel>
+                        <small>@_processor.Resolution.Label:</small> @Parameters.ProcessorResolution
                     </MudSlider>
                     }
-                    @if (_processor.Threshold.B != null)
+                    @if (_processor.Threshold != null)
                     {
-                        <MudSlider @bind-Value=Parameters.ThresholdB T="float?" Min=_processor.Threshold.B.Min Max=_processor.Threshold.B.Max Step=_processor.Threshold.B.Step ValueLabel>
-                        <small>@_processor.Threshold.B.Label:</small> @Parameters.ThresholdB
-                    </MudSlider>
+                        @if (_processor.Threshold.A != null)
+                        {
+                            <MudSlider @bind-Value=Parameters.ThresholdA T="float?" Min=_processor.Threshold.A.Min Max=_processor.Threshold.A.Max Step=_processor.Threshold.A.Step ValueLabel>
+                            <small>@_processor.Threshold.A.Label:</small> @Parameters.ThresholdA
+                        </MudSlider>
+                        }
+                        @if (_processor.Threshold.B != null)
+                        {
+                            <MudSlider @bind-Value=Parameters.ThresholdB T="float?" Min=_processor.Threshold.B.Min Max=_processor.Threshold.B.Max Step=_processor.Threshold.B.Step ValueLabel>
+                            <small>@_processor.Threshold.B.Label:</small> @Parameters.ThresholdB
+                        </MudSlider>
+                        }
                     }
                 }
             </MudStack>
@@ -103,11 +106,14 @@
     {
         Parameters.Preprocessor = value;
         _processor = M.Settings.Scripts.ControlNet.PreprocessorSettings[value]!;
-        if (_processor.Resolution != null) Parameters.ProcessorResolution = _processor.Resolution.Value;
-        if (_processor.Threshold != null)
+        if (_processor != null)
         {
-            if (_processor.Threshold.A != null) Parameters.ThresholdA = _processor.Threshold.A.Value;
-            if (_processor.Threshold.B != null) Parameters.ThresholdB = _processor.Threshold.B.Value;
+            if (_processor.Resolution != null) Parameters.ProcessorResolution = _processor.Resolution.Value;
+            if (_processor.Threshold != null)
+            {
+                if (_processor.Threshold.A != null) Parameters.ThresholdA = _processor.Threshold.A.Value;
+                if (_processor.Threshold.B != null) Parameters.ThresholdB = _processor.Threshold.B.Value;
+            }
         }
         await InvokeAsync(StateHasChanged);
     }
