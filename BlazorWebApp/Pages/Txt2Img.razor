@@ -34,7 +34,11 @@
 
     private async void Skip() => await SDAPIService.PostSkip();
 
-    private async void Interrupt() => await SDAPIService.PostInterrupt();
+    private async void Interrupt()
+    {
+        M.State.Generation.IsInterrupted = true;
+        await SDAPIService.PostInterrupt();
+    }
 
     private void TagAppended(AppendedTags tags, bool isNegativePrompt)
     {

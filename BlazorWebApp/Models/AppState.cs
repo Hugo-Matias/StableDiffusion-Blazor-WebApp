@@ -61,6 +61,7 @@ namespace BlazorWebApp.Models
         public string SDModel { get; set; } = "Loading...";
         public string Vae { get; set; }
         public long Seed { get; set; }
+        public bool IsInterrupted { get; set; } = false;
     }
 
     public class AppStateGenerationImg2Img

@@ -114,6 +114,12 @@ namespace BlazorWebApp.Services
                         break;
                 }
 
+                if (_m.State.Generation.IsInterrupted)
+                {
+                    _m.State.Generation.IsInterrupted = false;
+                    throw new Exception("Generation Canceled!");
+                }
+
                 if ((bool)_m.Options.SamplesSave)
                 {
                     switch (mode)
