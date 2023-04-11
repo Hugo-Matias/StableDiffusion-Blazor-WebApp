@@ -98,6 +98,7 @@
     </MudItem>
     <MudItem xs="12">
         <MudExpansionPanel Text="Preview">
+            <MudTextField @bind-Value=_previewTextfield Label="Preview Prompt" HelperText="Use this text field to test prompts. If empty the main prompt will be used instead." HelperTextOnFocus=true Clearable=true />
             <MudStack Row=true>
                 <MudSlider @bind-Value=M.State.Prompts.Wildcards.GenerationAmount Min=M.Settings.Prompts.Wildcards.Generation.Min Max=M.Settings.Prompts.Wildcards.Generation.Max Step=M.Settings.Prompts.Wildcards.Generation.Step ValueLabel=true><small>Amount:</small> @M.State.Prompts.Wildcards.GenerationAmount</MudSlider>
                 <MudButton Class="ma-4 w-100 h-100" OnClick=GeneratePrompts Color="Color.Success">Generate Prompts</MudButton>
@@ -126,6 +127,7 @@
     [Parameter] public bool IsImg2Img { get; set; }
     private MarkupString _helpText;
     private List<string> _promptPreviews;
+    private string _previewTextfield;
 
     protected override void OnInitialized()
     {
@@ -162,7 +164,10 @@
     private async Task GeneratePrompts()
     {
         var previewParams = new ScriptParametersDynamicPrompts(Parameters) { IsEnabled = true, IsAlwaysOn = true, NoImageGeneration = true, DisableNegativePrompt = true };
-        _promptPreviews = await SD.GeneratePrompts(M.GetDynamicPromptsVersion(), IsImg2Img ? M.ParametersImg2Img.Prompt : M.ParametersTxt2Img.Prompt, M.State.Prompts.Wildcards.GenerationAmount, previewParams);
+        var prompt = string.Empty;
+        if (!string.IsNullOrWhiteSpace(_previewTextfield)) prompt = _previewTextfield;
+        else prompt = IsImg2Img ? M.ParametersImg2Img.Prompt : M.ParametersTxt2Img.Prompt;
+        _promptPreviews = await SD.GeneratePrompts(M.GetDynamicPromptsVersion(), prompt, M.State.Prompts.Wildcards.GenerationAmount, previewParams);
     }
 
     private void CopyPreviewPrompt(string prompt)
