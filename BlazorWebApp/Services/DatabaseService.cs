@@ -83,6 +83,25 @@ namespace BlazorWebApp.Services
             return await context.Projects.OrderBy(p => p.Id).LastOrDefaultAsync();
         }
 
+        public async Task<List<Project>?> GetLastUsedProjects(int amount)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var usedProjects = await context.Images.Select(i => i.ProjectId).Distinct().ToListAsync();
+            if (usedProjects.Count < amount) return null;
+            var ids = new List<int>();
+            foreach (var id in context.Images.OrderByDescending(i => i.Id).Select(i => i.ProjectId))
+            {
+                if (!ids.Contains(id)) ids.Add(id);
+                if (ids.Count >= amount) break;
+            }
+            var projects = new List<Project>();
+            foreach (var id in ids)
+            {
+                projects.Add(await GetProject(id));
+            }
+            return projects;
+        }
+
         public async Task<Folder> CreateFolder(Folder folder)
         {
             using var context = await _factory.CreateDbContextAsync();

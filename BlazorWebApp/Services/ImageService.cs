@@ -149,7 +149,7 @@ namespace BlazorWebApp.Services
                 var nulledUnits = new List<ScriptParametersControlNet?>();
                 foreach (var unit in units)
                 {
-                    if (unit.Model == "None" && unit.Preprocessor == ControlNetPreprocessor.none) nulledUnits.Add(null);
+                    if (unit.Model.Equals("None", StringComparison.InvariantCultureIgnoreCase) && unit.Preprocessor == ControlNetPreprocessor.none) nulledUnits.Add(null);
                     else
                     {
                         unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);

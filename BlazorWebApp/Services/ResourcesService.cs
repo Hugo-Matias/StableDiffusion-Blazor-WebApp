@@ -43,16 +43,16 @@ namespace BlazorWebApp.Services
                         file.IsEnabled = entity.IsEnabled;
                         createdResource.Files.Insert(0, file);
                         createdResource.ImageSrc = file.ImageSrc;
-                        var subtype = entity.SubType != null && !string.IsNullOrWhiteSpace(entity.SubType.Name) ? entity.SubType.Name : null;
-                        var localFile = await GetResourceFileInfo(entity.Type.Name, subtype, file);
-                        if (localFile == null)
-                        {
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            await Console.Out.WriteLineAsync($"Missing File: {entity.Id}-{entity.Filename} ({entity.Type.Name}/{entity.SubType?.Name})");
-                            Console.ResetColor();
-                            continue;
-                        }
-                        else createdResource.CreatedDate = localFile.File.LastAccessTimeUtc;
+                        //var subtype = entity.SubType != null && !string.IsNullOrWhiteSpace(entity.SubType.Name) ? entity.SubType.Name : null;
+                        //var localFile = await GetResourceFileInfo(entity.Type.Name, subtype, file);
+                        //if (localFile == null)
+                        //{
+                        //    Console.ForegroundColor = ConsoleColor.Red;
+                        //    await Console.Out.WriteLineAsync($"Missing File: {entity.Id}-{entity.Filename} ({entity.Type.Name}/{entity.SubType?.Name})");
+                        //    Console.ResetColor();
+                        //    continue;
+                        //}
+                        //else createdResource.CreatedDate = localFile.File.LastAccessTimeUtc;
                         if (entity.CreatedDate < createdResource.CreatedDate)
                         {
                             await Console.Out.WriteLineAsync($"Updating Resource Date: {entity.Title} ({entity.Type.Name}/{entity.SubType?.Name})");
