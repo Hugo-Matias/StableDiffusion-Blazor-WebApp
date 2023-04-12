@@ -862,7 +862,8 @@
             "Title",
             "Author",
             "Creation Date",
-            "Load Date"
+            "Load Date",
+            "Random"
         };
     }
 

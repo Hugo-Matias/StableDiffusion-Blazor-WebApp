@@ -167,6 +167,9 @@
             case "Load Date":
                 query = query.OrderBy(r => r.LastLoadedDate);
                 break;
+            case "Random":
+                query = query.OrderBy(r => Guid.NewGuid());
+                break;
         }
         var result = M.State.Resources.OrderByDescending ? query.Reverse().ToArray() : query.ToArray();
         PaginateResults(result);
