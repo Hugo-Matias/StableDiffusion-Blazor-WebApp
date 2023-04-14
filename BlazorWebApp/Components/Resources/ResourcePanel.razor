@@ -77,7 +77,8 @@
 
     private async Task<IEnumerable<string>> GetTags(string value)
     {
-        var query = _filteredResources.SelectMany(r => r.Tags).Distinct();
+        var subtypes = _filteredResources.Select(r => r.SubType).Distinct();
+        var query = Resources.Where(r => subtypes.Contains(r.SubType)).SelectMany(r => r.Tags).Distinct();
         if (!string.IsNullOrWhiteSpace(value)) query = query.Where(t => t.Contains(value, StringComparison.InvariantCultureIgnoreCase));
         return query.OrderBy(t => t);
     }
