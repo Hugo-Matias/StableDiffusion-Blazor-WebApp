@@ -131,13 +131,13 @@ namespace BlazorWebApp.Services
 
             if (target.Item1 == ModeType.Txt2Img)
             {
-                if (target.Item2 == true) _m.ParametersTxt2Img.Prompt += $"{keyword}{triggerWords}";
-                else _m.ParametersTxt2Img.NegativePrompt += $", {keyword}{triggerWords}";
+                if (target.Item2 == true) _m.ParametersTxt2Img.Prompt += $"{triggerWords}{keyword}";
+                else _m.ParametersTxt2Img.NegativePrompt += $"{triggerWords}{keyword}";
             }
             else if (target.Item1 == ModeType.Img2Img)
             {
-                if (target.Item2 == true) _m.ParametersImg2Img.Prompt += $"{keyword}{triggerWords}";
-                else _m.ParametersImg2Img.NegativePrompt += $"{keyword}{triggerWords}";
+                if (target.Item2 == true) _m.ParametersImg2Img.Prompt += $"{triggerWords}{keyword}";
+                else _m.ParametersImg2Img.NegativePrompt += $"{triggerWords}{keyword}";
             }
         }
 

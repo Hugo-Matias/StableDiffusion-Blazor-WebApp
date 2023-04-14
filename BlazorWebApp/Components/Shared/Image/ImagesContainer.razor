@@ -148,10 +148,7 @@
         if (!result.Canceled)
         {
             var updatedImages = (List<Image>)result.Data;
-            foreach (var image in updatedImages)
-            {
-                await DB.UpdateImage(image);
-            }
+            await DB.UpdateImages(updatedImages);
             Snackbar.Add("Images projects were changed.", Severity.Success);
             M.ClearSelectedImages();
             Refresh();

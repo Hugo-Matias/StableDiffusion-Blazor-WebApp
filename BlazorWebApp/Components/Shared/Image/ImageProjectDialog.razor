@@ -1,4 +1,5 @@
-﻿@inject DatabaseService DB
+﻿@inject ManagerService M
+@inject DatabaseService DB
 
 <MudDialog>
     <DialogContent>
@@ -49,7 +50,7 @@
         var imageProject = await DB.GetProject(_currentProjectId);
         _currentFolderId = imageProject.FolderId ?? 0;
         await GetProjects();
-        _latestProjects = await DB.GetLastUsedProjects(5);
+        _latestProjects = await DB.GetLastUsedProjects(5, new int[1] { M.State.Gallery.ProjectId });
     }
 
     private async Task GetProjects() => _projects = await DB.GetProjects(_currentFolderId);

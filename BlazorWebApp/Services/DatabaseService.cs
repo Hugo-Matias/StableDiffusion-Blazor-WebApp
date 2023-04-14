@@ -83,7 +83,7 @@ namespace BlazorWebApp.Services
             return await context.Projects.OrderBy(p => p.Id).LastOrDefaultAsync();
         }
 
-        public async Task<List<Project>?> GetLastUsedProjects(int amount)
+        public async Task<List<Project>?> GetLastUsedProjects(int amount, int[] ignoreIds)
         {
             using var context = await _factory.CreateDbContextAsync();
             var usedProjects = await context.Images.Select(i => i.ProjectId).Distinct().ToListAsync();
@@ -91,7 +91,7 @@ namespace BlazorWebApp.Services
             var ids = new List<int>();
             foreach (var id in context.Images.OrderByDescending(i => i.Id).Select(i => i.ProjectId))
             {
-                if (!ids.Contains(id)) ids.Add(id);
+                if (!ids.Contains(id) && !ignoreIds.Contains(id)) ids.Add(id);
                 if (ids.Count >= amount) break;
             }
             var projects = new List<Project>();
@@ -390,6 +390,16 @@ namespace BlazorWebApp.Services
             var response = context.Update(image);
             await context.SaveChangesAsync();
             return response.Entity;
+        }
+
+        public async Task UpdateImages(List<Image> images)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            foreach (var image in images)
+            {
+                context.Update(image);
+            }
+            await context.SaveChangesAsync();
         }
 
         public async Task<Image> DeleteImage(Image image)

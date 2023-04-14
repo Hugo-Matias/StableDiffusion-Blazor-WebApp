@@ -746,6 +746,7 @@ namespace BlazorWebApp.Services
                 if (state.AppState != null)
                 {
                     State = state.AppState;
+                    State.Generation.IsInterrupted = false;
                     OnAppStateChanged?.Invoke();
                 }
                 if (state.Txt2ImgParameters != null)

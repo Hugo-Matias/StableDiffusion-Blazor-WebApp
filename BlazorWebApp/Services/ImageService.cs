@@ -116,7 +116,6 @@ namespace BlazorWebApp.Services
 
                 if (_m.State.Generation.IsInterrupted)
                 {
-                    _m.State.Generation.IsInterrupted = false;
                     throw new Exception("Generation Canceled!");
                 }
 
@@ -143,6 +142,7 @@ namespace BlazorWebApp.Services
 
             StopProgressChecker(progress.Id);
             _m.IsConverging = false;
+            _m.State.Generation.IsInterrupted = false;
 
             NotifyStateChanged();
             return images;
