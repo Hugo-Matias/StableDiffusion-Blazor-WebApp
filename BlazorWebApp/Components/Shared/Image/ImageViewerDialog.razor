@@ -5,16 +5,21 @@
     <MudDialog Style=@($"max-width: 98vw; max-height: 98vh; background-color: var(--mud-palette-{Color});")>
         <TitleContent>
             <MudContainer Class="mb-4 d-flex flex-row justify-content-center">
-                <MudButtonGroup>
+                <MudStack Row=true>
                     @if (Images.Count > 1)
                     {
                         <MudIconButton OnClick="@(() => Carousel.Reference.Previous())" Icon="fa-solid fa-chevron-left" />
-                        <MudIconButton OnClick="@(() => _autoCycle = !_autoCycle)" Style="border:none" Icon=@("fa-solid fa-play") />
-                        <MudIconButton OnClick="@(() => Carousel.Reference.Next())" Style="border:none" Icon="fa-solid fa-chevron-right" />
+                        <MudMenu Icon="fa-solid fa-play" TransformOrigin="Origin.TopCenter" AnchorOrigin="Origin.BottomCenter">
+                            <MudStack Row=true Class="pa-3">
+                                <MudNumericField @bind-Value=_autoCycleSeconds HideSpinButtons=true Adornment="Adornment.End" AdornmentIcon="fa-solid fa-forward" OnAdornmentClick="() => Carousel.SetAutoCycleTime(TimeSpan.FromSeconds(_autoCycleSeconds))" Label="Delay (sec.)" Min="0.01f" Step=0.01f T="float" />
+                                <MudIconButton OnClick="@(() => _autoCycle = !_autoCycle)" Icon=@($"fa-solid {(_autoCycle ? "fa-pause" : "fa-play")}") />
+                            </MudStack>
+                        </MudMenu>
+                        <MudIconButton OnClick="@(() => Carousel.Reference.Next())" Icon="fa-solid fa-chevron-right" />
                     }
-                    <MudIconButton OnClick=@(() => _showInfo = !_showInfo) Style="border: none; position: absolute; right: 6rem;" Icon=@("fa-solid fa-info") />
-                    <MudIconButton OnClick=ExpandCarousel Style="border: none; position: absolute; right: 3.5rem;" Icon=@("fa-regular fa-window-maximize") />
-                </MudButtonGroup>
+                    <MudIconButton OnClick=@(() => _showInfo = !_showInfo) Style="position: absolute; right: 6rem;" Icon=@("fa-solid fa-info") />
+                    <MudIconButton OnClick=ExpandCarousel Style="position: absolute; right: 3.5rem;" Icon=@("fa-regular fa-window-maximize") />
+                </MudStack>
             </MudContainer>
         </TitleContent>
         <DialogContent>
@@ -41,6 +46,7 @@
     private bool _showInfo;
     private string _prompt;
     private string _negativePrompt;
+    private float _autoCycleSeconds = 5f;
 
     protected override void OnInitialized()
     {
