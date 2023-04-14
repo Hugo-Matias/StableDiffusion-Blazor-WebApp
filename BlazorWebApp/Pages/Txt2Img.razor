@@ -29,7 +29,8 @@
 
     private async void Generate()
     {
-        M.GeneratedImageEntities = await ImageService.GetImages(ModeType.Txt2Img);
+        var generated = await ImageService.GetImages(ModeType.Txt2Img);
+        if (generated != null && generated.Images != null && generated.Images.Count > 0) M.GeneratedImageEntities = generated;
     }
 
     private async void Skip() => await SDAPIService.PostSkip();

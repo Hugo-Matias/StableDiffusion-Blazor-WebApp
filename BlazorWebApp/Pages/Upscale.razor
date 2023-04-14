@@ -112,7 +112,8 @@
     private async Task Generate()
     {
         Parameters.Image = M.UpscaleImageData;
-        M.GeneratedImageEntities = await IM.GetImages(ModeType.Extras);
+        var generated = await IM.GetImages(ModeType.Extras);
+        if (generated != null && generated.Images != null && generated.Images.Count > 0) M.GeneratedImageEntities = generated;
         await M.SaveState();
         await InvokeAsync(StateHasChanged);
     }

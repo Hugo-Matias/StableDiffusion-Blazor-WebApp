@@ -46,7 +46,8 @@
         }
         Parameters.InitImages = new() { M.CanvasImageData };
         Parameters.Mask = M.CanvasMaskData;
-        M.GeneratedImageEntities = await ImageService.GetImages(ModeType.Img2Img);
+        var generated = await ImageService.GetImages(ModeType.Img2Img);
+        if (generated != null && generated.Images != null && generated.Images.Count > 0) M.GeneratedImageEntities = generated;
     }
 
     private bool CheckCanvasState() => M.CanvasImageData == null;
