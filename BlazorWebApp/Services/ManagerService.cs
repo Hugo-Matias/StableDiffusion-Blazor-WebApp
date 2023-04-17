@@ -632,6 +632,7 @@ namespace BlazorWebApp.Services
                     {"TextualInversion", embeddingDir},
                     {"Hypernetwork", hypernetDir},
                     {"LORA", loraDir},
+                    {"LoCon", loraDir},
                     {"VAE", vaeDir}
                 };
             }
@@ -644,10 +645,10 @@ namespace BlazorWebApp.Services
                     {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
                     {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
                     {"LORA", Path.Combine(baseDir, "LORA")},
+                    {"LoCon", Path.Combine(baseDir, "LORA")},
                     {"VAE", Path.Combine(baseDir, "VAE")}
                 };
             }
-            ResourceTypeDirectories.Add("LoCon", Path.Combine(_configuration["ResourcesPath"], "LoCon"));
         }
 
         public async Task<string> PostOptions(Options options)
