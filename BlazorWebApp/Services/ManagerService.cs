@@ -230,7 +230,7 @@ namespace BlazorWebApp.Services
             {
                 Preprocessor = Settings.Scripts.ControlNet.Preprocessor,
                 Model = Settings.Scripts.ControlNet.Model,
-                ResizeMode = Settings.Scripts.ControlNet.ResizeMode,
+                ResizeMode = Settings.Scripts.ControlNet.ResizeModes[1],
                 Weight = Settings.Scripts.ControlNet.Weight.Value,
                 Guidance = Settings.Scripts.ControlNet.Guidance.Strenght,
                 GuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
@@ -647,6 +647,7 @@ namespace BlazorWebApp.Services
                     {"VAE", Path.Combine(baseDir, "VAE")}
                 };
             }
+            ResourceTypeDirectories.Add("LoCon", Path.Combine(_configuration["ResourcesPath"], "LoCon"));
         }
 
         public async Task<string> PostOptions(Options options)

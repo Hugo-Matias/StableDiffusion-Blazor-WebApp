@@ -66,7 +66,7 @@
     }
     <MudItem xs=6>
         <MudSelect @bind-Value=Parameters.ResizeMode Label="Resize Mode" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
-            @foreach (var mode in _resizeModes)
+            @foreach (var mode in M.Settings.Scripts.ControlNet.ResizeModes)
             {
                 <MudSelectItem Value="@mode">@mode</MudSelectItem>
             }
@@ -88,7 +88,6 @@
     [Parameter] public ScriptParametersControlNet Parameters { get; set; }
 
     private List<string> _models = new();
-    private List<string> _resizeModes = new() { "Just Resize", "Scale to Fit (Inner Fit)", "Envelope (Outer Fit)" };
     private ControlNetProcessorSettingsModel _processor;
 
     protected override void OnParametersSet()

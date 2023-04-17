@@ -229,7 +229,7 @@
         public string Model { get; set; } = "None";
         public bool IsLowVRam { get; set; } = false;
         public bool IsGuessMode { get; set; } = false;
-        public string ResizeMode { get; set; } = "Scale to Fit (Inner Fit)";
+        public List<string> ResizeModes { get; set; } = new() { "Just Resize", "Inner Fit (Scale to Fit)", "Outer Fit (Shrink to Fit)" };
         public ControlNetWeightSettingsModel Weight { get; set; } = new();
         public ControlNetGuidanceSettingsModel Guidance { get; set; } = new();
         public Dictionary<ControlNetPreprocessor, ControlNetProcessorSettingsModel?> PreprocessorSettings { get; set; } = new()
