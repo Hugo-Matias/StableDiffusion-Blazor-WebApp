@@ -491,10 +491,10 @@ namespace BlazorWebApp.Services
 
         public string GetDynamicPromptsVersion()
         {
-            var scriptFile = Path.Combine(CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "sd_dynamic_prompts", "dynamic_prompting.py");
+            var scriptFile = Path.Combine(CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "sd_dynamic_prompts", "__init__.py");
             foreach (var line in _io.LoadTextLines(scriptFile))
             {
-                if (line.StartsWith("VERSION = "))
+                if (line.StartsWith("__version__ = "))
                 {
                     var version = line.Split(" = ", 2)[1].Replace("\"", "").Trim();
                     return $"Dynamic Prompts v{version}";
