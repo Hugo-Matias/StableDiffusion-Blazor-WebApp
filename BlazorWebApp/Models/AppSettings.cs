@@ -228,7 +228,7 @@
         public ControlNetPreprocessor Preprocessor { get; set; } = ControlNetPreprocessor.none;
         public string Model { get; set; } = "None";
         public bool IsLowVRam { get; set; } = false;
-        public bool IsGuessMode { get; set; } = false;
+        public List<string> ControlModes { get; set; } = new() { "Balanced", "My prompt is more important", "ControlNet is more important" };
         public List<string> ResizeModes { get; set; } = new() { "Just Resize", "Inner Fit (Scale to Fit)", "Outer Fit (Shrink to Fit)" };
         public ControlNetWeightSettingsModel Weight { get; set; } = new();
         public ControlNetGuidanceSettingsModel Guidance { get; set; } = new();

@@ -236,7 +236,7 @@ namespace BlazorWebApp.Services
                 GuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
                 GuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
                 IsLowVRam = Settings.Scripts.ControlNet.IsLowVRam,
-                IsGuessMode = Settings.Scripts.ControlNet.IsGuessMode,
+                ControlMode = Settings.Scripts.ControlNet.ControlModes[0],
             };
         }
 

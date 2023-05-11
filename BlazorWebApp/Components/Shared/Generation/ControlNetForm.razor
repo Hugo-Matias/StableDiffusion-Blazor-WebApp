@@ -64,18 +64,21 @@
             </MudStack>
         </MudItem>
     }
-    <MudItem xs=6>
-        <MudSelect @bind-Value=Parameters.ResizeMode Label="Resize Mode" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
-            @foreach (var mode in M.Settings.Scripts.ControlNet.ResizeModes)
-            {
-                <MudSelectItem Value="@mode">@mode</MudSelectItem>
-            }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs=6>
-        <MudStack Row>
+    <MudItem xs=12>
+        <MudStack Row=true>
+            <MudSelect @bind-Value=Parameters.ResizeMode Label="Resize Mode" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
+                @foreach (var mode in M.Settings.Scripts.ControlNet.ResizeModes)
+                {
+                    <MudSelectItem Value="@mode">@mode</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect @bind-Checked=Parameters.ControlMode Label="Control Mode" T="string">
+                @foreach (var mode in M.Settings.Scripts.ControlNet.ControlModes)
+                {
+                    <MudSelectItem Value="@mode">@mode</MudSelectItem>
+                }
+            </MudSelect>
             <MudCheckBox @bind-Checked=Parameters.IsLowVRam Label="Low VRAM" />
-            <MudCheckBox @bind-Checked=Parameters.IsGuessMode Label="Guess Mode" />
         </MudStack>
     </MudItem>
     <MudItem xs="12">
