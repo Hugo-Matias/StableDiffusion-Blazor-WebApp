@@ -37,7 +37,7 @@ namespace BlazorWebApp.Data.Entities
             Width = image.Width;
             Height = image.Height;
             Url = image.Url;
-            Nsfw = image.Nsfw;
+            Nsfw = image.Nsfw != "None" && image.Nsfw != "Soft";
             GenerationProcess = image.GenerationProcess;
             Hash = image.Hash;
             if (image.Meta != null)
