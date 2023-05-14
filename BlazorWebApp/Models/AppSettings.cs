@@ -240,9 +240,10 @@
             { ControlNetPreprocessor.depth_midas, new() { Resolution = new() { Label = "Midas Resolution" } } },
             { ControlNetPreprocessor.depth_zoe, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.inpaint_global_harmonious, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.lineart, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.lineart_anime, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.lineart_coarse, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.lineart_realistic, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.mediapipe_face, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label= "Max Faces", Value = 1, Min = 1, Max = 10, Step = 1 }, B = new() { Label = "Min Face Confidence", Value = 0.5f, Min = 0.01f, Max = 1, Step = 0.01f } } } },
             { ControlNetPreprocessor.mlsd, new() { Resolution = new() { Label = "Hough Resolution" }, Threshold = new() { A = new() { Label= "Hough Value", Value = 0.1f, Min = 0.01f, Max = 2f, Step = 0.01f }, B = new() { Label = "Hough Distance", Value = 0.1f, Min = 0.01f, Max = 20f, Step = 0.01f } } } },
             { ControlNetPreprocessor.normal_bae, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.normal_midas, new() { Resolution = new() { Label = "Normal Resolution" }, Threshold = new() { A = new() { Label = "Background Threshold", Min = 0, Max = 1, Value = 0.4f, Step = 0.01f } } } },
@@ -251,6 +252,7 @@
             { ControlNetPreprocessor.openpose_faceonly, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.openpose_full, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.openpose_hand, new() { Resolution = new() { Label = "Annotator Resolution" } } },
+            { ControlNetPreprocessor.reference_only, new() {} },
             { ControlNetPreprocessor.scribble_hed, new() { Resolution = new() { Label = "HED Resolution" } } },
             { ControlNetPreprocessor.scribble_pidinet, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.scribble_xdog, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label = "XDoG Threshold", Value = 32, Min = 1, Max = 64, Step = 1 } } } },
@@ -266,7 +268,7 @@
             { ControlNetPreprocessor.t2ia_sketch_pidi, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.t2ia_style_clipvision, new() { Resolution = new() { Label = "Annotator Resolution" } } },
             { ControlNetPreprocessor.threshold, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label = "Binarization Threshold", Value = 127, Min = 0, Max = 255, Step = 1 } } } },
-            { ControlNetPreprocessor.tile_gaussian, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label = "Noise", Value = 16, Min = 0.1f, Max = 48, Step = 0.01f } } } },
+            { ControlNetPreprocessor.tile_resample, new() { Threshold = new() { A = new() { Label = "Downsampling Rate", Value = 1.0f, Min = 1.0f, Max = 8.0f, Step = 0.01f } } } },
         };
     }
 
