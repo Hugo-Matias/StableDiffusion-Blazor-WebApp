@@ -13,7 +13,7 @@
             Type = model.Type;
             Nsfw = model.Nsfw;
             Creator = model.Creator;
-            Tags = model.Tags.Select(t => t.Name).ToList();
+            Tags = model.Tags;
             ModelVersions = new();
             foreach (var version in model.ModelVersions)
             {

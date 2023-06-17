@@ -373,3 +373,7 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /BlazorWebApp/payload.json
+/BlazorWebApp/Data/danbooru.json
+/BlazorWebApp/Data/example.json
+/BlazorWebApp/BlazorDiffusion.json_
+/BlazorWebApp/BlazorWebApp.db_

@@ -99,7 +99,7 @@ namespace BlazorWebApp.Models
     {
         public int ProjectId { get; set; }
         public string ProjectName { get; set; }
-        public int FolderId { get; set; } = 1;
+        public int FolderId { get; set; } = 0;
         public string FolderName { get; set; } = string.Empty;
         public string Prompt { get; set; } = "";
         public string NegativePrompt { get; set; } = "";

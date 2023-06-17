@@ -11,7 +11,7 @@ namespace BlazorWebApp.Data.Dtos
         public bool AllowDerivatives { get; set; }
         public bool AllowDifferentLicense { get; set; }
         public CivitaiModelStatsDto Stats { get; set; }
-        public List<CivitaiModelTagDto> Tags { get; set; }
+        public List<string> Tags { get; set; }
         public List<CivitaiModelVersionDto> ModelVersions { get; set; }
     }
 

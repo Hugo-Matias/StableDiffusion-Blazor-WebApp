@@ -456,7 +456,7 @@ namespace BlazorWebApp.Services
             OnProjectsChange?.Invoke();
         }
 
-        public void GetButtonTags() => ButtonTags = JsonSerializer.Deserialize<PromptButton>(_io.GetJsonAsString("Data/danbooru.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+        public void GetButtonTags() => ButtonTags = JsonSerializer.Deserialize<PromptButton>(_io.GetJsonAsString("Data/example.json"), new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
 
         public async Task SetCurrentFolder(int id)
         {

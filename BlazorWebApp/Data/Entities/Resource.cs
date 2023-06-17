@@ -29,7 +29,7 @@ namespace BlazorWebApp.Data.Entities
             CivitaiModelId = model.Id;
             CivitaiModelVersionId = version.Id;
             Type = new() { Name = model.Type };
-            Tags = model.Tags.Select(t => t.Name).ToList();
+            Tags = model.Tags;
             if (!string.IsNullOrWhiteSpace(version.Description)) Description = version.Description;
             else Description = model.Description;
             IsEnabled = false;
