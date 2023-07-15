@@ -54,7 +54,7 @@ namespace BlazorWebApp.Data.Entities
                 HiresSteps = image.Meta.HighResSteps;
                 DenoisingStrength = image.Meta.DenoisingStrength;
                 FaceRestoration = image.Meta.FaceRestoration;
-                ClipSkip = image.Meta.ClipSkip;
+                ClipSkip = image.Meta.ClipSkip.ToString();
                 ENSD = image.Meta.ENSD;
                 // Override resolution with Size property of ImageMeta,
                 // Width and Height properties represent the final image size after Highres.

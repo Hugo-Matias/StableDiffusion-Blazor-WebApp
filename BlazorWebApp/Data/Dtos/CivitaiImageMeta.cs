@@ -12,7 +12,7 @@ namespace BlazorWebApp.Data.Dtos
         [JsonPropertyName("prompt")] public string Prompt { get; set; }
         [JsonPropertyName("sampler")] public string Sampler { get; set; }
         [JsonPropertyName("cfgScale")] public float CfgScale { get; set; }
-        [JsonPropertyName("Clip skip")] public string ClipSkip { get; set; }
+        [JsonPropertyName("Clip skip")] public int ClipSkip { get; set; }
         [JsonPropertyName("resources")] public List<CivitaiImageMetaResource> Resources { get; set; }
         [JsonPropertyName("Model hash")] public string ModelHash { get; set; }
         [JsonPropertyName("Hires steps")] public string HighResSteps { get; set; }
