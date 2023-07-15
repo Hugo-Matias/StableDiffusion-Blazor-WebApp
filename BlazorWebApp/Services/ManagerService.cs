@@ -364,14 +364,22 @@ namespace BlazorWebApp.Services
             {
                 IsAlwaysOn = true,
                 IsEnabled = Settings.Scripts.RegionalPrompter.IsEnabled,
-                Mode = Settings.Scripts.RegionalPrompter.Modes[0],
+                IsDebug = Settings.Scripts.RegionalPrompter.IsDebug,
+                //SelectedTab = "Matrix",  // Must be initialized on the model, otherwise the arg is passed empty
+                MatrixMode = Settings.Scripts.RegionalPrompter.MatrixModes[0],
+                MaskMode = string.Empty,
+                PromptMode = string.Empty,
                 DivideRatio = Settings.Scripts.RegionalPrompter.DivideRatio,
                 BaseRatio = Settings.Scripts.RegionalPrompter.BaseRatio,
                 UseBasePrompt = Settings.Scripts.RegionalPrompter.UseBasePrompt,
                 UseCommonPrompt = Settings.Scripts.RegionalPrompter.UseCommonPrompt,
                 UseNegativeCommonPrompt = Settings.Scripts.RegionalPrompter.UseNegativeCommonPrompt,
                 GenerationMode = Settings.Scripts.RegionalPrompter.GenerationModes[0],
-                DisableConvertAND = Settings.Scripts.RegionalPrompter.DisableConvertAND
+                DisableConvertAND = Settings.Scripts.RegionalPrompter.DisableConvertAND,
+                LoraNegTeRatios = string.Empty,
+                LoraNegURatios = string.Empty,
+                PromptThreshold = 0,
+                Polymask = string.Empty,
             };
         }
 

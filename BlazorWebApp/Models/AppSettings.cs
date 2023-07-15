@@ -732,7 +732,7 @@
         public bool UseCommonPrompt { get; set; } = false;
         public bool UseNegativeCommonPrompt { get; set; } = false;
         public bool DisableConvertAND { get; set; } = false;
-        public List<string> Modes { get; set; } = new()
+        public List<string> MatrixModes { get; set; } = new()
         {
             "Horizontal",
             "Vertical"

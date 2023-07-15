@@ -3,8 +3,8 @@
 <MudText Typo="Typo.button" Style="opacity:0.2;">Regional Prompter</MudText>
 <MudGrid>
     <MudItem xs="6">
-        <MudSelect @bind-Value=Parameters.Mode Label="Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var mode in M.Settings.Scripts.RegionalPrompter.Modes)
+        <MudSelect @bind-Value=Parameters.MatrixMode Label="Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var mode in M.Settings.Scripts.RegionalPrompter.MatrixModes)
             {
                 <MudSelectItem Value="mode" />
             }
