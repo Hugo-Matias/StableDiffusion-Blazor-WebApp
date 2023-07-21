@@ -1,0 +1,26 @@
+{
+	"title": "ROOT",
+	"items": [
+		{
+			"title": "My Category",
+			"items": [
+				{
+					"title": "My Subcategory 1",
+					"items": [
+						{
+							"title": "Another Subcategory",
+							"tags": [
+								"Tag3",
+								"Tag4"
+							]
+						}
+					],
+					"tags": [
+						"Tag1",
+						"Tag2"
+					]
+				}
+			]
+		}
+	]
+}
