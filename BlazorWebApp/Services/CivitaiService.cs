@@ -172,6 +172,7 @@ namespace BlazorWebApp.Services
                 progressHandler.HttpReceiveProgress += (sender, e) => _progress.Update(progressBar.Id, e.ProgressPercentage);
                 var client = new HttpClient(progressHandler);
                 client.BaseAddress = _httpClient.BaseAddress;
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _configuration["CivitaiApiToken"]);
                 var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                 #endregion
 
@@ -191,7 +192,7 @@ namespace BlazorWebApp.Services
 
                 #region Download Preview Image
                 var previewPath = Path.Combine(_configuration["ResourcePreviewsPath"], model.Type, Path.GetFileNameWithoutExtension(file.Name) + ".png");
-                await _img.DownloadImageAsPng(version.Images[0].Url, previewPath);
+                if (!File.Exists(previewPath)) await _img.DownloadImageAsPng(version.Images[0].Url, previewPath);
                 #endregion
 
                 #region Download Resource
