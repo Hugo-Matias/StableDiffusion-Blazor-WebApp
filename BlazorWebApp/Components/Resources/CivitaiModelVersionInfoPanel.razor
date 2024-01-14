@@ -10,7 +10,7 @@
 @using System.Text.Json.Serialization;
 
 <div>
-    <MudTabs Class="tabs" Position="Position.Start" Rounded>
+    <MudTabs Class="tabs" MaxHeight=700 Position="Position.Start" Rounded>
         @foreach (var version in Model.ModelVersions)
         {
             <MudTabPanel>
