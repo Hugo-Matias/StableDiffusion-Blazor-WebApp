@@ -415,15 +415,15 @@ namespace BlazorWebApp.Services
             if (id == 0) return string.Empty;
             using var context = await _factory.CreateDbContextAsync();
             var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Id == id);
-            return sampler.Name;
+            return sampler != null ? sampler.Name : string.Empty;
         }
 
         public async Task<int> GetSampler(string samplerName)
         {
             if (string.IsNullOrWhiteSpace(samplerName)) return 0;
             using var context = await _factory.CreateDbContextAsync();
-            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name == samplerName);
-            return sampler.Id;
+            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name == samplerName || samplerName.Contains(s.Name));
+            return sampler != null ? sampler.Id : -1;
         }
 
         private async Task PopulateSamplers()
