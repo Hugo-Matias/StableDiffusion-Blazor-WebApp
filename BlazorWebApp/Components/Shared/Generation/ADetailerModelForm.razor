@@ -1,0 +1,205 @@
+﻿@inject ManagerService M
+@inject SDAPIService API
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudSelect Label="Model" @bind-Value=Parameters.Model TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
+            @{
+                foreach (var model in M.Settings.Scripts.ADetailer.Models.Concat(M.SDADetailerModels))
+                {
+                    <MudSelectItem Value="model">@model</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudTextField Label="Prompt" Lines="2" T="string" @bind-Value=@Parameters.Prompt HelperText="Leave empty to use main prompt." Clearable Immediate />
+     </MudItem>
+     <MudItem xs="6">
+         <MudTextField Label="Negative Prompt" Lines="2" T="string" @bind-Value=@Parameters.NegativePrompt HelperText="Leave empty to use main negative prompt." Clearable Immediate />
+     </MudItem>
+     <MudItem xs="12">
+         <MudExpansionPanels>
+             <MudExpansionPanel Text="Detection">
+                 <MudGrid>
+                     <MudItem xs="6">
+                         <MudSlider @bind-Value=Parameters.Confidence Min=M.Settings.Scripts.ADetailer.Confidence.Min Max=M.Settings.Scripts.ADetailer.Confidence.Max Step=M.Settings.Scripts.ADetailer.Confidence.Step ValueLabel=true><small>Confidence Threshold:</small> @Parameters.Confidence</MudSlider>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSlider @bind-Value=Parameters.MaskKLargest Min=M.Settings.Scripts.ADetailer.MaskKLargest.Min Max=M.Settings.Scripts.ADetailer.MaskKLargest.Max Step=M.Settings.Scripts.ADetailer.MaskKLargest.Step ValueLabel=true><small>Mask K Largest:</small> @Parameters.MaskKLargest</MudSlider>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSlider @bind-Value=Parameters.MaskMinRatio Min=M.Settings.Scripts.ADetailer.MaskRatio.Min Max=M.Settings.Scripts.ADetailer.MaskRatio.Max Step=M.Settings.Scripts.ADetailer.MaskRatio.Step ValueLabel=true><small>Mask Min Ratio:</small> @Parameters.MaskMinRatio</MudSlider>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSlider @bind-Value=Parameters.MaskMaxRatio Min=M.Settings.Scripts.ADetailer.MaskRatio.Min Max=M.Settings.Scripts.ADetailer.MaskRatio.Max Step=M.Settings.Scripts.ADetailer.MaskRatio.Step ValueLabel=true><small>Mask Max Ratio:</small> @Parameters.MaskMaxRatio</MudSlider>
+                        </MudItem>
+                    </MudGrid>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Mask">
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudSlider @bind-Value=Parameters.XOffset Min=M.Settings.Scripts.ADetailer.MaskOffset.Min Max=M.Settings.Scripts.ADetailer.MaskOffset.Max Step=M.Settings.Scripts.ADetailer.MaskOffset.Step ValueLabel=true><small>Horizontal Offset:</small> @Parameters.XOffset</MudSlider>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSlider @bind-Value=Parameters.YOffset Min=M.Settings.Scripts.ADetailer.MaskOffset.Min Max=M.Settings.Scripts.ADetailer.MaskOffset.Max Step=M.Settings.Scripts.ADetailer.MaskOffset.Step ValueLabel=true><small>Vertical Offset:</small> @Parameters.YOffset</MudSlider>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudSlider @bind-Value=Parameters.DilateErode Min=M.Settings.Scripts.ADetailer.MaskErosionDilation.Min Max=M.Settings.Scripts.ADetailer.MaskErosionDilation.Max Step=M.Settings.Scripts.ADetailer.MaskErosionDilation.Step ValueLabel=true><small>Erosion (-) | Dilation (+):</small> @Parameters.DilateErode </MudSlider>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.body2">Merger Mode:</MudText>
+                            <MudRadioGroup @bind-Value=Parameters.MaskMergeInvert T="string">
+                                @{
+                                foreach (var mode in M.Settings.Scripts.ADetailer.MaskMergeModes)
+                                {
+                                    <MudRadio Value="@mode" T="string">@mode</MudRadio>
+                                }
+                            }
+                        </MudRadioGroup>
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Inpainting">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.MaskBlur Min=M.Settings.Scripts.ADetailer.MaskBlur.Min Max=M.Settings.Scripts.ADetailer.MaskBlur.Max Step=M.Settings.Scripts.ADetailer.MaskBlur.Step ValueLabel=true><small>Mask Blur:</small> @Parameters.MaskBlur </MudSlider>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Scripts.ADetailer.DenoisingStrength.Min Max=M.Settings.Scripts.ADetailer.DenoisingStrength.Max Step=M.Settings.Scripts.ADetailer.DenoisingStrength.Step ValueLabel=true><small>Denoising Strength:</small> @Parameters.DenoisingStrength </MudSlider>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudStack Row=true>
+                                <MudCheckBox @bind-Checked=Parameters.InpaintOnlyMasked Label="Inpaint Only Masked" />
+                                <MudSlider @bind-Value=Parameters.InpaintOnlyMaskedPadding Min=M.Settings.Scripts.ADetailer.InpaintMaskedPadding.Min Max=M.Settings.Scripts.ADetailer.InpaintMaskedPadding.Max Step=M.Settings.Scripts.ADetailer.InpaintMaskedPadding.Step ValueLabel=true Disabled=!Parameters.InpaintOnlyMasked><small>Padding:</small> @Parameters.InpaintOnlyMaskedPadding </MudSlider>
+                            </MudStack>
+                        </MudItem>
+                        <MudText Typo="Typo.body1">Use Custom Values</MudText>
+                        <MudItem xs="12">
+                            <MudStack Row=true>
+                                <MudCheckBox @bind-Checked=Parameters.UseInpaintWidthHeight Label="Resolution" />
+                                <MudSlider @bind-Value=Parameters.InpaintWidth Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step ValueLabel=true Disabled=!Parameters.UseInpaintWidthHeight><small>Width:</small> @Parameters.InpaintWidth </MudSlider>
+                                <MudSlider @bind-Value=Parameters.InpaintHeight Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step ValueLabel=true Disabled=!Parameters.UseInpaintWidthHeight><small>Height:</small> @Parameters.InpaintHeight </MudSlider>
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudStack Row=true>
+                                <MudCheckBox @bind-Checked=Parameters.UseSteps Label="Steps" />
+                                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Generation.Shared.Steps.Min Max=M.Settings.Generation.Shared.Steps.Max Step=M.Settings.Generation.Shared.Steps.Step ValueLabel=true Disabled=!Parameters.UseSteps>@Parameters.Steps </MudSlider>
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudStack Row=true>
+                                <MudCheckBox @bind-Checked=Parameters.UseCFGScale Label="CFG Scale" />
+                                <MudSlider @bind-Value=Parameters.CFGScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step ValueLabel=true Disabled=!Parameters.UseCFGScale>@Parameters.CFGScale </MudSlider>
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudStack Row=true>
+                                <MudCheckBox @bind-Checked=Parameters.UseCheckpoint Label="Checkpoint" />
+                                <MudSelect @bind-Value=Parameters.Checkpoint AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Disabled=!Parameters.UseCheckpoint T="string">
+                                    <MudSelectItem Value="@("Use same checkpoint")">Use same checkpoint</MudSelectItem>
+                                    @{
+                                    foreach (var model in M.SDModels)
+                                    {
+                                        <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudStack Row=true>
+                            <MudCheckBox @bind-Checked=Parameters.UseVAE Label="VAE" />
+                            <MudSelect @bind-Value=Parameters.VAE AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Disabled=!Parameters.UseVAE T="string">
+                                <MudSelectItem Value="@("Use same VAE")">Use same VAE</MudSelectItem>
+                                @{
+                                    foreach (var vae in M.SDVAEs)
+                                    {
+                                        <MudSelectItem Value="vae">@vae</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudStack Row=true>
+                            <MudCheckBox @bind-Checked=Parameters.UseSampler Label="Sampler" />
+                            <MudSelect @bind-Value=Parameters.Sampler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Disabled=!Parameters.UseSampler T="string">
+                                @{
+                                    foreach (var sampler in M.Samplers)
+                                    {
+                                        <MudSelectItem Value="sampler.Name" />
+                                    }
+                                }
+                            </MudSelect>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudStack Row=true>
+                            <MudCheckBox @bind-Checked=Parameters.UseNoiseMultiplier Label="I2I Noise Multiplier" />
+                            <MudSlider @bind-Value=Parameters.NoiseMultiplier Min=M.Settings.Scripts.ADetailer.NoiseMultiplier.Min Max=M.Settings.Scripts.ADetailer.NoiseMultiplier.Max Step=M.Settings.Scripts.ADetailer.NoiseMultiplier.Step ValueLabel=true Disabled=!Parameters.UseNoiseMultiplier>@Parameters.NoiseMultiplier </MudSlider>
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudStack Row=true>
+                                <MudCheckBox @bind-Checked=Parameters.UseClipSkip Label="Clip Skip" />
+                                <MudSlider @bind-Value=Parameters.ClipSkip Min=M.Settings.Webui.ClipSkip.Min Max=M.Settings.Webui.ClipSkip.Max Step=M.Settings.Webui.ClipSkip.Step ValueLabel=true Disabled=!Parameters.UseClipSkip>@Parameters.ClipSkip </MudSlider>
+                            </MudStack>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudCheckBox @bind-Checked=Parameters.RestoreFace Label="Restore Face after ADetailer" />
+                        </MudItem>
+                    </MudGrid>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="ControlNet">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudSelect @bind-Value=Parameters.ControlNetModel Label="Model" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" T="string">
+                                @{
+                                foreach (var model in _controlNetModels)
+                                {
+                                    <MudSelectItem Value="model" />
+                                }
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value=Parameters.ControlNetModule Label="Module" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" T="string">
+                            @{
+                                foreach (ControlNetPreprocessor processor in Enum.GetValues(typeof(ControlNetPreprocessor)))
+                                {
+                                    <MudSelectItem Value="processor.ToString()" />
+                                }
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudSlider @bind-Value=Parameters.ControlNetWeight Min=M.Settings.Scripts.ControlNet.Weight.Min Max=M.Settings.Scripts.ControlNet.Weight.Max Step=M.Settings.Scripts.ControlNet.Weight.Step ValueLabel=true><small>Weight:</small> @Parameters.ControlNetWeight </MudSlider>
+                        </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body1">Guidance</MudText>
+                        </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.ControlNetGuidanceStart Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel=true><small>Start:</small> @Parameters.ControlNetGuidanceStart </MudSlider>
+                        </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.ControlNetGuidanceEnd Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel=true><small>End:</small> @Parameters.ControlNetGuidanceEnd </MudSlider>
+                        </MudItem>
+                    </MudGrid>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudItem>
+    </MudGrid>
+
+    @code {
+    [Parameter] public ScriptParametersADetailerModel Parameters { get; set; }
+
+    private List<string> _controlNetModels = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _controlNetModels = await API.GetControlNetModels();
+    }
+}

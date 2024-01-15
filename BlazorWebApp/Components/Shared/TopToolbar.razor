@@ -54,17 +54,17 @@
                         <MudSelect Value="M.State.Generation.Vae" T="string" ValueChanged="HandleVaeSelected" Label="VAE" AdornmentIcon="fa-solid fa-wand-sparkles" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
                             <MudSelectItem Value=@("None")>None</MudSelectItem>
                             <MudSelectItem Value=@("Automatic")>Automatic</MudSelectItem>
-                            @foreach (var file in IO.GetFilesRecursive(_vaeDir))
+                            @foreach (var file in M.SDVAEs)
                             {
-                                <MudSelectItem Value="@file.Name">@file.Name</MudSelectItem>
+                                <MudSelectItem Value="@file">@file</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="4">
                         <MudSlider Value="_clipSkip" T="int" ValueChanged=HandleClipSkipChanged Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks=true ValueLabel=true><small>Clip Skip:</small> @M.Options.ClipSkip </MudSlider>
-                    </MudItem>
-                </MudGrid>
-            </MudItem>
+                        </MudItem>
+                    </MudGrid>
+                </MudItem>
         }
         <MudItem xs="10">
             <MudSelect @bind-Value=_selectedState T="State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
@@ -85,7 +85,6 @@
 </div>
 
 @code {
-    private string _vaeDir;
     private int _clipSkip;
     private bool _isWebuiInitialized;
     private State _selectedState;
@@ -138,8 +137,9 @@
         await M.GetSDModels();
         await M.GetSamplers();
         await M.GetStyles();
+        M.GetSDVAEs();
+        M.GetSDADetailerModels();
 
-        _vaeDir = string.IsNullOrWhiteSpace(M.CmdFlags.VaeDir) ? Path.Join(M.CmdFlags.BaseDir, @"models/VAE") : M.CmdFlags.VaeDir;
         _clipSkip = (int)M.Options.ClipSkip;
 
         M.State.Generation.SDModel = M.Options.SDModelCheckpoint;

@@ -113,6 +113,7 @@
             <MudItem xs="12">
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>
                     <MudChip Text="Restore Faces" Default="Parameters.RestoreFaces" Variant="Variant.Text" Color="Color.Primary">Restore Faces</MudChip>
+                    <MudChip Text="ADetailer" Default="Parameters.Scripts.ADetailer.IsEnabled" Variant="Variant.Text" Color="Color.Primary">ADetailer</MudChip>
                     <MudChip Text="Tiling" Default="Parameters.Tiling" Variant="Variant.Text" Color="Color.Primary">Tiling</MudChip>
                     <MudChip Text="Ultimate Upscale" Default="Parameters.Scripts.UltimateUpscale.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Ultimate Upscale</MudChip>
                     <MudChip Text="Tiled Diffusion" Default="Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Tiled Diffusion</MudChip>
@@ -123,6 +124,9 @@
                     <MudChip Text="ControlNet" Default="M.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
                     <MudChip Text="XYZ Plot" Default="Parameters.Scripts.XYZPlot.IsEnabled" Variant="Variant.Text" Color="Color.Primary">X/Y/Z Plot</MudChip>
                 </MudChipSet>
+            </MudItem>
+            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.ADetailer.IsEnabled ? "show" : "")}")">
+                <ADetailerForm Parameters=Parameters.Scripts.ADetailer />
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.UltimateUpscale.IsEnabled ? "show" : "")}")">
                 <UltimateUpscaleForm Parameters=Parameters.Scripts.UltimateUpscale />
@@ -211,6 +215,7 @@
     private void HandleParameterChecked(MudChip[] checkboxes)
     {
         Parameters.RestoreFaces = false;
+        Parameters.Scripts.ADetailer.IsEnabled = false;
         Parameters.Tiling = false;
         Parameters.Scripts.UltimateUpscale.IsEnabled = false;
         Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled = false;
@@ -227,6 +232,9 @@
             {
                 case "Restore Faces":
                     Parameters.RestoreFaces = true;
+                    break;
+                case "ADetailer":
+                    Parameters.Scripts.ADetailer.IsEnabled = true;
                     break;
                 case "Tiling":
                     Parameters.Tiling = true;

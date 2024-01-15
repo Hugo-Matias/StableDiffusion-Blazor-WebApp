@@ -2,6 +2,7 @@
 {
     public class AppSettings
     {
+        public bool ResetState { get; set; } = false;  // Set to true when implementing a new script to repopulate variables
         public bool IsDarkMode { get; set; } = true;
         public GenerationSettingsModel Generation { get; set; } = new();
         public ResourcesSettingsModel Resources { get; set; } = new();
@@ -34,7 +35,7 @@
     {
         public string Sampler { get; set; } = "DPM++ 2M Karras";
         public int Seed { get; set; } = -1;
-        public bool FaceRestoration { get; set; } = true;
+        public bool FaceRestoration { get; set; } = false;
         public bool Tilling { get; set; } = false;
         public StepsSettingsModel Steps { get; set; } = new();
         public ResolutionSettingsModel Resolution { get; set; } = new();
@@ -45,7 +46,7 @@
 
     public class StepsSettingsModel
     {
-        public int Value { get; set; } = 40;
+        public int Value { get; set; } = 30;
         public int Min { get; set; } = 1;
         public int Max { get; set; } = 150;
         public int Step { get; set; } = 1;
@@ -54,10 +55,10 @@
     public class ResolutionSettingsModel
     {
         public int Width { get; set; } = 512;
-        public int Height { get; set; } = 512;
+        public int Height { get; set; } = 768;
         public int Min { get; set; } = 64;
         public int Max { get; set; } = 2048;
-        public int Step { get; set; } = 64;
+        public int Step { get; set; } = 32;
     }
 
     public class BatchSettingsModel
@@ -84,7 +85,7 @@
 
     public class CfgScaleSettingsModel
     {
-        public float Value { get; set; } = 9.5f;
+        public float Value { get; set; } = 7.5f;
         public float Min { get; set; } = 1.0f;
         public float Max { get; set; } = 30.0f;
         public float Step { get; set; } = 0.5f;
@@ -120,7 +121,7 @@
         public int Height { get; set; } = 512;
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 2048;
-        public int Step { get; set; } = 64;
+        public int Step { get; set; } = 32;
     }
 
     public class ResizeScaleSettingsModel
@@ -204,7 +205,7 @@
         public int Height { get; set; } = 2048;
         public int Min { get; set; } = 64;
         public int Max { get; set; } = 8192;
-        public int Step { get; set; } = 64;
+        public int Step { get; set; } = 32;
     }
     #endregion
     #endregion
@@ -219,6 +220,7 @@
         public MultiDiffusionSettingsModel MultiDiffusion { get; set; } = new();
         public RegionalPrompterSettingsModel RegionalPrompter { get; set; } = new();
         public XYZPlotSettingsModel XYZPlot { get; set; } = new();
+        public ADetailerSettingsModel ADetailer { get; set; } = new();
     }
 
     #region ControlNet
@@ -817,6 +819,131 @@
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 100;
         public int Step { get; set; } = 1;
+    }
+    #endregion
+
+    #region ADetailer
+    public class ADetailerSettingsModel
+    {
+        public List<string> Models { get; set; } = new()
+        {
+            "None",
+            "face_yolov8n.pt",
+            "face_yolov8s.pt",
+            "hand_yolov8n.pt",
+            "person_yolov8n-seg.pt",
+            "person_yolov8s-seg.pt",
+            "mediapipe_face_full",
+            "mediapipe_face_short",
+            "mediapipe_face_mesh",
+            "mediapipe_face_mesh_eyes_only"
+        };
+        public List<string> MaskMergeModes { get; set; } = new() { "None", "Merge", "Merge and Invert" };
+
+        public bool IsEnabled { get; set; } = false;
+        public string Model { get; set; } = "None";
+        public string Prompt { get; set; } = string.Empty;
+        public string NegativePrompt { get; set; } = string.Empty;
+        public ADetailerConfidenceSettings Confidence { get; set; } = new();
+        public ADetailerMaskKLargestSettings MaskKLargest { get; set; } = new();
+        public ADetailerMaskRatioSettings MaskRatio { get; set; } = new();
+        public ADetailerMaskOffsetSettings MaskOffset { get; set; } = new();
+        public ADetailerErosionDilationSettings MaskErosionDilation { get; set; } = new();
+        public ADetailerMaskBlurSettings MaskBlur { get; set; } = new();
+        public ADetailerDenoisingStrengthSettings DenoisingStrength { get; set; } = new();
+        public bool InpaintOnlyMasked { get; set; } = true;
+        public ADetailerInpaintMaskedPaddingSettings InpaintMaskedPadding { get; set; } = new();
+        public bool UseInpaintWidthHeight { get; set; } = false;
+        public bool UseSteps { get; set; } = false;
+        public bool UseCFGScale { get; set; } = false;
+        public bool UseCheckpoint { get; set; } = false;
+        public string Checkpoint { get; set; } = "Use same checkpoint";
+        public bool UseVAE { get; set; } = false;
+        public string VAE { get; set; } = "Use same VAE";
+        public bool UseSampler { get; set; } = false;
+        public string Sampler { get; set; } = "DPM++ 2M Karras";
+        public bool UseNoiseMultiplier { get; set; } = false;
+        public ADetailerNoiseMultiplierSettings NoiseMultiplier { get; set; } = new();
+        public bool UseClipSkip { get; set; } = false;
+        public bool RestoreFace { get; set; } = false;
+        public string ControlNetModel { get; set; } = "None";
+        public string ControlNetModule { get; set; } = "None";
+        public float ControlNetWeight { get; set; } = 1.0f;
+
+        public class ADetailerConfidenceSettings
+        {
+            public float Value { get; set; } = 0.3f;
+            public float Min { get; set; } = 0f;
+            public float Max { get; set; } = 1f;
+            public float Step { get; set; } = 0.01f;
+        }
+
+        public class ADetailerMaskKLargestSettings
+        {
+            public int Value { get; set; } = 0;
+            public int Min { get; set; } = 0;
+            public int Max { get; set; } = 10;
+            public int Step { get; set; } = 1;
+        }
+
+        public class ADetailerMaskRatioSettings
+        {
+            public float ValueMin { get; set; } = 0f;
+            public float ValueMax { get; set; } = 1f;
+            public float Min { get; set; } = 0f;
+            public float Max { get; set; } = 1f;
+            public float Step { get; set; } = 0.001f;
+        }
+
+        public class ADetailerMaskOffsetSettings
+        {
+            public int ValueX { get; set; } = 0;
+            public int ValueY { get; set; } = 0;
+            public int Min { get; set; } = -200;
+            public int Max { get; set; } = 200;
+            public int Step { get; set; } = 1;
+        }
+
+        public class ADetailerErosionDilationSettings
+        {
+            public int Value { get; set; } = 4;
+            public int Min { get; set; } = -128;
+            public int Max { get; set; } = 128;
+            public int Step { get; set; } = 4;
+        }
+
+        public class ADetailerMaskBlurSettings
+        {
+            public int Value { get; set; } = 4;
+            public int Min { get; set; } = 0;
+            public int Max { get; set; } = 64;
+            public int Step { get; set; } = 1;
+        }
+
+        public class ADetailerDenoisingStrengthSettings
+        {
+            public float Value { get; set; } = 0.4f;
+            public float Min { get; set; } = 0f;
+            public float Max { get; set; } = 1f;
+            public float Step { get; set; } = 0.01f;
+        }
+
+        public class ADetailerInpaintMaskedPaddingSettings
+        {
+            public int Value { get; set; } = 32;
+            public int Min { get; set; } = 0;
+            public int Max { get; set; } = 256;
+            public int Step { get; set; } = 4;
+        }
+
+        public class ADetailerNoiseMultiplierSettings
+        {
+            public float Value { get; set; } = 1f;
+            public float Min { get; set; } = 0.5f;
+            public float Max { get; set; } = 1.5f;
+            public float Step { get; set; } = 0.01f;
+
+        }
     }
     #endregion
     #endregion

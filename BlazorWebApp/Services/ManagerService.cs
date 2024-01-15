@@ -56,6 +56,8 @@ namespace BlazorWebApp.Services
         public string? GridImage { get; set; }
         public InferenceProgress Progress { get; set; }
         public List<SDModel> SDModels { get; set; }
+        public List<string> SDVAEs { get; set; }
+        public List<string> SDADetailerModels { get; set; }
         public List<Models.Sampler> Samplers { get; set; }
         public List<PromptStyle> Styles { get; set; }
         public List<Upscaler> Upscalers { get; set; }
@@ -180,6 +182,7 @@ namespace BlazorWebApp.Services
                         MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
                         RegionalPrompter = CreateRegionalPrompter(),
                         XYZPlot = CreateXYZPlot(),
+                        ADetailer = CreateADetailer(),
                     }
                 };
 
@@ -202,6 +205,7 @@ namespace BlazorWebApp.Services
                         MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
                         RegionalPrompter = CreateRegionalPrompter(),
                         XYZPlot = CreateXYZPlot(),
+                        ADetailer = CreateADetailer(),
                     }
                 };
 
@@ -402,6 +406,66 @@ namespace BlazorWebApp.Services
             };
         }
 
+        public ScriptParametersADetailer CreateADetailer()
+        {
+            return new ScriptParametersADetailer()
+            {
+                IsEnabled = Settings.Scripts.ADetailer.IsEnabled,
+                IsAlwaysOn = true,
+                SkipImg2Img = false,
+                Model1 = CreateADetailerModel(Settings.Scripts.ADetailer.Models[0]),
+                Model2 = CreateADetailerModel(Settings.Scripts.ADetailer.Model),
+                Model3 = CreateADetailerModel(Settings.Scripts.ADetailer.Model),
+                Model4 = CreateADetailerModel(Settings.Scripts.ADetailer.Model),
+                Model5 = CreateADetailerModel(Settings.Scripts.ADetailer.Model)
+            };
+        }
+
+        public ScriptParametersADetailerModel CreateADetailerModel(string model)
+        {
+            return new ScriptParametersADetailerModel()
+            {
+                Model = model,
+                Prompt = Settings.Scripts.ADetailer.Prompt,
+                NegativePrompt = Settings.Scripts.ADetailer.NegativePrompt,
+                Confidence = Settings.Scripts.ADetailer.Confidence.Value,
+                MaskKLargest = Settings.Scripts.ADetailer.MaskKLargest.Value,
+                MaskMinRatio = Settings.Scripts.ADetailer.MaskRatio.ValueMin,
+                MaskMaxRatio = Settings.Scripts.ADetailer.MaskRatio.ValueMax,
+                DilateErode = Settings.Scripts.ADetailer.MaskErosionDilation.Value,
+                XOffset = Settings.Scripts.ADetailer.MaskOffset.ValueX,
+                YOffset = Settings.Scripts.ADetailer.MaskOffset.ValueY,
+                MaskMergeInvert = Settings.Scripts.ADetailer.MaskMergeModes[0],
+                MaskBlur = Settings.Scripts.ADetailer.MaskBlur.Value,
+                DenoisingStrength = Settings.Scripts.ADetailer.DenoisingStrength.Value,
+                InpaintOnlyMasked = Settings.Scripts.ADetailer.InpaintOnlyMasked,
+                InpaintOnlyMaskedPadding = Settings.Scripts.ADetailer.InpaintMaskedPadding.Value,
+                UseInpaintWidthHeight = Settings.Scripts.ADetailer.UseInpaintWidthHeight,
+                InpaintWidth = Settings.Generation.Shared.Resolution.Width,
+                InpaintHeight = Settings.Generation.Shared.Resolution.Height,
+                UseSteps = Settings.Scripts.ADetailer.UseSteps,
+                Steps = Settings.Generation.Shared.Steps.Value,
+                UseCFGScale = Settings.Scripts.ADetailer.UseCFGScale,
+                CFGScale = Settings.Generation.Shared.CfgScale.Value,
+                UseCheckpoint = Settings.Scripts.ADetailer.UseCheckpoint,
+                Checkpoint = Settings.Scripts.ADetailer.Checkpoint,
+                UseVAE = Settings.Scripts.ADetailer.UseVAE,
+                VAE = Settings.Scripts.ADetailer.VAE,
+                UseSampler = Settings.Scripts.ADetailer.UseSampler,
+                Sampler = Settings.Scripts.ADetailer.Sampler,
+                UseNoiseMultiplier = Settings.Scripts.ADetailer.UseNoiseMultiplier,
+                NoiseMultiplier = Settings.Scripts.ADetailer.NoiseMultiplier.Value,
+                UseClipSkip = Settings.Scripts.ADetailer.UseClipSkip,
+                ClipSkip = Settings.Webui.ClipSkip.Value,
+                RestoreFace = Settings.Scripts.ADetailer.RestoreFace,
+                ControlNetModel = Settings.Scripts.ADetailer.ControlNetModel,
+                ControlNetModule = Settings.Scripts.ADetailer.ControlNetModule,
+                ControlNetWeight = Settings.Scripts.ADetailer.ControlNetWeight,
+                ControlNetGuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
+                ControlNetGuidanceEnd = Settings.Scripts.ControlNet.Guidance.End
+            };
+        }
+
         public async Task GetSDModels(bool refresh = false)
         {
             if (refresh) await _api.PostRefreshModels();
@@ -409,6 +473,18 @@ namespace BlazorWebApp.Services
             SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
 
             OnSDModelsChange?.Invoke();
+        }
+
+        public void GetSDVAEs()
+        {
+            var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(CmdFlags.BaseDir, @"models/VAE") : CmdFlags.VaeDir;
+            SDVAEs = _io.GetFilesRecursive(vaeDir).Select(f => f.Name).ToList();
+        }
+
+        public void GetSDADetailerModels()
+        {
+            var modelsDir = Path.Join(CmdFlags.BaseDir, @"models/adetailer");
+            SDADetailerModels = _io.GetFilesRecursive(modelsDir).Select(f => f.Name).ToList();
         }
 
         public async Task SetSDModel(string modelTitle)
@@ -751,7 +827,7 @@ namespace BlazorWebApp.Services
                 InitializeParameters(modes);
             }
 
-            if (state != null)
+            if (!Settings.ResetState && state != null)
             {
                 if (state.AppState != null)
                 {

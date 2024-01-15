@@ -56,5 +56,6 @@ namespace BlazorWebApp.Models
         public ScriptParametersMultiDiffusionTiledVae MultiDiffusionTiledVae { get; set; }
         public ScriptParametersRegionalPrompter RegionalPrompter { get; set; }
         public ScriptParametersXYZPlot XYZPlot { get; set; }
+        public ScriptParametersADetailer ADetailer { get; set; }
     }
 }

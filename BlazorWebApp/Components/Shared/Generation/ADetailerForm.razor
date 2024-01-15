@@ -1,0 +1,24 @@
+﻿@inject ManagerService M
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">ADetailer</MudText>
+<MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" MinimumTabWidth="100px" Rounded Centered>
+    <MudTabPanel Text="Model 1">
+        <ADetailerModelForm Parameters="Parameters.Model1"/>
+    </MudTabPanel>
+    <MudTabPanel Text="Model 2">
+        <ADetailerModelForm Parameters="Parameters.Model2"/>
+    </MudTabPanel>
+    <MudTabPanel Text="Model 3">
+        <ADetailerModelForm Parameters="Parameters.Model3"/>
+    </MudTabPanel>
+    <MudTabPanel Text="Model 4">
+        <ADetailerModelForm Parameters="Parameters.Model4"/>
+    </MudTabPanel>
+    <MudTabPanel Text="Model 5">
+        <ADetailerModelForm Parameters="Parameters.Model5"/>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter] public ScriptParametersADetailer Parameters { get; set; }
+}

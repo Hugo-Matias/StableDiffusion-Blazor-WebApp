@@ -57,6 +57,7 @@ namespace BlazorWebApp.Services
                         Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion);
                         Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledVae);
                         Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersImg2Img.Scripts.RegionalPrompter);
+                        Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersImg2Img.Scripts.ADetailer);
                         scriptName = Parser.CreateScriptParameters("Ultimate SD upscale", ref _parsingParams, _m.ParametersImg2Img.Scripts.UltimateUpscale);
                         scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersImg2Img.Scripts.XYZPlot);
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
@@ -95,6 +96,7 @@ namespace BlazorWebApp.Services
                         Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion);
                         Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
                         Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersTxt2Img.Scripts.RegionalPrompter);
+                        Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersTxt2Img.Scripts.ADetailer);
                         scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersTxt2Img.Scripts.XYZPlot);
                         _txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         _txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
