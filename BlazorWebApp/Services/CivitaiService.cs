@@ -2,8 +2,10 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using Microsoft.AspNetCore.WebUtilities;
 using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
@@ -44,6 +46,68 @@ namespace BlazorWebApp.Services
             return await _httpClient.GetFromJsonAsync<CivitaiCreatorsDto>(url);
         }
 
+        public async Task<CivitaiImagesDto> GetImages(CivitaiImagesRequest req)
+        {
+            if (req.Limit == null || req.Limit <= 0) req.Limit = 100;
+            if (req.Page == null || req.Page <= 0) req.Page = 1;
+
+            var endpoint = "v1/images";
+            var param = new Dictionary<string, string>(){
+                {"limit", req.Limit.ToString() },
+                {"page", req.Page.ToString() }
+                };
+
+            if (req.PostId != null && req.PostId > 0) param.Add("postId", req.PostId.ToString());
+            if (req.ModelId != null && req.ModelId > 0) param.Add("modelId", req.ModelId.ToString());
+            if (req.ModelVersionId != null && req.ModelVersionId > 0) param.Add("modelVersionId", req.ModelVersionId.ToString());
+            if (!string.IsNullOrWhiteSpace(req.Username)) param.Add("username", req.Username);
+            if (req.Nsfw != null && req.Nsfw != CivitaiNsfw.All) param.Add("nsfw", req.Nsfw.ToString());
+            if (req.Sort != null) param.Add("sort", req.Sort.ToString().Replace("_", " "));
+            if (req.Period != null) param.Add("period", req.Period.ToString());
+
+            var url = new Uri(QueryHelpers.AddQueryString(new Uri(_httpClient.BaseAddress, endpoint).ToString(), param));
+            var images = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>(url);
+            foreach (var image in images.Images)
+            {
+                if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
+                if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+            }
+            return images;
+        }
+
+        public async Task<CivitaiImageDto?> GetImageById(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return null;
+            var response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?imageId={id}");
+            if (response == null || response.Images == null || response.Images.Count == 0) return null;
+            return response.Images[0];
+        }
+
+        private async Task<byte[]?> GetImageType(string url)
+        {
+
+            HttpClient httpClientImage = new HttpClient();
+            httpClientImage.DefaultRequestHeaders.Range = new RangeHeaderValue(0, 2);
+            try
+            {
+                var response = await httpClientImage.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadAsByteArrayAsync();
+                }
+                else
+                {
+                    await Console.Out.WriteLineAsync(response.StatusCode.ToString());
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                await Console.Out.WriteLineAsync(ex.Message);
+                return null;
+            }
+        }
+
         public async Task<CivitaiModelsDto?> GetModels(CivitaiModelsRequest req)
         {
             if (!string.IsNullOrWhiteSpace(req.Hash))
@@ -66,11 +130,12 @@ namespace BlazorWebApp.Services
             var sort = req.Sort != null ? $"sort={req.Sort.ToString().Replace("_", " ")}&" : string.Empty;
             var period = req.Period != null ? $"period={req.Period}&" : string.Empty;
             var rating = req.Rating > -1 ? $"rating={req.Rating}&" : string.Empty;
-            var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
-            var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;
-            var primaryFileOnly = req.IsPrimaryFileOnly != null ? $"primaryFileOnly={req.IsPrimaryFileOnly.ToString().ToLower()}" : string.Empty;
+            //var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
+            //var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;
+            //var primaryFileOnly = req.IsPrimaryFileOnly != null ? $"primaryFileOnly={req.IsPrimaryFileOnly.ToString().ToLower()}" : string.Empty;
 
-            var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating + favorites + hidden + primaryFileOnly;
+            //var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating + favorites + hidden + primaryFileOnly;
+            var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating;
             var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();

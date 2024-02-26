@@ -140,6 +140,7 @@ namespace BlazorWebApp.Models
     {
         public string ResourceSubtype { get; set; }
         public AppStateCivitaiCreators Creators { get; set; } = new();
+        public AppStateCivitaiImages Images { get; set; } = new();
         public AppStateCivitaiModels Models { get; set; } = new();
     }
 
@@ -168,6 +169,19 @@ namespace BlazorWebApp.Models
         public bool Hidden { get; set; } = false;
         public bool IsPrimaryFileOnly { get; set; } = false;
         public string Hash { get; set; } = string.Empty;
+    }
+
+    public class AppStateCivitaiImages
+    {
+        public int Limit { get; set; } = 100;
+        public int PostId { get; set; } = 0;
+        public int ModelId { get; set; } = 0;
+        public int ModelVersionId { get; set; } = 0;
+        public string Username { get; set; } = string.Empty;
+        public CivitaiNsfw Nsfw { get; set; } = CivitaiNsfw.None;
+        public CivitaiImageSort Sort { get; set; } = CivitaiImageSort.Newest;
+        public CivitaiPeriod Period { get; set; } = CivitaiPeriod.AllTime;
+        public int Page { get; set; } = 1;
     }
 
     public class AppStatePrompts

@@ -1,0 +1,42 @@
+﻿div {
+	position: relative;
+}
+
+	div:hover ::deep .select-checkbox {
+		opacity: 1;
+	}
+
+::deep .mud-card-content {
+	text-align: center;
+	padding: 0.5rem 1rem;
+	padding-bottom: 0rem;
+}
+
+::deep .info-icon {
+	font-size: 0.7rem;
+	margin: 0 0.4rem;
+	opacity: 0.5;
+}
+
+::deep .separator {
+	opacity: 0.2;
+}
+
+::deep .select-checkbox {
+	opacity: 0;
+	position: absolute;
+	top: 1.75rem;
+	right: 0.5rem;
+	z-index: 1;
+	background: rgba(0,0,0,0.8);
+	border-radius: 3px;
+	transition: opacity 0.2s ease-in-out;
+}
+
+	::deep .select-checkbox.selected {
+		opacity: 1;
+	}
+
+	::deep .select-checkbox .mud-icon-button {
+		padding: 0.2rem;
+	}

@@ -5,7 +5,7 @@
     </MudButton>
 </div>
 
-@code {
+ @code {
     [Parameter] public CivitaiBaseModelVersionImageDto Image { get; set; }
     [Parameter] public EventCallback OnSaveImage { get; set; }
 
@@ -14,7 +14,7 @@
         var options = new DialogOptions() { NoHeader = true };
         var param = new DialogParameters();
         param.Add("Image", Image);
-        var dialog = await DialogService.ShowAsync<CivitaiImageDialog>("Image", param, options);
+        var dialog = await DialogService.ShowAsync<CivitaiModelImageDialog>("Image", param, options);
         var result = await dialog.Result;
         if (!result.Canceled)
         {
