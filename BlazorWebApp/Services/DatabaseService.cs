@@ -337,6 +337,9 @@ namespace BlazorWebApp.Services
                 case GalleryOrderBy.Denoising:
                     query = query.OrderBy(i => i.DenoisingStrength);
                     break;
+                case GalleryOrderBy.Random:
+                    query = query.OrderBy(i => EF.Functions.Random());
+                    break;
             }
 
             var images = await query.ToListAsync();

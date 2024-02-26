@@ -117,7 +117,7 @@ namespace BlazorWebApp.Models
         public bool IsSelectedOnly { get; set; } = false;
     }
 
-    public enum GalleryOrderBy { Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }
+    public enum GalleryOrderBy { Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising, Random }
 
     public class AppStateResources
     {
