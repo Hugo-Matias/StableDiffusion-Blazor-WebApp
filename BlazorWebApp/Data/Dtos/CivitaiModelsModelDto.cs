@@ -25,7 +25,7 @@
     public class CivitaiModelsModelVersionDto : CivitaiBaseModelVersionDto
     {
         public List<CivitaiBaseModelVersionFileDto> Files { get; set; }
-        public List<CivitaiBaseModelVersionImageDto> Images { get; set; }
+        public List<CivitaiModelVersionImageDto> Images { get; set; }
         public CivitaiModelsModelVersionDto() { }
         public CivitaiModelsModelVersionDto(CivitaiModelVersionDto model)
         {
@@ -35,11 +35,7 @@
                 Files.Add(new(file));
             }
 
-            Images = new();
-            foreach (var image in model.Images)
-            {
-                Images.Add(new(image));
-            }
+            Images = model.ImagesData;
         }
     }
 }

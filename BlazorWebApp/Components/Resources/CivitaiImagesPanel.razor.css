@@ -1,0 +1,5 @@
+﻿::deep .images-container {
+	height: 70vh;
+	overflow: scroll;
+	align-content: flex-start;
+}

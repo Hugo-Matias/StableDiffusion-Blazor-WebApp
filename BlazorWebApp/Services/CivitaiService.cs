@@ -2,10 +2,11 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using Microsoft.AspNetCore.WebUtilities;
 using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -44,6 +45,71 @@ namespace BlazorWebApp.Services
             return await _httpClient.GetFromJsonAsync<CivitaiCreatorsDto>(url);
         }
 
+        public async Task<CivitaiImagesDto> GetImages(CivitaiImagesRequest req)
+        {
+            if (req.Limit == null || req.Limit <= 0) req.Limit = 100;
+            if (req.Page == null || req.Page <= 0) req.Page = 1;
+
+            var endpoint = "v1/images";
+            var param = new Dictionary<string, string>(){
+                {"limit", req.Limit.ToString() },
+                {"page", req.Page.ToString() }
+                };
+
+            if (req.PostId != null && req.PostId > 0) param.Add("postId", req.PostId.ToString());
+            if (req.ModelId != null && req.ModelId > 0) param.Add("modelId", req.ModelId.ToString());
+            if (req.ModelVersionId != null && req.ModelVersionId > 0) param.Add("modelVersionId", req.ModelVersionId.ToString());
+            if (!string.IsNullOrWhiteSpace(req.Username)) param.Add("username", req.Username);
+            if (req.Nsfw != null && req.Nsfw != CivitaiNsfw.All) param.Add("nsfw", req.Nsfw.ToString());
+            if (req.Sort != null) param.Add("sort", req.Sort.ToString().Replace("_", " "));
+            if (req.Period != null) param.Add("period", req.Period.ToString());
+
+            var url = new Uri(QueryHelpers.AddQueryString(new Uri(_httpClient.BaseAddress, endpoint).ToString(), param));
+            var images = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>(url);
+            foreach (var image in images.Images)
+            {
+                if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
+                if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+            }
+            return images;
+        }
+
+        public async Task<CivitaiImageDto?> GetImageById(int id)
+        {
+            if (id <= 0) return null;
+            var response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?imageId={id}");
+            if (response == null || response.Images == null || response.Images.Count == 0) return null;
+            var image = response.Images[0];
+            if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
+            if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+            return image;
+        }
+
+        private async Task<byte[]?> GetImageType(string url)
+        {
+
+            HttpClient httpClientImage = new HttpClient();
+            httpClientImage.DefaultRequestHeaders.Range = new RangeHeaderValue(0, 2);
+            try
+            {
+                var response = await httpClientImage.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadAsByteArrayAsync();
+                }
+                else
+                {
+                    await Console.Out.WriteLineAsync(response.StatusCode.ToString());
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                await Console.Out.WriteLineAsync(ex.Message);
+                return null;
+            }
+        }
+
         public async Task<CivitaiModelsDto?> GetModels(CivitaiModelsRequest req)
         {
             if (!string.IsNullOrWhiteSpace(req.Hash))
@@ -66,83 +132,41 @@ namespace BlazorWebApp.Services
             var sort = req.Sort != null ? $"sort={req.Sort.ToString().Replace("_", " ")}&" : string.Empty;
             var period = req.Period != null ? $"period={req.Period}&" : string.Empty;
             var rating = req.Rating > -1 ? $"rating={req.Rating}&" : string.Empty;
-            var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
-            var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;
-            var primaryFileOnly = req.IsPrimaryFileOnly != null ? $"primaryFileOnly={req.IsPrimaryFileOnly.ToString().ToLower()}" : string.Empty;
+            //var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
+            //var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;
+            //var primaryFileOnly = req.IsPrimaryFileOnly != null ? $"primaryFileOnly={req.IsPrimaryFileOnly.ToString().ToLower()}" : string.Empty;
 
-            var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating + favorites + hidden + primaryFileOnly;
+            //var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating + favorites + hidden + primaryFileOnly;
+            var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating;
             var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();
             else return null;
         }
 
-        public async Task<CivitaiModelDto> GetModel(int id)
+        public async Task<CivitaiModelDto?> GetModel(int id)
         {
             var response = await _httpClient.GetAsync($"v1/models/{id}");
-            var content = await response.Content.ReadAsStringAsync();
-            var model = await response.Content.ReadFromJsonAsync<CivitaiModelDto>();
-            var json = JsonNode.Parse(content);
-            for (var v = 0; v < json["modelVersions"].AsArray().Count; v++)
+            if (response.IsSuccessStatusCode)
             {
-                var version = json["modelVersions"][v];
-                for (var i = 0; i < version["images"].AsArray().Count; i++)
+                var content = await response.Content.ReadFromJsonAsync<CivitaiModelDto>();
+                foreach (var version in content.ModelVersions)
                 {
-                    var meta = version["images"][i]["meta"];
-                    if (meta != null)
+                    version.Images = new();
+                    foreach (var data in version.ImagesData)
                     {
-                        model.ModelVersions[v].Images[i].MetaObject = meta;
-                        var isAddNetEnabled = meta["AddNet Enabled"];
-                        if (isAddNetEnabled != null && isAddNetEnabled.ToString() == "True" && model.ModelVersions[v].Images[i].Meta.Resources != null)
+                        if (data.Id == 0)
                         {
-                            var modelResources = model.ModelVersions[v].Images[i].Meta.Resources;
-                            for (int r = 1; r <= modelResources.Count; r++)
-                            {
-                                var name = meta[$"AddNet Model {r}"];
-                                var weight = meta[$"AddNet Weight A {r}"];
-                                var moduleType = meta[$"AddNet Module {r}"];
-                                if (name != null && weight != null)
-                                    ParseAddNetResource(ref modelResources, name.ToString(), weight.ToString(), moduleType.ToString());
-                            }
+                            _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
+                            data.Id = imageId;
                         }
+                        var image = await GetImageById(data.Id);
+                        if (image != null) version.Images.Add(image);
                     }
                 }
+                return content;
             }
-            return model;
-        }
-
-        private void ParseAddNetResource(ref List<CivitaiImageMetaResource> resources, string addnetModel, string addnetWeight, string addnetModule)
-        {
-            var weight = float.Parse(addnetWeight);
-            var re = Regex.Matches(addnetModel, @"(.+)\((.+)\)");
-            if (re.Count > 0)
-            {
-                var groups = re[0].Groups;
-                var name = groups[1].Value;
-                var hash = groups[2].Value;
-                foreach (var resource in resources)
-                {
-                    if (resource.Hash != null && resource.Hash.Equals(hash, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        resource.Name = name;
-                        resource.Weight = weight;
-                    }
-                }
-            }
-            else
-            {
-                foreach (var resource in resources)
-                {
-                    if (resource.Type != null && resource.Type.Equals(addnetModule, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        if (string.IsNullOrWhiteSpace(resource.Name) || resource.Name.Equals(addnetModel, StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            resource.Name = addnetModel;
-                            resource.Weight = weight;
-                        }
-                    }
-                }
-            }
+            else return null;
         }
 
         public async Task<int> GetModelIdByHash(string hash)

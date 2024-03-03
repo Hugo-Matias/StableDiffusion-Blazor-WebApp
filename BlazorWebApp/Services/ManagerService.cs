@@ -89,6 +89,7 @@ namespace BlazorWebApp.Services
         public PromptButton ButtonTags { get; set; }
         public CmdFlags CmdFlags { get; set; }
         public CivitaiModelsDto CivitaiModels { get; set; }
+        public CivitaiImagesDto CivitaiImages { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
         public Dictionary<string, string> ResourceTypeDirectories { get; set; }
         public bool IsConverging

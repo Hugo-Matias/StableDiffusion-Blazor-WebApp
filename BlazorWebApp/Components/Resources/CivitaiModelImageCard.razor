@@ -5,8 +5,8 @@
     </MudButton>
 </div>
 
-@code {
-    [Parameter] public CivitaiBaseModelVersionImageDto Image { get; set; }
+ @code {
+    [Parameter] public CivitaiImageDto Image { get; set; }
     [Parameter] public EventCallback OnSaveImage { get; set; }
 
     private async Task ShowImage()

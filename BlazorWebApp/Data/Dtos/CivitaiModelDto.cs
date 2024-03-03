@@ -7,7 +7,7 @@ namespace BlazorWebApp.Data.Dtos
         [JsonPropertyName("poi")]
         public bool PersonOfInterest { get; set; }
         public bool AllowNoCredit { get; set; }
-        public string AllowCommercialUse { get; set; }
+        public List<string> AllowCommercialUse { get; set; }
         public bool AllowDerivatives { get; set; }
         public bool AllowDifferentLicense { get; set; }
         public CivitaiModelStatsDto Stats { get; set; }
@@ -36,7 +36,10 @@ namespace BlazorWebApp.Data.Dtos
         public string BaseModel { get; set; }
         public double EarlyAccessTimeFrame { get; set; }
         public List<CivitaiModelVersionFileDto> Files { get; set; }
-        public List<CivitaiModelVersionImageDto> Images { get; set; }
+        [JsonPropertyName("images")]
+        public List<CivitaiModelVersionImageDto> ImagesData { get; set; }
+        [JsonIgnore]
+        public List<CivitaiImageDto> Images { get; set; }
     }
 
     public class CivitaiModelVersionFileDto : CivitaiBaseModelVersionFileDto
@@ -57,17 +60,15 @@ namespace BlazorWebApp.Data.Dtos
         public string BLAKE3 { get; set; }
     }
 
-    public class CivitaiModelVersionImageDto : CivitaiBaseModelVersionImageDto
+    public class CivitaiModelVersionImageDto
     {
-        public string GenerationProcess { get; set; }
-        public bool NeedsReview { get; set; }
-        public List<CivitaiModelVersionImageTagDto> Tags { get; set; }
-    }
-
-    public class CivitaiModelVersionImageTagDto
-    {
-        public CivitaiModelVersionImageTagDataDto Tag { get; set; }
-        public bool Automated { get; set; }
+        public int Id { get; set; }
+        public string Url { get; set; }
+        public string Nsfw { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public string Hash { get; set; }
+        public string Availability { get; set; }
     }
 
     public class CivitaiModelVersionImageTagDataDto

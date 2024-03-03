@@ -1,0 +1,139 @@
+﻿@inject ManagerService M
+@inject DatabaseService DB
+@inject IOService IO
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<div>
+    @if (Image.Meta != null)
+    {
+        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content=@(Image.Meta.Sampler) Color=@(SetSamplerBadgeColor().Result) Overlap />
+        <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
+            @if (Image.ImageType[0] != 0)
+            {
+                <MudCardMedia Image="@Image.Url" />
+            }
+            <MudCardContent Class="pb-n4">
+                @if (Image.ImageType[0] == 0)
+                {
+                        // If first byte is 0 it means the image is a video.
+                    <video style="max-width: 10rem;" controls autoplay loop muted="true">
+                        <source src="@Image.Url" />
+                    </video>
+                }
+                <MudSpacer />
+                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-seedling info-icon" />@Image.Meta.Seed</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.caption">
+                        <MudIcon Icon="fa-solid fa-stairs info-icon" />@Image.Meta.Steps
+                    <span class="separator ms-2">|</span>
+                    <MudIcon Icon="fa-solid fa-scale-unbalanced info-icon" />@Image.Meta.CfgScale
+                    @if (Image.Meta.DenoisingStrength != null)
+                    {
+                        <span class="separator ms-2">|</span>
+                        <MudIcon Icon="fa-solid fa-braille info-icon" />
+
+                        @Image.Meta.DenoisingStrength
+                    }
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                @*             <MudIconButton OnClick=@(() => OnSelectImage.InvokeAsync(Image)) Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
+            <MudIconButton OnClick=@(() => OnDeleteImage.InvokeAsync(Image)) Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
+            *@            <MudSpacer />
+                <MudTooltip Color="Color.Dark" Style="max-width:50vw">
+                    <ChildContent>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
+                            <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
+                            <MudDivider />
+                            <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
+                            <MudDivider />
+                            <MudMenuItem OnClick=ShowImageInfoDialog Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem>
+                        </MudMenu>
+                    </ChildContent>
+                    <TooltipContent>
+                        <MudText Typo="Typo.caption" Color="Color.Success">@Image.Meta.Prompt</MudText>
+                            <br />
+                            <MudText Typo="Typo.caption" Color="Color.Error">@Image.Meta.NegativePrompt</MudText>
+                        </TooltipContent>
+                    </MudTooltip>
+                </MudCardActions>
+            </MudCard>
+    }
+    else
+    {
+        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0;" Overlap />
+        <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
+            @if (Image.ImageType[0] != 0)
+            {
+                <MudCardMedia Image="@Image.Url" />
+            }
+            <MudCardContent Class="pb-n4">
+                @if (Image.ImageType[0] == 0)
+                {
+                        // If first byte is 0 it means the image is a video.
+                    <video style="max-width: 10rem;" controls autoplay loop muted="true">
+                        <source src="@Image.Url" />
+                    </video>
+                }
+                <MudSpacer />
+                <MudText Typo="Typo.caption">Metadata<br />Not Available</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudSpacer />
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
+                    <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
+                </MudMenu>
+            </MudCardActions>
+        </MudCard>
+    }
+</div>
+
+@code {
+    [Parameter] public CivitaiImageDto Image { get; set; }
+    [Parameter] public EventCallback OnSaveImage { get; set; }
+
+    private void SendTo(bool img2img)
+    {
+        // var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
+        // if (img2img) M.CanvasImageData = data;
+        // else M.UpscaleImageData = data;
+    }
+
+    private async Task<Color> SetSamplerBadgeColor()
+    {
+        switch (Image.Meta.Sampler)
+        {
+            case "Euler":
+            case "Euler a":
+                return Color.Success;
+            case "Heun":
+                return Color.Secondary;
+            case "DDIM":
+                return Color.Dark;
+            case "DPM2":
+            case "DPM2 a":
+                return Color.Warning;
+            case "LMS":
+            case "PLMS":
+                return Color.Error;
+            case "DPM++ 2S a":
+            case "DPM++ 2M":
+            case "DPM fast":
+            case "DPM adaptive":
+                return Color.Tertiary;
+            default:
+                return Color.Info;
+        }
+    }
+
+    private void ShowImageInfoDialog()
+    {
+        var param = new DialogParameters();
+        param.Add("Image", Image);
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        DialogService.Show<CivitaiImageDialog>("Image Info", param, options);
+    }
+}
