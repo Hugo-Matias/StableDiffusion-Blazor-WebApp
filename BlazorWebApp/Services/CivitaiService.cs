@@ -7,7 +7,6 @@ using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -75,12 +74,15 @@ namespace BlazorWebApp.Services
             return images;
         }
 
-        public async Task<CivitaiImageDto?> GetImageById(string id)
+        public async Task<CivitaiImageDto?> GetImageById(int id)
         {
-            if (string.IsNullOrWhiteSpace(id)) return null;
+            if (id <= 0) return null;
             var response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?imageId={id}");
             if (response == null || response.Images == null || response.Images.Count == 0) return null;
-            return response.Images[0];
+            var image = response.Images[0];
+            if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
+            if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+            return image;
         }
 
         private async Task<byte[]?> GetImageType(string url)
@@ -142,72 +144,29 @@ namespace BlazorWebApp.Services
             else return null;
         }
 
-        public async Task<CivitaiModelDto> GetModel(int id)
+        public async Task<CivitaiModelDto?> GetModel(int id)
         {
             var response = await _httpClient.GetAsync($"v1/models/{id}");
-            var content = await response.Content.ReadAsStringAsync();
-            var model = await response.Content.ReadFromJsonAsync<CivitaiModelDto>();
-            var json = JsonNode.Parse(content);
-            for (var v = 0; v < json["modelVersions"].AsArray().Count; v++)
+            if (response.IsSuccessStatusCode)
             {
-                var version = json["modelVersions"][v];
-                for (var i = 0; i < version["images"].AsArray().Count; i++)
+                var content = await response.Content.ReadFromJsonAsync<CivitaiModelDto>();
+                foreach (var version in content.ModelVersions)
                 {
-                    var meta = version["images"][i]["meta"];
-                    if (meta != null)
+                    version.Images = new();
+                    foreach (var data in version.ImagesData)
                     {
-                        model.ModelVersions[v].Images[i].MetaObject = meta;
-                        var isAddNetEnabled = meta["AddNet Enabled"];
-                        if (isAddNetEnabled != null && isAddNetEnabled.ToString() == "True" && model.ModelVersions[v].Images[i].Meta.Resources != null)
+                        if (data.Id == 0)
                         {
-                            var modelResources = model.ModelVersions[v].Images[i].Meta.Resources;
-                            for (int r = 1; r <= modelResources.Count; r++)
-                            {
-                                var name = meta[$"AddNet Model {r}"];
-                                var weight = meta[$"AddNet Weight A {r}"];
-                                var moduleType = meta[$"AddNet Module {r}"];
-                                if (name != null && weight != null)
-                                    ParseAddNetResource(ref modelResources, name.ToString(), weight.ToString(), moduleType.ToString());
-                            }
+                            _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
+                            data.Id = imageId;
                         }
+                        var image = await GetImageById(data.Id);
+                        if (image != null) version.Images.Add(image);
                     }
                 }
+                return content;
             }
-            return model;
-        }
-
-        private void ParseAddNetResource(ref List<CivitaiImageMetaResource> resources, string addnetModel, string addnetWeight, string addnetModule)
-        {
-            var weight = float.Parse(addnetWeight);
-            var re = Regex.Matches(addnetModel, @"(.+)\((.+)\)");
-            if (re.Count > 0)
-            {
-                var groups = re[0].Groups;
-                var name = groups[1].Value;
-                var hash = groups[2].Value;
-                foreach (var resource in resources)
-                {
-                    if (resource.Hash != null && resource.Hash.Equals(hash, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        resource.Name = name;
-                        resource.Weight = weight;
-                    }
-                }
-            }
-            else
-            {
-                foreach (var resource in resources)
-                {
-                    if (resource.Type != null && resource.Type.Equals(addnetModule, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        if (string.IsNullOrWhiteSpace(resource.Name) || resource.Name.Equals(addnetModel, StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            resource.Name = addnetModel;
-                            resource.Weight = weight;
-                        }
-                    }
-                }
-            }
+            else return null;
         }
 
         public async Task<int> GetModelIdByHash(string hash)

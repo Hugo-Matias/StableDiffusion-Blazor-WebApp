@@ -54,27 +54,27 @@
         public string Format { get; set; }
     }
 
-    public class CivitaiBaseModelVersionImageDto
-    {
-        public string Url { get; set; }
-        public string Nsfw { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
-        public string Hash { get; set; }
-        public CivitaiImageMeta? Meta { get; set; }
-        public object MetaObject { get; set; }
+    //public class CivitaiBaseModelVersionImageDto
+    //{
+    //    public string Url { get; set; }
+    //    public string Nsfw { get; set; }
+    //    public int Width { get; set; }
+    //    public int Height { get; set; }
+    //    public string Hash { get; set; }
+    //    public CivitaiImageMeta? Meta { get; set; }
+    //    public object MetaObject { get; set; }
 
-        public CivitaiBaseModelVersionImageDto() { }
-        public CivitaiBaseModelVersionImageDto(CivitaiModelVersionImageDto image)
-        {
-            Url = image.Url;
-            Nsfw = image.Nsfw;
-            Width = image.Width;
-            Height = image.Height;
-            Hash = image.Hash;
-            Meta = image.Meta;
-        }
-    }
+    //    public CivitaiBaseModelVersionImageDto() { }
+    //    public CivitaiBaseModelVersionImageDto(CivitaiModelVersionImageDto image)
+    //    {
+    //        Url = image.Url;
+    //        Nsfw = image.Nsfw;
+    //        Width = image.Width;
+    //        Height = image.Height;
+    //        Hash = image.Hash;
+    //        Meta = image.Meta;
+    //    }
+    //}
 
     public enum CivitaiScanResult { Pending, Success, Danger, Error }
 }

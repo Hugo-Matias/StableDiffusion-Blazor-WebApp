@@ -22,7 +22,6 @@
                     </MudButtonGroup>
                     <MudStack Row>
                         <MudStack Class="mt-3" Style="align-content:flex-start;">
-                            <MudText>@Image.ImageType[0]</MudText>
                             @if (Image.Meta.Prompt != null)
                             {
                                 <MudTextField Label="Prompt" Lines="6" Value="@Image.Meta.Prompt" T="string" ReadOnly />
@@ -31,26 +30,26 @@
                             {
                                 <MudTextField Label="Negative Prompt" Lines="6" Value="@Image.Meta.NegativePrompt" T="string" ReadOnly />
                             }
-@*                             @if (Image.HiresUpscale != null)
+                            @if (Image.Meta.HiresUpscale != null)
                             {
-                                @if (Image.HiresUpscale != null)
+                                @if (Image.Meta.HiresUpscale != null)
                                 {
-                                    <MudTextField Label="Upscaler" Value=@Image.HiresUpscaler T="string" ReadOnly />
+                                    <MudTextField Label="Upscaler" Value=@Image.Meta.HiresUpscaler T="string" ReadOnly />
                                 }
-                                @if (Image.HiresUpscale != null)
+                                @if (Image.Meta.HiresUpscale != null)
                                 {
-                                    <MudTextField Label="Scale" Value=@Image.HiresUpscale T="string" ReadOnly />
+                                    <MudTextField Label="Scale" Value=@Image.Meta.HiresUpscale T="string" ReadOnly />
                                 }
-                                @if (Image.HiresSteps != null && int.Parse(Image.HiresSteps) != Image.Steps)
+                                @if (Image.Meta.HiresSteps != null && int.Parse(Image.Meta.HiresSteps) != Image.Meta.Steps)
                                 {
-                                    <MudTextField Label="Second Pass Steps" Value=@Image.HiresSteps T="string" ReadOnly />
+                                    <MudTextField Label="Second Pass Steps" Value=@Image.Meta.HiresSteps T="string" ReadOnly />
                                 }
-                                @if (Image.DenoisingStrength != null)
+                                @if (Image.Meta.DenoisingStrength != null)
                                 {
-                                    <MudTextField Label="Denoising Strength" Value=@Image.DenoisingStrength T="string" ReadOnly />
+                                    <MudTextField Label="Denoising Strength" Value=@Image.Meta.DenoisingStrength T="string" ReadOnly />
                                 }
                             }
- *@                        </MudStack>
+                        </MudStack>
                         <MudStack Class="mt-3">
                             <MudTextField Label="Resolution" Value=@(Parser.ParseCivitaiImageSize(null, (int)Image.Width, (int)Image.Height)) T="string" ReadOnly />
                             @if (Image.Meta.Model != null)

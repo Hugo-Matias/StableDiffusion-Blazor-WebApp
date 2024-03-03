@@ -32,13 +32,12 @@ namespace BlazorWebApp.Data.Entities
         public string? ENSD { get; set; }
 
         public ResourceImage() { }
-        public ResourceImage(CivitaiModelVersionImageDto image)
+        public ResourceImage(CivitaiImageDto image)
         {
             Width = image.Width;
             Height = image.Height;
             Url = image.Url;
-            Nsfw = image.Nsfw != "None" && image.Nsfw != "Soft";
-            GenerationProcess = image.GenerationProcess;
+            Nsfw = image.Nsfw;
             Hash = image.Hash;
             if (image.Meta != null)
             {
@@ -49,12 +48,12 @@ namespace BlazorWebApp.Data.Entities
                 Sampler = image.Meta.Sampler;
                 Steps = image.Meta.Steps;
                 CfgScale = image.Meta.CfgScale;
-                HiresUpscale = image.Meta.HighResUpscale;
-                HiresUpscaler = image.Meta.HighResUpscaler;
-                HiresSteps = image.Meta.HighResSteps;
+                HiresUpscale = image.Meta.HiresUpscale;
+                HiresUpscaler = image.Meta.HiresUpscaler;
+                HiresSteps = image.Meta.HiresSteps;
                 DenoisingStrength = image.Meta.DenoisingStrength;
                 FaceRestoration = image.Meta.FaceRestoration;
-                ClipSkip = image.Meta.ClipSkip.ToString();
+                if (image.Meta.ClipSkip != null) ClipSkip = image.Meta.ClipSkip.ToString();
                 ENSD = image.Meta.ENSD;
                 // Override resolution with Size property of ImageMeta,
                 // Width and Height properties represent the final image size after Highres.
@@ -69,13 +68,6 @@ namespace BlazorWebApp.Data.Entities
                 }
             }
             Tags = new();
-            if (image.Tags != null)
-            {
-                foreach (var tag in image.Tags)
-                {
-                    Tags.Add(tag.Tag.Name);
-                }
-            }
         }
     }
 }

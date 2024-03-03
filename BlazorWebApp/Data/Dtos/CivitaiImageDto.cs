@@ -48,6 +48,12 @@ namespace BlazorWebApp.Data.Dtos
         public string ModelHash { get; set; }
         public string NegativePrompt { get; set; }
         public string DenoisingStrength { get; set; }
+        public string HiresUpscale { get; set; }
+        public string HiresUpscaler { get; set; }
+        public string HiresSteps { get; set; }
+        public string FaceRestoration { get; set; }
+        [JsonPropertyName("meta/resources")]
+        public List<CivitaiImageMetaResourceDto> Resources { get; set; }
 
         public CivitaiImageMetaDto() { }
         public CivitaiImageMetaDto(JsonElement meta)
@@ -76,6 +82,41 @@ namespace BlazorWebApp.Data.Dtos
                 NegativePrompt = prop.GetString();
             if (meta.TryGetProperty("Denoising strength", out prop))
                 DenoisingStrength = prop.GetString();
+            if (meta.TryGetProperty("Hires upscale", out prop))
+                HiresUpscale = prop.GetString();
+            if (meta.TryGetProperty("Hires upscaler", out prop))
+                HiresUpscaler = prop.GetString();
+            if (meta.TryGetProperty("Hires steps", out prop))
+                HiresSteps = prop.GetString();
+            if (meta.TryGetProperty("Face restoration", out prop))
+                FaceRestoration = prop.GetString();
+            if (meta.TryGetProperty("resources", out prop))
+            {
+                Resources = new();
+                foreach (var r in prop.EnumerateArray())
+                {
+                    var resource = new CivitaiImageMetaResourceDto();
+                    foreach (var e in r.EnumerateObject())
+                    {
+                        if (e.NameEquals("name"))
+                            resource.Name = e.Value.GetString();
+                        if (e.NameEquals("type"))
+                            resource.Type = e.Value.GetString();
+                        if (e.NameEquals("weight"))
+                            resource.Weight = e.Value.GetSingle();
+                        if (e.NameEquals("hash"))
+                            resource.Hash = e.Value.GetString();
+                    }
+                    Resources.Add(resource);
+                }
+            }
         }
+    }
+    public class CivitaiImageMetaResourceDto
+    {
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public float Weight { get; set; }
+        public string Hash { get; set; }
     }
 }
