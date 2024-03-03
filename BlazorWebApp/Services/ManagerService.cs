@@ -130,7 +130,6 @@ namespace BlazorWebApp.Services
             State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
             GetButtonTags();
-            GetCmdFlags();
         }
 
         public void InvokeDownloadComplete() => OnDownloadCompleted?.Invoke();
@@ -475,8 +474,9 @@ namespace BlazorWebApp.Services
             OnSDModelsChange?.Invoke();
         }
 
-        public void GetSDVAEs()
+        public async Task GetSDVAEs()
         {
+            if (CmdFlags == null) await GetCmdFlags();
             var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(CmdFlags.BaseDir, @"models/VAE") : CmdFlags.VaeDir;
             SDVAEs = _io.GetFilesRecursive(vaeDir).Select(f => f.Name).ToList();
         }

@@ -45,7 +45,7 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("ui_settings_file")]
         public string UiSettingsFile { get; set; }
         [JsonPropertyName("styles_file")]
-        public string StylesFile { get; set; }
+        public List<string> StylesFile { get; set; }
 
     }
 }

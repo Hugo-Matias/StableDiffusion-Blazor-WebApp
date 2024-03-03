@@ -137,7 +137,7 @@
         await M.GetSDModels();
         await M.GetSamplers();
         await M.GetStyles();
-        M.GetSDVAEs();
+        await M.GetSDVAEs();
         M.GetSDADetailerModels();
 
         _clipSkip = (int)M.Options.ClipSkip;
