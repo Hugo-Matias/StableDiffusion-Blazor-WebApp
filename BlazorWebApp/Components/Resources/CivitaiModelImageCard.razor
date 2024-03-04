@@ -1,4 +1,5 @@
 ﻿@inject IDialogService DialogService
+@inject CivitaiService Civitai
 <div>
     <MudButton OnClick=ShowImage Class="image-btn">
         <MudImage Src="@Image.Url" ObjectFit="ObjectFit.Cover" Elevation="4" Fluid />
@@ -11,6 +12,7 @@
 
     private async Task ShowImage()
     {
+        if (string.IsNullOrWhiteSpace(Image.Hash)) Image = await Civitai.GetImageById(Image.Id);
         var options = new DialogOptions() { NoHeader = true };
         var param = new DialogParameters();
         param.Add("Image", Image);

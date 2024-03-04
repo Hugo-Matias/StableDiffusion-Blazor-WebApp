@@ -127,6 +127,7 @@
 
     private async Task SaveImage(CivitaiImageDto image, int versionId, string filename = "", bool isPreview = false, bool showSnackbar = true)
     {
+        if (string.IsNullOrWhiteSpace(image.Hash)) image = await Civitai.GetImageById(image.Id);
         string path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
         var imageFilename = string.IsNullOrWhiteSpace(filename) ? Parser.SanitizePath(image.Hash) : filename;
         if (isPreview) path = Path.Combine(path, versionId.ToString());

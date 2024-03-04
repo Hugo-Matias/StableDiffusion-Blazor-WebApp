@@ -160,8 +160,9 @@ namespace BlazorWebApp.Services
                             _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
                             data.Id = imageId;
                         }
-                        var image = await GetImageById(data.Id);
-                        if (image != null) version.Images.Add(image);
+                        version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url });
+                        //var image = await GetImageById(data.Id);
+                        //if (image != null) version.Images.Add(image);
                     }
                 }
                 return content;
