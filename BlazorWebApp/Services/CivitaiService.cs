@@ -139,8 +139,14 @@ namespace BlazorWebApp.Services
             //var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating + favorites + hidden + primaryFileOnly;
             var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating;
             var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();
+            if (response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();
+            else return null;
+        }
+
+        public async Task<CivitaiModelsDto?> GetModelsFromUrl(string url)
+        {
+            var response = await _httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();
             else return null;
         }
 

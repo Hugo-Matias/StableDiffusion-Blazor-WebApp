@@ -3,8 +3,8 @@
 <div>
     <MudButton OnClick=ShowImage Class="image-btn">
         <MudImage Src="@Image.Url" ObjectFit="ObjectFit.Cover" Elevation="4" Fluid />
-    </MudButton>
-</div>
+     </MudButton>
+ </div>
 
  @code {
     [Parameter] public CivitaiImageDto Image { get; set; }
@@ -12,7 +12,17 @@
 
     private async Task ShowImage()
     {
-        if (string.IsNullOrWhiteSpace(Image.Hash)) Image = await Civitai.GetImageById(Image.Id);
+        if (string.IsNullOrWhiteSpace(Image.Hash))
+        {
+            var newImage = await Civitai.GetImageById(Image.Id);
+            if (newImage == null)
+                newImage = new()
+                    {
+                        Id = Image.Id,
+                        Url = Image.Url
+                    };
+            Image = newImage;
+        }
         var options = new DialogOptions() { NoHeader = true };
         var param = new DialogParameters();
         param.Add("Image", Image);

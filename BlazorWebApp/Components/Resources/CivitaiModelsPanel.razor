@@ -8,34 +8,34 @@
         <MudGrid Class="px-4 mb-7 mt-5">
             <MudItem xs="3">
                 <MudTextField @bind-Value=Request.Query Label="Title" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
-            </MudItem>
-            <MudItem xs="2">
-                <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" Clearable />
-            </MudItem>
-            <MudItem xs="2">
-                <MudSlider @bind-Value=Request.Limit Min="M.Settings.Resources.Civitai.Limit.Min" Max="M.Settings.Resources.Civitai.Limit.Max" Step="M.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
-            </MudItem>
-            <MudItem xs="1">
-                <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 Class="page-number" AdornmentIcon="fa-solid fa-rotate-left" Adornment=Adornment.End OnAdornmentClick="() => Request.Page = 1" />
-            </MudItem>
-            <MudItem xs="1">
-                <MudCheckBox @bind-Checked=Request.Favorites>Favorites</MudCheckBox>
-            </MudItem>
-            <MudItem xs="1">
-                <MudCheckBox @bind-Checked=Request.Hidden>Hidden</MudCheckBox>
-            </MudItem>
-            <MudItem xs="2">
-                <MudCheckBox @bind-Checked=Request.IsPrimaryFileOnly>Primary Only</MudCheckBox>
-            </MudItem>
-            <MudItem xs="3">
-                <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-user" Clearable />
-            </MudItem>
-            <MudItem xs="2">
-                <MudTextField @bind-Value=Request.Tag Label="Tag" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-tag" Clearable />
-            </MudItem>
-            <MudItem xs="2">
-                <MudSelect @bind-Value=Request.Type Label="Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
-                    @foreach (CivitaiModelType? modelType in Enum.GetValues(typeof(CivitaiModelType)))
+             </MudItem>
+             <MudItem xs="2">
+                 <MudTextField @bind-Value=Request.Hash Label="Hash" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-hashtag" Clearable />
+             </MudItem>
+             <MudItem xs="2">
+                 <MudSlider @bind-Value=Request.Limit Min="M.Settings.Resources.Civitai.Limit.Min" Max="M.Settings.Resources.Civitai.Limit.Max" Step="M.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
+                </MudItem>
+                <MudItem xs="1">
+                    <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 Class="page-number" AdornmentIcon="fa-solid fa-rotate-left" Adornment=Adornment.End OnAdornmentClick="() => Request.Page = 1" />
+                </MudItem>
+                <MudItem xs="1">
+                    <MudCheckBox @bind-Checked=Request.Favorites>Favorites</MudCheckBox>
+                </MudItem>
+                <MudItem xs="1">
+                    <MudCheckBox @bind-Checked=Request.Hidden>Hidden</MudCheckBox>
+                </MudItem>
+                <MudItem xs="2">
+                    <MudCheckBox @bind-Checked=Request.IsPrimaryFileOnly>Primary Only</MudCheckBox>
+                </MudItem>
+                <MudItem xs="3">
+                    <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-user" Clearable />
+             </MudItem>
+             <MudItem xs="2">
+                 <MudTextField @bind-Value=Request.Tag Label="Tag" Adornment="Adornment.Start" AdornmentIcon="fa-solid fa-tag" Clearable />
+             </MudItem>
+             <MudItem xs="2">
+                 <MudSelect @bind-Value=Request.Type Label="Type" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
+                     @foreach (CivitaiModelType? modelType in Enum.GetValues(typeof(CivitaiModelType)))
                     {
                         <MudSelectItem Value="@modelType">@modelType</MudSelectItem>
                     }
@@ -91,6 +91,13 @@ else if (M.CivitaiModels != null)
             <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="M.CivitaiModels.Metadata.TotalPages" />
         </div>
     }
+
+    <div class="d-flex flex-column align-center pa-5">
+            @if (!string.IsNullOrWhiteSpace(M.CivitaiModels.Metadata.NextPage))
+            {
+                <MudButton Class="w-50" OnClick=@(() => LoadMore(M.CivitaiModels.Metadata.NextPage)) ButtonType="ButtonType.Button" Color="Color.Primary" Variant="Variant.Outlined">Load More</MudButton>
+            }
+    </div>
 }
 
 @code {
@@ -147,6 +154,13 @@ else if (M.CivitaiModels != null)
             Request.Page = selection;
             await Search();
         }
+    }
+
+    private async Task LoadMore(string url)
+    {
+        var content = await Api.GetModelsFromUrl(url);
+        M.CivitaiModels.Metadata = content.Metadata;
+        M.CivitaiModels.Models.AddRange(content.Models);
     }
 
     private async Task<float> CheckModelExists(CivitaiModelsModelDto model)
