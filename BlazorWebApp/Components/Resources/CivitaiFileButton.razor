@@ -11,10 +11,10 @@
             <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">
                 @_buttonText
             </MudButton>
-            @if (Files.Count > 1)
+            @if (ModelVersion.Files.Count > 1)
             {
                 <MudMenu Color="_color" Icon="@Icons.Material.Filled.KeyboardArrowDown" TransformOrigin="Origin.TopRight" AnchorOrigin="Origin.BottomRight">
-                    @foreach (var file in Files)
+                    @foreach (var file in ModelVersion.Files)
                     {
                         <MudMenuItem OnClick=@(() => SelectFile(file)) IconColor=GetVersionButtonColor(file) Icon="@Parser.ParseCivitaiScanIcon(Parser.ParseCivitaiScanResult(file.VirusScanResult))">@($"{file.Type}{(file.Metadata.Format != "Other" ? $" {file.Metadata.Format }" : "")} ({Parser.ParseSizeKb(file.SizeKb)})")</MudMenuItem>
                     }
@@ -25,7 +25,7 @@
         {
             <MudText Typo="Typo.subtitle2">@_selected.PickleScanMessage</MudText>
         }
-        @if (Files.Any(f => f.Type == "Config"))
+        @if (ModelVersion.Files.Any(f => f.Type == "Config"))
         {
             <MudText Typo="Typo.subtitle2" Color="Color.Info">Config file available!</MudText>
         }
@@ -45,6 +45,17 @@
             <MudStack>
                 <MudText Class="meta-label" Typo="Typo.caption">Size</MudText>
                 <MudText Typo="Typo.subtitle2">@Parser.ParseSizeKb(_selected.SizeKb)</MudText>
+            </MudStack>
+        </MudStack>
+        <MudStack Row>
+            <MudStack>
+                <MudText Class="meta-label" Typo="Typo.caption">Base Model</MudText>
+                <MudText Typo="Typo.subtitle2">@($"{ModelVersion.BaseModelType}: {ModelVersion.BaseModel}")</MudText>
+            </MudStack>
+            <MudSpacer />
+            <MudStack>
+                <MudText Class="meta-label" Typo="Typo.caption">NSFW Level</MudText>
+                <MudText Typo="Typo.subtitle2">@ModelVersion.NsfwLevel</MudText>
             </MudStack>
         </MudStack>
         @if (_selected.Hashes != null)
@@ -84,7 +95,7 @@
 
 @code {
     [Parameter] public string Class { get; set; }
-    [Parameter] public List<CivitaiModelVersionFileDto> Files { get; set; }
+    [Parameter] public CivitaiModelVersionDto ModelVersion { get; set; }
     [Parameter] public EventCallback<CivitaiModelVersionFileDto> OnDownload { get; set; }
     private CivitaiModelVersionFileDto _selected;
     private string _icon;
@@ -94,7 +105,7 @@
 
     protected override void OnInitialized()
     {
-        foreach (var file in Files)
+        foreach (var file in ModelVersion.Files)
         {
             if (file.Primary != null && file.Primary == true)
                 SelectFile(file);

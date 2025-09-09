@@ -6,15 +6,16 @@
      </MudButton>
  </div>
 
- @code {
+@code {
     [Parameter] public CivitaiImageDto Image { get; set; }
     [Parameter] public EventCallback OnSaveImage { get; set; }
+    [Parameter] public int ModelVersionId { get; set; }
 
     private async Task ShowImage()
     {
         if (string.IsNullOrWhiteSpace(Image.Hash))
         {
-            var newImage = await Civitai.GetImageById(Image.Id);
+            var newImage = await Civitai.GetImageByModelVersionId(ModelVersionId, Image);
             if (newImage == null)
                 newImage = new()
                     {

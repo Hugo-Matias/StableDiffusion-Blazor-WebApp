@@ -58,6 +58,7 @@ namespace BlazorWebApp.Services
                         Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledVae);
                         Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersImg2Img.Scripts.RegionalPrompter);
                         Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersImg2Img.Scripts.ADetailer);
+                        Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersImg2Img.Scripts.Incantations, ignoreBaseParam: true);
                         scriptName = Parser.CreateScriptParameters("Ultimate SD upscale", ref _parsingParams, _m.ParametersImg2Img.Scripts.UltimateUpscale);
                         scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersImg2Img.Scripts.XYZPlot);
                         var img2imgParams = new Img2ImgParameters(_parsingParams);
@@ -97,6 +98,7 @@ namespace BlazorWebApp.Services
                         Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
                         Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersTxt2Img.Scripts.RegionalPrompter);
                         Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersTxt2Img.Scripts.ADetailer);
+                        Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Incantations, ignoreBaseParam: true);
                         scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersTxt2Img.Scripts.XYZPlot);
                         _txt2imgParams = new Txt2ImgParameters(_parsingParams);
                         _txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
@@ -327,7 +329,7 @@ namespace BlazorWebApp.Services
             {
                 image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
                 image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
-                image.SamplerId = await _db.GetSampler(_parsingParams.SamplerIndex);
+                image.SamplerId = await _db.GetSampler(_parsingParams.SamplerName);
                 image.Steps = (int)_parsingParams.Steps;
                 image.Seed = _m.State.Generation.Seed;
                 image.CfgScale = (float)_parsingParams.CfgScale;
@@ -339,14 +341,20 @@ namespace BlazorWebApp.Services
             return await _db.AddImage(image);
         }
 
-        public async Task DownloadImageAsPng(string url, string path, bool overwrite = true)
+        public async Task<bool> DownloadImageAsPng(string url, string path, bool overwrite = true)
         {
-            if (File.Exists(path) && !overwrite) return;
+            if (File.Exists(path) && !overwrite) return false;
             var httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri(url);
             var response = await httpClient.GetByteArrayAsync(url);
             Directory.CreateDirectory(new FileInfo(path).DirectoryName);
-            await File.WriteAllBytesAsync(path, _magick.ConvertToPng(response));
+            var imageData = _magick.ConvertToPng(response);
+            if (imageData?.Length > 0)
+            {
+                await File.WriteAllBytesAsync(path, imageData);
+                return true;
+            }
+            else return false;
         }
 
         private string GetImagePath(string path, int fileIndex, ModeType mode)

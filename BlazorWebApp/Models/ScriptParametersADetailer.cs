@@ -18,7 +18,7 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("ad_prompt")] public string Prompt { get; set; }
         [JsonPropertyName("ad_negative_prompt")] public string NegativePrompt { get; set; }
         [JsonPropertyName("ad_confidence")] public float Confidence { get; set; }
-        [JsonPropertyName("ad_mask_k_largest")] public int MaskKLargest { get; set; }
+        [JsonPropertyName("ad_mask_k")] public int MaskKLargest { get; set; }
         [JsonPropertyName("ad_mask_min_ratio")] public float MaskMinRatio { get; set; }
         [JsonPropertyName("ad_mask_max_ratio")] public float MaskMaxRatio { get; set; }
         [JsonPropertyName("ad_dilate_erode")] public int DilateErode { get; set; }

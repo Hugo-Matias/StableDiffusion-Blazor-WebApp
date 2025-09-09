@@ -16,30 +16,30 @@
             <MudTabPanel>
                 <TabContent>
                     <MudText Class="d-flex align-items-center" Typo="Typo.caption"><MudIcon Style="font-size: 1rem; margin-right: 0.3rem;" Icon="fa-solid fa-server" Color=GetTabIconColor(version).Result /> @version.Name</MudText>
-                    </TabContent>
-                    <ChildContent>
-                        <MudGrid>
-                            <MudItem xs="8">
-                                <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version, true)">@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
-                                <MudGrid Class="images-container">
-                                    @if (version.Images != null)
+                </TabContent>
+                <ChildContent>
+                    <MudGrid>
+                        <MudItem xs="8">
+                            <MudButton Class="w-100 mb-4" Color="Color.Primary" OnClick="async () => await SaveAllImages(version, true)">@(_isSavingImages ? "Saving..." : "Save All")</MudButton>
+                            <MudGrid Class="images-container">
+                                @if (version.Images != null)
                                 {
                                     foreach (var image in version.Images)
                                     {
-                                        <CivitaiModelImageCard Image=image OnSaveImage=@(async () => await SaveImage(image, version.Id)) />
+                                        <CivitaiModelImageCard Image=image OnSaveImage=@(async () => await SaveImage(image, version.Id)) ModelVersionId=@version.Id />
                                     }
                                 }
                             </MudGrid>
                         </MudItem>
                         <MudItem xs="4">
-                            <CivitaiFileButton Class="mb-4 mt-n4" Files="version.Files" OnDownload="@(async (file) => await DownloadFile(version, file))" />
+                            <CivitaiFileButton Class="mb-4 mt-n4" ModelVersion=@version OnDownload="@(async (file) => await DownloadFile(version, file))" />
                             <MudStack Class="mb-4" Row>
-                             <MudStack>
-                                 <MudText Class="meta-label" Typo="Typo.caption">Created</MudText>
-                                 <MudText Typo="Typo.subtitle2">@(version.CreatedAt.ToString("dd MMMMM yyyy"))</MudText>
-                             </MudStack>
-                             <MudSpacer />
-                             @if (version.UpdatedAt != null)
+                                <MudStack>
+                                    <MudText Class="meta-label" Typo="Typo.caption">Created</MudText>
+                                    <MudText Typo="Typo.subtitle2">@(version.CreatedAt.ToString("dd MMMMM yyyy"))</MudText>
+                                </MudStack>
+                                <MudSpacer />
+                                @if (version.UpdatedAt != null)
                                 {
 
                                     <MudStack>
@@ -127,7 +127,8 @@
 
     private async Task SaveImage(CivitaiImageDto image, int versionId, string filename = "", bool isPreview = false, bool showSnackbar = true)
     {
-        if (string.IsNullOrWhiteSpace(image.Hash)) image = await Civitai.GetImageById(image.Id);
+        // if (string.IsNullOrWhiteSpace(image.Hash)) image = await Civitai.GetImageById(image.Id);
+        image = await Civitai.GetImageByModelVersionId(versionId, image);
         string path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
         var imageFilename = string.IsNullOrWhiteSpace(filename) ? Parser.SanitizePath(image.Hash) : filename;
         if (isPreview) path = Path.Combine(path, versionId.ToString());
@@ -140,7 +141,7 @@
         }
         else
         {
-            await ImageService.DownloadImageAsPng(image.Url, imagePath, overwrite: false);
+            await ImageService.DownloadImageAsPng(image.Url, imagePath, overwrite: true);
             if (!isPreview)
             {
                 var parameters = JsonSerializer.Serialize(image.MetaObject, new JsonSerializerOptions()
@@ -149,7 +150,7 @@
                         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                     });
                 var jsonPath = path + ".json";
-                IO.SaveText(jsonPath, parameters, overwrite: false);
+                IO.SaveText(jsonPath, parameters, overwrite: true);
             }
             if (showSnackbar) Snackbar.Add("Image saved!", Severity.Success);
         }

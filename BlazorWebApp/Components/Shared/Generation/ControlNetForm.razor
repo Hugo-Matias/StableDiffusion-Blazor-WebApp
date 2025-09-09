@@ -2,6 +2,9 @@
 @inject SDAPIService API
 
 <MudGrid>
+    <MudItem xs=12>
+        <MudCheckBox @bind-Checked=Parameters.IsEnabled Label="Enable" />
+    </MudItem>
     <MudItem xs=6>
         <MudSelect T="ControlNetPreprocessor" Value=Parameters.Preprocessor ValueChanged=@(async (v) => await HandlePreprocessorChanged(v)) Label="Preprocessor" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft" Dense>
             @foreach (ControlNetPreprocessor processor in Enum.GetValues(typeof(ControlNetPreprocessor)))
@@ -24,16 +27,16 @@
     </MudItem>
     <MudItem xs=12>
         <MudSlider @bind-Value=Parameters.Weight Min=M.Settings.Scripts.ControlNet.Weight.Min Max=M.Settings.Scripts.ControlNet.Weight.Max Step=M.Settings.Scripts.ControlNet.Weight.Step ValueLabel><small>Weight:</small> @Parameters.Weight</MudSlider>
-    </MudItem>
-    <MudItem xs=12>
-        <MudText Typo="Typo.caption">Guidance</MudText>
-        <MudStack Row>
-            <MudSlider @bind-Value=Parameters.Guidance Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Strength:</small> @Parameters.Guidance</MudSlider>
+        </MudItem>
+        <MudItem xs=12>
+            <MudText Typo="Typo.caption">Guidance</MudText>
+            <MudStack Row>
+            <!-- <MudSlider @bind-Value=Parameters.Guidance Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Strength:</small> @Parameters.Guidance</MudSlider> -->
             <MudSlider @bind-Value=Parameters.GuidanceStart Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Start:</small> @Parameters.GuidanceStart</MudSlider>
-            <MudSlider @bind-Value=Parameters.GuidanceEnd Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>End:</small> @Parameters.GuidanceEnd</MudSlider>
-        </MudStack>
-    </MudItem>
-    @if (Parameters.Preprocessor != ControlNetPreprocessor.none && M.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor] != null)
+                <MudSlider @bind-Value=Parameters.GuidanceEnd Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>End:</small> @Parameters.GuidanceEnd</MudSlider>
+            </MudStack>
+        </MudItem>
+        @if (Parameters.Preprocessor != ControlNetPreprocessor.none && M.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor] != null)
     {
         <MudItem xs=12>
             <MudStack>
@@ -42,22 +45,22 @@
                     @if (_processor.Resolution != null)
                     {
                         <MudSlider @bind-Value=Parameters.ProcessorResolution T="int?" Min=_processor.Resolution.Min Max=_processor.Resolution.Max Step=_processor.Resolution.Step ValueLabel>
-                        <small>@_processor.Resolution.Label:</small> @Parameters.ProcessorResolution
-                    </MudSlider>
+                         <small>@_processor.Resolution.Label:</small> @Parameters.ProcessorResolution
+                        </MudSlider>
                     }
                     @if (_processor.Threshold != null)
                     {
                         @if (_processor.Threshold.A != null)
                         {
                             <MudSlider @bind-Value=Parameters.ThresholdA T="float?" Min=_processor.Threshold.A.Min Max=_processor.Threshold.A.Max Step=_processor.Threshold.A.Step ValueLabel>
-                            <small>@_processor.Threshold.A.Label:</small> @Parameters.ThresholdA
-                        </MudSlider>
+                             <small>@_processor.Threshold.A.Label:</small> @Parameters.ThresholdA
+                            </MudSlider>
                         }
                         @if (_processor.Threshold.B != null)
                         {
                             <MudSlider @bind-Value=Parameters.ThresholdB T="float?" Min=_processor.Threshold.B.Min Max=_processor.Threshold.B.Max Step=_processor.Threshold.B.Step ValueLabel>
-                            <small>@_processor.Threshold.B.Label:</small> @Parameters.ThresholdB
-                        </MudSlider>
+                             <small>@_processor.Threshold.B.Label:</small> @Parameters.ThresholdB
+                            </MudSlider>
                         }
                     }
                 }

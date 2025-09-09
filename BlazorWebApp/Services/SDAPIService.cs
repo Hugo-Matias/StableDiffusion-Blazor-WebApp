@@ -30,6 +30,8 @@ namespace BlazorWebApp.Services
 
         public async Task<List<Sampler>> GetSamplers() => await _httpClient.GetFromJsonAsync<List<Sampler>>(_sdapiRoute + "samplers");
 
+        public async Task<List<Scheduler>> GetSchedulers() => await _httpClient.GetFromJsonAsync<List<Scheduler>>(_sdapiRoute + "schedulers");
+
         public async Task<List<PromptStyle>> GetStyles() => await _httpClient.GetFromJsonAsync<List<PromptStyle>>(_sdapiRoute + "prompt-styles");
 
         public async Task<List<Upscaler>> GetUpscalers() => await _httpClient.GetFromJsonAsync<List<Upscaler>>(_sdapiRoute + "upscalers");
@@ -53,6 +55,12 @@ namespace BlazorWebApp.Services
             return await response.Content.ReadAsStringAsync();
         }
 
+        public async Task<string> PostReloadModel()
+        {
+            using var response = await _httpClient.PostAsync(_sdapiRoute + "reload-checkpoint", null);
+            return await response.Content.ReadAsStringAsync();
+        }
+
         public async Task<string> PostRefreshModels()
         {
             using var response = await _httpClient.PostAsync(_sdapiRoute + "refresh-checkpoints", null);
@@ -70,6 +78,8 @@ namespace BlazorWebApp.Services
 
         public async Task<GeneratedImages> PostImg2Img(Img2ImgParameters param)
         {
+            var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
+            await File.WriteAllTextAsync("payload.json", json);
             using var response = await _httpClient.PostAsJsonAsync(_sdapiRoute + "img2img", param, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<GeneratedImages>();

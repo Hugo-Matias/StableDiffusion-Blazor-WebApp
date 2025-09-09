@@ -77,9 +77,30 @@ namespace BlazorWebApp.Services
         public async Task<CivitaiImageDto?> GetImageById(int id)
         {
             if (id <= 0) return null;
-            var response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?imageId={id}");
+            var response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?nsfw=X&imageId={id}");
             if (response == null || response.Images == null || response.Images.Count == 0) return null;
             var image = response.Images[0];
+            if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
+            if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+            return image;
+        }
+
+        public async Task<CivitaiImageDto> GetImageByModelVersionId(int modelVersionId, CivitaiImageDto imageDto)
+        {
+            if (modelVersionId <= 0) return null;
+            string cursor = "0";
+            CivitaiImagesDto response = new() { Metadata = new() { NextCursor = cursor } };
+            List<CivitaiImageDto> images = new();
+            CivitaiImageDto image = null;
+
+            while (image == null && !string.IsNullOrWhiteSpace(response.Metadata.NextCursor))
+            {
+                response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?browsingLevel={imageDto.BrowsingLevel}&modelVersionId={modelVersionId}&cursor={cursor}");
+                cursor = response?.Metadata.NextCursor;
+                images.AddRange(response?.Images);
+                image = response?.Images.FirstOrDefault(i => i.Id == imageDto.Id);
+            }
+
             if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
             if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
             return image;
@@ -132,12 +153,13 @@ namespace BlazorWebApp.Services
             var sort = req.Sort != null ? $"sort={req.Sort.ToString().Replace("_", " ")}&" : string.Empty;
             var period = req.Period != null ? $"period={req.Period}&" : string.Empty;
             var rating = req.Rating > -1 ? $"rating={req.Rating}&" : string.Empty;
+            var baseModels = req.BaseModels != null && req.BaseModels != "All" ? $"baseModels={req.BaseModels}&" : string.Empty;
             //var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
             //var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;
             //var primaryFileOnly = req.IsPrimaryFileOnly != null ? $"primaryFileOnly={req.IsPrimaryFileOnly.ToString().ToLower()}" : string.Empty;
 
             //var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating + favorites + hidden + primaryFileOnly;
-            var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating;
+            var url = "v1/models?nsfw=true&" + query + limit + page + username + tag + type + sort + period + rating + baseModels;
             var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();
             else return null;
@@ -166,7 +188,7 @@ namespace BlazorWebApp.Services
                             _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
                             data.Id = imageId;
                         }
-                        version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url });
+                        version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url, BrowsingLevel = data.NsfwLevel });
                         //var image = await GetImageById(data.Id);
                         //if (image != null) version.Images.Add(image);
                     }
@@ -223,7 +245,17 @@ namespace BlazorWebApp.Services
 
                 #region Download Preview Image
                 var previewPath = Path.Combine(_configuration["ResourcePreviewsPath"], model.Type, Path.GetFileNameWithoutExtension(file.Name) + ".png");
-                if (!File.Exists(previewPath)) await _img.DownloadImageAsPng(version.Images[0].Url, previewPath);
+                if (!File.Exists(previewPath))
+                {
+                    var index = 0;
+                    bool isImageDownloaded;
+                    do
+                    {
+                        isImageDownloaded = await _img.DownloadImageAsPng(version.Images[index].Url, previewPath);
+                        index++;
+                    }
+                    while (!isImageDownloaded && index < version.Images.Count);
+                }
                 #endregion
 
                 #region Download Resource

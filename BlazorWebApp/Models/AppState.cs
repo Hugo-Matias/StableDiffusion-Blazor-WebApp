@@ -13,6 +13,7 @@ namespace BlazorWebApp.Models
         public AppStatePrompts Prompts { get; set; } = new();
         public AppStateResources Resources { get; set; } = new();
         public AppStateCivitai Civitai { get; set; } = new();
+        public AppStateDanbooru Danbooru { get; set; } = new();
         public AppStateScripts Scripts { get; set; } = new();
 
         public AppState() { }
@@ -164,6 +165,7 @@ namespace BlazorWebApp.Models
         public CivitaiModelType? Type { get; set; } = null;
         public CivitaiSort Sort { get; set; } = CivitaiSort.Highest_Rated;
         public CivitaiPeriod Period { get; set; } = CivitaiPeriod.AllTime;
+        public string BaseModels { get; set; } = "All";
         public int Rating { get; set; } = -1;
         public bool Favorites { get; set; } = false;
         public bool Hidden { get; set; } = false;
@@ -182,6 +184,11 @@ namespace BlazorWebApp.Models
         public CivitaiImageSort Sort { get; set; } = CivitaiImageSort.Newest;
         public CivitaiPeriod Period { get; set; } = CivitaiPeriod.AllTime;
         public int Page { get; set; } = 1;
+    }
+
+    public class AppStateDanbooru
+    {
+        public string SearchString { get; set; } = "order:rank";
     }
 
     public class AppStatePrompts

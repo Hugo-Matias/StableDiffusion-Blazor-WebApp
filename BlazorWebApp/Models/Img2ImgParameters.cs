@@ -26,6 +26,8 @@ namespace BlazorWebApp.Models
             SeedResizeFromH = clone.SeedResizeFromH;
             SeedResizeFromW = clone.SeedResizeFromW;
             BatchSize = clone.BatchSize;
+            SamplerName = clone.SamplerName;
+            Scheduler = clone.Scheduler;
             NIter = clone.NIter;
             Steps = clone.Steps;
             CfgScale = clone.CfgScale;
@@ -40,6 +42,8 @@ namespace BlazorWebApp.Models
             STmin = clone.STmin;
             SNoise = clone.SNoise;
             SamplerIndex = clone.SamplerIndex;
+            RefinerCheckpoint = clone.RefinerCheckpoint;
+            RefinerSwitchAt = clone.RefinerSwitchAt;
             AlwaysOnScripts = clone.AlwaysOnScripts;
             ScriptName = clone.ScriptName;
             ScriptArgs = clone.ScriptArgs;
@@ -57,5 +61,6 @@ namespace BlazorWebApp.Models
         public ScriptParametersRegionalPrompter RegionalPrompter { get; set; }
         public ScriptParametersXYZPlot XYZPlot { get; set; }
         public ScriptParametersADetailer ADetailer { get; set; }
+        public ScriptParametersIncantations Incantations { get; set; }
     }
 }

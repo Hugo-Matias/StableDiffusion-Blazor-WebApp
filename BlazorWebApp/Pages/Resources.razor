@@ -72,7 +72,9 @@
 
         if (file == null)
         {
-            Snackbar.Add($"Couldn't get file info!\nFile: {resourceFile.Filename} | Type: {resource.Type.Name} | SubType: {subtype}", Severity.Error);
+            // Snackbar.Add($"Couldn't get file info!\nFile: {resourceFile.Filename} | Type: {resource.Type.Name} | SubType: {subtype}", Severity.Error);
+            // return;
+            await ShowNotFoundDeleteDialog(resourceFile);
             return;
         }
 
@@ -171,6 +173,25 @@
         }
     }
 
+
+    private async Task ShowNotFoundDeleteDialog(LocalResourceFile file)
+    {
+        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
+        var confirmParam = new DialogParameters();
+        var msg = new MarkupString(@"<span class='lead'>File not found!</br>Do you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>This action is irreversible!</small>");
+        confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
+        confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
+        confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
+        confirmParam.Add(nameof(ConfirmationDialog.Content), msg);
+        options.MaxWidth = MaxWidth.Small;
+        var confirmationDialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", confirmParam, options);
+        var confirmationResult = await confirmationDialog.Result;
+        if (!confirmationResult.Canceled)
+        {
+            await ResourcesService.DeleteResource(await DB.GetResourceById(file.ResourceId), false, string.Empty, string.Empty);
+            Snackbar.Add("Resource deleted successfully!", Severity.Success);
+        }
+    }
     private async void Refresh()
     {
         await InitializeResourceDictionary();

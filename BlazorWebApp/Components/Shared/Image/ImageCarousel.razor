@@ -6,15 +6,22 @@
         @foreach (var image in Images)
         {
             <MudCarouselItem Style=@($"width: 100%; height: 100%; max-width: {MaxWidth}; max-height: {MaxHeight};") Transition="Transition.Fade">
-                <MudImage Src="@(IO.GetImageStaticFile(image.Path))" Style="width: 100%; height: 100%;" ObjectFit="ObjectFit.Contain" Elevation="0" Fluid />
-                <MudStack Class="overlay-icons">
-                    <MudCheckBox T=bool CheckedChanged="HandleFavoriteChanged" Checked="image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
-                    @*                    @if (Images.Count > 1)
+                @if (IsVideo)
                 {
-                <div class="image-number">@(Reference.SelectedIndex + 1)</div>
+                    <video style="max-width: 100%" controls loop muted="true">
+                        <source src=@(image.Path) />
+                    </video>
                 }
-                *@
-                </MudStack>
+                else
+                {
+                    <MudImage Src="@(IO.GetImageStaticFile(image.Path))" Style="width: 100%; height: 100%;" ObjectFit="ObjectFit.Contain" Elevation="0" Fluid />
+                    <MudStack Class="overlay-icons">
+                        @if (image.Id > 0)
+                        {
+                            <MudCheckBox T=bool CheckedChanged="HandleFavoriteChanged" Checked="image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
+                        }
+                    </MudStack>
+                }
             </MudCarouselItem>
         }
     </MudCarousel>
@@ -29,6 +36,7 @@
     [Parameter] public bool IsExpanded { get; set; }
     [Parameter] public EventCallback<int> OnImageChanged { get; set; }
     [Parameter] public TimeSpan AutoCycleTime { get; set; } = TimeSpan.FromSeconds(5);
+    [Parameter] public bool IsVideo { get; set; }
 
     public MudCarousel<Image>? Reference { get; set; } = new();
 

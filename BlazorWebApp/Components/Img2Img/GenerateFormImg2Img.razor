@@ -70,10 +70,7 @@
                 </MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Generation.Shared.Steps.Min Max=M.Settings.Generation.Shared.Steps.Max Step=M.Settings.Generation.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerIndex AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerName AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                     @if (M.Samplers != null)
                     {
                         @foreach (var sampler in M.Samplers)
@@ -84,10 +81,33 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
+                <MudSelect T="string" Label="Scheduler" @bind-Value=Parameters.Scheduler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    @if (M.Schedulers != null)
+                    {
+                        @foreach (var scheduler in M.Schedulers)
+                        {
+                            <MudSelectItem Value=@scheduler.Name >@scheduler.Label</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
             </MudItem>
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Generation.Shared.Denoising.Min Max=M.Settings.Generation.Shared.Denoising.Max Step=M.Settings.Generation.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
+            </MudItem>
+            <MudItem xs="5">
+                <MudNumericField @bind-Value=Parameters.Seed Label="Seed" Min="-1" Max="long.MaxValue" />
+            </MudItem>
+            <MudItem xs="1">
+                <MudButtonGroup Variant="Variant.Text" VerticalAlign>
+                    <MudIconButton OnClick=SetRandomSeed Icon="fa-solid fa-shuffle" ButtonType="ButtonType.Button" Class="icon" />
+                    <MudIconButton OnClick=RestoreSeed Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" />
+                </MudButtonGroup>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Generation.Shared.Steps.Min Max=M.Settings.Generation.Shared.Steps.Max Step=M.Settings.Generation.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
             </MudItem>
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.Width Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
@@ -100,15 +120,6 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
-            </MudItem>
-            <MudItem xs="11">
-                <MudNumericField @bind-Value=Parameters.Seed Label="Seed" Min="-1" Max="long.MaxValue" />
-            </MudItem>
-            <MudItem xs="1">
-                <MudButtonGroup Variant="Variant.Text" VerticalAlign>
-                    <MudIconButton OnClick=SetRandomSeed Icon="fa-solid fa-shuffle" ButtonType="ButtonType.Button" Class="icon" />
-                    <MudIconButton OnClick=RestoreSeed Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" />
-                </MudButtonGroup>
             </MudItem>
             <MudItem xs="12">
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>

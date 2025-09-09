@@ -20,6 +20,10 @@ namespace BlazorWebApp.Models
         public int? SeedResizeFromH { get; set; }
         [JsonPropertyName("seed_resize_from_w")]
         public int? SeedResizeFromW { get; set; }
+        [JsonPropertyName("sampler_name")]
+        public string? SamplerName { get; set; }
+        [JsonPropertyName("scheduler")]
+        public string? Scheduler { get; set; }
         [JsonPropertyName("batch_size")]
         public int? BatchSize { get; set; }
         [JsonPropertyName("n_iter")]
@@ -28,6 +32,8 @@ namespace BlazorWebApp.Models
         public int? Steps { get; set; }
         [JsonPropertyName("cfg_scale")]
         public float? CfgScale { get; set; }
+        [JsonPropertyName("distilled_cfg_scale")]
+        public float? DistilledCfgScale { get; set; }
         [JsonPropertyName("width")]
         public int? Width { get; set; }
         [JsonPropertyName("height")]
@@ -50,6 +56,10 @@ namespace BlazorWebApp.Models
         public float? SNoise { get; set; }
         [JsonPropertyName("sampler_index")]
         public string? SamplerIndex { get; set; }
+        [JsonPropertyName("refiner_checkpoint")]
+        public string? RefinerCheckpoint { get; set; }
+        [JsonPropertyName("refiner_switch_at")]
+        public float? RefinerSwitchAt { get; set; }
         [JsonPropertyName("alwayson_scripts")]
         public Dictionary<string, object>? AlwaysOnScripts { get; set; }
         [JsonPropertyName("script_name")]
@@ -68,10 +78,13 @@ namespace BlazorWebApp.Models
             SubseedStrength = clone.SubseedStrength;
             SeedResizeFromH = clone.SeedResizeFromH;
             SeedResizeFromW = clone.SeedResizeFromW;
+            SamplerName = clone.SamplerName;
+            Scheduler = clone.Scheduler;
             BatchSize = clone.BatchSize;
             NIter = clone.NIter;
             Steps = clone.Steps;
             CfgScale = clone.CfgScale;
+            DistilledCfgScale = clone.DistilledCfgScale;
             Width = clone.Width;
             Height = clone.Height;
             RestoreFaces = clone.RestoreFaces;
@@ -83,6 +96,8 @@ namespace BlazorWebApp.Models
             STmin = clone.STmin;
             SNoise = clone.SNoise;
             SamplerIndex = clone.SamplerIndex;
+            RefinerCheckpoint = clone.RefinerCheckpoint == "None" ? null : clone.RefinerCheckpoint;
+            RefinerSwitchAt = clone.RefinerSwitchAt;
         }
         public SharedParameters(Img2ImgParameters clone)
         {
@@ -95,6 +110,8 @@ namespace BlazorWebApp.Models
             SeedResizeFromH = clone.SeedResizeFromH;
             SeedResizeFromW = clone.SeedResizeFromW;
             BatchSize = clone.BatchSize;
+            SamplerName = clone.SamplerName;
+            Scheduler = clone.Scheduler;
             NIter = clone.NIter;
             Steps = clone.Steps;
             CfgScale = clone.CfgScale;
@@ -109,6 +126,8 @@ namespace BlazorWebApp.Models
             STmin = clone.STmin;
             SNoise = clone.SNoise;
             SamplerIndex = clone.SamplerIndex;
+            RefinerCheckpoint = clone.RefinerCheckpoint == "None" ? null : clone.RefinerCheckpoint;
+            RefinerSwitchAt = clone.RefinerSwitchAt;
         }
     }
 }

@@ -11,7 +11,7 @@ namespace BlazorWebApp.Data.Dtos
 
     public class CivitaiImagesMetadataDto
     {
-        //public string NextCursor { get; set; }
+        public string NextCursor { get; set; }
         public int CurrentPage { get; set; }
         public int PageSize { get; set; }
         public string NextPage { get; set; }

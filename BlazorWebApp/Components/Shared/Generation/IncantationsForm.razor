@@ -1,0 +1,15 @@
+﻿@inject ManagerService M
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">Incantations</MudText>
+<MudGrid>
+    <MudItem xs="6">
+        <MudCheckBox @bind-Checked=Parameters.IsPAGEnabled Label="Perturbed Attention Guidance" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider @bind-Value=Parameters.PAGScale Min=M.Settings.Scripts.Incantations.PAG.Min Max=M.Settings.Scripts.Incantations.PAG.Max Step=M.Settings.Scripts.Incantations.PAG.Step ValueLabel=true><small>Scale: </small> @Parameters.PAGScale</MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersIncantations Parameters { get; set; }
+}

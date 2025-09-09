@@ -10,7 +10,7 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
-        public static string CreateScriptParameters(this string payloadKey, ref SharedParameters parameters, BaseScriptParameters scriptParam)
+        public static string CreateScriptParameters(this string payloadKey, ref SharedParameters parameters, BaseScriptParameters scriptParam, bool ignoreBaseParam = false)
         {
             if (scriptParam != null && scriptParam.IsEnabled)
             {
@@ -21,10 +21,14 @@ namespace BlazorWebApp.Extensions
                 {
                     // Last element at this point is BaseScriptParameters.IsAlwaysOn, since we don't need the value in the payload it's just discarded
                     tempList.RemoveAt(tempList.Count - 1);
-                    // Last element at this point is BaseScriptParameters.IsEnabled, the value we need move to top
-                    var isEnabledValue = tempList[tempList.Count - 1];
-                    tempList.RemoveAt(tempList.Count - 1);
-                    tempList.Insert(0, isEnabledValue);
+                    // Last element at this point is BaseScriptParameters.IsEnabled, the value we need move to top or remove
+                    if (ignoreBaseParam) tempList.RemoveAt(tempList.Count - 1);
+                    else
+                    {
+                        var isEnabledValue = tempList[tempList.Count - 1];
+                        tempList.RemoveAt(tempList.Count - 1);
+                        tempList.Insert(0, isEnabledValue);
+                    }
 
                     //Expand MultiDiffusion box region controls
                     if (payloadKey == "Tiled Diffusion")
@@ -420,6 +424,12 @@ namespace BlazorWebApp.Extensions
                 Outdir.Img2ImgGrid => ModeType.Img2Img,
                 Outdir.Extras => ModeType.Extras,
             };
+        }
+
+        public static string Truncate(this string value, int maxChars)
+        {
+            const string ellipses = "...";
+            return value.Length <= maxChars ? value : value.Substring(0, maxChars - ellipses.Length) + ellipses;
         }
     }
 }

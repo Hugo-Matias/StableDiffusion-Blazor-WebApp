@@ -59,6 +59,7 @@ namespace BlazorWebApp.Services
         public List<string> SDVAEs { get; set; }
         public List<string> SDADetailerModels { get; set; }
         public List<Models.Sampler> Samplers { get; set; }
+        public List<Scheduler> Schedulers { get; set; }
         public List<PromptStyle> Styles { get; set; }
         public List<Upscaler> Upscalers { get; set; }
         public List<Folder>? Folders { get; set; }
@@ -153,6 +154,7 @@ namespace BlazorWebApp.Services
                 SamplerIndex = Settings.Generation.Shared.Sampler,
                 Seed = Settings.Generation.Shared.Seed,
                 CfgScale = Settings.Generation.Shared.CfgScale.Value,
+                DistilledCfgScale = Settings.Generation.Shared.CfgScale.Value,
                 Width = Settings.Generation.Shared.Resolution.Width,
                 Height = Settings.Generation.Shared.Resolution.Height,
                 NIter = Settings.Generation.Shared.Batch.Count.Value,
@@ -183,6 +185,7 @@ namespace BlazorWebApp.Services
                         RegionalPrompter = CreateRegionalPrompter(),
                         XYZPlot = CreateXYZPlot(),
                         ADetailer = CreateADetailer(),
+                        Incantations = CreateIncantationsModel(),
                     }
                 };
 
@@ -206,6 +209,7 @@ namespace BlazorWebApp.Services
                         RegionalPrompter = CreateRegionalPrompter(),
                         XYZPlot = CreateXYZPlot(),
                         ADetailer = CreateADetailer(),
+                        Incantations = CreateIncantationsModel(),
                     }
                 };
 
@@ -236,7 +240,7 @@ namespace BlazorWebApp.Services
                 Model = Settings.Scripts.ControlNet.Model,
                 ResizeMode = Settings.Scripts.ControlNet.ResizeModes[1],
                 Weight = Settings.Scripts.ControlNet.Weight.Value,
-                Guidance = Settings.Scripts.ControlNet.Guidance.Strenght,
+                //Guidance = Settings.Scripts.ControlNet.Guidance.Strenght,
                 GuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
                 GuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
                 IsLowVRam = Settings.Scripts.ControlNet.IsLowVRam,
@@ -466,6 +470,33 @@ namespace BlazorWebApp.Services
             };
         }
 
+        public ScriptParametersIncantations CreateIncantationsModel()
+        {
+            return new ScriptParametersIncantations()
+            {
+                IsAlwaysOn = true,
+                IsEnabled = Settings.Scripts.Incantations.IsEnabled,
+                IsPAGEnabled = Settings.Scripts.Incantations.PAG.IsPAGEnabled,
+                PAGScale = Settings.Scripts.Incantations.PAG.Value,
+                IsMultiConceptEnabled = Settings.Scripts.Incantations.MultiConcept.IsMultiConceptEnabled,
+                UNK1 = Settings.Scripts.Incantations.MultiConcept.UNK1,
+                CorrectionSize = Settings.Scripts.Incantations.MultiConcept.CorrectionSize.Value,
+                SuppresionAlpha = Settings.Scripts.Incantations.MultiConcept.SuppresionAlpha.Value,
+                CbSScoreThreshold = Settings.Scripts.Incantations.MultiConcept.CbSScoreThreshold.Value,
+                CbSCorrectionStrength = Settings.Scripts.Incantations.MultiConcept.CbSCorrectionStrength.Value,
+                UNK2 = Settings.Scripts.Incantations.MultiConcept.UNK2,
+                EMAFactor = Settings.Scripts.Incantations.MultiConcept.EMAFactor.Value,
+                StepEnd = Settings.Scripts.Incantations.MultiConcept.StepEnd.Value,
+                IsSeekEnabled = Settings.Scripts.Incantations.Seek.IsSeekEnabled,
+                AppendGenCaption = Settings.Scripts.Incantations.Seek.AppendGenCaption,
+                DeepbooruInterrogate = Settings.Scripts.Incantations.Seek.DeepbooruInterrogate,
+                Delimiter = Settings.Scripts.Incantations.Seek.Delimiter,
+                WordReplacement = Settings.Scripts.Incantations.Seek.WordReplacement,
+                Gamma = Settings.Scripts.Incantations.Seek.Gamma.Value,
+                UNK3 = Settings.Scripts.Incantations.Seek.UNK3
+            };
+        }
+
         public async Task GetSDModels(bool refresh = false)
         {
             if (refresh) await _api.PostRefreshModels();
@@ -495,6 +526,7 @@ namespace BlazorWebApp.Services
             var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
             _progress.Add(progressBar);
             await _api.PostOptions(new() { SDModelCheckpoint = modelTitle });
+            //await _api.PostReloadModel();
             _progress.Remove(progressBar.Id);
             State.Generation.SDModel = modelTitle;
             OnSDModelsChange?.Invoke();
@@ -573,6 +605,8 @@ namespace BlazorWebApp.Services
         }
 
         public async Task GetSamplers() => Samplers = await _api.GetSamplers();
+
+        public async Task GetSchedulers() => Schedulers = await _api.GetSchedulers();
 
         public string GetDynamicPromptsVersion()
         {
@@ -667,7 +701,7 @@ namespace BlazorWebApp.Services
                 switch (tag)
                 {
                     case "[sampler]":
-                        return ParametersTxt2Img.SamplerIndex;
+                        return ParametersTxt2Img.SamplerName;
                     case "[seed]":
                         return State.Generation.Seed.ToString();
                     case "[steps]":
@@ -696,9 +730,9 @@ namespace BlazorWebApp.Services
             return string.Empty;
         }
 
-        private string GetModelHash(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Hash;
+        private string GetModelHash(string modelName) => SDModels.FirstOrDefault(m => m.Title.Contains(modelName))?.Hash;
 
-        private string GetModelName(string modelName) => SDModels.FirstOrDefault(m => m.Title == modelName)?.Model_name;
+        private string GetModelName(string modelName) => SDModels.FirstOrDefault(m => m.Title.Contains(modelName))?.Model_name;
 
         public async Task GetResourceTypeDirectories()
         {

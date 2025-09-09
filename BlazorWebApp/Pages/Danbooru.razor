@@ -1,0 +1,105 @@
+﻿@page "/danbooru"
+@using System.Text.RegularExpressions
+@inject DanbooruService Api
+@inject ManagerService M
+@inject IDialogService DialogService
+
+<MudGrid Class="mb-3 px-4" Justify="Justify.Center">
+    <MudItem xs="10">
+        <MudTextField Label="Search" @bind-Value="M.State.Danbooru.SearchString" OnAdornmentClick=@(() => SearchDrawer.Visible = true) T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable />
+     </MudItem>
+     <MudItem xs="2">
+         <MudButton Class="w-100 h-100" OnClick=Search ButtonType="ButtonType.Button" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
+     </MudItem>
+     <MudItem xs="12">
+         <MudTextField Label="Black List Tags" ValueChanged=HandleBlacklistTagsChanged Value=M.Settings.Resources.Danbooru.BlacklistTags T="string" Lines="2" />
+     </MudItem>
+
+     @if (Posts != null)
+    {
+        foreach (var post in Posts)
+        {
+            <DanbooruImageCard Post=post OnSendTags=@(isImg2Img => WriteDanbooruTags(post, isImg2Img)) OnShowImage=@(() => ShowImageViewerDialog(post)) />
+        }
+    }
+    <MudItem xs="12" Class="d-flex justify-content-center">
+        <MudButton Class="w-50" OnClick=LoadMore ButtonType="ButtonType.Button" Color="Color.Primary" Variant="Variant.Outlined">Load More</MudButton>
+    </MudItem>
+</MudGrid>
+
+<DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch=WriteSavedSearch OnAddCurrent=AddCurrentSearchToSaved/>
+
+@code {
+    [Parameter] public EventCallback<(string, bool)> OnSendTags { get; set; }
+    [Parameter] public DanbooruSearchesDrawer? SearchDrawer { get; set; }
+
+    public List<DanbooruPost> Posts { get; set; }
+    public int CurrentPage { get; set; }
+
+    private string _searchedString;
+    private string _loraRegex = @"<([^>]+)>";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // https:hijiribe.donmai.us/wiki_pages/help%3Acheatsheet
+        await Search();
+    }
+
+    private async Task Search()
+    {
+        _searchedString = M.State.Danbooru.SearchString;
+        CurrentPage = 1;
+        Posts = await Api.GetPosts(M.State.Danbooru.SearchString, CurrentPage);
+        await M.SaveState();
+    }
+
+    private async Task LoadMore()
+    {
+        CurrentPage++;
+        var data = await Api.GetPosts(_searchedString, CurrentPage);
+        if (data != null) Posts.AddRange(data);
+    }
+
+    private void WriteSavedSearch(string value) => M.State.Danbooru.SearchString = value;
+
+    private void AddCurrentSearchToSaved()
+    {
+        M.Settings.Resources.Danbooru.SavedSearches.Add(M.State.Danbooru.SearchString);
+        M.SaveSettings();
+    }
+
+    private void WriteDanbooruTags(DanbooruPost post, bool isImg2Img)
+    {
+        var blacklistTags = M.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
+        var tags = post.TagsArtist;
+        tags.AddRange(post.TagsCharacter);
+        tags.AddRange(post.TagsGeneral);
+        var tagsString = string.Join(", ", tags.Where(v => !blacklistTags.Contains(v)));
+        var extractedLoras = string.Empty;
+        if (isImg2Img)
+        {
+            extractedLoras = string.Join(" ", Regex.Matches(M.ParametersImg2Img.Prompt!, _loraRegex));
+            M.ParametersImg2Img.Prompt = extractedLoras + " " + tagsString;
+        }
+        else
+        {
+            extractedLoras = string.Join(" ", Regex.Matches(M.ParametersTxt2Img.Prompt!, _loraRegex));
+            M.ParametersTxt2Img.Prompt = extractedLoras + " " + tagsString;
+        }
+    }
+
+    private void ShowImageViewerDialog(DanbooruPost post)
+    {
+        var param = new DialogParameters();
+        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
+        param.Add("Images", new List<Image>() { new Image(post) });
+        param.Add("IsVideo", post.IsVideo);
+        DialogService.Show<ImageViewerDialog>("", param, options);
+    }
+
+    private void HandleBlacklistTagsChanged(string value)
+    {
+        M.Settings.Resources.Danbooru.BlacklistTags = value;
+        M.SaveSettings();
+    }
+}

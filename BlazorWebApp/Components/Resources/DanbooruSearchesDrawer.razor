@@ -1,0 +1,30 @@
+﻿@inject ManagerService M
+
+<div style="display:@(Visible ? "block" : "none");">
+    <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="calc(100vh - 45px)" Width="45vw" Fixed>
+        <MudDrawerHeader Class="d-flex flex-row align-items-center" Style="background-color: #776be7">
+            <MudText Typo="Typo.h6" Color="Color.Dark">Saved Searches</MudText>
+            <MudSpacer />
+            <MudIconButton OnClick="() => Visible = false" Icon="@Icons.Material.Filled.Close" Color="Color.Dark" />
+        </MudDrawerHeader>
+        <MudButton OnClick=@(() => OnAddCurrent.InvokeAsync())>Add Current</MudButton>
+        <MudPaper Class="pa-2 ma-4" Elevation="4">
+            <MudStack>
+                @foreach (var search in M.Settings.Resources.Danbooru.SavedSearches)
+                {
+                    <MudButton OnClick=@(() => OnWriteSearch.InvokeAsync(search))>
+                        @(search.Truncate(30))
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+        <MudExpansionPanels Class="mx-4" MultiExpansion Elevation="4">
+         </MudExpansionPanels>
+     </MudDrawer>
+ </div>
+
+ @code {
+    [Parameter] public EventCallback OnAddCurrent { get; set; }
+    [Parameter] public EventCallback<string> OnWriteSearch { get; set; }
+    [Parameter] public bool Visible { get; set; }
+}

@@ -1,0 +1,70 @@
+﻿<div>
+    <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content=@(SetBadgeRating()) Color=@(SetBadgeColor()) Overlap />
+     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
+         <MudCardMedia Image=@(Post.IsVideo ? Post.PreviewUrl : Post.SampleUrl) />
+         <MudCardContent Class="pb-n4" Style="align-items:center; justify-content:center;">
+             <MudStack Row=true>
+                 <MudText Typo="Typo.caption">
+                     <MudIcon Icon="fa-solid fa-star info-icon" />
+                     @Post.Score
+                </MudText>
+                <MudText Typo="Typo.caption">
+                    <MudIcon Icon="fa-solid fa-left-right info-icon" />
+                    @($"{Post.Width}x{Post.Height}")
+                </MudText>
+                <MudText Typo="Typo.caption">
+                    <MudIcon Icon=@("fa-regular " + (Post.IsVideo ? "fa-file-video" : "fa-file-image") + " info-icon") />
+                    @Post.Extension
+                </MudText>
+            </MudStack>
+        </MudCardContent>
+        <MudCardActions Style="align-items: center; justify-content: center;">
+            <MudTooltip Color="Color.Dark" Style="max-width:50vw">
+                <ChildContent>
+                    <MudStack Row=true>
+                        <MudIconButton OnClick=@(() => SendTags(false)) Icon="fa-solid fa-file-lines" Color="Color.Info" />
+                        <MudIconButton OnClick=@(() => SendTags(true)) Icon="fa-solid fa-file-image" Color="Color.Primary" />
+                        <MudIconButton OnClick=ShowImage Icon="fa-solid fa-expand" Color="Color.Warning" />
+                    </MudStack>
+                </ChildContent>
+                <TooltipContent>
+                    <MudText Typo="Typo.caption">
+                        @(string.Join(", ", Post.Tags))
+                    </MudText>
+                </TooltipContent>
+            </MudTooltip>
+        </MudCardActions>
+    </MudCard>
+</div>
+
+@code {
+    [Parameter] public DanbooruPost Post { get; set; }
+    [Parameter] public EventCallback<bool> OnSendTags { get; set; }
+    [Parameter] public EventCallback OnShowImage { get; set; }
+
+    private async Task SendTags(bool isImg2Img) => await OnSendTags.InvokeAsync(isImg2Img);
+    private async Task ShowImage() => await OnShowImage.InvokeAsync();
+
+    private string SetBadgeRating()
+    {
+        return Post.Rating switch
+        {
+            "g" => "General",
+            "s" => "Sensitive",
+            "q" => "Questionable",
+            "e" => "Explicit",
+            _ => "None"
+        };
+    }
+
+    private Color SetBadgeColor()
+    {
+        return Post.Rating switch
+        {
+            "s" => Color.Success,
+            "q" => Color.Warning,
+            "e" => Color.Error,
+            _ => Color.Primary
+        };
+    }
+}

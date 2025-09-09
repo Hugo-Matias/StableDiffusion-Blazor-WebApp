@@ -20,6 +20,7 @@ builder.Services.AddMudServices(opt =>
 
 builder.Services.AddHttpClient<SDAPIService>();
 builder.Services.AddHttpClient<CivitaiService>();
+builder.Services.AddHttpClient<DanbooruService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
 
 builder.Services.AddSingleton<ManagerService>();

@@ -9,7 +9,7 @@ namespace BlazorWebApp.Services
         public MagickService(ManagerService m)
         {
             MagickNET.Initialize();
-            _m  = m;
+            _m = m;
         }
 
         public async Task<string> SaveGrid(List<string> data, string path)
@@ -49,8 +49,15 @@ namespace BlazorWebApp.Services
 
         public byte[] ConvertToPng(byte[] data)
         {
-            using var image = new MagickImage(data);
-            return image.ToByteArray(MagickFormat.Png);
+            try
+            {
+                using var image = new MagickImage(data);
+                return image.ToByteArray(MagickFormat.Png);
+            }
+            catch (Exception)
+            {
+                return Array.Empty<byte>();
+            }
         }
 
         #region Examples

@@ -41,6 +41,7 @@
         public ResolutionSettingsModel Resolution { get; set; } = new();
         public BatchSettingsModel Batch { get; set; } = new();
         public CfgScaleSettingsModel CfgScale { get; set; } = new();
+        public DistilledCfgSettingsModel DistilledCfg { get; set; } = new();
         public DenoisingSettingsModel Denoising { get; set; } = new();
     }
 
@@ -89,6 +90,14 @@
         public float Min { get; set; } = 1.0f;
         public float Max { get; set; } = 30.0f;
         public float Step { get; set; } = 0.5f;
+    }
+
+    public class DistilledCfgSettingsModel
+    {
+        public float Value { get; set; } = 2.5f;
+        public float Min { get; set; } = 1.0f;
+        public float Max { get; set; } = 10.0f;
+        public float Step { get; set; } = 0.1f;
     }
 
     public class DenoisingSettingsModel
@@ -221,6 +230,7 @@
         public RegionalPrompterSettingsModel RegionalPrompter { get; set; } = new();
         public XYZPlotSettingsModel XYZPlot { get; set; } = new();
         public ADetailerSettingsModel ADetailer { get; set; } = new();
+        public IncantationsSettingsModel Incantations { get; set; } = new();
     }
 
     #region ControlNet
@@ -231,7 +241,7 @@
         public string Model { get; set; } = "None";
         public bool IsLowVRam { get; set; } = false;
         public List<string> ControlModes { get; set; } = new() { "Balanced", "My prompt is more important", "ControlNet is more important" };
-        public List<string> ResizeModes { get; set; } = new() { "Just Resize", "Inner Fit (Scale to Fit)", "Outer Fit (Shrink to Fit)" };
+        public List<string> ResizeModes { get; set; } = new() { "Just Resize", "Crop and Resize", "Resize and Fill" };
         public ControlNetWeightSettingsModel Weight { get; set; } = new();
         public ControlNetGuidanceSettingsModel Guidance { get; set; } = new();
         public Dictionary<ControlNetPreprocessor, ControlNetProcessorSettingsModel?> PreprocessorSettings { get; set; } = new()
@@ -969,6 +979,95 @@
         }
     }
     #endregion
+
+    #region Incantations
+    public class IncantationsSettingsModel
+    {
+        public bool IsEnabled { get; set; } = false;
+        public IncantationsPAGSettings PAG { get; set; } = new();
+        public IncantationsMultiConceptSettings MultiConcept { get; set; } = new();
+        public IncantationsSeekSettings Seek { get; set; } = new();
+        public class IncantationsPAGSettings
+        {
+            public bool IsPAGEnabled { get; set; } = false;
+            public float Value { get; set; } = 1f;
+            public float Min { get; set; } = 0f;
+            public float Max { get; set; } = 20f;
+            public float Step { get; set; } = 0.5f;
+        }
+        public class IncantationsMultiConceptSettings
+        {
+            public bool IsMultiConceptEnabled { get; set; } = false;
+            public bool UNK1 { get; set; } = false;
+            public string UNK2 { get; set; } = string.Empty;
+            public IncantationsMCCorrectionSizeSettings CorrectionSize { get; set; } = new();
+            public IncantationsMCCbSScoreThresholdSettings CbSScoreThreshold { get; set; } = new();
+            public IncantationsMCCbSCorrectionStrengthSettings CbSCorrectionStrength { get; set; } = new();
+            public IncantationsMCSuppresionAlphaSettings SuppresionAlpha { get; set; } = new();
+            public IncantationsMCEMAFactor EMAFactor { get; set; } = new();
+            public IncantationsMCStepEnd StepEnd { get; set; } = new();
+            public class IncantationsMCCorrectionSizeSettings
+            {
+                public int Value { get; set; } = 3;
+                public int Min { get; set; } = 0;
+                public int Max { get; set; } = 100;
+                public float Step { get; set; } = 1;
+            }
+            public class IncantationsMCCbSScoreThresholdSettings
+            {
+                public float Value { get; set; } = 0f;
+                public float Min { get; set; } = 0f;
+                public float Max { get; set; } = 1f;
+                public float Step { get; set; } = 0.001f;
+            }
+            public class IncantationsMCCbSCorrectionStrengthSettings
+            {
+                public float Value { get; set; } = 0.1f;
+                public float Min { get; set; } = 0f;
+                public float Max { get; set; } = 0.99f;
+                public float Step { get; set; } = 0.01f;
+            }
+            public class IncantationsMCSuppresionAlphaSettings
+            {
+                public float Value { get; set; } = 0.1f;
+                public float Min { get; set; } = 0f;
+                public float Max { get; set; } = 1f;
+                public float Step { get; set; } = 0.01f;
+            }
+            public class IncantationsMCEMAFactor
+            {
+                public float Value { get; set; } = 0f;
+                public float Min { get; set; } = 0f;
+                public float Max { get; set; } = 4f;
+                public float Step { get; set; } = 0.01f;
+            }
+            public class IncantationsMCStepEnd
+            {
+                public int Value { get; set; } = 25;
+                public int Min { get; set; } = 0;
+                public int Max { get; set; } = 150;
+                public int Step { get; set; } = 1;
+            }
+        }
+        public class IncantationsSeekSettings
+        {
+            public bool IsSeekEnabled { get; set; } = false;
+            public bool AppendGenCaption { get; set; } = false;
+            public bool DeepbooruInterrogate { get; set; } = false;
+            public string Delimiter { get; set; } = "BREAK";
+            public string WordReplacement { get; set; } = "-";
+            public int UNK3 { get; set; } = 10;
+            public IncantationsSeekGamma Gamma { get; set; } = new();
+            public class IncantationsSeekGamma
+            {
+                public float Value { get; set; } = 0.2f;
+                public float Min { get; set; } = -1f;
+                public float Max { get; set; } = 1f;
+                public float Step { get; set; } = 0.001f;
+            }
+        }
+    }
+    #endregion
     #endregion
 
     #region Upscale
@@ -1028,6 +1127,7 @@
         public ResourceSearchSettingsModel Search { get; set; } = new();
         public ResourceWeightSettingsModel Weight { get; set; } = new();
         public CivitaiSettingsModel Civitai { get; set; } = new();
+        public DanbooruSettingsModel Danbooru { get; set; } = new();
         public bool OrderByDescending { get; set; } = false;
         public List<string> OrderByOptions { get; set; } = new()
         {
@@ -1067,6 +1167,7 @@
         public string ImageMissingFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(125deg)";
         public string ImageExtraFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(25deg)";
         public string ImageOkFilter { get; set; } = "grayscale(70%) brightness(70%)";
+        public List<string> BaseModels { get; set; } = new() { "All", "ODOR", "SD 1.4", "SD 1.5", "SD 1.5 LCM", "SD 1.5 Hyper", "SD 2.0", "SD 2.0 768", "SD 2.1", "SD 2.1 768", "SD 2.1 Unclip", "SDXL 0.9", "SDXL 1.0", "SD 3", "Pony", "Flux.1 S", "Flux.1 D", "AuraFlow", "SDXL 1.0 LCM", "SDXL Distilled", "SDXL Turbo", "SDXL Lightning", "SDXL Hyper", "Stable Cascade", "SVD", "SVD XT", "Playground v2", "PixArt a", "PixArt E", "Hunyuan 1", "Lumina", "Kolors", "Other" };
         public CivitaiLimitSettingsModel Limit { get; set; } = new();
     }
 
@@ -1076,6 +1177,12 @@
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 200;
         public int Step { get; set; } = 8;
+    }
+
+    public class DanbooruSettingsModel
+    {
+        public string BlacklistTags { get; set; } = "censored, bar censor, blur censor, mosaic censoring, character censor, novelty censor, convenient censoring, signature, artist name, twitter username, virtual youtuber";
+        public List<string> SavedSearches { get; set; } = new() { "order:rank", "order:random score:>700 filetype:png,jpg" };
     }
     #endregion
 

@@ -34,6 +34,8 @@ namespace BlazorWebApp.Models
         public bool? GridOnlyIfMultiple { get; set; }
         [JsonPropertyName("sd_vae")]
         public string? SDVae { get; set; }
+        //[JsonPropertyName("forge_additional_modules")]
+        //public string? AdditionalModules { get; set; }
         [JsonPropertyName("CLIP_stop_at_last_layers")]
         public float? ClipSkip { get; set; }
         [JsonPropertyName("eta_noise_seed_delta")]

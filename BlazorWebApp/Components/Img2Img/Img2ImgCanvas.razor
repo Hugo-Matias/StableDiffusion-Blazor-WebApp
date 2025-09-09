@@ -3,6 +3,13 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
+<style>
+    div {
+        --w: @_canvasMaxWidth;
+        --h: @_canvasMaxHeight;
+    }
+</style>
+
 <img id="img-work" src="" @ref="_imgWork" />
 
 <div id="canvas-container" @ref="_container">
@@ -35,6 +42,8 @@
     private bool _isDrawing;
     private long _canvasWidth;
     private long _canvasHeight;
+    private string _canvasMaxWidth = "1000px";
+    private string _canvasMaxHeight = "1000px";
     private long _containerClientWidth;
     private long _containerClientHeight;
     private double _canvasMultiplierX = 1;
@@ -204,6 +213,17 @@
     {
         _canvasWidth = width;
         _canvasHeight = height;
+
+        if (width >= height)
+        {
+            _canvasMaxWidth = "33vw";
+            _canvasMaxHeight = "45vh";
+        }
+        else
+        {
+            _canvasMaxHeight = "65vh";
+            _canvasMaxWidth = "50vw";
+        }
         _containerClientWidth = containerClientWidth;
         _containerClientHeight = containerClientHeight;
         _canvasMultiplierX = multX;

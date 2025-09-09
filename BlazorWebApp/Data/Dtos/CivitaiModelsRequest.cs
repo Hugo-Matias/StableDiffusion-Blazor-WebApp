@@ -12,9 +12,10 @@
         public bool? Hidden { get; set; }
         public bool? IsPrimaryFileOnly { get; set; }
         public string? Hash { get; set; }
+        public string? BaseModels { get; set; }
     }
 
-    public enum CivitaiModelType { All, Checkpoint, LORA, LoCon, TextualInversion, Hypernetwork, AestheticGradient, Controlnet, MotionModule, VAE, Poses, Wildcards, Workflows, Other }
+    public enum CivitaiModelType { All, Checkpoint, LORA, LoCon, DoRA, TextualInversion, Hypernetwork, AestheticGradient, Controlnet, Upscaler, MotionModule, VAE, Poses, Wildcards, Workflows, Other }
     public enum CivitaiSort { Highest_Rated, Most_Downloaded, Most_Liked, Most_Buzz, Most_Discussed, Most_Collected, Most_Images, Newest, Oldest }
     public enum CivitaiPeriod { AllTime, Year, Month, Week, Day }
 }

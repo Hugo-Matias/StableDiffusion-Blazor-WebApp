@@ -22,6 +22,7 @@ namespace BlazorWebApp.Data.Dtos
         public JsonElement MetaObject { get; set; }
         public string Username { get; set; }
         public byte[]? ImageType { get; set; }
+        public int BrowsingLevel { get; set; }
     }
 
     public class CivitaiImageStatsDto

@@ -1,4 +1,6 @@
-﻿namespace BlazorWebApp.Data.Entities
+﻿using BlazorWebApp.Data.Dtos;
+
+namespace BlazorWebApp.Data.Entities
 {
     public class Image
     {
@@ -32,6 +34,15 @@
             Width = resourceImage.Width != null ? (int)resourceImage.Width : 0;
             Height = resourceImage.Height != null ? (int)resourceImage.Height : 0;
             DenoisingStrength = resourceImage.DenoisingStrength != null ? double.Parse(resourceImage.DenoisingStrength) : null;
+        }
+
+        public Image(DanbooruPost post)
+        {
+            Id = -1;
+            Width = post.Width;
+            Height = post.Height;
+            Prompt = string.Join(", ", post.Tags);
+            Path = post.Url;
         }
     }
 }

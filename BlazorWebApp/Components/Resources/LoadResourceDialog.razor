@@ -59,7 +59,7 @@
                 {
                     <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=M.State.Resources.Weight Min="M.Settings.Resources.Weight.Min" Max="M.Settings.Resources.Weight.Max" Step="M.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @M.State.Resources.Weight</MudSlider>
                 }
-                @if (!(Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase) && File.TriggerWords.Count == 0))
+                @if (!(Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase) && (File.TriggerWords == null || File.TriggerWords.Count == 0)))
                 {
                     <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row=true>
                         <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>

@@ -54,17 +54,20 @@
                         <MudSelect Value="M.State.Generation.Vae" T="string" ValueChanged="HandleVaeSelected" Label="VAE" AdornmentIcon="fa-solid fa-wand-sparkles" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
                             <MudSelectItem Value=@("None")>None</MudSelectItem>
                             <MudSelectItem Value=@("Automatic")>Automatic</MudSelectItem>
-                            @foreach (var file in M.SDVAEs)
+                            @if (M.SDVAEs != null)
                             {
-                                <MudSelectItem Value="@file">@file</MudSelectItem>
+                                @foreach (var file in M.SDVAEs)
+                                {
+                                    <MudSelectItem Value="@file">@file</MudSelectItem>
+                                }
                             }
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="4">
                         <MudSlider Value="_clipSkip" T="int" ValueChanged=HandleClipSkipChanged Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks=true ValueLabel=true><small>Clip Skip:</small> @M.Options.ClipSkip </MudSlider>
-                        </MudItem>
-                    </MudGrid>
-                </MudItem>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
         }
         <MudItem xs="10">
             <MudSelect @bind-Value=_selectedState T="State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
@@ -134,15 +137,20 @@
         if (!M.IsWebuiUp) return;
 
         await M.GetOptions();
+        await M.GetSDVAEs();
         await M.GetSDModels();
         await M.GetSamplers();
+        await M.GetSchedulers();
         await M.GetStyles();
-        await M.GetSDVAEs();
         M.GetSDADetailerModels();
 
         _clipSkip = (int)M.Options.ClipSkip;
 
-        M.State.Generation.SDModel = M.Options.SDModelCheckpoint;
+        // Cater for bug in SD api where the sd_model_checkpoint value is null on the GET options data, this would always load the first model in the list as fallback
+        // This will ensure that the model saved previously in the state is forcefully loaded
+        if (!string.IsNullOrWhiteSpace(M.Options.SDModelCheckpoint)) M.State.Generation.SDModel = M.Options.SDModelCheckpoint;
+        else if(M.SDModels.Any(m => m.Title == M.State.Generation.SDModel)) await HandleModelSelected(M.State.Generation.SDModel);
+
         M.State.Generation.Vae = M.Options.SDVae;
 
         _isWebuiInitialized = true;
@@ -207,6 +215,10 @@
     private async void Refresh()
     {
         if (!_isWebuiInitialized) await InitializeWebui();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex) { return; }
     }
 }

@@ -24,7 +24,7 @@
         </TitleContent>
         <DialogContent>
             <MudStack AlignItems="AlignItems.Center" Class="carousel-container">
-                <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="95vw" MaxHeight="90vh" OnImageChanged="UpdateImageInfo" />
+                <ImageCarousel @ref=Carousel AutoCycle=_autoCycle Images="Images" MaxWidth="95vw" MaxHeight="90vh" OnImageChanged="UpdateImageInfo" IsVideo=IsVideo />
                 <MudStack Class=@($"image-info {(_showInfo ? "show" : "")}")>
                     <MudText Style="text-align: center;" Typo="Typo.caption" Color="MudBlazor.Color.Success">@_prompt</MudText>
                     <MudText Typo="Typo.caption" Color="MudBlazor.Color.Error">@_negativePrompt</MudText>
@@ -38,6 +38,7 @@
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
     [Parameter] public List<Image> Images { get; set; }
     [Parameter] public string Color { get; set; } = "dark";
+    [Parameter] public bool IsVideo { get; set; }
 
     public ImageCarousel? Carousel { get; set; } = new();
 

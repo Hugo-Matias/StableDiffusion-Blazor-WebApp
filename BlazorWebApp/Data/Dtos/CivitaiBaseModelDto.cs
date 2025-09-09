@@ -24,6 +24,9 @@
         public DateTime CreatedAt { get; set; }
         public string DownloadUrl { get; set; }
         public List<string> TrainedWords { get; set; }
+        public string BaseModel { get; set; }
+        public string BaseModelType { get; set; }
+        public int NsfwLevel { get; set; }
     }
 
     public class CivitaiBaseModelVersionFileDto
