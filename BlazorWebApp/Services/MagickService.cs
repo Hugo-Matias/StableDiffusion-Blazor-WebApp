@@ -35,7 +35,7 @@ namespace BlazorWebApp.Services
             if (!resize || image.Width < _m.Settings.Generation.Img2Img.InputResolution.Width && image.Height < _m.Settings.Generation.Img2Img.InputResolution.Height)
                 return image.ToBase64(image.Format);
 
-            var sizeGeom = new MagickGeometry(_m.Settings.Generation.Img2Img.InputResolution.Width, _m.Settings.Generation.Img2Img.InputResolution.Height) { IgnoreAspectRatio = false };
+            var sizeGeom = new MagickGeometry((uint)_m.Settings.Generation.Img2Img.InputResolution.Width, (uint)_m.Settings.Generation.Img2Img.InputResolution.Height) { IgnoreAspectRatio = false };
 
             image.Resize(sizeGeom);
             return image.ToBase64(image.Format);
@@ -44,7 +44,7 @@ namespace BlazorWebApp.Services
         public (int, int) GetImageSize(string data)
         {
             using var image = new MagickImage(Convert.FromBase64String(data));
-            return (image.Width, image.Height);
+            return ((int)image.Width, (int)image.Height);
         }
 
         public byte[] ConvertToPng(byte[] data)
@@ -67,7 +67,7 @@ namespace BlazorWebApp.Services
         {
             using (var image = new MagickImage(data))
             {
-                var sizeGeom = new MagickGeometry(size);
+                var sizeGeom = new MagickGeometry((uint)size);
 
                 // This will resize the image to a fixed size without maintaining the aspect ratio.
                 // Normally an image will be resized to fit inside the specified size.
