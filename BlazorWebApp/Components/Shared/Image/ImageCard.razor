@@ -20,6 +20,9 @@
     {
         <MudCheckBox Class=@($"select-checkbox {(_isSelected ? "selected" : "")}") Checked=_isSelected T="bool" CheckedChanged="HandleSelected" Color="Color.Success" UnCheckedColor="Color.Default" />
     }
+    <div class="d-flex flex-column align-center">
+        <MudRating Class="rating" SelectedValue="Image.Score" SelectedValueChanged="SetScore" MaxValue="3" />
+    </div>
     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
         <MudCardMedia Image=@IO.GetImageStaticFile(Image.Path) />
         <MudCardContent Class="pb-n4">
@@ -105,6 +108,13 @@
     private async Task ToggleFavorite(bool isChecked)
     {
         Image.Favorite = !Image.Favorite;
+        await DB.UpdateImage(Image);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetScore(int score)
+    {
+        Image.Score = score;
         await DB.UpdateImage(Image);
         await InvokeAsync(StateHasChanged);
     }

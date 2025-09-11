@@ -38,9 +38,9 @@
             }
         </MudStack>
     </MudPaper>
-    <MudContainer MaxWidth="MaxWidth.Medium">
+    <MudContainer MaxWidth="MaxWidth.Large">
         <MudGrid>
-            <MudItem xs="4">
+            <MudItem xs="3">
                 <MudStack>
                     <MudTextField T="string" @bind-Value="M.State.Gallery.Prompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true />
                     <MudTextField Class="mt-n4" T="string" @bind-Value="M.State.Gallery.NegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true />
@@ -58,20 +58,16 @@
                     <MudCheckBox Class="mt-2" Label="@(M.State.Gallery.OrderDescending ? "Desc" : "Asc")" CheckedIcon="@Icons.Material.Filled.ArrowDownward" UncheckedIcon="@Icons.Material.Filled.ArrowUpward" @bind-Checked="M.State.Gallery.OrderDescending" />
                 </MudStack>
             </MudItem>
-            <MudItem xs="4" Class="d-flex flex-column align-items-center">
+            <MudItem xs="3" Class="d-flex flex-column align-items-center">
                 <MudText Typo="Typo.overline">Modes:</MudText>
                 <MudChipSet SelectedChipsChanged="HandleModeSelection" Class="" Filter MultiSelection>
-                    <MudChip Text="Txt2Img" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeTxt2Img" />
-                    <MudChip Text="Img2Img" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeImg2Img" />
+                    <MudChip Text="T2I" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeTxt2Img" />
+                    <MudChip Text="I2I" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeImg2Img" />
                     <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeUpscale" />
                 </MudChipSet>
                 <MudDateRangePicker Label="Date Range" @bind-DateRange=M.State.Gallery.DateRange AutoClose=true />
             </MudItem>
-            <MudItem xs=1>
-                <MudButtonGroup Class="mt-5" Variant="Variant.Outlined" Color="Color.Primary" OverrideStyles=false>
-                    <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Warning">Filter</MudButton>
-                    <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Error">Reset</MudButton>
-                </MudButtonGroup>
+            <MudItem xs=2 Class="d-flex flex-column align-items-center">
                 <MudStack Row=true>
                     <MudTooltip Text="Use Date Range to filter images" Placement=Placement.Start Delay="1600" Duration="600">
                         <MudCheckBox Class="mt-4" CheckedIcon="fa-solid fa-calendar" Color="Color.Success" UncheckedIcon="fa-regular fa-calendar" UnCheckedColor="Color.Default" @bind-Checked=M.State.Gallery.FilterByDateRange />
@@ -82,7 +78,19 @@
                     <MudTooltip Text="Show favorites only" Placement=Placement.Start Delay="1600" Duration="600">
                         <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" UnCheckedColor="Color.Default" />
                     </MudTooltip>
+                    <MudTooltip Text="Use Score to filter images" Placement=Placement.Start Delay="1600" Duration="600">
+                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsScore" Color="Color.Warning" CheckedIcon="fa-solid fa-star" UncheckedIcon="fa-regular fa-star" UnCheckedColor="Color.Default" />
+                    </MudTooltip>
                 </MudStack>
+                <MudStack Row="true" Justify="Justify.Center">
+                    <MudRating @bind-SelectedValue="M.State.Gallery.Score" Disabled="!M.State.Gallery.IsScore" MaxValue="3" Size="Size.Large" />
+                </MudStack>
+            </MudItem>
+            <MudItem xs=1 Class="d-flex flex-column align-items-end justify-content-center">
+                <MudButtonGroup Class="mt-5" Variant="Variant.Filled" Color="Color.Primary" OverrideStyles=false VerticalAlign=true>
+                    <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Warning">Filter</MudButton>
+                    <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Error">Reset</MudButton>
+                </MudButtonGroup>
             </MudItem>
         </MudGrid>
     </MudContainer>
@@ -110,8 +118,8 @@
 
     private void HandleModeSelection(MudChip[] chips)
     {
-        M.State.Gallery.IsModeTxt2Img = chips.Any(c => c.Text == "Txt2Img");
-        M.State.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "Img2Img");
+        M.State.Gallery.IsModeTxt2Img = chips.Any(c => c.Text == "T2I");
+        M.State.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "I2I");
         M.State.Gallery.IsModeUpscale = chips.Any(c => c.Text == "Upscale");
     }
 

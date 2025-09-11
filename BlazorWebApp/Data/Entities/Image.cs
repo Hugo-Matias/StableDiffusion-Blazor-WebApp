@@ -21,6 +21,7 @@ namespace BlazorWebApp.Data.Entities
         public int ModeId { get; set; }
         public double? DenoisingStrength { get; set; }
         public DateTime DateCreated { get; set; } = DateTime.Now;
+        public int Score { get; set; } = 0;
 
         public Image() { }
         public Image(ResourceImage resourceImage)

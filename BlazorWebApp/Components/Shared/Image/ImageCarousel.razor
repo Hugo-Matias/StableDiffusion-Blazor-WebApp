@@ -18,7 +18,14 @@
                     <MudStack Class="overlay-icons">
                         @if (image.Id > 0)
                         {
-                            <MudCheckBox T=bool CheckedChanged="HandleFavoriteChanged" Checked="image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
+                            <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Row="true">
+                                <MudCheckBox T=bool CheckedChanged="HandleFavoriteChanged" Checked="image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
+                                @if (Images.Count > 1)
+                                {
+                                    <MudButton OnClick="FavoriteAll" ButtonType="ButtonType.Button" StartIcon="fa-solid fa-heart-circle-check" IconColor="Color.Error" Color="Color.Error">All</MudButton>
+                                }
+                            </MudStack>
+                            <MudRating Class="mt-n4" SelectedValue="image.Score" SelectedValueChanged="HandleScoreChanged" MaxValue="3" />
                         }
                     </MudStack>
                 }
@@ -51,6 +58,27 @@
     private async Task HandleFavoriteChanged(bool isfavorite)
     {
         Images[Reference.SelectedIndex].Favorite = isfavorite;
+        await UpdateImage();
+    }
+
+    private async Task FavoriteAll()
+    {
+        foreach (var image in Images)
+        {
+            image.Favorite = true;
+            await DB.UpdateImage(image);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleScoreChanged(int score)
+    {
+        Images[Reference.SelectedIndex].Score = score;
+        await UpdateImage();
+    }
+
+    private async Task UpdateImage()
+    {
         await DB.UpdateImage(Images[Reference.SelectedIndex]);
         await InvokeAsync(StateHasChanged);
     }

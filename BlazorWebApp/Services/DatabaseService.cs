@@ -305,6 +305,9 @@ namespace BlazorWebApp.Services
             if (state.IsModeUpscale) modes.Add(3);
             query = query.Where(i => modes.Contains(i.ModeId));
 
+            if (state.IsScore)
+                query = query.Where(i => i.Score == state.Score);
+
             switch (state.OrderBy)
             {
                 case GalleryOrderBy.Date:

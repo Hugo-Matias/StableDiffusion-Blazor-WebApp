@@ -116,6 +116,8 @@ namespace BlazorWebApp.Models
         public DateRange DateRange { get; set; } = new(DateTime.Now.Date, DateTime.Now.Date);
         public bool FilterByDateRange { get; set; } = false;
         public bool IsSelectedOnly { get; set; } = false;
+        public int Score { get; set; } = 0;
+        public bool IsScore { get; set; } = false;
     }
 
     public enum GalleryOrderBy { Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising, Random }
