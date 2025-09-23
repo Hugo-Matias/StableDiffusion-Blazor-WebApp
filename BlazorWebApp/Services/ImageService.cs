@@ -15,6 +15,7 @@ namespace BlazorWebApp.Services
         private readonly MagickService _magick;
         private readonly DatabaseService _db;
         private readonly ProgressService _progress;
+        private readonly RouterService _router;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
         private Txt2ImgParameters _txt2imgParams;
@@ -23,7 +24,7 @@ namespace BlazorWebApp.Services
 
         public event Action OnChange;
 
-        public ImageService(SDAPIService api, IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress)
+        public ImageService(SDAPIService api, IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router)
         {
             _api = api;
             _io = io;
@@ -31,13 +32,14 @@ namespace BlazorWebApp.Services
             _magick = magick;
             _db = db;
             _progress = progress;
+            _router = router;
         }
 
         public async Task<ImagesDto> GetImages(ModeType mode)
         {
             _m.IsConverging = true;
-            var progress = new BaseProgress() { BarColor = MudBlazor.Color.Primary };
-            StartProgressChecker(progress);
+            //var progress = new BaseProgress() { BarColor = MudBlazor.Color.Primary };
+            //StartProgressChecker(progress);
 
             //_m.GridImage = string.Empty;
 
@@ -50,28 +52,8 @@ namespace BlazorWebApp.Services
                 switch (mode)
                 {
                     case ModeType.Img2Img:
-                        _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersImg2Img), _m.State.Generation.Styles);
-                        CreateControlNetUnits(ref _parsingParams, _m.ParametersImg2Img.Scripts.ControlNet);
-                        Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersImg2Img.Scripts.Cutoff);
-                        Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersImg2Img.Scripts.DynamicPrompts);
-                        Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion);
-                        Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledVae);
-                        Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersImg2Img.Scripts.RegionalPrompter);
-                        Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersImg2Img.Scripts.ADetailer);
-                        Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersImg2Img.Scripts.Incantations, ignoreBaseParam: true);
-                        scriptName = Parser.CreateScriptParameters("Ultimate SD upscale", ref _parsingParams, _m.ParametersImg2Img.Scripts.UltimateUpscale);
-                        scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersImg2Img.Scripts.XYZPlot);
-                        var img2imgParams = new Img2ImgParameters(_parsingParams);
-                        img2imgParams.InitImages = _m.ParametersImg2Img.InitImages;
-                        img2imgParams.Mask = _m.ParametersImg2Img.Mask;
-                        img2imgParams.MaskBlur = _m.ParametersImg2Img.MaskBlur;
-                        img2imgParams.ResizeMode = _m.ParametersImg2Img.ResizeMode;
-                        img2imgParams.InpaintingFill = _m.ParametersImg2Img.InpaintingFill;
-                        img2imgParams.InpaintFullRes = _m.ParametersImg2Img.InpaintFullRes;
-                        img2imgParams.InpaintFullResPadding = _m.ParametersImg2Img.InpaintFullResPadding;
-                        img2imgParams.InpaintingMaskInvert = _m.ParametersImg2Img.InpaintingMaskInvert;
-                        SetSourceImageSize();
-                        _m.Images = await _api.PostImg2Img(img2imgParams);
+                        var img2imgParams = BuildImg2ImgParameters(ref scriptName);
+                        _m.Images = await _router.PostImg2Img(img2imgParams);
                         _m.SerializeInfo();
                         break;
 
@@ -90,30 +72,8 @@ namespace BlazorWebApp.Services
                         break;
 
                     default:
-                        _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersTxt2Img), _m.State.Generation.Styles);
-                        CreateControlNetUnits(ref _parsingParams, _m.ParametersTxt2Img.Scripts.ControlNet);
-                        Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Cutoff);
-                        Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersTxt2Img.Scripts.DynamicPrompts);
-                        Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion);
-                        Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
-                        Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersTxt2Img.Scripts.RegionalPrompter);
-                        Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersTxt2Img.Scripts.ADetailer);
-                        Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Incantations, ignoreBaseParam: true);
-                        scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersTxt2Img.Scripts.XYZPlot);
-                        _txt2imgParams = new Txt2ImgParameters(_parsingParams);
-                        _txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
-                        if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
-                        {
-                            _txt2imgParams.FirstphaseWidth = _m.ParametersTxt2Img.Width;
-                            _txt2imgParams.FirstphaseHeight = _m.ParametersTxt2Img.Height;
-                            _txt2imgParams.HRUpscaler = _m.ParametersTxt2Img.HRUpscaler;
-                            _txt2imgParams.HRScale = _m.ParametersTxt2Img.HRScale;
-                            _txt2imgParams.HRWidth = _m.ParametersTxt2Img.HRWidth;
-                            _txt2imgParams.HRHeight = _m.ParametersTxt2Img.HRHeight;
-                            _txt2imgParams.HRSecondPassSteps = _m.ParametersTxt2Img.HRSecondPassSteps;
-                            _txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
-                        }
-                        _m.Images = await _api.PostTxt2Img(_txt2imgParams);
+                        BuildTxt2ImgParameters(ref scriptName);
+                        _m.Images = await _router.PostTxt2Img(_txt2imgParams);
                         _m.SerializeInfo();
                         break;
                 }
@@ -123,7 +83,7 @@ namespace BlazorWebApp.Services
                     throw new Exception("Generation Canceled!");
                 }
 
-                if ((bool)_m.Options.SamplesSave)
+                if (_m.IsComfyUIUp || (bool)_m.Options.SamplesSave)
                 {
                     switch (mode)
                     {
@@ -144,12 +104,65 @@ namespace BlazorWebApp.Services
                 await Console.Out.WriteLineAsync(e.ToString());
             }
 
-            StopProgressChecker(progress.Id);
+            //StopProgressChecker(progress.Id);
             _m.IsConverging = false;
             _m.State.Generation.IsInterrupted = false;
 
             NotifyStateChanged();
             return images;
+        }
+
+        private void BuildTxt2ImgParameters(ref string scriptName)
+        {
+            _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersTxt2Img), _m.State.Generation.Styles);
+            CreateControlNetUnits(ref _parsingParams, _m.ParametersTxt2Img.Scripts.ControlNet);
+            Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Cutoff);
+            Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersTxt2Img.Scripts.DynamicPrompts);
+            Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion);
+            Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
+            Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersTxt2Img.Scripts.RegionalPrompter);
+            Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersTxt2Img.Scripts.ADetailer);
+            Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Incantations, ignoreBaseParam: true);
+            scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersTxt2Img.Scripts.XYZPlot);
+            _txt2imgParams = new Txt2ImgParameters(_parsingParams);
+            _txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
+            if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
+            {
+                _txt2imgParams.FirstphaseWidth = _m.ParametersTxt2Img.Width;
+                _txt2imgParams.FirstphaseHeight = _m.ParametersTxt2Img.Height;
+                _txt2imgParams.HRUpscaler = _m.ParametersTxt2Img.HRUpscaler;
+                _txt2imgParams.HRScale = _m.ParametersTxt2Img.HRScale;
+                _txt2imgParams.HRWidth = _m.ParametersTxt2Img.HRWidth;
+                _txt2imgParams.HRHeight = _m.ParametersTxt2Img.HRHeight;
+                _txt2imgParams.HRSecondPassSteps = _m.ParametersTxt2Img.HRSecondPassSteps;
+                _txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
+            }
+        }
+
+        private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)
+        {
+            _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersImg2Img), _m.State.Generation.Styles);
+            CreateControlNetUnits(ref _parsingParams, _m.ParametersImg2Img.Scripts.ControlNet);
+            Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersImg2Img.Scripts.Cutoff);
+            Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersImg2Img.Scripts.DynamicPrompts);
+            Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion);
+            Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledVae);
+            Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersImg2Img.Scripts.RegionalPrompter);
+            Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersImg2Img.Scripts.ADetailer);
+            Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersImg2Img.Scripts.Incantations, ignoreBaseParam: true);
+            scriptName = Parser.CreateScriptParameters("Ultimate SD upscale", ref _parsingParams, _m.ParametersImg2Img.Scripts.UltimateUpscale);
+            scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersImg2Img.Scripts.XYZPlot);
+            var img2imgParams = new Img2ImgParameters(_parsingParams);
+            img2imgParams.InitImages = _m.ParametersImg2Img.InitImages;
+            img2imgParams.Mask = _m.ParametersImg2Img.Mask;
+            img2imgParams.MaskBlur = _m.ParametersImg2Img.MaskBlur;
+            img2imgParams.ResizeMode = _m.ParametersImg2Img.ResizeMode;
+            img2imgParams.InpaintingFill = _m.ParametersImg2Img.InpaintingFill;
+            img2imgParams.InpaintFullRes = _m.ParametersImg2Img.InpaintFullRes;
+            img2imgParams.InpaintFullResPadding = _m.ParametersImg2Img.InpaintFullResPadding;
+            img2imgParams.InpaintingMaskInvert = _m.ParametersImg2Img.InpaintingMaskInvert;
+            SetSourceImageSize();
+            return img2imgParams;
         }
 
         private void CreateControlNetUnits(ref SharedParameters parameters, List<ScriptParametersControlNet> units)

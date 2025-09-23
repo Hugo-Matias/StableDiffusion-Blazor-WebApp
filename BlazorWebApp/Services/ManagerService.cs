@@ -13,15 +13,17 @@ namespace BlazorWebApp.Services
     public class ManagerService
     {
         private readonly string _settingsFile = "BlazorDiffusion.json";
-        private readonly SDAPIService _api;
+        private readonly SDAPIService _sdapi;
         private readonly DatabaseService _db;
         private readonly IOService _io;
         private readonly ProgressService _progress;
         private readonly IConfiguration _configuration;
+        private readonly IServiceProvider _serviceProvider;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
         private string _canvasImageData;
+        private bool _isComfyUIUp;
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -35,6 +37,7 @@ namespace BlazorWebApp.Services
         public event Action OnProgressChanged;
         public event Action OnDownloadCompleted;
         public event Action OnWebuiStateChanged;
+        public event Action OnComfyUIStateChanged;
         public event Action OnAppStateChanged;
         public event Action OnTxt2ImgParametersChanged;
         public event Action OnImg2ImgParametersChanged;
@@ -111,14 +114,24 @@ namespace BlazorWebApp.Services
                 OnWebuiStateChanged?.Invoke();
             }
         }
-
-        public ManagerService(SDAPIService api, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration)
+        public bool IsComfyUIUp
         {
-            _api = api;
+            get => _isComfyUIUp;
+            set
+            {
+                _isComfyUIUp = value;
+                OnComfyUIStateChanged?.Invoke();
+            }
+        }
+
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, IServiceProvider serviceProvider)
+        {
+            _sdapi = sdapi;
             _db = db;
             _io = io;
             _progress = progress;
             _configuration = configuration;
+            _serviceProvider = serviceProvider;
             LoadSettings();
             LoadState();
 
@@ -499,18 +512,26 @@ namespace BlazorWebApp.Services
 
         public async Task GetSDModels(bool refresh = false)
         {
-            if (refresh) await _api.PostRefreshModels();
-            SDModels = await _api.GetSDModels();
-            SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
+            if (IsWebuiUp)
+            {
+                if (refresh) await _sdapi.PostRefreshModels();
+                SDModels = await _sdapi.GetSDModels();
+                SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
+            }
+            else if (IsComfyUIUp) SDModels = await _serviceProvider.UseComfyAPI(c => c.GetModels());
 
             OnSDModelsChange?.Invoke();
         }
 
         public async Task GetSDVAEs()
         {
-            if (CmdFlags == null) await GetCmdFlags();
-            var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(CmdFlags.BaseDir, @"models/VAE") : CmdFlags.VaeDir;
-            SDVAEs = _io.GetFilesRecursive(vaeDir).Select(f => f.Name).ToList();
+            if (IsWebuiUp)
+            {
+                if (CmdFlags == null) await GetCmdFlags();
+                var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(CmdFlags.BaseDir, @"models/VAE") : CmdFlags.VaeDir;
+                SDVAEs = _io.GetFilesRecursive(vaeDir).Select(f => f.Name).ToList();
+            }
+            else if (IsComfyUIUp) SDVAEs = await _serviceProvider.UseComfyAPI(c => c.GetVAEs());
         }
 
         public void GetSDADetailerModels()
@@ -521,13 +542,16 @@ namespace BlazorWebApp.Services
 
         public async Task SetSDModel(string modelTitle)
         {
-            State.Generation.SDModel = "Loading...";
-            OnSDModelsChange?.Invoke();
-            var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
-            _progress.Add(progressBar);
-            await _api.PostOptions(new() { SDModelCheckpoint = modelTitle });
-            //await _api.PostReloadModel();
-            _progress.Remove(progressBar.Id);
+            if (IsWebuiUp)
+            {
+                State.Generation.SDModel = "Loading...";
+                OnSDModelsChange?.Invoke();
+                var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
+                _progress.Add(progressBar);
+                await _sdapi.PostOptions(new() { SDModelCheckpoint = modelTitle });
+                //await _api.PostReloadModel();
+                _progress.Remove(progressBar.Id);
+            }
             State.Generation.SDModel = modelTitle;
             OnSDModelsChange?.Invoke();
             SaveState();
@@ -536,18 +560,18 @@ namespace BlazorWebApp.Services
         public async Task SetVae(string vae)
         {
             State.Generation.Vae = vae;
-            await _api.PostOptions(new() { SDVae = vae });
+            await _sdapi.PostOptions(new() { SDVae = vae });
         }
 
         public async Task GetOptions()
         {
-            Options = await _api.GetOptions();
+            Options = await _sdapi.GetOptions();
             OnOptionsChange?.Invoke();
         }
 
         public async Task GetStyles()
         {
-            Styles = await _api.GetStyles();
+            Styles = IsWebuiUp ? await _sdapi.GetStyles() : new();
             var promptResources = await _db.GetPrompts();
             foreach (var prompt in promptResources)
             {
@@ -558,7 +582,8 @@ namespace BlazorWebApp.Services
 
         public async Task GetUpscalers()
         {
-            Upscalers = await _api.GetUpscalers();
+            if (IsWebuiUp) Upscalers = await _sdapi.GetUpscalers();
+            else Upscalers = new();
         }
 
         public async Task GetFolders()
@@ -604,12 +629,23 @@ namespace BlazorWebApp.Services
             OnProjectChangeTask?.Invoke();
         }
 
-        public async Task GetSamplers() => Samplers = await _api.GetSamplers();
+        public async Task GetSamplers()
+        {
+            if (IsWebuiUp) Samplers = await _sdapi.GetSamplers();
+            else if (IsComfyUIUp) Samplers = await _serviceProvider.UseComfyAPI(c => c.GetSamplers());
+            else Samplers = new();
+        }
 
-        public async Task GetSchedulers() => Schedulers = await _api.GetSchedulers();
+        public async Task GetSchedulers()
+        {
+            if (IsWebuiUp) Schedulers = await _sdapi.GetSchedulers();
+            else if (IsComfyUIUp) Schedulers = await _serviceProvider.UseComfyAPI(c => c.GetSchedulers());
+            else Schedulers = new();
+        }
 
         public string GetDynamicPromptsVersion()
         {
+            if (!IsWebuiUp) return string.Empty;
             var scriptFile = Path.Combine(CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "sd_dynamic_prompts", "__init__.py");
             foreach (var line in _io.LoadTextLines(scriptFile))
             {
@@ -772,14 +808,14 @@ namespace BlazorWebApp.Services
 
         public async Task<string> PostOptions(Options options)
         {
-            var response = await _api.PostOptions(options);
+            var response = await _sdapi.PostOptions(options);
             await GetOptions();
             return response;
         }
 
         public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
 
-        public async Task GetCmdFlags() => CmdFlags = await _api.GetCmdFlags();
+        public async Task GetCmdFlags() => CmdFlags = await _sdapi.GetCmdFlags();
 
         public void AddSelectedImage(int id)
         {

@@ -19,6 +19,16 @@ builder.Services.AddMudServices(opt =>
 });
 
 builder.Services.AddHttpClient<SDAPIService>();
+builder.Services.AddHttpClient("ComfyUI", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:8188");
+    client.Timeout = TimeSpan.FromHours(1);
+});
+builder.Services.AddHttpClient("ComfyUIAPI", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:3000");
+    client.Timeout = TimeSpan.FromHours(1);
+});
 builder.Services.AddHttpClient<CivitaiService>();
 builder.Services.AddHttpClient<DanbooruService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
@@ -30,9 +40,11 @@ builder.Services.AddSingleton<IOService>();
 builder.Services.AddSingleton<CsvService>();
 builder.Services.AddSingleton<ProgressService>();
 builder.Services.AddSingleton<ResourcesService>();
+builder.Services.AddSingleton<RouterService>();
 //builder.Services.AddSingleton<DynamicPromptsService>();
 
 builder.Services.AddScoped<JavascriptService>();
+builder.Services.AddScoped<ComfyUIService>();
 
 builder.Services.AddTransient<MagickService>();
 

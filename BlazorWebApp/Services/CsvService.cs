@@ -8,16 +8,26 @@ namespace BlazorWebApp.Services
     public class CsvService
     {
         private readonly ManagerService _m;
+        private readonly IConfiguration _configuration;
         private readonly Schema _schema;
         private readonly CsvDataReaderOptions _options;
         private readonly string _path;
 
-        public CsvService(ManagerService m)
+        public CsvService(ManagerService m, IConfiguration configuration)
         {
-            _m  = m;
+            _m = m;
+            _configuration = configuration;
             _schema = Schema.Parse("Name,Color,Uses,Aliases");
             _options = new CsvDataReaderOptions() { Schema = new CsvSchema(_schema), HasHeaders = false };
-            _path = Path.Join(_m.CmdFlags.BaseDir, @"extensions\a1111-sd-webui-tagcomplete\tags\danbooru.csv");
+            if (_m.IsWebuiUp)
+            {
+                _path = Path.Join(_m.CmdFlags.BaseDir, @"extensions\a1111-sd-webui-tagcomplete\tags\danbooru.csv");
+            }
+            else if (_m.IsComfyUIUp)
+            {
+                _path = Path.Join(_configuration["ComfyUIPath"], "danbooru.csv");
+            }
+            else { _path = ""; }
         }
 
         public IEnumerable<CsvTag> SearchTags(string searchText)

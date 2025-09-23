@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject ManagerService M
-@inject SDAPIService API
+@inject SDAPIService SDAPI
+@inject ComfyUIService CAPI
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
@@ -40,7 +41,11 @@
         M.OnSDModelsChange += Refresh;
     }
 
-    protected async override Task OnInitializedAsync() => M.IsWebuiUp = await API.CheckWebuiState();
+    protected async override Task OnInitializedAsync() 
+    { 
+        M.IsWebuiUp = await SDAPI.CheckWebuiState();
+        M.IsComfyUIUp = await CAPI.GetHealth();
+    }
 
     private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
 
