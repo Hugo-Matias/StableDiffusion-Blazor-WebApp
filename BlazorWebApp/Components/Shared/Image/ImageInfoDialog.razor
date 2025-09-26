@@ -143,7 +143,7 @@
     private async Task WriteImageInfo()
     {
         var mode = await DB.GetMode(Image.ModeId);
-        var lines = Parser.ParseInfoStrings(IO.LoadText(Image.InfoPath), mode);
+        var lines = Parser.ParseInfoStrings(IO.LoadText(Image.InfoPath), mode, M.IsComfyUIUp);
         if (!string.IsNullOrWhiteSpace(lines["prompt"]) && !Image.Prompt.Equals(lines["prompt"], StringComparison.InvariantCultureIgnoreCase)) Image.Prompt = lines["prompt"];
         if (!string.IsNullOrWhiteSpace(lines["negative"]) && !Image.NegativePrompt.Equals(lines["negative"], StringComparison.InvariantCultureIgnoreCase)) Image.NegativePrompt = lines["negative"];
         Image.Info = lines["param"];

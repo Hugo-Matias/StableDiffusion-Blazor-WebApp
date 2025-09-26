@@ -565,7 +565,8 @@ namespace BlazorWebApp.Services
 
         public async Task GetOptions()
         {
-            Options = await _sdapi.GetOptions();
+            if (IsWebuiUp) Options = await _sdapi.GetOptions();
+            if (IsComfyUIUp) Options = await _serviceProvider.UseComfyAPI(c => c.GenerateOptions());
             OnOptionsChange?.Invoke();
         }
 
@@ -710,7 +711,7 @@ namespace BlazorWebApp.Services
                     return string.Empty;
             }
 
-            return Path.Combine(path, ConvertPathPattern(Options.FilenamePatternDir, Parser.ModeTypeFromOutdir((Outdir)outdir)));
+            return Path.Combine(path, ConvertPathPattern(Options.FilenamePatternDir, Parser.ModeTypeFromOutdir((Outdir)outdir))).Replace('/', Path.DirectorySeparatorChar);
         }
 
         public string ConvertPathPattern(string pattern, ModeType mode)
@@ -727,7 +728,14 @@ namespace BlazorWebApp.Services
                 case "[model_hash]":
                     return GetModelHash(Options.SDModelCheckpoint);
                 case "[model_name]":
-                    return GetModelName(Options.SDModelCheckpoint);
+                    if (IsWebuiUp)
+                        return GetModelName(Options.SDModelCheckpoint);
+                    else
+                    {
+                        // Transforms this "Base/v1-5-pruned-emaonly.safetensors" into "Base\\v1-5-pruned-emaonly"
+                        var modelAsPath = State.Generation.SDModel.Replace('/', Path.DirectorySeparatorChar);
+                        return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
+                    }
                 default:
                     break;
             }
@@ -813,7 +821,11 @@ namespace BlazorWebApp.Services
             return response;
         }
 
-        public void SerializeInfo() => ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
+        public void SerializeInfo()
+        {
+            if (IsWebuiUp) ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
+            if (IsComfyUIUp) ImagesInfo = new() { InfoTexts = new[] { Images.Info } };
+        }
 
         public async Task GetCmdFlags() => CmdFlags = await _sdapi.GetCmdFlags();
 

@@ -12,12 +12,34 @@ namespace BlazorWebApp.Services
         private readonly HttpClient _comfyUIClient;
         private readonly HttpClient _comfyUIAPIClient;
         private readonly JsonSerializerOptions _jsonIgnoreNull;
+        private readonly IConfiguration _configuration;
 
-        public ComfyUIService(IHttpClientFactory httpClientFactory)
+        public ComfyUIService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _comfyUIClient = httpClientFactory.CreateClient("ComfyUI");
             _comfyUIAPIClient = httpClientFactory.CreateClient("ComfyUIAPI");
             _jsonIgnoreNull = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+            _configuration = configuration;
+        }
+
+        // TODO: Load from AppSettings
+        public async Task<Options> GenerateOptions()
+        {
+            Options options = new Options()
+            {
+                ClipSkip = 1,
+                SaveTxt = false,
+                GridSave = false,
+                SamplesSave = true,
+                SamplesFormat = "png",
+                FilenamePatternDir = "[model_name]/[sampler]",
+                FilenamePatternSamples = "[seed]_[steps]_[cfg]",
+                OutdirSamplesImg2Img = Path.Combine(_configuration["OutputDir"], "Image-2-Image\\_samples"),
+                OutdirSamplesTxt2Img = Path.Combine(_configuration["OutputDir"], "Text-2-Image\\_samples"),
+                OutdirSamplesExtras = Path.Combine(_configuration["OutputDir"], "Extras")
+            };
+
+            return options;
         }
 
         #region GET
@@ -74,9 +96,9 @@ namespace BlazorWebApp.Services
             var payload = new { input = comfyParam };
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
             await File.WriteAllTextAsync("payload.json", json);
-            using var response = await _comfyUIAPIClient.PostAsJsonAsync("/workflow/sd15/text2img", payload, _jsonIgnoreNull);
+            using var response = await _comfyUIAPIClient.PostAsJsonAsync("/workflow/sd/txt2img", payload, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadFromJsonAsync<PromptResponse<Comfy.sd.Txt2ImgParameters>>();
+            var content = await response.Content.ReadFromJsonAsync<ComfyUIPromptResponse<Comfy.sd.Txt2ImgParameters>>();
             return content.ToGeneratedImages();
         }
 

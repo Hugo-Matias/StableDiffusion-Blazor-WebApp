@@ -144,10 +144,10 @@
         await M.GetSamplers();
         await M.GetSchedulers();
         await M.GetStyles();
+        await M.GetOptions();
 
         if (M.IsWebuiUp)
         {
-            await M.GetOptions();
             M.GetSDADetailerModels();
             _clipSkip = (int)M.Options.ClipSkip;
             // Cater for bug in SD api where the sd_model_checkpoint value is null on the GET options data, this would always load the first model in the list as fallback
@@ -160,6 +160,7 @@
 
         if (M.IsComfyUIUp)
         {
+            // Automatically selects the first model if none is set. Unlocks the dropdown field.
             if (M.State.Generation.SDModel == "Loading..." && M.SDModels != null) await M.SetSDModel(M.SDModels[0].Title);
         }
 

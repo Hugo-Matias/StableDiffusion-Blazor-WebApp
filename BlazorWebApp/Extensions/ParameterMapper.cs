@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos.ComfyUI;
 using BlazorWebApp.Models;
+using System.Text.Json;
 using Comfy = BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using M = BlazorWebApp.Models;
 
@@ -21,6 +22,7 @@ namespace BlazorWebApp.Extensions
                 SamplerName = src.SamplerName,
                 Scheduler = src.Scheduler,
                 Denoise = src.DenoisingStrength,
+                BatchSize = src.BatchSize,
                 Checkpoint = checkpoint,
                 VAE = vae
             };
@@ -40,13 +42,14 @@ namespace BlazorWebApp.Extensions
                 SamplerName = comfy.SamplerName,
                 Scheduler = comfy.Scheduler,
                 DenoisingStrength = comfy.Denoise,
+                BatchSize = comfy.BatchSize,
             };
         }
 
         /// <summary>
         /// Maps a PromptResponse<TInput> into existing GeneratedImages model.
         /// </summary>
-        public static GeneratedImages ToGeneratedImages<TInput>(this PromptResponse<TInput> comfy)
+        public static GeneratedImages ToGeneratedImages<TInput>(this ComfyUIPromptResponse<TInput> comfy)
             where TInput : Comfy.SharedParameters
         {
             if (comfy == null) throw new ArgumentNullException(nameof(comfy));
@@ -55,8 +58,24 @@ namespace BlazorWebApp.Extensions
             {
                 Images = comfy.Images ?? new List<string>(),
                 Parameters = comfy.Input.ToSharedParameters(),
-                Info = comfy.Prompt.ToString()
+                Info = WriteGeneratedImagesInfo(comfy)
             };
+        }
+
+        private static string WriteGeneratedImagesInfo<TInput>(ComfyUIPromptResponse<TInput> response)
+        {
+            var merged = new
+            {
+                input = response.Input,
+                prompt = response.Prompt
+            };
+
+            return JsonSerializer.Serialize(
+                merged,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
         }
     }
 }

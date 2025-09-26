@@ -83,18 +83,18 @@ namespace BlazorWebApp.Services
                     throw new Exception("Generation Canceled!");
                 }
 
-                if (_m.IsComfyUIUp || (bool)_m.Options.SamplesSave)
+                if ((bool)_m.Options.SamplesSave)
                 {
                     switch (mode)
                     {
                         case ModeType.Img2Img:
-                            images = await SaveImages(Outdir.Img2ImgSamples, Outdir.Img2ImgGrid, scriptName);
+                            images = await SaveImages(Outdir.Img2ImgSamples, _m.IsComfyUIUp ? null : Outdir.Img2ImgGrid, scriptName);
                             break;
                         case ModeType.Extras:
                             images = await SaveUpscaleImage();
                             break;
                         default:
-                            images = await SaveImages(Outdir.Txt2ImgSamples, Outdir.Txt2ImgGrid, scriptName);
+                            images = await SaveImages(Outdir.Txt2ImgSamples, _m.IsComfyUIUp ? null : Outdir.Txt2ImgGrid, scriptName);
                             break;
                     }
                 }
@@ -200,7 +200,7 @@ namespace BlazorWebApp.Services
                 // Under certain conditions, SD returns images without info data, creating a mismatch between Images and Info list size.
                 // To prevent crashing later in the method when info is parsed and saved, we must preemptively break the execution and save the extra images to disk.
                 // These images aren't added to the database.
-                if (i >= _m.ImagesInfo.InfoTexts.Length)
+                if (_m.IsWebuiUp && i >= _m.ImagesInfo.InfoTexts.Length)
                 {
                     if ((outdirSamples == Outdir.Txt2ImgSamples && _txt2imgParams.AlwaysOnScripts != null && _txt2imgParams.AlwaysOnScripts.ContainsKey("controlnet") && _txt2imgParams.AlwaysOnScripts["controlnet"] != null) ||
                         (outdirSamples == Outdir.Img2ImgSamples && _m.ParametersImg2Img.AlwaysOnScripts != null && _m.ParametersImg2Img.AlwaysOnScripts.ContainsKey("controlnet") && _m.ParametersImg2Img.AlwaysOnScripts["controlnet"] != null))
@@ -215,10 +215,17 @@ namespace BlazorWebApp.Services
                     }
                     continue;
                 }
-                var info = Parser.ParseInfoStrings(_m.ImagesInfo.InfoTexts[i], mode);
-                Dictionary<string, string>? param = null;
-                if (info != null) param = Parser.ParseInfoParameters(info["param"]);
-                _m.State.Generation.Seed = param != null && !string.IsNullOrEmpty(param["Seed"]) ? long.Parse(param["Seed"]) : (long)_parsingParams.Seed;
+
+                // ComfyUI sends a single info text
+                var info = Parser.ParseInfoStrings(_m.ImagesInfo.InfoTexts[_m.IsComfyUIUp ? 0 : i], mode, _m.IsComfyUIUp);
+
+                // Uses Seed value from the response when -1 is sent (random).
+                if (_m.IsWebuiUp)
+                {
+                    Dictionary<string, string>? param = null;
+                    if (info != null) param = Parser.ParseInfoParameters(info["param"]);
+                    _m.State.Generation.Seed = param != null && !string.IsNullOrEmpty(param["Seed"]) ? long.Parse(param["Seed"]) : (long)_parsingParams.Seed;
+                }
 
                 var fullpath = GetImagePath(saveDir.FullName, fileIndex, mode);
                 var imagePath = $"{fullpath}.{extension}";
@@ -266,7 +273,7 @@ namespace BlazorWebApp.Services
             var imagePath = $"{fullpath}.{extension}";
             await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_m.GeneratedUpscaleImage.Image));
 
-            var info = Parser.ParseInfoStrings(_m.GeneratedUpscaleImage.Info, ModeType.Extras);
+            var info = Parser.ParseInfoStrings(_m.GeneratedUpscaleImage.Info, ModeType.Extras, _m.IsComfyUIUp);
             if ((bool)_m.Options.SaveTxt)
             {
                 var infoPath = $"{fullpath}.txt";
@@ -321,7 +328,10 @@ namespace BlazorWebApp.Services
             }
             else
             {
-                var param = Parser.ParseInfoParameters(info["param"]);
+                Dictionary<string, string> param = new();
+                if (_m.IsWebuiUp)
+                    param = Parser.ParseInfoParameters(info["param"]);
+
                 // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
                 if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
                 {

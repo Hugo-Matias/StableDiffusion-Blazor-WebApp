@@ -134,5 +134,5 @@
         Snackbar.Add($"Settings copied to {mode}", Severity.Success);
     }
 
-    private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path.Replace("/image/vault/", Configuration["ImagesPathVault"]).Replace("/", @"\")}");
+    private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path.Replace("/image/", Configuration["OutputDir"]).Replace("/", @"\")}");
 }

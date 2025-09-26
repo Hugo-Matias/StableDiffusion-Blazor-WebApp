@@ -172,7 +172,7 @@ namespace BlazorWebApp.Services
         {
             if (deleteFiles)
             {
-                var subtypeDir = Path.Combine(_configuration["ImagesPathVault"], "Saved", resource.Type.Name);
+                var subtypeDir = Path.Combine(_configuration["OutputDir"], "Saved", resource.Type.Name);
                 var modelImagesDir = _io.GetFolderByName(subtypeDir, resource.CivitaiModelId.ToString());
                 if (modelImagesDir != null)
                 {

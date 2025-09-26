@@ -7,7 +7,6 @@ namespace BlazorWebApp.Services
     public class IOService
     {
         private readonly IConfiguration _configuration;
-        private readonly string[] _imagePaths = new string[3] { "ImagesPathLocal", "ImagesPathCloud", "ImagesPathVault" };
 
         public IOService(IConfiguration configuration)
         {
@@ -156,21 +155,12 @@ namespace BlazorWebApp.Services
         public string GetImageStaticFile(string path)
         {
             if (string.IsNullOrWhiteSpace(path) || path.StartsWith("/image/") || path.StartsWith("http")) return path;
-            foreach (var imagePath in _imagePaths)
+            var normalizedPath = Parser.NormalizePath(path);
+            var normalizedImagePath = Parser.NormalizePath(_configuration["OutputDir"]);
+            if (normalizedPath.Contains(normalizedImagePath))
             {
-                var normalizedPath = Parser.NormalizePath(path);
-                var normalizedImagePath = Parser.NormalizePath(_configuration[imagePath]);
-                if (normalizedPath.Contains(normalizedImagePath))
-                {
-                    var imageFile = normalizedPath.Replace(normalizedImagePath, "").Replace(@"\", "/");
-                    return imagePath switch
-                    {
-                        "ImagesPathLocal" => "/image/local" + imageFile,
-                        "ImagesPathCloud" => "/image/cloud" + imageFile,
-                        "ImagesPathVault" => "/image/vault" + imageFile,
-                        _ => string.Empty
-                    };
-                }
+                var imageFile = normalizedPath.Replace(normalizedImagePath, "").Replace(@"\", "/");
+                return "/image" + imageFile;
             }
             return string.Empty;
         }

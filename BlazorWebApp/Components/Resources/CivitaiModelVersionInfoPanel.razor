@@ -129,7 +129,7 @@
     {
         // if (string.IsNullOrWhiteSpace(image.Hash)) image = await Civitai.GetImageById(image.Id);
         image = await Civitai.GetImageByModelVersionId(versionId, image);
-        string path = Path.Combine(Configuration["ImagesPathVault"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
+        string path = Path.Combine(Configuration["OutputDir"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
         var imageFilename = string.IsNullOrWhiteSpace(filename) ? Parser.SanitizePath(image.Hash) : filename;
         if (isPreview) path = Path.Combine(path, versionId.ToString());
         else path = Path.Combine(path, versionId.ToString(), imageFilename);
@@ -161,7 +161,7 @@
             var entity = new ResourceImage(image);
             entity.CivitaiModelId = Model.Id;
             entity.CivitaiModelVersionID = versionId;
-            entity.Path = imagePath.Replace(Configuration["ImagesPathVault"], "/image/vault/").Replace(@"\", "/");
+            entity.Path = imagePath.Replace(Configuration["OutputDir"], "/image/").Replace(@"\", "/");
             if (image.Meta != null) entity.Prompt = Parser.ParseCivitaiImageResources(image.Meta.Prompt, image.Meta.Resources);
             await DB.CreateResourceImage(entity);
         }

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace BlazorWebApp.Data.Dtos.ComfyUI
 {
-    public class PromptResponse<TInput>
+    public class ComfyUIPromptResponse<TInput>
     {
         [JsonPropertyName("id")]
         public string Id { get; set; }

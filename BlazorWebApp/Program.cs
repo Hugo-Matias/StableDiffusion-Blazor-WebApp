@@ -63,18 +63,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(builder.Configuration["ImagesPathLocal"]),
-    RequestPath = "/image/local"
-});
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(builder.Configuration["ImagesPathCloud"]),
-    RequestPath = "/image/cloud"
-});
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(builder.Configuration["ImagesPathVault"]),
-    RequestPath = "/image/vault"
+    FileProvider = new PhysicalFileProvider(builder.Configuration["OutputDir"]),
+    RequestPath = "/image"
 });
 app.UseStaticFiles(new StaticFileOptions
 {

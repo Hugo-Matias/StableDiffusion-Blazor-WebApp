@@ -4,6 +4,7 @@ using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Extensions
@@ -111,7 +112,7 @@ namespace BlazorWebApp.Extensions
         /// <param name="info">Info text</param>
         /// <param name="mode">ModeType to unsure that Upscale generations are properly parsed</param>
         /// <returns>Dictionary key values ["prompt", "negative", "param"] </returns>
-        public static Dictionary<string, string>? ParseInfoStrings(this string info, ModeType mode)
+        public static Dictionary<string, string>? ParseInfoStrings(this string info, ModeType mode, bool isComfyui)
         {
             if (string.IsNullOrWhiteSpace(info)) return null;
 
@@ -119,15 +120,28 @@ namespace BlazorWebApp.Extensions
             var negative = string.Empty;
             var param = string.Empty;
 
-            if (mode == ModeType.Extras) param = info;
+            if (isComfyui)
+            {
+                using var doc = JsonDocument.Parse(info);
+                if (!doc.RootElement.TryGetProperty("input", out var input))
+                    throw new Exception("Image Info parsing failed! Missing input property.");
+
+                prompt = ExtractJsonString(input, "prompt");
+                negative = ExtractJsonString(input, "negative_prompt");
+                param = info;
+            }
             else
             {
-                var lines = info.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                foreach (var line in lines)
+                if (mode == ModeType.Extras) param = info;
+                else
                 {
-                    if (line.StartsWith("Negative prompt:", StringComparison.InvariantCultureIgnoreCase)) negative = Regex.Replace(line, @"^Negative prompt: ", "");
-                    else if (line.StartsWith("Steps: ", StringComparison.InvariantCultureIgnoreCase)) param = line;
-                    else if (!string.IsNullOrWhiteSpace(line)) prompt = line;
+                    var lines = info.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    foreach (var line in lines)
+                    {
+                        if (line.StartsWith("Negative prompt:", StringComparison.InvariantCultureIgnoreCase)) negative = Regex.Replace(line, @"^Negative prompt: ", "");
+                        else if (line.StartsWith("Steps: ", StringComparison.InvariantCultureIgnoreCase)) param = line;
+                        else if (!string.IsNullOrWhiteSpace(line)) prompt = line;
+                    }
                 }
             }
             return new Dictionary<string, string>() { { "prompt", prompt }, { "negative", negative }, { "param", param } };
@@ -431,5 +445,7 @@ namespace BlazorWebApp.Extensions
             const string ellipses = "...";
             return value.Length <= maxChars ? value : value.Substring(0, maxChars - ellipses.Length) + ellipses;
         }
+
+        public static string? ExtractJsonString(JsonElement obj, string propName) => obj.TryGetProperty(propName, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : throw new Exception($"Json parsing failed! Couldn't find {propName} property.");
     }
 }

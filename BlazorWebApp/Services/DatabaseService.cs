@@ -1,6 +1,7 @@
 ﻿using BlazorWebApp.Data;
 using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,14 +11,16 @@ namespace BlazorWebApp.Services
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
         private readonly SDAPIService _api;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, IConfiguration configuration)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, IServiceProvider serviceProvider, IConfiguration configuration)
         {
             _factory = factory;
             _api = api;
+            _serviceProvider = serviceProvider;
             _configuration = configuration;
             PageSize = 5;
 
@@ -428,18 +431,19 @@ namespace BlazorWebApp.Services
         {
             if (string.IsNullOrWhiteSpace(samplerName)) return 0;
             using var context = await _factory.CreateDbContextAsync();
-            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name == samplerName || samplerName.Contains(s.Name));
+            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name.ToLower() == samplerName.ToLower() || samplerName.ToLower().Contains(s.Name.ToLower()));
             return sampler != null ? sampler.Id : -1;
         }
 
         private async Task PopulateSamplers()
         {
             var samplers = await _api.GetSamplers();
+            samplers.AddRange(await _serviceProvider.UseComfyAPI(c => c.GetSamplers()));
             using var context = await _factory.CreateDbContextAsync();
             if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
                 foreach (var sampler in samplers)
                 {
-                    var currentSampler = context.Samplers.SingleOrDefault(s => s.Name == sampler.Name);
+                    var currentSampler = context.Samplers.SingleOrDefault(s => s.Name.ToLower() == sampler.Name.ToLower());
                     if (currentSampler == null)
                         await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = sampler.Name });
                 }
