@@ -101,7 +101,7 @@
                         <MudSelect T="string" Label="Upscaler" @bind-Value=Parameters.HRUpscaler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                             @if (M.Upscalers != null && M.Upscalers.Count > 0)
                             {
-                                @foreach (var upscaler in _hiresUpscalers)
+                                @foreach (var upscaler in M.Upscalers)
                                 {
                                     <MudSelectItem Value=@(upscaler.Name) />
                                 }
@@ -135,24 +135,12 @@
 
     private Options _options;
     private MarkupString _resizeInfo;
-    private List<Upscaler> _hiresUpscalers = new();
-    private List<string> _hiresUpscalerNames = new() { "Latent", "Latent (antialiased)", "Latent (bicubic)", "Latent (bicubic antialiased)", "Latent (nearest)", "Latent (nearest-exact)" };
 
     protected async override Task OnInitializedAsync()
     {
         _options = M.Options;
         if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
         RefreshHighresInfo();
-        InitializeUpscalers();
-    }
-
-    private void InitializeUpscalers()
-    {
-        foreach (var upscaler in _hiresUpscalerNames)
-        {
-            _hiresUpscalers.Add(new Upscaler() { Name = upscaler, ModelName = upscaler, ModelPath = string.Empty, ModelUrl = string.Empty });
-        }
-        _hiresUpscalers.AddRange(M.Upscalers);
     }
 
     private void SetRandomSeed() => Parameters.Seed = new Random().NextInt64(0, Int64.MaxValue);

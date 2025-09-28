@@ -49,16 +49,32 @@ namespace BlazorWebApp.Services
             return health != null && health.Status == "healthy";
         }
 
-        public async Task<List<SDModel>> GetModels()
+        private async Task<List<T>> GetModels<T>(string type, Func<string, T> mapper)
         {
-            var models = await _comfyUIClient.GetFromJsonAsync<List<string>>("/models/checkpoints");
-            return models?.Select(m => new SDModel { Title = m, Model_name = m }).ToList() ?? new List<SDModel>();
+            var models = await _comfyUIClient.GetFromJsonAsync<List<string>>($"/models/{type}");
+            return models?.Select(mapper).ToList() ?? new List<T>();
         }
 
-        public async Task<List<string>> GetVAEs() => await _comfyUIClient.GetFromJsonAsync<List<string>>("/models/vae") ?? new List<string>();
+        public async Task<List<SDModel>> GetCheckpoints() => await GetModels("checkpoints", m => new SDModel { Title = m, Model_name = m });
+
+        public async Task<List<Upscaler>> GetUpscalers() => await GetModels("upscale_models", m => new Upscaler { Name = m });
+
+        public async Task<List<string>> GetVAEs() => await GetModels("vae", m => m);
+
+        public async Task<List<string>> GetTextEncoders() => await GetModels("text_encoders", m => m);
+
+        public async Task<List<string>> GetDiffusionModels() => await GetModels("text_encoders", m => m);
+
+        public async Task<List<string>> GetLoras() => await GetModels("loras", m => m);
+
+        public async Task<List<string>> GetBBoxDetailers() => await GetModels("ultralytics_bbox", m => m);
 
         public async Task<List<Models.Sampler>> GetSamplers() => await GetNodeInputOptions<Models.Sampler>("ClownsharKSampler_Beta", "sampler_name", name => new Models.Sampler { Name = name });
         public async Task<List<Models.Scheduler>> GetSchedulers() => await GetNodeInputOptions<Models.Scheduler>("ClownsharKSampler_Beta", "scheduler", name => new Models.Scheduler { Name = name });
+
+        public async Task<List<string>> GetDetailerSamplers() => await GetNodeInputOptions<string>("FaceDetailer", "sampler_name", name => name);
+
+        public async Task<List<string>> GetDetailerSchedulers() => await GetNodeInputOptions<string>("FaceDetailer", "scheduler", name => name);
 
         private async Task<List<T>> GetNodeInputOptions<T>(string node, string inputName, Func<string, T> mapFunc)
         {

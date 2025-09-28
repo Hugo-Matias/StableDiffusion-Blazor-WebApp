@@ -24,7 +24,14 @@ namespace BlazorWebApp.Extensions
                 Denoise = src.DenoisingStrength,
                 BatchSize = src.BatchSize,
                 Checkpoint = checkpoint,
-                VAE = vae
+                VAE = vae,
+                IsUpscale = src.EnableHR,
+                UpscaleModel = src.HRUpscaler,
+                UpscaleMult = src.HRScale,
+                UpscaleWidth = src.HRWidth,
+                UpscaleHeight = src.HRHeight,
+                UpscaleSteps = src.HRSecondPassSteps,
+                UpscaleDenoise = src.DenoisingStrength,
             };
         }
 

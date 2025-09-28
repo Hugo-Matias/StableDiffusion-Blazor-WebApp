@@ -518,7 +518,7 @@ namespace BlazorWebApp.Services
                 SDModels = await _sdapi.GetSDModels();
                 SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
             }
-            else if (IsComfyUIUp) SDModels = await _serviceProvider.UseComfyAPI(c => c.GetModels());
+            else if (IsComfyUIUp) SDModels = await _serviceProvider.UseComfyAPI(c => c.GetCheckpoints());
 
             OnSDModelsChange?.Invoke();
         }
@@ -584,6 +584,7 @@ namespace BlazorWebApp.Services
         public async Task GetUpscalers()
         {
             if (IsWebuiUp) Upscalers = await _sdapi.GetUpscalers();
+            else if (IsComfyUIUp) Upscalers = await _serviceProvider.UseComfyAPI(c => c.GetUpscalers());
             else Upscalers = new();
         }
 
