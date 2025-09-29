@@ -48,6 +48,11 @@ builder.Services.AddScoped<ComfyUIService>();
 
 builder.Services.AddTransient<MagickService>();
 
+builder.Services.AddHostedService<ComfyUIWebsocketService>();
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

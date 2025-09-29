@@ -101,6 +101,7 @@
         await LoadSelectedPage(1);
         ImageService.OnChange += Refresh;
         M.OnSelectedImagesChanged += Refresh;
+        M.OnProgressChanged += Refresh;
     }
 
     private async Task LoadSelectedPage(int page)
@@ -137,5 +138,6 @@
     {
         ImageService.OnChange -= Refresh;
         M.OnSelectedImagesChanged -= Refresh;
+        M.OnProgressChanged -= Refresh;
     }
 }

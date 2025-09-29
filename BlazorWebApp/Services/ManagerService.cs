@@ -95,6 +95,7 @@ namespace BlazorWebApp.Services
         public CivitaiModelsDto CivitaiModels { get; set; }
         public CivitaiImagesDto CivitaiImages { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
+        public string ComfyWSClientId { get; set; }
         public Dictionary<string, string> ResourceTypeDirectories { get; set; }
         public bool IsConverging
         {
@@ -152,6 +153,8 @@ namespace BlazorWebApp.Services
         public void InvokeRefreshImagesContainer() => OnRefreshImagesContainer?.Invoke();
 
         public void InvokeResourcesStateChanged() => OnResourcesStateChanged?.Invoke();
+
+        public void InvokeProgressChanged() => OnProgressChanged?.Invoke();
 
         public void InvokeParametersChanged(bool isImg2Img)
         {
@@ -887,6 +890,8 @@ namespace BlazorWebApp.Services
             if (isImg2Img) OnImg2ImgParametersChanged?.Invoke();
             else OnTxt2ImgParametersChanged?.Invoke();
         }
+
+        public async Task GetComfyWSClientId() => ComfyWSClientId = await _serviceProvider.UseComfyAPI(c => c.GetClientId());
 
         public void LoadSettings()
         {

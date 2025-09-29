@@ -447,5 +447,36 @@ namespace BlazorWebApp.Extensions
         }
 
         public static string? ExtractJsonString(JsonElement obj, string propName) => obj.TryGetProperty(propName, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : throw new Exception($"Json parsing failed! Couldn't find {propName} property.");
+
+        public static string? FindJsonValueByKey(JsonElement element, string propertyName)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (property.NameEquals(propertyName))
+                        {
+                            return property.Value.GetString();
+                        }
+
+                        var found = FindJsonValueByKey(property.Value, propertyName);
+                        if (found != null)
+                            return found;
+                    }
+                    break;
+
+                case JsonValueKind.Array:
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        var found = FindJsonValueByKey(item, propertyName);
+                        if (found != null)
+                            return found;
+                    }
+                    break;
+            }
+
+            return null;
+        }
     }
 }

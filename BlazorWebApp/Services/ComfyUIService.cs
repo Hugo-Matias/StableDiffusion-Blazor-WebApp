@@ -43,6 +43,33 @@ namespace BlazorWebApp.Services
         }
 
         #region GET
+        public async Task<string> GetClientId()
+        {
+            var clientId = await GetClientIdFromHistory();
+
+            // Force dummy request if there is no prompt in history 
+            if (clientId == null || string.IsNullOrWhiteSpace(clientId))
+            {
+                var payload = new { input = new { prompt = "" } };
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
+                using var response = await _comfyUIAPIClient.PostAsJsonAsync("/workflow/utils/clientid", payload, _jsonIgnoreNull);
+                response.EnsureSuccessStatusCode();
+                clientId = await GetClientIdFromHistory();
+            }
+
+            return clientId;
+        }
+
+        private async Task<string> GetClientIdFromHistory()
+        {
+            var response = await _comfyUIClient.GetAsync($"/history");
+            response.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+            var clientId = Parser.FindJsonValueByKey(doc.RootElement, "client_id");
+            return clientId;
+        }
+
         public async Task<bool> GetHealth()
         {
             var health = await _comfyUIAPIClient.GetFromJsonAsync<Health>("/health");
