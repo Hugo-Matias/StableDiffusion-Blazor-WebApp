@@ -52,5 +52,8 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("ad_controlnet_weight")] public float ControlNetWeight { get; set; }
         [JsonPropertyName("ad_controlnet_guidance_start")] public float ControlNetGuidanceStart { get; set; }
         [JsonPropertyName("ad_controlnet_guidance_end")] public float ControlNetGuidanceEnd { get; set; }
+        [JsonPropertyName("ad_use_scheduler")] public bool UseScheduler { get; set; }
+        [JsonPropertyName("ad_scheduler")] public string Scheduler { get; set; }
+        public int DropSize { get; set; }
     }
 }

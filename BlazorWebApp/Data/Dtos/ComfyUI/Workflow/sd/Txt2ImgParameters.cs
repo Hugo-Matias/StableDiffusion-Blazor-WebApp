@@ -8,27 +8,58 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow.sd
         public string? Checkpoint { get; set; }
         [JsonPropertyName("vae")]
         public string? VAE { get; set; }
-        [JsonPropertyName("isUpscale")]
-        public bool? IsUpscale { get; set; }
-        [JsonPropertyName("upscale_model")]
-        public string? UpscaleModel { get; set; }
-        [JsonPropertyName("upscale_mult")]
-        public double? UpscaleMult { get; set; }
-        [JsonPropertyName("upscale_width")]
-        public int? UpscaleWidth { get; set; }
-        [JsonPropertyName("upscale_height")]
-        public int? UpscaleHeight { get; set; }
-        [JsonPropertyName("upscale_denoise")]
-        public double? UpscaleDenoise { get; set; }
-        [JsonPropertyName("upscale_steps")]
-        public int? UpscaleSteps { get; set; }
-        [JsonPropertyName("isDetailer")]
-        public bool? IsDetailer { get; set; }
-        [JsonPropertyName("detailer_model")]
-        public string? DetailerModel { get; set; }
-        [JsonPropertyName("detailer_sampler")]
-        public string? DetailerSampler { get; set; }
-        [JsonPropertyName("detailer_scheduler")]
-        public string? DetailerScheduler { get; set; }
+        [JsonPropertyName("upscale")]
+        public UpscaleParameters? Upscale { get; set; }
+        [JsonPropertyName("detailer")]
+        public DetailerParameters? Detailer { get; set; }
+    }
+
+    public class UpscaleParameters
+    {
+        [JsonPropertyName("is_active")]
+        public bool? IsActive { get; set; }
+        [JsonPropertyName("model")]
+        public string? Model { get; set; }
+        [JsonPropertyName("mult")]
+        public double? Mult { get; set; }
+        [JsonPropertyName("width")]
+        public int? Width { get; set; }
+        [JsonPropertyName("height")]
+        public int? Height { get; set; }
+        [JsonPropertyName("denoise")]
+        public double? Denoise { get; set; }
+        [JsonPropertyName("steps")]
+        public int? Steps { get; set; }
+    }
+
+    public class DetailerParameters
+    {
+        [JsonPropertyName("is_active")]
+        public bool? IsActive { get; set; }
+        [JsonPropertyName("model")]
+        public string? Model { get; set; }
+        [JsonPropertyName("sampler")]
+        public string? Sampler { get; set; }
+        [JsonPropertyName("scheduler")]
+        public string? Scheduler { get; set; }
+        [JsonPropertyName("checkpoint")]
+        public string? Checkpoint { get; set; }
+        [JsonPropertyName("prompt")]
+        public string? Prompt { get; set; }
+        [JsonPropertyName("negative_prompt")]
+        public string? NegativePrompt { get; set; }
+        [JsonPropertyName("steps")]
+        public int? Steps { get; set; }
+        [JsonPropertyName("cfg_scale")]
+        public double? CFGScale { get; set; }
+        [JsonPropertyName("feather")]
+        public int? Feather { get; set; }
+        [JsonPropertyName("denoise")]
+        public double? Denoise { get; set; }
+        [JsonPropertyName("bbox_threshold")]
+        public double? BBoxThreshold { get; set; }
+        [JsonPropertyName("drop_size")]
+        public int? DropSize { get; set; }
+
     }
 }

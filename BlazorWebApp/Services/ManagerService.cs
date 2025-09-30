@@ -482,7 +482,11 @@ namespace BlazorWebApp.Services
                 ControlNetModule = Settings.Scripts.ADetailer.ControlNetModule,
                 ControlNetWeight = Settings.Scripts.ADetailer.ControlNetWeight,
                 ControlNetGuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
-                ControlNetGuidanceEnd = Settings.Scripts.ControlNet.Guidance.End
+                ControlNetGuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
+                // TODO: create Settings
+                UseScheduler = false,
+                Scheduler = "simple",
+                DropSize = 50
             };
         }
 
@@ -537,10 +541,14 @@ namespace BlazorWebApp.Services
             else if (IsComfyUIUp) SDVAEs = await _serviceProvider.UseComfyAPI(c => c.GetVAEs());
         }
 
-        public void GetSDADetailerModels()
+        public async Task GetSDADetailerModels()
         {
-            var modelsDir = Path.Join(CmdFlags.BaseDir, @"models/adetailer");
-            SDADetailerModels = _io.GetFilesRecursive(modelsDir).Select(f => f.Name).ToList();
+            if (IsWebuiUp)
+            {
+                var modelsDir = Path.Join(CmdFlags.BaseDir, @"models/adetailer");
+                SDADetailerModels = _io.GetFilesRecursive(modelsDir).Select(f => f.Name).ToList();
+            }
+            else if (IsComfyUIUp) SDADetailerModels = await _serviceProvider.UseComfyAPI(c => c.GetBBoxDetailers());
         }
 
         public async Task SetSDModel(string modelTitle)

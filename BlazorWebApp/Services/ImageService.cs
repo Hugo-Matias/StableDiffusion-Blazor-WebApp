@@ -137,6 +137,7 @@ namespace BlazorWebApp.Services
                 _txt2imgParams.HRSecondPassSteps = _m.ParametersTxt2Img.HRSecondPassSteps;
                 _txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
             }
+            _txt2imgParams.Scripts = _m.ParametersTxt2Img.Scripts;
         }
 
         private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)
@@ -354,7 +355,7 @@ namespace BlazorWebApp.Services
                 image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
                 image.SamplerId = await _db.GetSampler(_parsingParams.SamplerName);
                 image.Steps = (int)_parsingParams.Steps;
-                image.Seed = _m.State.Generation.Seed;
+                image.Seed = (long)_parsingParams.Seed;
                 image.CfgScale = (float)_parsingParams.CfgScale;
                 image.DenoisingStrength = _parsingParams.DenoisingStrength;
             }

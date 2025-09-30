@@ -145,10 +145,10 @@
         await M.GetSchedulers();
         await M.GetStyles();
         await M.GetOptions();
+        await M.GetSDADetailerModels();
 
         if (M.IsWebuiUp)
         {
-            M.GetSDADetailerModels();
             _clipSkip = (int)M.Options.ClipSkip;
             // Cater for bug in SD api where the sd_model_checkpoint value is null on the GET options data, this would always load the first model in the list as fallback
             // This will ensure that the model saved previously in the state is forcefully loaded

@@ -22,8 +22,6 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
         public string? SamplerName { get; set; }
         [JsonPropertyName("scheduler")]
         public string? Scheduler { get; set; }
-        [JsonPropertyName("denoise")]
-        public double? Denoise { get; set; }
         [JsonPropertyName("batch_size")]
         public int? BatchSize { get; set; }
     }

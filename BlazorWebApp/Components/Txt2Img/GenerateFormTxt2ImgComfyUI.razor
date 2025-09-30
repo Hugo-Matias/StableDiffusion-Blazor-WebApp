@@ -41,7 +41,7 @@
                 <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.DistilledCfgScale Min=M.Settings.Generation.Shared.DistilledCfg.Min Max=M.Settings.Generation.Shared.DistilledCfg.Max Step=M.Settings.Generation.Shared.DistilledCfg.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Distilled CFG:</small> @Parameters.DistilledCfgScale</MudSlider>
+                <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
             </MudItem>
             <MudItem xs="3">
                 <MudText Typo="Typo.caption">Quick Resolution: </MudText>
@@ -59,27 +59,6 @@
             <MudItem xs="6">
                 <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
             </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.NIter Min=M.Settings.Generation.Shared.Batch.Count.Min Max=M.Settings.Generation.Shared.Batch.Count.Max Step=M.Settings.Generation.Shared.Batch.Count.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Count:</small> @Parameters.NIter</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSelect T="string" Label="Refiner Checkpoint" @bind-Value=Parameters.RefinerCheckpoint AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (M.SDModels != null)
-                    {
-                        <MudSelectItem Value=@("None")>None</MudSelectItem>
-                        @foreach (var model in M.SDModels)
-                        {
-                            <MudSelectItem Value=@model.Model_name >@model.Title</MudSelectItem>
-                        }
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.RefinerSwitchAt Min=0f Max=1f Step=0.01f Variant="Variant.Filled" ValueLabel TickMarks><small>Refiner Switch At:</small> @Parameters.RefinerSwitchAt</MudSlider>
-            </MudItem>
             <MudItem xs="12">
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>
                     <MudChip Text="ADetailer" Default="Parameters.Scripts.ADetailer.IsEnabled" Variant="Variant.Text" Color="Color.Primary">ADetailer</MudChip>
@@ -87,13 +66,11 @@
                 </MudChipSet>
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.ADetailer.IsEnabled ? "show" : "")}")">
-                @if (M.IsWebuiUp)
-                {
                     <ADetailerForm Parameters=Parameters.Scripts.ADetailer />
-                }
             </MudItem>
             <MudItem xs="12">
                 <MudGrid Class=@($"collapse {(Parameters.EnableHR == true ? "show" : "")}")>
+                    <MudText Typo="Typo.button" Style="opacity:0.2;">Upscale</MudText>
                     <MudItem xs="12" Class="align-items-center justify-content-center d-flex mt-n3">
                         <MudText Typo="Typo.overline">@_resizeInfo</MudText>
                     </MudItem>
@@ -143,12 +120,19 @@
         RefreshHighresInfo();
     }
 
-    private void SetRandomSeed() => Parameters.Seed = new Random().NextInt64(0, Int64.MaxValue);
+    private void SetRandomSeed() => Parameters.Seed = -1;
 
     private void RestoreSeed()
     {
-        if (M.ImagesInfo != null && M.ImagesInfo.Seed != null)
-            Parameters.Seed = M.ImagesInfo.Seed;
+        if (M.IsComfyUIUp)
+        {
+            var info = M.ImagesInfo.InfoTexts[0];
+        }
+        else if (M.IsWebuiUp)
+        {
+            if (M.ImagesInfo != null && M.ImagesInfo.Seed != null)
+                Parameters.Seed = M.ImagesInfo.Seed;
+        }
     }
 
     private void HandleParameterChecked(MudChip[] checkboxes)

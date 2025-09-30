@@ -1,0 +1,109 @@
+﻿@inject ManagerService M
+@inject IServiceProvider ServiceProvider
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudSelect Label="Model" @bind-Value=Parameters.Model TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
+            @{
+                foreach (var model in M.SDADetailerModels)
+                {
+                    <MudSelectItem Value=@($"bbox/{model}") />
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField Label="Prompt" Lines="2" T="string" @bind-Value=@Parameters.Prompt HelperText="Leave empty to use main prompt." Clearable Immediate />
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField Label="Negative Prompt" Lines="2" T="string" @bind-Value=@Parameters.NegativePrompt HelperText="Leave empty to use main negative prompt." Clearable Immediate />
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row=true>
+            <MudSelect @bind-Value=Parameters.Sampler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" T="string">
+                @{
+                    foreach (var sampler in _samplers)
+                    {
+                        <MudSelectItem Value="sampler" />
+                    }
+                }
+            </MudSelect>
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row=true>
+            <MudSelect @bind-Value=Parameters.Scheduler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" T="string">
+                @{
+                    foreach (var scheduler in _schedulers)
+                    {
+                        <MudSelectItem Value="scheduler" />
+                    }
+                }
+            </MudSelect>
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Scripts.ADetailer.DenoisingStrength.Min Max=M.Settings.Scripts.ADetailer.DenoisingStrength.Max Step=M.Settings.Scripts.ADetailer.DenoisingStrength.Step ValueLabel=true><small>Denoising Strength:</small> @Parameters.DenoisingStrength </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider @bind-Value=Parameters.Confidence Min=M.Settings.Scripts.ADetailer.Confidence.Min Max=M.Settings.Scripts.ADetailer.Confidence.Max Step=M.Settings.Scripts.ADetailer.Confidence.Step ValueLabel=true><small>Confidence Threshold:</small> @Parameters.Confidence</MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+    <MudSlider @bind-Value=Parameters.MaskBlur Min=M.Settings.Scripts.ADetailer.MaskBlur.Min Max=M.Settings.Scripts.ADetailer.MaskBlur.Max Step=M.Settings.Scripts.ADetailer.MaskBlur.Step ValueLabel=true><small>Mask Blur:</small> @Parameters.MaskBlur </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider @bind-Value=Parameters.DropSize Min=0 Max=350 Step=5 ValueLabel=true><small>Drop Size:</small> @Parameters.DropSize </MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudStack Row=true>
+            <MudCheckBox @bind-Checked=Parameters.UseCheckpoint Label="Checkpoint" />
+            <MudSelect @bind-Value=Parameters.Checkpoint AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Disabled=!Parameters.UseCheckpoint T="string">
+                <MudSelectItem Value="@("Use same checkpoint")">Use same checkpoint</MudSelectItem>
+                @{
+                foreach (var model in M.SDModels)
+                {
+                    <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                }
+            }
+            </MudSelect>
+        </MudStack>
+    </MudItem>
+    @* <MudItem xs="12">
+        <MudStack Row=true>
+            <MudCheckBox @bind-Checked=Parameters.UseVAE Label="VAE" />
+            <MudSelect @bind-Value=Parameters.VAE AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Disabled=!Parameters.UseVAE T="string">
+                <MudSelectItem Value="@("Use same VAE")">Use same VAE</MudSelectItem>
+                @{
+                    foreach (var vae in M.SDVAEs)
+                    {
+                        <MudSelectItem Value="vae">@vae</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudStack>
+    </MudItem> *@
+    <MudItem xs="6">
+        <MudStack Row=true>
+            <MudCheckBox @bind-Checked=Parameters.UseSteps Label="Steps" />
+            <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Generation.Shared.Steps.Min Max=M.Settings.Generation.Shared.Steps.Max Step=M.Settings.Generation.Shared.Steps.Step ValueLabel=true Disabled=!Parameters.UseSteps>@Parameters.Steps </MudSlider>
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row=true>
+            <MudCheckBox @bind-Checked=Parameters.UseCFGScale Label="CFG Scale" />
+            <MudSlider @bind-Value=Parameters.CFGScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step ValueLabel=true Disabled=!Parameters.UseCFGScale>@Parameters.CFGScale </MudSlider>
+        </MudStack>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ScriptParametersADetailerModel Parameters { get; set; }
+    private List<string> _samplers = new();
+    private List<string> _schedulers = new();
+
+    protected async override Task OnInitializedAsync()
+    {
+        _samplers = await ServiceProvider.UseComfyAPI(c => c.GetDetailerSamplers());
+        _schedulers = await ServiceProvider.UseComfyAPI(c => c.GetDetailerSchedulers());
+    }
+}

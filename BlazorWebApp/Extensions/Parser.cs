@@ -93,6 +93,7 @@ namespace BlazorWebApp.Extensions
                     param.NegativePrompt = param.NegativePrompt.ParsePrompt(style.NegativePrompt);
                 }
             }
+            if (param.Seed == -1) param.Seed = new Random().Next(0, int.MaxValue);
             return param;
         }
 

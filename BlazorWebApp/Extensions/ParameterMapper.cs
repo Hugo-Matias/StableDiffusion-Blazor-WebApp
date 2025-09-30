@@ -10,6 +10,8 @@ namespace BlazorWebApp.Extensions
     {
         public static Comfy.sd.Txt2ImgParameters ToSDTxt2ImgParameters(this M.Txt2ImgParameters src, string checkpoint, string vae)
         {
+            var d = src.Scripts.ADetailer.Model1;
+
             return new Comfy.sd.Txt2ImgParameters
             {
                 Prompt = src.Prompt,
@@ -21,17 +23,35 @@ namespace BlazorWebApp.Extensions
                 CfgScale = src.CfgScale,
                 SamplerName = src.SamplerName,
                 Scheduler = src.Scheduler,
-                Denoise = src.DenoisingStrength,
                 BatchSize = src.BatchSize,
                 Checkpoint = checkpoint,
                 VAE = vae,
-                IsUpscale = src.EnableHR,
-                UpscaleModel = src.HRUpscaler,
-                UpscaleMult = src.HRScale,
-                UpscaleWidth = src.HRWidth,
-                UpscaleHeight = src.HRHeight,
-                UpscaleSteps = src.HRSecondPassSteps,
-                UpscaleDenoise = src.DenoisingStrength,
+                Upscale = new()
+                {
+                    IsActive = src.EnableHR,
+                    Model = src.HRUpscaler,
+                    Mult = src.HRScale,
+                    Width = src.HRWidth,
+                    Height = src.HRHeight,
+                    Steps = src.HRSecondPassSteps > 0 ? src.HRSecondPassSteps : src.Steps,
+                    Denoise = src.DenoisingStrength,
+                },
+                Detailer = new()
+                {
+                    IsActive = src.Scripts.ADetailer.IsEnabled,
+                    Model = d.Model,
+                    Prompt = d.Prompt,
+                    NegativePrompt = d.NegativePrompt,
+                    Sampler = d.Sampler,
+                    Scheduler = d.Scheduler,
+                    Denoise = d.DenoisingStrength,
+                    BBoxThreshold = d.Confidence,
+                    Feather = d.MaskBlur,
+                    DropSize = d.DropSize,
+                    Checkpoint = d.UseCheckpoint ? d.Checkpoint : checkpoint,
+                    Steps = d.UseSteps ? d.Steps : src.Steps,
+                    CFGScale = d.UseCFGScale ? d.CFGScale : src.CfgScale,
+                }
             };
         }
 
@@ -48,7 +68,6 @@ namespace BlazorWebApp.Extensions
                 CfgScale = comfy.CfgScale,
                 SamplerName = comfy.SamplerName,
                 Scheduler = comfy.Scheduler,
-                DenoisingStrength = comfy.Denoise,
                 BatchSize = comfy.BatchSize,
             };
         }
