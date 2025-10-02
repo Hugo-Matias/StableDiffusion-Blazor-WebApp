@@ -31,8 +31,8 @@ namespace BlazorWebApp.Extensions
                     IsActive = src.EnableHR,
                     Model = src.HRUpscaler,
                     Mult = src.HRScale,
-                    Width = src.HRWidth,
-                    Height = src.HRHeight,
+                    Width = src.HRWidth == 0 ? (int)Math.Round((decimal)src.HRScale * src.Width.Value) : src.HRWidth,
+                    Height = src.HRHeight == 0 ? (int)Math.Round((decimal)src.HRScale * src.Height.Value) : src.HRHeight,
                     Steps = src.HRSecondPassSteps > 0 ? src.HRSecondPassSteps : src.Steps,
                     Denoise = src.DenoisingStrength,
                 },
@@ -40,17 +40,17 @@ namespace BlazorWebApp.Extensions
                 {
                     IsActive = src.Scripts.ADetailer.IsEnabled,
                     Model = d.Model,
-                    Prompt = d.Prompt,
-                    NegativePrompt = d.NegativePrompt,
+                    Prompt = string.IsNullOrWhiteSpace(d.Prompt) ? src.Prompt : d.Prompt,
+                    NegativePrompt = string.IsNullOrWhiteSpace(d.NegativePrompt) ? src.NegativePrompt : d.NegativePrompt,
                     Sampler = d.Sampler,
                     Scheduler = d.Scheduler,
                     Denoise = d.DenoisingStrength,
                     BBoxThreshold = d.Confidence,
                     Feather = d.MaskBlur,
                     DropSize = d.DropSize,
-                    Checkpoint = d.UseCheckpoint ? d.Checkpoint : checkpoint,
+                    Checkpoint = d.UseCheckpoint && !string.IsNullOrWhiteSpace(d.Checkpoint) ? d.Checkpoint : checkpoint,
                     Steps = d.UseSteps ? d.Steps : src.Steps,
-                    CFGScale = d.UseCFGScale ? d.CFGScale : src.CfgScale,
+                    CfgScale = d.UseCFGScale ? d.CFGScale : src.CfgScale,
                 }
             };
         }

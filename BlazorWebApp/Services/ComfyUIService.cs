@@ -1,25 +1,66 @@
 ﻿using BlazorWebApp.Data.Dtos.ComfyUI;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Comfy = BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 
 namespace BlazorWebApp.Services
 {
     public class ComfyUIService
     {
-        private readonly HttpClient _comfyUIClient;
-        private readonly HttpClient _comfyUIAPIClient;
-        private readonly JsonSerializerOptions _jsonIgnoreNull;
+        private readonly WorkflowService _workflow;
+        private readonly IOService _io;
+        private readonly ILogger<ComfyUIService> _logger;
+        private readonly HttpClient _httpClient;
+        private readonly ComfyUIEventBus _bus;
         private readonly IConfiguration _configuration;
+        private readonly JsonSerializerOptions _jsonIgnoreNull;
+        private readonly ConcurrentDictionary<Guid, TaskCompletionSource<GeneratedImages>> _pendingJobs = new();
 
-        public ComfyUIService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, WorkflowService workflow, IOService io, ILogger<ComfyUIService> logger)
         {
-            _comfyUIClient = httpClientFactory.CreateClient("ComfyUI");
-            _comfyUIAPIClient = httpClientFactory.CreateClient("ComfyUIAPI");
-            _jsonIgnoreNull = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+            _httpClient = httpClient;
+            _bus = bus;
             _configuration = configuration;
+            _workflow = workflow;
+            _io = io;
+            _logger = logger;
+            _httpClient.BaseAddress = new Uri("http://localhost:8188/");
+            _httpClient.Timeout = TimeSpan.FromDays(1);
+            _jsonIgnoreNull = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+
+            _bus.ExecutionSucceeded += async promptId => await HandleExecutionSucceededAsync(promptId);
+
+            _bus.ExecutionFailed += (promptId, error) =>
+            {
+                if (_pendingJobs.TryRemove(promptId, out var tcs))
+                    tcs.SetException(new Exception(error));
+            };
+
+        }
+
+
+        private async Task HandleExecutionSucceededAsync(Guid promptId)
+        {
+            var filename = await GetFilenameFromHistory(promptId);
+            if (filename == null)
+            {
+                _logger.LogError("File not found!");
+                return;
+            }
+
+            var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", filename);
+            var base64 = await _io.GetBase64FromFileAsync(filepath);
+
+            var image = new GeneratedImages
+            {
+                Images = new List<string> { base64 }
+            };
+
+            if (_pendingJobs.TryRemove(promptId, out var tcs)) tcs.SetResult(image);
+
+            //_io.DeleteFile(filepath);
         }
 
         // TODO: Load from AppSettings
@@ -43,26 +84,9 @@ namespace BlazorWebApp.Services
         }
 
         #region GET
-        public async Task<string> GetClientId()
-        {
-            var clientId = await GetClientIdFromHistory();
-
-            // Force dummy request if there is no prompt in history 
-            if (clientId == null || string.IsNullOrWhiteSpace(clientId))
-            {
-                var payload = new { input = new { prompt = "" } };
-                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
-                using var response = await _comfyUIAPIClient.PostAsJsonAsync("/workflow/utils/clientid", payload, _jsonIgnoreNull);
-                response.EnsureSuccessStatusCode();
-                clientId = await GetClientIdFromHistory();
-            }
-
-            return clientId;
-        }
-
         private async Task<string> GetClientIdFromHistory()
         {
-            var response = await _comfyUIClient.GetAsync($"/history");
+            var response = await _httpClient.GetAsync($"/history");
             response.EnsureSuccessStatusCode();
             using var stream = await response.Content.ReadAsStreamAsync();
             using var doc = await JsonDocument.ParseAsync(stream);
@@ -70,15 +94,9 @@ namespace BlazorWebApp.Services
             return clientId;
         }
 
-        public async Task<bool> GetHealth()
-        {
-            var health = await _comfyUIAPIClient.GetFromJsonAsync<Health>("/health");
-            return health != null && health.Status == "healthy";
-        }
-
         private async Task<List<T>> GetModels<T>(string type, Func<string, T> mapper)
         {
-            var models = await _comfyUIClient.GetFromJsonAsync<List<string>>($"/models/{type}");
+            var models = await _httpClient.GetFromJsonAsync<List<string>>($"/models/{type}");
             return models?.Select(mapper).ToList() ?? new List<T>();
         }
 
@@ -105,7 +123,7 @@ namespace BlazorWebApp.Services
 
         private async Task<List<T>> GetNodeInputOptions<T>(string node, string inputName, Func<string, T> mapFunc)
         {
-            var response = await _comfyUIClient.GetAsync($"/object_info/{node}");
+            var response = await _httpClient.GetAsync($"/object_info/{node}");
             response.EnsureSuccessStatusCode();
 
             using var stream = await response.Content.ReadAsStreamAsync();
@@ -130,24 +148,41 @@ namespace BlazorWebApp.Services
 
             return new List<T>();
         }
+
+        public async Task<string> GetFilenameFromHistory(Guid promptId)
+        {
+            var response = await _httpClient.GetAsync($"/history/{promptId}");
+            response.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+            var filename = Parser.FindJsonValueByKey(doc.RootElement, "filename");
+            var subfolder = Parser.FindJsonValueByKey(doc.RootElement, "subfolder");
+            return Path.Combine(subfolder, filename);
+        }
         #endregion
 
         #region POST
-        public async Task<GeneratedImages> PostTxt2Img(Models.Txt2ImgParameters param, string checkpoint, string vae)
+        public async Task<GeneratedImages> PostTxt2Img(Models.Txt2ImgParameters param, string clientId, string workflow, string checkpoint, string vae)
         {
             var comfyParam = param.ToSDTxt2ImgParameters(checkpoint, vae);
-            var payload = new { input = comfyParam };
+            var payload = new { prompt = _workflow.Render(workflow, comfyParam), client_id = clientId };
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
             await File.WriteAllTextAsync("payload.json", json);
-            using var response = await _comfyUIAPIClient.PostAsJsonAsync("/workflow/sd/txt2img", payload, _jsonIgnoreNull);
+
+            // Submit job
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadFromJsonAsync<ComfyUIPromptResponse<Comfy.sd.Txt2ImgParameters>>();
-            return content.ToGeneratedImages();
+            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            var promptId = Guid.Parse(submit.PromptId);
+
+            var tcs = new TaskCompletionSource<GeneratedImages>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingJobs[promptId] = tcs;
+            return await tcs.Task;
         }
 
         public async Task<string> PostInterrupt()
         {
-            using var response = await _comfyUIClient.PostAsync("/interrupt", null);
+            using var response = await _httpClient.PostAsync("/interrupt", null);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
@@ -156,7 +191,7 @@ namespace BlazorWebApp.Services
         {
             var payload = new { clear = true }; // Anonymous type
             var content = JsonContent.Create(payload, options: _jsonIgnoreNull);
-            var response = await _comfyUIClient.PostAsync("/queue", content);
+            var response = await _httpClient.PostAsync("/queue", content);
             response.EnsureSuccessStatusCode();
 
             return response;

@@ -18,7 +18,7 @@ namespace BlazorWebApp.Services
         private readonly IOService _io;
         private readonly ProgressService _progress;
         private readonly IConfiguration _configuration;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly ComfyUIService _capi;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
@@ -96,6 +96,7 @@ namespace BlazorWebApp.Services
         public CivitaiImagesDto CivitaiImages { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
         public string ComfyWSClientId { get; set; }
+        public string ComfyWorkflow { get; set; }
         public Dictionary<string, string> ResourceTypeDirectories { get; set; }
         public bool IsConverging
         {
@@ -125,14 +126,14 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, IServiceProvider serviceProvider)
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi)
         {
             _sdapi = sdapi;
             _db = db;
             _io = io;
             _progress = progress;
             _configuration = configuration;
-            _serviceProvider = serviceProvider;
+            _capi = capi;
             LoadSettings();
             LoadState();
 
@@ -525,7 +526,7 @@ namespace BlazorWebApp.Services
                 SDModels = await _sdapi.GetSDModels();
                 SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
             }
-            else if (IsComfyUIUp) SDModels = await _serviceProvider.UseComfyAPI(c => c.GetCheckpoints());
+            else if (IsComfyUIUp) SDModels = await _capi.GetCheckpoints();
 
             OnSDModelsChange?.Invoke();
         }
@@ -538,7 +539,7 @@ namespace BlazorWebApp.Services
                 var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(CmdFlags.BaseDir, @"models/VAE") : CmdFlags.VaeDir;
                 SDVAEs = _io.GetFilesRecursive(vaeDir).Select(f => f.Name).ToList();
             }
-            else if (IsComfyUIUp) SDVAEs = await _serviceProvider.UseComfyAPI(c => c.GetVAEs());
+            else if (IsComfyUIUp) SDVAEs = await _capi.GetVAEs();
         }
 
         public async Task GetSDADetailerModels()
@@ -548,7 +549,7 @@ namespace BlazorWebApp.Services
                 var modelsDir = Path.Join(CmdFlags.BaseDir, @"models/adetailer");
                 SDADetailerModels = _io.GetFilesRecursive(modelsDir).Select(f => f.Name).ToList();
             }
-            else if (IsComfyUIUp) SDADetailerModels = await _serviceProvider.UseComfyAPI(c => c.GetBBoxDetailers());
+            else if (IsComfyUIUp) SDADetailerModels = await _capi.GetBBoxDetailers();
         }
 
         public async Task SetSDModel(string modelTitle)
@@ -577,7 +578,7 @@ namespace BlazorWebApp.Services
         public async Task GetOptions()
         {
             if (IsWebuiUp) Options = await _sdapi.GetOptions();
-            if (IsComfyUIUp) Options = await _serviceProvider.UseComfyAPI(c => c.GenerateOptions());
+            if (IsComfyUIUp) Options = await _capi.GenerateOptions();
             OnOptionsChange?.Invoke();
         }
 
@@ -595,7 +596,7 @@ namespace BlazorWebApp.Services
         public async Task GetUpscalers()
         {
             if (IsWebuiUp) Upscalers = await _sdapi.GetUpscalers();
-            else if (IsComfyUIUp) Upscalers = await _serviceProvider.UseComfyAPI(c => c.GetUpscalers());
+            else if (IsComfyUIUp) Upscalers = await _capi.GetUpscalers();
             else Upscalers = new();
         }
 
@@ -645,14 +646,14 @@ namespace BlazorWebApp.Services
         public async Task GetSamplers()
         {
             if (IsWebuiUp) Samplers = await _sdapi.GetSamplers();
-            else if (IsComfyUIUp) Samplers = await _serviceProvider.UseComfyAPI(c => c.GetSamplers());
+            else if (IsComfyUIUp) Samplers = await _capi.GetSamplers();
             else Samplers = new();
         }
 
         public async Task GetSchedulers()
         {
             if (IsWebuiUp) Schedulers = await _sdapi.GetSchedulers();
-            else if (IsComfyUIUp) Schedulers = await _serviceProvider.UseComfyAPI(c => c.GetSchedulers());
+            else if (IsComfyUIUp) Schedulers = await _capi.GetSchedulers();
             else Schedulers = new();
         }
 
@@ -898,8 +899,6 @@ namespace BlazorWebApp.Services
             if (isImg2Img) OnImg2ImgParametersChanged?.Invoke();
             else OnTxt2ImgParametersChanged?.Invoke();
         }
-
-        public async Task GetComfyWSClientId() => ComfyWSClientId = await _serviceProvider.UseComfyAPI(c => c.GetClientId());
 
         public void LoadSettings()
         {

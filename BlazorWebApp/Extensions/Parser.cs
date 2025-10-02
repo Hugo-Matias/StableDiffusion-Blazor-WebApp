@@ -165,6 +165,12 @@ namespace BlazorWebApp.Extensions
             return parameters;
         }
 
+        public static Dictionary<string, string>? ParseComfyInfoParameters(this string param)
+        {
+            // TODO: write parsing
+            return new Dictionary<string, string>();
+        }
+
         public static string ParseCivitaiImageResources(this string prompt, List<CivitaiImageMetaResourceDto> resources)
         {
             if (resources == null || prompt == null) return prompt?.Replace("\n", "");

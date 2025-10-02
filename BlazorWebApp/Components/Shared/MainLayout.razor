@@ -44,7 +44,6 @@
     protected async override Task OnInitializedAsync() 
     { 
         M.IsWebuiUp = await SDAPI.CheckWebuiState();
-        M.IsComfyUIUp = await CAPI.GetHealth();
     }
 
     private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;

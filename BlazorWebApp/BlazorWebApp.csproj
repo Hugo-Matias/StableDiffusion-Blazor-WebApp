@@ -7,10 +7,27 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+<ItemGroup>
+  <None Update="Workflows\**\*.scriban">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Workflows\sd\txt2img.scriban" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Workflows\sd\txt2img.scriban">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.6" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.8.2" />
+    <PackageReference Include="MetadataExtractor" Version="2.9.0-rc3" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.11">
       <PrivateAssets>all</PrivateAssets>
@@ -22,6 +39,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="MudBlazor" Version="6.1.8" />
+    <PackageReference Include="Scriban" Version="6.4.0" />
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.2.6-b0002" />
   </ItemGroup>
@@ -33,6 +51,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="Components\Shared\Generation\ADetailerModelFormComfyUI.razor">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
     <Content Update="Pages\Index.razor">
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>

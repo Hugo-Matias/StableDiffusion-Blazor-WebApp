@@ -1,18 +1,17 @@
-﻿using BlazorWebApp.Extensions;
-using BlazorWebApp.Models;
+﻿using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
 {
     public class RouterService
     {
         private readonly SDAPIService _sdapi;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly ComfyUIService _capi;
         private readonly ManagerService _m;
 
-        public RouterService(SDAPIService sdapi, IServiceProvider serviceProvider, ManagerService m)
+        public RouterService(SDAPIService sdapi, ComfyUIService capi, ManagerService m)
         {
             _sdapi = sdapi;
-            _serviceProvider = serviceProvider;
+            _capi = capi;
             _m = m;
         }
 
@@ -22,7 +21,7 @@ namespace BlazorWebApp.Services
             {
                 var checkpoint = _m.State.Generation.SDModel;
                 var vae = _m.State.Generation.Vae;
-                return await _serviceProvider.UseComfyAPI(c => c.PostTxt2Img(parameters, checkpoint, vae));
+                return await _capi.PostTxt2Img(parameters, _m.ComfyWSClientId, _m.ComfyWorkflow, checkpoint, vae);
             }
             if (_m.IsWebuiUp)
                 return await _sdapi.PostTxt2Img(parameters);

@@ -1,6 +1,8 @@
 ﻿using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using MetadataExtractor;
 using System.Text.RegularExpressions;
+using Directory = System.IO.Directory;
 
 namespace BlazorWebApp.Services
 {
@@ -267,6 +269,12 @@ namespace BlazorWebApp.Services
         {
             CheckDirectory(path);
             await File.WriteAllBytesAsync(path, data);
+        }
+
+        public async Task<string> ReadMetadata(string path)
+        {
+            var directories = ImageMetadataReader.ReadMetadata(path);
+            return directories.Where(d => d.Name == "PNG-tEXt").FirstOrDefault().Tags[0].Description;
         }
 
         private void CheckDirectory(string path)

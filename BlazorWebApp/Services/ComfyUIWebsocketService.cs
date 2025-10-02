@@ -10,35 +10,72 @@ namespace BlazorWebApp.Services
         private readonly ILogger<ComfyUIWebsocketService> _logger;
         private readonly ManagerService _m;
         private readonly ProgressService _progressService;
-        private readonly ClientWebSocket _ws = new();
+        private readonly ComfyUIEventBus _bus;
+        private ClientWebSocket? _currentWs;
+        private readonly object _lock = new();
+        private Guid _promptId;
 
-        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, ManagerService m, ProgressService progressService)
+        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, ManagerService m, ProgressService progressService, ComfyUIEventBus bus)
         {
             _logger = logger;
             _m = m;
             _progressService = progressService;
+            _bus = bus;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
-            if (_m.ComfyWSClientId == null || string.IsNullOrWhiteSpace(_m.ComfyWSClientId)) await _m.GetComfyWSClientId();
-            await _ws.ConnectAsync(new Uri($"ws://localhost:8188/ws?clientId={_m.ComfyWSClientId}"), cancellationToken);
-            _logger.LogInformation($"WS connection created | ClientID: {_m.ComfyWSClientId}");
-
-            _ = Task.Run(() => ListenLoop(cancellationToken));
+            _ = Task.Run(() => ConnectLoop(cancellationToken), cancellationToken);
+            return Task.CompletedTask;
         }
 
-        private async Task ListenLoop(CancellationToken cancellationToken)
+        private async Task ConnectLoop(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                using var ws = new ClientWebSocket();
+                try
+                {
+                    _m.ComfyWSClientId = Guid.NewGuid().ToString();
+                    await ws.ConnectAsync(
+                        new Uri($"ws://localhost:8188/ws?clientId={_m.ComfyWSClientId}"),
+                        cancellationToken);
+
+                    lock (_lock)
+                    {
+                        _currentWs = ws;
+                    }
+
+                    _m.IsComfyUIUp = true;
+                    _logger.LogInformation($"WS connected | ClientID: {_m.ComfyWSClientId}");
+                    await ListenLoop(ws, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "WS connect failed, retrying in 5s...");
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+                finally
+                {
+                    lock (_lock)
+                    {
+                        _currentWs = null;
+                    }
+                }
+            }
+        }
+
+        private async Task ListenLoop(ClientWebSocket ws, CancellationToken cancellationToken)
         {
             var buffer = new byte[1024 * 64];
 
-            while (_ws.State == WebSocketState.Open)
+            while (ws.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
                 using var ms = new MemoryStream();
                 WebSocketReceiveResult result;
                 do
                 {
-                    result = await _ws.ReceiveAsync(buffer, cancellationToken);
+                    result = await ws.ReceiveAsync(buffer, cancellationToken);
                     ms.Write(buffer, 0, result.Count);
                 }
                 while (!result.EndOfMessage);
@@ -46,19 +83,9 @@ namespace BlazorWebApp.Services
                 if (result.MessageType == WebSocketMessageType.Close)
                     break;
 
-                if (result.MessageType == WebSocketMessageType.Binary)
-                {
-                    var fullBytes = ms.ToArray();
-                    // ComfyUI frames have an 8-byte header we can skip
-                    var imageBytes = fullBytes.Skip(8).ToArray();
-                    var base64 = Convert.ToBase64String(imageBytes);
-
-                    _m.Progress.CurrentImage = base64;
-                }
-
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var json = Encoding.UTF8.GetString(ms.ToArray());
                     //_logger.LogInformation("WS JSON: {json}", json);
 
                     try
@@ -103,8 +130,23 @@ namespace BlazorWebApp.Services
 
                         if (type == "execution_success" || type == "execution_error")
                         {
-                            var id = Guid.Parse(doc.RootElement.GetProperty("data").GetProperty("prompt_id").GetString());
-                            _progressService.Remove(id);
+                            _promptId = Guid.Parse(doc.RootElement.GetProperty("data").GetProperty("prompt_id").GetString());
+
+                            if (type == "execution_success")
+                            {
+                                _bus.PublishExecutionSucceeded(_promptId);
+                            }
+
+                            else if (type == "execution_error")
+                            {
+                                var data = doc.RootElement.GetProperty("data");
+                                var nodeId = data.GetProperty("node_id").GetString();
+                                var nodeType = data.GetProperty("node_type").GetString();
+                                var errorType = data.GetProperty("exception_type").GetString();
+                                var error = data.GetProperty("exception_message").GetString();
+                                _bus.PublishExecutionFailed(_promptId, $"{errorType} | Node: {nodeId} - {nodeType}: {error}");
+                            }
+                            _progressService.Remove(_promptId);
                             _m.Progress = new();
                             _m.InvokeProgressChanged();
                         }
@@ -113,11 +155,34 @@ namespace BlazorWebApp.Services
                     {
                         _logger.LogError(ex, "Failed to parse WS JSON");
                     }
+
+
+                }
+
+                if (result.MessageType == WebSocketMessageType.Binary)
+                {
+                    var fullBytes = ms.ToArray();
+                    // ComfyUI frames have an 8-byte header we can skip
+                    var imageBytes = fullBytes.Skip(8).ToArray();
+
+                    var base64 = Convert.ToBase64String(imageBytes);
+                    _m.Progress.CurrentImage = base64;
                 }
             }
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
-            => _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stopping", cancellationToken);
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            ClientWebSocket? ws;
+            lock (_lock)
+            {
+                ws = _currentWs;
+            }
+
+            if (ws != null && ws.State == WebSocketState.Open)
+            {
+                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stopping", cancellationToken);
+            }
+        }
     }
 }

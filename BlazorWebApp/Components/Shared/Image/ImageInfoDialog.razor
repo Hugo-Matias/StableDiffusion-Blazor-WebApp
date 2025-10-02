@@ -129,9 +129,13 @@
 
     protected async override Task OnInitializedAsync()
     {
+        return;
         // If InfoPath is null it means the image is a ResourceImage and we must ignore the Info property
-        if (string.IsNullOrWhiteSpace(Image.InfoPath)) return;
-        if (string.IsNullOrWhiteSpace(Image.Info)) await WriteImageInfo();
+        // Info is stored in the images metadata, no longer saving to txt
+        // if (string.IsNullOrWhiteSpace(Image.InfoPath)) return;
+        // if (string.IsNullOrWhiteSpace(Image.Info)) await WriteImageInfo();
+        // if (string.IsNullOrWhiteSpace(Image.Info)) 
+        Image.Info = await IO.ReadMetadata(Image.Path);
         _infoParams = Parser.ParseInfoParameters(Image.Info);
         if (_infoParams.ContainsKey("Seed") && !string.IsNullOrWhiteSpace(_infoParams["Seed"]) && Image.Seed != long.Parse(_infoParams["Seed"]))
         {

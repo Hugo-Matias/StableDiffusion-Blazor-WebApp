@@ -332,6 +332,8 @@ namespace BlazorWebApp.Services
                 Dictionary<string, string> param = new();
                 if (_m.IsWebuiUp)
                     param = Parser.ParseInfoParameters(info["param"]);
+                if (_m.IsComfyUIUp && info != null)
+                    param = Parser.ParseComfyInfoParameters(info["param"]);
 
                 // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
                 if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))

@@ -145,7 +145,7 @@
         await M.GetSchedulers();
         await M.GetStyles();
         await M.GetOptions();
-        await M.GetSDADetailerModels();
+        while(M.SDADetailerModels == null) await M.GetSDADetailerModels();
 
         if (M.IsWebuiUp)
         {

@@ -19,19 +19,15 @@ builder.Services.AddMudServices(opt =>
 });
 
 builder.Services.AddHttpClient<SDAPIService>();
-builder.Services.AddHttpClient("ComfyUI", client =>
-{
-    client.BaseAddress = new Uri("http://localhost:8188");
-    client.Timeout = TimeSpan.FromHours(1);
-});
-builder.Services.AddHttpClient("ComfyUIAPI", client =>
-{
-    client.BaseAddress = new Uri("http://localhost:3000");
-    client.Timeout = TimeSpan.FromHours(1);
-});
+builder.Services.AddHttpClient<ComfyUIService>();
 builder.Services.AddHttpClient<CivitaiService>();
 builder.Services.AddHttpClient<DanbooruService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
+
+// Creates a singleton of the WS service to inject with DI and use it as the hosted service as well
+builder.Services.AddSingleton<ComfyUIWebsocketService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ComfyUIWebsocketService>());
+builder.Services.AddSingleton<ComfyUIEventBus>();
 
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
@@ -41,14 +37,12 @@ builder.Services.AddSingleton<CsvService>();
 builder.Services.AddSingleton<ProgressService>();
 builder.Services.AddSingleton<ResourcesService>();
 builder.Services.AddSingleton<RouterService>();
-//builder.Services.AddSingleton<DynamicPromptsService>();
+builder.Services.AddSingleton<WorkflowService>();
+builder.Services.AddSingleton<DynamicPromptsService>();
 
 builder.Services.AddScoped<JavascriptService>();
-builder.Services.AddScoped<ComfyUIService>();
 
 builder.Services.AddTransient<MagickService>();
-
-builder.Services.AddHostedService<ComfyUIWebsocketService>();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

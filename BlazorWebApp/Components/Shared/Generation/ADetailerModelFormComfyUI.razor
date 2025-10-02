@@ -1,13 +1,16 @@
 ﻿@inject ManagerService M
-@inject IServiceProvider ServiceProvider
+@inject ComfyUIService CAPI
 
 <MudGrid>
     <MudItem xs="12">
         <MudSelect Label="Model" @bind-Value=Parameters.Model TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
             @{
-                foreach (var model in M.SDADetailerModels)
+                if (M.SDADetailerModels != null)
                 {
-                    <MudSelectItem Value=@($"bbox/{model}") />
+                    foreach (var model in M.SDADetailerModels)
+                    {
+                        <MudSelectItem Value=@($"bbox/{model}") />
+                    }
                 }
             }
         </MudSelect>
@@ -60,10 +63,13 @@
             <MudSelect @bind-Value=Parameters.Checkpoint AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Disabled=!Parameters.UseCheckpoint T="string">
                 <MudSelectItem Value="@("Use same checkpoint")">Use same checkpoint</MudSelectItem>
                 @{
-                foreach (var model in M.SDModels)
-                {
-                    <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
-                }
+                    if (M.SDModels != null)
+                    {
+                        foreach (var model in M.SDModels)
+                        {
+                            <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                        }
+                    }
             }
             </MudSelect>
         </MudStack>
@@ -103,7 +109,7 @@
 
     protected async override Task OnInitializedAsync()
     {
-        _samplers = await ServiceProvider.UseComfyAPI(c => c.GetDetailerSamplers());
-        _schedulers = await ServiceProvider.UseComfyAPI(c => c.GetDetailerSchedulers());
+        _samplers = await CAPI.GetDetailerSamplers();
+        _schedulers = await CAPI.GetDetailerSchedulers();
     }
 }

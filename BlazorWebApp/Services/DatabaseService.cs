@@ -1,7 +1,6 @@
 ﻿using BlazorWebApp.Data;
 using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
-using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,16 +10,16 @@ namespace BlazorWebApp.Services
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
         private readonly SDAPIService _api;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly ComfyUIService _capi;
         private readonly IConfiguration _configuration;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, IServiceProvider serviceProvider, IConfiguration configuration)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, ComfyUIService capi, IConfiguration configuration)
         {
             _factory = factory;
             _api = api;
-            _serviceProvider = serviceProvider;
+            _capi = capi;
             _configuration = configuration;
             PageSize = 5;
 
@@ -438,7 +437,7 @@ namespace BlazorWebApp.Services
         private async Task PopulateSamplers()
         {
             var samplers = await _api.GetSamplers();
-            samplers.AddRange(await _serviceProvider.UseComfyAPI(c => c.GetSamplers()));
+            samplers.AddRange(await _capi.GetSamplers());
             using var context = await _factory.CreateDbContextAsync();
             if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
                 foreach (var sampler in samplers)
