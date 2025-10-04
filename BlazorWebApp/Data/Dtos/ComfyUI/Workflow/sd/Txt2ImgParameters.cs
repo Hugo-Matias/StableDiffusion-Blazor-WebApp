@@ -34,6 +34,11 @@
         public double? Denoise { get; set; }
         public double? BBoxThreshold { get; set; }
         public int? DropSize { get; set; }
-
+        public long? Seed { get; set; }
+        public int? GuideSize { get; set; }
+        public int? MaxSize { get; set; }
+        public int? BBoxDilation { get; set; }
+        public double? BBoxCropFactor { get; set; }
+        public int? Cycle { get; set; }
     }
 }

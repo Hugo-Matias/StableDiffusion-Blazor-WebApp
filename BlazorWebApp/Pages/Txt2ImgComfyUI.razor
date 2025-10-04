@@ -22,7 +22,6 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        M.ComfyWorkflow = "sd\\txt2img.scriban";
         M.OnTxt2ImgParametersChanged += InitializeParameters;
         InitializeParameters();
     }

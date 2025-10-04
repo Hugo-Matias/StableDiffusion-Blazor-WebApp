@@ -51,6 +51,12 @@ namespace BlazorWebApp.Extensions
                     Checkpoint = d.UseCheckpoint && !string.IsNullOrWhiteSpace(d.Checkpoint) ? d.Checkpoint : checkpoint,
                     Steps = d.UseSteps ? d.Steps : src.Steps,
                     CfgScale = d.UseCFGScale ? d.CFGScale : src.CfgScale,
+                    GuideSize = d.GuideSize,
+                    MaxSize = d.MaxSize,
+                    BBoxDilation = d.BBoxDilation,
+                    BBoxCropFactor = d.BBoxCropFactor,
+                    Seed = src.Seed,
+                    Cycle = d.Cycle <= 0 ? 1 : d.Cycle,
                 }
             };
         }

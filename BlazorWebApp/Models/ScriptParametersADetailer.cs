@@ -55,5 +55,11 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("ad_use_scheduler")] public bool UseScheduler { get; set; }
         [JsonPropertyName("ad_scheduler")] public string Scheduler { get; set; }
         public int DropSize { get; set; }
+        public int GuideSize { get; set; }
+        public int MaxSize { get; set; }
+        public int BBoxDilation { get; set; }
+        public double BBoxCropFactor { get; set; }
+        public int Cycle { get; set; }
+        public long Seed { get; set; }
     }
 }

@@ -63,6 +63,7 @@ namespace BlazorWebApp.Models
         public string Vae { get; set; }
         public long Seed { get; set; }
         public bool IsInterrupted { get; set; } = false;
+        public string ComfyUIWorkflow { get; set; }
     }
 
     public class AppStateGenerationImg2Img

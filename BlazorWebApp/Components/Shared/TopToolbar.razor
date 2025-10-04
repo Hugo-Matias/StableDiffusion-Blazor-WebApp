@@ -29,7 +29,7 @@
         {
             <MudItem xs="12">
                 <MudGrid>
-                    <MudItem xs="@(M.IsWebuiUp ? 4 : 6)">
+                    <MudItem xs="4">
                         @if (M.State.Generation.SDModel == "Loading...")
                         {
                             <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
@@ -50,7 +50,7 @@
                             </MudSelect>
                         }
                     </MudItem>
-                    <MudItem xs="@(M.IsWebuiUp ? 4 : 6)">
+                    <MudItem xs="4">
                         <MudSelect Value="M.State.Generation.Vae" T="string" ValueChanged="HandleVaeSelected" Label="VAE" AdornmentIcon="fa-solid fa-wand-sparkles" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
                             <MudSelectItem Value=@("None")>None</MudSelectItem>
                             <MudSelectItem Value=@("Automatic")>Automatic</MudSelectItem>
@@ -68,6 +68,10 @@
                         <MudItem xs="4">
                             <MudSlider Value="_clipSkip" T="int" ValueChanged=HandleClipSkipChanged Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks=true ValueLabel=true><small>Clip Skip:</small> @M.Options.ClipSkip </MudSlider>
                         </MudItem>
+                    }
+                    @if (M.IsComfyUIUp)
+                    {
+                        
                     }
                 </MudGrid>
             </MudItem>

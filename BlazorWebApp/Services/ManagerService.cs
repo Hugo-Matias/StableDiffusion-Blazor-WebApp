@@ -96,7 +96,6 @@ namespace BlazorWebApp.Services
         public CivitaiImagesDto CivitaiImages { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
         public string ComfyWSClientId { get; set; }
-        public string ComfyWorkflow { get; set; }
         public Dictionary<string, string> ResourceTypeDirectories { get; set; }
         public bool IsConverging
         {
@@ -485,9 +484,15 @@ namespace BlazorWebApp.Services
                 ControlNetGuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
                 ControlNetGuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
                 // TODO: create Settings
+                Seed = Settings.Generation.Shared.Seed,
                 UseScheduler = false,
                 Scheduler = "simple",
-                DropSize = 50
+                DropSize = 50,
+                GuideSize = 1024,
+                MaxSize = 2048,
+                BBoxDilation = 100,
+                BBoxCropFactor = 3.5,
+                Cycle = 1,
             };
         }
 
@@ -671,6 +676,8 @@ namespace BlazorWebApp.Services
             }
             return string.Empty;
         }
+
+        public List<FileInfo> GetComfyWorkflows() => _io.GetFilesRecursive(Path.Combine(AppContext.BaseDirectory, "Workflows")).ToList();
 
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {

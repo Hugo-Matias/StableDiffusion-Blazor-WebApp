@@ -21,7 +21,7 @@ namespace BlazorWebApp.Services
             {
                 var checkpoint = _m.State.Generation.SDModel;
                 var vae = _m.State.Generation.Vae;
-                return await _capi.PostTxt2Img(parameters, _m.ComfyWSClientId, _m.ComfyWorkflow, checkpoint, vae);
+                return await _capi.PostTxt2Img(parameters, _m.ComfyWSClientId, _m.State.Generation.ComfyUIWorkflow, checkpoint, vae);
             }
             if (_m.IsWebuiUp)
                 return await _sdapi.PostTxt2Img(parameters);
