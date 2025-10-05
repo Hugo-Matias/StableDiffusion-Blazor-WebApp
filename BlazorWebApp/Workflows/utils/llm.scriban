@@ -1,0 +1,28 @@
+{
+  "837": {
+    "inputs": {
+      "text": "monochromatic illustration design of a crow and abstract shapes, sparkles and lines, intricate drawing, feminine, light thin lines, white background, use countors to give shape to the crow and avoid large blocks of color",
+      "random_seed": 1234567890,
+      "model": "Llama-3.2-3B-Instruct-abliterated.Q5_K_M.gguf",
+      "max_tokens": 4096,
+      "apply_instructions": true,
+      "instructions": "Generate a prompt from \"{prompt}\""
+    },
+    "class_type": "Searge_LLM_Node",
+    "_meta": {
+      "title": "Searge LLM Node"
+    }
+  },
+  "838": {
+    "inputs": {
+      "text": [
+        "837",
+        0
+      ]
+    },
+    "class_type": "Searge_Output_Node",
+    "_meta": {
+      "title": "Searge Output Node"
+    }
+  }
+}

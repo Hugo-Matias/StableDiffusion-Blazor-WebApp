@@ -5,6 +5,7 @@ using BlazorWebApp.Models;
 using MudBlazor;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
@@ -19,6 +20,7 @@ namespace BlazorWebApp.Services
         private readonly ProgressService _progress;
         private readonly IConfiguration _configuration;
         private readonly ComfyUIService _capi;
+        private readonly WorkflowService _workflow;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
@@ -46,6 +48,7 @@ namespace BlazorWebApp.Services
         public event Action OnRefreshImagesContainer;
         public event Action OnCanvasImageDataChanged;
         public event Action OnResourcesStateChanged;
+        public event Action OnWorkflowBaseChanged;
 
         public AppState State { get; set; }
         public AppSettings Settings { get; set; }
@@ -125,7 +128,7 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi)
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow)
         {
             _sdapi = sdapi;
             _db = db;
@@ -133,6 +136,7 @@ namespace BlazorWebApp.Services
             _progress = progress;
             _configuration = configuration;
             _capi = capi;
+            _workflow = workflow;
             LoadSettings();
             LoadState();
 
@@ -531,7 +535,22 @@ namespace BlazorWebApp.Services
                 SDModels = await _sdapi.GetSDModels();
                 SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
             }
-            else if (IsComfyUIUp) SDModels = await _capi.GetCheckpoints();
+            else if (IsComfyUIUp)
+            {
+                if (State.Generation.Workflows == null) GetComfyWorkflows();
+
+                var currentWorkflowBase = State.Generation.WorkflowBase == null
+                                        ? State.Generation.Workflows.FirstOrDefault()
+                                        : State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+
+                if (currentWorkflowBase == null) currentWorkflowBase = new() { ModelType = ModelType.Checkpoint };
+
+                SDModels = currentWorkflowBase.ModelType switch
+                {
+                    ModelType.Diffusion => await _capi.GetDiffusionModels(),
+                    _ => await _capi.GetCheckpoints(),
+                };
+            }
 
             OnSDModelsChange?.Invoke();
         }
@@ -677,7 +696,15 @@ namespace BlazorWebApp.Services
             return string.Empty;
         }
 
-        public List<FileInfo> GetComfyWorkflows() => _io.GetFilesRecursive(Path.Combine(AppContext.BaseDirectory, "Workflows")).ToList();
+        public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
+
+        public Workflow GetCurrentWorkflow(ModeType mode) => State.Generation.Workflows.Where(w => w.Mode == mode).FirstOrDefault();
+
+        public void SetWorkflowBase(ModelBase workflowBase)
+        {
+            State.Generation.WorkflowBase = workflowBase;
+            OnWorkflowBaseChanged?.Invoke();
+        }
 
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {

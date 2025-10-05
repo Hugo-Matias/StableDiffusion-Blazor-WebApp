@@ -466,12 +466,11 @@ namespace BlazorWebApp.Services
         private async void PopulateModes()
         {
             using var context = await _factory.CreateDbContextAsync();
-            if (context.Modes.Count() == 0)
+            foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
             {
-                foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
-                {
+                var record = await context.Modes.FirstOrDefaultAsync(o => o.Type == mode);
+                if (record == null)
                     await context.Modes.AddAsync(new Mode { Type = mode });
-                }
             }
             await context.SaveChangesAsync();
         }

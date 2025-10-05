@@ -1,4 +1,5 @@
-﻿@inject ManagerService M
+﻿@using static BlazorWebApp.Data.Enums
+@inject ManagerService M
 @inject SDAPIService SD
 @inject DatabaseService DB
 @inject IOService IO
@@ -29,7 +30,7 @@
         {
             <MudItem xs="12">
                 <MudGrid>
-                    <MudItem xs="4">
+                    <MudItem xs="6">
                         @if (M.State.Generation.SDModel == "Loading...")
                         {
                             <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
@@ -65,13 +66,23 @@
                     </MudItem>
                     @if (M.IsWebuiUp && M.Options != null)
                     {
-                        <MudItem xs="4">
+                        <MudItem xs="2">
                             <MudSlider Value="_clipSkip" T="int" ValueChanged=HandleClipSkipChanged Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks=true ValueLabel=true><small>Clip Skip:</small> @M.Options.ClipSkip </MudSlider>
                         </MudItem>
                     }
                     @if (M.IsComfyUIUp)
                     {
-                        
+                        <MudItem xs="2">
+                            <MudSelect Value="M.State.Generation.WorkflowBase" T="ModelBase" ValueChanged="HandleWorkflowBaseSelected" Label="Base" AdornmentIcon="fa-solid fa-bolt" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
+                                @if (_workflowBases != null && _workflowBases.Count > 0)
+                                {
+                                    @foreach (var workflowBase in _workflowBases)
+                                    {
+                                        <MudSelectItem Value="@workflowBase" />
+                                    }
+                                }
+                            </MudSelect>
+                        </MudItem>
                     }
                 </MudGrid>
             </MudItem>
@@ -99,12 +110,14 @@
     private bool _isWebuiInitialized;
     private State _selectedState;
     private List<State> _states = new();
+    private List<ModelBase> _workflowBases = new();
 
     protected async override Task OnInitializedAsync()
     {
         M.OnWebuiStateChanged += Refresh;
         M.OnConverging += Refresh;
         M.OnOptionsChange += Refresh;
+        M.OnWorkflowBaseChanged += Refresh;
         //M.OnFolderChange += Refresh;
         //M.OnProjectChange += Refresh;
         //M.OnProjectsChange += Refresh;
@@ -166,6 +179,14 @@
         {
             // Automatically selects the first model if none is set. Unlocks the dropdown field.
             if (M.State.Generation.SDModel == "Loading..." && M.SDModels != null) await M.SetSDModel(M.SDModels[0].Title);
+            M.GetComfyWorkflows();
+            _workflowBases = M.State.Generation.Workflows
+                                .Select(w => w.Base.ToString())
+                                .Where(b => !string.IsNullOrWhiteSpace(b.ToString()))
+                                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                                .Select(b => Enum.Parse<ModelBase>(b, ignoreCase: true))
+                                .OrderBy(b => b)
+                                .ToList();
         }
 
         _isWebuiInitialized = true;
@@ -209,6 +230,12 @@
 
     private async Task HandleVaeSelected(string selected) => await M.SetVae(selected);
 
+    private async Task HandleWorkflowBaseSelected(ModelBase selected) 
+    {
+        M.SetWorkflowBase(selected);
+        await M.GetSDModels();
+    }
+
     private async Task HandleClipSkipChanged(int value)
     {
         _clipSkip = value;
@@ -220,6 +247,7 @@
         M.OnWebuiStateChanged -= Refresh;
         M.OnConverging -= Refresh;
         M.OnOptionsChange -= Refresh;
+        M.OnWorkflowBaseChanged -= Refresh;
         //M.OnFolderChange -= Refresh;
         //M.OnProjectChange -= Refresh;
         //M.OnProjectsChange -= Refresh;

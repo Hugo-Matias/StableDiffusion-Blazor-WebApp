@@ -1,4 +1,4 @@
-﻿@page "/txt2img_comfyui"
+﻿@page "/comfyui/txt2img"
 @inject ComfyUIService API
 @inject ManagerService M
 @inject ImageService ImageService
@@ -22,6 +22,7 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        M.OnWorkflowBaseChanged += Refresh;
         M.OnTxt2ImgParametersChanged += InitializeParameters;
         InitializeParameters();
     }
@@ -61,8 +62,11 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
     public void Dispose()
     {
+        M.OnWorkflowBaseChanged -= Refresh;
         M.OnTxt2ImgParametersChanged -= InitializeParameters;
     }
 }

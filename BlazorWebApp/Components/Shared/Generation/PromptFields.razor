@@ -1,4 +1,5 @@
 ﻿@using System.Text.Json;
+@using static BlazorWebApp.Data.Enums
 @inject IOService IO
 @inject ManagerService M
 
@@ -9,7 +10,7 @@
                 <MudItem xs="9">
                     <MudStack>
                         <MudTextField Class="prompt" id="prompt" Lines=_promptLines Label="Prompt" OnAdornmentClick="() => PromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.Prompt Clearable Immediate />
-                        <MudTextField Class="negative-prompt" id="negativePrompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.NegativePrompt Clearable Immediate />
+                        <MudTextField Class="negative-prompt" id="negativePrompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.NegativePrompt Disabled="M.IsComfyUIUp && M.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(M.State.Generation.WorkflowBase)" Clearable Immediate />
                     </MudStack>
                 </MudItem>
                 <MudItem xs="3">
@@ -77,6 +78,7 @@
     private int _promptLines = 6;
     private int _negativePromptLines = 4;
     private bool _isDrawerOpen = false;
+    private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux };
 
     protected override void OnInitialized()
     {

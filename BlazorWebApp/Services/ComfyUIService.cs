@@ -16,7 +16,7 @@ namespace BlazorWebApp.Services
         private readonly ComfyUIEventBus _bus;
         private readonly IConfiguration _configuration;
         private readonly JsonSerializerOptions _jsonIgnoreNull;
-        private readonly ConcurrentDictionary<Guid, TaskCompletionSource<GeneratedImages>> _pendingJobs = new();
+        private readonly ConcurrentDictionary<Guid, object> _pendingJobs = new();
 
         public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, WorkflowService workflow, IOService io, ILogger<ComfyUIService> logger)
         {
@@ -34,7 +34,7 @@ namespace BlazorWebApp.Services
 
             _bus.ExecutionFailed += (promptId, error) =>
             {
-                if (_pendingJobs.TryRemove(promptId, out var tcs))
+                if (_pendingJobs.TryRemove(promptId, out var obj) && obj is TaskCompletionSource<GeneratedImages> tcs)
                     tcs.SetException(new Exception(error));
             };
 
@@ -58,7 +58,8 @@ namespace BlazorWebApp.Services
                 Images = new List<string> { base64 }
             };
 
-            if (_pendingJobs.TryRemove(promptId, out var tcs)) tcs.SetResult(image);
+            if (_pendingJobs.TryRemove(promptId, out var obj) && obj is TaskCompletionSource<GeneratedImages> tcs)
+                tcs.SetResult(image);
 
             //_io.DeleteFile(filepath);
         }
@@ -108,7 +109,7 @@ namespace BlazorWebApp.Services
 
         public async Task<List<string>> GetTextEncoders() => await GetModels("text_encoders", m => m);
 
-        public async Task<List<string>> GetDiffusionModels() => await GetModels("text_encoders", m => m);
+        public async Task<List<SDModel>> GetDiffusionModels() => await GetModels("diffusion_models", m => new SDModel { Title = m, Model_name = m });
 
         public async Task<List<string>> GetLoras() => await GetModels("loras", m => m);
 
@@ -162,22 +163,34 @@ namespace BlazorWebApp.Services
         #endregion
 
         #region POST
-        public async Task<GeneratedImages> PostTxt2Img(Models.Txt2ImgParameters param, string clientId, string workflow, string checkpoint, string vae)
+        public async Task<TResponse> PostPromptAsync<TResponse>(object payload, string payloadLogPath = "payload.json")
         {
-            var comfyParam = param.ToSDTxt2ImgParameters(checkpoint, vae);
-            var payload = new { prompt = _workflow.Render(workflow, comfyParam), client_id = clientId };
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
-            await File.WriteAllTextAsync("payload.json", json);
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
 
-            // Submit job
+            await File.WriteAllTextAsync(payloadLogPath, json);
+
             using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
+
             var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
             var promptId = Guid.Parse(submit.PromptId);
 
-            var tcs = new TaskCompletionSource<GeneratedImages>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tcs = new TaskCompletionSource<TResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
             _pendingJobs[promptId] = tcs;
+
             return await tcs.Task;
+        }
+
+
+        public async Task<GeneratedImages> PostTxt2Img(Models.Txt2ImgParameters param, string clientId, string workflow, string model, string vae)
+        {
+            var comfyParam = param.ToSDTxt2ImgParameters(model, vae);
+            var payload = new { prompt = _workflow.Render(workflow, comfyParam), client_id = clientId };
+            return await PostPromptAsync<GeneratedImages>(payload);
         }
 
         public async Task<string> PostInterrupt()

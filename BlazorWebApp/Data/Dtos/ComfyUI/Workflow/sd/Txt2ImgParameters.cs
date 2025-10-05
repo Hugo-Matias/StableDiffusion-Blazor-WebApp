@@ -2,8 +2,10 @@
 {
     public class Txt2ImgParameters : SharedParameters
     {
-        public string? Checkpoint { get; set; }
+        public string? Model { get; set; }
         public string? VAE { get; set; }
+        public string? Clip1 { get; set; }
+        public string? Clip2 { get; set; }
         public UpscaleParameters? Upscale { get; set; }
         public DetailerParameters? Detailer { get; set; }
     }

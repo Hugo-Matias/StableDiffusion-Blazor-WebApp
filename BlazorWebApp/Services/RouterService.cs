@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
 {
@@ -19,9 +20,10 @@ namespace BlazorWebApp.Services
         {
             if (_m.IsComfyUIUp)
             {
-                var checkpoint = _m.State.Generation.SDModel;
+                var model = _m.State.Generation.SDModel;
                 var vae = _m.State.Generation.Vae;
-                return await _capi.PostTxt2Img(parameters, _m.ComfyWSClientId, _m.State.Generation.ComfyUIWorkflow, checkpoint, vae);
+                var workflow = _m.GetCurrentWorkflow(ModeType.Txt2Img);
+                return await _capi.PostTxt2Img(parameters, _m.ComfyWSClientId, workflow.Prompt, model, vae);
             }
             if (_m.IsWebuiUp)
                 return await _sdapi.PostTxt2Img(parameters);

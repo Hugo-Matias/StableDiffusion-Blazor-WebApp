@@ -8,7 +8,7 @@ namespace BlazorWebApp.Extensions
 {
     public static class ParameterMapper
     {
-        public static Comfy.sd.Txt2ImgParameters ToSDTxt2ImgParameters(this M.Txt2ImgParameters src, string checkpoint, string vae)
+        public static Comfy.sd.Txt2ImgParameters ToSDTxt2ImgParameters(this M.Txt2ImgParameters src, string model, string vae)
         {
             var d = src.Scripts.ADetailer.Model1;
 
@@ -24,7 +24,7 @@ namespace BlazorWebApp.Extensions
                 SamplerName = src.SamplerName,
                 Scheduler = src.Scheduler,
                 BatchSize = src.BatchSize,
-                Checkpoint = checkpoint,
+                Model = model,
                 VAE = vae,
                 Upscale = new()
                 {
@@ -48,7 +48,7 @@ namespace BlazorWebApp.Extensions
                     BBoxThreshold = d.Confidence,
                     Feather = d.MaskBlur,
                     DropSize = d.DropSize,
-                    Checkpoint = d.UseCheckpoint && !string.IsNullOrWhiteSpace(d.Checkpoint) ? d.Checkpoint : checkpoint,
+                    Checkpoint = d.UseCheckpoint && !string.IsNullOrWhiteSpace(d.Checkpoint) ? d.Checkpoint : model,
                     Steps = d.UseSteps ? d.Steps : src.Steps,
                     CfgScale = d.UseCFGScale ? d.CFGScale : src.CfgScale,
                     GuideSize = d.GuideSize,

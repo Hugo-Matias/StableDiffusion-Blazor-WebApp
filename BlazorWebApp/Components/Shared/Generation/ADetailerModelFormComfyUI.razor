@@ -55,19 +55,19 @@
     <MudSlider @bind-Value=Parameters.MaskBlur Min=M.Settings.Scripts.ADetailer.MaskBlur.Min Max=M.Settings.Scripts.ADetailer.MaskBlur.Max Step=M.Settings.Scripts.ADetailer.MaskBlur.Step ValueLabel=true><small>Mask Blur:</small> @Parameters.MaskBlur </MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider @bind-Value=Parameters.DropSize Min=0 Max=350 Step=5 ValueLabel=true><small>Drop Size:</small> @Parameters.DropSize </MudSlider>
+        <MudSlider @bind-Value=Parameters.DropSize Min=5 Max=350 Step=5 ValueLabel=true><small>Drop Size:</small> @Parameters.DropSize </MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider @bind-Value=Parameters.GuideSize Min=0 Max=4096 Step=128 ValueLabel=true><small>Guid Size:</small> @Parameters.GuideSize</MudSlider>
+        <MudSlider @bind-Value=Parameters.GuideSize Min=64 Max=4096 Step=64 ValueLabel=true><small>Guide Size:</small> @Parameters.GuideSize</MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider @bind-Value=Parameters.MaxSize Min=0 Max=4096 Step=128 ValueLabel=true><small>Max Size:</small> @Parameters.MaxSize</MudSlider>
+        <MudSlider @bind-Value=Parameters.MaxSize Min=64 Max=4096 Step=64 ValueLabel=true><small>Max Size:</small> @Parameters.MaxSize</MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider @bind-Value=Parameters.BBoxDilation Min=0 Max=500 Step=10 ValueLabel=true><small>BBox Dilation:</small> @Parameters.BBoxDilation</MudSlider>
+        <MudSlider @bind-Value=Parameters.BBoxDilation Min=10 Max=500 Step=10 ValueLabel=true><small>BBox Dilation:</small> @Parameters.BBoxDilation</MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider @bind-Value=Parameters.BBoxCropFactor Min=0 Max=20 Step=0.1 ValueLabel=true><small>BBox Crop Factor:</small> @Parameters.BBoxCropFactor</MudSlider>
+        <MudSlider @bind-Value=Parameters.BBoxCropFactor Min=1 Max=20 Step=0.1 ValueLabel=true><small>BBox Crop Factor:</small> @Parameters.BBoxCropFactor</MudSlider>
     </MudItem>
     <MudItem xs="12">
         <MudStack Row=true>

@@ -1,6 +1,7 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using MudBlazor;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Models
 {
@@ -63,7 +64,8 @@ namespace BlazorWebApp.Models
         public string Vae { get; set; }
         public long Seed { get; set; }
         public bool IsInterrupted { get; set; } = false;
-        public string ComfyUIWorkflow { get; set; }
+        public List<Workflow> Workflows { get; set; }
+        public ModelBase WorkflowBase { get; set; }
     }
 
     public class AppStateGenerationImg2Img

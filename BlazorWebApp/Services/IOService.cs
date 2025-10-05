@@ -91,6 +91,10 @@ namespace BlazorWebApp.Services
                 {
                     query = query.Where(f => extensionsWhitelist.Contains(f.Extension));
                 }
+                if (!string.IsNullOrWhiteSpace(ignorePath))
+                {
+                    query = query.Where(f => !f.FullName.Contains(ignorePath));
+                }
                 query = query.OrderBy(f => f.Name);
                 files.AddRange(query.ToList());
             }
