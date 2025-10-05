@@ -1,25 +1,41 @@
-﻿namespace BlazorWebApp.Models
+﻿using System.Text.Json.Serialization;
+
+namespace BlazorWebApp.Data.Dtos.WebUI
 {
-    public class UpscaleParameters : SharedParameters
+    public class UpscaleWebUI : SharedWebUI
     {
+        [JsonPropertyName("resize_mode")]
         public int ResizeMode { get; set; }
+        [JsonPropertyName("show_extras_results")]
         public bool ShowResults { get; set; }
+        [JsonPropertyName("gfpgan_visibility")]
         public double GfpganVisibility { get; set; }
+        [JsonPropertyName("codeformer_visibility")]
         public double CodeformerVisibility { get; set; }
+        [JsonPropertyName("codeformer_weight")]
         public double CodeformerWeight { get; set; }
+        [JsonPropertyName("upscaling_resize")]
         public double UpscalingMultiplier { get; set; }
+        [JsonPropertyName("upscaling_resize_w")]
         public int UpscalingWidth { get; set; }
+        [JsonPropertyName("upscaling_resize_h")]
         public int UpscalingHeight { get; set; }
+        [JsonPropertyName("upscaling_crop")]
         public bool UpscalingCrop { get; set; }
+        [JsonPropertyName("upscaler_1")]
         public string UpscalerPrimary { get; set; }
+        [JsonPropertyName("upscaler_2")]
         public string UpscalerSecondary { get; set; }
+        [JsonPropertyName("extras_upscaler_2_visibility")]
         public double UpscalerSecondaryVisibility { get; set; }
+        [JsonPropertyName("upscale_first")]
         public bool UpscalePriority { get; set; }
+        [JsonPropertyName("image")]
         public string Image { get; set; }
 
-        public UpscaleParameters() { }
+        public UpscaleWebUI() { }
 
-        public UpscaleParameters(SharedParameters clone)
+        public UpscaleWebUI(SharedWebUI clone)
         {
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;

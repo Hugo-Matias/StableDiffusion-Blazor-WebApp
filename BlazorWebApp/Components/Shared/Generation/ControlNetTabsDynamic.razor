@@ -1,4 +1,5 @@
-﻿@inject ManagerService M
+﻿@using BlazorWebApp.Data.Dtos.WebUI
+@inject ManagerService M
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Control Net</MudText>
 <MudDynamicTabs @ref="@_cnTabs" @bind-ActivePanelIndex="@_cnTabIndex"

@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.Json;
@@ -67,7 +68,7 @@ namespace BlazorWebApp.Services
             return await response.Content.ReadAsStringAsync();
         }
 
-        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters param)
+        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgWebUI param)
         {
             var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
             await File.WriteAllTextAsync("payload.json", json);
@@ -76,7 +77,7 @@ namespace BlazorWebApp.Services
             return await response.Content.ReadFromJsonAsync<GeneratedImages>();
         }
 
-        public async Task<GeneratedImages> PostImg2Img(Img2ImgParameters param)
+        public async Task<GeneratedImages> PostImg2Img(Img2ImgWebUI param)
         {
             var json = JsonSerializer.Serialize(param, new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true });
             await File.WriteAllTextAsync("payload.json", json);

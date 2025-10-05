@@ -1,6 +1,7 @@
-﻿using System.Text.Json.Serialization;
+﻿using BlazorWebApp.Models;
+using System.Text.Json.Serialization;
 
-namespace BlazorWebApp.Models
+namespace BlazorWebApp.Data.Dtos.WebUI
 {
     public class ScriptParametersADetailer : BaseScriptParameters
     {

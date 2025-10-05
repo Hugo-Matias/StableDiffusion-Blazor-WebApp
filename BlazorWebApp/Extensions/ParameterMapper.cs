@@ -1,18 +1,19 @@
 ﻿using BlazorWebApp.Data.Dtos.ComfyUI;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
+using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Models;
 using System.Text.Json;
-using Comfy = BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
-using M = BlazorWebApp.Models;
 
 namespace BlazorWebApp.Extensions
 {
     public static class ParameterMapper
     {
-        public static Comfy.sd.Txt2ImgParameters ToSDTxt2ImgParameters(this M.Txt2ImgParameters src, string model, string vae)
+        #region ComfyUI
+        public static Txt2ImgComfyUI ToTxt2ImgComfyUI(this Txt2ImgParameters src, string model, string vae)
         {
             var d = src.Scripts.ADetailer.Model1;
 
-            return new Comfy.sd.Txt2ImgParameters
+            return new Txt2ImgComfyUI
             {
                 Prompt = src.Prompt,
                 NegativePrompt = src.NegativePrompt,
@@ -21,6 +22,7 @@ namespace BlazorWebApp.Extensions
                 Seed = src.Seed,
                 Steps = src.Steps,
                 CfgScale = src.CfgScale,
+                Guidance = src.DistilledCfgScale,
                 SamplerName = src.SamplerName,
                 Scheduler = src.Scheduler,
                 BatchSize = src.BatchSize,
@@ -61,7 +63,7 @@ namespace BlazorWebApp.Extensions
             };
         }
 
-        public static SharedParameters ToSharedParameters(this Comfy.SharedParameters comfy)
+        public static SharedParameters ToSharedParameters(this SharedComfyUI comfy)
         {
             return new SharedParameters
             {
@@ -82,7 +84,7 @@ namespace BlazorWebApp.Extensions
         /// Maps a PromptResponse<TInput> into existing GeneratedImages model.
         /// </summary>
         public static GeneratedImages ToGeneratedImages<TInput>(this ComfyUIPromptResponse<TInput> comfy)
-            where TInput : Comfy.SharedParameters
+            where TInput : SharedComfyUI
         {
             if (comfy == null) throw new ArgumentNullException(nameof(comfy));
 
@@ -109,5 +111,124 @@ namespace BlazorWebApp.Extensions
                     WriteIndented = true
                 });
         }
+        #endregion
+
+        #region WebUI
+        public static Txt2ImgWebUI ToTxt2ImgWebUI(this Txt2ImgParameters src)
+        {
+            return new Txt2ImgWebUI
+            {
+                Prompt = src.Prompt,
+                NegativePrompt = src.NegativePrompt,
+                Styles = src.Styles,
+                Seed = src.Seed,
+                Subseed = src.Subseed,
+                SubseedStrength = src.SubseedStrength,
+                SeedResizeFromH = src.SeedResizeFromH,
+                SeedResizeFromW = src.SeedResizeFromW,
+                SamplerName = src.SamplerName,
+                Scheduler = src.Scheduler,
+                BatchSize = src.BatchSize,
+                NIter = src.NIter,
+                Steps = src.Steps,
+                CfgScale = src.CfgScale,
+                DistilledCfgScale = src.DistilledCfgScale,
+                DenoisingStrength = src.DenoisingStrength,
+                Width = src.Width,
+                Height = src.Height,
+                RestoreFaces = src.RestoreFaces,
+                Tiling = src.Tiling,
+                Eta = src.Eta,
+                SChurn = src.SChurn,
+                STmax = src.STmax,
+                STmin = src.STmin,
+                SNoise = src.SNoise,
+                SamplerIndex = src.SamplerIndex,
+                RefinerCheckpoint = src.RefinerCheckpoint,
+                RefinerSwitchAt = src.RefinerSwitchAt,
+                AlwaysOnScripts = src.AlwaysOnScripts,
+                ScriptName = src.ScriptName,
+                ScriptArgs = src.ScriptArgs,
+                EnableHR = src.EnableHR,
+                FirstphaseWidth = src.FirstphaseWidth,
+                FirstphaseHeight = src.FirstphaseHeight,
+                HRScale = src.HRScale,
+                HRUpscaler = src.HRUpscaler,
+                HRSecondPassSteps = src.HRSecondPassSteps,
+                HRWidth = src.HRWidth,
+                HRHeight = src.HRHeight,
+                Scripts = new()
+                {
+                    ControlNet = src.Scripts.ControlNet,
+                    Cutoff = src.Scripts.Cutoff,
+                    DynamicPrompts = src.Scripts.DynamicPrompts,
+                    MultiDiffusionTiledDiffusion = src.Scripts.MultiDiffusionTiledDiffusion,
+                    MultiDiffusionTiledVae = src.Scripts.MultiDiffusionTiledVae,
+                    RegionalPrompter = src.Scripts.RegionalPrompter,
+                    XYZPlot = src.Scripts.XYZPlot,
+                    ADetailer = src.Scripts.ADetailer,
+                    Incantations = src.Scripts.Incantations,
+                },
+            };
+        }
+
+        public static Img2ImgWebUI ToImg2ImgWebUI(this Img2ImgParameters src)
+        {
+            return new Img2ImgWebUI
+            {
+                Prompt = src.Prompt,
+                NegativePrompt = src.NegativePrompt,
+                Styles = src.Styles,
+                Seed = src.Seed,
+                Subseed = src.Subseed,
+                SubseedStrength = src.SubseedStrength,
+                SeedResizeFromH = src.SeedResizeFromH,
+                SeedResizeFromW = src.SeedResizeFromW,
+                SamplerName = src.SamplerName,
+                Scheduler = src.Scheduler,
+                BatchSize = src.BatchSize,
+                NIter = src.NIter,
+                Steps = src.Steps,
+                CfgScale = src.CfgScale,
+                DistilledCfgScale = src.DistilledCfgScale,
+                DenoisingStrength = src.DenoisingStrength,
+                Width = src.Width,
+                Height = src.Height,
+                RestoreFaces = src.RestoreFaces,
+                Tiling = src.Tiling,
+                Eta = src.Eta,
+                SChurn = src.SChurn,
+                STmax = src.STmax,
+                STmin = src.STmin,
+                SNoise = src.SNoise,
+                SamplerIndex = src.SamplerIndex,
+                RefinerCheckpoint = src.RefinerCheckpoint,
+                RefinerSwitchAt = src.RefinerSwitchAt,
+                AlwaysOnScripts = src.AlwaysOnScripts,
+                ScriptName = src.ScriptName,
+                ScriptArgs = src.ScriptArgs,
+                InitImages = src.InitImages,
+                Mask = src.Mask,
+                MaskBlur = src.MaskBlur,
+                ResizeMode = src.ResizeMode,
+                InpaintFullRes = src.InpaintFullRes,
+                InpaintFullResPadding = src.InpaintFullResPadding,
+                InpaintingFill = src.InpaintingFill,
+                InpaintingMaskInvert = src.InpaintingMaskInvert,
+                Scripts = new()
+                {
+                    ControlNet = src.Scripts.ControlNet,
+                    Cutoff = src.Scripts.Cutoff,
+                    DynamicPrompts = src.Scripts.DynamicPrompts,
+                    MultiDiffusionTiledDiffusion = src.Scripts.MultiDiffusionTiledDiffusion,
+                    MultiDiffusionTiledVae = src.Scripts.MultiDiffusionTiledVae,
+                    RegionalPrompter = src.Scripts.RegionalPrompter,
+                    XYZPlot = src.Scripts.XYZPlot,
+                    ADetailer = src.Scripts.ADetailer,
+                    Incantations = src.Scripts.Incantations,
+                },
+            };
+        }
+        #endregion
     }
 }

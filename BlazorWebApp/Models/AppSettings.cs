@@ -1,4 +1,6 @@
-﻿namespace BlazorWebApp.Models
+﻿using BlazorWebApp.Data.Dtos.WebUI;
+
+namespace BlazorWebApp.Models
 {
     public class AppSettings
     {
@@ -96,7 +98,7 @@
     {
         public float Value { get; set; } = 2.5f;
         public float Min { get; set; } = 1.0f;
-        public float Max { get; set; } = 10.0f;
+        public float Max { get; set; } = 7.0f;
         public float Step { get; set; } = 0.1f;
     }
 

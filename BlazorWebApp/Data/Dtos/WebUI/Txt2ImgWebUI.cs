@@ -1,21 +1,21 @@
-﻿using BlazorWebApp.Data.Dtos.WebUI;
+﻿using System.Text.Json.Serialization;
 
-namespace BlazorWebApp.Models
+namespace BlazorWebApp.Data.Dtos.WebUI
 {
-    public class Img2ImgParameters : SharedParameters
+    public class Txt2ImgWebUI : SharedWebUI
     {
-        public List<string> InitImages { get; set; }
-        public string Mask { get; set; }
-        public int MaskBlur { get; set; }
-        public int ResizeMode { get; set; }
-        public int InpaintingFill { get; set; }
-        public bool InpaintFullRes { get; set; }
-        public int InpaintFullResPadding { get; set; }
-        public int InpaintingMaskInvert { get; set; }
-        public Img2ImgScriptParameters Scripts { get; set; }
+        [JsonPropertyName("enable_hr")] public bool? EnableHR { get; set; }
+        [JsonPropertyName("firstphase_width")] public int? FirstphaseWidth { get; set; }
+        [JsonPropertyName("firstphase_height")] public int? FirstphaseHeight { get; set; }
+        [JsonPropertyName("hr_scale")] public double HRScale { get; set; }
+        [JsonPropertyName("hr_upscaler")] public string HRUpscaler { get; set; }
+        [JsonPropertyName("hr_second_pass_steps")] public int HRSecondPassSteps { get; set; }
+        [JsonPropertyName("hr_resize_x")] public int HRWidth { get; set; }
+        [JsonPropertyName("hr_resize_y")] public int HRHeight { get; set; }
+        public Txt2ImgScriptParameters Scripts { get; set; }
 
-        public Img2ImgParameters() { }
-        public Img2ImgParameters(SharedParameters clone)
+        public Txt2ImgWebUI() { }
+        public Txt2ImgWebUI(SharedWebUI clone)
         {
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
@@ -25,12 +25,13 @@ namespace BlazorWebApp.Models
             SubseedStrength = clone.SubseedStrength;
             SeedResizeFromH = clone.SeedResizeFromH;
             SeedResizeFromW = clone.SeedResizeFromW;
-            BatchSize = clone.BatchSize;
             SamplerName = clone.SamplerName;
             Scheduler = clone.Scheduler;
+            BatchSize = clone.BatchSize;
             NIter = clone.NIter;
             Steps = clone.Steps;
             CfgScale = clone.CfgScale;
+            DistilledCfgScale = clone.DistilledCfgScale;
             Width = clone.Width;
             Height = clone.Height;
             RestoreFaces = clone.RestoreFaces;
@@ -50,12 +51,11 @@ namespace BlazorWebApp.Models
         }
     }
 
-    public class Img2ImgScriptParameters
+    public class Txt2ImgScriptParameters
     {
         public List<ScriptParametersControlNet> ControlNet { get; set; }
         public ScriptParametersCutoff Cutoff { get; set; }
         public ScriptParametersDynamicPrompts DynamicPrompts { get; set; }
-        public ScriptParametersUltimateUpscale UltimateUpscale { get; set; }
         public ScriptParametersMultiDiffusionTiledDiffusion MultiDiffusionTiledDiffusion { get; set; }
         public ScriptParametersMultiDiffusionTiledVae MultiDiffusionTiledVae { get; set; }
         public ScriptParametersRegionalPrompter RegionalPrompter { get; set; }

@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
@@ -550,6 +551,7 @@ namespace BlazorWebApp.Services
                     ModelType.Diffusion => await _capi.GetDiffusionModels(),
                     _ => await _capi.GetCheckpoints(),
                 };
+                SetDefaultBaseModel();
             }
 
             OnSDModelsChange?.Invoke();
@@ -698,12 +700,23 @@ namespace BlazorWebApp.Services
 
         public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
 
-        public Workflow GetCurrentWorkflow(ModeType mode) => State.Generation.Workflows.Where(w => w.Mode == mode).FirstOrDefault();
+        public Workflow GetWorkflowByName(string name) => State.Generation.Workflows.Where(w => w.Title == name && w.Base == State.Generation.WorkflowBase).FirstOrDefault();
 
         public void SetWorkflowBase(ModelBase workflowBase)
         {
             State.Generation.WorkflowBase = workflowBase;
             OnWorkflowBaseChanged?.Invoke();
+            SetDefaultBaseModel();
+        }
+
+        public void SetDefaultBaseModel()
+        {
+            var workflow = State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+            if (workflow != null)
+            {
+                var defaultModel = workflow.Prompt.GetDefaultModelFromWorkflow();
+                State.Generation.SDModel = defaultModel;
+            }
         }
 
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
@@ -901,31 +914,31 @@ namespace BlazorWebApp.Services
             SharedParameters param = isImg2Img ? ParametersImg2Img : ParametersTxt2Img;
             switch (parameter)
             {
-                case nameof(SharedParameters.Prompt):
+                case nameof(SharedWebUI.Prompt):
                     param.Prompt = source.Prompt;
                     break;
-                case nameof(SharedParameters.NegativePrompt):
+                case nameof(SharedWebUI.NegativePrompt):
                     param.NegativePrompt = source.NegativePrompt;
                     break;
-                case nameof(SharedParameters.SamplerIndex):
+                case nameof(SharedWebUI.SamplerIndex):
                     param.SamplerIndex = GetSampler();
                     break;
-                case nameof(SharedParameters.Seed):
+                case nameof(SharedWebUI.Seed):
                     param.Seed = source.Seed;
                     break;
-                case nameof(SharedParameters.Steps):
+                case nameof(SharedWebUI.Steps):
                     param.Steps = source.Steps;
                     break;
-                case nameof(SharedParameters.CfgScale):
+                case nameof(SharedWebUI.CfgScale):
                     param.CfgScale = source.CfgScale;
                     break;
-                case nameof(SharedParameters.Width):
+                case nameof(SharedWebUI.Width):
                     param.Width = source.Width;
                     break;
-                case nameof(SharedParameters.Height):
+                case nameof(SharedWebUI.Height):
                     param.Height = source.Height;
                     break;
-                case nameof(SharedParameters.DenoisingStrength):
+                case nameof(SharedWebUI.DenoisingStrength):
                     param.DenoisingStrength = source.DenoisingStrength;
                     break;
             }

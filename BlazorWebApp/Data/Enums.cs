@@ -3,7 +3,7 @@
     public class Enums
     {
         public enum ModelType { Checkpoint, Diffusion };
-        public enum ModelBase { StableDiffusion, Flux };
+        public enum ModelBase { StableDiffusion, Flux, Chroma };
 
     }
 }

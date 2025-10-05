@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos.ComfyUI;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Collections.Concurrent;
@@ -186,10 +187,9 @@ namespace BlazorWebApp.Services
         }
 
 
-        public async Task<GeneratedImages> PostTxt2Img(Models.Txt2ImgParameters param, string clientId, string workflow, string model, string vae)
+        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgComfyUI param, string clientId, string workflow)
         {
-            var comfyParam = param.ToSDTxt2ImgParameters(model, vae);
-            var payload = new { prompt = _workflow.Render(workflow, comfyParam), client_id = clientId };
+            var payload = new { prompt = _workflow.Render(workflow, param), client_id = clientId };
             return await PostPromptAsync<GeneratedImages>(payload);
         }
 

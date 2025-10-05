@@ -1,4 +1,4 @@
-﻿using BlazorWebApp.Data.Entities;
+﻿using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
@@ -16,17 +16,18 @@ namespace BlazorWebApp.Services
             _m = m;
         }
 
-        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters)
+        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters, string workflowName)
         {
             if (_m.IsComfyUIUp)
             {
                 var model = _m.State.Generation.SDModel;
                 var vae = _m.State.Generation.Vae;
-                var workflow = _m.GetCurrentWorkflow(ModeType.Txt2Img);
-                return await _capi.PostTxt2Img(parameters, _m.ComfyWSClientId, workflow.Prompt, model, vae);
+                var workflow = _m.GetWorkflowByName(workflowName);
+                return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _m.ComfyWSClientId, workflow.Prompt);
             }
             if (_m.IsWebuiUp)
-                return await _sdapi.PostTxt2Img(parameters);
+                return await _sdapi.PostTxt2Img(parameters.ToTxt2ImgWebUI());
+
             throw new InvalidOperationException("No backend available");
         }
 
@@ -36,7 +37,7 @@ namespace BlazorWebApp.Services
                 //return await _capi.PostImg2Img(parameters);
                 throw new Exception("Not implemented");
             if (_m.IsWebuiUp)
-                return await _sdapi.PostImg2Img(parameters);
+                return await _sdapi.PostImg2Img(parameters.ToImg2ImgWebUI());
             throw new InvalidOperationException("No backend available");
         }
     }

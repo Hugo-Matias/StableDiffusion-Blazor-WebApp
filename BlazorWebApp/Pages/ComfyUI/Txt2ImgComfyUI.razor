@@ -1,7 +1,8 @@
-﻿@page "/comfyui/txt2img"
+﻿@page "/comfyui/txt2img/{workflowName}"
 @inject ComfyUIService API
 @inject ManagerService M
 @inject ImageService ImageService
+@inject NavigationManager NavManager
 @implements IDisposable
 
 <PromptFields @bind-Parameters="SharedParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
@@ -16,6 +17,8 @@
 </MudGrid>
 
 @code {
+    [Parameter]
+    public string WorkflowName { get; set; }
     public Txt2ImgParameters Parameters { get; set; }
     public SharedParameters SharedParameters { get; set; }
 
@@ -29,7 +32,7 @@
 
     private async void Generate()
     {
-        var generated = await ImageService.GetImages(ModeType.Txt2Img);
+        var generated = await ImageService.GetImages(ModeType.Txt2Img, WorkflowName);
         if (generated != null && generated.Images != null && generated.Images.Count > 0) M.GeneratedImageEntities = generated;
     }
 

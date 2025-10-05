@@ -1,6 +1,6 @@
-﻿namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow.sd
+﻿namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 {
-    public class Txt2ImgParameters : SharedParameters
+    public class Txt2ImgComfyUI : SharedComfyUI
     {
         public string? Model { get; set; }
         public string? VAE { get; set; }

@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace BlazorWebApp.Models
+namespace BlazorWebApp.Data.Dtos.WebUI
 {
     public class ScriptParametersControlNet
     {
@@ -31,7 +31,7 @@ namespace BlazorWebApp.Models
             if (reader.TokenType == JsonTokenType.String)
             {
                 string enumValue = reader.GetString().Replace("ip-adapter", "ipadapter");
-                if (Enum.TryParse<ControlNetPreprocessor>(enumValue, out ControlNetPreprocessor result)) return result;
+                if (Enum.TryParse(enumValue, out ControlNetPreprocessor result)) return result;
             }
             throw new JsonException($"Unable to deserialize {typeof(ControlNetPreprocessor).Name} from JSON.");
         }

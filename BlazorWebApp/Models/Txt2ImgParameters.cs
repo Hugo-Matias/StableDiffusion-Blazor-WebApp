@@ -1,17 +1,17 @@
-﻿using System.Text.Json.Serialization;
+﻿using BlazorWebApp.Data.Dtos.WebUI;
 
 namespace BlazorWebApp.Models
 {
     public class Txt2ImgParameters : SharedParameters
     {
-        [JsonPropertyName("enable_hr")] public bool? EnableHR { get; set; }
-        [JsonPropertyName("firstphase_width")] public int? FirstphaseWidth { get; set; }
-        [JsonPropertyName("firstphase_height")] public int? FirstphaseHeight { get; set; }
-        [JsonPropertyName("hr_scale")] public double HRScale { get; set; }
-        [JsonPropertyName("hr_upscaler")] public string HRUpscaler { get; set; }
-        [JsonPropertyName("hr_second_pass_steps")] public int HRSecondPassSteps { get; set; }
-        [JsonPropertyName("hr_resize_x")] public int HRWidth { get; set; }
-        [JsonPropertyName("hr_resize_y")] public int HRHeight { get; set; }
+        public bool? EnableHR { get; set; }
+        public int? FirstphaseWidth { get; set; }
+        public int? FirstphaseHeight { get; set; }
+        public double HRScale { get; set; }
+        public string HRUpscaler { get; set; }
+        public int HRSecondPassSteps { get; set; }
+        public int HRWidth { get; set; }
+        public int HRHeight { get; set; }
         public Txt2ImgScriptParameters Scripts { get; set; }
 
         public Txt2ImgParameters() { }

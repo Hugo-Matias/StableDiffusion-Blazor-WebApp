@@ -1,21 +1,21 @@
-﻿using BlazorWebApp.Data.Dtos.WebUI;
+﻿using System.Text.Json.Serialization;
 
-namespace BlazorWebApp.Models
+namespace BlazorWebApp.Data.Dtos.WebUI
 {
-    public class Img2ImgParameters : SharedParameters
+    public class Img2ImgWebUI : SharedWebUI
     {
-        public List<string> InitImages { get; set; }
-        public string Mask { get; set; }
-        public int MaskBlur { get; set; }
-        public int ResizeMode { get; set; }
-        public int InpaintingFill { get; set; }
-        public bool InpaintFullRes { get; set; }
-        public int InpaintFullResPadding { get; set; }
-        public int InpaintingMaskInvert { get; set; }
+        [JsonPropertyName("init_images")] public List<string> InitImages { get; set; }
+        [JsonPropertyName("mask")] public string Mask { get; set; }
+        [JsonPropertyName("mask_blur")] public int MaskBlur { get; set; }
+        [JsonPropertyName("resize_mode")] public int ResizeMode { get; set; }
+        [JsonPropertyName("inpainting_fill")] public int InpaintingFill { get; set; }
+        [JsonPropertyName("inpaint_full_res")] public bool InpaintFullRes { get; set; }
+        [JsonPropertyName("inpaint_full_res_padding")] public int InpaintFullResPadding { get; set; }
+        [JsonPropertyName("inpainting_mask_invert")] public int InpaintingMaskInvert { get; set; }
         public Img2ImgScriptParameters Scripts { get; set; }
 
-        public Img2ImgParameters() { }
-        public Img2ImgParameters(SharedParameters clone)
+        public Img2ImgWebUI() { }
+        public Img2ImgWebUI(SharedWebUI clone)
         {
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;

@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
@@ -169,6 +170,17 @@ namespace BlazorWebApp.Extensions
         {
             // TODO: write parsing
             return new Dictionary<string, string>();
+        }
+
+        public static string GetDefaultModelFromWorkflow(this string workflow)
+        {
+            var defaultModel = string.Empty;
+            var match = Regex.Match(workflow, @"\{\{\s*Model\s*\?\?\s*""([^""]+)""");
+            if (match.Success)
+            {
+                defaultModel = match.Groups[1].Value;
+            }
+            return defaultModel;
         }
 
         public static string ParseCivitaiImageResources(this string prompt, List<CivitaiImageMetaResourceDto> resources)

@@ -1,4 +1,6 @@
-﻿namespace BlazorWebApp.Models
+﻿using BlazorWebApp.Models;
+
+namespace BlazorWebApp.Data.Dtos.WebUI
 {
     public class ScriptParametersCutoff : BaseScriptParameters
     {

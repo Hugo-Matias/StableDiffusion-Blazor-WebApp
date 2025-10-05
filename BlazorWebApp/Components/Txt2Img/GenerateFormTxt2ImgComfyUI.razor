@@ -1,4 +1,5 @@
-﻿@inject ManagerService M
+﻿@using static BlazorWebApp.Data.Enums
+@inject ManagerService M
 
 <div style="margin-bottom:15rem;">
     <EditForm Model="@Parameters">
@@ -37,9 +38,18 @@
                     <MudIconButton OnClick=RestoreSeed Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" />
                 </MudButtonGroup>
             </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
-            </MudItem>
+            @if (_guidanceBases.Contains(M.State.Generation.WorkflowBase))
+            {
+                <MudItem xs="6">
+                    <MudSlider @bind-Value=Parameters.DistilledCfgScale Min=M.Settings.Generation.Shared.DistilledCfg.Min Max=M.Settings.Generation.Shared.DistilledCfg.Max Step=M.Settings.Generation.Shared.DistilledCfg.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Guidance:</small> @Parameters.DistilledCfgScale</MudSlider>
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="6">
+                    <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
+                </MudItem>
+            }
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
             </MudItem>
@@ -112,6 +122,7 @@
 
     private Options _options;
     private MarkupString _resizeInfo;
+    private List<ModelBase> _guidanceBases = new() { ModelBase.Flux };
 
     protected async override Task OnInitializedAsync()
     {
@@ -137,59 +148,19 @@
 
     private void HandleParameterChecked(MudChip[] checkboxes)
     {
-        Parameters.RestoreFaces = false;
         Parameters.Scripts.ADetailer.IsEnabled = false;
-        Parameters.Tiling = false;
         Parameters.EnableHR = false;
-        Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled = false;
-        Parameters.Scripts.MultiDiffusionTiledVae.IsEnabled = false;
-        Parameters.Scripts.Cutoff.IsEnabled = false;
-        Parameters.Scripts.RegionalPrompter.IsEnabled = false;
-        Parameters.Scripts.DynamicPrompts.IsEnabled = false;
-        M.ControlNetEnabled = false;
-        Parameters.Scripts.XYZPlot.IsEnabled = false;
-        Parameters.Scripts.Incantations.IsEnabled = false;
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
         foreach (var check in checkboxes)
         {
             switch (check.Text)
             {
-                case "Restore Faces":
-                    Parameters.RestoreFaces = true;
-                    break;
                 case "ADetailer":
                     Parameters.Scripts.ADetailer.IsEnabled = true;
                     break;
-                case "Tiling":
-                    Parameters.Tiling = true;
-                    break;
                 case "Upscale":
                     Parameters.EnableHR = true;
-                    break;
-                case "Tiled Diffusion":
-                    Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled = true;
-                    break;
-                case "Tiled VAE":
-                    Parameters.Scripts.MultiDiffusionTiledVae.IsEnabled = true;
-                    break;
-                case "Cutoff":
-                    Parameters.Scripts.Cutoff.IsEnabled = true;
-                    break;
-                case "Regional Prompter":
-                    Parameters.Scripts.RegionalPrompter.IsEnabled = true;
-                    break;
-                case "Dynamic Prompts":
-                    Parameters.Scripts.DynamicPrompts.IsEnabled = true;
-                    break;
-                case "ControlNet":
-                    M.ControlNetEnabled = true;
-                    break;
-                case "XYZ Plot":
-                    Parameters.Scripts.XYZPlot.IsEnabled = true;
-                    break;
-                case "Incantations":
-                    Parameters.Scripts.Incantations.IsEnabled = true;
                     break;
             }
         }

@@ -1,6 +1,6 @@
 {
   "Title": "Txt2Img",
-  "Base": "Flux",
+  "Base": "Chroma",
   "Mode": "txt2img",
   "ModelType": "diffusion",
   "Prompt":
@@ -13,21 +13,25 @@
       "steps": {{ Steps ?? 20 | json }},
       "steps_to_run": -1,
       "denoise": 1,
-      "cfg": 1,
+      "cfg": {{ CfgScale ?? 5.5 | json }},
       "seed": {{ Seed ?? 42 | json }},
       "sampler_mode": "standard",
       "bongmath": true,
       "model": [
-        "79:5",
+        "34:32",
         0
       ],
       "positive": [
-        "79:10",
+        "34:31",
+        0
+      ],
+      "negative": [
+        "34:33",
         0
       ],
       "latent_image": [
-        "79:7",
-        3
+        "70",
+        0
       ]
     },
     "class_type": "ClownsharKSampler_Beta",
@@ -55,7 +59,7 @@
         1
       ],
       "vae": [
-        "79:1",
+        "76:73",
         0
       ]
     },
@@ -142,7 +146,236 @@
       "title": "Save Image"
     }
   },
-  "81": {
+  "70": {
+    "inputs": {
+      "width": {{ Width ?? 872 | json }},
+      "height": {{ Height ?? 1248 | json }},
+      "batch_size": {{ BatchSize ?? 1 | json }}
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "75:74": {
+    "inputs": {
+      "min_padding": 1,
+      "min_length": 0,
+      "clip": [
+        "75:72",
+        0
+      ]
+    },
+    "class_type": "T5TokenizerOptions",
+    "_meta": {
+      "title": "T5TokenizerOptions"
+    }
+  },
+  "75:73": {
+    "inputs": {
+      "vae_name": {{ VAE ?? "ae.safetensors" | json }}
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "75:72": {
+    "inputs": {
+      "clip_name": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
+      "type": "chroma",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "75:71": {
+    "inputs": {
+      "unet_name": {{ Model ?? "Chroma1-HD.safetensors" | json }},
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "76:74": {
+    "inputs": {
+      "min_padding": 1,
+      "min_length": 0,
+      "clip": [
+        "76:72",
+        0
+      ]
+    },
+    "class_type": "T5TokenizerOptions",
+    "_meta": {
+      "title": "T5TokenizerOptions"
+    }
+  },
+  "76:73": {
+    "inputs": {
+      "vae_name": {{ VAE ?? "ae.safetensors" | json }}
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "76:72": {
+    "inputs": {
+      "clip_name": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
+      "type": "chroma",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "76:71": {
+    "inputs": {
+      "unet_name": {{ Model ?? "Chroma1-HD.safetensors" | json }},
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "67:30": {
+    "inputs": {
+      "text": [
+        "67:22",
+        0
+      ],
+      "model": [
+        "75:71",
+        0
+      ],
+      "clip": [
+        "75:74",
+        0
+      ]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "PC: Schedule LoRAs"
+    }
+  },
+  "67:32": {
+    "inputs": {
+      "text": [
+        "67:26",
+        0
+      ],
+      "model": [
+        "67:30",
+        0
+      ],
+      "clip": [
+        "75:74",
+        0
+      ]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "PC: Schedule LoRAs"
+    }
+  },
+  "67:22": {
+    "inputs": {
+      "value": {{ Detailer.Prompt | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "String (Multiline)"
+    }
+  },
+  "67:26": {
+    "inputs": {
+      "value": {{ Detailer.NegativePrompt | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "String (Multiline)"
+    }
+  },
+  "67:33": {
+    "inputs": {
+      "text": [
+        "67:26",
+        0
+      ],
+      "clip": [
+        "67:32",
+        1
+      ]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "PC: Schedule Prompt"
+    }
+  },
+  "67:31": {
+    "inputs": {
+      "text": [
+        "67:22",
+        0
+      ],
+      "clip": [
+        "67:30",
+        1
+      ]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "PC: Schedule Prompt"
+    }
+  },
+  "34:30": {
+    "inputs": {
+      "text": [
+        "34:22",
+        0
+      ],
+      "model": [
+        "76:71",
+        0
+      ],
+      "clip": [
+        "76:74",
+        0
+      ]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "PC: Schedule LoRAs"
+    }
+  },
+  "34:32": {
+    "inputs": {
+      "text": [
+        "34:26",
+        0
+      ],
+      "model": [
+        "34:30",
+        0
+      ],
+      "clip": [
+        "76:74",
+        0
+      ]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "PC: Schedule LoRAs"
+    }
+  },
+  "34:22": {
     "inputs": {
       "value": {{ Prompt | json }}
     },
@@ -151,60 +384,23 @@
       "title": "String (Multiline)"
     }
   },
-  "82": {
+  "34:26": {
     "inputs": {
-      "text": "",
-      "clip": [
-        "79:2",
-        0
-      ]
-    },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "CLIP Text Encode (Prompt)"
-    }
-  },
-	"83": {
-    "inputs": {
-      "value": {{ Detailer.Prompt | json }}
+      "value": {{ NegativePrompt | json }}
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
       "title": "String (Multiline)"
     }
-  },	 
-  "79:4": {
-    "inputs": {
-      "style_dtype": "float64",
-      "enable": true,
-      "model": [
-        "79:9:30",
-        0
-      ]
-    },
-    "class_type": "ReFluxPatcher",
-    "_meta": {
-      "title": "ReFluxPatcher"
-    }
   },
-  "79:3": {
-    "inputs": {
-      "unet_name": {{ Model ?? "flux1-krea-dev_fp8_scaled.safetensors" | json }},
-      "weight_dtype": "default"
-    },
-    "class_type": "UNETLoader",
-    "_meta": {
-      "title": "Load Diffusion Model"
-    }
-  },
-  "79:9:31": {
+  "34:33": {
     "inputs": {
       "text": [
-        "79:9:22",
+        "34:26",
         0
       ],
       "clip": [
-        "79:9:30",
+        "34:32",
         1
       ]
     },
@@ -213,143 +409,14 @@
       "title": "PC: Schedule Prompt"
     }
   },
-  "79:9:30": {
+  "34:31": {
     "inputs": {
       "text": [
-        "79:9:22",
-        0
-      ],
-      "model": [
-        "79:3",
+        "34:22",
         0
       ],
       "clip": [
-        "79:2",
-        0
-      ]
-    },
-    "class_type": "PCLazyLoraLoader",
-    "_meta": {
-      "title": "PC: Schedule LoRAs"
-    }
-  },
-  "79:9:22": {
-    "inputs": {
-      "value": [
-        "81",
-        0
-      ]
-    },
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": {
-      "title": "String (Multiline)"
-    }
-  },
-  "79:1": {
-    "inputs": {
-      "vae_name": {{ VAE ?? "ae.safetensors" | json }}
-    },
-    "class_type": "VAELoader",
-    "_meta": {
-      "title": "Load VAE"
-    }
-  },
-  "79:8": {
-    "inputs": {
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "batch_size": {{ BatchSize ?? 1 | json }}
-    },
-    "class_type": "EmptySD3LatentImage",
-    "_meta": {
-      "title": "EmptySD3LatentImage"
-    }
-  },
-  "79:7": {
-    "inputs": {
-      "resize_to_input": "false",
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "mask_channel": "red",
-      "invert_mask": false,
-      "latent_type": "16_channels",
-      "latent": [
-        "79:8",
-        0
-      ],
-      "vae": [
-        "79:1",
-        0
-      ]
-    },
-    "class_type": "VAEEncodeAdvanced",
-    "_meta": {
-      "title": "VAEEncodeAdvanced"
-    }
-  },
-  "79:5": {
-    "inputs": {
-      "scaling": "exponential",
-      "max_shift": 1.35,
-      "base_shift": 0.85,
-      "model": [
-        "79:4",
-        0
-      ],
-      "latent_image": [
-        "79:7",
-        3
-      ]
-    },
-    "class_type": "ModelSamplingAdvancedResolution",
-    "_meta": {
-      "title": "ModelSamplingAdvancedResolution"
-    }
-  },
-  "79:2": {
-    "inputs": {
-      "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
-      "clip_name2": {{ Clip2 ??  "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
-      "type": "flux",
-      "device": "default"
-    },
-    "class_type": "DualCLIPLoader",
-    "_meta": {
-      "title": "DualCLIPLoader"
-    }
-  },
-  "80:4": {
-    "inputs": {
-      "style_dtype": "float64",
-      "enable": true,
-      "model": [
-        "80:9:30",
-        0
-      ]
-    },
-    "class_type": "ReFluxPatcher",
-    "_meta": {
-      "title": "ReFluxPatcher"
-    }
-  },
-  "80:3": {
-    "inputs": {
-      "unet_name": {{ Detailer.Checkpoint ?? "flux1-krea-dev_fp8_scaled.safetensors" | json }},
-      "weight_dtype": "default"
-    },
-    "class_type": "UNETLoader",
-    "_meta": {
-      "title": "Load Diffusion Model"
-    }
-  },
-  "80:9:31": {
-    "inputs": {
-      "text": [
-        "80:9:22",
-        0
-      ],
-      "clip": [
-        "80:9:30",
+        "34:30",
         1
       ]
     },
@@ -358,18 +425,18 @@
       "title": "PC: Schedule Prompt"
     }
   },
-  "80:9:30": {
+  "68:30": {
     "inputs": {
       "text": [
-        "80:9:22",
+        "68:22",
         0
       ],
       "model": [
-        "80:3",
+        "76:71",
         0
       ],
       "clip": [
-        "80:2",
+        "76:74",
         0
       ]
     },
@@ -378,115 +445,74 @@
       "title": "PC: Schedule LoRAs"
     }
   },
-  "80:9:22": {
+  "68:32": {
     "inputs": {
-      "value": [
-        "81",
+      "text": [
+        "68:26",
+        0
+      ],
+      "model": [
+        "68:30",
+        0
+      ],
+      "clip": [
+        "76:74",
         0
       ]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "PC: Schedule LoRAs"
+    }
+  },
+  "68:22": {
+    "inputs": {
+      "value": {{ Prompt | json }}
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
       "title": "String (Multiline)"
     }
   },
-  "80:1": {
+  "68:26": {
     "inputs": {
-      "vae_name": {{ VAE ?? "ae.safetensors" | json }}
+      "value": {{ NegativePrompt | json }}
     },
-    "class_type": "VAELoader",
+    "class_type": "PrimitiveStringMultiline",
     "_meta": {
-      "title": "Load VAE"
+      "title": "String (Multiline)"
     }
   },
-  "80:10": {
+  "68:33": {
     "inputs": {
-      "guidance": {{ Guidance ?? 3.5 | json }},
-      "conditioning": [
-        "80:9:31",
-        0
-      ]
-    },
-    "class_type": "FluxGuidance",
-    "_meta": {
-      "title": "FluxGuidance"
-    }
-  },
-  "79:10": {
-    "inputs": {
-      "guidance": {{ Guidance ?? 3.5 | json }},
-      "conditioning": [
-        "79:9:31",
-        0
-      ]
-    },
-    "class_type": "FluxGuidance",
-    "_meta": {
-      "title": "FluxGuidance"
-    }
-  },
-  "80:8": {
-    "inputs": {
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "batch_size": {{ BatchSize ?? 1 | json }}
-    },
-    "class_type": "EmptySD3LatentImage",
-    "_meta": {
-      "title": "EmptySD3LatentImage"
-    }
-  },
-  "80:7": {
-    "inputs": {
-      "resize_to_input": "false",
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "mask_channel": "red",
-      "invert_mask": false,
-      "latent_type": "16_channels",
-      "latent": [
-        "80:8",
+      "text": [
+        "68:26",
         0
       ],
-      "vae": [
-        "80:1",
-        0
+      "clip": [
+        "68:32",
+        1
       ]
     },
-    "class_type": "VAEEncodeAdvanced",
+    "class_type": "PCLazyTextEncode",
     "_meta": {
-      "title": "VAEEncodeAdvanced"
+      "title": "PC: Schedule Prompt"
     }
   },
-  "80:5": {
+  "68:31": {
     "inputs": {
-      "scaling": "exponential",
-      "max_shift": 1.35,
-      "base_shift": 0.85,
-      "model": [
-        "80:4",
+      "text": [
+        "68:22",
         0
       ],
-      "latent_image": [
-        "80:7",
-        3
+      "clip": [
+        "68:30",
+        1
       ]
     },
-    "class_type": "ModelSamplingAdvancedResolution",
+    "class_type": "PCLazyTextEncode",
     "_meta": {
-      "title": "ModelSamplingAdvancedResolution"
-    }
-  },
-  "80:2": {
-    "inputs": {
-      "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
-      "clip_name2": {{ Clip2 ??  "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
-      "type": "flux",
-      "device": "default"
-    },
-    "class_type": "DualCLIPLoader",
-    "_meta": {
-      "title": "DualCLIPLoader"
+      "title": "PC: Schedule Prompt"
     }
   },
   "36:815": {
@@ -505,17 +531,21 @@
       "scheduler": {{ Scheduler ?? "beta" | json }},
       "steps": {{ Upscale.Steps ?? 20 | json }},
       "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 2 | math.round | json }},
-      "denoise": {{ Upscale.Denoise ?? 1 | json }},
+      "denoise": {{ Upscale.Denoise && 1 | json }},
       "cfg": 1,
       "seed": {{ Seed ?? 42 | json }},
       "sampler_mode": "unsample",
       "bongmath": true,
       "model": [
-        "79:5",
+        "76:71",
         0
       ],
       "positive": [
-        "79:9:31",
+        "34:31",
+        0
+      ],
+      "negative": [
+        "34:33",
         0
       ],
       "latent_image": [
@@ -553,7 +583,7 @@
         0
       ],
       "vae": [
-        "79:1",
+        "76:73",
         0
       ]
     },
@@ -569,7 +599,7 @@
         0
       ],
       "vae": [
-        "79:1",
+        "76:73",
         0
       ]
     },
@@ -603,29 +633,13 @@
         0
       ],
       "vae": [
-        "79:1",
+        "76:73",
         0
       ]
     },
     "class_type": "VAEDecode",
     "_meta": {
       "title": "VAE Decode"
-    }
-  },
-  "36:814": {
-    "inputs": {
-      "upscale_model": [
-        "36:815",
-        0
-      ],
-      "image": [
-        "36:816",
-        0
-      ]
-    },
-    "class_type": "ImageUpscaleWithModel",
-    "_meta": {
-      "title": "Upscale Image (using Model)"
     }
   },
   "36:817": {
@@ -644,6 +658,22 @@
       "title": "Upscale Image"
     }
   },
+  "36:814": {
+    "inputs": {
+      "upscale_model": [
+        "36:815",
+        0
+      ],
+      "image": [
+        "36:816",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
+    }
+  },
   "61:56": {
     "inputs": {
       "model_name": {{ Detailer.Model ?? "bbox/face_yolov8m.pt" | json }}
@@ -660,7 +690,7 @@
       "max_size": {{ Detailer.MaxSize ?? 1024 | json }},
       "seed": {{ Detailer.Seed ?? 42 | json }},
       "steps": {{ Detailer.Steps ?? 20 | json }},
-      "cfg": {{ Detailer.CfgScale ?? 1 | json }},
+      "cfg": {{ Detailer.CfgScale ?? 8 | json }},
       "sampler_name": {{ Detailer.Sampler ?? "dpmpp_2m" | json }},
       "scheduler": {{ Detailer.Scheduler ?? "beta" | json}},
       "denoise": {{ Detailer.Denoise ?? 0.65 | json }},
@@ -688,23 +718,23 @@
         0
       ],
       "model": [
-        "79:5",
+        "68:32",
         0
       ],
       "clip": [
-        "79:2",
+        "76:74",
         0
       ],
       "vae": [
-        "79:1",
+        "76:73",
         0
       ],
       "positive": [
-        "79:9:31",
+        "68:31",
         0
       ],
       "negative": [
-        "82",
+        "68:33",
         0
       ],
       "bbox_detector": [
@@ -761,23 +791,23 @@
         0
       ],
       "model": [
-        "80:5",
+        "67:32",
         0
       ],
       "clip": [
-        "80:2",
+        "75:74",
         0
       ],
       "vae": [
-        "80:1",
+        "75:73",
         0
       ],
       "positive": [
-        "80:10",
+        "67:31",
         0
       ],
       "negative": [
-        "82",
+        "67:33",
         0
       ],
       "bbox_detector": [
