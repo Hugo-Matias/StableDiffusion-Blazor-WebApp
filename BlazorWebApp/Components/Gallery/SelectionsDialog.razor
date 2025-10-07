@@ -1,0 +1,93 @@
+﻿@inject ManagerService M
+@inject DatabaseService DB
+@inject IDialogService DialogService
+
+<div>
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6" Class="me-5">
+                Selection Manager
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <div class="d-flex flex-column align-items-center mb-3">
+                <MudButton OnClick=@(async () => await ShowModal()) Disabled="M.SelectedImageIds.Count <= 0" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="px-4 py-2">
+                    + Add Selection
+                </MudButton>
+            </div>
+
+            <div style="display: flex; overflow-x: auto; gap: 1rem; padding: 0.5rem; max-width: 70vw;">
+                @foreach (var selection in _selections)
+                {
+                    <SelectionCard Selection="selection"
+                                   OnLoadSelection="ShowLoadSelectionModal"
+                                   OnReplaceSelection="ShowReplaceSelectionModal"
+                                   OnDeleteSelection="ShowDeleteSelectionModal" />
+                }
+            </div>
+        </DialogContent>
+    </MudDialog>
+</div>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    private List<Selection> _selections = new();
+    DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _selections = await DB.GetSelections();
+    }
+
+    private async Task ShowModal()
+    {
+        var dialog = await DialogService.ShowAsync<CreateSelectionDialog>("Create Project", _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Cancelled) await CreateSelection((Selection)result.Data);
+    }
+
+    private async Task CreateSelection(Selection selection)
+    {
+        selection.Images = await DB.GetImages(M.SelectedImageIds);
+        await DB.CreateSelection(selection);
+        MudDialog.Close();
+    }
+
+    private async Task ShowLoadSelectionModal(Selection selection)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Load");
+        parameters.Add("CancelButtonText", "Cancel");
+        parameters.Add("OkButtonColor", Color.Success);
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Do you want to load the selection?</span><br /><small>There are {selection.Images.Count} images in it.</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Load Selection", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) M.ReplaceSelectedImages(selection.Images.Select(i => i.Id).ToList());
+    }
+
+    private async Task ShowReplaceSelectionModal(int id)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Replace");
+        parameters.Add("CancelButtonText", "Cancel");
+        parameters.Add("OkButtonColor", Color.Success);
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Do you want to replace the selection with the currently selected images?</span><br /><small>There are {M.SelectedImageIds.Count} images selected.</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Replace Selection", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) await DB.UpdateSelection(id, M.SelectedImageIds);
+    }
+
+    private async Task ShowDeleteSelectionModal(int id)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Delete");
+        parameters.Add("CancelButtonText", "Cancel");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this selection?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Selection", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) await DB.DeleteSelection(id);
+        MudDialog.Close();
+    }
+}

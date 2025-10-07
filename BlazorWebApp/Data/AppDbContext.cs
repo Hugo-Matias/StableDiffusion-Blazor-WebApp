@@ -47,6 +47,8 @@ namespace BlazorWebApp.Data
                 .WithOne()
                 .HasForeignKey(i => i.ModeId);
 
+            modelBuilder.Entity<Selection>().HasMany(s => s.Images).WithMany(i => i.Selections);
+
             modelBuilder.Entity<Folder>().HasIndex(f => f.Name).IsUnique();
             modelBuilder.Entity<Resource>().HasIndex(t => t.Filename).IsUnique();
             modelBuilder.Entity<ResourceType>().HasIndex(t => t.Name).IsUnique();
@@ -74,5 +76,6 @@ namespace BlazorWebApp.Data
         public DbSet<ResourceImage> ResourceImages { get; set; }
         public DbSet<ResourceTemplate> ResourceTemplates { get; set; }
         public DbSet<State> States { get; set; }
+        public DbSet<Selection> Selections { get; set; }
     }
 }

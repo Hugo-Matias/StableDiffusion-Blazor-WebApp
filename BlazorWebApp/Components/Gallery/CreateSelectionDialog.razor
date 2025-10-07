@@ -1,0 +1,29 @@
+﻿@using Syllabore
+@inject DatabaseService DB
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="@_selection">
+            <DataAnnotationsValidator />
+            <MudTextField T="string" @bind-Value=_selection.Name Label="Name" Clearable Required/>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" OnClick="CreateSelection" Color="Color.Info" Variant="Variant.Filled">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    private Selection _selection = new();
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        var generator = new NameGenerator("lmnsyjha", "aeiouy", "rieah");
+        _selection.Name = generator.Next();
+    }
+
+    private void CreateSelection() => MudDialog.Close(_selection);
+}

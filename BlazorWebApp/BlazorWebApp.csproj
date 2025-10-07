@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
@@ -40,6 +40,7 @@
     </PackageReference>
     <PackageReference Include="MudBlazor" Version="6.1.8" />
     <PackageReference Include="Scriban" Version="6.4.0" />
+    <PackageReference Include="Syllabore" Version="3.0.1-alpha" />
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.2.6-b0002" />
   </ItemGroup>

@@ -210,6 +210,55 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task<List<Selection>> GetSelections()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Selections.Include(s => s.Images).ToListAsync();
+        }
+
+        public async Task<List<Selection>> GetSelectionsByName(string name)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Selections.Where(s => s.Name.ToLower() == name.ToLower()).ToListAsync();
+        }
+
+        public async Task<Selection> GetSelection(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Selections.FirstOrDefaultAsync(s => s.Id == id);
+        }
+
+        public async Task CreateSelection(Selection selection)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var images = await context.Images.Where(i => selection.Images.Select(i => i.Id).Contains(i.Id)).ToListAsync();
+            selection.Images = images;
+            await context.Selections.AddAsync(selection);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task UpdateSelection(int selectionId, List<int> imageIds)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = await context.Selections.Include(s => s.Images).FirstOrDefaultAsync(s => s.Id == selectionId);
+            var images = await context.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
+            entity.Images.Clear();
+            foreach (var image in images)
+            {
+                entity.Images.Add(image);
+            }
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<Selection?> DeleteSelection(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var selection = await context.Selections.FirstOrDefaultAsync(s => s.Id == id);
+            context.Selections.Remove(selection);
+            await context.SaveChangesAsync();
+            return await context.Selections.FirstOrDefaultAsync();
+        }
+
         public async Task<Image> AddImage(Image image)
         {
             using var context = await _factory.CreateDbContextAsync();

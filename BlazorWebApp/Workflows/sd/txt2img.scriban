@@ -460,7 +460,7 @@
       "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
       "scheduler": {{ Scheduler ?? "beta" | json }},
       "steps": {{ Upscale.Steps ?? 20 | json }},
-      "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 2 | math.round | json }},
+      "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 4 | math.round | json }},
       "denoise": {{ Upscale.Denoise && 1 | json }},
       "cfg": 1,
       "seed": {{ Seed ?? 42 | json }},
@@ -492,7 +492,7 @@
     "inputs": {
       "eta": 0.5,
       "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json}},
-      "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 2 | math.round | json }},
+      "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 4 | math.round | json }},
       "cfg": 1,
       "sampler_mode": "resample",
       "bongmath": true,

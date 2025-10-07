@@ -15,6 +15,7 @@
                 }
                 <MudStack Row=true>
                     <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
+                    <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
                     @if (CanSelect && M.SelectedImageIds.Count > 0)
                     {
                         <MudButtonGroup OverrideStyles=false>
@@ -22,7 +23,7 @@
                             <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
                         </MudButtonGroup>
                         <MudButtonGroup OverrideStyles=false>
-                            <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">Clear</MudButton>
+                            <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">@($"Clear ({M.SelectedImageIds.Count})")</MudButton>
                             <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
                         </MudButtonGroup>
                     }
@@ -68,6 +69,12 @@
     {
         _currentPage = page;
         OnPageSelected.InvokeAsync(page);
+    }
+
+    private void ShowSelectionsDialog()
+    {
+        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
+        DialogService.Show<SelectionsDialog>("", options);
     }
 
     private void ShowImageViewerDialog(Image image)

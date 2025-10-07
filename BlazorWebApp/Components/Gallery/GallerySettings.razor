@@ -4,6 +4,13 @@
 @implements IDisposable
 
 <div>
+    <MudTabs Elevation="1" Outlined="true" ActivePanelIndexChanged="HandleFolderSelected">
+        <MudTabPanel Text="All" ID=-1 />
+        @foreach (var folder in M.Folders)
+        {
+            <MudTabPanel Text=@folder.Name ID=folder.Id />
+        }
+    </MudTabs>
     <MudPaper Class="p-3 mb-3">
         <MudStack Class="projects-container" Row>
             <MudStack Class="justify-content-center">
@@ -104,6 +111,7 @@
     [Parameter] public EventCallback<int> OnPageChanged { get; set; }
 
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+    int _folderTabIndex = 0;
 
     protected override void OnInitialized()
     {
@@ -191,6 +199,13 @@
         // Re-sets current project to refresh the relevant ui components
         await M.SetCurrentProject(M.State.Gallery.ProjectId);
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleFolderSelected(int selected)
+    {
+        if (selected == 0) await M.SetCurrentFolder(selected);
+        await M.SetCurrentFolder(M.Folders[selected - 1].Id);
+        Refresh();
     }
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);

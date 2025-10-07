@@ -1,0 +1,24 @@
+﻿@inject IOService IO
+
+<MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
+    <MudCardContent Class="p-0">
+        <MudCarousel Class="w-100" style="height: 320px" ItemsSource="Selection.Images" ShowBullets="false" AutoCycle="true">
+            <ItemTemplate>
+                <MudImage style="width: 100%; height: 300px; object-fit: contain;" Src=@(IO.GetImageStaticFile(context.Path))/>
+            </ItemTemplate>
+        </MudCarousel>
+        <MudText Typo="Typo.body1" Class="text-center">@Selection.Name</MudText>
+    </MudCardContent>
+    <MudCardActions Class="d-flex justify-content-center">
+        <MudIconButton OnClick=@(() => OnLoadSelection.InvokeAsync(Selection)) Icon="fa-solid fa-check" Class="icon" ButtonType=ButtonType.Button Color=Color.Success />
+        <MudIconButton OnClick=@(() => OnReplaceSelection.InvokeAsync(Selection.Id)) Icon="fa-solid fa-pen" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
+        <MudIconButton OnClick=@(() => OnDeleteSelection.InvokeAsync(Selection.Id)) Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Error />
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter] public Selection Selection { get; set; }
+    [Parameter] public EventCallback<Selection> OnLoadSelection { get; set; }
+    [Parameter] public EventCallback<int> OnReplaceSelection { get; set; }
+    [Parameter] public EventCallback<int> OnDeleteSelection { get; set; }
+}

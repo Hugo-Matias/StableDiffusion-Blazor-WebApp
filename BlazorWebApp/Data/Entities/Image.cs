@@ -22,6 +22,7 @@ namespace BlazorWebApp.Data.Entities
         public double? DenoisingStrength { get; set; }
         public DateTime DateCreated { get; set; } = DateTime.Now;
         public int Score { get; set; } = 0;
+        public List<Selection> Selections { get; set; } = new();
 
         public Image() { }
         public Image(ResourceImage resourceImage)

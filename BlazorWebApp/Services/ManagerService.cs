@@ -544,7 +544,7 @@ namespace BlazorWebApp.Services
                                         ? State.Generation.Workflows.FirstOrDefault()
                                         : State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
 
-                if (currentWorkflowBase == null) currentWorkflowBase = new() { ModelType = ModelType.Checkpoint };
+                currentWorkflowBase ??= new() { ModelType = ModelType.Checkpoint };
 
                 SDModels = currentWorkflowBase.ModelType switch
                 {
@@ -888,6 +888,13 @@ namespace BlazorWebApp.Services
         }
 
         public async Task GetCmdFlags() => CmdFlags = await _sdapi.GetCmdFlags();
+
+        public void ReplaceSelectedImages(List<int> ids)
+        {
+            ClearSelectedImages();
+            SelectedImageIds = ids;
+            OnSelectedImagesChanged?.Invoke();
+        }
 
         public void AddSelectedImage(int id)
         {
