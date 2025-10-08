@@ -128,7 +128,7 @@ namespace BlazorWebApp.Services
                             _m.InvokeProgressChanged();
                         }
 
-                        if (type == "execution_success" || type == "execution_error")
+                        if (type == "execution_success" || type == "execution_error" || type == "execution_interrupted")
                         {
                             _promptId = Guid.Parse(doc.RootElement.GetProperty("data").GetProperty("prompt_id").GetString());
 
@@ -136,7 +136,10 @@ namespace BlazorWebApp.Services
                             {
                                 _bus.PublishExecutionSucceeded(_promptId);
                             }
-
+                            else if (type == "execution_interrupted")
+                            {
+                                _bus.PublishExecutionFailed(_promptId, "Execution Interrupted");
+                            }
                             else if (type == "execution_error")
                             {
                                 var data = doc.RootElement.GetProperty("data");

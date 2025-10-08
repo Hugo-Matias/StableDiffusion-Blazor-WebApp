@@ -27,7 +27,9 @@ namespace BlazorWebApp.Services
             foreach (var filePath in workflowFiles)
             {
                 var jsonText = File.ReadAllText(filePath.FullName);
-                workflows.Add(ParseWorkflowFile(jsonText));
+                var workflow = ParseWorkflowFile(jsonText);
+                workflow.Id = Guid.NewGuid();
+                workflows.Add(workflow);
             }
 
             return workflows;

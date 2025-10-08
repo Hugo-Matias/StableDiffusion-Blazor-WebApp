@@ -17,6 +17,7 @@ namespace BlazorWebApp.Models
         public Txt2ImgParameters() { }
         public Txt2ImgParameters(SharedParameters clone)
         {
+            Comfy = clone.Comfy;
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;

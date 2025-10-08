@@ -171,6 +171,7 @@ namespace BlazorWebApp.Services
         {
             var defaultParameters = new SharedParameters()
             {
+                Comfy = new() { Workflow = new() },
                 Steps = Settings.Generation.Shared.Steps.Value,
                 SamplerIndex = Settings.Generation.Shared.Sampler,
                 Seed = Settings.Generation.Shared.Seed,
@@ -207,7 +208,7 @@ namespace BlazorWebApp.Services
                         XYZPlot = CreateXYZPlot(),
                         ADetailer = CreateADetailer(),
                         Incantations = CreateIncantationsModel(),
-                    }
+                    },
                 };
 
             if (modes.Contains(ModeType.Img2Img))
@@ -538,7 +539,7 @@ namespace BlazorWebApp.Services
             }
             else if (IsComfyUIUp)
             {
-                if (State.Generation.Workflows == null) GetComfyWorkflows();
+                //if (State.Generation.Workflows == null) GetComfyWorkflows();
 
                 var currentWorkflowBase = State.Generation.WorkflowBase == null
                                         ? State.Generation.Workflows.FirstOrDefault()
@@ -700,7 +701,7 @@ namespace BlazorWebApp.Services
 
         public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
 
-        public Workflow GetWorkflowByName(string name) => State.Generation.Workflows.Where(w => w.Title == name && w.Base == State.Generation.WorkflowBase).FirstOrDefault();
+        public Workflow GetWorkflowById(Guid id) => State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
 
         public void SetWorkflowBase(ModelBase workflowBase)
         {

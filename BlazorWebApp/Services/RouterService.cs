@@ -16,14 +16,14 @@ namespace BlazorWebApp.Services
             _m = m;
         }
 
-        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters, string workflowName)
+        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters)
         {
             if (_m.IsComfyUIUp)
             {
                 var model = _m.State.Generation.SDModel;
                 var vae = _m.State.Generation.Vae;
-                var workflow = _m.GetWorkflowByName(workflowName);
-                return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _m.ComfyWSClientId, workflow.Prompt);
+                var workflow = parameters.Comfy.Workflow.Prompt;
+                return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _m.ComfyWSClientId, workflow);
             }
             if (_m.IsWebuiUp)
                 return await _sdapi.PostTxt2Img(parameters.ToTxt2ImgWebUI());

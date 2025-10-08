@@ -2,6 +2,7 @@
 {
     public class SharedParameters
     {
+        public ComfySharedParameters Comfy { get; set; }
         public double? DenoisingStrength { get; set; }
         public string? Prompt { get; set; }
         public string[]? Styles { get; set; }
@@ -37,6 +38,7 @@
         public SharedParameters() { }
         public SharedParameters(Txt2ImgParameters clone)
         {
+            Comfy = clone.Comfy;
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;
@@ -68,6 +70,7 @@
         }
         public SharedParameters(Img2ImgParameters clone)
         {
+            Comfy = clone.Comfy;
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;
@@ -95,6 +98,11 @@
             SamplerIndex = clone.SamplerIndex;
             RefinerCheckpoint = clone.RefinerCheckpoint == "None" ? null : clone.RefinerCheckpoint;
             RefinerSwitchAt = clone.RefinerSwitchAt;
+        }
+
+        public class ComfySharedParameters
+        {
+            public Workflow Workflow { get; set; }
         }
     }
 }

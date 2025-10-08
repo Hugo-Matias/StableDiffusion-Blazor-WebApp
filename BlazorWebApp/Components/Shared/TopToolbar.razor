@@ -179,7 +179,8 @@
         {
             // Automatically selects the first model if none is set. Unlocks the dropdown field.
             if (M.State.Generation.SDModel == "Loading..." && M.SDModels != null) await M.SetSDModel(M.SDModels[0].Title);
-            M.GetComfyWorkflows();
+            // Only get workflows once, otherwise new Guids will be assigned and the page routing will break
+            if (M.State.Generation.Workflows == null || M.State.Generation.Workflows.Count == 0) M.GetComfyWorkflows();
             _workflowBases = M.State.Generation.Workflows
                                 .Select(w => w.Base.ToString())
                                 .Where(b => !string.IsNullOrWhiteSpace(b.ToString()))

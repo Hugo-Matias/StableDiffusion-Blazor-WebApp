@@ -44,25 +44,23 @@ namespace BlazorWebApp.Services
 
         private async Task HandleExecutionSucceededAsync(Guid promptId)
         {
-            var filename = await GetFilenameFromHistory(promptId);
-            if (filename == null)
+            var files = await GetFilenameFromHistory(promptId);
+            if (files == null || files.Count == 0)
             {
                 _logger.LogError("File not found!");
                 return;
             }
+            var images = new GeneratedImages() { Images = [] };
 
-            var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", filename);
-            var base64 = await _io.GetBase64FromFileAsync(filepath);
-
-            var image = new GeneratedImages
+            foreach (var file in files)
             {
-                Images = new List<string> { base64 }
-            };
+                var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", file);
+                var base64 = await _io.GetBase64FromFileAsync(filepath);
+                images.Images.Add(base64);
+            }
 
             if (_pendingJobs.TryRemove(promptId, out var obj) && obj is TaskCompletionSource<GeneratedImages> tcs)
-                tcs.SetResult(image);
-
-            //_io.DeleteFile(filepath);
+                tcs.SetResult(images);
         }
 
         // TODO: Load from AppSettings
@@ -151,15 +149,20 @@ namespace BlazorWebApp.Services
             return new List<T>();
         }
 
-        public async Task<string> GetFilenameFromHistory(Guid promptId)
+        public async Task<List<string>> GetFilenameFromHistory(Guid promptId)
         {
+            var files = new List<string>();
             var response = await _httpClient.GetAsync($"/history/{promptId}");
             response.EnsureSuccessStatusCode();
             using var stream = await response.Content.ReadAsStreamAsync();
             using var doc = await JsonDocument.ParseAsync(stream);
-            var filename = Parser.FindJsonValueByKey(doc.RootElement, "filename");
-            var subfolder = Parser.FindJsonValueByKey(doc.RootElement, "subfolder");
-            return Path.Combine(subfolder, filename);
+            var outputs = Parser.GetFirstJsonProperty(doc.RootElement.GetProperty(promptId.ToString()).GetProperty("outputs"));
+            var images = JsonSerializer.Deserialize<List<ComfyUIHistoryImageResponse>>(outputs.Value.GetProperty("images").GetRawText());
+            foreach (var image in images)
+            {
+                files.Add(Path.Combine(image.Subfolder, image.Filename));
+            }
+            return files;
         }
         #endregion
 

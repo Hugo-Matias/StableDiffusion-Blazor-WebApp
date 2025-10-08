@@ -497,5 +497,53 @@ namespace BlazorWebApp.Extensions
 
             return null;
         }
+
+        public static List<string> FindAllJsonValuesByKey(JsonElement element, string propertyName)
+        {
+            var results = new List<string>();
+            TraverseJson(element, propertyName, results);
+            return results;
+        }
+
+        private static void TraverseJson(JsonElement element, string propertyName, List<string> results)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (property.NameEquals(propertyName))
+                        {
+                            if (property.Value.ValueKind == JsonValueKind.String)
+                                results.Add(property.Value.GetString());
+                            else
+                                results.Add(property.Value.ToString());
+                        }
+
+                        TraverseJson(property.Value, propertyName, results);
+                    }
+                    break;
+
+                case JsonValueKind.Array:
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        TraverseJson(item, propertyName, results);
+                    }
+                    break;
+            }
+        }
+
+        public static JsonElement? GetFirstJsonProperty(JsonElement element)
+        {
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                using var enumerator = element.EnumerateObject().GetEnumerator();
+                if (enumerator.MoveNext())
+                {
+                    return enumerator.Current.Value;
+                }
+            }
+            return null;
+        }
     }
 }

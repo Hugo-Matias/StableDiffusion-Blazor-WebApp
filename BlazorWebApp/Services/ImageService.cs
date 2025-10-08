@@ -36,7 +36,7 @@ namespace BlazorWebApp.Services
             _router = router;
         }
 
-        public async Task<ImagesDto> GetImages(ModeType mode, string workflowName = "")
+        public async Task<ImagesDto> GetImages(ModeType mode)
         {
             _m.IsConverging = true;
             //var progress = new BaseProgress() { BarColor = MudBlazor.Color.Primary };
@@ -74,7 +74,7 @@ namespace BlazorWebApp.Services
 
                     default:
                         BuildTxt2ImgParameters(ref scriptName);
-                        _m.Images = await _router.PostTxt2Img(_txt2imgParams, workflowName);
+                        _m.Images = await _router.PostTxt2Img(_txt2imgParams);
                         _m.SerializeInfo();
                         break;
                 }
