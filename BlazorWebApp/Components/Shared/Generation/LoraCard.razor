@@ -1,0 +1,64 @@
+﻿<MudPaper Class="p-1 mb-1">
+    <MudGrid Class="d-flex align-items-center">
+        <MudItem xs="7">
+            <MudText Class="ms-3">@Lora.File</MudText>
+        </MudItem>
+        <MudItem xs="2">
+            <MudNumericField Class="mt-n4"
+                             Value="Lora.Strength"
+                             ValueChanged="@(async (float v) => await OnStrengthChanged(v))"
+                             Variant="Variant.Text"
+                             Min="0f" Max="5f" Step="0.05f" Format="N2" />
+        </MudItem>
+        <MudItem xs="1">
+            <MudToggleIconButton Toggled="Lora.IsNegative"
+                                 ToggledChanged="@(async (bool v) => await OnIsNegativeChanged(v))"
+                                 Icon="fa-solid fa-circle-plus"
+                                 Color="@Color.Success"
+                                 ToggledIcon="fa-solid fa-circle-minus"
+                                 ToggledColor="@Color.Error"
+                                 Title="@(Lora.IsNegative ? "Negative Prompt" : "Prompt")"/>
+        </MudItem>
+        <MudItem xs="1">
+            <MudCheckBox Checked="Lora.IsEnabled"
+                         CheckedChanged="@(async (bool v) => await OnIsEnabledChanged(v))"
+                         Title="Toggle Activation"
+                         Dense="true"/>
+        </MudItem>
+        <MudItem xs="1">
+            <MudIconButton Icon="fa-solid fa-xmark"
+                           OnClick="async () => await OnRemoveLora.InvokeAsync(Lora)"
+                           Color="Color.Error"
+                           Title="Remove"/>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter] public Lora Lora { get; set; }
+    [Parameter] public EventCallback<Lora> OnRemoveLora { get; set; }
+    [Parameter] public EventCallback<Lora> OnLoraChanged { get; set; }
+
+    private async Task OnStrengthChanged(float value)
+    {
+        Lora.Strength = value;
+        await NotifyLoraChanged();
+    }
+
+    private async Task OnIsNegativeChanged(bool value)
+    {
+        Lora.IsNegative = value;
+        await NotifyLoraChanged();
+    }
+
+    private async Task OnIsEnabledChanged(bool value)
+    {
+        Lora.IsEnabled = value;
+        await NotifyLoraChanged();
+    }
+
+    private async Task NotifyLoraChanged()
+    {
+        await OnLoraChanged.InvokeAsync(Lora);
+    }
+}

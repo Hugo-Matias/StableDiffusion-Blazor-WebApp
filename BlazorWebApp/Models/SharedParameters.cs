@@ -3,6 +3,7 @@
     public class SharedParameters
     {
         public ComfySharedParameters Comfy { get; set; }
+        public List<Lora> Loras { get; set; }
         public double? DenoisingStrength { get; set; }
         public string? Prompt { get; set; }
         public string[]? Styles { get; set; }
@@ -39,6 +40,7 @@
         public SharedParameters(Txt2ImgParameters clone)
         {
             Comfy = clone.Comfy;
+            Loras = clone.Loras;
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;
@@ -71,6 +73,7 @@
         public SharedParameters(Img2ImgParameters clone)
         {
             Comfy = clone.Comfy;
+            Loras = clone.Loras;
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;

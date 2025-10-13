@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
@@ -86,21 +87,67 @@ namespace BlazorWebApp.Extensions
 
         public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
         {
-            if (styles != null && styles.Count() > 0)
-            {
-                foreach (var style in styles)
-                {
-                    param.Prompt = param.Prompt.ParsePrompt(style.Prompt);
-                    param.NegativePrompt = param.NegativePrompt.ParsePrompt(style.NegativePrompt);
-                }
-            }
+            param.Prompt = param.Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
+            param.NegativePrompt = param.NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(), true);
+
+            (var prompt, var negative) = param.Loras.ParseLoras();
+            param.Prompt += prompt;
+            param.NegativePrompt += negative;
+
             if (param.Seed == -1) param.Seed = new Random().Next(0, int.MaxValue);
             return param;
         }
 
-        public static string ParsePrompt(this string prompt, string style)
+        public static void ParseDetailerModelLoras(this ScriptParametersADetailer detailer)
         {
-            if (style == null) return prompt;
+            void ParseModelPrompts(ScriptParametersADetailerModel model)
+            {
+                if (model == null) return;
+                (var prompt, var negative) = model.Loras != null && model.Loras.Count > 0 ? model.Loras.ParseLoras() : (string.Empty, string.Empty);
+                model.Prompt += prompt;
+                model.NegativePrompt += negative;
+            }
+
+            ParseModelPrompts(detailer.Model1);
+            ParseModelPrompts(detailer.Model2);
+            ParseModelPrompts(detailer.Model3);
+            ParseModelPrompts(detailer.Model4);
+            ParseModelPrompts(detailer.Model5);
+        }
+
+        public static void ParseComfyDetailerLoras(this DetailerParameters detailer)
+        {
+            (var prompt, var negative) = detailer.Loras != null && detailer.Loras.Count > 0 ? detailer.Loras.ParseLoras() : (string.Empty, string.Empty);
+            detailer.Prompt += prompt;
+            detailer.NegativePrompt += negative;
+        }
+
+        public static (string prompt, string negative) ParseLoras(this List<Lora> loras)
+        {
+            string prompt = string.Empty;
+            string negative = string.Empty;
+            foreach (var lora in loras.Where(l => l.IsEnabled))
+            {
+                var loraString = $" <lora:{lora.File}:{lora.Strength:N2}>";
+                if (lora.IsNegative) negative += loraString;
+                else prompt += loraString;
+            }
+            return (prompt, negative);
+        }
+
+        public static string ParseStyles(this string prompt, List<PromptStyle> styles, bool isNegative)
+        {
+            if (styles == null || styles.Count == 0) return prompt;
+            foreach (var style in styles)
+            {
+                prompt = prompt.ParseStyle(isNegative ? style.NegativePrompt : style.Prompt);
+            }
+            return prompt;
+        }
+
+        public static string ParseStyle(this string prompt, string style)
+        {
+            if (string.IsNullOrWhiteSpace(style)) return prompt;
             if (style.Contains("{prompt}"))
             {
                 return Regex.Replace(style, "{prompt}", prompt ?? "");

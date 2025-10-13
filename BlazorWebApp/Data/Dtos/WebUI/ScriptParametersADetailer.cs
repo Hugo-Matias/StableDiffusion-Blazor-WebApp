@@ -62,5 +62,6 @@ namespace BlazorWebApp.Data.Dtos.WebUI
         public double BBoxCropFactor { get; set; }
         public int Cycle { get; set; }
         public long Seed { get; set; }
+        public List<Lora> Loras { get; set; }
     }
 }

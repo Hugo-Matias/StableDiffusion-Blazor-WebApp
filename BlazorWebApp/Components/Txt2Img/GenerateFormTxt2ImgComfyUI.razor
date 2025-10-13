@@ -4,6 +4,9 @@
 <div style="margin-bottom:15rem;">
     <EditForm Model="@Parameters">
         <MudGrid Class="pa-5">
+            <MudItem xs="12">
+                <LoraForm Loras="Parameters.Loras" Backend="Backend.ComfyUI"/>
+            </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerName AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                     @if (M.Samplers != null)
@@ -76,7 +79,7 @@
                 </MudChipSet>
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.ADetailer.IsEnabled ? "show" : "")}")">
-                    <ADetailerForm Parameters=Parameters.Scripts.ADetailer />
+                    <ADetailerForm Parameters=Parameters.Scripts.ADetailer Mode="ModeType.Txt2Img" />
             </MudItem>
             <MudItem xs="12">
                 <MudGrid Class=@($"collapse {(Parameters.EnableHR == true ? "show" : "")}")>
@@ -128,6 +131,7 @@
     {
         _options = M.Options;
         if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
+        if (Parameters.Loras == null) Parameters.Loras = new List<Lora>();
         RefreshHighresInfo();
     }
 

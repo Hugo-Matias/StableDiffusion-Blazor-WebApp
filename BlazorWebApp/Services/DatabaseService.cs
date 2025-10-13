@@ -548,6 +548,7 @@ namespace BlazorWebApp.Services
             entity.Positive = prompt.Positive;
             entity.Negative = prompt.Negative;
             entity.IsFavorite = prompt.IsFavorite;
+            entity.Loras = prompt.Loras;
             await context.SaveChangesAsync();
         }
 

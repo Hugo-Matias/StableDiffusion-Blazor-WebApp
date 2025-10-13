@@ -1,0 +1,70 @@
+﻿@using static BlazorWebApp.Data.Enums
+@inject ManagerService M
+@inject RouterService Router
+
+<MudText Typo="Typo.caption">Loras</MudText>
+<MudAutocomplete 
+    T="string" 
+    @bind-Value=_lora 
+    Label="Search..." 
+    SearchFunc="SearchLoras" 
+    Adornment="Adornment.End"
+    AdornmentIcon="fa-solid fa-plus"
+    OnAdornmentClick="AddLora"
+    MaxItems="null" 
+    MaxHeight="600" 
+    CoerceValue="true"
+    CoerceText="true"
+    ResetValueOnEmptyText="true"
+    Clearable="true"
+    SelectOnClick="false" />
+    @foreach (var lora in Loras)
+{
+    <LoraCard Lora="lora" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+}
+
+@code {
+    [Parameter]
+    public Backend Backend { get; set; }
+    [Parameter]
+    public List<Lora> Loras { get; set; }
+    [Parameter]
+    public EventCallback OnLorasUpdated { get; set; }
+
+    private string _lora;
+
+    override protected void OnInitialized()
+    {
+        if (Loras == null) Loras = new List<Lora>();
+    }
+
+    public Task<IEnumerable<string>> SearchLoras(string search) => Router.SearchLoras(Backend, search); 
+
+    public async Task AddLora()
+    {
+        if (string.IsNullOrWhiteSpace(_lora)) return;
+
+        Loras.Add(new()
+        {
+            File = _lora.Split('/', '\\').Last(),
+            IsNegative = false,
+            Strength = 1,
+            IsEnabled = true
+        });
+
+        await OnLorasUpdated.InvokeAsync();
+    }
+
+    public async Task RemoveLora(Lora lora)
+    {
+        Loras.Remove(lora);
+        await OnLorasUpdated.InvokeAsync();
+    }
+
+    public async Task UpdateLora(Lora lora)
+    {
+        // var index = Loras.FindIndex(l => l.File == lora.File);
+        // if (index >= 0) Loras[index] = lora;
+        await OnLorasUpdated.InvokeAsync();
+    }
+}

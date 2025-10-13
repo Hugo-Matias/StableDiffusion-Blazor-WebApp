@@ -8,6 +8,7 @@ namespace BlazorWebApp.Models
         public string? Positive { get; set; }
         public string? Negative { get; set; }
         public bool IsFavorite { get; set; }
+        public List<Lora> Loras { get; set; }
 
         public PromptResource() { }
         public PromptResource(Prompt entity)
@@ -18,6 +19,7 @@ namespace BlazorWebApp.Models
             Positive = entity.Positive;
             Negative = entity.Negative;
             IsFavorite = entity.IsFavorite;
+            Loras = entity.Loras ?? [];
         }
     }
 }

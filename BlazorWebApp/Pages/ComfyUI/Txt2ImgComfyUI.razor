@@ -1,4 +1,5 @@
 ﻿@page "/comfyui/txt2img/{id}"
+@using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
 @inject ManagerService M
 @inject WorkflowService WorkflowService
@@ -6,7 +7,7 @@
 @inject NavigationManager NavManager
 @implements IDisposable
 
-<PromptFields @bind-Parameters="Parameters" T="Txt2ImgParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" />
+<PromptFields @bind-Parameters="Parameters" T="Txt2ImgParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" OnStylesChanged="HandleStylesChanged"/>
 
 <MudGrid>
     <MudItem xs="6">
@@ -71,5 +72,25 @@
     {
         M.OnWorkflowBaseChanged -= Refresh;
         M.OnTxt2ImgParametersChanged -= InitializeParameters;
+    }
+    private void HandleStylesChanged()
+    {
+        foreach (var style in M.State.Generation.Styles)
+        {
+            foreach (var lora in style.Loras)
+            {
+                if (!Parameters.Loras.Any(x => x.File == lora.File))
+                {
+                    Parameters.Loras.Add(lora);
+                }
+                else
+                {
+                    var existingLora = Parameters.Loras.First(x => x.File == lora.File);
+                    existingLora.IsEnabled = lora.IsEnabled;
+                    existingLora.IsNegative = lora.IsNegative;
+                    existingLora.Strength = lora.Strength;
+                }
+            }
+        }
     }
 }

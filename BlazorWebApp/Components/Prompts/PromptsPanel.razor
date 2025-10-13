@@ -68,12 +68,12 @@
                     await DB.DeletePrompt(prompt.Id);
                     break;
                 case "Txt2Img":
-                    M.ParametersTxt2Img.Prompt = Parser.ParsePrompt(M.ParametersTxt2Img.Prompt, prompt.Positive);
-                    M.ParametersTxt2Img.NegativePrompt = Parser.ParsePrompt(M.ParametersTxt2Img.NegativePrompt, prompt.Negative);
+                    M.ParametersTxt2Img.Prompt = Parser.ParseStyle(M.ParametersTxt2Img.Prompt, prompt.Positive);
+                    M.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(M.ParametersTxt2Img.NegativePrompt, prompt.Negative);
                     break;
                 case "Img2Img":
-                    M.ParametersImg2Img.Prompt = Parser.ParsePrompt(M.ParametersImg2Img.Prompt, prompt.Positive);
-                    M.ParametersImg2Img.NegativePrompt = Parser.ParsePrompt(M.ParametersImg2Img.NegativePrompt, prompt.Negative);
+                    M.ParametersImg2Img.Prompt = Parser.ParseStyle(M.ParametersImg2Img.Prompt, prompt.Positive);
+                    M.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(M.ParametersImg2Img.NegativePrompt, prompt.Negative);
                     break;
             }
         }

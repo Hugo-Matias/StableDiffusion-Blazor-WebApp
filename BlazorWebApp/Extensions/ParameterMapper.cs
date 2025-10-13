@@ -13,7 +13,7 @@ namespace BlazorWebApp.Extensions
         {
             var d = src.Scripts.ADetailer.Model1;
 
-            return new Txt2ImgComfyUI
+            var param = new Txt2ImgComfyUI
             {
                 Prompt = src.Prompt,
                 NegativePrompt = src.NegativePrompt,
@@ -59,8 +59,12 @@ namespace BlazorWebApp.Extensions
                     BBoxCropFactor = d.BBoxCropFactor,
                     Seed = src.Seed,
                     Cycle = d.Cycle <= 0 ? 1 : d.Cycle,
+                    Loras = d.Loras ?? []
                 }
             };
+
+            param.Detailer.ParseComfyDetailerLoras();
+            return param;
         }
 
         public static SharedParameters ToSharedParameters(this SharedComfyUI comfy)

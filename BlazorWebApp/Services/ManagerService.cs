@@ -172,6 +172,7 @@ namespace BlazorWebApp.Services
             var defaultParameters = new SharedParameters()
             {
                 Comfy = new() { Workflow = new() },
+                Loras = new(),
                 Steps = Settings.Generation.Shared.Steps.Value,
                 SamplerIndex = Settings.Generation.Shared.Sampler,
                 Seed = Settings.Generation.Shared.Seed,
@@ -491,6 +492,7 @@ namespace BlazorWebApp.Services
                 ControlNetGuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
                 // TODO: create Settings
                 Seed = Settings.Generation.Shared.Seed,
+                Loras = [],
                 UseScheduler = false,
                 Scheduler = "simple",
                 DropSize = 50,
@@ -541,18 +543,26 @@ namespace BlazorWebApp.Services
             {
                 //if (State.Generation.Workflows == null) GetComfyWorkflows();
 
-                var currentWorkflowBase = State.Generation.WorkflowBase == null
-                                        ? State.Generation.Workflows.FirstOrDefault()
-                                        : State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+                var currentWorkflowBase = new Workflow() { ModelType = ModelType.Checkpoint };
 
-                currentWorkflowBase ??= new() { ModelType = ModelType.Checkpoint };
+                if (State.Generation.Workflows != null && State.Generation.Workflows.Count > 0)
+                {
+                    currentWorkflowBase = State.Generation.WorkflowBase == null
+                                            ? State.Generation.Workflows.FirstOrDefault()
+                                            : State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+                }
 
                 SDModels = currentWorkflowBase.ModelType switch
                 {
                     ModelType.Diffusion => await _capi.GetDiffusionModels(),
                     _ => await _capi.GetCheckpoints(),
                 };
-                SetDefaultBaseModel();
+
+                if (!string.IsNullOrWhiteSpace(State.Generation.SDModel) &&
+                    (SDModels == null || !SDModels.Any(m => m.Model_name == State.Generation.SDModel)))
+                {
+                    SetDefaultBaseModel();
+                }
             }
 
             OnSDModelsChange?.Invoke();
@@ -618,6 +628,11 @@ namespace BlazorWebApp.Services
                 Styles.Add(new(prompt));
             }
             if (State.Generation.Styles == null) State.Generation.Styles = new List<PromptStyle>();
+            else
+            {
+                var currentStyles = State.Generation.Styles.ToList();
+                State.Generation.Styles = Styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
+            }
         }
 
         public async Task GetUpscalers()
@@ -712,7 +727,7 @@ namespace BlazorWebApp.Services
 
         public void SetDefaultBaseModel()
         {
-            var workflow = State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+            var workflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
             if (workflow != null)
             {
                 var defaultModel = workflow.Prompt.GetDefaultModelFromWorkflow();

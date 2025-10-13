@@ -17,10 +17,16 @@
         </MudSelect>
     </MudItem>
     <MudItem xs="12">
-        <MudTextField Label="Prompt" Lines="2" T="string" @bind-Value=@Parameters.Prompt HelperText="Leave empty to use main prompt." Clearable Immediate />
+        <LoraForm Loras="Parameters.Loras" Backend="Enums.Backend.ComfyUI" />
+    </MudItem>
+    <MudItem xs="12" Class="d-flex justify-content-center">
+        <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadFromMainLoras">Load Loras From Main</MudButton>
     </MudItem>
     <MudItem xs="12">
-        <MudTextField Label="Negative Prompt" Lines="2" T="string" @bind-Value=@Parameters.NegativePrompt HelperText="Leave empty to use main negative prompt." Clearable Immediate />
+        <MudTextField Label="Prompt" Lines="4" T="string" @bind-Value=@Parameters.Prompt HelperText="Leave empty to use main prompt." Adornment="Adornment.End" AdornmentIcon="fa-solid fa-pen-to-square" OnAdornmentClick="@(() => WritePromptStyles(false))" Clearable Immediate />
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField Label="Negative Prompt" Lines="2" T="string" @bind-Value=@Parameters.NegativePrompt HelperText="Leave empty to use main negative prompt." Adornment="Adornment.End" AdornmentIcon="fa-solid fa-pen-to-square" OnAdornmentClick="@(() => WritePromptStyles(true))" Clearable Immediate />
     </MudItem>
     <MudItem xs="6">
         <MudStack Row=true>
@@ -117,12 +123,42 @@
 
 @code {
     [Parameter] public ScriptParametersADetailerModel Parameters { get; set; }
+    [Parameter] public ModeType Mode { get; set; }
     private List<string> _samplers = new();
     private List<string> _schedulers = new();
 
     protected async override Task OnInitializedAsync()
     {
+        if (Parameters.Loras == null) Parameters.Loras = new List<Lora>();
         _samplers = await CAPI.GetDetailerSamplers();
         _schedulers = await CAPI.GetDetailerSchedulers();
+    }
+
+    private void WritePromptStyles(bool isNegative)
+    {
+        var styles = M.State.Generation.Styles.ToList();
+        if (isNegative) Parameters.NegativePrompt = Parameters.NegativePrompt.ParseStyles(styles, true);
+        else Parameters.Prompt = Parameters.Prompt.ParseStyles(styles, false);
+    }
+
+    private void LoadFromMainLoras()
+    {
+        List<Lora> sourceLoras = Mode switch
+        {
+            ModeType.Txt2Img => M.ParametersTxt2Img?.Loras,
+            ModeType.Img2Img => M.ParametersImg2Img?.Loras,
+            _ => null
+        };
+
+        if (sourceLoras == null || sourceLoras.Count == 0)
+            return;
+
+        foreach (var lora in sourceLoras)
+        {
+            if (!Parameters.Loras.Any(l => l.File == lora.File))
+            {
+                Parameters.Loras.Add(lora);
+            }
+        }
     }
 }

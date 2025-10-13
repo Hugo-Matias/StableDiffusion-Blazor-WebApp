@@ -64,6 +64,8 @@
     [Parameter]
     public EventCallback OnInterrupt { get; set; }
     [Parameter]
+    public EventCallback OnStylesChanged { get; set; }
+    [Parameter]
     public EventCallback<T> ParametersChanged { get; set; }
     [Parameter]
     public EventCallback<AppendedTags> OnPromptTagAppended { get; set; }
@@ -86,7 +88,11 @@
         if (M.ButtonTags == null) M.GetButtonTags();
     }
 
-    private void HandleStylesChanged(IEnumerable<PromptStyle> styles) => M.State.Generation.Styles = styles;
+    private void HandleStylesChanged(IEnumerable<PromptStyle> styles) 
+    { 
+        M.State.Generation.Styles = styles;
+        OnStylesChanged.InvokeAsync();
+    }
 
     private void WritePrompts()
     {

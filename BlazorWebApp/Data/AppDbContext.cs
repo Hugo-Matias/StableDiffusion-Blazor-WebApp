@@ -12,6 +12,15 @@ namespace BlazorWebApp.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+        private static string SerializeLoraList(List<Lora> list)
+            => JsonSerializer.Serialize(list ?? new List<Lora>());
+
+        private static List<Lora> DeepCopyLoraList(List<Lora> list)
+            => list == null ? new List<Lora>() : JsonSerializer.Deserialize<List<Lora>>(JsonSerializer.Serialize(list)) ?? new List<Lora>();
+
+        private static List<Lora> DeserializeLoraList(string v)
+            => string.IsNullOrWhiteSpace(v) ? new List<Lora>() : JsonSerializer.Deserialize<List<Lora>>(v) ?? new List<Lora>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -36,6 +45,16 @@ namespace BlazorWebApp.Data
             var upscaleConverter = new ValueConverter<UpscaleParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<UpscaleParameters>(v, opt));
             var listIntConverter = new ValueConverter<List<int>, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<List<int>>(v, opt));
             var listIntComparer = new ValueComparer<List<int>>((c1, c2) => c1.SequenceEqual(c2), c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())), c => c.ToList());
+            var loraListConverter = new ValueConverter<List<Lora>, string>(
+                v => SerializeLoraList(v),
+                v => DeserializeLoraList(v)
+            );
+
+            var loraListComparer = new ValueComparer<List<Lora>>(
+                (c1, c2) => SerializeLoraList(c1) == SerializeLoraList(c2),
+                c => SerializeLoraList(c).GetHashCode(),
+                c => DeepCopyLoraList(c)
+            );
 
             modelBuilder.Entity<Project>()
                 .HasMany(p => p.Images)
@@ -58,6 +77,7 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<Resource>().Property(nameof(Resource.TriggerWords)).HasConversion(listStringConverter, listStringComparer);
             modelBuilder.Entity<ResourceImage>().Property(nameof(ResourceImage.Tags)).HasConversion(listStringConverter, listStringComparer);
             modelBuilder.Entity<ResourceTemplate>().Property(nameof(ResourceTemplate.ResourceIds)).HasConversion(listIntConverter, listIntComparer);
+            modelBuilder.Entity<Prompt>().Property(p => p.Loras).HasConversion(loraListConverter, loraListComparer);
             modelBuilder.Entity<State>().Property(nameof(State.AppState)).HasConversion(stateConverter);
             modelBuilder.Entity<State>().Property(nameof(State.Txt2ImgParameters)).HasConversion(txt2imgConverter);
             modelBuilder.Entity<State>().Property(nameof(State.Img2ImgParameters)).HasConversion(img2imgConverter);

@@ -1,4 +1,5 @@
 ﻿@inject DatabaseService DB
+@inject ManagerService M
 @inject IDialogService DialogService
 
 <MudDialog Style="min-width: 40vw;">
@@ -12,6 +13,7 @@
         </MudStack>
         <MudTextField Lines="5" Label="Positive" Value="Prompt.Positive" ValueChanged="@(async v => await HandleValueChanged(v, "positive"))" T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Success" />
         <MudTextField Lines="5" Label="Negative" Value="Prompt.Negative" ValueChanged="@(async v => await HandleValueChanged(v, "negative"))" T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Error" />
+        <LoraForm Loras="Prompt.Loras" Backend="Enums.Backend.ComfyUI" OnLorasUpdated="@(HandledLorasUpdated)" />
     </DialogContent>
     <DialogActions>
         <MudContainer Class="w-100 d-flex justify-content-center">
@@ -40,6 +42,7 @@
     protected override void OnParametersSet()
     {
         if (Prompt.Id <= 0) _isNew = true;
+        if (Prompt.Loras == null) Prompt.Loras = new List<Lora>();
     }
 
     private async Task HandleValueChanged(string value, string type, bool? isFavorite = null)
@@ -58,6 +61,12 @@
         }
         if (isFavorite != null) Prompt.IsFavorite = (bool)isFavorite;
         if (!_isNew) await DB.UpdatePrompt(Prompt);
+    }
+
+    private async Task HandledLorasUpdated()
+    {
+        await DB.UpdatePrompt(Prompt);
+        await M.GetStyles();
     }
 
     private async Task ShowDeletePromptDialog()

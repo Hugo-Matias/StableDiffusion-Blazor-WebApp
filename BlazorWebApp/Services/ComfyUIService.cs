@@ -5,6 +5,7 @@ using BlazorWebApp.Models;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -94,10 +95,11 @@ namespace BlazorWebApp.Services
             return clientId;
         }
 
-        private async Task<List<T>> GetModels<T>(string type, Func<string, T> mapper)
+        private async Task<List<T>> GetModels<T>(string type, Func<string, T> mapper, Func<T, bool>? filter = null)
         {
             var models = await _httpClient.GetFromJsonAsync<List<string>>($"/models/{type}");
-            return models?.Select(mapper).ToList() ?? new List<T>();
+            var mapped = models?.Select(mapper).ToList() ?? [];
+            return filter is null ? mapped : mapped.Where(filter).ToList();
         }
 
         public async Task<List<SDModel>> GetCheckpoints() => await GetModels("checkpoints", m => new SDModel { Title = m, Model_name = m });
@@ -110,7 +112,14 @@ namespace BlazorWebApp.Services
 
         public async Task<List<SDModel>> GetDiffusionModels() => await GetModels("diffusion_models", m => new SDModel { Title = m, Model_name = m });
 
-        public async Task<List<string>> GetLoras() => await GetModels("loras", m => m);
+        public async Task<List<string>> GetLoras() => await GetModels("loras", m => Regex.Replace(m, @"\.[^\.]+$", ""));
+
+        public async Task<List<string>> SearchLoras(string search)
+        {
+            Func<string, bool> filter = null;
+            if (!string.IsNullOrEmpty(search)) filter = m => m.ToLower().Contains(search.ToLower());
+            return await GetModels("loras", m => Regex.Replace(m, @"\.[^\.]+$", ""), filter);
+        }
 
         public async Task<List<string>> GetBBoxDetailers() => await GetModels("ultralytics_bbox", m => m);
 

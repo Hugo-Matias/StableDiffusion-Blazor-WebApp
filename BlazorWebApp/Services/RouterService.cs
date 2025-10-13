@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
@@ -14,6 +15,16 @@ namespace BlazorWebApp.Services
             _sdapi = sdapi;
             _capi = capi;
             _m = m;
+        }
+
+        public async Task<IEnumerable<string>> SearchLoras(Backend backend, string search = "")
+        {
+            return backend switch
+            {
+                Backend.WebUI => throw new Exception("GetLoras not implemented for WebUI"),
+                Backend.ComfyUI => string.IsNullOrEmpty(search) ? await _capi.GetLoras() : await _capi.SearchLoras(search),
+                _ => [],
+            };
         }
 
         public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters)

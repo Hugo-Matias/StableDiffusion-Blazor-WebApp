@@ -4,6 +4,6 @@
     {
         public enum ModelType { Checkpoint, Diffusion };
         public enum ModelBase { StableDiffusion, Flux, Chroma };
-
+        public enum Backend { WebUI, ComfyUI };
     }
 }

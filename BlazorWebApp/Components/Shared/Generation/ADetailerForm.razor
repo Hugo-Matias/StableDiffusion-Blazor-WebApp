@@ -24,9 +24,10 @@
 }
 @if (M.IsComfyUIUp)
 {
-    <ADetailerModelFormComfyUI Parameters="Parameters.Model1"/>
+    <ADetailerModelFormComfyUI Parameters="Parameters.Model1" Mode="Mode"/>
 }
 
 @code {
     [Parameter] public ScriptParametersADetailer Parameters { get; set; }
+    [Parameter] public ModeType Mode { get; set; }
 }

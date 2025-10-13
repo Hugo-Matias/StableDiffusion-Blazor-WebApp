@@ -1,4 +1,6 @@
-﻿namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
+﻿using BlazorWebApp.Models;
+
+namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 {
     public class Txt2ImgComfyUI : SharedComfyUI
     {
@@ -42,5 +44,6 @@
         public int? BBoxDilation { get; set; }
         public double? BBoxCropFactor { get; set; }
         public int? Cycle { get; set; }
+        public List<Lora> Loras { get; set; }
     }
 }

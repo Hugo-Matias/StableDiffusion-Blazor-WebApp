@@ -66,6 +66,7 @@ namespace BlazorWebApp.Models
         public bool IsInterrupted { get; set; } = false;
         public List<Workflow> Workflows { get; set; }
         public ModelBase WorkflowBase { get; set; }
+        public List<Lora> Loras { get; set; }
     }
 
     public class AppStateGenerationImg2Img
