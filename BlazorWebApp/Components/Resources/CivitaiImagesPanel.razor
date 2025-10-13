@@ -54,7 +54,11 @@
         </MudGrid>
     </EditForm>
 
-    @if (M.CivitaiImages != null && M.CivitaiImages.Images != null && M.CivitaiImages.Images.Count > 0)
+    @if (_isSearching)
+    {
+        <LoadingSpinner />
+    }
+    else if (M.CivitaiImages != null && M.CivitaiImages.Images != null && M.CivitaiImages.Images.Count > 0)
     {
         <MudGrid Class="images-container">
             @foreach (var img in M.CivitaiImages.Images)
@@ -62,10 +66,6 @@
                 <CivitaiImageCard Image="img" OnSaveImage="SaveImage"/>
             }
         </MudGrid>
-    }
-    else if (_isSearching)
-    {
-        <LoadingSpinner />
     }
 </div>
 
@@ -89,7 +89,7 @@
 
     private void SaveImage()
     {
-        
+        // TODO
     }
 
     private void LoadState()

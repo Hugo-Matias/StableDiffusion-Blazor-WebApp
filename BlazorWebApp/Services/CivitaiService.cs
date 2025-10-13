@@ -19,16 +19,18 @@ namespace BlazorWebApp.Services
         private readonly ManagerService _m;
         private readonly DatabaseService _db;
         private readonly ProgressService _progress;
+        private readonly ILogger<CivitaiService> _logger;
         private readonly List<string> _ignoreFileType = new() { "config" };
         private readonly List<CivitaiModelType> _ignoreModelTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
 
-        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, ManagerService m, DatabaseService db, ProgressService progress)
+        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, ManagerService m, DatabaseService db, ProgressService progress, ILogger<CivitaiService> logger)
         {
             _configuration = configuration;
             _img = img;
             _io = io;
             _m = m;
             _db = db;
+            _logger = logger;
             _progress = progress;
             _httpClient = httpClient;
             _httpClient.BaseAddress = new Uri("https://civitai.com/api/");
@@ -120,13 +122,13 @@ namespace BlazorWebApp.Services
                 }
                 else
                 {
-                    await Console.Out.WriteLineAsync(response.StatusCode.ToString());
+                    _logger.LogWarning("Failed to get image type, status code: {StatusCode} | {Content}", response.StatusCode, await response.Content.ReadAsStringAsync());
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                await Console.Out.WriteLineAsync(ex.Message);
+                _logger.LogError(ex, "Error occurred while getting image type");
                 return null;
             }
         }
@@ -141,12 +143,15 @@ namespace BlazorWebApp.Services
                     var model = await GetModel(id);
                     return new CivitaiModelsDto() { Models = new List<CivitaiModelsModelDto> { new CivitaiModelsModelDto(model) }, Metadata = new() { CurrentPage = 1, TotalPages = 1 } };
                 }
-                else return null;
+                else
+                {
+                    _logger.LogWarning("No model found for hash: {Hash}", req.Hash);
+                    return null;
+                }
             }
 
             var query = !string.IsNullOrWhiteSpace(req.Query) ? $"query={req.Query}&" : string.Empty;
             var limit = req.Limit > 0 ? $"limit={req.Limit}&" : string.Empty;
-            var page = req.Page > 0 ? $"page={req.Page}&" : string.Empty;
             var username = !string.IsNullOrWhiteSpace(req.Username) ? $"username={req.Username}&" : string.Empty;
             var tag = !string.IsNullOrWhiteSpace(req.Tag) ? $"tag={req.Tag}&" : string.Empty;
             var type = req.Type != null && req.Type != CivitaiModelType.All ? $"types={req.Type}&" : string.Empty;
@@ -154,22 +159,31 @@ namespace BlazorWebApp.Services
             var period = req.Period != null ? $"period={req.Period}&" : string.Empty;
             var rating = req.Rating > -1 ? $"rating={req.Rating}&" : string.Empty;
             var baseModels = req.BaseModels != null && req.BaseModels != "All" ? $"baseModels={req.BaseModels}&" : string.Empty;
+            //var page = req.Page > 0 ? $"page={req.Page}&" : string.Empty;
             //var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
             //var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;
             //var primaryFileOnly = req.IsPrimaryFileOnly != null ? $"primaryFileOnly={req.IsPrimaryFileOnly.ToString().ToLower()}" : string.Empty;
 
             //var url = "v1/models?" + query + limit + page + username + tag + type + sort + period + rating + favorites + hidden + primaryFileOnly;
-            var url = "v1/models?nsfw=true&" + query + limit + page + username + tag + type + sort + period + rating + baseModels;
+            var url = "v1/models?nsfw=true&" + query + limit + username + tag + type + sort + period + rating + baseModels;
             var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();
-            else return null;
+            else
+            {
+                _logger.LogWarning("Failed to get models, status code: {StatusCode} | {Content}", response.StatusCode, await response.Content.ReadAsStringAsync());
+                return null;
+            }
         }
 
         public async Task<CivitaiModelsDto?> GetModelsFromUrl(string url)
         {
             var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<CivitaiModelsDto>();
-            else return null;
+            else
+            {
+                _logger.LogWarning("Failed to get models from URL, status code: {StatusCode} | {Content}", response.StatusCode, await response.Content.ReadAsStringAsync());
+                return null;
+            }
         }
 
         public async Task<CivitaiModelDto?> GetModel(int id)
@@ -195,7 +209,11 @@ namespace BlazorWebApp.Services
                 }
                 return content;
             }
-            else return null;
+            else
+            {
+                _logger.LogWarning("Failed to get model, status code: {StatusCode} | {Content}", response.StatusCode, await response.Content.ReadAsStringAsync());
+                return null;
+            }
         }
 
         public async Task<int> GetModelIdByHash(string hash)
@@ -207,7 +225,11 @@ namespace BlazorWebApp.Services
                 var json = JsonNode.Parse(content);
                 return (int)json["modelId"];
             }
-            else return 0;
+            else
+            {
+                _logger.LogWarning("Failed to get model ID by hash: {Hash}", hash);
+                return 0;
+            }
         }
 
         public async Task<CivitaiModelVersionDto> GetModelVersion(int id) => await _httpClient.GetFromJsonAsync<CivitaiModelVersionDto>($"v1/model-versions/{id}");
@@ -283,7 +305,7 @@ namespace BlazorWebApp.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.LogError(ex, "Error occurred while downloading resource");
                 status = CivitaiDownloadStatus.Error;
             }
             return status;
