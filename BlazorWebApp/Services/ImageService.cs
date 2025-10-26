@@ -22,6 +22,7 @@ namespace BlazorWebApp.Services
         private Txt2ImgParameters _txt2imgParams;
         private int _canvasSourceWidth;
         private int _canvasSourceHeight;
+        private string _currentModel = string.Empty;
 
         public event Action OnChange;
 
@@ -46,6 +47,7 @@ namespace BlazorWebApp.Services
 
             ImagesDto images = new();
             string scriptName = string.Empty;
+            _currentModel = _m.State.Generation.SDModel;
 
             try
             {
@@ -199,6 +201,7 @@ namespace BlazorWebApp.Services
                 fileIndex++;
                 var extension = _m.Options.SamplesFormat.ToLowerInvariant();
 
+
                 // Under certain conditions, SD returns images without info data, creating a mismatch between Images and Info list size.
                 // To prevent crashing later in the method when info is parsed and saved, we must preemptively break the execution and save the extra images to disk.
                 // These images aren't added to the database.
@@ -225,7 +228,7 @@ namespace BlazorWebApp.Services
                 if (_m.IsWebuiUp)
                 {
                     Dictionary<string, string>? param = null;
-                    if (info != null) param = Parser.ParseInfoParameters(info["param"]);
+                    if (info != null) param = Parser.ParseWebUIInfoParameters(info["param"]);
                     _m.State.Generation.Seed = param != null && !string.IsNullOrEmpty(param["Seed"]) ? long.Parse(param["Seed"]) : (long)_parsingParams.Seed;
                 }
 
@@ -311,7 +314,7 @@ namespace BlazorWebApp.Services
                 }
                 else
                 {
-                    var param = Parser.ParseInfoParameters(info["param"]);
+                    var param = Parser.ParseWebUIInfoParameters(info["param"]);
                     // Handles upscaling scripts (Ultimate Upscale) edge cases where the input image has lower resolution than the output info
                     if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
                     {
@@ -332,9 +335,9 @@ namespace BlazorWebApp.Services
             {
                 Dictionary<string, string> param = new();
                 if (_m.IsWebuiUp)
-                    param = Parser.ParseInfoParameters(info["param"]);
-                if (_m.IsComfyUIUp && info != null)
-                    param = Parser.ParseComfyInfoParameters(info["param"]);
+                    param = Parser.ParseWebUIInfoParameters(info["param"]);
+                //if (_m.IsComfyUIUp && info != null)
+                //    param = Parser.ParseComfyUIInfoParameters(info["param"]);
 
                 // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
                 if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
@@ -356,11 +359,13 @@ namespace BlazorWebApp.Services
             {
                 image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
                 image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
-                image.SamplerId = await _db.GetSampler(_parsingParams.SamplerName);
+                image.SamplerId = await _db.GetSamplerIdByName(_parsingParams.SamplerName);
+                image.Scheduler = _parsingParams.Scheduler;
                 image.Steps = (int)_parsingParams.Steps;
                 image.Seed = (long)_parsingParams.Seed;
                 image.CfgScale = (float)_parsingParams.CfgScale;
                 image.DenoisingStrength = _parsingParams.DenoisingStrength;
+                image.Model = await _db.GetResourceByFilename(_currentModel);
             }
 
             image.ModeId = await _db.GetMode(Parser.ModeTypeFromOutdir(outdir));

@@ -91,7 +91,7 @@ namespace BlazorWebApp.Services
             response.EnsureSuccessStatusCode();
             using var stream = await response.Content.ReadAsStreamAsync();
             using var doc = await JsonDocument.ParseAsync(stream);
-            var clientId = Parser.FindJsonValueByKey(doc.RootElement, "client_id");
+            var clientId = Parser.FindJsonValueByKey<string>(doc.RootElement, "client_id");
             return clientId;
         }
 

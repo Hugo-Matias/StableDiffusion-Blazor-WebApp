@@ -3,6 +3,7 @@ using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
+using Sampler = BlazorWebApp.Models.Sampler;
 
 namespace BlazorWebApp.Services
 {
@@ -12,15 +13,17 @@ namespace BlazorWebApp.Services
         private readonly SDAPIService _api;
         private readonly ComfyUIService _capi;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<DatabaseService> _logger;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, ComfyUIService capi, IConfiguration configuration)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, ComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
         {
             _factory = factory;
             _api = api;
             _capi = capi;
             _configuration = configuration;
+            _logger = logger;
             PageSize = 5;
 
             InitializeDatabase();
@@ -264,6 +267,16 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images != null)
             {
+                if (image.Model != null)
+                {
+                    var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
+
+                    if (resource != null)
+                    {
+                        image.ResourceId = resource.Id;
+                        image.Model = resource;
+                    }
+                }
                 var result = await context.Images.AddAsync(image);
                 if (result != null) { await context.SaveChangesAsync(); }
             }
@@ -273,7 +286,7 @@ namespace BlazorWebApp.Services
         public async Task<List<Image>> GetImages(List<int> imageIds)
         {
             using var context = await _factory.CreateDbContextAsync();
-            return await context.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
+            return await context.Images.Include(i => i.Model).Where(i => imageIds.Contains(i.Id)).ToListAsync();
         }
 
         public async Task<ImagesDto> GetPagedImages(int page)
@@ -282,6 +295,7 @@ namespace BlazorWebApp.Services
             if (context.Images == null) return null;
             var pageCount = Math.Ceiling(context.Images.Count() / (float)PageSize);
             var images = await context.Images
+                .Include(i => i.Model)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
                 .ToListAsync();
@@ -301,6 +315,7 @@ namespace BlazorWebApp.Services
             if (context.Images == null) return null;
             var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)PageSize);
             var images = await context.Images
+                .Include(i => i.Model)
                 .Where(i => i.ProjectId == projectId)
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
@@ -322,6 +337,7 @@ namespace BlazorWebApp.Services
             if (context.Images == null) return null;
             var pageCount = Math.Ceiling(context.Images.Count(i => imageIds.Contains(i.Id)) / (float)PageSize);
             var images = await context.Images
+                .Include(i => i.Model)
                 .Where(i => imageIds.Contains(i.Id))
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
@@ -396,7 +412,7 @@ namespace BlazorWebApp.Services
                     break;
             }
 
-            var images = await query.ToListAsync();
+            var images = await query.Include(i => i.Model).ToListAsync();
             if (state.OrderDescending) images.Reverse();
 
             var pageCount = Math.Ceiling(images.Count / (float)PageSize);
@@ -423,7 +439,7 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var images = await context.Images.OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
+            var images = await context.Images.Include(i => i.Model).OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
             return new ImagesDto
             {
                 Images = images,
@@ -438,15 +454,36 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            return await context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
+            return await context.Images.Include(i => i.Model).Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
         }
 
         public async Task<Image> UpdateImage(Image image)
         {
             using var context = await _factory.CreateDbContextAsync();
-            var response = context.Update(image);
+            var imageEntity = context.Images.Include(i => i.Model).FirstOrDefault(i => i.Id == image.Id);
+
+            if (imageEntity != null)
+            {
+                context.Entry(imageEntity).CurrentValues.SetValues(image);
+
+                if (image.Model != null)
+                {
+                    var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
+                    if (resource != null)
+                    {
+                        imageEntity.ResourceId = resource.Id;
+                        imageEntity.Model = resource;
+                    }
+                }
+            }
+            else
+            {
+                imageEntity.ResourceId = null;
+                imageEntity.Model = null;
+            }
+
             await context.SaveChangesAsync();
-            return response.Entity;
+            return imageEntity;
         }
 
         public async Task UpdateImages(List<Image> images)
@@ -454,7 +491,25 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             foreach (var image in images)
             {
-                context.Update(image);
+                var imageEntity = await context.Images.Include(i => i.Model).FirstOrDefaultAsync(i => i.Id == image.Id);
+                if (imageEntity != null)
+                {
+                    context.Entry(imageEntity).CurrentValues.SetValues(image);
+                    if (image.Model != null)
+                    {
+                        var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
+                        if (resource != null)
+                        {
+                            imageEntity.ResourceId = resource.Id;
+                            imageEntity.Model = resource;
+                        }
+                    }
+                }
+                else
+                {
+                    imageEntity.ResourceId = null;
+                    imageEntity.Model = null;
+                }
             }
             await context.SaveChangesAsync();
         }
@@ -475,26 +530,40 @@ namespace BlazorWebApp.Services
             return sampler != null ? sampler.Name : string.Empty;
         }
 
-        public async Task<int> GetSampler(string samplerName)
+        public async Task<int> GetSamplerIdByName(string samplerName)
         {
             if (string.IsNullOrWhiteSpace(samplerName)) return 0;
             using var context = await _factory.CreateDbContextAsync();
-            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name.ToLower() == samplerName.ToLower() || samplerName.ToLower().Contains(s.Name.ToLower()));
+            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name.ToLower() == samplerName.ToLower());
             return sampler != null ? sampler.Id : -1;
         }
 
         private async Task PopulateSamplers()
         {
-            var samplers = await _api.GetSamplers();
-            samplers.AddRange(await _capi.GetSamplers());
+            var samplers = new List<Sampler>();
+            try
+            {
+                samplers = await _api.GetSamplers();
+            }
+            catch (Exception) { }
+
+            try
+            {
+                samplers = await _capi.GetSamplers();
+            }
+            catch (Exception) { }
+
+            if (samplers.Count == 0)
+            {
+                _logger.LogError("Could not retrieve samplers, no backend available.");
+            }
             using var context = await _factory.CreateDbContextAsync();
-            if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
-                foreach (var sampler in samplers)
-                {
-                    var currentSampler = context.Samplers.SingleOrDefault(s => s.Name.ToLower() == sampler.Name.ToLower());
-                    if (currentSampler == null)
-                        await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = sampler.Name });
-                }
+            foreach (var sampler in samplers)
+            {
+                var currentSampler = context.Samplers.SingleOrDefault(s => s.Name.ToLower() == sampler.Name.ToLower());
+                if (currentSampler == null)
+                    await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = sampler.Name });
+            }
             await context.SaveChangesAsync();
         }
 
@@ -587,7 +656,8 @@ namespace BlazorWebApp.Services
         public async Task<Resource> GetResourceByFilename(string filename)
         {
             using var context = _factory.CreateDbContext();
-            return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Filename == filename);
+            filename = Path.GetFileName(filename);
+            return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Filename == filename || r.Filename.Contains(filename));
         }
 
         public async Task<List<ResourceType>> GetResourceTypes(bool ordered)
@@ -715,7 +785,7 @@ namespace BlazorWebApp.Services
             {
                 var image = new Image(resourceImage)
                 {
-                    SamplerId = await GetSampler(resourceImage.Sampler)
+                    SamplerId = await GetSamplerIdByName(resourceImage.Sampler)
                 };
                 images.Add(image);
             }

@@ -8,7 +8,7 @@
                              Value="Lora.Strength"
                              ValueChanged="@(async (float v) => await OnStrengthChanged(v))"
                              Variant="Variant.Text"
-                             Min="0f" Max="5f" Step="0.05f" Format="N2" />
+                             Min="-5f" Max="5f" Step="0.05f" Format="N2" />
         </MudItem>
         <MudItem xs="1">
             <MudToggleIconButton Toggled="Lora.IsNegative"

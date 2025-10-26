@@ -57,23 +57,9 @@
         <MudCardActions>
             <MudCheckBox T="bool" CheckedChanged=@(e => ToggleFavorite(e)) Checked="Image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
             <MudIconButton OnClick=@(() => OnSelectImage.InvokeAsync(Image)) Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
-            <MudIconButton OnClick=@(() => OnDeleteImage.InvokeAsync(Image)) Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
-            <MudSpacer />
-            <MudTooltip Color="Color.Dark" Style="max-width:50vw">
+            <MudTooltip Color="Color.Dark" Style="max-width:50vw" Duration="500" ShowOnFocus=false>
                 <ChildContent>
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                        <MudMenuItem OnClick=ShowSwitchProjectDialog Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Set Project</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick=OpenFileInExplorer Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick=SetProjectCover Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick=ShowImageInfoDialog Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem>
-                    </MudMenu>
+                    <MudIconButton OnClick=ShowImageInfoDialog Icon="fa-solid fa-info" ButtonType=ButtonType.Button Color="Color.Info" Class="icon">Info</MudIconButton>
                 </ChildContent>
                 <TooltipContent>
                     @if (Image.ModeId != 3)
@@ -84,6 +70,20 @@
                     }
                 </TooltipContent>
             </MudTooltip>
+            <MudSpacer />
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
+                <MudMenuItem OnClick=ShowSwitchProjectDialog Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Set Project</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick=OpenFileInExplorer Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick=SetProjectCover Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick=@(() => OnDeleteImage.InvokeAsync(Image)) Icon="fa-solid fa-trash-can" IconColor="Color.Default">Delete</MudMenuItem>
+            </MudMenu>
         </MudCardActions>
     </MudCard>
 </div>

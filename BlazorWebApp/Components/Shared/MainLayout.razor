@@ -17,6 +17,20 @@
             <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" />
             <NavBar />
             <MudSpacer />
+            @if (M.SDModels != null && M.SDModels.Count > 0)
+            {
+                <MudSelect T="string"
+                            Label="Model"
+                            @bind-Value="@M.State.Generation.SDModel"
+                            OnOpen="@(() => M.GetSDModels())"
+                            Style="min-width: 200px;"
+                            AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var model in M.SDModels)
+                    {
+                        <MudSelectItem Value="@model.Model_name">@model.Title</MudSelectItem>
+                    }
+                </MudSelect>
+            }
             <MudIconButton Class=@(M.State.Generation.SDModel == "Loading..." ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(M.State.Generation.SDModel == "Loading..." ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
         </MudAppBar>
         <MudExpansionPanels Style="position: fixed; width:100%; z-index:100;">

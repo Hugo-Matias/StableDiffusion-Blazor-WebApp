@@ -103,14 +103,14 @@
                     Refresh();
                 }
                 else if (command == "Toggle") Refresh();
-                else if (!M.IsWebuiUp) return;
+                // else if (!M.IsWebuiUp) return;
                 // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
                 else if (command.Equals("Load", comp) && resource.Type.Name.Equals("Checkpoint", comp))
                 {
                     await M.GetSDModels(refresh: true);
                     var filename = file.File.Name.Replace(file.File.Extension, "");
-                    var model = M.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
-                    await M.SetSDModel(model.Title);
+                    var model = M.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp))?.Title;
+                    await M.SetSDModel(model);
                     await DB.UpdateResourceLoadedDate(file.ResourceId);
                 }
                 else

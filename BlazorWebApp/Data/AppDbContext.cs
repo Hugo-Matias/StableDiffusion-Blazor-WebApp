@@ -68,6 +68,8 @@ namespace BlazorWebApp.Data
 
             modelBuilder.Entity<Selection>().HasMany(s => s.Images).WithMany(i => i.Selections);
 
+            modelBuilder.Entity<Image>().HasOne(i => i.Model).WithMany().HasForeignKey(nameof(Image.ResourceId));
+
             modelBuilder.Entity<Folder>().HasIndex(f => f.Name).IsUnique();
             modelBuilder.Entity<Resource>().HasIndex(t => t.Filename).IsUnique();
             modelBuilder.Entity<ResourceType>().HasIndex(t => t.Name).IsUnique();

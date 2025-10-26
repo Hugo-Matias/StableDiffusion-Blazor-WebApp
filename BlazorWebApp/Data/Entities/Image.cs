@@ -23,6 +23,10 @@ namespace BlazorWebApp.Data.Entities
         public DateTime DateCreated { get; set; } = DateTime.Now;
         public int Score { get; set; } = 0;
         public List<Selection> Selections { get; set; } = new();
+        public string Scheduler { get; set; }
+        public Resource? Model { get; set; }
+        public int? ResourceId { get; set; }
+
 
         public Image() { }
         public Image(ResourceImage resourceImage)

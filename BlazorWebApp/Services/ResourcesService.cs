@@ -121,7 +121,17 @@ namespace BlazorWebApp.Services
 
             if (resourceType.Equals("TextualInversion", comp)) keyword = weight != 1 ? $", ({filename}:{weight})" : filename;
             else if (resourceType.Equals("Hypernetwork", comp)) keyword = $", <hypernet:{filename}:{weight}>";
-            else if (resourceType.Equals("LORA", comp) || resourceType.Equals("LoCon", comp)) keyword = $", <lora:{filename}:{weight}>";
+            else if (resourceType.Equals("LORA", comp) || resourceType.Equals("LoCon", comp))
+            {
+                if (target.Item1 == ModeType.Txt2Img)
+                {
+                    _m.ParametersTxt2Img.Loras.Add(new Lora { File = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                }
+                else if (target.Item1 == ModeType.Img2Img)
+                {
+                    _m.ParametersImg2Img.Loras.Add(new Lora { File = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                }
+            }
 
             if (_m.State.Resources.LoadTriggerWords && file.TriggerWords != null)
             {

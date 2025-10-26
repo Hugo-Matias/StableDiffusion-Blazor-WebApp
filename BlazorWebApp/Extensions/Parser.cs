@@ -6,6 +6,7 @@ using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -196,7 +197,7 @@ namespace BlazorWebApp.Extensions
             return new Dictionary<string, string>() { { "prompt", prompt }, { "negative", negative }, { "param", param } };
         }
 
-        public static Dictionary<string, string>? ParseInfoParameters(this string param)
+        public static Dictionary<string, string>? ParseWebUIInfoParameters(this string param)
         {
             if (string.IsNullOrWhiteSpace(param)) return null;
 
@@ -213,10 +214,31 @@ namespace BlazorWebApp.Extensions
             return parameters;
         }
 
-        public static Dictionary<string, string>? ParseComfyInfoParameters(this string param)
+        public static JsonTreeNode ParseComfyUIInfoParameters(this string json)
         {
-            // TODO: write parsing
-            return new Dictionary<string, string>();
+            using var doc = JsonDocument.Parse(json);
+            return ConvertElement(doc.RootElement, "root");
+
+            static JsonTreeNode ConvertElement(JsonElement element, string name)
+            {
+                var node = new JsonTreeNode { Name = name };
+                switch (element.ValueKind)
+                {
+                    case JsonValueKind.Object:
+                        foreach (var prop in element.EnumerateObject())
+                            node.Children.Add(ConvertElement(prop.Value, prop.Name));
+                        break;
+                    case JsonValueKind.Array:
+                        int i = 0;
+                        foreach (var item in element.EnumerateArray())
+                            node.Children.Add(ConvertElement(item, $"[{i++}]"));
+                        break;
+                    default:
+                        node.Value = element.ToString();
+                        break;
+                }
+                return node;
+            }
         }
 
         public static string GetDefaultModelFromWorkflow(this string workflow)
@@ -295,6 +317,47 @@ namespace BlazorWebApp.Extensions
             image.Height = int.Parse(size.Groups[3].Value);
 
             return image;
+        }
+
+        /// <summary>
+        /// Finds Lora tags in the prompt of form: &lt;lora:File:Strength&gt;
+        /// Removes them from the prompt (collapsing extra spaces) and returns parsed Loras.
+        /// </summary>
+        public static List<Lora> ExtractLorasFromPrompt(this string prompt, out string cleanedPrompt, bool isNegative)
+        {
+            if (string.IsNullOrWhiteSpace(prompt))
+            {
+                cleanedPrompt = prompt ?? string.Empty;
+                return new List<Lora>();
+            }
+
+            var pattern = @"<lora:([^:>]+):([0-9]*\.?[0-9]+)>";
+            var matches = Regex.Matches(prompt, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            var loras = new List<Lora>();
+            var result = prompt;
+
+            foreach (Match m in matches)
+            {
+                if (!m.Success) continue;
+                var file = m.Groups[1].Value.Trim();
+                var strengthText = m.Groups[2].Value;
+                if (!float.TryParse(strengthText, NumberStyles.Float, CultureInfo.InvariantCulture, out var strength))
+                    strength = 1.0f;
+
+                loras.Add(new Lora
+                {
+                    File = file,
+                    Strength = strength,
+                    IsEnabled = true,
+                    IsNegative = isNegative
+                });
+
+                result = result.Replace(m.Value, "");
+            }
+
+            // collapse multiple spaces and trim
+            cleanedPrompt = Regex.Replace(result, @"\s{2,}", "").Trim();
+            return loras;
         }
 
         public static string ParseResizeModeValue(this int value)
@@ -514,7 +577,7 @@ namespace BlazorWebApp.Extensions
 
         public static string? ExtractJsonString(JsonElement obj, string propName) => obj.TryGetProperty(propName, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : throw new Exception($"Json parsing failed! Couldn't find {propName} property.");
 
-        public static string? FindJsonValueByKey(JsonElement element, string propertyName)
+        public static T? FindJsonValueByKey<T>(JsonElement element, string propertyName)
         {
             switch (element.ValueKind)
             {
@@ -523,10 +586,10 @@ namespace BlazorWebApp.Extensions
                     {
                         if (property.NameEquals(propertyName))
                         {
-                            return property.Value.GetString();
+                            return GetValueAs<T>(property.Value);
                         }
 
-                        var found = FindJsonValueByKey(property.Value, propertyName);
+                        var found = FindJsonValueByKey<T>(property.Value, propertyName);
                         if (found != null)
                             return found;
                     }
@@ -535,14 +598,36 @@ namespace BlazorWebApp.Extensions
                 case JsonValueKind.Array:
                     foreach (var item in element.EnumerateArray())
                     {
-                        var found = FindJsonValueByKey(item, propertyName);
+                        var found = FindJsonValueByKey<T>(item, propertyName);
                         if (found != null)
                             return found;
                     }
                     break;
             }
 
-            return null;
+            return default;
+        }
+
+        private static T? GetValueAs<T>(JsonElement element)
+        {
+            try
+            {
+                return element.ValueKind switch
+                {
+                    JsonValueKind.String when typeof(T) == typeof(string) => (T)(object)element.GetString()!,
+                    JsonValueKind.Number when typeof(T) == typeof(int) => (T)(object)element.GetInt32(),
+                    JsonValueKind.Number when typeof(T) == typeof(long) => (T)(object)element.GetInt64(),
+                    JsonValueKind.Number when typeof(T) == typeof(float) => (T)(object)element.GetSingle(),
+                    JsonValueKind.Number when typeof(T) == typeof(double) => (T)(object)element.GetDouble(),
+                    JsonValueKind.True or JsonValueKind.False when typeof(T) == typeof(bool) => (T)(object)element.GetBoolean(),
+                    JsonValueKind.Object when typeof(T) == typeof(JsonElement) => (T)(object)element,
+                    _ => default
+                };
+            }
+            catch
+            {
+                return default;
+            }
         }
 
         public static List<string> FindAllJsonValuesByKey(JsonElement element, string propertyName)

@@ -157,7 +157,7 @@
         {
             if (!Parameters.Loras.Any(l => l.File == lora.File))
             {
-                Parameters.Loras.Add(lora);
+                Parameters.Loras.Add(new Lora(lora));
             }
         }
     }

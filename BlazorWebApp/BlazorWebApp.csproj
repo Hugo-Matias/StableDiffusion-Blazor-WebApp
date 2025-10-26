@@ -44,6 +44,7 @@
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.2.6-b0002" />
 	<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0.3" />
+	    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

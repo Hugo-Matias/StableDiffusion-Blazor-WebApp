@@ -7,6 +7,7 @@ using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var maxBufferSize = 100 * 1024 * 1024;
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
 // Add services to the container.
 builder.Services.AddRazorPages();

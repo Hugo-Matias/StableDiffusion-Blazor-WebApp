@@ -118,11 +118,11 @@
         M.OnConverging += Refresh;
         M.OnOptionsChange += Refresh;
         M.OnWorkflowBaseChanged += Refresh;
+        M.OnSDModelsChange += Refresh;
         //M.OnFolderChange += Refresh;
         //M.OnProjectChange += Refresh;
         //M.OnProjectsChange += Refresh;
         //M.OnStateHasChanged += Refresh;
-        //M.OnSDModelsChange += Refresh;
         await InitializeStates();
         await M.GetFolders();
         await M.GetProjects();
@@ -210,7 +210,7 @@
         var currentModel = M.State.Generation.SDModel;
         M.State.Generation.SDModel = "Loading...";
         Refresh();
-        _ = await SD.PostRefreshModels();
+        if (M.IsWebuiUp) _ = await SD.PostRefreshModels();
         await M.GetSDModels();
         M.State.Generation.SDModel = currentModel;
         Refresh();
@@ -249,11 +249,11 @@
         M.OnConverging -= Refresh;
         M.OnOptionsChange -= Refresh;
         M.OnWorkflowBaseChanged -= Refresh;
+        M.OnSDModelsChange -= Refresh;
         //M.OnFolderChange -= Refresh;
         //M.OnProjectChange -= Refresh;
         //M.OnProjectsChange -= Refresh;
         //M.OnStateHasChanged -= Refresh;
-        //M.OnSDModelsChange -= Refresh;
     }
 
     private async void Refresh()

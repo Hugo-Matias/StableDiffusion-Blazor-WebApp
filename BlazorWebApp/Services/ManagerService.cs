@@ -601,6 +601,13 @@ namespace BlazorWebApp.Services
                 //await _api.PostReloadModel();
                 _progress.Remove(progressBar.Id);
             }
+
+            if (IsComfyUIUp)
+            {
+                var checkpoints = await _capi.GetCheckpoints();
+                modelTitle = checkpoints.Where(c => c.Model_name.Contains(modelTitle)).FirstOrDefault().Model_name;
+            }
+
             State.Generation.SDModel = modelTitle;
             OnSDModelsChange?.Invoke();
             SaveState();
@@ -733,6 +740,64 @@ namespace BlazorWebApp.Services
                 var defaultModel = workflow.Prompt.GetDefaultModelFromWorkflow();
                 State.Generation.SDModel = defaultModel;
             }
+        }
+
+        public void SetLoras(IEnumerable<Lora> loras, bool isImg2Img)
+        {
+            if (loras == null) return;
+            if (State == null || State.Generation == null) return;
+
+            var parametersLoras = isImg2Img ? ParametersImg2Img.Loras : ParametersTxt2Img.Loras;
+
+            parametersLoras ??= [];
+
+            foreach (var l in loras)
+            {
+                if (string.IsNullOrWhiteSpace(l.File)) continue;
+                var exists = parametersLoras.Any(x => string.Equals(x.File, l.File, StringComparison.InvariantCultureIgnoreCase));
+                if (!exists)
+                    parametersLoras.Add(new Lora(l));
+            }
+
+            OnAppStateChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Parses prompt string, removes lora tags, registers found Loras, removes styles and returns the cleaned prompt.
+        /// </summary>
+        public string ParseAndCleanCopiedPrompt(string prompt, bool isNegative, bool isImg2Img)
+        {
+            // Extract and register Loras
+            var loras = Parser.ExtractLorasFromPrompt(prompt, out var cleanedFromLoras, isNegative);
+            SetLoras(loras, isImg2Img);
+
+            // Remove styles
+            var cleanedFromStyles = cleanedFromLoras;
+            if (State?.Generation?.Styles != null)
+            {
+                foreach (var style in State.Generation.Styles)
+                {
+                    var styleText = isNegative ? style.NegativePrompt : style.Prompt;
+                    if (!string.IsNullOrWhiteSpace(styleText))
+                    {
+                        var actualStyleText = styleText.Replace("{prompt}", "");
+                        if (!string.IsNullOrWhiteSpace(actualStyleText))
+                        {
+                            // Remove the style text and any following comma and spaces
+                            cleanedFromStyles = Regex.Replace(cleanedFromStyles,
+                                $@"{Regex.Escape(actualStyleText)},?\s*",
+                                "", RegexOptions.IgnoreCase);
+                        }
+                    }
+                }
+
+                // Clean up the resulting string
+                cleanedFromStyles = Regex.Replace(cleanedFromStyles, @"\s*,\s*,\s*", ", "); // Fix double commas
+                cleanedFromStyles = Regex.Replace(cleanedFromStyles, @"^\s*,\s*|\s*,\s*$", ""); // Remove leading/trailing commas
+                cleanedFromStyles = Regex.Replace(cleanedFromStyles, @"\s+", " ").Trim(); // Normalize spaces
+            }
+
+            return cleanedFromStyles;
         }
 
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
@@ -937,31 +1002,34 @@ namespace BlazorWebApp.Services
             SharedParameters param = isImg2Img ? ParametersImg2Img : ParametersTxt2Img;
             switch (parameter)
             {
-                case nameof(SharedWebUI.Prompt):
-                    param.Prompt = source.Prompt;
+                case nameof(SharedParameters.Prompt):
+                    param.Prompt = ParseAndCleanCopiedPrompt(source.Prompt, false, isImg2Img);
                     break;
-                case nameof(SharedWebUI.NegativePrompt):
-                    param.NegativePrompt = source.NegativePrompt;
+                case nameof(SharedParameters.NegativePrompt):
+                    param.NegativePrompt = ParseAndCleanCopiedPrompt(source.NegativePrompt, true, isImg2Img);
                     break;
-                case nameof(SharedWebUI.SamplerIndex):
+                case nameof(SharedParameters.SamplerIndex):
                     param.SamplerIndex = GetSampler();
                     break;
-                case nameof(SharedWebUI.Seed):
+                case nameof(SharedParameters.Scheduler):
+                    param.Scheduler = source.Scheduler;
+                    break;
+                case nameof(SharedParameters.Seed):
                     param.Seed = source.Seed;
                     break;
-                case nameof(SharedWebUI.Steps):
+                case nameof(SharedParameters.Steps):
                     param.Steps = source.Steps;
                     break;
-                case nameof(SharedWebUI.CfgScale):
+                case nameof(SharedParameters.CfgScale):
                     param.CfgScale = source.CfgScale;
                     break;
-                case nameof(SharedWebUI.Width):
+                case nameof(SharedParameters.Width):
                     param.Width = source.Width;
                     break;
-                case nameof(SharedWebUI.Height):
+                case nameof(SharedParameters.Height):
                     param.Height = source.Height;
                     break;
-                case nameof(SharedWebUI.DenoisingStrength):
+                case nameof(SharedParameters.DenoisingStrength):
                     param.DenoisingStrength = source.DenoisingStrength;
                     break;
             }
