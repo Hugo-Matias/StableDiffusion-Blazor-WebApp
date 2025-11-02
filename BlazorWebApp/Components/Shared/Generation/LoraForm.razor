@@ -18,11 +18,27 @@
     ResetValueOnEmptyText="true"
     Clearable="true"
     SelectOnClick="false" />
-    @foreach (var lora in Loras)
-{
-    <LoraCard Lora="lora" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+@if (Loras != null && Loras.Count > 0){
+    if (Loras.Count(l => l.IsEnabled) > 0)
+    {
+        <MudExpansionPanel Text=@($"Enabled Loras ({Loras.Count(l => l.IsEnabled)})") @bind-IsExpanded=_isEnabledExpanded>
+            @foreach (var lora in Loras.Where(l => l.IsEnabled))
+            {
+                <LoraCard Lora="lora" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+            }
+        </MudExpansionPanel>
+    }
+    if (Loras.Count(l => !l.IsEnabled) > 0)
+    {
+        <MudExpansionPanel Text=@($"Disabled Loras ({Loras.Count(l => !l.IsEnabled)})") @bind-IsExpanded=_isDisabledExpanded
+        >
+            @foreach (var lora in Loras.Where(l => !l.IsEnabled))
+            {
+                <LoraCard Lora="lora" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+            }
+        </MudExpansionPanel>
+    }
 }
-
 @code {
     [Parameter]
     public Backend Backend { get; set; }
@@ -32,6 +48,8 @@
     public EventCallback OnLorasUpdated { get; set; }
 
     private string _lora;
+    private bool _isEnabledExpanded = true;
+    private bool _isDisabledExpanded = false;
 
     override protected void OnInitialized()
     {

@@ -124,7 +124,7 @@ namespace BlazorWebApp.Models
         public bool IsScore { get; set; } = false;
     }
 
-    public enum GalleryOrderBy { Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising, Random }
+    public enum GalleryOrderBy { Random, Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }
 
     public class AppStateResources
     {

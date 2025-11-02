@@ -155,7 +155,7 @@
 
         foreach (var lora in sourceLoras)
         {
-            if (!Parameters.Loras.Any(l => l.File == lora.File))
+            if (!Parameters.Loras.Any(l => l.File == lora.File) && lora.IsEnabled)
             {
                 Parameters.Loras.Add(new Lora(lora));
             }
