@@ -1,0 +1,95 @@
+#meta
+{
+  "outputs": {
+    "model_output": { "node": "lora_positive", "index": 0 },
+    "clip_output": { "node": "lora_positive", "index": 1 },
+    "vae_output": { "node": {{ loader_id | json }}, "index": 2 },
+    "latent_output": { "node": {{ latent_id | json }}, "index": 0 },
+    "positive_output": { "node": "encode_positive", "index": 0 },
+    "negative_output": { "node": "encode_negative", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ loader_id }}": {
+    "inputs": {
+      "ckpt_name": {{ ckpt_name | json }}
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "text_prompt": {
+    "inputs": {
+      "value": {{ prompt | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "String (Multiline)"
+    }
+  },
+  "text_negative": {
+    "inputs": {
+      "value": {{ negative | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "String (Multiline)"
+    }
+  },
+  "lora_positive": {
+    "inputs": {
+      "text": ["text_prompt", 0],
+      "model": [{{ loader_id | json }}, 0],
+      "clip": [{{ loader_id | json }}, 1]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "PC: Schedule LoRAs (Positive)"
+    }
+  },
+  "lora_negative": {
+    "inputs": {
+      "text": ["text_negative", 0],
+      "model": ["lora_positive", 0],
+      "clip": ["lora_positive", 1]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "PC: Schedule LoRAs (Negative)"
+    }
+  },
+  "encode_positive": {
+    "inputs": {
+      "text": ["text_prompt", 0],
+      "clip": ["lora_positive", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "PC: Schedule Prompt (Positive)"
+    }
+  },
+  "encode_negative": {
+    "inputs": {
+      "text": ["text_negative", 0],
+      "clip": ["lora_negative", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "PC: Schedule Prompt (Negative)"
+    }
+  },
+  "{{ latent_id }}": {
+    "inputs": {
+      "width": {{ width | json }},
+      "height": {{ height | json }},
+      "batch_size": {{ batch_size | json }}
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  }
+}

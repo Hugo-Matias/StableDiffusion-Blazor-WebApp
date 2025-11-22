@@ -1,0 +1,32 @@
+#meta
+{
+  "outputs": {
+    "latent_output": {"node": {{ sampler_id | json }}, "index": 0}
+  }
+}
+#end
+
+{
+  "{{ sampler_id }}": {
+    "inputs": {
+      "eta": 0.5,
+      "sampler_name": {{ sampler_name | json }},
+      "scheduler": {{ scheduler | json }},
+      "steps": {{ steps | json }},
+      "steps_to_run": -1,
+      "denoise": 1,
+      "cfg": {{ cfg | json }},
+      "seed": {{ seed | json }},
+      "sampler_mode": "standard",
+      "bongmath": true,
+      "model": {{ get_ref "model_output" }},
+      "positive": {{ get_ref "positive_output" }},
+      "negative": {{ get_ref "negative_output" }},
+      "latent_image": {{ get_ref "latent_output" }}
+    },
+    "class_type": {{ class_type | json }},
+    "_meta": {
+      "title": {{ title | json }}
+    }
+  },
+}

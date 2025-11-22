@@ -52,13 +52,32 @@ namespace BlazorWebApp.Services
                 return;
             }
             var images = new GeneratedImages() { Images = [] };
+            var workflowInfo = string.Empty;
 
             foreach (var file in files)
             {
                 var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", file);
                 var base64 = await _io.GetBase64FromFileAsync(filepath);
                 images.Images.Add(base64);
+
+                try
+                {
+                    var metadata = await _io.ReadMetadata(filepath);
+
+                    // ComfyUI embeds as "prompt: {json}" - extract just the JSON
+                    if (!string.IsNullOrWhiteSpace(metadata))
+                    {
+                        var match = Regex.Match(metadata, @"^(?:prompt|workflow):\s*(\{.+\})$", RegexOptions.Singleline);
+                        workflowInfo = match.Success ? match.Groups[1].Value : metadata;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to read metadata from image file: {FilePath}", filepath);
+                }
             }
+
+            images.Info = workflowInfo;
 
             if (_pendingJobs.TryRemove(promptId, out var obj) && obj is TaskCompletionSource<GeneratedImages> tcs)
                 tcs.SetResult(images);
@@ -199,9 +218,14 @@ namespace BlazorWebApp.Services
         }
 
 
-        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgComfyUI param, string clientId, string workflow)
+        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgComfyUI param, string clientId, Workflow workflow)
         {
-            var payload = new { prompt = _workflow.Render(workflow, param), client_id = clientId };
+            var workflowJson = _workflow.ComposeWorkflowFromTemplate(workflow, param);
+
+            // Deserialize the JSON string to an object
+            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
+
+            var payload = new { prompt = workflowObject, client_id = clientId };
             return await PostPromptAsync<GeneratedImages>(payload);
         }
 

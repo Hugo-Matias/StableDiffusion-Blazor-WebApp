@@ -1,4 +1,5 @@
-﻿@using static BlazorWebApp.Data.Enums
+﻿@using System.Text.Json
+@using static BlazorWebApp.Data.Enums
 @inject ManagerService M
 
 <div style="margin-bottom:15rem;">
@@ -142,6 +143,31 @@
         if (M.IsComfyUIUp)
         {
             var info = M.ImagesInfo.InfoTexts[0];
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(info);
+                var root = doc.RootElement;
+
+                // ComfyUI stores the workflow as a flat object where each key is a node ID
+                // We need to search through all nodes for one that has a "seed" input
+                foreach (var nodeProperty in root.EnumerateObject())
+                {
+                    if (nodeProperty.Value.ValueKind == JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                        inputs.TryGetProperty("seed", out var seedEl))
+                    {
+                        if (seedEl.ValueKind == JsonValueKind.Number && seedEl.TryGetInt64(out var seedValue))
+                        {
+                            Parameters.Seed = seedValue;
+                            break; // Found the seed, stop searching
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If parsing fails, do nothing
+            }
         }
         else if (M.IsWebuiUp)
         {

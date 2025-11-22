@@ -734,10 +734,17 @@ namespace BlazorWebApp.Services
 
         public void SetDefaultBaseModel()
         {
+            var modelKeys = new[] { "ckpt_name", "unet_name" };
             var workflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
             if (workflow != null)
             {
-                var defaultModel = workflow.Prompt.GetDefaultModelFromWorkflow();
+                var defaultModel = workflow.Pipeline
+                    .Select(s => modelKeys
+                        .FirstOrDefault(k => s.Parameters?.ContainsKey(k) == true))
+                    .Where(k => k != null)
+                    .Select(k => workflow.Pipeline
+                        .FirstOrDefault(s => s.Parameters.ContainsKey(k))?
+                        .Parameters[k]?.ToString())?.FirstOrDefault()?.GetDefaultModelFromWorkflow();
                 State.Generation.SDModel = defaultModel;
             }
         }

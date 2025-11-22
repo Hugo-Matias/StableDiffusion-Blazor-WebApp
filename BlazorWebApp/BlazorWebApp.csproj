@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -8,20 +8,11 @@
   </PropertyGroup>
 
 <ItemGroup>
-  <None Update="Workflows\**\*.scriban">
+  <None Update="Workflows\**\*.sbn">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </None>
 </ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Workflows\sd\txt2img.scriban" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Workflows\sd\txt2img.scriban">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.6" />

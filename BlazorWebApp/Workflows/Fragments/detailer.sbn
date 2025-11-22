@@ -1,0 +1,144 @@
+#meta
+{
+  "outputs": {
+    "image_output": { "node": "detailer", "index": 0 }
+  },
+  "conditions": {
+    "required": ["Detailer.IsActive"]
+  }
+}
+#end
+
+{
+  "detailer_decode": {
+    "inputs": {
+      "samples": {{ get_ref "latent_output" }},
+      "vae": {{ get_ref "vae_output" }}
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode (for Detailer)"
+    }
+  },
+  "detailer_checkpoint": {
+    "inputs": {
+      "ckpt_name": {{ detailer_checkpoint | json }}
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Detailer Checkpoint"
+    }
+  },
+  "detailer_text_prompt": {
+    "inputs": {
+      "value": {{ detailer_prompt | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Detailer Prompt"
+    }
+  },
+  "detailer_text_negative": {
+    "inputs": {
+      "value": {{ detailer_negative | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Detailer Negative Prompt"
+    }
+  },
+  "detailer_lora_positive": {
+    "inputs": {
+      "text": ["detailer_text_prompt", 0],
+      "model": ["detailer_checkpoint", 0],
+      "clip": ["detailer_checkpoint", 1]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "Detailer LoRAs (Positive)"
+    }
+  },
+  "detailer_lora_negative": {
+    "inputs": {
+      "text": ["detailer_text_negative", 0],
+      "model": ["detailer_lora_positive", 0],
+      "clip": ["detailer_checkpoint", 1]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "Detailer LoRAs (Negative)"
+    }
+  },
+  "detailer_encode_positive": {
+    "inputs": {
+      "text": ["detailer_text_prompt", 0],
+      "clip": ["detailer_lora_positive", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "Detailer Encode (Positive)"
+    }
+  },
+  "detailer_encode_negative": {
+    "inputs": {
+      "text": ["detailer_text_negative", 0],
+      "clip": ["detailer_lora_negative", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "Detailer Encode (Negative)"
+    }
+  },
+  "detailer_bbox_provider": {
+    "inputs": {
+      "model_name": {{ detailer_model | json }}
+    },
+    "class_type": "UltralyticsDetectorProvider",
+    "_meta": {
+      "title": "BBox Detector Provider"
+    }
+  },
+  "detailer": {
+    "inputs": {
+      "guide_size": {{ detailer_guide_size | json }},
+      "guide_size_for": true,
+      "max_size": {{ detailer_max_size | json }},
+      "seed": {{ detailer_seed | json }},
+      "steps": {{ detailer_steps | json }},
+      "cfg": {{ detailer_cfg | json }},
+      "sampler_name": {{ detailer_sampler | json }},
+      "scheduler": {{ detailer_scheduler | json }},
+      "denoise": {{ detailer_denoise | json }},
+      "feather": {{ detailer_feather | json }},
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": {{ detailer_bbox_threshold | json }},
+      "bbox_dilation": {{ detailer_bbox_dilation | json }},
+      "bbox_crop_factor": {{ detailer_bbox_crop_factor | json }},
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": {{ detailer_drop_size | json }},
+      "wildcard": "",
+      "cycle": {{ detailer_cycle | json }},
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": ["detailer_decode", 0],
+      "model": ["detailer_lora_negative", 0],
+      "clip": ["detailer_checkpoint", 1],
+      "vae": ["detailer_checkpoint", 2],
+      "positive": ["detailer_encode_positive", 0],
+      "negative": ["detailer_encode_negative", 0],
+      "bbox_detector": ["detailer_bbox_provider", 0]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer"
+    }
+  }
+}

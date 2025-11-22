@@ -157,7 +157,9 @@
         if (!M.IsWebuiUp && !M.IsComfyUIUp) return;
 
         // Only get workflows once, otherwise new Guids will be assigned and the page routing will break
-        if (M.IsComfyUIUp && (M.State.Generation.Workflows == null || M.State.Generation.Workflows.Count == 0)) M.GetComfyWorkflows();
+        // if (M.IsComfyUIUp && (M.State.Generation.Workflows == null || M.State.Generation.Workflows.Count == 0)) M.GetComfyWorkflows();
+        if (M.IsComfyUIUp) M.GetComfyWorkflows();
+
         await M.GetSDVAEs();
         await M.GetSDModels();
         await M.GetSamplers();

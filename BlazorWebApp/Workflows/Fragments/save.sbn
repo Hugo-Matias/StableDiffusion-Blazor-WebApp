@@ -1,0 +1,12 @@
+{
+	"save": {
+		"inputs": {
+			"filename_prefix": "tmp/img",
+			"images": {{ get_ref "image_output" }}
+		},
+		"class_type": "SaveImage",
+		"_meta": {
+			"title": "Save Image"
+		}
+	}
+}

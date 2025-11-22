@@ -1,0 +1,23 @@
+#meta
+{
+  "outputs": {
+    "image_output": { "node": "vae_decoder", "index": 0 }
+  },
+  "conditions": {
+    "excluded_if": ["Detailer.IsActive"]
+  }
+}
+#end
+
+{
+  "vae_decoder": {
+    "inputs": {
+      "samples": {{ get_ref "latent_output" }},
+      "vae": {{ get_ref "vae_output" }}
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  }
+}

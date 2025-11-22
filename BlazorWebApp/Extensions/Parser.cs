@@ -172,13 +172,41 @@ namespace BlazorWebApp.Extensions
 
             if (isComfyui)
             {
-                using var doc = JsonDocument.Parse(info);
-                if (!doc.RootElement.TryGetProperty("input", out var input))
-                    throw new Exception("Image Info parsing failed! Missing input property.");
-
-                prompt = ExtractJsonString(input, "prompt");
-                negative = ExtractJsonString(input, "negative_prompt");
                 param = info;
+                try
+                {
+                    using var doc = JsonDocument.Parse(info);
+                    var root = doc.RootElement;
+
+                    // Search for prompt nodes (typically named like "text_prompt", "detailer_text_prompt", etc.)
+                    foreach (var nodeProperty in root.EnumerateObject())
+                    {
+                        if (nodeProperty.Value.ValueKind == JsonValueKind.Object &&
+                            nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                            inputs.TryGetProperty("value", out var valueEl) &&
+                            valueEl.ValueKind == JsonValueKind.String)
+                        {
+                            var nodeName = nodeProperty.Name.ToLowerInvariant();
+
+                            // Check if this looks like a prompt node
+                            if (nodeName.Contains("text_prompt") && !nodeName.Contains("negative"))
+                            {
+                                if (string.IsNullOrEmpty(prompt))
+                                    prompt = valueEl.GetString() ?? string.Empty;
+                            }
+                            // Check if this looks like a negative prompt node
+                            else if (nodeName.Contains("text_negative") || nodeName.Contains("negative"))
+                            {
+                                if (string.IsNullOrEmpty(negative))
+                                    negative = valueEl.GetString() ?? string.Empty;
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    throw new Exception("Failed to parse prompt/negative prompt from image info.");
+                }
             }
             else
             {
@@ -575,8 +603,6 @@ namespace BlazorWebApp.Extensions
             return value.Length <= maxChars ? value : value.Substring(0, maxChars - ellipses.Length) + ellipses;
         }
 
-        public static string? ExtractJsonString(JsonElement obj, string propName) => obj.TryGetProperty(propName, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : throw new Exception($"Json parsing failed! Couldn't find {propName} property.");
-
         public static T? FindJsonValueByKey<T>(JsonElement element, string propertyName)
         {
             switch (element.ValueKind)
@@ -676,6 +702,71 @@ namespace BlazorWebApp.Extensions
                 }
             }
             return null;
+        }
+
+        public static bool TryGetPropertyIgnoreCase(this JsonElement element, string propertyName, out JsonElement value)
+        {
+            foreach (var prop in element.EnumerateObject())
+            {
+                if (string.Equals(prop.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = prop.Value;
+                    return true;
+                }
+            }
+            value = default;
+            return false;
+        }
+
+        public static string? GetStringProperty(this JsonElement element, string propertyName)
+        {
+            if (element.TryGetPropertyIgnoreCase(propertyName, out var el) && el.ValueKind == JsonValueKind.String)
+                return el.GetString();
+            return null;
+        }
+
+        public static Dictionary<string, object?> ConvertJsonObjectToDictionary(this JsonElement element)
+        {
+            var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            if (element.ValueKind != JsonValueKind.Object) return dict;
+            foreach (var prop in element.EnumerateObject())
+            {
+                dict[prop.Name] = prop.Value.ConvertJsonElementToObject();
+            }
+            return dict;
+        }
+
+        public static object? ConvertJsonElementToObject(this JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.String:
+                    return element.GetString();
+
+                case JsonValueKind.Number:
+                    if (element.TryGetInt32(out var i)) return i;
+                    if (element.TryGetInt64(out var l)) return l;
+                    if (element.TryGetDouble(out var d)) return d;
+                    return element.GetDecimal();
+
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    return element.GetBoolean();
+
+                case JsonValueKind.Array:
+                    var list = new List<object?>();
+                    foreach (var it in element.EnumerateArray())
+                        list.Add(it.ConvertJsonElementToObject());
+                    return list;
+
+                case JsonValueKind.Object:
+                    return element.ConvertJsonObjectToDictionary();
+
+                case JsonValueKind.Null:
+                case JsonValueKind.Undefined:
+                default:
+                    return null;
+            }
         }
     }
 }

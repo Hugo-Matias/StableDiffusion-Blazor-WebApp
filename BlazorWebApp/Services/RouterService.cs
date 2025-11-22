@@ -33,7 +33,7 @@ namespace BlazorWebApp.Services
             {
                 var model = _m.State.Generation.SDModel;
                 var vae = _m.State.Generation.Vae;
-                var workflow = parameters.Comfy.Workflow.Prompt;
+                var workflow = parameters.Comfy.Workflow ?? _m.ParametersTxt2Img.Comfy.Workflow;
                 return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _m.ComfyWSClientId, workflow);
             }
             if (_m.IsWebuiUp)
