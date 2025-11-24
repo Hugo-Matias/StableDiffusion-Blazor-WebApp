@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
@@ -56,7 +57,7 @@ namespace BlazorWebApp.Services
         public Options Options { get; set; }
         public Txt2ImgParameters ParametersTxt2Img { get; set; }
         public Img2ImgParameters ParametersImg2Img { get; set; }
-        public UpscaleParameters ParametersUpscale { get; set; }
+        public Models.UpscaleParameters ParametersUpscale { get; set; }
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
         public ImagesDto GeneratedImageEntities { get; set; }
@@ -198,6 +199,19 @@ namespace BlazorWebApp.Services
                     HRWidth = Settings.Generation.Txt2Img.HighRes.Resolution.Width,
                     HRHeight = Settings.Generation.Txt2Img.HighRes.Resolution.Height,
                     HRSecondPassSteps = Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Value,
+                    SeedVR2 = new SeedVR2Parameters
+                    {
+                        IsActive = Settings.Generation.Txt2Img.SeedVR2.Enabled,
+                        Model = Settings.Generation.Txt2Img.SeedVR2.Model,
+                        BlocksToSwap = Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Value,
+                        VaeTileSize = Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Value,
+                        VaeTileOverlap = Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Value,
+                        Resolution = Settings.Generation.Txt2Img.SeedVR2.Resolution.Value,
+                        Scale = Settings.Generation.Txt2Img.SeedVR2.Scale.Value,
+                        BatchSize = Settings.Generation.Txt2Img.SeedVR2.BatchSize.Value,
+                        InputNoiseScale = Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Value,
+                        LatentNoiseScale = Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Value
+                    },
                     Scripts = new()
                     {
                         ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
@@ -237,7 +251,7 @@ namespace BlazorWebApp.Services
                 };
 
             if (modes.Contains(ModeType.Extras))
-                ParametersUpscale = new UpscaleParameters(defaultParameters)
+                ParametersUpscale = new Models.UpscaleParameters(defaultParameters)
                 {
                     ResizeMode = Settings.Generation.Upscale.ResizeMode,
                     ShowResults = Settings.Generation.Upscale.ShowResults,
@@ -604,8 +618,20 @@ namespace BlazorWebApp.Services
 
             if (IsComfyUIUp)
             {
-                var checkpoints = await _capi.GetCheckpoints();
-                modelTitle = checkpoints.Where(c => c.Model_name.Contains(modelTitle)).FirstOrDefault().Model_name;
+                var currentWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+                var modelType = currentWorkflow?.ModelType ?? ModelType.Checkpoint;
+
+                List<SDModel> models = modelType switch
+                {
+                    ModelType.Diffusion => await _capi.GetDiffusionModels(),
+                    _ => await _capi.GetCheckpoints()
+                };
+
+                var matchedModel = models.FirstOrDefault(m => m.Model_name.Contains(modelTitle, StringComparison.OrdinalIgnoreCase));
+                if (matchedModel != null)
+                {
+                    modelTitle = matchedModel.Model_name;
+                }
             }
 
             State.Generation.SDModel = modelTitle;
@@ -809,10 +835,12 @@ namespace BlazorWebApp.Services
 
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {
-            if (mode == ModeType.Img2Img)
+            bool isImg2Img = mode == ModeType.Img2Img;
+
+            if (isImg2Img)
             {
-                ParametersImg2Img.Prompt = image.Prompt;
-                ParametersImg2Img.NegativePrompt = image.NegativePrompt;
+                ParametersImg2Img.Prompt = ParseAndCleanCopiedPrompt(image.Prompt ?? string.Empty, false, isImg2Img);
+                ParametersImg2Img.NegativePrompt = ParseAndCleanCopiedPrompt(image.NegativePrompt ?? string.Empty, true, isImg2Img);
                 ParametersImg2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
                 ParametersImg2Img.Steps = image.Steps;
                 ParametersImg2Img.Seed = image.Seed;
@@ -823,8 +851,8 @@ namespace BlazorWebApp.Services
             }
             else
             {
-                ParametersTxt2Img.Prompt = image.Prompt;
-                ParametersTxt2Img.NegativePrompt = image.NegativePrompt;
+                ParametersTxt2Img.Prompt = ParseAndCleanCopiedPrompt(image.Prompt ?? string.Empty, false, isImg2Img);
+                ParametersTxt2Img.NegativePrompt = ParseAndCleanCopiedPrompt(image.NegativePrompt ?? string.Empty, true, isImg2Img);
                 ParametersTxt2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
                 ParametersTxt2Img.Steps = image.Steps;
                 ParametersTxt2Img.Seed = image.Seed;

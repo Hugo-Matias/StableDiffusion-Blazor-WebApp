@@ -10,16 +10,7 @@
 #end
 
 {
-  "detailer_decode": {
-    "inputs": {
-      "samples": {{ get_ref "latent_output" }},
-      "vae": {{ get_ref "vae_output" }}
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE Decode (for Detailer)"
-    }
-  },
+  {{ if ModelType == "checkpoint" }}
   "detailer_checkpoint": {
     "inputs": {
       "ckpt_name": {{ detailer_checkpoint | json }}
@@ -29,6 +20,38 @@
       "title": "Load Detailer Checkpoint"
     }
   },
+  {{ else }}
+  "detailer_unet_loader": {
+    "inputs": {
+      "unet_name": {{ detailer_checkpoint | json }},
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "detailer_clip_loader": {
+    "inputs": {
+      "clip_name": {{ detailer_clip | json }},
+      "type": {{ detailer_clip_type | json }},
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "detailer_vae_loader": {
+    "inputs": {
+      "vae_name": {{ detailer_vae | json }}
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  {{ end }}
   "detailer_text_prompt": {
     "inputs": {
       "value": {{ detailer_prompt | json }}
@@ -50,8 +73,13 @@
   "detailer_lora_positive": {
     "inputs": {
       "text": ["detailer_text_prompt", 0],
+      {{ if ModelType == "checkpoint" }}
       "model": ["detailer_checkpoint", 0],
       "clip": ["detailer_checkpoint", 1]
+      {{ else }}
+      "model": ["detailer_unet_loader", 0],
+      "clip": ["detailer_clip_loader", 0]
+      {{ end }}
     },
     "class_type": "PCLazyLoraLoader",
     "_meta": {
@@ -62,7 +90,11 @@
     "inputs": {
       "text": ["detailer_text_negative", 0],
       "model": ["detailer_lora_positive", 0],
+      {{ if ModelType == "checkpoint" }}
       "clip": ["detailer_checkpoint", 1]
+      {{ else }}
+      "clip": ["detailer_clip_loader", 0]
+      {{ end }}
     },
     "class_type": "PCLazyLoraLoader",
     "_meta": {
@@ -128,10 +160,16 @@
       "noise_mask_feather": 20,
       "tiled_encode": false,
       "tiled_decode": false,
-      "image": ["detailer_decode", 0],
+      "image": {{ get_ref "image_output" }},
+      {{ if ModelType == "checkpoint" }}
       "model": ["detailer_lora_negative", 0],
       "clip": ["detailer_checkpoint", 1],
       "vae": ["detailer_checkpoint", 2],
+      {{ else }}
+      "model": ["detailer_unet_loader", 0],
+      "clip": ["detailer_clip_loader", 0],
+      "vae": ["detailer_vae_loader", 0],
+      {{ end }}
       "positive": ["detailer_encode_positive", 0],
       "negative": ["detailer_encode_negative", 0],
       "bbox_detector": ["detailer_bbox_provider", 0]

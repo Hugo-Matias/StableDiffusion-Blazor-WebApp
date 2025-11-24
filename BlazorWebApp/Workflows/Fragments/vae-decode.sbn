@@ -3,9 +3,6 @@
   "outputs": {
     "image_output": { "node": "vae_decoder", "index": 0 }
   },
-  "conditions": {
-    "excluded_if": ["Detailer.IsActive"]
-  }
 }
 #end
 

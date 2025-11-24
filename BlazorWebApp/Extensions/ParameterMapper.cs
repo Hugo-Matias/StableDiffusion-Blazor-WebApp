@@ -60,7 +60,8 @@ namespace BlazorWebApp.Extensions
                     Seed = src.Seed,
                     Cycle = d.Cycle <= 0 ? 1 : d.Cycle,
                     Loras = d.Loras ?? []
-                }
+                },
+                SeedVR2 = src.SeedVR2
             };
 
             param.Detailer.ParseComfyDetailerLoras();

@@ -141,6 +141,7 @@ namespace BlazorWebApp.Services
                 _txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
             }
             _txt2imgParams.Scripts = _m.ParametersTxt2Img.Scripts;
+            _txt2imgParams.SeedVR2 = _m.ParametersTxt2Img.SeedVR2;
         }
 
         private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)

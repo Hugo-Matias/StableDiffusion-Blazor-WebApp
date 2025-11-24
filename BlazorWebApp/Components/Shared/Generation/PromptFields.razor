@@ -81,7 +81,7 @@
     private int _promptLines = 6;
     private int _negativePromptLines = 4;
     private bool _isDrawerOpen = false;
-    private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux };
+    private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux, ModelBase.Qwen };
 
     protected override void OnInitialized()
     {

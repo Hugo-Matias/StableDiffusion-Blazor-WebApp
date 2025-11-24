@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Data.Dtos.WebUI;
+﻿using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
+using BlazorWebApp.Data.Dtos.WebUI;
 
 namespace BlazorWebApp.Models
 {
@@ -12,6 +13,7 @@ namespace BlazorWebApp.Models
         public int HRSecondPassSteps { get; set; }
         public int HRWidth { get; set; }
         public int HRHeight { get; set; }
+        public SeedVR2Parameters SeedVR2 { get; set; }
         public Txt2ImgScriptParameters Scripts { get; set; }
 
         public Txt2ImgParameters() { }

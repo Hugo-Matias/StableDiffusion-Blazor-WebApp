@@ -115,6 +115,7 @@ namespace BlazorWebApp.Models
     public class Txt2ImgSettingsModel
     {
         public HighresSettingsModel HighRes { get; set; } = new();
+        public SeedVR2Settings SeedVR2 { get; set; } = new();
     }
     public class HighresSettingsModel
     {
@@ -158,6 +159,20 @@ namespace BlazorWebApp.Models
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 150;
         public int Step { get; set; } = 1;
+    }
+
+    public class SeedVR2Settings
+    {
+        public bool Enabled { get; set; } = false;
+        public string Model { get; set; } = "seedvr2_ema_7b-Q4_K_M.gguf";
+        public IntRange BlocksToSwap { get; set; } = new() { Min = 0, Max = 36, Value = 36, Step = 1 };
+        public IntRange VaeTileSize { get; set; } = new() { Min = 128, Max = 2048, Value = 1024, Step = 64 };
+        public IntRange VaeTileOverlap { get; set; } = new() { Min = 0, Max = 512, Value = 128, Step = 32 };
+        public IntRange Resolution { get; set; } = new() { Min = 512, Max = 4096, Value = 2048, Step = 64 };
+        public DoubleRange Scale { get; set; } = new() { Min = 1, Max = 10, Value = 2.0, Step = 0.5 };
+        public IntRange BatchSize { get; set; } = new() { Min = 1, Max = 10, Value = 1, Step = 1 };
+        public DoubleRange InputNoiseScale { get; set; } = new() { Min = 0, Max = 1, Value = 0.0, Step = 0.01 };
+        public DoubleRange LatentNoiseScale { get; set; } = new() { Min = 0, Max = 1, Value = 0.0, Step = 0.01 };
     }
     #endregion
 
@@ -1221,6 +1236,24 @@ namespace BlazorWebApp.Models
         public int Min { get; set; } = 1;
         public int Max { get; set; } = 12;
         public int Step { get; set; } = 1;
+    }
+    #endregion
+
+    #region Types
+    public class IntRange
+    {
+        public int Min { get; set; }
+        public int Max { get; set; }
+        public int Value { get; set; }
+        public int Step { get; set; }
+    }
+
+    public class DoubleRange
+    {
+        public double Min { get; set; }
+        public double Max { get; set; }
+        public double Value { get; set; }
+        public double Step { get; set; }
     }
     #endregion
 }

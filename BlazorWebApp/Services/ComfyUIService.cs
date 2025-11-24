@@ -184,8 +184,27 @@ namespace BlazorWebApp.Services
             response.EnsureSuccessStatusCode();
             using var stream = await response.Content.ReadAsStreamAsync();
             using var doc = await JsonDocument.ParseAsync(stream);
-            var outputs = Parser.GetFirstJsonProperty(doc.RootElement.GetProperty(promptId.ToString()).GetProperty("outputs"));
-            var images = JsonSerializer.Deserialize<List<ComfyUIHistoryImageResponse>>(outputs.Value.GetProperty("images").GetRawText());
+
+            if (!doc.RootElement.TryGetProperty(promptId.ToString(), out var promptElement))
+            {
+                _logger.LogWarning("Prompt ID {PromptId} not found in history response", promptId);
+                return files;
+            }
+
+            if (!promptElement.TryGetProperty("outputs", out var outputsElement))
+            {
+                _logger.LogWarning("No outputs found for prompt ID {PromptId}", promptId);
+                return files;
+            }
+
+            var outputs = Parser.GetFirstJsonProperty(outputsElement);
+            if (outputs == null || !outputs.Value.TryGetProperty("images", out var imagesElement))
+            {
+                _logger.LogWarning("No images found in outputs for prompt ID {PromptId}", promptId);
+                return files;
+            }
+
+            var images = JsonSerializer.Deserialize<List<ComfyUIHistoryImageResponse>>(imagesElement.GetRawText());
             foreach (var image in images)
             {
                 files.Add(Path.Combine(image.Subfolder, image.Filename));

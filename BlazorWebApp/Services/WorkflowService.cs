@@ -42,7 +42,6 @@ namespace BlazorWebApp.Services
                 RawJson = templateText,
             };
 
-            // Extract static metadata (non-Scriban values)
             var titleMatch = Regex.Match(templateText, @"""title""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
             if (titleMatch.Success)
                 wf.Title = titleMatch.Groups[1].Value;
@@ -59,7 +58,6 @@ namespace BlazorWebApp.Services
             if (modelTypeMatch.Success && Enum.TryParse<ModelType>(modelTypeMatch.Groups[1].Value, true, out var mtype))
                 wf.ModelType = mtype;
 
-            // Generate deterministic GUID based on title + base + mode
             var uniqueString = $"{wf.Title}_{wf.Base}_{wf.Mode}_{wf.ModelType}";
             wf.Id = GenerateDeterministicGuid(uniqueString);
 
@@ -75,14 +73,13 @@ namespace BlazorWebApp.Services
 
                 foreach (var stepJson in steps)
                 {
-                    // Extract fragment path only
                     var fragMatch = Regex.Match(stepJson, @"""fragment""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
                     if (!fragMatch.Success) continue;
 
                     var step = new WorkflowStep
                     {
                         Fragment = fragMatch.Groups[1].Value,
-                        RawParameters = stepJson // Store the raw JSON including Scriban syntax
+                        RawParameters = stepJson
                     };
 
                     pipeline.Add(step);
@@ -94,7 +91,6 @@ namespace BlazorWebApp.Services
             return wf;
         }
 
-        // Helper method to generate a deterministic GUID from a string
         private Guid GenerateDeterministicGuid(string input)
         {
             using (var md5 = System.Security.Cryptography.MD5.Create())
@@ -189,7 +185,6 @@ namespace BlazorWebApp.Services
                 using var doc = JsonDocument.Parse(renderedMeta);
                 var root = doc.RootElement;
 
-                // Extract outputs
                 if (root.TryGetProperty("outputs", out var outputsEl) && outputsEl.ValueKind == JsonValueKind.Object)
                 {
                     foreach (var prop in outputsEl.EnumerateObject())
@@ -212,7 +207,6 @@ namespace BlazorWebApp.Services
                     }
                 }
 
-                // Extract conditions
                 if (root.TryGetProperty("conditions", out var conditionsEl) && conditionsEl.ValueKind == JsonValueKind.Object)
                 {
                     foreach (var prop in conditionsEl.EnumerateObject())
@@ -233,9 +227,8 @@ namespace BlazorWebApp.Services
         private bool EvaluateConditions(Dictionary<string, JsonElement> conditions, Dictionary<string, object> parameters)
         {
             if (conditions == null || conditions.Count == 0)
-                return true; // No conditions = always include
+                return true;
 
-            // Check "required" conditions (all must be true)
             if (conditions.TryGetValue("required", out var requiredEl) && requiredEl.ValueKind == JsonValueKind.Array)
             {
                 foreach (var condition in requiredEl.EnumerateArray())
@@ -249,7 +242,6 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            // Check "excluded_if" conditions (any true = exclude)
             if (conditions.TryGetValue("excluded_if", out var excludedEl) && excludedEl.ValueKind == JsonValueKind.Array)
             {
                 foreach (var condition in excludedEl.EnumerateArray())
@@ -294,7 +286,6 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            // Final value should be a boolean
             if (current is bool boolValue)
                 return boolValue;
 
@@ -323,13 +314,10 @@ namespace BlazorWebApp.Services
                     renderedMeta = metaJson;
                 }
 
-                // Extract both outputs and conditions
                 (outputs, conditions) = ExtractMetadata(renderedMeta);
 
-                // Check if conditions are met
                 if (!EvaluateConditions(conditions, globalParams))
                 {
-                    // Return empty fragment if conditions not met
                     return (string.Empty, outputs);
                 }
 
@@ -344,10 +332,8 @@ namespace BlazorWebApp.Services
             return (rendered, outputs);
         }
 
-        // Generic template rendering with optional formatting preservation
         private string RenderTemplate(string templateText, SubgraphContext context, bool preserveFormatting)
         {
-            // Parse the template
             var template = Template.Parse(templateText);
 
             if (template.HasErrors)
@@ -357,7 +343,6 @@ namespace BlazorWebApp.Services
                     throw new InvalidOperationException($"Template parse errors: {errors}");
             }
 
-            // Create template context with proper settings
             var templateContext = new TemplateContext
             {
                 MemberRenamer = member => member.Name,
@@ -367,15 +352,12 @@ namespace BlazorWebApp.Services
                 EnableRelaxedTargetAccess = true
             };
 
-            // Create script object for variables
             var scriptObject = new ScriptObject();
 
-            // Import parameters as individual variables
             if (context.Parameters != null)
             {
                 foreach (var kvp in context.Parameters)
                 {
-                    // Store with original casing
                     scriptObject.SetValue(kvp.Key, kvp.Value, false);
 
                     // ALSO store with alternative casing to support both snake_case and PascalCase
@@ -388,10 +370,8 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            // Import the get_ref function
             scriptObject.Import("get_ref", new Func<string, string>(key => context.Outputs.GetReference(key)));
 
-            // Import the json function to serialize values as JSON - this now works with pipes
             scriptObject.Import("json", new Func<object, string>(value =>
             {
                 if (value == null) return "null";
@@ -402,13 +382,10 @@ namespace BlazorWebApp.Services
                 return System.Text.Json.JsonSerializer.Serialize(value);
             }));
 
-            // Push to global scope
             templateContext.PushGlobal(scriptObject);
 
-            // Render the template
             var rendered = template.Render(templateContext);
 
-            // Post-process if not preserving formatting
             if (!preserveFormatting)
             {
                 // Remove all line breaks and extra whitespace
@@ -451,7 +428,6 @@ namespace BlazorWebApp.Services
                 scriptObject.SetValue(kvp.Key, kvp.Value, false);
             }
 
-            // Import json function
             scriptObject.Import("json", new Func<object, string>(value =>
             {
                 if (value == null) return "null";
@@ -464,7 +440,6 @@ namespace BlazorWebApp.Services
 
             templateContext.PushGlobal(scriptObject);
 
-            // Process each pipeline step
             foreach (var step in template.Pipeline)
             {
                 try
@@ -518,10 +493,8 @@ namespace BlazorWebApp.Services
                         {
                             var fragmentText = File.ReadAllText(fragPath);
 
-                            // Pass globalParams for condition evaluation
                             var (rendered, outputs) = RenderFragment(fragmentText, context, globalParams);
 
-                            // Skip if fragment returned empty (conditions not met)
                             if (string.IsNullOrWhiteSpace(rendered))
                                 continue;
 
@@ -569,13 +542,11 @@ namespace BlazorWebApp.Services
         // Helper method to convert between snake_case and PascalCase
         private string ConvertCasing(string key)
         {
-            // If snake_case, convert to PascalCase
             if (key.Contains('_'))
             {
                 return string.Concat(key.Split('_').Select(part =>
                     char.ToUpperInvariant(part[0]) + (part.Length > 1 ? part.Substring(1) : "")));
             }
-            // If PascalCase, convert to snake_case
             else if (char.IsUpper(key[0]))
             {
                 return string.Concat(key.Select((c, i) =>
@@ -624,7 +595,6 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            // Serialize the merged object back to JSON
             return JsonSerializer.Serialize(mergedNodes, new JsonSerializerOptions
             {
                 WriteIndented = false

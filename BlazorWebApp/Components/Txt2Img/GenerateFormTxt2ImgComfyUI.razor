@@ -1,4 +1,5 @@
 ﻿@using System.Text.Json
+@using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 @using static BlazorWebApp.Data.Enums
 @inject ManagerService M
 
@@ -77,6 +78,7 @@
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>
                     <MudChip Text="ADetailer" Default="Parameters.Scripts.ADetailer.IsEnabled" Variant="Variant.Text" Color="Color.Primary">ADetailer</MudChip>
                     <MudChip Text="Upscale" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Upscale</MudChip>
+                    <MudChip Text="SeedVR2" Default="Parameters.SeedVR2?.IsActive" Variant="Variant.Text" Color="Color.Primary">SeedVR2 Upscale</MudChip>
                 </MudChipSet>
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.ADetailer.IsEnabled ? "show" : "")}")">
@@ -116,6 +118,64 @@
                     </MudItem>
                 </MudGrid>
             </MudItem>
+            <MudItem xs="12">
+                <MudGrid Class=@($"collapse {(Parameters.SeedVR2?.IsActive == true ? "show" : "")}")>
+                    <MudText Typo="Typo.button" Style="opacity:0.2;">SeedVR2 Upscaler</MudText>
+                    <MudItem xs="12" Class="align-items-center justify-content-center d-flex mt-n3">
+                        <MudText Typo="Typo.overline">@_seedVR2ResizeInfo</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value=Parameters.SeedVR2.Model Label="Model" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="double" ValueChanged=HandleSeedVR2ScaleChanged Value=(double)Parameters.SeedVR2.Scale Min=1.0 Max=8.0 Step=0.1 Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.SeedVR2.Scale)x</MudSlider>
+                    </MudItem>
+                    <MudItem xs="2">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.BatchSize 
+                           Label="Batch Size" 
+                           Min=M.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Min 
+                           Max=M.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Max 
+                           Step=M.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Step />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.BlocksToSwap 
+                           Label="Blocks to Swap" 
+                           Min=M.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Min 
+                           Max=M.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Max 
+                           Step=M.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Step />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.VaeTileSize 
+                           Label="VAE Tile Size" 
+                           Min=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Min 
+                           Max=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Max 
+                           Step=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Step />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.VaeTileOverlap 
+                           Label="VAE Tile Overlap" 
+                           Min=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Min 
+                           Max=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Max 
+                           Step=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Step />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.SeedVR2.InputNoiseScale 
+                     Min=M.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Min 
+                     Max=M.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Max 
+                     Step=M.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Step 
+                     Variant="Variant.Filled" 
+                     ValueLabel><small>Input Noise Scale:</small> @(Parameters.SeedVR2.InputNoiseScale?.ToString("F2") ?? "0.00")</MudSlider>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.SeedVR2.LatentNoiseScale 
+                     Min=M.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Min 
+                     Max=M.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Max 
+                     Step=M.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Step 
+                     Variant="Variant.Filled" 
+                     ValueLabel><small>Latent Noise Scale:</small> @(Parameters.SeedVR2.LatentNoiseScale?.ToString("F2") ?? "0.00")</MudSlider>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
         </MudGrid>
     </EditForm>
 </div>
@@ -126,6 +186,7 @@
 
     private Options _options;
     private MarkupString _resizeInfo;
+    private MarkupString _seedVR2ResizeInfo;
     private List<ModelBase> _guidanceBases = new() { ModelBase.Flux };
 
     protected async override Task OnInitializedAsync()
@@ -133,7 +194,20 @@
         _options = M.Options;
         if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
         if (Parameters.Loras == null) Parameters.Loras = new List<Lora>();
+        if (Parameters.SeedVR2 == null) Parameters.SeedVR2 = new SeedVR2Parameters();
+        
+        // Initialize the scale multiplier from existing resolution if available
+        if (Parameters.SeedVR2.Resolution > 0 && Parameters.Width > 0 && Parameters.Height > 0)
+        {
+            var smallestSide = Math.Min((int)Parameters.Width, (int)Parameters.Height);
+            if (smallestSide > 0)
+            {
+                Parameters.SeedVR2.Scale = Math.Round((double)Parameters.SeedVR2.Resolution / smallestSide, 2);
+            }
+        }
+        
         RefreshHighresInfo();
+        RefreshSeedVR2Info();
     }
 
     private void SetRandomSeed() => Parameters.Seed = -1;
@@ -180,6 +254,8 @@
     {
         Parameters.Scripts.ADetailer.IsEnabled = false;
         Parameters.EnableHR = false;
+        if (Parameters.SeedVR2 != null) Parameters.SeedVR2.IsActive = false;
+        
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
         foreach (var check in checkboxes)
@@ -192,6 +268,10 @@
                 case "Upscale":
                     Parameters.EnableHR = true;
                     break;
+                case "SeedVR2":
+                    if (Parameters.SeedVR2 == null) Parameters.SeedVR2 = new SeedVR2Parameters();
+                    Parameters.SeedVR2.IsActive = true;
+                    break;
             }
         }
     }
@@ -201,6 +281,7 @@
         if (isWidth) Parameters.Width = value;
         else Parameters.Height = value;
         RefreshHighresInfo();
+        RefreshSeedVR2Info();
     }
 
     private void HandleHRResolutionChanged(int value, bool isWidth)
@@ -216,12 +297,47 @@
         RefreshHighresInfo();
     }
 
+    private void HandleSeedVR2ScaleChanged(double value)
+    {
+        Parameters.SeedVR2.Scale = value;
+        RefreshSeedVR2Info();
+    }
+
     private void SetResolution(int width, int height)
     {
         Parameters.Width = width;
         Parameters.Height = height;
         RefreshHighresInfo();
+        RefreshSeedVR2Info();
     }
 
     private void RefreshHighresInfo() => _resizeInfo = Parser.ParseHighresFixResizeInfo(Parameters);
+
+    private void RefreshSeedVR2Info()
+    {
+        if (Parameters.SeedVR2 == null || Parameters.Width == null || Parameters.Height == null)
+        {
+            _seedVR2ResizeInfo = new MarkupString(string.Empty);
+            return;
+        }
+
+        var currentRes = $"{Parameters.Width}x{Parameters.Height} px";
+        var (targetWidth, targetHeight, smallestSide) = CalculateSeedVR2Resolution((int)Parameters.Width, (int)Parameters.Height, (double)Parameters.SeedVR2.Scale);
+        
+        Parameters.SeedVR2.Resolution = smallestSide;
+        
+        _seedVR2ResizeInfo = new MarkupString($"From: {currentRes} | To: <strong>{targetWidth}x{targetHeight} px</strong> (Smallest side: {smallestSide}px)");
+    }
+
+    private (int width, int height, int smallestSide) CalculateSeedVR2Resolution(int width, int height, double scale)
+    {
+        var targetWidth = (int)(width * scale);
+        var targetHeight = (int)(height * scale);
+        
+        // ComfyUI SeedVR2 expects the size of the smallest side
+        // It will maintain the aspect ratio automatically
+        var smallestSide = Math.Min(targetWidth, targetHeight);
+        
+        return (targetWidth, targetHeight, smallestSide);
+    }
 }

@@ -10,6 +10,7 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
         public string? Clip2 { get; set; }
         public UpscaleParameters? Upscale { get; set; }
         public DetailerParameters? Detailer { get; set; }
+        public SeedVR2Parameters SeedVR2 { get; set; }
     }
 
     public class UpscaleParameters
@@ -45,5 +46,19 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
         public double? BBoxCropFactor { get; set; }
         public int? Cycle { get; set; }
         public List<Lora> Loras { get; set; }
+    }
+
+    public class SeedVR2Parameters
+    {
+        public bool? IsActive { get; set; }
+        public string? Model { get; set; }
+        public int? BlocksToSwap { get; set; }
+        public int? VaeTileSize { get; set; }
+        public int? VaeTileOverlap { get; set; }
+        public int? Resolution { get; set; }
+        public double? Scale { get; set; }
+        public int? BatchSize { get; set; }
+        public double? InputNoiseScale { get; set; }
+        public double? LatentNoiseScale { get; set; }
     }
 }

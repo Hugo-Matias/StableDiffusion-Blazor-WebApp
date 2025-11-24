@@ -1,0 +1,56 @@
+#meta
+{
+  "outputs": {
+    "image_output": { "node": "seedvr2_upscaler", "index": 0 }
+  },
+  "conditions": {
+    "required": ["SeedVR2.IsActive"]
+  }
+}
+#end
+
+{
+  "seedvr2_block_swap": {
+    "inputs": {
+      "blocks_to_swap": {{ blocks_to_swap | json }},
+      "offload_io_components": true
+    },
+    "class_type": "SeedVR2BlockSwap",
+    "_meta": {
+      "title": "SeedVR2 Block Swap"
+    }
+  },
+  "seedvr2_extra_args": {
+    "inputs": {
+        "tiled_vae": true,
+        "vae_tile_size": {{ vae_tile_size | json }},
+        "vae_tile_overlap": {{ vae_tile_overlap | json }},
+        "preserve_vram": true,
+        "cache_model": true,
+        "enable_debug": false,
+        "device": "cuda:0"
+    },
+    "class_type": "SeedVR2ExtraArgs",
+    "_meta": {
+      "title": "SeedVR2 Extra Args"
+    }
+  },
+  "seedvr2_upscaler": {
+    "inputs": {
+        "images": {{ get_ref "image_output" }},
+        "block_swap_config": ["seedvr2_block_swap", 0],
+        "extra_args": ["seedvr2_extra_args", 0],
+        "model": {{ seedvr2_model | json }},
+        "seed": {{ seedvr2_seed | json }},
+        "new_resolution": {{ seedvr2_resolution | json }},
+        "batch_size": {{ seedvr2_batch_size | json }},
+        "color_correction": "none",
+        "input_noise_scale": {{ seedvr2_input_noise_scale | json }},
+        "latent_noise_scale": {{ seedvr2_latent_noise_scale | json }}
+    },
+    "class_type": "SeedVR2",
+    "_meta": {
+      "title": "SeedVR2 Video Upscaler"
+    }
+  }
+}

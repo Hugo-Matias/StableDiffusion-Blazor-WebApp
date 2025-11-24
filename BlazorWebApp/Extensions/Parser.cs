@@ -178,7 +178,7 @@ namespace BlazorWebApp.Extensions
                     using var doc = JsonDocument.Parse(info);
                     var root = doc.RootElement;
 
-                    // Search for prompt nodes (typically named like "text_prompt", "detailer_text_prompt", etc.)
+                    // Search for prompt nodes (conventionally named like "text_positive", "detailer_text_positive", etc.)
                     foreach (var nodeProperty in root.EnumerateObject())
                     {
                         if (nodeProperty.Value.ValueKind == JsonValueKind.Object &&
@@ -188,13 +188,11 @@ namespace BlazorWebApp.Extensions
                         {
                             var nodeName = nodeProperty.Name.ToLowerInvariant();
 
-                            // Check if this looks like a prompt node
-                            if (nodeName.Contains("text_prompt") && !nodeName.Contains("negative"))
+                            if (nodeName.Contains("text_positive") || nodeName.Contains("positive"))
                             {
                                 if (string.IsNullOrEmpty(prompt))
                                     prompt = valueEl.GetString() ?? string.Empty;
                             }
-                            // Check if this looks like a negative prompt node
                             else if (nodeName.Contains("text_negative") || nodeName.Contains("negative"))
                             {
                                 if (string.IsNullOrEmpty(negative))
