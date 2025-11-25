@@ -36,21 +36,72 @@ namespace BlazorWebApp.Services
 
             _bus.ExecutionFailed += (promptId, error) =>
             {
-                if (_pendingJobs.TryRemove(promptId, out var obj) && obj is TaskCompletionSource<GeneratedImages> tcs)
-                    tcs.SetException(new Exception(error));
+                if (_pendingJobs.TryRemove(promptId, out var obj))
+                {
+                    if (obj is TaskCompletionSource<GeneratedImages> imgTcs)
+                    {
+                        imgTcs.SetException(new Exception(error));
+                    }
+                    else if (obj is TaskCompletionSource<LLMResponse> llmTcs)
+                    {
+                        llmTcs.SetException(new Exception(error));
+                    }
+                }
             };
-
         }
 
 
         private async Task HandleExecutionSucceededAsync(Guid promptId)
         {
+            if (!_pendingJobs.TryGetValue(promptId, out var obj))
+            {
+                _logger.LogDebug("No pending job found for prompt {PromptId}", promptId);
+                return;
+            }
+
+            var objType = obj.GetType();
+            var isLLMJob = objType.IsGenericType &&
+                           objType.GetGenericTypeDefinition() == typeof(TaskCompletionSource<>) &&
+                           objType.GetGenericArguments()[0] == typeof(LLMResponse);
+
+            if (isLLMJob)
+            {
+                _logger.LogDebug("Handling LLM job completion for prompt {PromptId}", promptId);
+                var llmTcs = (TaskCompletionSource<LLMResponse>)obj;
+
+                try
+                {
+                    var text = await GetTextFromHistory(promptId);
+                    _pendingJobs.TryRemove(promptId, out _);
+                    llmTcs.SetResult(new LLMResponse
+                    {
+                        Text = text ?? string.Empty,
+                        PromptId = promptId.ToString()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to get LLM text output for prompt {PromptId}", promptId);
+                    _pendingJobs.TryRemove(promptId, out _);
+                    llmTcs.SetException(ex);
+                }
+                return;
+            }
+
+            _logger.LogDebug("Handling image job completion for prompt {PromptId}", promptId);
+
             var files = await GetFilenameFromHistory(promptId);
             if (files == null || files.Count == 0)
             {
-                _logger.LogError("File not found!");
+                _logger.LogError("File not found for prompt {PromptId}!", promptId);
+
+                if (_pendingJobs.TryRemove(promptId, out var imgObj) && imgObj is TaskCompletionSource<GeneratedImages> imgTcs)
+                {
+                    imgTcs.SetException(new Exception("No image files generated"));
+                }
                 return;
             }
+
             var images = new GeneratedImages() { Images = [] };
             var workflowInfo = string.Empty;
 
@@ -79,7 +130,7 @@ namespace BlazorWebApp.Services
 
             images.Info = workflowInfo;
 
-            if (_pendingJobs.TryRemove(promptId, out var obj) && obj is TaskCompletionSource<GeneratedImages> tcs)
+            if (_pendingJobs.TryRemove(promptId, out var finalObj) && finalObj is TaskCompletionSource<GeneratedImages> tcs)
                 tcs.SetResult(images);
         }
 
@@ -211,6 +262,49 @@ namespace BlazorWebApp.Services
             }
             return files;
         }
+        private async Task<string?> GetTextFromHistory(Guid promptId)
+        {
+            var response = await _httpClient.GetAsync($"/history/{promptId}");
+            response.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+
+            if (!doc.RootElement.TryGetProperty(promptId.ToString(), out var promptElement))
+            {
+                _logger.LogWarning("Prompt ID {PromptId} not found in history response", promptId);
+                return null;
+            }
+
+            if (!promptElement.TryGetProperty("outputs", out var outputsElement))
+            {
+                _logger.LogWarning("No outputs found for prompt ID {PromptId}", promptId);
+                return null;
+            }
+
+            // Find the first node with text output
+            foreach (var outputNode in outputsElement.EnumerateObject())
+            {
+                var nodeValue = outputNode.Value;
+
+                if (nodeValue.TryGetProperty("string", out var stringElement) &&
+                    stringElement.ValueKind == JsonValueKind.Array &&
+                    stringElement.GetArrayLength() > 0)
+                {
+                    return stringElement[0].GetString();
+                }
+
+                // Some nodes might use "text"
+                if (nodeValue.TryGetProperty("text", out var textElement) &&
+                    textElement.ValueKind == JsonValueKind.Array &&
+                    textElement.GetArrayLength() > 0)
+                {
+                    return textElement[0].GetString();
+                }
+            }
+
+            _logger.LogWarning("No text output found for prompt ID {PromptId}", promptId);
+            return null;
+        }
         #endregion
 
         #region POST
@@ -240,8 +334,6 @@ namespace BlazorWebApp.Services
         public async Task<GeneratedImages> PostTxt2Img(Txt2ImgComfyUI param, string clientId, Workflow workflow)
         {
             var workflowJson = _workflow.ComposeWorkflowFromTemplate(workflow, param);
-
-            // Deserialize the JSON string to an object
             var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
 
             var payload = new { prompt = workflowObject, client_id = clientId };
@@ -263,6 +355,57 @@ namespace BlazorWebApp.Services
             response.EnsureSuccessStatusCode();
 
             return response;
+        }
+
+        public async Task<LLMResponse> GeneratePromptWithLLM(LLMRequest request, string clientId)
+        {
+            var workflow = new
+            {
+                llm_generator = new
+                {
+                    inputs = new
+                    {
+                        text = request.Prompt,
+                        random_seed = request.Seed == -1 ? new Random().Next() : request.Seed,
+                        model = "Llama-3.2-3B-Instruct-abliterated.Q5_K_M.gguf",
+                        max_tokens = 4096,
+                        apply_instructions = true,
+                        instructions = request.Instructions.Replace("{prompt}", request.Prompt)
+                    },
+                    class_type = "Searge_LLM_Node",
+                    _meta = new { title = "Searge LLM Node" }
+                },
+                llm_output = new
+                {
+                    inputs = new
+                    {
+                        text = new object[] { "llm_generator", 0 }
+                    },
+                    class_type = "Searge_Output_Node",
+                    _meta = new { title = "LLM Output" }
+                }
+            };
+
+            var payload = new { prompt = workflow, client_id = clientId };
+
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync("llm_payload.json", json);
+
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            response.EnsureSuccessStatusCode();
+
+            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            var promptId = Guid.Parse(submit.PromptId);
+
+            var tcs = new TaskCompletionSource<LLMResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingJobs[promptId] = tcs;
+
+            return await tcs.Task;
         }
         #endregion
     }

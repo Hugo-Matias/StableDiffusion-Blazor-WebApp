@@ -377,3 +377,4 @@ FodyWeavers.xsd
 /BlazorWebApp/Data/example.json
 /BlazorWebApp/BlazorDiffusion.json_
 /BlazorWebApp/BlazorWebApp.db_
+/BlazorWebApp/llm_payload.json

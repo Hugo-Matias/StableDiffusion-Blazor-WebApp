@@ -67,6 +67,7 @@ namespace BlazorWebApp.Models
         public List<Workflow> Workflows { get; set; }
         public ModelBase WorkflowBase { get; set; }
         public List<Lora> Loras { get; set; }
+        public AppStateLLMEnhancer LLM { get; set; } = new();
     }
 
     public class AppStateGenerationImg2Img
@@ -98,6 +99,19 @@ namespace BlazorWebApp.Models
         public bool DownsizeInput { get; set; }
         public int MaxInputWidth { get; set; }
         public int MaxInputHeight { get; set; }
+    }
+
+    public class AppStateLLMEnhancer
+    {
+        public string Prompt { get; set; } = string.Empty;
+        public string NegativePrompt { get; set; } = string.Empty;
+        public long Seed { get; set; } = -1;
+        public string Instructions { get; set; } = string.Empty;
+        public string NegativeInstructions { get; set; } = string.Empty;
+        public string EnhancedPrompt { get; set; } = string.Empty;
+        public string EnhancedNegativePrompt { get; set; } = string.Empty;
+        public string LastPromptId { get; set; } = string.Empty;
+        public string LastNegativePromptId { get; set; } = string.Empty;
     }
 
     public class AppStateGallery

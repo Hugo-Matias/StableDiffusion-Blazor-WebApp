@@ -10,7 +10,7 @@
 #end
 
 {
-  {{ if ModelType == "checkpoint" }}
+  {{ if ModelType == "Checkpoint" }}
   "detailer_checkpoint": {
     "inputs": {
       "ckpt_name": {{ detailer_checkpoint | json }}
@@ -73,7 +73,7 @@
   "detailer_lora_positive": {
     "inputs": {
       "text": ["detailer_text_prompt", 0],
-      {{ if ModelType == "checkpoint" }}
+      {{ if ModelType == "Checkpoint" }}
       "model": ["detailer_checkpoint", 0],
       "clip": ["detailer_checkpoint", 1]
       {{ else }}
@@ -90,7 +90,7 @@
     "inputs": {
       "text": ["detailer_text_negative", 0],
       "model": ["detailer_lora_positive", 0],
-      {{ if ModelType == "checkpoint" }}
+      {{ if ModelType == "Checkpoint" }}
       "clip": ["detailer_checkpoint", 1]
       {{ else }}
       "clip": ["detailer_clip_loader", 0]
@@ -161,7 +161,7 @@
       "tiled_encode": false,
       "tiled_decode": false,
       "image": {{ get_ref "image_output" }},
-      {{ if ModelType == "checkpoint" }}
+      {{ if ModelType == "Checkpoint" }}
       "model": ["detailer_lora_negative", 0],
       "clip": ["detailer_checkpoint", 1],
       "vae": ["detailer_checkpoint", 2],

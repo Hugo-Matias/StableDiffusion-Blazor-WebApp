@@ -1,0 +1,229 @@
+@using BlazorWebApp.Data.Dtos.ComfyUI
+@inject ComfyUIService ComfyAPI
+@inject ManagerService M
+
+<MudPaper Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_currentPrompt" 
+                          Label="Simple Prompt" 
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          Placeholder="e.g., beautiful woman, sunset, beach"
+                          Immediate />
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_currentInstructions" 
+                          Label="Instructions" 
+                          Variant="Variant.Outlined"
+                          Lines="2"
+                          HelperText="Use {prompt} as placeholder for the input prompt"
+                          Immediate />
+        </MudItem>
+
+        <MudItem xs="6">
+            <MudNumericField @bind-Value="_currentSeed" 
+                           Label="Seed" 
+                           Variant="Variant.Outlined"
+                           Min="-1" 
+                           Max="long.MaxValue"
+                           Immediate />
+        </MudItem>
+
+        <MudItem xs="6" Class="d-flex align-center">
+            <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary">
+                <MudButton OnClick="GeneratePrompt" 
+                          Disabled="_isGenerating"
+                          StartIcon="@Icons.Material.Filled.AutoAwesome">
+                    @(_isGenerating ? "Generating..." : "Enhance Prompt")
+                </MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle" 
+                              OnClick="RandomizeSeed" 
+                              Disabled="_isGenerating" />
+            </MudButtonGroup>
+        </MudItem>
+
+        @if (!string.IsNullOrEmpty(_currentEnhancedPrompt))
+        {
+            <MudItem xs="12">
+                <MudDivider Class="my-2" />
+                <MudTextField @bind-Value="_currentEnhancedPrompt" 
+                              Label="Enhanced Prompt" 
+                              Variant="Variant.Outlined"
+                              Lines="10" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudButtonGroup Variant="Variant.Outlined" Color="Color.Success">
+                    <MudButton OnClick="ApplyToMainPrompt" 
+                              StartIcon="@Icons.Material.Filled.Check">
+                        Apply to Main Prompt
+                    </MudButton>
+                    <MudButton OnClick="GeneratePrompt" 
+                              StartIcon="@Icons.Material.Filled.Refresh">
+                        Regenerate
+                    </MudButton>
+                    <MudButton OnClick="ClearResult" 
+                              StartIcon="@Icons.Material.Filled.Clear"
+                              Color="Color.Default">
+                        Clear
+                    </MudButton>
+                </MudButtonGroup>
+            </MudItem>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Error" Dense>@_errorMessage</MudAlert>
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public EventCallback<string> OnPromptApplied { get; set; }
+
+    [Parameter]
+    public bool IsNegativePrompt { get; set; }
+
+    private bool _isGenerating;
+    private string? _errorMessage;
+    private string _currentPrompt = string.Empty;
+    private string _currentInstructions = string.Empty;
+    private long _currentSeed = -1;
+    private string _currentEnhancedPrompt = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        LoadFromState();
+    }
+
+    protected override void OnParametersSet()
+    {
+        LoadFromState();
+    }
+
+    private void LoadFromState()
+    {
+        if (IsNegativePrompt)
+        {
+            _currentPrompt = M.State.Generation.LLM.NegativePrompt;
+            _currentInstructions = string.IsNullOrEmpty(M.State.Generation.LLM.NegativeInstructions) 
+                ? M.Settings.Generation.Shared.LLMEnhancer.NegativeInstructions 
+                : M.State.Generation.LLM.NegativeInstructions;
+            _currentEnhancedPrompt = M.State.Generation.LLM.EnhancedNegativePrompt;
+        }
+        else
+        {
+            _currentPrompt = M.State.Generation.LLM.Prompt;
+            _currentInstructions = string.IsNullOrEmpty(M.State.Generation.LLM.Instructions) 
+                ? M.Settings.Generation.Shared.LLMEnhancer.Instructions 
+                : M.State.Generation.LLM.Instructions;
+            _currentEnhancedPrompt = M.State.Generation.LLM.EnhancedPrompt;
+        }
+        
+        _currentSeed = M.State.Generation.LLM.Seed;
+    }
+
+    private async Task GeneratePrompt()
+    {
+        if (string.IsNullOrWhiteSpace(_currentPrompt))
+        {
+            _errorMessage = "Please enter a prompt first.";
+            return;
+        }
+
+        _isGenerating = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            SaveToState();
+
+            var request = new LLMRequest
+            {
+                Prompt = _currentPrompt,
+                Seed = _currentSeed,
+                Instructions = _currentInstructions
+            };
+
+            var response = await ComfyAPI.GeneratePromptWithLLM(request, M.ComfyWSClientId);
+            _currentEnhancedPrompt = response.Text;
+
+            if (IsNegativePrompt)
+            {
+                M.State.Generation.LLM.EnhancedNegativePrompt = _currentEnhancedPrompt;
+                M.State.Generation.LLM.LastNegativePromptId = response.PromptId;
+            }
+            else
+            {
+                M.State.Generation.LLM.EnhancedPrompt = _currentEnhancedPrompt;
+                M.State.Generation.LLM.LastPromptId = response.PromptId;
+            }
+
+            await M.SaveState();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error generating prompt: {ex.Message}";
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RandomizeSeed()
+    {
+        _currentSeed = new Random().Next();
+        M.State.Generation.LLM.Seed = _currentSeed;
+    }
+
+    private async Task ApplyToMainPrompt()
+    {
+        if (!string.IsNullOrEmpty(_currentEnhancedPrompt))
+        {
+            await OnPromptApplied.InvokeAsync(_currentEnhancedPrompt);
+        }
+    }
+
+    private async Task ClearResult()
+    {
+        _currentEnhancedPrompt = string.Empty;
+        _errorMessage = null;
+
+        if (IsNegativePrompt)
+        {
+            M.State.Generation.LLM.EnhancedNegativePrompt = string.Empty;
+            M.State.Generation.LLM.LastNegativePromptId = string.Empty;
+        }
+        else
+        {
+            M.State.Generation.LLM.EnhancedPrompt = string.Empty;
+            M.State.Generation.LLM.LastPromptId = string.Empty;
+        }
+
+        await M.SaveState();
+    }
+
+    private void SaveToState()
+    {
+        M.State.Generation.LLM.Seed = _currentSeed;
+        
+        if (IsNegativePrompt)
+        {
+            M.State.Generation.LLM.NegativePrompt = _currentPrompt;
+            M.State.Generation.LLM.NegativeInstructions = _currentInstructions;
+        }
+        else
+        {
+            M.State.Generation.LLM.Prompt = _currentPrompt;
+            M.State.Generation.LLM.Instructions = _currentInstructions;
+        }
+    }
+}

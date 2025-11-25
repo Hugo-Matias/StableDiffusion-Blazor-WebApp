@@ -51,8 +51,8 @@
     </EditForm>
 </div>
 
-<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags=M.ButtonTags />
-<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags=M.ButtonTags />
+<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags=M.ButtonTags OnPromptReplaced=@(p => HandleLLMPromptApplied(p, false)) IsNegativePrompt=false />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags=M.ButtonTags OnPromptReplaced=@(p => HandleLLMPromptApplied(p, true)) IsNegativePrompt=true />
 
 @code {
     [Parameter]
@@ -92,6 +92,20 @@
     { 
         M.State.Generation.Styles = styles;
         OnStylesChanged.InvokeAsync();
+    }
+
+    private async Task HandleLLMPromptApplied(string prompt, bool isNegative)
+    {
+        if (isNegative)
+        {
+            Parameters.NegativePrompt = prompt;
+        }
+        else
+        {
+            Parameters.Prompt = prompt;
+        }
+        await ParametersChanged.InvokeAsync(Parameters);
+        StateHasChanged();
     }
 
     private void WritePrompts()

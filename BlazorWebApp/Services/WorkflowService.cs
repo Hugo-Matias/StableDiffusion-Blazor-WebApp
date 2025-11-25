@@ -413,6 +413,8 @@ namespace BlazorWebApp.Services
                 globalParams[prop.Name] = value;
             }
 
+            globalParams["ModelType"] = template.ModelType.ToString();
+
             var templateContext = new TemplateContext
             {
                 MemberRenamer = member => member.Name,

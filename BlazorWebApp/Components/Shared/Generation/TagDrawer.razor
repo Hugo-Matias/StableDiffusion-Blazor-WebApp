@@ -3,68 +3,79 @@
 <div style="display:@(Visible ? "block" : "none");">
     <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="calc(100vh - 45px)" Width="45vw" Fixed>
         <MudDrawerHeader Class="d-flex flex-row align-items-center" Style=@($"background-color: {HeaderBgColor};")>
-            <MudText Typo="Typo.h6" Color="Color.Dark">Tag Selector</MudText>
+            <MudText Typo="Typo.h6" Color="Color.Dark">Prompt Utils</MudText>
             <MudSpacer />
             <MudIconButton OnClick="() => Visible = false" Icon="@Icons.Material.Filled.Close" Color="Color.Dark" />
         </MudDrawerHeader>
-        <MudPaper Class="pa-2 ma-4" Elevation="4">
-            <MudStack>
-                <MudGrid Class="pa-4">
-                    @for (int i = 0; i < _selectedTags.Count; i++)
+        
+        <MudTabs Elevation="4" Rounded ApplyEffectsToContainer PanelClass="pa-2 ma-4" ActivePanelIndex="_activeTab" ActivePanelIndexChanged="@((index) => _activeTab = index)">
+            <MudTabPanel Text="Tag Selector" Icon="@Icons.Material.Filled.Label">
+                <MudPaper Class="pa-2" Elevation="4">
+                    <MudStack>
+                        <MudGrid Class="pa-4">
+                            @for (int i = 0; i < _selectedTags.Count; i++)
+                            {
+                                var value = i;
+                                <MudChip Value="@value" OnClose="RemoveTag" Variant="Variant.Text" Color="GetTagBadgeColor(value)">
+                                    <MudButtonGroup Style="margin-right:4px;">
+                                        <MudIconButton Class="weight-button" Icon="fa-solid fa-chevron-up" OnClick="() => ChangeTagWeight(value, increment: true)" />
+                                        <MudIconButton Class="weight-button" Icon="fa-solid fa-chevron-down" OnClick="() => ChangeTagWeight(value, increment: false)" />
+                                    </MudButtonGroup>
+                                    @ParseTagWeight(value)
+                                </MudChip>
+                            }
+                        </MudGrid>
+                        <MudStack Class="pa-2" Row>
+                            <MudAutocomplete ValueChanged="SelectedValueChanged" SearchFunc="SearchTags" @ref=_autocompleteRef T="CsvTag" Label="Search Tag" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Info" MaxHeight="500" MaxItems="30" ResetValueOnEmptyText Dense Clearable>
+                                <ItemTemplate Context="tag">
+                                    <MudText Typo="Typo.body1" Style="font-family:'FiraCode NF'; font-weight:500;" Color="GetTagSuggestionColor(tag.Name, tag.Color)">
+                                        @tag.Name
+                                        @if (!tag.Name.Contains(_autocompleteRef.Text, StringComparison.InvariantCultureIgnoreCase))
+                                        {
+                                            <small style="color:var(--mud-palette-white); opacity:0.3; font-weight: 100;"> > @(Parser.ParseCsvTagAlias(tag.Aliases, _autocompleteRef.Text))</small>
+                                        }
+                                    </MudText>
+                                </ItemTemplate>
+                            </MudAutocomplete>
+                            @if (_selectedTags != null && _selectedTags.Count > 0)
+                            {
+                                <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
+                                    <MudTooltip Text="Insert tags into prompt as prefix" Delay="600" Duration="600">
+                                        <MudIconButton OnClick=@(() => AppendTags(isPrefix: true)) Class="h-100" Color="Color.Info" Icon="fa-solid fa-circle-chevron-left" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Insert tags into prompt as suffix" Delay="600" Duration="600">
+                                        <MudIconButton OnClick=@(()=> AppendTags(isPrefix: false)) Class="h-100" Color="Color.Info" Icon="fa-solid fa-circle-chevron-right" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Clear current selected tags" Delay="600" Duration="600">
+                                        <MudIconButton OnClick=@(() => _selectedTags.Clear()) Class="h-100" Color="Color.Error" Icon="fa-solid fa-delete-left" />
+                                    </MudTooltip>
+                                </MudButtonGroup>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+                <MudExpansionPanels Class="mt-4" MultiExpansion Elevation="4">
+                    @foreach (var item in ButtonTags.Items)
                     {
-                        var value = i;
-                        <MudChip Value="@value" OnClose="RemoveTag" Variant="Variant.Text" Color="GetTagBadgeColor(value)">
-                            <MudButtonGroup Style="margin-right:4px;">
-                                <MudIconButton Class="weight-button" Icon="fa-solid fa-chevron-up" OnClick="() => ChangeTagWeight(value, increment: true)" />
-                                <MudIconButton Class="weight-button" Icon="fa-solid fa-chevron-down" OnClick="() => ChangeTagWeight(value, increment: false)" />
-                            </MudButtonGroup>
-                            @ParseTagWeight(value)
-                        </MudChip>
+                        <TagAccordion TagContent="item" Title="@item.Title" OnButtonClicked="AddTag" />
                     }
-                </MudGrid>
-                <MudStack Class="pa-2" Row>
-                    <MudAutocomplete ValueChanged="SelectedValueChanged" SearchFunc="SearchTags" @ref=_autocompleteRef T="CsvTag" Label="Search Tag" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Info" MaxHeight="500" MaxItems="30" ResetValueOnEmptyText Dense Clearable>
-                        <ItemTemplate Context="tag">
-                            <MudText Typo="Typo.body1" Style="font-family:'FiraCode NF'; font-weight:500;" Color="GetTagSuggestionColor(tag.Name, tag.Color)">
-                                @tag.Name
-                                @if (!tag.Name.Contains(_autocompleteRef.Text, StringComparison.InvariantCultureIgnoreCase))
-                                {
-                                    <small style="color:var(--mud-palette-white); opacity:0.3; font-weight: 100;"> > @(Parser.ParseCsvTagAlias(tag.Aliases, _autocompleteRef.Text))</small>
-                                }
-                            </MudText>
-                        </ItemTemplate>
-                    </MudAutocomplete>
-                    @if (_selectedTags != null && _selectedTags.Count > 0)
-                    {
-                        <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                            <MudTooltip Text="Insert tags into prompt as prefix" Delay="600" Duration="600">
-                                <MudIconButton OnClick=@(() => AppendTags(isPrefix: true)) Class="h-100" Color="Color.Info" Icon="fa-solid fa-circle-chevron-left" />
-                            </MudTooltip>
-                            <MudTooltip Text="Insert tags into prompt as suffix" Delay="600" Duration="600">
-                                <MudIconButton OnClick=@(()=> AppendTags(isPrefix: false)) Class="h-100" Color="Color.Info" Icon="fa-solid fa-circle-chevron-right" />
-                            </MudTooltip>
-                            <MudTooltip Text="Clear current selected tags" Delay="600" Duration="600">
-                                <MudIconButton OnClick=@(() => _selectedTags.Clear()) Class="h-100" Color="Color.Error" Icon="fa-solid fa-delete-left" />
-                            </MudTooltip>
-                        </MudButtonGroup>
-                    }
-                </MudStack>
-            </MudStack>
-        </MudPaper>
-        <MudExpansionPanels Class="mx-4" MultiExpansion Elevation="4">
-            @foreach (var item in ButtonTags.Items)
-            {
-                <TagAccordion TagContent="item" Title="@item.Title" OnButtonClicked="AddTag" />
-            }
-        </MudExpansionPanels>
+                </MudExpansionPanels>
+            </MudTabPanel>
+
+            <MudTabPanel Text="LLM Enhancer" Icon="@Icons.Material.Filled.AutoAwesome">
+                <LLMPromptEnhancerForm OnPromptApplied="HandleLLMPromptApplied" IsNegativePrompt=IsNegativePrompt />
+            </MudTabPanel>
+        </MudTabs>
     </MudDrawer>
 </div>
 
 @code {
     [Parameter] public EventCallback<AppendedTags> OnAppendTags { get; set; }
+    [Parameter] public EventCallback<string> OnPromptReplaced { get; set; }
     [Parameter] public bool Visible { get; set; }
     [Parameter] public PromptButton ButtonTags { get; set; }
     [Parameter] public string HeaderBgColor { get; set; }
+    [Parameter] public bool IsNegativePrompt { get; set; }
 
     public string SelectedText { get; set; }
 
@@ -72,6 +83,7 @@
     private float _incrementAmount = 0.05f;
     private MudAutocomplete<CsvTag>? _autocompleteRef;
     private string _autocompleteValue = string.Empty;
+    private int _activeTab = 0;
 
     private async Task<IEnumerable<CsvTag>> SearchTags(string input)
     {
@@ -103,6 +115,14 @@
         }
         OnAppendTags.InvokeAsync(new AppendedTags() { Tags = tags, IsPrefix = isPrefix });
         _selectedTags.Clear();
+    }
+
+    private async Task HandleLLMPromptApplied(string enhancedPrompt)
+    {
+        if (!string.IsNullOrEmpty(enhancedPrompt))
+        {
+            await OnPromptReplaced.InvokeAsync(enhancedPrompt);
+        }
     }
 
     private string ParseTagWeight(int tagIndex)

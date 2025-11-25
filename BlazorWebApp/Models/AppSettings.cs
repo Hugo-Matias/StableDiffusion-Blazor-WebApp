@@ -45,6 +45,7 @@ namespace BlazorWebApp.Models
         public CfgScaleSettingsModel CfgScale { get; set; } = new();
         public DistilledCfgSettingsModel DistilledCfg { get; set; } = new();
         public DenoisingSettingsModel Denoising { get; set; } = new();
+        public LLMEnhancerSettingsModel LLMEnhancer { get; set; } = new();
     }
 
     public class StepsSettingsModel
@@ -108,6 +109,14 @@ namespace BlazorWebApp.Models
         public double Min { get; set; } = 0;
         public double Max { get; set; } = 1;
         public double Step { get; set; } = 0.01;
+    }
+
+    public class LLMEnhancerSettingsModel
+    {
+        public string Model { get; set; } = "Llama-3.2-3B-Instruct-abliterated.Q5_K_M.gguf";
+        public string Instructions { get; set; } = "Expand this simple prompt into a detailed, descriptive image generation prompt: \"{prompt}\". Add artistic details, lighting, mood, and composition elements. Keep it concise with as few paragraphs as possible.";
+        public string NegativeInstructions { get; set; } = "Expand this negative prompt with detailed descriptions of what to avoid: \"{prompt}\". Add specific undesired elements, artifacts, and quality issues. Keep it concise with as few paragraphs as possible.";
+        public int MaxToken { get; set; } = 4096;
     }
     #endregion
 
