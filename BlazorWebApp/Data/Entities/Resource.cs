@@ -12,6 +12,7 @@ namespace BlazorWebApp.Data.Entities
         public int? CivitaiModelVersionId { get; set; }
         public ResourceType Type { get; set; }
         public ResourceSubType? SubType { get; set; }
+        public string? BaseModel { get; set; }
         public List<string>? Tags { get; set; }
         public List<string>? TriggerWords { get; set; }
         public string? Description { get; set; }
@@ -29,6 +30,7 @@ namespace BlazorWebApp.Data.Entities
             CivitaiModelId = model.Id;
             CivitaiModelVersionId = version.Id;
             Type = new() { Name = model.Type };
+            BaseModel = version.BaseModel;
             Tags = model.Tags;
             if (!string.IsNullOrWhiteSpace(version.Description)) Description = version.Description;
             else Description = model.Description;

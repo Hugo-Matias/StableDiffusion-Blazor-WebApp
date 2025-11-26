@@ -641,10 +641,50 @@ namespace BlazorWebApp.Services
             return await context.Resources.Where(r => r.Type.Id == typeId).Include(r => r.Type).Include(r => r.SubType).ToListAsync();
         }
 
+        public async Task<List<Resource>> GetResources(int? typeId = null, string? baseModel = null)
+        {
+            using var context = _factory.CreateDbContext();
+            var query = context.Resources.Include(r => r.Type).Include(r => r.SubType).AsQueryable();
+
+            if (typeId.HasValue)
+            {
+                query = query.Where(r => r.Type.Id == typeId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(baseModel))
+            {
+                query = query.Where(r => r.BaseModel == baseModel);
+            }
+
+            return await query.ToListAsync();
+        }
+
         public async Task<Resource> GetResourceById(int id)
         {
             using var context = _factory.CreateDbContext();
             return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Id == id);
+        }
+
+        public async Task<List<string>> GetDistinctBaseModels()
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources
+                .Where(r => r.BaseModel != null)
+                .Select(r => r.BaseModel)
+                .Distinct()
+                .OrderBy(b => b)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetDistinctBaseModels(int typeId)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources
+                .Where(r => r.BaseModel != null && r.Type.Id == typeId)
+                .Select(r => r.BaseModel)
+                .Distinct()
+                .OrderBy(b => b)
+                .ToListAsync();
         }
 
         public async Task<Resource> GetResourceByCivitaiModelId(int civitaiId)

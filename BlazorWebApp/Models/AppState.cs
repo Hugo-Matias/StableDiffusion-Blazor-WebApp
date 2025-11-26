@@ -148,6 +148,7 @@ namespace BlazorWebApp.Models
         public int Limit { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Subtype { get; set; } = string.Empty;
+        public string BaseModel { get; set; } = string.Empty;
         public string Tag { get; set; } = string.Empty;
         public bool IsInclusive { get; set; } = true;
         public bool LoadTriggerWords { get; set; }

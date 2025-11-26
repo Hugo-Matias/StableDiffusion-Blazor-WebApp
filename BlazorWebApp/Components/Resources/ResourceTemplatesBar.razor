@@ -6,7 +6,7 @@
 @inject ISnackbar Snackbar
 
 <MudGrid>
-    <MudItem xs="9">
+    <MudItem xs="8">
         <MudSelect @bind-Value=_selectedTemplate Label="Templates" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
             @foreach (var template in _templates)
             {
@@ -14,7 +14,7 @@
             }
         </MudSelect>
     </MudItem>
-    <MudItem xs="3">
+    <MudItem xs="3" Style="width: 100%;">
         <MudButtonGroup OverrideStyles=false>
             <MudIconButton OnClick=HandleCreate Icon="fa-solid fa-plus" Color="Color.Primary" />
             <MudIconButton OnClick=HandleEdit Icon="fa-solid fa-pen" Color="Color.Info" Disabled=@(_selectedTemplate == null) />

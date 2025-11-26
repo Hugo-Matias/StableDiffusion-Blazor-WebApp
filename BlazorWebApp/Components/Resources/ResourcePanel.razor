@@ -1,14 +1,18 @@
 ﻿@inject ManagerService M
+@inject CivitaiService Civitai
 
 @if (Resources != null)
 {
     <MudGrid Class="my-3 pa-2">
-        <MudItem xs="4">
+        <MudItem xs="5">
             <MudStack>
+                <MudStack Row=true>
                 <MudTextField Label="Title" Value="M.State.Resources.Title" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
+                    <MudAutocomplete T="string" Value="M.State.Resources.Tag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(M.State.Resources.IsInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
+                </MudStack>
                 <MudStack Row=true>
                     <MudAutocomplete T="string" Value="M.State.Resources.Subtype" ValueChanged=HandleSearchSubtype SearchFunc="GetSubtypes" Label="Sub-Type" MaxItems="100" MaxHeight="1200" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-list" ResetValueOnEmptyText Clearable Dense />
-                    <MudAutocomplete T="string" Value="M.State.Resources.Tag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(M.State.Resources.IsInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
+                    <MudAutocomplete T="string" Value="M.State.Resources.BaseModel" ValueChanged=HandleSearchBaseModel SearchFunc="GetBaseModels" Label="Base Model" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-cube" ResetValueOnEmptyText Clearable Dense />
                 </MudStack>
             </MudStack>
         </MudItem>
@@ -23,7 +27,7 @@
                 <MudCheckBox Checked=M.State.Resources.OrderByDescending CheckedChanged=HandleOrderDescendingChanged T="bool" Label=@(M.State.Resources.OrderByDescending ? "Desc" : "Asc") CheckedIcon="fa-solid fa-arrow-down-wide-short" UncheckedIcon="fa-solid fa-arrow-down-short-wide" />
             </MudStack>
         </MudItem>
-        <MudItem xs="5">
+        <MudItem xs="4">
             <MudStack>
                 <ResourceTemplatesBar />
                 <MudStack Row=true>
@@ -33,7 +37,20 @@
             </MudStack>
         </MudItem>
         <MudItem xs="2">
-            <MudButton Style="width:100%; height:100%;" OnClick="Search" Color="Color.Success">Search</MudButton>
+            <MudStack Style="height:100%;">
+                <MudButton Style="width:100%;" OnClick="Search" Color="Color.Success">Search</MudButton>
+                <MudButton Style="width:100%;" OnClick="UpdateBaseModels" Color="Color.Info" Size="Size.Small" Disabled="_isUpdating">
+                    @if (_isUpdating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate />
+                        <span class="ml-2">Updating...</span>
+                    }
+                    else
+                    {
+                        <span>Update BaseModels</span>
+                    }
+                </MudButton>
+            </MudStack>
         </MudItem>
     </MudGrid>
 
@@ -62,17 +79,40 @@
     [Parameter] public EventCallback<LocalResource> OnLoad { get; set; }
 
     private List<LocalResource> _filteredResources;
+    private bool _isUpdating = false;
 
     protected override void OnParametersSet()
     {
         Search();
     }
 
+    private async Task UpdateBaseModels()
+    {
+        _isUpdating = true;
+        StateHasChanged();
+        try
+        {
+            await Civitai.UpdateResourceBaseModels();
+        }
+        finally
+        {
+            _isUpdating = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task<IEnumerable<string>> GetSubtypes(string value)
     {
-        var query = Resources.Select(r => r.SubType.Name).Distinct();
-        if (!string.IsNullOrWhiteSpace(value)) query = query.Where(t => t.Equals(value, StringComparison.InvariantCultureIgnoreCase));
+        var query = Resources.Where(r => r.SubType != null).Select(r => r.SubType.Name).Distinct();
+        if (!string.IsNullOrWhiteSpace(value)) query = query.Where(t => t.Contains(value, StringComparison.InvariantCultureIgnoreCase));
         return query.OrderBy(t => t);
+    }
+
+    private async Task<IEnumerable<string>> GetBaseModels(string value)
+    {
+        var query = Resources.Where(r => !string.IsNullOrEmpty(r.BaseModel)).Select(r => r.BaseModel).Distinct();
+        if (!string.IsNullOrWhiteSpace(value)) query = query.Where(b => b.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        return query.OrderBy(b => b);
     }
 
     private async Task<IEnumerable<string>> GetTags(string value)
@@ -93,6 +133,13 @@
     private async Task HandleSearchSubtype(string value)
     {
         M.State.Resources.Subtype = value;
+        M.State.Resources.Page = 1;
+        await Search();
+    }
+
+    private async Task HandleSearchBaseModel(string value)
+    {
+        M.State.Resources.BaseModel = value;
         M.State.Resources.Page = 1;
         await Search();
     }
@@ -147,11 +194,12 @@
     {
         var query = Resources.AsQueryable();
         if (!string.IsNullOrWhiteSpace(M.State.Resources.Title)) query = query.Where(r => r.Title.Contains(M.State.Resources.Title, StringComparison.InvariantCultureIgnoreCase));
-        if (!string.IsNullOrWhiteSpace(M.State.Resources.Subtype)) query = query.Where(r => r.SubType.Name.Equals(M.State.Resources.Subtype, StringComparison.InvariantCultureIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(M.State.Resources.Subtype)) query = query.Where(r => r.SubType != null && r.SubType.Name.Equals(M.State.Resources.Subtype, StringComparison.InvariantCultureIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(M.State.Resources.BaseModel)) query = query.Where(r => r.BaseModel != null && r.BaseModel.Equals(M.State.Resources.BaseModel, StringComparison.InvariantCultureIgnoreCase));
         if (!string.IsNullOrWhiteSpace(M.State.Resources.Tag))
         {
-            if (M.State.Resources.IsInclusive) query = query.Where(r => r.Tags.Contains(M.State.Resources.Tag));
-            else query = query.Where(r => !r.Tags.Contains(M.State.Resources.Tag));
+            if (M.State.Resources.IsInclusive) query = query.Where(r => r.Tags != null && r.Tags.Contains(M.State.Resources.Tag));
+            else query = query.Where(r => r.Tags == null || !r.Tags.Contains(M.State.Resources.Tag));
         }
         if (M.State.Resources.ResourceIsEnabledFilter != null) query = query.Where(r => r.Files.Any(f => f.IsEnabled == M.State.Resources.ResourceIsEnabledFilter));
         switch (M.State.Resources.OrderBy)

@@ -7,6 +7,7 @@ using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace BlazorWebApp.Services
 {
@@ -102,7 +103,7 @@ namespace BlazorWebApp.Services
                 images.AddRange(response?.Images);
                 image = response?.Images.FirstOrDefault(i => i.Id == imageDto.Id);
             }
-
+            if (image == null) return null;
             if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
             if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
             return image;
@@ -191,27 +192,68 @@ namespace BlazorWebApp.Services
             var response = await _httpClient.GetAsync($"v1/models/{id}");
             if (response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadFromJsonAsync<CivitaiModelDto>();
-                foreach (var version in content.ModelVersions)
+                var jsonString = await response.Content.ReadAsStringAsync();
+                _logger.LogDebug("CivitAI Model {ModelId} Response (first 2000 chars): {Json}",
+                    id, jsonString.Length > 2000 ? jsonString.Substring(0, 2000) + "..." : jsonString);
+
+                try
                 {
-                    version.Images = new();
-                    foreach (var data in version.ImagesData)
+                    var options = new JsonSerializerOptions
                     {
-                        if (data.Id == 0)
+                        PropertyNameCaseInsensitive = true,
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    };
+
+                    var content = JsonSerializer.Deserialize<CivitaiModelDto>(jsonString, options);
+
+                    foreach (var version in content.ModelVersions)
+                    {
+                        version.Images = new();
+                        if (version.ImagesData != null)
                         {
-                            _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
-                            data.Id = imageId;
+                            foreach (var data in version.ImagesData)
+                            {
+                                if (data.Id == 0)
+                                {
+                                    _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
+                                    data.Id = imageId;
+                                }
+                                version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url, BrowsingLevel = data.NsfwLevel });
+                            }
                         }
-                        version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url, BrowsingLevel = data.NsfwLevel });
-                        //var image = await GetImageById(data.Id);
-                        //if (image != null) version.Images.Add(image);
                     }
+                    return content;
                 }
-                return content;
+                catch (JsonException jsonEx)
+                {
+                    _logger.LogError(jsonEx, "JSON Deserialization failed for model {ModelId}. Error at path: {Path}",
+                        id, jsonEx.Path);
+
+                    var debugPath = Path.Combine(Path.GetTempPath(), $"civitai_model_{id}_error_{DateTime.Now:yyyyMMddHHmmss}.json");
+                    try
+                    {
+                        await File.WriteAllTextAsync(debugPath, jsonString);
+                        _logger.LogDebug("Full API response saved to: {Path}", debugPath);
+                    }
+                    catch (Exception fileEx)
+                    {
+                        _logger.LogWarning(fileEx, "Failed to save debug file");
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Failed to deserialize CivitAI model {id}. Check logs for details. Debug file: {debugPath}",
+                        jsonEx);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error processing model {ModelId}", id);
+                    throw;
+                }
             }
             else
             {
-                _logger.LogWarning("Failed to get model, status code: {StatusCode} | {Content}", response.StatusCode, await response.Content.ReadAsStringAsync());
+                _logger.LogWarning("Failed to get model {ModelId}, status code: {StatusCode} | {Content}",
+                    id, response.StatusCode, await response.Content.ReadAsStringAsync());
                 return null;
             }
         }
@@ -349,6 +391,36 @@ namespace BlazorWebApp.Services
                 }
                 await _db.UpdateResource(item);
             }
+        }
+
+        public async Task UpdateResourceBaseModels()
+        {
+            var resources = await _db.GetResources();
+            var index = 0;
+
+            foreach (var entity in resources.Where(r => r.CivitaiModelVersionId != null && string.IsNullOrEmpty(r.BaseModel)))
+            {
+                index++;
+                _m.CurrentProgress = (index * 100) / resources.Count;
+
+                try
+                {
+                    var version = await GetModelVersion((int)entity.CivitaiModelVersionId);
+                    if (version != null && !string.IsNullOrEmpty(version.BaseModel))
+                    {
+                        entity.BaseModel = version.BaseModel;
+                        await _db.UpdateResource(entity);
+                        _logger.LogInformation($"Updated BaseModel: {entity.Type.Name} | {entity.SubType.Name} > {entity.Id}: {entity.Title} > {entity.BaseModel}");
+                    }
+                }
+                catch (Exception)
+                {
+                    _logger.LogError($"Failed to update BaseModel: {entity.Type.Name} | {entity.SubType.Name} >  {entity.Id}: {entity.Title}");
+                    entity.BaseModel = "Missing";
+                }
+            }
+
+            _m.CurrentProgress = 0;
         }
         #endregion
     }

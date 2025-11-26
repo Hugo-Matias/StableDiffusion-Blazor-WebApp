@@ -10,6 +10,7 @@ namespace BlazorWebApp.Models
         public int? CivitaiId { get; set; }
         public ResourceType Type { get; set; }
         public ResourceSubType? SubType { get; set; }
+        public string? BaseModel { get; set; }
         public List<string>? Tags { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime? LastLoadedDate { get; set; }
@@ -24,6 +25,7 @@ namespace BlazorWebApp.Models
             CivitaiId = resourceEntity.CivitaiModelId;
             Type = resourceEntity.Type;
             SubType = resourceEntity.SubType;
+            BaseModel = resourceEntity.BaseModel;
             Tags = resourceEntity.Tags;
             CreatedDate = resourceEntity.CreatedDate;
             LastLoadedDate = resourceEntity.LastLoadedDate;

@@ -33,6 +33,12 @@
                         </MudItem>
                         <MudItem xs="4">
                             <CivitaiFileButton Class="mb-4 mt-n4" ModelVersion=@version OnDownload="@(async (file) => await DownloadFile(version, file))" />
+                            @if (version.IsEarlyAccess)
+                            {
+                                <MudChip Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Lock" Variant="Variant.Filled">
+                                    Early Access
+                                </MudChip>
+                            }
                             <MudStack Class="mb-4" Row>
                                 <MudStack>
                                     <MudText Class="meta-label" Typo="Typo.caption">Created</MudText>

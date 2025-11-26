@@ -21,6 +21,10 @@
             {
                 <MudChip Text="@Resource.SubType.Name" Color="Color.Tertiary" Label=true />
             }
+            @if (!string.IsNullOrWhiteSpace(Resource.BaseModel))
+            {
+                <MudChip Color="Color.Info" Text="@Resource.BaseModel" Label=true />
+            }
         </MudStack>
     </TitleContent>
     <DialogContent>

@@ -7,17 +7,12 @@ namespace BlazorWebApp.Data.Dtos
         [JsonPropertyName("poi")]
         public bool PersonOfInterest { get; set; }
         public bool AllowNoCredit { get; set; }
-        public List<string> AllowCommercialUse { get; set; }
-        public bool AllowDerivatives { get; set; }
-        public bool AllowDifferentLicense { get; set; }
         public CivitaiModelStatsDto Stats { get; set; }
         public List<string> Tags { get; set; }
         public List<CivitaiModelVersionDto> ModelVersions { get; set; }
-    }
-
-    public class CivitaiModelTagDto
-    {
-        public string Name { get; set; }
+        //public List<string> AllowCommercialUse { get; set; }
+        //public bool AllowDerivatives { get; set; }
+        //public bool AllowDifferentLicense { get; set; }
     }
 
     public class CivitaiModelStatsDto
@@ -34,7 +29,9 @@ namespace BlazorWebApp.Data.Dtos
         public int ModelId { get; set; }
         public DateTime UpdatedAt { get; set; }
         public string BaseModel { get; set; }
-        public double EarlyAccessTimeFrame { get; set; }
+        public string Availability { get; set; }
+        [JsonIgnore]
+        public bool IsEarlyAccess => Availability?.Equals("EarlyAccess", StringComparison.OrdinalIgnoreCase) ?? false;
         public List<CivitaiModelVersionFileDto> Files { get; set; }
         [JsonPropertyName("images")]
         public List<CivitaiModelVersionImageDto> ImagesData { get; set; }
