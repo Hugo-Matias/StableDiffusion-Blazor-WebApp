@@ -408,7 +408,7 @@ namespace BlazorWebApp.Extensions
             };
         }
 
-        public static CsvTag ParseCsvTag(this CsvTag tag) => new CsvTag()
+        public static Tag ParseCsvTag(this Tag tag) => new Tag()
         {
             Name = tag.Name.Replace("_", " "),
             Aliases = tag.Aliases.Replace("_", " "),

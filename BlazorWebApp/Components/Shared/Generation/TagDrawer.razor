@@ -26,7 +26,7 @@
                             }
                         </MudGrid>
                         <MudStack Class="pa-2" Row>
-                            <MudAutocomplete ValueChanged="SelectedValueChanged" SearchFunc="SearchTags" @ref=_autocompleteRef T="CsvTag" Label="Search Tag" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Info" MaxHeight="500" MaxItems="30" ResetValueOnEmptyText Dense Clearable>
+                            <MudAutocomplete ValueChanged="SelectedValueChanged" SearchFunc="SearchTags" @ref=_autocompleteRef T="Tag" Label="Search Tag" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Info" MaxHeight="500" MaxItems="30" ResetValueOnEmptyText Dense Clearable>
                                 <ItemTemplate Context="tag">
                                     <MudText Typo="Typo.body1" Style="font-family:'FiraCode NF'; font-weight:500;" Color="GetTagSuggestionColor(tag.Name, tag.Color)">
                                         @tag.Name
@@ -81,17 +81,17 @@
 
     private List<(string, float)> _selectedTags = new();
     private float _incrementAmount = 0.05f;
-    private MudAutocomplete<CsvTag>? _autocompleteRef;
+    private MudAutocomplete<Tag>? _autocompleteRef;
     private string _autocompleteValue = string.Empty;
     private int _activeTab = 0;
 
-    private async Task<IEnumerable<CsvTag>> SearchTags(string input)
+    private async Task<IEnumerable<Tag>> SearchTags(string input)
     {
-        if (string.IsNullOrWhiteSpace(input)) return new CsvTag[0];
-        return CsvService.SearchTags(input);
+        if (string.IsNullOrWhiteSpace(input)) return new Tag[0];
+        return await CsvService.SearchTags(input);
     }
 
-    private void SelectedValueChanged(CsvTag tag)
+    private void SelectedValueChanged(Tag tag)
     {
         if (tag == null) return;
         _selectedTags.Add((tag.Name, 1.0f));

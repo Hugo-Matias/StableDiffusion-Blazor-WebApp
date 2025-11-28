@@ -457,6 +457,23 @@ namespace BlazorWebApp.Services
             return await context.Images.Include(i => i.Model).Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
         }
 
+        public async Task<List<Image>> GetRecentImagesWithPrompts(int limit = 10000)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Images
+                .Where(i => !string.IsNullOrEmpty(i.Prompt))
+                .OrderByDescending(i => i.DateCreated)
+                .Take(limit)
+                .Select(i => new Image
+                {
+                    Id = i.Id,
+                    Prompt = i.Prompt,
+                    NegativePrompt = i.NegativePrompt
+                })
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task<Image> UpdateImage(Image image)
         {
             using var context = await _factory.CreateDbContextAsync();

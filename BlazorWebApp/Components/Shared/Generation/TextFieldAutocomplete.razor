@@ -1,0 +1,386 @@
+﻿@inject CsvService CsvService
+@inject CacheService CacheService
+@inject IJSRuntime JS
+@inject ILogger<TextFieldAutocomplete> Logger
+@implements IAsyncDisposable
+
+<div class="prompt-autocomplete-wrapper" @ref="_wrapperRef">
+    <MudTextField 
+        @ref="_textFieldRef"
+        Class="@Class"
+        Lines="@Lines" 
+        Label="@Label"
+        Value="@Value"
+        ValueChanged="@HandleValueChanged"
+        OnAdornmentClick="@OnAdornmentClick"
+        Adornment="@Adornment"
+        AdornmentIcon="@AdornmentIcon"
+        T="string"
+        Clearable="@Clearable"
+        Immediate="@Immediate"
+        Disabled="@Disabled" />
+
+    @if (_showSuggestions && _suggestions.Any())
+    {
+        <MudPaper Class="autocomplete-dropdown" Elevation="8" Style="@GetDropdownStyle()">
+            <MudList Clickable Dense>
+                @for (int i = 0; i < _suggestions.Count; i++)
+                {
+                    var index = i;
+                    var tag = _suggestions[i];
+                    var isSelected = index == _selectedIndex;
+                    
+                    <MudListItem Class="@(isSelected ? "selected-suggestion" : "")" 
+                                 OnClick="() => SelectSuggestion(tag)"
+                                 Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
+                        <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="@GetTagColor(tag.Color)">
+                            <strong>@GetHighlightedText(tag.Name)</strong>
+                            @if (!tag.Name.Contains(_currentWord, StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(tag.Aliases))
+                            {
+                                <small style="opacity:0.5;"> → @GetMatchingAlias(tag)</small>
+                            }
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:0.4; margin-left: auto;">
+                            @if (tag.LocalUses > 0)
+                            {
+                                <span style="color: var(--mud-palette-success);">@tag.LocalUses uses</span>
+                                @* <span> | </span> *@
+                            }
+                            @* @tag.Uses.ToString("N0") uses *@
+                        </MudText>
+                    </MudListItem>
+                }
+            </MudList>
+            <MudDivider />
+            <MudText Typo="Typo.caption" Class="px-3 py-1" Style="opacity:0.3;">
+                <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowUp" Size="Size.Small" /> 
+                <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" /> navigate • 
+                <MudIcon Icon="@Icons.Material.Filled.KeyboardReturn" Size="Size.Small" /> select • 
+                <strong>Esc</strong> close
+            </MudText>
+        </MudPaper>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Prompt";
+    [Parameter] public int Lines { get; set; } = 4;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public Adornment Adornment { get; set; } = Adornment.End;
+    [Parameter] public string AdornmentIcon { get; set; } = "";
+    [Parameter] public EventCallback OnAdornmentClick { get; set; }
+    [Parameter] public bool Clearable { get; set; } = true;
+    [Parameter] public bool Immediate { get; set; } = true;
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public int MinCharsToTrigger { get; set; } = 2;
+    [Parameter] public int MaxSuggestions { get; set; } = 15;
+    [Parameter] public char TriggerChar { get; set; } = '\0';
+
+    private MudTextField<string> _textFieldRef;
+    private ElementReference _wrapperRef;
+    private List<Tag> _suggestions = new();
+    private bool _showSuggestions = false;
+    private int _selectedIndex = 0;
+    private string _currentWord = string.Empty;
+    private int _cursorPosition = 0;
+    private System.Timers.Timer _debounceTimer;
+    private const int DebounceDelay = 150;
+    private DotNetObjectReference<TextFieldAutocomplete> _dotNetRef;
+    private IJSObjectReference _jsModule;
+    private bool _isSelectingSuggestion = false;
+
+    protected override void OnInitialized()
+    {
+        _debounceTimer = new System.Timers.Timer(DebounceDelay);
+        _debounceTimer.Elapsed += async (sender, e) => await SearchTags();
+        _debounceTimer.AutoReset = false;
+        _dotNetRef = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Input.js");
+                await _jsModule.InvokeVoidAsync("initializeAutocomplete", _wrapperRef, _dotNetRef);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error initializing autocomplete");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when cursor position changes via click or arrow keys
+    /// </summary>
+    [JSInvokable]
+    public void OnCursorPositionChanged(int position)
+    {
+        _cursorPosition = position;
+        _debounceTimer.Stop();
+        _debounceTimer.Start();
+    }
+
+    private async Task HandleValueChanged(string newValue)
+    {
+        if (_isSelectingSuggestion)
+        {
+            _isSelectingSuggestion = false;
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
+            return;
+        }
+
+        Value = newValue;
+        await ValueChanged.InvokeAsync(Value);
+        
+        // Update cursor position immediately to ensure accurate word detection
+        _cursorPosition = await GetCursorPosition();
+        
+        _debounceTimer.Stop();
+        _debounceTimer.Start();
+    }
+
+    private async Task SearchTags()
+    {
+        await InvokeAsync(async () =>
+        {
+            if (string.IsNullOrWhiteSpace(Value))
+            {
+                _showSuggestions = false;
+                StateHasChanged();
+                return;
+            }
+            
+            _currentWord = GetWordAtCursor(Value, _cursorPosition);
+
+            if (ShouldTriggerAutocomplete(_currentWord))
+            {
+                var results = await CsvService.SearchTags(_currentWord);
+                _suggestions = results.Take(MaxSuggestions).ToList();
+                _showSuggestions = _suggestions.Any();
+                _selectedIndex = 0;
+            }
+            else
+            {
+                _showSuggestions = false;
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>
+    /// Called from JavaScript when navigation/selection keys are pressed while dropdown is visible
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleKeyDownFromJS(string key)
+    {
+        if (!_showSuggestions) return;
+
+        switch (key)
+        {
+            case "ArrowDown":
+                _selectedIndex = Math.Min(_selectedIndex + 1, _suggestions.Count - 1);
+                await InvokeAsync(StateHasChanged);
+                break;
+
+            case "ArrowUp":
+                _selectedIndex = Math.Max(_selectedIndex - 1, 0);
+                await InvokeAsync(StateHasChanged);
+                break;
+
+            case "Enter":
+            case "Tab":
+                if (_selectedIndex >= 0 && _selectedIndex < _suggestions.Count)
+                {
+                    await InvokeAsync(async () => await SelectSuggestion(_suggestions[_selectedIndex]));
+                }
+                break;
+
+            case "Escape":
+                _showSuggestions = false;
+                await InvokeAsync(StateHasChanged);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript to check if dropdown is currently visible
+    /// </summary>
+    [JSInvokable]
+    public bool IsDropdownVisible() => _showSuggestions;
+
+    private async Task SelectSuggestion(Tag tag)
+    {
+        try
+        {
+            var (start, end) = GetWordBoundaries(Value, _cursorPosition);
+            
+            var beforeRaw = Value.Substring(0, start);
+            var afterRaw = Value.Substring(end);
+            
+            var beforeTrimmed = beforeRaw.TrimEnd();
+            var afterTrimmed = afterRaw.TrimStart();
+            
+            // Determine prefix based on what comes before
+            string prefix = "";
+            if (beforeTrimmed.Length > 0)
+            {
+                prefix = beforeTrimmed.EndsWith(",") ? " " : ", ";
+            }
+            
+            // Determine suffix based on what comes after
+            string suffix = "";
+            if (afterTrimmed.Length > 0)
+            {
+                if (afterTrimmed.StartsWith(","))
+                {
+                    suffix = afterTrimmed.StartsWith(", ") ? "" : " ";
+                }
+                else
+                {
+                    suffix = ", ";
+                }
+            }
+            else
+            {
+                suffix = ", ";
+            }
+            
+            var newValue = $"{beforeTrimmed}{prefix}{tag.Name}{suffix}{afterTrimmed}";
+            
+            _showSuggestions = false;
+            _isSelectingSuggestion = true;
+            
+            Value = newValue;
+            await _textFieldRef.SetText(newValue);
+            await ValueChanged.InvokeAsync(newValue);
+            
+            StateHasChanged();
+            await Task.Delay(50);
+            
+            var newCursorPos = beforeTrimmed.Length + prefix.Length + tag.Name.Length + suffix.Length;
+            await SetCursorPosition(newCursorPos);
+            
+            CacheService.IncrementTagUsage(tag.Name);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error selecting suggestion");
+        }
+    }
+
+    private bool ShouldTriggerAutocomplete(string word)
+    {
+        if (string.IsNullOrWhiteSpace(word)) return false;
+        if (word.Length < MinCharsToTrigger) return false;
+
+        if (TriggerChar != '\0')
+        {
+            var beforeCursor = Value.Substring(0, Math.Min(_cursorPosition, Value.Length));
+            var lastTrigger = beforeCursor.LastIndexOf(TriggerChar);
+            if (lastTrigger == -1) return false;
+            
+            var afterTrigger = beforeCursor.Substring(lastTrigger + 1);
+            if (afterTrigger.Contains(',')) return false;
+        }
+
+        return true;
+    }
+
+    private string GetWordAtCursor(string text, int position)
+    {
+        if (string.IsNullOrEmpty(text) || position < 0 || position > text.Length)
+            return string.Empty;
+
+        var (start, end) = GetWordBoundaries(text, position);
+        return text.Substring(start, end - start).Trim();
+    }
+
+    /// <summary>
+    /// Finds the word boundaries (start and end positions) at the cursor position.
+    /// Words are delimited by commas or newlines.
+    /// </summary>
+    private (int start, int end) GetWordBoundaries(string text, int position)
+    {
+        if (string.IsNullOrEmpty(text)) return (0, 0);
+        
+        position = Math.Min(position, text.Length);
+
+        // Find start: move backwards until we hit a comma or newline
+        int start = position;
+        while (start > 0 && text[start - 1] != ',' && text[start - 1] != '\n')
+            start--;
+
+        // Skip leading whitespace after the delimiter
+        while (start < position && char.IsWhiteSpace(text[start]))
+            start++;
+
+        // Find end: move forwards until we hit a comma or newline
+        int end = position;
+        while (end < text.Length && text[end] != ',' && text[end] != '\n')
+            end++;
+
+        return (start, end);
+    }
+
+    private MarkupString GetHighlightedText(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(_currentWord))
+            return new MarkupString(tagName);
+
+        var index = tagName.IndexOf(_currentWord, StringComparison.InvariantCultureIgnoreCase);
+        if (index < 0)
+            return new MarkupString(tagName);
+
+        var before = tagName.Substring(0, index);
+        var match = tagName.Substring(index, _currentWord.Length);
+        var after = tagName.Substring(index + _currentWord.Length);
+
+        return new MarkupString($"{before}<span style='background-color: var(--mud-palette-warning); color: var(--mud-palette-dark);'>{match}</span>{after}");
+    }
+
+    private string GetMatchingAlias(Tag tag) => Parser.ParseCsvTagAlias(tag.Aliases, _currentWord);
+
+    private Color GetTagColor(int colorIndex) => Parser.ParseCsvTagColor(colorIndex);
+
+    private string GetDropdownStyle() => "position: absolute; z-index: 1300; margin-top: 4px; max-width: 500px; min-width: 300px;";
+
+    private async Task<int> GetCursorPosition()
+    {
+        try
+        {
+            return await JS.InvokeAsync<int>("getCaretPosition", _textFieldRef.InputReference);
+        }
+        catch
+        {
+            return Value?.Length ?? 0;
+        }
+    }
+
+    private async Task SetCursorPosition(int position)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("setCaretPosition", _textFieldRef.InputReference, position);
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _debounceTimer?.Dispose();
+        _dotNetRef?.Dispose();
+        
+        if (_jsModule != null)
+        {
+            await _jsModule.DisposeAsync();
+        }
+    }
+}

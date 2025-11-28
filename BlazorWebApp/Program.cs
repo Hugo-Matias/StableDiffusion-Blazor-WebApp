@@ -40,6 +40,7 @@ builder.Services.AddSingleton<ResourcesService>();
 builder.Services.AddSingleton<RouterService>();
 builder.Services.AddSingleton<WorkflowService>();
 builder.Services.AddSingleton<DynamicPromptsService>();
+builder.Services.AddSingleton<CacheService>();
 
 builder.Services.AddScoped<JavascriptService>();
 
@@ -84,3 +85,13 @@ app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
 app.Run();
+
+var tagUsageService = app.Services.GetRequiredService<CacheService>();
+_ = Task.Run(async () =>
+{
+    while (true)
+    {
+        await Task.Delay(TimeSpan.FromMinutes(30));
+        await tagUsageService.RefreshTagCache();
+    }
+});
