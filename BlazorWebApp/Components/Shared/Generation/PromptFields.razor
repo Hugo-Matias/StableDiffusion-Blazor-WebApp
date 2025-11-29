@@ -1,5 +1,5 @@
 ﻿@typeparam T where T : SharedParameters
-@using System.Text.Json;
+@using System.Text.Json
 @using static BlazorWebApp.Data.Enums
 @inject IOService IO
 @inject ManagerService M
@@ -10,28 +10,51 @@
             <MudGrid>
                 <MudItem xs="9">
                     <MudStack>
-                        @* <MudTextField Class="prompt" id="prompt" Lines=_promptLines Label="Prompt" OnAdornmentClick="() => PromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.Prompt Clearable Immediate />
-                        <MudTextField Class="negative-prompt" id="negativePrompt" Lines=_negativePromptLines Label="Negative Prompt" OnAdornmentClick="() => NegativePromptDrawer.Visible = true" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tags" T="string" @bind-Value=@Parameters.NegativePrompt Disabled="M.IsComfyUIUp && M.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(M.State.Generation.WorkflowBase)" Clearable Immediate /> *@
-                        <TextFieldAutocomplete 
-                            Class="prompt" 
-                            Lines="_promptLines" 
-                            Label="Prompt" 
-                            @bind-Value="@Parameters.Prompt"
-                            OnAdornmentClick="() => PromptDrawer.Visible = true" 
-                            AdornmentIcon="fa-solid fa-tags"
-                            MinCharsToTrigger="2"
-                            MaxSuggestions="8" />
-                        
-                        <TextFieldAutocomplete 
-                            Class="negative-prompt" 
-                            Lines="_negativePromptLines" 
-                            Label="Negative Prompt" 
-                            @bind-Value="@Parameters.NegativePrompt"
-                            OnAdornmentClick="() => NegativePromptDrawer.Visible = true" 
-                            AdornmentIcon="fa-solid fa-tags"
-                            Disabled="M.IsComfyUIUp && M.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(M.State.Generation.WorkflowBase)"
-                            MinCharsToTrigger="2"
-                            MaxSuggestions="8" />
+                        <MudStack>
+                            <TextFieldAutocomplete 
+                                Class="prompt" 
+                                Lines="_promptLines" 
+                                Label="Prompt" 
+                                @bind-Value="@Parameters.Prompt"
+                                OnAdornmentClick="() => PromptDrawer.Visible = true" 
+                                AdornmentIcon="fa-solid fa-tags"
+                                MinCharsToTrigger="2"
+                                MaxSuggestions="15"
+                                EnableFuzzyMatching="M.State.Generation.Autocomplete.EnableFuzzySearch"
+                                EnableDictionary="true" 
+                                EnableAutocomplete="M.State.Generation.Autocomplete.IsEnabled"
+                                IsNegative="false" />
+                            
+                            <TextFieldAutocomplete 
+                                Class="negative-prompt" 
+                                Lines="_negativePromptLines" 
+                                Label="Negative Prompt" 
+                                @bind-Value="@Parameters.NegativePrompt"
+                                OnAdornmentClick="() => NegativePromptDrawer.Visible = true" 
+                                AdornmentIcon="fa-solid fa-tags"
+                                Disabled="M.IsComfyUIUp && M.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(M.State.Generation.WorkflowBase)"
+                                MinCharsToTrigger="2"
+                                MaxSuggestions="15"
+                                EnableFuzzyMatching="M.State.Generation.Autocomplete.EnableFuzzySearch"
+                                EnableDictionary="true"
+                                EnableAutocomplete="M.State.Generation.Autocomplete.IsEnabled"
+                                IsNegative="true" />
+                        </MudStack>
+                        <MudStack Row=true Spacing="2">
+                            <MudTooltip Text="Toggle autocomplete suggestions">
+                                <MudSwitch Checked="M.State.Generation.Autocomplete.IsEnabled" 
+                                           CheckedChanged="@((bool value) => HandleAutocompleteChanged(value))"
+                                           Color="Color.Primary" 
+                                           Label="Autocomplete"/>
+                            </MudTooltip>
+                            <MudTooltip Text="Toggle fuzzy subsequence matching (e.g., 'cascl' matches 'casual clothing')">
+                                <MudSwitch Checked="M.State.Generation.Autocomplete.EnableFuzzySearch" 
+                                           CheckedChanged="@((bool value) => HandleFuzzySearchChanged(value))"
+                                           Color="Color.Primary" 
+                                           Label="Fuzzy Search" 
+                                           Disabled="!M.State.Generation.Autocomplete.IsEnabled" />
+                            </MudTooltip>
+                        </MudStack>
                     </MudStack>
                 </MudItem>
                 <MudItem xs="3">
@@ -132,5 +155,19 @@
     {
         Parser.ParseParameters(Parameters, M.State.Generation.Styles);
         HandleStylesChanged(Array.Empty<PromptStyle>());
+    }
+
+    private async Task HandleAutocompleteChanged(bool value)
+    {
+        M.State.Generation.Autocomplete.IsEnabled = value;
+        await M.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task HandleFuzzySearchChanged(bool value)
+    {
+        M.State.Generation.Autocomplete.EnableFuzzySearch = value;
+        await M.SaveState();
+        StateHasChanged();
     }
 }

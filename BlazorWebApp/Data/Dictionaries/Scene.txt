@@ -1,0 +1,31 @@
+# Scene and location types
+beach
+seaside
+ocean shore
+forest
+woodland
+jungle
+mountain
+mountain range
+urban
+city
+cityscape
+downtown
+street
+alley
+park
+garden
+desert
+wasteland
+canyon
+valley
+lake
+river
+waterfall
+island
+countryside
+village
+ruins
+temple
+castle
+palace

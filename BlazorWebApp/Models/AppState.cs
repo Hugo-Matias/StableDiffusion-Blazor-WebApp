@@ -35,6 +35,11 @@ namespace BlazorWebApp.Models
                     MaxInputWidth = settings.Generation.Img2Img.InputResolution.Width,
                     MaxInputHeight = settings.Generation.Img2Img.InputResolution.Height,
                 },
+                Autocomplete = new()
+                {
+                    IsEnabled = true,
+                    EnableFuzzySearch = true
+                }
             };
             Resources = new()
             {
@@ -68,6 +73,7 @@ namespace BlazorWebApp.Models
         public ModelBase WorkflowBase { get; set; }
         public List<Lora> Loras { get; set; }
         public AppStateLLMEnhancer LLM { get; set; } = new();
+        public AppStateGenerationAutocomplete Autocomplete { get; set; } = new();
     }
 
     public class AppStateGenerationImg2Img
@@ -112,6 +118,12 @@ namespace BlazorWebApp.Models
         public string EnhancedNegativePrompt { get; set; } = string.Empty;
         public string LastPromptId { get; set; } = string.Empty;
         public string LastNegativePromptId { get; set; } = string.Empty;
+    }
+
+    public class AppStateGenerationAutocomplete
+    {
+        public bool IsEnabled { get; set; } = true;
+        public bool EnableFuzzySearch { get; set; } = true;
     }
 
     public class AppStateGallery

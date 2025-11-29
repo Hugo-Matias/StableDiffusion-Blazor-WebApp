@@ -1,0 +1,21 @@
+# Color descriptions
+vibrant colors
+muted colors
+pastel colors
+neon colors
+warm colors
+cool colors
+monochrome
+black and white
+colorful
+multicolored
+red
+blue
+green
+yellow
+orange
+purple
+pink
+brown
+gold
+silver

@@ -1,0 +1,25 @@
+# Lighting conditions and styles
+natural lighting
+studio lighting
+soft lighting
+hard lighting
+dramatic lighting
+volumetric lighting
+rim lighting
+backlighting
+backlit
+side lighting
+golden hour
+blue hour
+sunset
+sunrise
+moonlight
+candlelight
+neon lights
+ambient light
+god rays
+lens flare
+cinematic lighting
+moody lighting
+high key
+low key

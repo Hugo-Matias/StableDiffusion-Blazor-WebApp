@@ -1,0 +1,27 @@
+# Common objects and items
+chair
+table
+desk
+bed
+sofa
+lamp
+book
+phone
+computer
+laptop
+car
+bicycle
+motorcycle
+sword
+gun
+knife
+flower
+rose
+tree
+building
+house
+tower
+bridge
+boat
+ship
+aircraft
