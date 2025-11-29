@@ -49,6 +49,7 @@ window.setCaretPosition = (element, position) => {
 
 // Store event handlers to avoid memory leaks
 const autocompleteHandlers = new WeakMap();
+const promptFieldsHandlers = new WeakMap();
 
 /**
  * Initialize autocomplete functionality on a text input/textarea element
@@ -145,4 +146,58 @@ export function initializeAutocomplete(wrapperRef, dotNetHelper) {
     element.addEventListener('keydown', keydownHandler, true);
     element.addEventListener('click', clickHandler);
     element.addEventListener('keyup', keyupHandler);
+}
+
+/**
+ * Initialize keyboard shortcuts for PromptFields component
+ * Handles Ctrl+Enter to trigger generate button
+ * @param {HTMLElement} containerRef - The container element to attach keyboard handler
+ * @param {Object} dotNetHelper - .NET object reference for interop callbacks
+ */
+export function initializePromptFieldsKeyboard(containerRef, dotNetHelper) {
+    if (!containerRef) {
+        console.error('No container reference provided to initializePromptFieldsKeyboard');
+        return;
+    }
+
+    // Remove existing handler if present to avoid duplicates
+    if (promptFieldsHandlers.has(containerRef)) {
+        const oldHandler = promptFieldsHandlers.get(containerRef);
+        containerRef.removeEventListener('keydown', oldHandler, true);
+    }
+
+    // Keydown handler: intercepts Ctrl+Enter
+    const keydownHandler = (e) => {
+        // Check for Ctrl+Enter (or Cmd+Enter on Mac)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            // Prevent default behavior immediately
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Call .NET method asynchronously
+            (async () => {
+                try {
+                    await dotNetHelper.invokeMethodAsync('HandleCtrlEnter');
+                } catch (error) {
+                    console.error('Error handling Ctrl+Enter:', error);
+                }
+            })();
+            
+            return false;
+        }
+    };
+
+    // Store handler reference for cleanup
+    promptFieldsHandlers.set(containerRef, keydownHandler);
+
+    // Attach event listener (use capture phase to intercept early)
+    containerRef.addEventListener('keydown', keydownHandler, true);
+
+    // Make the container focusable if it isn't already
+    if (!containerRef.hasAttribute('tabindex')) {
+        containerRef.setAttribute('tabindex', '-1');
+    }
+
+    // Remove focus outline for better UX
+    containerRef.style.outline = 'none';
 }
