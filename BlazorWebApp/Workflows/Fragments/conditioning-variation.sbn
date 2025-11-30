@@ -1,0 +1,62 @@
+#meta
+{
+  "outputs": {
+    "positive_output": { "node": "combine_conditioning", "index": 0 },
+    "negative_output": { "node": "conditioning_zero_out", "index": 0 }
+  }
+}
+#end
+
+{
+  "empty_encode": {
+    "inputs": {
+      "text": "",
+      "clip": {{ get_ref "clip_output" }}
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Empty Encode"
+    }
+  },
+  "conditioning_range_1": {
+    "inputs": {
+      "start": 0,
+      "end": 0.2,
+      "conditioning": ["empty_encode", 0]
+    },
+    "class_type": "ConditioningSetTimestepRange",
+    "_meta": {
+      "title": "Conditioning - Range 1"
+    }
+  },
+  "conditioning_range_2": {
+    "inputs": {
+      "start": 0.2,
+      "end": 1,
+      "conditioning": {{ get_ref "positive_output" }}
+    },
+    "class_type": "ConditioningSetTimestepRange",
+    "_meta": {
+      "title": "Conditioning - Range 2"
+    }
+  },
+    "combine_conditioning": {
+        "inputs": {
+            "conditioning_1": ["conditioning_range_1", 0],
+            "conditioning_2": ["conditioning_range_2", 0]
+        },
+        "class_type": "ConditioningCombine",
+        "_meta": {
+        "title": "Combine Conditioning"
+        }
+    },
+    "conditioning_zero_out": {
+        "inputs": {
+            "conditioning": {{ get_ref "negative_output" }}
+        },
+        "class_type": "ConditioningZeroOut",
+        "_meta": {
+        "title": "Conditioning Zero Out"
+        }
+    }
+}

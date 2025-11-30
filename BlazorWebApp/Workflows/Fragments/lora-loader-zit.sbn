@@ -1,0 +1,24 @@
+#meta
+{
+  "outputs": {
+    "model_output": { "node": "{{ lora_loader_id }}", "index": 0 },
+    "clip_output": { "node": "{{ lora_loader_id }}", "index": 1 }
+  },
+}
+#end
+
+{
+  "{{ lora_loader_id }}": {
+    "inputs": {
+      "lora_name": {{ (lora_path ?? lora_name) | json }},
+      "strength_model": {{ lora_strength | json }},
+      "strength_clip": 1.0,
+      "model": {{ get_ref "model_output" }},
+      "clip": {{ get_ref "clip_output" }}
+    },
+    "class_type": "LoraLoaderZImage",
+    "_meta": {
+      "title": "LoRA Loader Z-Image"
+    }
+  }
+}

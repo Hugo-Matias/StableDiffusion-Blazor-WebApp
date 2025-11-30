@@ -2,7 +2,8 @@
 {
     public class Lora
     {
-        public string File { get; set; }
+        public string Name { get; set; }
+        public string Path { get; set; }
         public float Strength { get; set; }
         public bool IsNegative { get; set; }
         public bool IsEnabled { get; set; }
@@ -10,7 +11,8 @@
         public Lora() { }
         public Lora(Lora clone)
         {
-            File = clone.File;
+            Name = clone.Name;
+            Path = clone.Path;
             Strength = clone.Strength;
             IsNegative = clone.IsNegative;
             IsEnabled = clone.IsEnabled;

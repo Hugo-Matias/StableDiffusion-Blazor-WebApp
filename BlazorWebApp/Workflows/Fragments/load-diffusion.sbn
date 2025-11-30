@@ -1,12 +1,10 @@
 #meta
 {
   "outputs": {
-    "model_output": { "node": "lora_positive", "index": 0 },
-    "clip_output": { "node": "lora_positive", "index": 1 },
+    "model_output": { "node": "unet_loader", "index": 0 },
+    "clip_output": { "node": "clip_loader", "index": 0 },
     "vae_output": { "node": "vae_loader", "index": 0 },
     "latent_output": { "node": {{ latent_id | json }}, "index": 0 },
-    "positive_output": { "node": "encode_positive", "index": 0 },
-    "negative_output": { "node": "encode_negative", "index": 0 }
   }
 }
 #end
@@ -40,66 +38,6 @@
     "class_type": "VAELoader",
     "_meta": {
       "title": "Load VAE"
-    }
-  },
-  "text_positive": {
-    "inputs": {
-      "value": {{ positive | json }}
-    },
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": {
-      "title": "String (Multiline)"
-    }
-  },
-  "text_negative": {
-    "inputs": {
-      "value": {{ negative | json }}
-    },
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": {
-      "title": "String (Multiline)"
-    }
-  },
-  "lora_positive": {
-    "inputs": {
-      "text": ["text_positive", 0],
-      "model": ["unet_loader", 0],
-      "clip": ["clip_loader", 0]
-    },
-    "class_type": "PCLazyLoraLoader",
-    "_meta": {
-      "title": "PC: Schedule LoRAs (Positive)"
-    }
-  },
-  "lora_negative": {
-    "inputs": {
-      "text": ["text_negative", 0],
-      "model": ["unet_loader", 0],
-      "clip": ["clip_loader", 0]
-    },
-    "class_type": "PCLazyLoraLoader",
-    "_meta": {
-      "title": "PC: Schedule LoRAs (Negative)"
-    }
-  },
-  "encode_positive": {
-    "inputs": {
-      "text": ["text_positive", 0],
-      "clip": ["lora_positive", 1]
-    },
-    "class_type": "PCLazyTextEncode",
-    "_meta": {
-      "title": "PC: Schedule Prompt (Positive)"
-    }
-  },
-  "encode_negative": {
-    "inputs": {
-      "text": ["text_negative", 0],
-      "clip": ["lora_negative", 1]
-    },
-    "class_type": "PCLazyTextEncode",
-    "_meta": {
-      "title": "PC: Schedule Prompt (Negative)"
     }
   },
   "{{ latent_id }}": {

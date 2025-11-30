@@ -61,32 +61,7 @@ namespace BlazorWebApp.Services
             var uniqueString = $"{wf.Title}_{wf.Base}_{wf.Mode}_{wf.ModelType}";
             wf.Id = GenerateDeterministicGuid(uniqueString);
 
-            // Extract pipeline structure - only fragment names, NO parameter parsing
-            var pipelineMatch = Regex.Match(templateText, @"""pipeline""\s*:\s*\[(.*?)\]", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-            if (pipelineMatch.Success)
-            {
-                var pipeline = new List<WorkflowStep>();
-                var pipelineContent = pipelineMatch.Groups[1].Value;
-
-                // Extract each pipeline step block using a Scriban-aware brace-matching algorithm
-                var steps = ExtractJsonObjectsScribanAware(pipelineContent);
-
-                foreach (var stepJson in steps)
-                {
-                    var fragMatch = Regex.Match(stepJson, @"""fragment""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
-                    if (!fragMatch.Success) continue;
-
-                    var step = new WorkflowStep
-                    {
-                        Fragment = fragMatch.Groups[1].Value,
-                        RawParameters = stepJson
-                    };
-
-                    pipeline.Add(step);
-                }
-
-                wf.Pipeline = pipeline;
-            }
+            wf.Pipeline = null;
 
             return wf;
         }
@@ -100,78 +75,6 @@ namespace BlazorWebApp.Services
             }
         }
 
-        // Helper method to extract JSON objects while preserving Scriban {{ }} syntax
-        private List<string> ExtractJsonObjectsScribanAware(string content)
-        {
-            var objects = new List<string>();
-            var depth = 0;
-            var startIndex = -1;
-            var inString = false;
-            var escapeNext = false;
-
-            for (int i = 0; i < content.Length; i++)
-            {
-                var c = content[i];
-
-                if (escapeNext)
-                {
-                    escapeNext = false;
-                    continue;
-                }
-
-                if (c == '\\')
-                {
-                    escapeNext = true;
-                    continue;
-                }
-
-                if (c == '"')
-                {
-                    inString = !inString;
-                    continue;
-                }
-
-                if (inString)
-                    continue;
-
-                // Check for Scriban {{ or }} and skip them
-                if (c == '{')
-                {
-                    // Look ahead to see if this is {{ (Scriban opening)
-                    if (i + 1 < content.Length && content[i + 1] == '{')
-                    {
-                        i++; // Skip the next brace
-                        continue;
-                    }
-
-                    // Regular JSON brace
-                    if (depth == 0)
-                        startIndex = i;
-                    depth++;
-                }
-                else if (c == '}')
-                {
-                    // Look ahead to see if this is }} (Scriban closing)
-                    if (i + 1 < content.Length && content[i + 1] == '}')
-                    {
-                        i++; // Skip the next brace
-                        continue;
-                    }
-
-                    // Regular JSON brace
-                    depth--;
-                    if (depth == 0 && startIndex >= 0)
-                    {
-                        objects.Add(content.Substring(startIndex, i - startIndex + 1));
-                        startIndex = -1;
-                    }
-                }
-            }
-
-            return objects;
-        }
-
-        // Separate method: extract outputs from rendered meta block
         private (Dictionary<string, (string nodeId, int index)> outputs, Dictionary<string, JsonElement> conditions) ExtractMetadata(string renderedMeta)
         {
             var outputs = new Dictionary<string, (string, int)>();
@@ -223,7 +126,6 @@ namespace BlazorWebApp.Services
             return (outputs, conditions);
         }
 
-        // Helper method to evaluate conditions
         private bool EvaluateConditions(Dictionary<string, JsonElement> conditions, Dictionary<string, object> parameters)
         {
             if (conditions == null || conditions.Count == 0)
@@ -293,7 +195,7 @@ namespace BlazorWebApp.Services
         }
 
         // Core rendering method: handles both meta and body
-        public (string rendered, Dictionary<string, (string nodeId, int index)> outputs) RenderFragment(string fragmentText, SubgraphContext context, Dictionary<string, object> globalParams)
+        public (string rendered, Dictionary<string, (string nodeId, int index)> outputs) RenderFragment(string fragmentText, SubgraphContext context, Dictionary<string, object> globalParams, Func<string, Task<string>>? loraPathResolver = null)
         {
             Dictionary<string, (string, int)> outputs = new();
             Dictionary<string, JsonElement> conditions = null;
@@ -307,7 +209,7 @@ namespace BlazorWebApp.Services
                 string renderedMeta;
                 try
                 {
-                    renderedMeta = RenderTemplate(metaJson, context, preserveFormatting: true);
+                    renderedMeta = RenderTemplate(metaJson, context, preserveFormatting: true, loraPathResolver);
                 }
                 catch
                 {
@@ -326,13 +228,13 @@ namespace BlazorWebApp.Services
             }
 
             // Render fragment body (collapsed for workflow JSON)
-            var rendered = RenderTemplate(fragmentText, context, preserveFormatting: false);
+            var rendered = RenderTemplate(fragmentText, context, preserveFormatting: false, loraPathResolver);
             // Remove trailing commas from rendered fragment
             rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
             return (rendered, outputs);
         }
 
-        private string RenderTemplate(string templateText, SubgraphContext context, bool preserveFormatting)
+        private string RenderTemplate(string templateText, SubgraphContext context, bool preserveFormatting, Func<string, Task<string>>? loraPathResolver = null)
         {
             var template = Template.Parse(templateText);
 
@@ -346,10 +248,11 @@ namespace BlazorWebApp.Services
             var templateContext = new TemplateContext
             {
                 MemberRenamer = member => member.Name,
-                MemberFilter = member => true, // Allow all members
-                EnableRelaxedMemberAccess = true, // Allow null propagation
+                MemberFilter = member => true,
+                EnableRelaxedMemberAccess = true,
                 EnableRelaxedFunctionAccess = true,
-                EnableRelaxedTargetAccess = true
+                EnableRelaxedTargetAccess = true,
+                StrictVariables = false
             };
 
             var scriptObject = new ScriptObject();
@@ -358,14 +261,12 @@ namespace BlazorWebApp.Services
             {
                 foreach (var kvp in context.Parameters)
                 {
-                    scriptObject.SetValue(kvp.Key, kvp.Value, false);
+                    scriptObject[kvp.Key] = kvp.Value;
 
-                    // ALSO store with alternative casing to support both snake_case and PascalCase
-                    // This handles cases where step parameters use snake_case but fragments expect PascalCase
                     var alternateKey = ConvertCasing(kvp.Key);
                     if (alternateKey != kvp.Key)
                     {
-                        scriptObject.SetValue(alternateKey, kvp.Value, false);
+                        scriptObject[alternateKey] = kvp.Value;
                     }
                 }
             }
@@ -381,6 +282,23 @@ namespace BlazorWebApp.Services
                     return value.ToString();
                 return System.Text.Json.JsonSerializer.Serialize(value);
             }));
+
+            if (loraPathResolver != null)
+            {
+                scriptObject.Import("resolve_lora_path", new Func<string, object>(loraName =>
+                {
+                    if (string.IsNullOrWhiteSpace(loraName))
+                        return loraName;
+
+                    var task = loraPathResolver(loraName);
+                    task.Wait();
+                    return task.Result;
+                }));
+            }
+            else
+            {
+                scriptObject.Import("resolve_lora_path", new Func<string, string>(loraName => loraName));
+            }
 
             templateContext.PushGlobal(scriptObject);
 
@@ -410,6 +328,12 @@ namespace BlazorWebApp.Services
             foreach (var prop in param.GetType().GetProperties())
             {
                 var value = prop.GetValue(param);
+
+                if (prop.Name.Equals("Loras", StringComparison.OrdinalIgnoreCase) && value is List<Lora> loras)
+                {
+                    value = loras.Where(l => l.IsEnabled && !l.IsNegative).ToList();
+                }
+
                 globalParams[prop.Name] = value;
             }
 
@@ -421,13 +345,14 @@ namespace BlazorWebApp.Services
                 MemberFilter = member => true,
                 EnableRelaxedMemberAccess = true,
                 EnableRelaxedFunctionAccess = true,
-                EnableRelaxedTargetAccess = true
+                EnableRelaxedTargetAccess = true,
+                StrictVariables = false
             };
 
             var scriptObject = new ScriptObject();
             foreach (var kvp in globalParams)
             {
-                scriptObject.SetValue(kvp.Key, kvp.Value, false);
+                scriptObject[kvp.Key] = kvp.Value;
             }
 
             scriptObject.Import("json", new Func<object, string>(value =>
@@ -442,24 +367,29 @@ namespace BlazorWebApp.Services
 
             templateContext.PushGlobal(scriptObject);
 
-            foreach (var step in template.Pipeline)
+            var fullTemplateText = template.RawJson;
+            var fullTemplate = Template.Parse(fullTemplateText);
+            var renderedTemplate = fullTemplate.Render(templateContext);
+
+            using var doc = JsonDocument.Parse(renderedTemplate);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("Pipeline", out var pipelineEl))
+            {
+                throw new InvalidOperationException("No Pipeline found in rendered template");
+            }
+
+            foreach (var stepEl in pipelineEl.EnumerateArray())
             {
                 try
                 {
-                    // Render the step's raw parameters JSON to resolve Scriban expressions
-                    var parametersTemplate = Template.Parse(step.RawParameters);
-                    var renderedStepJson = parametersTemplate.Render(templateContext);
+                    if (!stepEl.TryGetProperty("fragment", out var fragmentEl))
+                        continue;
 
-                    // DEBUG: Write to file to inspect
-                    //File.WriteAllText($"debug_step_{step.Fragment}.json", renderedStepJson);
-
-                    // Parse the rendered JSON to extract actual parameter values
-                    using var doc = JsonDocument.Parse(renderedStepJson);
-                    var root = doc.RootElement;
-
+                    var fragmentName = fragmentEl.GetString();
                     var mergedParams = new Dictionary<string, object>(globalParams, StringComparer.OrdinalIgnoreCase);
 
-                    if (root.TryGetProperty("parameters", out var paramsEl))
+                    if (stepEl.TryGetProperty("parameters", out var paramsEl))
                     {
                         foreach (var prop in paramsEl.EnumerateObject())
                         {
@@ -488,9 +418,9 @@ namespace BlazorWebApp.Services
 
                     context.Outputs.Merge(composer.Registry);
 
-                    if (!string.IsNullOrWhiteSpace(step.Fragment))
+                    if (!string.IsNullOrWhiteSpace(fragmentName))
                     {
-                        var fragPath = Path.Combine(_workflowPath, "Fragments", step.Fragment.Replace('/', Path.DirectorySeparatorChar));
+                        var fragPath = Path.Combine(_workflowPath, "Fragments", fragmentName.Replace('/', Path.DirectorySeparatorChar));
                         if (File.Exists(fragPath))
                         {
                             var fragmentText = File.ReadAllText(fragPath);
@@ -507,14 +437,6 @@ namespace BlazorWebApp.Services
                                 context.Outputs.Register(kvp.Key, kvp.Value.nodeId, kvp.Value.index);
                             }
 
-                            if (step.Outputs != null)
-                            {
-                                foreach (var kvp in step.Outputs)
-                                {
-                                    context.Outputs.Register(kvp.Key, kvp.Value.Node, kvp.Value.Index);
-                                }
-                            }
-
                             composer.AddRenderedFragment(rendered, context.Outputs);
                         }
                     }
@@ -522,9 +444,8 @@ namespace BlazorWebApp.Services
                 catch (JsonException ex)
                 {
                     throw new InvalidOperationException(
-                        $"Failed to parse step parameters for fragment '{step.Fragment}'. " +
-                        $"JSON error: {ex.Message}. " +
-                        $"Check debug_step_{step.Fragment}.json for the rendered output.",
+                        $"Failed to parse step parameters. " +
+                        $"JSON error: {ex.Message}.",
                         ex);
                 }
             }
@@ -541,7 +462,6 @@ namespace BlazorWebApp.Services
             });
         }
 
-        // Helper method to convert between snake_case and PascalCase
         private string ConvertCasing(string key)
         {
             if (key.Contains('_'))
@@ -574,7 +494,6 @@ namespace BlazorWebApp.Services
             if (_renderedFragments.Count == 0)
                 return "{}";
 
-            // Parse all fragments as JSON and merge them into a single object
             var mergedNodes = new Dictionary<string, JsonElement>();
 
             foreach (var fragment in _renderedFragments)
@@ -584,10 +503,8 @@ namespace BlazorWebApp.Services
                     using var doc = JsonDocument.Parse(fragment);
                     var root = doc.RootElement;
 
-                    // Each fragment should be a JSON object with node IDs as keys
                     foreach (var prop in root.EnumerateObject())
                     {
-                        // Clone the JsonElement to avoid document disposal issues
                         mergedNodes[prop.Name] = prop.Value.Clone();
                     }
                 }

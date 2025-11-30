@@ -13,13 +13,32 @@
         "clip_name": {{ Clip ?? "qwen_3_4b.safetensors" | json }},
         "clip_type": "lumina2",
         "vae_name": {{ Vae ?? "ae.safetensors" | json }},
-        "positive": {{ Prompt | json }},
-        "negative": {{ NegativePrompt | json }},
         "width": {{ Width ?? 872 | json }},
         "height": {{ Height ?? 1248 | json }},
         "batch_size": {{ BatchSize ?? 1 | json }}
       }
     },
+    {{~ if Loras && Loras.size > 0 ~}}
+    {{~ for lora in Loras ~}}
+    {
+      "fragment": "lora-loader-zit.sbn",
+      "parameters": {
+        "lora_loader_id": "lora_loader_{{ for.index }}",
+        "lora_name": {{ lora.Name | json }},
+        "lora_path": {{ lora.Path | json }},
+        "lora_strength": {{ lora.Strength | json }}
+      }
+    }{{ if !for.last }},{{ end }}
+    {{~ end ~}}
+    ,
+    {{~ end ~}}
+    {
+      "fragment": "prompts.sbn",
+      "parameters": {
+        "positive": {{ Prompt | json }},
+        "negative": {{ NegativePrompt | json }}
+      }
+    },    
     {
       "fragment": "sampler.sbn",
       "parameters": {

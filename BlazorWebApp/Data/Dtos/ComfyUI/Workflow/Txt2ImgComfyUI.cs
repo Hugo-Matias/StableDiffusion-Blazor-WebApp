@@ -8,6 +8,7 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
         public string? VAE { get; set; }
         public string? Clip1 { get; set; }
         public string? Clip2 { get; set; }
+        public List<Lora>? Loras { get; set; }
         public UpscaleParameters? Upscale { get; set; }
         public DetailerParameters? Detailer { get; set; }
         public SeedVR2Parameters SeedVR2 { get; set; }

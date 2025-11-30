@@ -129,7 +129,7 @@ namespace BlazorWebApp.Extensions
             string negative = string.Empty;
             foreach (var lora in loras.Where(l => l.IsEnabled))
             {
-                var loraString = $" <lora:{lora.File}:{lora.Strength:N2}>";
+                var loraString = $" <lora:{lora.Name}:{lora.Strength:N2}>";
                 if (lora.IsNegative) negative += loraString;
                 else prompt += loraString;
             }
@@ -372,7 +372,7 @@ namespace BlazorWebApp.Extensions
 
                 loras.Add(new Lora
                 {
-                    File = file,
+                    Name = file,
                     Strength = strength,
                     IsEnabled = true,
                     IsNegative = isNegative

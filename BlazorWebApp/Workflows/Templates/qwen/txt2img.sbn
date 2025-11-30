@@ -5,7 +5,7 @@
   "ModelType": "diffusion",
   "Pipeline": [
     {
-      "fragment": "load-diffusion.sbn",
+      "fragment": "load-diffusion-w-prompts.sbn",
       "parameters": {
         "loader_id": "model_loader",
         "latent_id": "latent_image",

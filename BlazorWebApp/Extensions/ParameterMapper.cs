@@ -15,6 +15,7 @@ namespace BlazorWebApp.Extensions
 
             var param = new Txt2ImgComfyUI
             {
+                Loras = src.Loras ?? new List<Lora>(),
                 Prompt = src.Prompt,
                 NegativePrompt = src.NegativePrompt,
                 Width = src.Width,

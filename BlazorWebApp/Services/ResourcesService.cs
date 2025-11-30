@@ -125,11 +125,11 @@ namespace BlazorWebApp.Services
             {
                 if (target.Item1 == ModeType.Txt2Img)
                 {
-                    _m.ParametersTxt2Img.Loras.Add(new Lora { File = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _m.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
                 else if (target.Item1 == ModeType.Img2Img)
                 {
-                    _m.ParametersImg2Img.Loras.Add(new Lora { File = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _m.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
             }
 

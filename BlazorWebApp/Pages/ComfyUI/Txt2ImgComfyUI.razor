@@ -79,13 +79,13 @@
         {
             foreach (var lora in style.Loras)
             {
-                if (!Parameters.Loras.Any(x => x.File == lora.File))
+                if (!Parameters.Loras.Any(x => x.Name == lora.Name))
                 {
                     Parameters.Loras.Add(lora);
                 }
                 else
                 {
-                    var existingLora = Parameters.Loras.First(x => x.File == lora.File);
+                    var existingLora = Parameters.Loras.First(x => x.Name == lora.Name);
                     existingLora.IsEnabled = lora.IsEnabled;
                     existingLora.IsNegative = lora.IsNegative;
                     existingLora.Strength = lora.Strength;

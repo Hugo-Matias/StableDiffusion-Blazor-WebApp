@@ -786,8 +786,8 @@ namespace BlazorWebApp.Services
 
             foreach (var l in loras)
             {
-                if (string.IsNullOrWhiteSpace(l.File)) continue;
-                var exists = parametersLoras.Any(x => string.Equals(x.File, l.File, StringComparison.InvariantCultureIgnoreCase));
+                if (string.IsNullOrWhiteSpace(l.Name)) continue;
+                var exists = parametersLoras.Any(x => string.Equals(x.Name, l.Name, StringComparison.InvariantCultureIgnoreCase));
                 if (!exists)
                     parametersLoras.Add(new Lora(l));
             }

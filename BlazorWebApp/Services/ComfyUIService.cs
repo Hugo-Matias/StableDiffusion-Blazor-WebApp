@@ -182,13 +182,13 @@ namespace BlazorWebApp.Services
 
         public async Task<List<SDModel>> GetDiffusionModels() => await GetModels("diffusion_models", m => new SDModel { Title = m, Model_name = m });
 
-        public async Task<List<string>> GetLoras() => await GetModels("loras", m => Regex.Replace(m, @"\.[^\.]+$", ""));
+        public async Task<List<string>> GetLoras() => await GetModels("loras", m => m);
 
         public async Task<List<string>> SearchLoras(string search)
         {
             Func<string, bool> filter = null;
             if (!string.IsNullOrEmpty(search)) filter = m => m.ToLower().Contains(search.ToLower());
-            return await GetModels("loras", m => Regex.Replace(m, @"\.[^\.]+$", ""), filter);
+            return await GetModels("loras", m => m, filter);
         }
 
         public async Task<List<string>> GetBBoxDetailers() => await GetModels("ultralytics_bbox", m => m);
