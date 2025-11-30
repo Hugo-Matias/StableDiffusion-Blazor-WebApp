@@ -142,6 +142,7 @@ namespace BlazorWebApp.Services
             }
             _txt2imgParams.Scripts = _m.ParametersTxt2Img.Scripts;
             _txt2imgParams.SeedVR2 = _m.ParametersTxt2Img.SeedVR2;
+            _txt2imgParams.ConditioningVariation = _m.ParametersTxt2Img.ConditioningVariation;
         }
 
         private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)

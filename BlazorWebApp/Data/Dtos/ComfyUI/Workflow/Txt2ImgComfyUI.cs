@@ -12,6 +12,7 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
         public UpscaleParameters? Upscale { get; set; }
         public DetailerParameters? Detailer { get; set; }
         public SeedVR2Parameters SeedVR2 { get; set; }
+        public ConditioningVariationParameters ConditioningVariation { get; set; }
     }
 
     public class UpscaleParameters
@@ -61,5 +62,11 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
         public int? BatchSize { get; set; }
         public double? InputNoiseScale { get; set; }
         public double? LatentNoiseScale { get; set; }
+    }
+
+    public class ConditioningVariationParameters
+    {
+        public bool? IsActive { get; set; }
+        public double? SwitchPoint { get; set; }
     }
 }

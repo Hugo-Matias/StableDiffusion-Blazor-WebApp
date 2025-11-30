@@ -212,6 +212,11 @@ namespace BlazorWebApp.Services
                         InputNoiseScale = Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Value,
                         LatentNoiseScale = Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Value
                     },
+                    ConditioningVariation = new ConditioningVariationParameters
+                    {
+                        IsActive = Settings.Generation.Txt2Img.ConditioningVariation.Enabled,
+                        SwitchPoint = Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Value,
+                    },
                     Scripts = new()
                     {
                         ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
@@ -269,6 +274,7 @@ namespace BlazorWebApp.Services
                 };
         }
 
+        #region Script Initializers
         public ScriptParametersControlNet CreateControlNet()
         {
             return new ScriptParametersControlNet()
@@ -544,6 +550,7 @@ namespace BlazorWebApp.Services
                 UNK3 = Settings.Scripts.Incantations.Seek.UNK3
             };
         }
+        #endregion
 
         public async Task GetSDModels(bool refresh = false)
         {
@@ -1119,6 +1126,13 @@ namespace BlazorWebApp.Services
                     ParametersUpscale = state.UpscaleParameters;
                     OnUpscaleParametersChanged?.Invoke();
                 }
+
+                NormalizeState();
+
+                OnAppStateChanged?.Invoke();
+                OnTxt2ImgParametersChanged?.Invoke();
+                OnImg2ImgParametersChanged?.Invoke();
+                OnUpscaleParametersChanged?.Invoke();
             }
             else await SaveState();
         }
@@ -1131,10 +1145,20 @@ namespace BlazorWebApp.Services
 
         public async Task SaveState(State? state = null)
         {
+            NormalizeState();
+
             if (state == null)
             {
                 var entity = await _db.GetState(1);
-                if (entity == null) entity = new() { Title = "AutoSave", CreationDate = DateTime.Now, Version = int.Parse(_configuration["StateVersion"]) };
+                if (entity == null)
+                {
+                    entity = new()
+                    {
+                        Title = "AutoSave",
+                        CreationDate = DateTime.Now,
+                        Version = int.Parse(_configuration["StateVersion"])
+                    };
+                }
                 entity.AppState = State;
                 entity.Txt2ImgParameters = ParametersTxt2Img;
                 entity.Img2ImgParameters = ParametersImg2Img;
@@ -1142,6 +1166,18 @@ namespace BlazorWebApp.Services
                 await _db.UpdateState(entity);
             }
             else await _db.UpdateState(state);
+        }
+
+        /// <summary>
+        /// Normalizes state and parameters to ensure all properties exist with default values.
+        /// Uses reflection to automatically discover and initialize null properties.
+        /// </summary>
+        private void NormalizeState()
+        {
+            StateNormalizer.Normalize(State);
+            StateNormalizer.Normalize(ParametersTxt2Img);
+            StateNormalizer.Normalize(ParametersImg2Img);
+            StateNormalizer.Normalize(ParametersUpscale);
         }
     }
 }

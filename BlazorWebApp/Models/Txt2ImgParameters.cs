@@ -14,6 +14,7 @@ namespace BlazorWebApp.Models
         public int HRWidth { get; set; }
         public int HRHeight { get; set; }
         public SeedVR2Parameters SeedVR2 { get; set; }
+        public ConditioningVariationParameters ConditioningVariation { get; set; }
         public Txt2ImgScriptParameters Scripts { get; set; }
 
         public Txt2ImgParameters() { }

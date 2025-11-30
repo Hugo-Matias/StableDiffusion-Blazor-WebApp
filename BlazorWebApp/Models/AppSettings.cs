@@ -125,6 +125,7 @@ namespace BlazorWebApp.Models
     {
         public HighresSettingsModel HighRes { get; set; } = new();
         public SeedVR2Settings SeedVR2 { get; set; } = new();
+        public ConditioningVariationSettings ConditioningVariation { get; set; } = new();
     }
     public class HighresSettingsModel
     {
@@ -182,6 +183,12 @@ namespace BlazorWebApp.Models
         public IntRange BatchSize { get; set; } = new() { Min = 1, Max = 10, Value = 1, Step = 1 };
         public DoubleRange InputNoiseScale { get; set; } = new() { Min = 0, Max = 1, Value = 0.0, Step = 0.01 };
         public DoubleRange LatentNoiseScale { get; set; } = new() { Min = 0, Max = 1, Value = 0.0, Step = 0.01 };
+    }
+
+    public class ConditioningVariationSettings
+    {
+        public bool Enabled { get; set; } = false;
+        public DoubleRange SwitchPoint { get; set; } = new() { Min = 0, Max = 1, Value = 0.2, Step = 0.05 };
     }
     #endregion
 

@@ -1,0 +1,29 @@
+﻿@using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
+@inject ManagerService M
+
+<MudText Typo="Typo.button" Style="opacity:0.2;">Conditioning Variation</MudText>
+<MudGrid>
+    <MudItem xs="12">
+        <MudSlider @bind-Value=Parameters.SwitchPoint
+                   Min=M.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Min
+                   Max=M.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Max
+                   Step=M.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Step
+                   ValueLabel=true>
+            <small>Empty Prompt Duration:</small> @((Parameters.SwitchPoint * 100).Value.ToString("F0"))% (@Parameters.SwitchPoint.Value.ToString("F2"))
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+            <MudText Typo="Typo.caption">
+                <strong>Conditioning Variation</strong> renders the first <strong>@((Parameters.SwitchPoint * 100).Value.ToString("F0"))%</strong> of steps with an empty prompt,
+                then switches to your actual prompt for the remaining steps. This provides output variability while maintaining the core concept.
+                <br /><br />
+                <em>Tip: Lower values (10-20%) add subtle variation, higher values (30-40%) create more diverse outputs.</em>
+            </MudText>
+        </MudAlert>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ConditioningVariationParameters Parameters { get; set; }
+}

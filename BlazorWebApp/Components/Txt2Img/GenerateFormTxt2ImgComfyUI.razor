@@ -79,6 +79,7 @@
                     <MudChip Text="ADetailer" Default="Parameters.Scripts.ADetailer.IsEnabled" Variant="Variant.Text" Color="Color.Primary">ADetailer</MudChip>
                     <MudChip Text="Upscale" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Upscale</MudChip>
                     <MudChip Text="SeedVR2" Default="Parameters.SeedVR2?.IsActive" Variant="Variant.Text" Color="Color.Primary">SeedVR2 Upscale</MudChip>
+                    <MudChip Text="Conditioning Variation" Default="Parameters.ConditioningVariation.IsActive" Variant="Variant.Text" Color="Color.Primary">Conditioning Variation</MudChip>
                 </MudChipSet>
             </MudItem>
             <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.ADetailer.IsEnabled ? "show" : "")}")">
@@ -176,6 +177,9 @@
                     </MudItem>
                 </MudGrid>
             </MudItem>
+            <MudItem xs="12" Class="@($"collapse {(Parameters.ConditioningVariation.IsActive.Value ? "show" : "")}")">
+                <ConditioningVariationForm Parameters=Parameters.ConditioningVariation />
+            </MudItem>
         </MudGrid>
     </EditForm>
 </div>
@@ -195,6 +199,7 @@
         if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
         if (Parameters.Loras == null) Parameters.Loras = new List<Lora>();
         if (Parameters.SeedVR2 == null) Parameters.SeedVR2 = new SeedVR2Parameters();
+        // if (Parameters.ConditioningVariation == null) Parameters.ConditioningVariation = new ConditioningVariationParameters();
         
         // Initialize the scale multiplier from existing resolution if available
         if (Parameters.SeedVR2.Resolution > 0 && Parameters.Width > 0 && Parameters.Height > 0)
@@ -255,6 +260,7 @@
         Parameters.Scripts.ADetailer.IsEnabled = false;
         Parameters.EnableHR = false;
         if (Parameters.SeedVR2 != null) Parameters.SeedVR2.IsActive = false;
+        if (Parameters.ConditioningVariation != null) Parameters.ConditioningVariation.IsActive = false;
         
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
@@ -271,6 +277,10 @@
                 case "SeedVR2":
                     if (Parameters.SeedVR2 == null) Parameters.SeedVR2 = new SeedVR2Parameters();
                     Parameters.SeedVR2.IsActive = true;
+                    break;
+                case "Conditioning Variation":
+                    if (Parameters.ConditioningVariation == null) Parameters.ConditioningVariation = new ConditioningVariationParameters();
+                    Parameters.ConditioningVariation.IsActive = true;
                     break;
             }
         }

@@ -38,7 +38,13 @@
         "positive": {{ Prompt | json }},
         "negative": {{ NegativePrompt | json }}
       }
-    },    
+    }, 
+    {
+      "fragment": "conditioning-variation.sbn",
+      "parameters": {
+        "switch_point": {{ ConditioningVariation.SwitchPoint ?? 0.2 | json }}
+      }
+    },   
     {
       "fragment": "sampler.sbn",
       "parameters": {
