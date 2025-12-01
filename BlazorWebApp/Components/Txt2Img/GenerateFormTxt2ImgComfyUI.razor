@@ -58,15 +58,32 @@
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
             </MudItem>
-            <MudItem xs="3">
-                <MudText Typo="Typo.caption">Quick Resolution: </MudText>
-            </MudItem>
-            <MudItem xs="9">
-                <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary">
-                    <MudButton OnClick=@(() => SetResolution(512, 768)) ButtonType="ButtonType.Button">512x768</MudButton>
-                    <MudButton OnClick=@(() => SetResolution(832, 1248)) ButtonType="ButtonType.Button">832x1248</MudButton>
-                    <MudButton OnClick=@(() => SetResolution((int)Parameters.Height, (int)Parameters.Width))  StartIcon="fa-solid fa-image-portrait" ButtonType="ButtonType.Button">Rotate</MudButton>
-                </MudButtonGroup>
+            <MudItem xs="12">
+                <MudText Typo="Typo.caption" Class="mb-4">Quick Resolution:</MudText>
+                <MudGrid Spacing="2">
+                    @foreach (var res in M.Settings.Generation.Shared.QuickResolutions)
+                    {
+                        <MudItem xs="6" sm="4" md="3" lg="2">
+                            <MudButton OnClick="@(() => SetResolution(res.Width, res.Height))"
+                                       Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       FullWidth
+                                       Size="Size.Small">
+                                @res.Label
+                            </MudButton>
+                        </MudItem>
+                    }
+                    <MudItem xs="12" Class="mt-2">
+                        <MudButton OnClick="@(() => SetResolution((int)Parameters.Height, (int)Parameters.Width))"
+                                   StartIcon="fa-solid fa-image-portrait"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   FullWidth
+                                   Size="Size.Small">
+                            Rotate
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
             </MudItem>
             <MudItem xs="6">
                 <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>

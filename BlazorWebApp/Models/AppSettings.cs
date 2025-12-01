@@ -46,6 +46,13 @@ namespace BlazorWebApp.Models
         public DistilledCfgSettingsModel DistilledCfg { get; set; } = new();
         public DenoisingSettingsModel Denoising { get; set; } = new();
         public LLMEnhancerSettingsModel LLMEnhancer { get; set; } = new();
+        public List<QuickResolution> QuickResolutions { get; set; } = new()
+        {
+            new() { Width = 512, Height = 768 },
+            new() { Width = 832, Height = 1248 },
+            new() { Width = 1024, Height = 1024 },
+            new() { Width = 1920, Height = 1088 },
+        };
     }
 
     public class StepsSettingsModel
@@ -1270,6 +1277,13 @@ namespace BlazorWebApp.Models
         public double Max { get; set; }
         public double Value { get; set; }
         public double Step { get; set; }
+    }
+
+    public class QuickResolution
+    {
+        public string Label => $"{Width}x{Height}";
+        public int Width { get; set; }
+        public int Height { get; set; }
     }
     #endregion
 }
