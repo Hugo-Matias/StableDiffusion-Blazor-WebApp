@@ -3,6 +3,15 @@ using System.Reflection;
 namespace BlazorWebApp.Extensions
 {
     /// <summary>
+    /// Marks a property as intentionally nullable and excludes it from normalization.
+    /// Ex: Use for bool? tri-state scenarios filters where null has semantic meaning.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+    public class PreserveNullAttribute : Attribute
+    {
+    }
+
+    /// <summary>
     /// Automatically normalizes state objects by ensuring all nullable reference types and collections are initialized.
     /// Uses reflection to discover and initialize properties without manual tracking.
     /// </summary>
@@ -40,6 +49,10 @@ namespace BlazorWebApp.Extensions
                     // Handle null values
                     if (value == null)
                     {
+                        // Skip normalization if property is marked with PreserveNullAttribute
+                        if (property.GetCustomAttribute<PreserveNullAttribute>() != null)
+                            continue;
+
                         var newValue = CreateDefaultValue(propertyType);
                         if (newValue != null)
                         {

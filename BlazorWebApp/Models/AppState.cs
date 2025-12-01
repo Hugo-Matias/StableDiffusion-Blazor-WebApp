@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
 using MudBlazor;
 using static BlazorWebApp.Data.Enums;
 
@@ -165,6 +166,7 @@ namespace BlazorWebApp.Models
         public bool IsInclusive { get; set; } = true;
         public bool LoadTriggerWords { get; set; }
         public float Weight { get; set; }
+        [PreserveNull]
         public bool? ResourceIsEnabledFilter { get; set; }
         public string OrderBy { get; set; }
         public bool OrderByDescending { get; set; }

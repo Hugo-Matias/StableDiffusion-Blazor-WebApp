@@ -123,13 +123,21 @@ namespace BlazorWebApp.Services
             else if (resourceType.Equals("Hypernetwork", comp)) keyword = $", <hypernet:{filename}:{weight}>";
             else if (resourceType.Equals("LORA", comp) || resourceType.Equals("LoCon", comp))
             {
+                var resourcesPath = _configuration["ResourcesPath"];
+                var loraBasePath = Path.Combine(resourcesPath, resourceType);
+                var fullPath = file.File.FullName;
+                var subPath = fullPath.StartsWith(loraBasePath, comp)
+                    ? fullPath.Substring(loraBasePath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                    : file.File.Name;
+
+
                 if (target.Item1 == ModeType.Txt2Img)
                 {
-                    _m.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _m.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
                 else if (target.Item1 == ModeType.Img2Img)
                 {
-                    _m.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _m.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
             }
 
