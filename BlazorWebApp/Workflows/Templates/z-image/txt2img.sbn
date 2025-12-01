@@ -21,7 +21,7 @@
     {{~ if Loras && Loras.size > 0 ~}}
     {{~ for lora in Loras ~}}
     {
-      "fragment": "lora-loader-zit.sbn",
+      "fragment": "lora-loader.sbn",
       "parameters": {
         "lora_loader_id": "lora_loader_{{ for.index }}",
         "lora_name": {{ lora.Name | json }},

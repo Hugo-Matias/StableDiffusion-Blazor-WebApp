@@ -16,9 +16,9 @@
       "model": {{ get_ref "model_output" }},
       "clip": {{ get_ref "clip_output" }}
     },
-    "class_type": "LoraLoaderZImage",
+    "class_type": "LoraLoader",
     "_meta": {
-      "title": "LoRA Loader Z-Image"
+      "title": "LoRA Loader"
     }
   }
 }
