@@ -4,50 +4,62 @@
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<div style="@Style">
-    <MudContainer MaxWidth="MaxWidth.Large">
-        <MudStack AlignItems="AlignItems.Center">
-            @if (Images.Images is not null && Images.Images.Count > 0)
+<div style="@Style" class="images-container-wrapper">
+    <div class="images-container-toolbar">
+        @if (Images.Images is not null && Images.Images.Count > 0)
+        {
+            @if (Images.PageCount > 1)
             {
-                @if (Images.PageCount > 1)
-                {
-                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
-                }
-                <MudStack Row=true>
-                    <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
-                    <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
-                    @if (CanSelect && M.SelectedImageIds.Count > 0)
-                    {
-                        <MudButtonGroup OverrideStyles=false>
-                            <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
-                            <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
-                        </MudButtonGroup>
-                        <MudButtonGroup OverrideStyles=false>
-                            <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">@($"Clear ({M.SelectedImageIds.Count})")</MudButton>
-                            <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
-                        </MudButtonGroup>
-                    }
-                </MudStack>
-                <MudGrid Class="mt-n7" Spacing="1" Justify="Justify.Center">
-                    @if (Images.Images.Count > 0)
-                    {
-                        @foreach (var image in Images.Images)
-                        {
-                            <ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowImageViewerDialog" OnDeleteImage="ShowDeleteImageDialog" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" ShowSelectionCheckbox=CanSelect />
-                        }
-                    }
-                </MudGrid>
-                if (Images.PageCount > 1)
-                {
-                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
-                }
+                <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
             }
-            else
+            <div class="toolbar-buttons">
+                <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
+                <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
+                @if (CanSelect && M.SelectedImageIds.Count > 0)
+                {
+                    <div class="selection-btn-group">
+                        <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
+                        <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
+                        <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">@($"Clear ({M.SelectedImageIds.Count})")</MudButton>
+                        <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="images-grid-container">
+        @if (Images.Images is not null && Images.Images.Count > 0)
+        {
+            <MudGrid Spacing="2" Justify="Justify.Center" Class="fixed-height-grid">
+                @foreach (var image in Images.Images)
+                {
+                    <MudItem xs="12" sm="6" md="4" lg="3" xl="2" Class="grid-item-fixed">
+                        <ImageCard Image="@image" 
+                                   Target="fullscreen-modal" 
+                                   OnSelectImage="ShowImageViewerDialog" 
+                                   OnDeleteImage="ShowDeleteImageDialog" 
+                                   OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" 
+                                   ShowSelectionCheckbox=CanSelect
+                                   UseFixedSize="true" />
+                    </MudItem>
+                }
+            </MudGrid>
+            
+            @if (Images.PageCount > 1)
             {
-                <MudProgressCircular Class="mt-10" Color="Color.Primary" Indeterminate />
+                <div class="pagination-bottom">
+                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
+                </div>
             }
-        </MudStack>
-    </MudContainer>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+                <MudProgressCircular Color="Color.Primary" Indeterminate />
+            </MudStack>
+        }
+    </div>
 </div>
 
 @code {

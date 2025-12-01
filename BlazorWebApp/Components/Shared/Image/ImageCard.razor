@@ -6,25 +6,29 @@
 @inject IDialogService DialogService
 @implements IDisposable
 
-<div>
-    @if (Image.ModeId != 3)
-    {
-        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content=@(DB.GetSampler(Image.SamplerId).Result.ToString()) Color=@(SetSamplerBadgeColor().Result) Overlap />
-    }
-    else
-    {
-        @*Spacing element to keep top margin consistency*@
-        <MudBadge Style="opacity: 0;" Content="null" Overlap />
-    }
+<div class="@(UseFixedSize ? "fixed-size-card" : "")">
+    <MudRating Class="rating" SelectedValue="Image.Score" SelectedValueChanged="SetScore" MaxValue="3" />
     @if (ShowSelectionCheckbox)
     {
         <MudCheckBox Class=@($"select-checkbox {(_isSelected ? "selected" : "")}") Checked=_isSelected T="bool" CheckedChanged="HandleSelected" Color="Color.Success" UnCheckedColor="Color.Default" />
     }
-    <div class="d-flex flex-column align-center">
-        <MudRating Class="rating" SelectedValue="Image.Score" SelectedValueChanged="SetScore" MaxValue="3" />
-    </div>
-    <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
-        <MudCardMedia Image=@IO.GetImageStaticFile(Image.Path) />
+
+    <MudCard Style="width: 100%; height: 100%;" Elevation="4" Class="@(UseFixedSize ? "fixed-card" : "")">
+        @if (UseFixedSize)
+        {
+            <div class="fixed-image-container">
+                <MudImage Src="@IO.GetImageStaticFile(Image.Path)"
+                          Style="min-width: 100%; min-height: 100%; width: 100%; height: 100%; object-fit: cover; object-position: center;"
+                          Class="fixed-image"
+                          ObjectFit="ObjectFit.Cover" />
+            </div>
+        }
+        else
+        {
+            <MudImage Src="@IO.GetImageStaticFile(Image.Path)"
+                      Style="display:block; width:100%; height:auto;"
+                      ObjectFit="ObjectFit.Contain" />
+        }
         <MudCardContent Class="pb-n4">
             @if (Image.ModeId != 3)
             {
@@ -38,7 +42,6 @@
                     {
                         <span class="separator ms-2">|</span>
                         <MudIcon Icon="fa-solid fa-braille info-icon" />
-
                         @Image.DenoisingStrength
                     }
                 </MudText>
@@ -95,12 +98,13 @@
     [Parameter] public EventCallback<Image> OnDeleteImage { get; set; }
     [Parameter] public EventCallback OnCoverChanged { get; set; }
     [Parameter] public bool ShowSelectionCheckbox { get; set; }
+    [Parameter] public bool UseFixedSize { get; set; } = false;
 
     private bool _isSelected;
 
     protected override void OnInitialized()
     {
-        _isSelected = M.SelectedImageIds.Contains(Image.ProjectId);
+        _isSelected = M.SelectedImageIds.Contains(Image.Id);
         M.OnSelectedImagesChanged += Refresh;
         M.OnRefreshImagesContainer += Refresh;
     }
@@ -133,33 +137,6 @@
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
         if (img2img) M.CanvasImageData = data;
         else M.UpscaleImageData = data;
-    }
-
-    private async Task<Color> SetSamplerBadgeColor()
-    {
-        switch (await DB.GetSampler(Image.SamplerId))
-        {
-            case "Euler":
-            case "Euler a":
-                return Color.Success;
-            case "Heun":
-                return Color.Secondary;
-            case "DDIM":
-                return Color.Dark;
-            case "DPM2":
-            case "DPM2 a":
-                return Color.Warning;
-            case "LMS":
-            case "PLMS":
-                return Color.Error;
-            case "DPM++ 2S a":
-            case "DPM++ 2M":
-            case "DPM fast":
-            case "DPM adaptive":
-                return Color.Tertiary;
-            default:
-                return Color.Info;
-        }
     }
 
     private void ShowImageInfoDialog()

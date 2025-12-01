@@ -149,6 +149,7 @@ namespace BlazorWebApp.Models
         public bool IsSelectedOnly { get; set; } = false;
         public int Score { get; set; } = 0;
         public bool IsScore { get; set; } = false;
+        public bool UseInfiniteScroll { get; set; } = true;
     }
 
     public enum GalleryOrderBy { Random, Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }

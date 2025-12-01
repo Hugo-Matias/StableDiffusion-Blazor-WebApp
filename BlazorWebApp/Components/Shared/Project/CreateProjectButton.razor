@@ -2,7 +2,7 @@
 @inject DatabaseService DB
 @inject IDialogService DialogService
 
-<MudButton OnClick=@(async () => await ShowModal()) ButtonType="ButtonType.Button" Variant="Variant" Color="Color">
+<MudButton OnClick=@(async () => await ShowModal()) ButtonType="ButtonType.Button" Variant="Variant" Color="Color" Class="@Class">
     @ChildContent
 </MudButton>
 
@@ -11,6 +11,7 @@
     [Parameter] public Color Color { get; set; } = Color.Primary;
     [Parameter] public Variant Variant { get; set; } = Variant.Filled;
     [Parameter] public EventCallback OnProjectCreated { get; set; }
+    [Parameter] public string Class { get; set; }
 
     private Project _newProject = new();
     private DialogOptions _dialogOptions = new() { CloseButton = true, MaxWidth = MaxWidth.Small };

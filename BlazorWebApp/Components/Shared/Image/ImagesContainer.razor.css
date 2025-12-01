@@ -42,6 +42,78 @@
 		opacity: 1;
 	}
 
+.images-container-wrapper {
+    width: 100%;
+    max-width: 85vw;
+    margin: 0 auto;
+}
+
+.images-container-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.toolbar-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.selection-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.images-grid-container {
+    width: 100%;
+}
+
+/* Fixed height grid items for pagination mode */
+::deep .fixed-height-grid .mud-grid-item {
+    display: flex;
+    flex-direction: column;
+}
+
+::deep .grid-item-fixed {
+    height: 100%;
+    min-height: 450px;
+}
+
+.pagination-bottom {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
 ::deep nav {
-	width: fit-content;
+    width: fit-content;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    ::deep .grid-item-fixed {
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .images-container-wrapper {
+        max-width: 95vw;
+    }
+    
+    ::deep .grid-item-fixed {
+        min-height: 350px;
+    }
+}
+
+@media (max-width: 480px) {
+    ::deep .grid-item-fixed {
+        min-height: 300px;
+    }
 }

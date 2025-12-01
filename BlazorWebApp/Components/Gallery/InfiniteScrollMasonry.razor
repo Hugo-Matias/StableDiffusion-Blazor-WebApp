@@ -1,0 +1,186 @@
+﻿@inject DatabaseService DB
+@inject ManagerService M
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+
+<div class="masonry-gallery-wrapper">
+    <div class="gallery-toolbar">
+        <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
+        <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
+        @if (M.SelectedImageIds.Count > 0)
+        {
+            <div class="selection-btn-group">
+                <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
+                <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
+                <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">@($"Clear ({M.SelectedImageIds.Count})")</MudButton>
+                <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
+            </div>
+        }
+    </div>
+
+    <div class="gallery-flex">
+        @foreach (var image in Images.Images)
+        {
+            <div class="gallery-item">
+                <ImageCard Image="@image"
+                           Target="fullscreen-modal"
+                           OnSelectImage="ShowImageViewerDialog"
+                           OnDeleteImage="async () => await DeleteSingleImage(image)"
+                           OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
+                           ShowSelectionCheckbox="true" />
+            </div>
+        }
+    </div>
+
+    @if (_isLoadingNext)
+    {
+        <div class="load-more-spinner">
+            <MudProgressCircular Color="Color.Primary" Indeterminate />
+        </div>
+    }
+    else if (!Images.HasNext)
+    {
+        <div class="end-of-results">
+            <MudText Typo="Typo.caption">End of gallery</MudText>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ImagesDto Images { get; set; } = new();
+    [Parameter] public EventCallback OnLoadNextPage { get; set; }
+    [Parameter] public EventCallback OnImagesChanged { get; set; }
+
+    private bool _isLoadingNext;
+    private IJSObjectReference? _infiniteScrollModule;
+    private DotNetObjectReference<InfiniteScrollMasonry>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeInfiniteScroll();
+        }
+    }
+
+    private async Task InitializeInfiniteScroll()
+    {
+        if (_infiniteScrollModule == null)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _infiniteScrollModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/InfiniteMasonry.js");
+            await _infiniteScrollModule.InvokeAsync<IJSObjectReference>("attachWindowScroll", _dotNetRef, new { threshold = 500 });
+        }
+    }
+
+    [JSInvokable]
+    public async Task LoadNextPage()
+    {
+        if (_isLoadingNext || Images == null || !Images.HasNext) return;
+
+        _isLoadingNext = true;
+        await OnLoadNextPage.InvokeAsync();
+        _isLoadingNext = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ShowSelectionsDialog()
+    {
+        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
+        DialogService.Show<SelectionsDialog>("", options);
+    }
+
+    private void ShowImageViewerDialog(Image image)
+    {
+        var param = new DialogParameters();
+        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
+        param.Add("Images", new List<Image>() { image });
+        DialogService.Show<ImageViewerDialog>("", param, options);
+    }
+
+    private void ShowAllImagesViewerDialog()
+    {
+        var param = new DialogParameters();
+        var options = new DialogOptions() { MaxWidth = MaxWidth.ExtraLarge, CloseButton = true };
+        param.Add("Images", Images.Images);
+        DialogService.Show<ImageViewerDialog>("", param, options);
+    }
+
+    private async Task DeleteSingleImage(Image image)
+    {
+        await DB.DeleteImage(image);
+        Images.Images.Remove(image);
+        Snackbar.Add("Image deleted successfully.", Severity.Success);
+        await OnImagesChanged.InvokeAsync();
+    }
+
+    private async Task ShowDeleteImagesDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "OkButtonText", "Yes" },
+            { "CancelButtonText", "No" },
+            { "OkButtonColor", Color.Error },
+            { "Content", new MarkupString("<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected images?<br /></span><small>This action is irreversible!</small>") }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Images", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            foreach (var img in selectedImages)
+            {
+                await DB.DeleteImage(img);
+                Images.Images.RemoveAll(i => i.Id == img.Id);
+            }
+            Snackbar.Add("All selected images deleted successfully.", Severity.Success);
+            M.ClearSelectedImages();
+            await OnImagesChanged.InvokeAsync();
+        }
+    }
+
+    private async Task ShowSwitchProjectDialog()
+    {
+        var param = new DialogParameters();
+        var selectedImages = await DB.GetImages(M.SelectedImageIds);
+        param.Add("Images", selectedImages);
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var updatedImages = (List<Image>)result.Data;
+            await DB.UpdateImages(updatedImages);
+            Snackbar.Add("Images projects were changed.", Severity.Success);
+            M.ClearSelectedImages();
+            await OnImagesChanged.InvokeAsync();
+        }
+    }
+
+    private void SelectAll()
+    {
+        if (Images?.Images == null) return;
+        foreach (var id in Images.Images.Select(i => i.Id))
+            M.AddSelectedImage(id);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_infiniteScrollModule != null)
+        {
+            try
+            {
+                await _infiniteScrollModule.InvokeVoidAsync("dispose");
+                await _infiniteScrollModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+            catch (Exception) { }
+            _infiniteScrollModule = null;
+        }
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+}
