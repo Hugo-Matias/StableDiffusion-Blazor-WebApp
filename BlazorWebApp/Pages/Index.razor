@@ -161,11 +161,15 @@ else
     {
         await Task.Delay(300);
 
-        // Check if we have a scrollbar, if not and there are more pages, load them
-        while (images != null && images.HasNext && !await HasScrollbar())
+        // Prevent infinite loop by limiting the number of preloaded pages while checking for scrollbar
+        const int MAX_PRELOAD_PAGES = 3;
+        int loadedPages = 0;
+
+        while (images != null && images.HasNext && !await HasScrollbar() && loadedPages < MAX_PRELOAD_PAGES)
         {
             await LoadNextPage();
-            await Task.Delay(200); // Brief delay between loads
+            loadedPages++;
+            await Task.Delay(200);
         }
     }
 

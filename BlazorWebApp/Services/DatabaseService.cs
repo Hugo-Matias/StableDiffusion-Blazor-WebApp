@@ -378,48 +378,53 @@ namespace BlazorWebApp.Services
             switch (state.OrderBy)
             {
                 case GalleryOrderBy.Date:
-                    query = query.OrderBy(i => i.DateCreated);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.DateCreated) : query.OrderBy(i => i.DateCreated);
                     break;
                 case GalleryOrderBy.Sampler:
-                    query = query.OrderBy(i => i.SamplerId);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.SamplerId) : query.OrderBy(i => i.SamplerId);
                     break;
                 case GalleryOrderBy.Seed:
-                    query = query.OrderBy(i => i.Seed);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Seed) : query.OrderBy(i => i.Seed);
                     break;
                 case GalleryOrderBy.Steps:
-                    query = query.OrderBy(i => i.Steps);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Steps) : query.OrderBy(i => i.Steps);
                     break;
                 case GalleryOrderBy.CfgScale:
-                    query = query.OrderBy(i => i.CfgScale);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.CfgScale) : query.OrderBy(i => i.CfgScale);
                     break;
                 case GalleryOrderBy.Width:
-                    query = query.OrderBy(i => i.Width);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Width) : query.OrderBy(i => i.Width);
                     break;
                 case GalleryOrderBy.Height:
-                    query = query.OrderBy(i => i.Height);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Height) : query.OrderBy(i => i.Height);
                     break;
                 case GalleryOrderBy.Favorite:
-                    query = query.OrderBy(i => i.Favorite);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Favorite) : query.OrderBy(i => i.Favorite);
                     break;
                 case GalleryOrderBy.Mode:
-                    query = query.OrderBy(i => i.ModeId);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.ModeId) : query.OrderBy(i => i.ModeId);
                     break;
                 case GalleryOrderBy.Denoising:
-                    query = query.OrderBy(i => i.DenoisingStrength);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.DenoisingStrength) : query.OrderBy(i => i.DenoisingStrength);
                     break;
                 case GalleryOrderBy.Random:
                     query = query.OrderBy(i => EF.Functions.Random());
                     break;
             }
 
-            var images = await query.Include(i => i.Model).ToListAsync();
-            if (state.OrderDescending) images.Reverse();
+            var totalCount = await query.CountAsync();
+            var pageCount = Math.Ceiling(totalCount / (float)PageSize);
 
-            var pageCount = Math.Ceiling(images.Count / (float)PageSize);
+            var images = await query
+                .Skip((page - 1) * PageSize)
+                .Take(PageSize)
+                .Include(i => i.Model)
+                .AsNoTracking()
+                .ToListAsync();
 
             return new ImagesDto
             {
-                Images = images.Skip((page - 1) * PageSize).Take(PageSize).ToList(),
+                Images = images,
                 CurrentPage = page,
                 PageCount = (int)pageCount,
                 HasNext = (int)pageCount > 1 && page < (int)pageCount,
