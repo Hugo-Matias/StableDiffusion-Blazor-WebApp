@@ -14,11 +14,39 @@
 	background: var(--mud-palette-surface);
 	border-radius: 4px;
 	padding-right: 0.5rem;
+	overflow: hidden;
 }
 
 	.tabs-header-container ::deep .mud-tabs {
 		flex: 1;
+		min-width: 0;
+		overflow-x: auto;
+		overflow-y: hidden;
 	}
+
+	.tabs-header-container ::deep .mud-tabs-toolbar {
+		overflow-x: auto;
+		overflow-y: hidden;
+		flex-wrap: nowrap;
+	}
+
+		.tabs-header-container ::deep .mud-tabs-toolbar::-webkit-scrollbar {
+			height: 6px;
+		}
+
+		.tabs-header-container ::deep .mud-tabs-toolbar::-webkit-scrollbar-track {
+			background: rgba(0, 0, 0, 0.05);
+			border-radius: 3px;
+		}
+
+		.tabs-header-container ::deep .mud-tabs-toolbar::-webkit-scrollbar-thumb {
+			background: rgba(0, 0, 0, 0.2);
+			border-radius: 3px;
+		}
+
+		.tabs-header-container ::deep .mud-tabs-toolbar::-webkit-scrollbar-thumb:hover {
+			background: rgba(0, 0, 0, 0.3);
+		}
 
 .tabs-actions {
 	display: flex;
