@@ -74,10 +74,10 @@
     width: 100%;
 }
 
-/* Fixed height grid items for pagination mode */
 ::deep .fixed-height-grid .mud-grid-item {
     display: flex;
     flex-direction: column;
+    min-width: 250px;
 }
 
 ::deep .grid-item-fixed {
@@ -95,7 +95,6 @@
     width: fit-content;
 }
 
-/* Responsive adjustments */
 @media (max-width: 1200px) {
     ::deep .grid-item-fixed {
         min-height: 400px;
@@ -110,10 +109,18 @@
     ::deep .grid-item-fixed {
         min-height: 350px;
     }
+    
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 200px;
+    }
 }
 
 @media (max-width: 480px) {
     ::deep .grid-item-fixed {
         min-height: 300px;
+    }
+    
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 180px;
     }
 }

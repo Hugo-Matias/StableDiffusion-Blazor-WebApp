@@ -10,7 +10,6 @@
 		opacity: 1;
 	}
 
-/* Fixed size card container */
 div.fixed-size-card {
 	height: 100%;
 	display: flex;
@@ -98,7 +97,6 @@ div.fixed-size-card {
 	transition: opacity 0.2s ease-in-out;
 }
 
-/* Responsive adjustments for fixed size */
 @media (max-width: 1200px) {
 	.fixed-image-container {
 		height: 300px;
