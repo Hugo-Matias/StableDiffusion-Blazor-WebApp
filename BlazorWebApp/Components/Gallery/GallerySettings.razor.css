@@ -9,11 +9,10 @@
 
 .tabs-header-container {
 	display: flex;
-	align-items: center;
-	gap: 1rem;
-	background: var(--mud-palette-surface);
+	align-items: stretch;
+	gap: 0;
+	background: transparent;
 	border-radius: 4px;
-	padding-right: 0.5rem;
 	overflow: hidden;
 }
 
@@ -22,13 +21,19 @@
 		min-width: 0;
 		overflow-x: auto;
 		overflow-y: hidden;
+		background: rgba(0, 0, 0, 0.15);
+		border-radius: 4px 0 0 4px;
+		display: flex;
+		align-items: stretch;
 	}
 
-	.tabs-header-container ::deep .mud-tabs-toolbar {
-		overflow-x: auto;
-		overflow-y: hidden;
-		flex-wrap: nowrap;
-	}
+		.tabs-header-container ::deep .mud-tabs .mud-tabs-toolbar {
+			overflow-x: auto;
+			overflow-y: hidden;
+			flex-wrap: nowrap;
+			background: transparent;
+			min-height: 48px;
+		}
 
 		.tabs-header-container ::deep .mud-tabs-toolbar::-webkit-scrollbar {
 			height: 6px;
@@ -48,11 +53,19 @@
 			background: rgba(0, 0, 0, 0.3);
 		}
 
+	.tabs-header-container ::deep .mud-tabs-panels {
+		border: none !important;
+		box-shadow: none !important;
+	}
+
 .tabs-actions {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
-	padding: 0.25rem;
+	padding: 0.5rem;
+	background: rgba(0, 0, 0, 0.15);
+	border-radius: 0 4px 4px 0;
+	min-height: 48px;
 }
 
 	.tabs-actions ::deep .mud-icon-button {
@@ -60,18 +73,27 @@
 	}
 
 		.tabs-actions ::deep .mud-icon-button:hover {
-			transform: scale(1.1);
+			transform: scale(1.05);
 		}
 	
 	.tabs-actions ::deep .action-button-uniform,
 	.tabs-actions ::deep .action-button-uniform button {
-		min-width: 48px !important;
-		width: 48px;
-		height: 48px;
-		padding: 12px !important;
+		min-width: 30px !important;
+		width: 30px;
+		height: 30px;
+		padding: 8px !important;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+		.tabs-actions ::deep .action-button-uniform .mud-icon-root {
+			font-size: 1rem;
+		}
+
+	.tabs-actions ::deep .mud-divider {
+		margin: 0 0.25rem;
+		height: 32px;
 	}
 
 .empty-projects-message {
@@ -168,7 +190,6 @@
 			font-size: 1.1rem;
 		}
 
-/* Prevent shift on toggle */
 .filter-toggles-compact ::deep .mud-icon-button-root {
 	transition: none !important;
 }
@@ -188,51 +209,30 @@
 	border-radius: 4px;
 }
 
-/* Ensure grid items maintain consistent height */
 ::deep .mud-grid-item {
 	align-self: stretch;
 }
 
-@media (max-width: 960px) {
-	.tabs-header-container {
-		flex-direction: column;
-		align-items: stretch;
-	}
+.folder-tab-content {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	min-width: 120px;
+	padding: 0 0.25rem;
+	position: relative;
+}
 
-	.tabs-actions {
-		justify-content: center;
-		border-top: 1px solid rgba(0, 0, 0, 0.12);
-		padding-top: 0.5rem;
-	}
+.folder-tab-title {
+	flex: 1;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 0.875rem;
+	padding: 0 0.25rem;
+}
 
-	.filter-collapse { 
-		max-width: 98%;
-	}
-
-	.filter-section {
-		max-width: 100%;
-	}
-
-	.filter-section ::deep .mud-grid {
-		gap: 1rem;
-	}
-
-	.action-buttons-center {
-		position: static;
-		transform: none;
-	}
-
-	.modes-action-section {
-		align-items: center;
-	}
-
-	.mode-chips-action {
-		justify-content: center;
-	}
-
-	.filter-toggles-compact {
-		flex-direction: row;
-		gap: 0.5rem;
-		max-height: none;
-	}
+.folder-nav-arrow ::deep .mud-icon-root {
+	font-size: 1rem;
 }

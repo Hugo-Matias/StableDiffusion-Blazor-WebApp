@@ -41,7 +41,9 @@ namespace BlazorWebApp.Services
         public async Task<List<Folder>> GetFolders()
         {
             using var context = await _factory.CreateDbContextAsync();
-            return await context.Folders.ToListAsync();
+            return await context.Folders
+                .OrderBy(f => f.SortOrder)
+                .ToListAsync();
         }
 
         public async Task<List<Folder>> GetFolders(string name)
@@ -962,5 +964,15 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task UpdateFolderSortOrder(int folderId, int newSortOrder)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var folder = await context.Folders.FindAsync(folderId);
+            if (folder != null)
+            {
+                folder.SortOrder = newSortOrder;
+                await context.SaveChangesAsync();
+            }
+        }
     }
 }
