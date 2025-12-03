@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.Ollama;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using MudBlazor;
@@ -40,6 +41,19 @@ namespace BlazorWebApp.Models
                 {
                     IsEnabled = true,
                     EnableFuzzySearch = true
+                },
+                LLM = new()
+                {
+                    Options = new()
+                    {
+                        Seed = settings.Generation.Shared.LLMEnhancer.Seed.Value,
+                        Temperature = settings.Generation.Shared.LLMEnhancer.Temperature.Value,
+                        TopK = settings.Generation.Shared.LLMEnhancer.TopK.Value,
+                        TopP = settings.Generation.Shared.LLMEnhancer.TopP.Value,
+                        MinP = settings.Generation.Shared.LLMEnhancer.MinP.Value,
+                        NumCtx = settings.Generation.Shared.LLMEnhancer.NumCtx.Value,
+                        NumPredict = settings.Generation.Shared.LLMEnhancer.NumPredict.Value
+                    }
                 }
             };
             Resources = new()
@@ -112,13 +126,38 @@ namespace BlazorWebApp.Models
     {
         public string Prompt { get; set; } = string.Empty;
         public string NegativePrompt { get; set; } = string.Empty;
-        public long Seed { get; set; } = -1;
         public string Instructions { get; set; } = string.Empty;
         public string NegativeInstructions { get; set; } = string.Empty;
         public string EnhancedPrompt { get; set; } = string.Empty;
         public string EnhancedNegativePrompt { get; set; } = string.Empty;
         public string LastPromptId { get; set; } = string.Empty;
         public string LastNegativePromptId { get; set; } = string.Empty;
+        public AppStateOllamaOptions Options { get; set; } = new();
+    }
+
+    public class AppStateOllamaOptions
+    {
+        public int Seed { get; set; } = -1;
+        public float Temperature { get; set; } = 1.0f;
+        public int TopK { get; set; } = 50;
+        public float TopP { get; set; } = 0.9f;
+        public float MinP { get; set; } = 0.05f;
+        public int NumCtx { get; set; } = 8192;
+        public int NumPredict { get; set; } = 500;
+
+        public OllamaOptions ToOllamaOptions()
+        {
+            return new OllamaOptions
+            {
+                Seed = Seed >= 0 ? Seed : null,
+                Temperature = Temperature,
+                TopK = TopK,
+                TopP = TopP,
+                NumPredict = NumPredict,
+                MinP = MinP > 0 ? MinP : null,
+                NumCtx = NumCtx > 0 ? NumCtx : null
+            };
+        }
     }
 
     public class AppStateGenerationAutocomplete

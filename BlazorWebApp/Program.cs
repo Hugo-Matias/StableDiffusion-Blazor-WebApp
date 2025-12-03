@@ -43,6 +43,7 @@ builder.Services.AddSingleton<DynamicPromptsService>();
 builder.Services.AddSingleton<CacheService>();
 
 builder.Services.AddScoped<JavascriptService>();
+builder.Services.AddScoped<OllamaService>();
 
 builder.Services.AddTransient<MagickService>();
 

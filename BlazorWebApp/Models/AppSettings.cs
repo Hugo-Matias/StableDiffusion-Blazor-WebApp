@@ -123,8 +123,15 @@ namespace BlazorWebApp.Models
         public string Model { get; set; } = "Llama-3.2-3B-Instruct-abliterated.Q5_K_M.gguf";
         public string Instructions { get; set; } = "Expand this simple prompt into a detailed, descriptive image generation prompt: \"{prompt}\". Add artistic details, lighting, mood, and composition elements. Keep it concise with as few paragraphs as possible.";
         public string NegativeInstructions { get; set; } = "Expand this negative prompt with detailed descriptions of what to avoid: \"{prompt}\". Add specific undesired elements, artifacts, and quality issues. Keep it concise with as few paragraphs as possible.";
-        public int MaxToken { get; set; } = 4096;
+        public IntRange Seed { get; set; } = new() { Min = -1, Max = int.MaxValue, Value = -1, Step = 1 };
+        public FloatRange Temperature { get; set; } = new() { Min = 0f, Max = 2f, Value = 1.0f, Step = 0.1f };
+        public IntRange TopK { get; set; } = new() { Min = 1, Max = 100, Value = 50, Step = 1 };
+        public FloatRange TopP { get; set; } = new() { Min = 0f, Max = 1f, Value = 0.9f, Step = 0.05f };
+        public FloatRange MinP { get; set; } = new() { Min = 0f, Max = 1f, Value = 0.05f, Step = 0.01f };
+        public IntRange NumCtx { get; set; } = new() { Min = 128, Max = 32768, Value = 2048, Step = 128 };
+        public IntRange NumPredict { get; set; } = new() { Min = 50, Max = 8192, Value = 500, Step = 50 };
     }
+
     #endregion
 
     #region Txt2Img
@@ -1269,6 +1276,14 @@ namespace BlazorWebApp.Models
         public int Max { get; set; }
         public int Value { get; set; }
         public int Step { get; set; }
+    }
+
+    public class FloatRange
+    {
+        public float Min { get; set; }
+        public float Max { get; set; }
+        public float Value { get; set; }
+        public float Step { get; set; }
     }
 
     public class DoubleRange

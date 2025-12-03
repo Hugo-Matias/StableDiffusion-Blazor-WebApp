@@ -1,12 +1,28 @@
-@using BlazorWebApp.Data.Dtos.ComfyUI
-@inject ComfyUIService ComfyAPI
+@using BlazorWebApp.Data.Dtos.Ollama
+@inject OllamaService OllamaAPI
 @inject ManagerService M
 
 <MudPaper Class="pa-4 mb-4">
     <MudGrid>
         <MudItem xs="12">
-            <MudTextField @bind-Value="_currentPrompt" 
-                          Label="Simple Prompt" 
+            <MudSelect @bind-Value="_selectedModel"
+                      Label="LLM Model"
+                      Variant="Variant.Outlined"
+                      AnchorOrigin="Origin.BottomLeft"
+                      TransformOrigin="Origin.TopLeft">
+                @if (_availableModels != null)
+                {
+                    foreach (var model in _availableModels)
+                    {
+                        <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_currentPrompt"
+                          Label="Simple Prompt"
                           Variant="Variant.Outlined"
                           Lines="3"
                           Placeholder="e.g., beautiful woman, sunset, beach"
@@ -14,8 +30,8 @@
         </MudItem>
 
         <MudItem xs="12">
-            <MudTextField @bind-Value="_currentInstructions" 
-                          Label="Instructions" 
+            <MudTextField @bind-Value="_currentInstructions"
+                          Label="Instructions"
                           Variant="Variant.Outlined"
                           Lines="2"
                           HelperText="Use {prompt} as placeholder for the input prompt"
@@ -23,48 +39,108 @@
         </MudItem>
 
         <MudItem xs="6">
-            <MudNumericField @bind-Value="_currentSeed" 
-                           Label="Seed" 
+            <MudNumericField @bind-Value="M.State.Generation.LLM.Options.Seed"
+                           Label="Seed"
                            Variant="Variant.Outlined"
-                           Min="-1" 
-                           Max="long.MaxValue"
+                           Min="@M.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
+                           Max="@M.Settings.Generation.Shared.LLMEnhancer.Seed.Max"
                            Immediate />
         </MudItem>
 
         <MudItem xs="6" Class="d-flex align-center">
             <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary">
-                <MudButton OnClick="GeneratePrompt" 
+                <MudButton OnClick="GeneratePrompt"
                           Disabled="_isGenerating"
                           StartIcon="@Icons.Material.Filled.AutoAwesome">
                     @(_isGenerating ? "Generating..." : "Enhance Prompt")
                 </MudButton>
-                <MudIconButton Icon="@Icons.Material.Filled.Shuffle" 
-                              OnClick="RandomizeSeed" 
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle"
+                              OnClick="RandomizeSeed"
                               Disabled="_isGenerating" />
             </MudButtonGroup>
         </MudItem>
 
-        @if (!string.IsNullOrEmpty(_currentEnhancedPrompt))
+        <MudItem xs="12">
+            <MudExpansionPanel Text="Advanced Options">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value="M.State.Generation.LLM.Options.Temperature"
+                                   Min="@M.Settings.Generation.Shared.LLMEnhancer.Temperature.Min"
+                                   Max="@M.Settings.Generation.Shared.LLMEnhancer.Temperature.Max"
+                                   Step="@M.Settings.Generation.Shared.LLMEnhancer.Temperature.Step"
+                                   Variant="Variant.Filled"
+                                   ValueLabel><small>Temperature:</small> @M.State.Generation.LLM.Options.Temperature.ToString("F1")</MudSlider>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value="M.State.Generation.LLM.Options.TopP"
+                                   Min="@M.Settings.Generation.Shared.LLMEnhancer.TopP.Min"
+                                   Max="@M.Settings.Generation.Shared.LLMEnhancer.TopP.Max"
+                                   Step="@M.Settings.Generation.Shared.LLMEnhancer.TopP.Step"
+                                   Variant="Variant.Filled"
+                                   ValueLabel><small>Top P:</small> @M.State.Generation.LLM.Options.TopP.ToString("F2")</MudSlider>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.TopK"
+                                       Label="Top K"
+                                       Variant="Variant.Outlined"
+                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
+                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.NumPredict"
+                                       Label="Max Tokens"
+                                       Variant="Variant.Outlined"
+                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
+                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.MinP"
+                                       Label="Min P"
+                                       Variant="Variant.Outlined"
+                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
+                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
+                                       Step="@M.Settings.Generation.Shared.LLMEnhancer.MinP.Step"
+                                       HelperText="Minimum probability threshold (optional)" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.NumCtx"
+                                       Label="Context Length"
+                                       Variant="Variant.Outlined"
+                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
+                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max"
+                                       HelperText="Number of tokens in context (optional)" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudItem>
+
+        @{
+            var enhancedPrompt = IsNegativePrompt 
+                ? M.State.Generation.LLM.EnhancedNegativePrompt 
+                : M.State.Generation.LLM.EnhancedPrompt;
+        }
+
+        @if (!string.IsNullOrEmpty(enhancedPrompt))
         {
             <MudItem xs="12">
                 <MudDivider Class="my-2" />
-                <MudTextField @bind-Value="_currentEnhancedPrompt" 
-                              Label="Enhanced Prompt" 
-                              Variant="Variant.Outlined"
-                              Lines="10" />
+                <MudTextField @bind-Value="_currentEnhancedPrompt"
+                              Label="Enhanced Prompt"
+                              Variant="Variant.Filled"
+                              Lines="20" />
             </MudItem>
 
             <MudItem xs="12">
-                <MudButtonGroup Variant="Variant.Outlined" Color="Color.Success">
-                    <MudButton OnClick="ApplyToMainPrompt" 
+                <MudButtonGroup Variant="Variant.Filled" Color="Color.Success">
+                    <MudButton OnClick="ApplyToMainPrompt"
                               StartIcon="@Icons.Material.Filled.Check">
                         Apply to Main Prompt
                     </MudButton>
-                    <MudButton OnClick="GeneratePrompt" 
+                    <MudButton OnClick="GeneratePrompt"
                               StartIcon="@Icons.Material.Filled.Refresh">
                         Regenerate
                     </MudButton>
-                    <MudButton OnClick="ClearResult" 
+                    <MudButton OnClick="ClearResult"
                               StartIcon="@Icons.Material.Filled.Clear"
                               Color="Color.Default">
                         Clear
@@ -91,41 +167,74 @@
 
     private bool _isGenerating;
     private string? _errorMessage;
-    private string _currentPrompt = string.Empty;
-    private string _currentInstructions = string.Empty;
-    private long _currentSeed = -1;
-    private string _currentEnhancedPrompt = string.Empty;
+    private List<OllamaModel>? _availableModels;
+    private string _selectedModel = string.Empty;
 
-    protected override void OnInitialized()
+    private string _currentPrompt
     {
-        LoadFromState();
-    }
-
-    protected override void OnParametersSet()
-    {
-        LoadFromState();
-    }
-
-    private void LoadFromState()
-    {
-        if (IsNegativePrompt)
+        get => IsNegativePrompt ? M.State.Generation.LLM.NegativePrompt : M.State.Generation.LLM.Prompt;
+        set
         {
-            _currentPrompt = M.State.Generation.LLM.NegativePrompt;
-            _currentInstructions = string.IsNullOrEmpty(M.State.Generation.LLM.NegativeInstructions) 
+            if (IsNegativePrompt)
+                M.State.Generation.LLM.NegativePrompt = value;
+            else
+                M.State.Generation.LLM.Prompt = value;
+        }
+    }
+
+    private string _currentInstructions
+    {
+        get => IsNegativePrompt 
+            ? (string.IsNullOrEmpty(M.State.Generation.LLM.NegativeInstructions) 
                 ? M.Settings.Generation.Shared.LLMEnhancer.NegativeInstructions 
-                : M.State.Generation.LLM.NegativeInstructions;
-            _currentEnhancedPrompt = M.State.Generation.LLM.EnhancedNegativePrompt;
-        }
-        else
-        {
-            _currentPrompt = M.State.Generation.LLM.Prompt;
-            _currentInstructions = string.IsNullOrEmpty(M.State.Generation.LLM.Instructions) 
+                : M.State.Generation.LLM.NegativeInstructions)
+            : (string.IsNullOrEmpty(M.State.Generation.LLM.Instructions) 
                 ? M.Settings.Generation.Shared.LLMEnhancer.Instructions 
-                : M.State.Generation.LLM.Instructions;
-            _currentEnhancedPrompt = M.State.Generation.LLM.EnhancedPrompt;
+                : M.State.Generation.LLM.Instructions);
+        set
+        {
+            if (IsNegativePrompt)
+                M.State.Generation.LLM.NegativeInstructions = value;
+            else
+                M.State.Generation.LLM.Instructions = value;
         }
-        
-        _currentSeed = M.State.Generation.LLM.Seed;
+    }
+
+    private string _currentEnhancedPrompt
+    {
+        get => IsNegativePrompt ? M.State.Generation.LLM.EnhancedNegativePrompt : M.State.Generation.LLM.EnhancedPrompt;
+        set
+        {
+            if (IsNegativePrompt)
+                M.State.Generation.LLM.EnhancedNegativePrompt = value;
+            else
+                M.State.Generation.LLM.EnhancedPrompt = value;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadModels();
+    }
+
+    private async Task LoadModels()
+    {
+        try
+        {
+            _availableModels = await OllamaAPI.GetModels();
+            if (_availableModels != null && _availableModels.Count > 0)
+            {
+                _selectedModel = M.Settings.Generation.Shared.LLMEnhancer.Model;
+                if (!_availableModels.Any(m => m.Name == _selectedModel))
+                {
+                    _selectedModel = _availableModels[0].Name;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load models: {ex.Message}";
+        }
     }
 
     private async Task GeneratePrompt()
@@ -136,34 +245,25 @@
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(_selectedModel))
+        {
+            _errorMessage = "Please select an LLM model first.";
+            return;
+        }
+
         _isGenerating = true;
         _errorMessage = null;
         StateHasChanged();
 
         try
         {
-            SaveToState();
+            var enhancedPrompt = await OllamaAPI.ExpandPrompt(
+                _currentPrompt,
+                _selectedModel,
+                IsNegativePrompt,
+                M.State.Generation.LLM.Options.ToOllamaOptions());
 
-            var request = new LLMRequest
-            {
-                Prompt = _currentPrompt,
-                Seed = _currentSeed,
-                Instructions = _currentInstructions
-            };
-
-            var response = await ComfyAPI.GeneratePromptWithLLM(request, M.ComfyWSClientId);
-            _currentEnhancedPrompt = response.Text;
-
-            if (IsNegativePrompt)
-            {
-                M.State.Generation.LLM.EnhancedNegativePrompt = _currentEnhancedPrompt;
-                M.State.Generation.LLM.LastNegativePromptId = response.PromptId;
-            }
-            else
-            {
-                M.State.Generation.LLM.EnhancedPrompt = _currentEnhancedPrompt;
-                M.State.Generation.LLM.LastPromptId = response.PromptId;
-            }
+            _currentEnhancedPrompt = enhancedPrompt;
 
             await M.SaveState();
         }
@@ -180,8 +280,7 @@
 
     private void RandomizeSeed()
     {
-        _currentSeed = new Random().Next();
-        M.State.Generation.LLM.Seed = _currentSeed;
+        M.State.Generation.LLM.Options.Seed = new Random().Next();
     }
 
     private async Task ApplyToMainPrompt()
@@ -195,35 +294,6 @@
     private async Task ClearResult()
     {
         _currentEnhancedPrompt = string.Empty;
-        _errorMessage = null;
-
-        if (IsNegativePrompt)
-        {
-            M.State.Generation.LLM.EnhancedNegativePrompt = string.Empty;
-            M.State.Generation.LLM.LastNegativePromptId = string.Empty;
-        }
-        else
-        {
-            M.State.Generation.LLM.EnhancedPrompt = string.Empty;
-            M.State.Generation.LLM.LastPromptId = string.Empty;
-        }
-
         await M.SaveState();
-    }
-
-    private void SaveToState()
-    {
-        M.State.Generation.LLM.Seed = _currentSeed;
-        
-        if (IsNegativePrompt)
-        {
-            M.State.Generation.LLM.NegativePrompt = _currentPrompt;
-            M.State.Generation.LLM.NegativeInstructions = _currentInstructions;
-        }
-        else
-        {
-            M.State.Generation.LLM.Prompt = _currentPrompt;
-            M.State.Generation.LLM.Instructions = _currentInstructions;
-        }
     }
 }
