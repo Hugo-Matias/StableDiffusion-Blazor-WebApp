@@ -2,7 +2,7 @@
 
 <div style="display:@(Visible ? "block" : "none");">
     <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="calc(100vh - 45px)" Width="45vw" Fixed>
-        <MudDrawerHeader Class="d-flex flex-row align-items-center" Style="background-color: #776be7">
+        <MudDrawerHeader Class="d-flex flex-row align-items-center" Style="background-color: var(--mud-palette-primary)">
             <MudText Typo="Typo.h6" Color="Color.Dark">Saved Searches</MudText>
             <MudSpacer />
             <MudIconButton OnClick="() => Visible = false" Icon="@Icons.Material.Filled.Close" Color="Color.Dark" />

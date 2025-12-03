@@ -41,6 +41,7 @@ builder.Services.AddSingleton<RouterService>();
 builder.Services.AddSingleton<WorkflowService>();
 builder.Services.AddSingleton<DynamicPromptsService>();
 builder.Services.AddSingleton<CacheService>();
+builder.Services.AddSingleton<ThemeService>();
 
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddScoped<OllamaService>();

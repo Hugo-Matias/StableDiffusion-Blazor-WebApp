@@ -11,6 +11,7 @@ namespace BlazorWebApp.Models
     {
 
         public bool IsDarkMode { get; set; }
+        public string CurrentTheme { get; set; } = "Default";
         public AppStateGeneration Generation { get; set; } = new();
         public AppStateGallery Gallery { get; set; } = new();
         public AppStatePrompts Prompts { get; set; } = new();

@@ -2,11 +2,12 @@
 @inject ManagerService M
 @inject SDAPIService SDAPI
 @inject ComfyUIService CAPI
+@inject ThemeService ThemeService
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
 
-<MudThemeProvider @bind-IsDarkMode=M.State.IsDarkMode />
+<MudThemeProvider @bind-IsDarkMode=M.State.IsDarkMode Theme="_currentTheme" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
@@ -31,6 +32,7 @@
                     }
                 </MudSelect>
             }
+            <MudIconButton Icon="@Icons.Material.Filled.Palette" Color="Color.Inherit" OnClick="ToggleTheme" Title="Toggle Theme" />
             <MudIconButton Class=@(M.State.Generation.SDModel == "Loading..." ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(M.State.Generation.SDModel == "Loading..." ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
         </MudAppBar>
         <MudExpansionPanels Style="position: fixed; width:100%; z-index:100;">
@@ -48,16 +50,34 @@
 
 @code {
     private bool _isToolbarOpen = false;
+    private MudTheme _currentTheme = new MudTheme();
 
     protected override void OnInitialized()
     {
         M.OnProgressChanged += Refresh;
         M.OnSDModelsChange += Refresh;
+        LoadTheme();
     }
 
     protected async override Task OnInitializedAsync() 
     { 
         M.IsWebuiUp = await SDAPI.CheckWebuiState();
+    }
+
+    private void LoadTheme()
+    {
+        _currentTheme = ThemeService.GetTheme(M.State.CurrentTheme ?? "Default");
+    }
+
+    private async Task ToggleTheme()
+    {
+        var currentIndex = Array.IndexOf(ThemeService.ThemeNames, M.State.CurrentTheme ?? "Default");
+        var nextIndex = (currentIndex + 1) % ThemeService.ThemeNames.Length;
+        
+        M.State.CurrentTheme = ThemeService.ThemeNames[nextIndex];
+        LoadTheme();
+        await M.SaveState();
+        StateHasChanged();
     }
 
     private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
