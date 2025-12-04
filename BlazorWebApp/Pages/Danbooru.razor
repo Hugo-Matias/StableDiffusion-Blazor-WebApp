@@ -29,6 +29,11 @@
 
 <DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch=WriteSavedSearch OnAddCurrent=AddCurrentSearchToSaved/>
 
+<ImageViewer @bind-IsVisible="_showViewer" 
+             Images="_viewerImages"
+             StartIndex="_viewerStartIndex"
+             IsExternal="true" />
+
 @code {
     [Parameter] public EventCallback<(string, bool)> OnSendTags { get; set; }
     [Parameter] public DanbooruSearchesDrawer? SearchDrawer { get; set; }
@@ -38,6 +43,10 @@
 
     private string _searchedString;
     private string _loraRegex = @"<([^>]+)>";
+
+    private bool _showViewer;
+    private List<Image> _viewerImages = new();
+    private int _viewerStartIndex;
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,11 +99,9 @@
 
     private void ShowImageViewerDialog(DanbooruPost post)
     {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        param.Add("Images", new List<Image>() { new Image(post) });
-        param.Add("IsVideo", post.IsVideo);
-        DialogService.Show<ImageViewerDialog>("", param, options);
+        _viewerImages = Posts.Select(p => new Image(p)).ToList();
+        _viewerStartIndex = Posts.IndexOf(post);
+        _showViewer = true;
     }
 
     private void HandleBlacklistTagsChanged(string value)

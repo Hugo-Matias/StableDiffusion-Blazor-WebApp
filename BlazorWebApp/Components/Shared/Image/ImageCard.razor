@@ -112,6 +112,10 @@
     private async Task ToggleFavorite(bool isChecked)
     {
         Image.Favorite = !Image.Favorite;
+        if (Image.Favorite && Image.Score == 0)
+        {
+            Image.Score = 3;
+        }
         await DB.UpdateImage(Image);
         await InvokeAsync(StateHasChanged);
     }

@@ -58,6 +58,10 @@
     private async Task HandleFavoriteChanged(bool isfavorite)
     {
         Images[Reference.SelectedIndex].Favorite = isfavorite;
+        if (isfavorite && Images[Reference.SelectedIndex].Score == 0)
+        {
+            Images[Reference.SelectedIndex].Score = 3;
+        }
         await UpdateImage();
     }
 
@@ -66,6 +70,10 @@
         foreach (var image in Images)
         {
             image.Favorite = true;
+            if (image.Score == 0)
+            {
+                image.Score = 3;
+            }
             await DB.UpdateImage(image);
         }
         await InvokeAsync(StateHasChanged);

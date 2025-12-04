@@ -13,7 +13,7 @@
                 <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
             }
             <div class="toolbar-buttons">
-                <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
+                <MudButton OnClick="() => OpenViewer(0)" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
                 <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
                 @if (CanSelect && M.SelectedImageIds.Count > 0)
                 {
@@ -37,7 +37,7 @@
                     <MudItem xs="12" sm="6" md="4" lg="3" xl="2" Class="grid-item-fixed">
                         <ImageCard Image="@image" 
                                    Target="fullscreen-modal" 
-                                   OnSelectImage="ShowImageViewerDialog" 
+                                   OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))" 
                                    OnDeleteImage="ShowDeleteImageDialog" 
                                    OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" 
                                    ShowSelectionCheckbox=CanSelect
@@ -62,6 +62,12 @@
     </div>
 </div>
 
+<!-- Image Viewer (rendered outside the container) -->
+<ImageViewer @bind-IsVisible="_showViewer" 
+             Images="Images.Images" 
+             StartIndex="_viewerStartIndex" 
+             OnClosed="StateHasChanged" />
+
 @code {
     [Parameter] public ImagesDto Images { get; set; }
     [Parameter] public EventCallback<int> OnPageSelected { get; set; }
@@ -71,10 +77,18 @@
     [Parameter] public bool CanSelect { get; set; }
 
     private int _currentPage = 1;
+    private bool _showViewer;
+    private int _viewerStartIndex;
 
     protected override void OnInitialized()
     {
         M.OnSelectedImagesChanged += Refresh;
+    }
+
+    private void OpenViewer(int startIndex)
+    {
+        _viewerStartIndex = startIndex;
+        _showViewer = true;
     }
 
     public void HandlePageChanged(int page)
@@ -87,22 +101,6 @@
     {
         var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
         DialogService.Show<SelectionsDialog>("", options);
-    }
-
-    private void ShowImageViewerDialog(Image image)
-    {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        param.Add("Images", new List<Image>() { image });
-        DialogService.Show<ImageViewerDialog>("", param, options);
-    }
-
-    private void ShowAllImagesViewerDialog()
-    {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.ExtraLarge, CloseButton = true };
-        param.Add("Images", Images.Images);
-        DialogService.Show<ImageViewerDialog>("", param, options);
     }
 
     private async Task ShowDeleteImageDialog(Image image)

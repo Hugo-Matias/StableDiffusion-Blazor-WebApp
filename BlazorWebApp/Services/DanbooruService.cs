@@ -27,18 +27,19 @@ namespace BlazorWebApp.Services
             var url = $"/posts.json?page={page}";
             if (!string.IsNullOrWhiteSpace(tags)) url += "&tags=" + tags;
 
-            //return await _httpClient.GetFromJsonAsync<List<DanbooruPost>>(url);
             var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadFromJsonAsync<List<DanbooruPost>>();
-                content.Select(v =>
-                {
-                    v.IsVideo = _videoExtensions.Contains(v.Extension);
-                    v.PreviewUrl = v.PreviewUrl != null ? v.PreviewUrl.Replace("180x180", "360x360") : "";
-                    return v;
-                }).ToList();
-                return content;
+                return content?
+                    .Where(v => !_otherExtentions.Contains(v.Extension))
+                    .Select(v =>
+                    {
+                        v.IsVideo = _videoExtensions.Contains(v.Extension);
+                        v.PreviewUrl = v.PreviewUrl != null ? v.PreviewUrl.Replace("180x180", "360x360") : "";
+                        return v;
+                    })
+                    .ToList();
             }
             else return null;
         }

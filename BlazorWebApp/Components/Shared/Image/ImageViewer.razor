@@ -1,0 +1,671 @@
+﻿@using BlazorWebApp.Extensions
+@inject DatabaseService DB
+@inject IOService IO
+@inject IJSRuntime JS
+@inject ManagerService M
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="image-viewer-overlay" 
+         @onkeydown="HandleKeyDown" 
+         @onwheel="HandleWheel"
+         @onwheel:preventDefault="_isPanMode"
+         tabindex="0" 
+         @ref="_overlayRef">
+        <div class="image-viewer-container">
+            
+            <!-- Close Button -->
+            <button class="viewer-btn close-btn" @onclick="Close" title="Close (Esc)">
+                <MudIcon Icon="fa-solid fa-xmark" />
+            </button>
+
+            <!-- Main Image Display -->
+            <div class="image-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
+                 @onclick="HandleStageClick"
+                 @onmousedown="HandleMouseDown"
+                 @onmousemove="HandleMouseMove"
+                 @onmouseup="HandleMouseUp"
+                 @onmouseleave="HandleMouseUp">
+                @if (IsCurrentVideo)
+                {
+                    <video @key="CurrentImage?.Path" class="viewer-media" controls loop muted autoplay @onclick:stopPropagation="true">
+                        <source src="@CurrentImage?.Path" />
+                    </video>
+                }
+                else
+                {
+                    <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")" 
+                         src="@IO.GetImageStaticFile(CurrentImage?.Path)" 
+                         alt="Image @(_currentIndex + 1)"
+                         style="@GetImageTransformStyle()"
+                         draggable="false"
+                         @onclick:stopPropagation="true" />
+                }
+            </div>
+
+            <!-- Bottom Control Bar -->
+            <div class="control-bar" @onclick:stopPropagation="true">
+                <!-- Left: Favorite & Rating (only for local images) -->
+                @if (!IsExternal && CurrentImage?.Id > 0)
+                {
+                    <div class="control-section">
+                        <button class="viewer-btn @(CurrentImage.Favorite ? "active-fav" : "")" 
+                                @onclick="ToggleFavorite" 
+                                title="Favorite (F)">
+                            <MudIcon Icon="@(CurrentImage.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
+                        </button>
+                        @if (Images.Count > 1)
+                        {
+                            <button class="viewer-btn fav-all-btn" @onclick="FavoriteAll" title="Favorite All">
+                                <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                            </button>
+                        }
+                        <div class="rating-container">
+                            <MudRating SelectedValue="CurrentImage.Score" 
+                                       SelectedValueChanged="SetScore" 
+                                       MaxValue="3" 
+                                       Size="Size.Medium"
+                                       FullIcon="fa-solid fa-star"
+                                       EmptyIcon="fa-regular fa-star" />
+                        </div>
+                    </div>
+                }
+
+                <!-- Center: Navigation -->
+                @if (Images.Count > 1)
+                {
+                    <div class="control-section nav-section">
+                        <button class="viewer-btn nav-btn" @onclick="Previous" title="Previous (←)">
+                            <MudIcon Icon="fa-solid fa-chevron-left" />
+                        </button>
+                        
+                        <div class="counter">
+                            <span class="counter-current">@(_currentIndex + 1)</span>
+                            <span class="counter-sep">/</span>
+                            <span class="counter-total">@Images.Count</span>
+                        </div>
+                        
+                        <button class="viewer-btn nav-btn" @onclick="Next" title="Next (→)">
+                            <MudIcon Icon="fa-solid fa-chevron-right" />
+                        </button>
+                    </div>
+                }
+
+                <!-- Right: Actions -->
+                <div class="control-section actions-section">
+                    @if (Images.Count > 1)
+                    {
+                        <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
+                            <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
+                                <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
+                            </button>
+                        </MudTooltip>
+                        <div class="slideshow-controls">
+                            <input type="number" 
+                                   class="slideshow-input" 
+                                   @bind="_autoPlayInterval" 
+                                   @bind:event="onchange"
+                                   min="1" 
+                                   max="60" 
+                                   step="0.5"
+                                   title="Slideshow interval (seconds)" />
+                            <span class="slideshow-unit">s</span>
+                        </div>
+                    }
+                    <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
+                        <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode" title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
+                            <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
+                        </button>
+                    </MudTooltip>
+                    @if (_isPanMode)
+                    {
+                        <MudTooltip Text="Reset View (R)" Delay="300">
+                            <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
+                                <MudIcon Icon="fa-solid fa-crosshairs" />
+                            </button>
+                        </MudTooltip>
+                    }
+
+                    <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
+                        <MudIcon Icon="fa-solid fa-circle-info" />
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zoom indicator (shown briefly when zooming) -->
+            @if (_isPanMode && _showZoomIndicator)
+            {
+                <div class="zoom-indicator">
+                    @((_zoom * 100).ToString("0"))%
+                </div>
+            }
+
+            <!-- Info Panel -->
+            <div class="info-panel @(_showInfo ? "open" : "")">
+                <div class="info-panel-header">
+                    <MudIcon Icon="fa-solid fa-image" Size="Size.Small" />
+                    <span>Image Details</span>
+                    <button class="viewer-btn small" @onclick="ToggleInfo" title="Close">
+                        <MudIcon Icon="fa-solid fa-xmark" Size="Size.Small" />
+                    </button>
+                </div>
+                
+                <div class="info-panel-body">
+                    <!-- Content wrapper -->
+                    <div class="info-content">
+                        <!-- Send To Buttons -->
+                        <div class="send-to-section">
+                            <span class="send-to-label">Send selected to:</span>
+                            <div class="send-to-buttons">
+                                <button class="send-to-btn" @onclick="() => SendSelectedTo(false)" title="Send to Txt2Img">
+                                    <MudIcon Icon="fa-solid fa-font" Size="Size.Small" />
+                                    <span>Txt2Img</span>
+                                </button>
+                                <button class="send-to-btn" @onclick="() => SendSelectedTo(true)" title="Send to Img2Img">
+                                    <MudIcon Icon="fa-solid fa-image" Size="Size.Small" />
+                                    <span>Img2Img</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <MudDivider />
+
+                        <!-- Clickable Meta Items -->
+                        <div class="meta-grid">
+                            <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")" 
+                                 @onclick="@(() => ToggleParam("Width"))" title="Resolution">
+                                <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
+                                <span>@(CurrentImage?.Width ?? 0) × @(CurrentImage?.Height ?? 0)</span>
+                            </div>
+                            <div class="meta-item clickable @(_selectedParams.Contains("Seed") ? "selected" : "")" 
+                                 @onclick="@(() => ToggleParam("Seed"))" title="Seed">
+                                <MudIcon Icon="fa-solid fa-seedling" Size="Size.Small" />
+                                <span>@(CurrentImage?.Seed ?? 0)</span>
+                            </div>
+                            <div class="meta-item clickable @(_selectedParams.Contains("Steps") ? "selected" : "")" 
+                                 @onclick="@(() => ToggleParam("Steps"))" title="Steps">
+                                <MudIcon Icon="fa-solid fa-stairs" Size="Size.Small" />
+                                <span>@(CurrentImage?.Steps ?? 0) steps</span>
+                            </div>
+                            <div class="meta-item clickable @(_selectedParams.Contains("CfgScale") ? "selected" : "")" 
+                                 @onclick="@(() => ToggleParam("CfgScale"))" title="CFG">
+                                <MudIcon Icon="fa-solid fa-scale-unbalanced" Size="Size.Small" />
+                                <span>CFG @(CurrentImage?.CfgScale ?? 0)</span>
+                            </div>
+                            @if (CurrentImage?.DenoisingStrength != null)
+                            {
+                                <div class="meta-item clickable full-width @(_selectedParams.Contains("DenoisingStrength") ? "selected" : "")" 
+                                     @onclick="@(() => ToggleParam("DenoisingStrength"))" title="Denoising">
+                                    <MudIcon Icon="fa-solid fa-braille" Size="Size.Small" />
+                                    <span>Denoise @CurrentImage.DenoisingStrength</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_currentSampler))
+                            {
+                                <div class="meta-item clickable @(_selectedParams.Contains("SamplerIndex") ? "selected" : "")" 
+                                     @onclick="@(() => ToggleParam("SamplerIndex"))" title="Sampler">
+                                    <MudIcon Icon="fa-solid fa-shuffle" Size="Size.Small" />
+                                    <span>@_currentSampler</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(CurrentImage?.Scheduler))
+                            {
+                                <div class="meta-item clickable @(_selectedParams.Contains("Scheduler") ? "selected" : "")" 
+                                     @onclick="@(() => ToggleParam("Scheduler"))" title="Scheduler">
+                                    <MudIcon Icon="fa-solid fa-clock" Size="Size.Small" />
+                                    <span>@CurrentImage.Scheduler</span>
+                                </div>
+                            }
+                            @if (CurrentImage?.Model != null && !string.IsNullOrWhiteSpace(CurrentImage.Model.Title))
+                            {
+                                <div class="meta-item full-width" title="@CurrentImage.Model.Title">
+                                    <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" />
+                                    <span class="text-truncate">@CurrentImage.Model.Title</span>
+                                </div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(_currentModelName))
+                            {
+                                <div class="meta-item full-width" title="@_currentModelName (not in database)">
+                                    <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" Style="color: var(--mud-palette-warning);" />
+                                    <span class="text-truncate" style="color: var(--mud-palette-warning);">@_currentModelName</span>
+                                </div>
+                            }
+                            <div class="meta-item full-width">
+                                <MudIcon Icon="fa-solid fa-calendar" Size="Size.Small" />
+                                <span>@(CurrentImage?.DateCreated.ToString("MMM dd, yyyy HH:mm") ?? "N/A")</span>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(CurrentImage?.Prompt))
+                        {
+                            <div class="prompt-block">
+                                <div class="prompt-header positive clickable @(_selectedParams.Contains("Prompt") ? "selected" : "")"
+                                     @onclick="@(() => ToggleParam("Prompt"))" title="Prompt">
+                                    <MudIcon Icon="fa-solid fa-plus" Size="Size.Small" />
+                                    <span>Prompt</span>
+                                    @if (_selectedParams.Contains("Prompt"))
+                                    {
+                                        <MudIcon Icon="fa-solid fa-check" Size="Size.Small" Class="ms-auto" />
+                                    }
+                                </div>
+                                <div class="prompt-text">@CurrentImage.Prompt</div>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrWhiteSpace(CurrentImage?.NegativePrompt))
+                        {
+                            <div class="prompt-block">
+                                <div class="prompt-header negative clickable @(_selectedParams.Contains("NegativePrompt") ? "selected" : "")"
+                                     @onclick="@(() => ToggleParam("NegativePrompt"))" title="Negative Prompt">
+                                    <MudIcon Icon="fa-solid fa-minus" Size="Size.Small" />
+                                    <span>Negative</span>
+                                    @if (_selectedParams.Contains("NegativePrompt"))
+                                    {
+                                        <MudIcon Icon="fa-solid fa-check" Size="Size.Small" Class="ms-auto" />
+                                    }
+                                </div>
+                                <div class="prompt-text negative">@CurrentImage.NegativePrompt</div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Keyboard Shortcuts - pinned to bottom -->
+                    <div class="shortcuts-box">
+                        <div class="shortcuts-title">Keyboard Shortcuts</div>
+                        <div class="shortcut-row"><span>Navigate</span><span class="shortcut-key">← →</span></div>
+                        <div class="shortcut-row"><span>Favorite</span><span class="shortcut-key">F</span></div>
+                        <div class="shortcut-row"><span>Pan & Zoom</span><span class="shortcut-key">Z</span></div>
+                        <div class="shortcut-row"><span>Reset View</span><span class="shortcut-key">R</span></div>
+                        <div class="shortcut-row"><span>Zoom In/Out</span><span class="shortcut-key">+ / -</span></div>
+                        <div class="shortcut-row"><span>Slideshow</span><span class="shortcut-key">Space</span></div>
+                        <div class="shortcut-row"><span>Details</span><span class="shortcut-key">I</span></div>
+                        <div class="shortcut-row"><span>Close</span><span class="shortcut-key">Esc</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<Image> Images { get; set; } = new();
+    [Parameter] public int StartIndex { get; set; } = 0;
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool IsExternal { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private ElementReference _overlayRef;
+    private int _currentIndex;
+    private bool _showInfo;
+    private bool _autoPlay;
+    private System.Timers.Timer? _autoPlayTimer;
+    private float _autoPlayInterval = 5f;
+    private bool _wasVisible;
+    private string? _currentSampler;
+    private string? _currentModelName;
+    private HashSet<string> _selectedParams = new();
+
+    // Pan & Zoom state
+    private bool _isPanMode;
+    private bool _isDragging;
+    private double _zoom = 1.0;
+    private double _panX = 0;
+    private double _panY = 0;
+    private double _dragStartX;
+    private double _dragStartY;
+    private double _dragStartPanX;
+    private double _dragStartPanY;
+    private bool _showZoomIndicator;
+    private System.Timers.Timer? _zoomIndicatorTimer;
+
+    private const double MinZoom = 0.25;
+    private const double MaxZoom = 5.0;
+    private const double ZoomStep = 0.15;
+
+    private Image? CurrentImage => Images.Count > 0 && _currentIndex < Images.Count ? Images[_currentIndex] : null;
+
+    private bool IsCurrentVideo => CurrentImage?.Path != null && 
+        (CurrentImage.Path.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+         CurrentImage.Path.EndsWith(".webm", StringComparison.OrdinalIgnoreCase) ||
+         CurrentImage.Path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && Images.Count > 0)
+        {
+            _currentIndex = Math.Clamp(StartIndex, 0, Images.Count - 1);
+            ResetZoom();
+            await LoadImageMetadata();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && !_wasVisible)
+        {
+            await SetBodyScrollLock(true);
+            try { await _overlayRef.FocusAsync(); } catch { }
+        }
+        else if (!IsVisible && _wasVisible)
+        {
+            await SetBodyScrollLock(false);
+        }
+        
+        _wasVisible = IsVisible;
+    }
+
+    private async Task LoadImageMetadata()
+    {
+        if (CurrentImage == null) return;
+
+        // Load sampler name
+        if (CurrentImage.SamplerId > 0)
+            _currentSampler = await DB.GetSampler(CurrentImage.SamplerId);
+        else
+            _currentSampler = null;
+
+        // Load model from metadata if null
+        _currentModelName = null;
+        if (CurrentImage.Model == null)
+        {
+            await TryLoadModelFromMetadata();
+        }
+    }
+
+    private async Task TryLoadModelFromMetadata()
+    {
+        if (CurrentImage == null || string.IsNullOrWhiteSpace(CurrentImage.Path)) return;
+
+        try
+        {
+            var info = await IO.ReadMetadata(CurrentImage.Path);
+            if (string.IsNullOrWhiteSpace(info)) return;
+
+            string? modelName = null;
+
+            if (info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase))
+            {
+                // ComfyUI format
+                info = info.Replace("prompt: ", "");
+                using var doc = System.Text.Json.JsonDocument.Parse(info);
+                
+                modelName = Parser.FindJsonValueByKey<string>(doc.RootElement, "ckpt_name");
+                if (string.IsNullOrWhiteSpace(modelName))
+                    modelName = Parser.FindJsonValueByKey<string>(doc.RootElement, "unet_name");
+            }
+            else if (info.StartsWith("parameters", StringComparison.InvariantCultureIgnoreCase))
+            {
+                // WebUI format
+                var parameters = Parser.ParseWebUIInfoParameters(info);
+                if (parameters != null && parameters.TryGetValue("Model", out var model))
+                    modelName = model;
+            }
+
+            if (!string.IsNullOrWhiteSpace(modelName))
+            {
+                // Try to find the resource in database
+                var resource = await DB.GetResourceByFilename(modelName);
+                if (resource != null)
+                {
+                    CurrentImage.Model = resource;
+                    await DB.UpdateImage(CurrentImage);
+                }
+                else
+                {
+                    // Store the name to display even if resource not found
+                    _currentModelName = modelName;
+                }
+            }
+        }
+        catch
+        {
+            // Silently fail - metadata might not be available
+        }
+    }
+
+    private void ToggleParam(string param)
+    {
+        if (_selectedParams.Contains(param))
+            _selectedParams.Remove(param);
+        else
+            _selectedParams.Add(param);
+        
+        // Width includes Height
+        if (param == "Width" && _selectedParams.Contains("Width"))
+            _selectedParams.Add("Height");
+        else if (param == "Width")
+            _selectedParams.Remove("Height");
+    }
+
+    private void SendSelectedTo(bool isImg2Img)
+    {
+        if (CurrentImage == null || _selectedParams.Count == 0)
+        {
+            Snackbar.Add("Select parameters to send by clicking on them", Severity.Warning);
+            return;
+        }
+
+        foreach (var param in _selectedParams)
+        {
+            M.SetGenerationParameter(CurrentImage, param, isImg2Img);
+        }
+
+        var target = isImg2Img ? "Img2Img" : "Txt2Img";
+        Snackbar.Add($"Sent {_selectedParams.Count} parameter(s) to {target}", Severity.Success);
+        _selectedParams.Clear();
+    }
+
+    private async Task SetBodyScrollLock(bool locked)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $"document.body.style.overflow = '{(locked ? "hidden" : "auto")}'");
+        }
+        catch { }
+    }
+
+    private string GetImageTransformStyle()
+    {
+        if (!_isPanMode) return "";
+        return $"transform: translate({_panX}px, {_panY}px) scale({_zoom});";
+    }
+
+    private void HandleStageClick(MouseEventArgs e)
+    {
+        if (!_isPanMode)
+        {
+            Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        StopAutoPlay();
+        _isPanMode = false;
+        ResetZoom();
+        _selectedParams.Clear();
+        IsVisible = false;
+        await SetBodyScrollLock(false);
+        await IsVisibleChanged.InvokeAsync(false);
+        await OnClosed.InvokeAsync();
+    }
+
+    private async Task Next()
+    {
+        if (Images.Count > 1)
+        {
+            _currentIndex = (_currentIndex + 1) % Images.Count;
+            ResetZoom();
+            _selectedParams.Clear();
+            await LoadImageMetadata();
+        }
+    }
+
+    private async Task Previous()
+    {
+        if (Images.Count > 1)
+        {
+            _currentIndex = (_currentIndex - 1 + Images.Count) % Images.Count;
+            ResetZoom();
+            _selectedParams.Clear();
+            await LoadImageMetadata();
+        }
+    }
+
+    private void ToggleInfo() => _showInfo = !_showInfo;
+
+    private void TogglePanMode()
+    {
+        _isPanMode = !_isPanMode;
+        if (!_isPanMode) ResetZoom();
+        else _zoom = 1.0;
+    }
+
+    private void ResetZoom()
+    {
+        _zoom = 1.0;
+        _panX = 0;
+        _panY = 0;
+    }
+
+    private void HandleWheel(WheelEventArgs e)
+    {
+        if (!_isPanMode) return;
+
+        var delta = e.DeltaY > 0 ? -ZoomStep : ZoomStep;
+        var newZoom = Math.Clamp(_zoom + delta, MinZoom, MaxZoom);
+        
+        if (newZoom != _zoom)
+        {
+            _zoom = newZoom;
+            ShowZoomIndicator();
+        }
+    }
+
+    private void ShowZoomIndicator()
+    {
+        _showZoomIndicator = true;
+        _zoomIndicatorTimer?.Stop();
+        _zoomIndicatorTimer?.Dispose();
+        _zoomIndicatorTimer = new System.Timers.Timer(800);
+        _zoomIndicatorTimer.Elapsed += async (s, e) =>
+        {
+            _showZoomIndicator = false;
+            _zoomIndicatorTimer?.Stop();
+            await InvokeAsync(StateHasChanged);
+        };
+        _zoomIndicatorTimer.AutoReset = false;
+        _zoomIndicatorTimer.Start();
+    }
+
+    private void HandleMouseDown(MouseEventArgs e)
+    {
+        if (!_isPanMode || e.Button != 0) return;
+        _isDragging = true;
+        _dragStartX = e.ClientX;
+        _dragStartY = e.ClientY;
+        _dragStartPanX = _panX;
+        _dragStartPanY = _panY;
+    }
+
+    private void HandleMouseMove(MouseEventArgs e)
+    {
+        if (!_isDragging) return;
+        _panX = _dragStartPanX + (e.ClientX - _dragStartX);
+        _panY = _dragStartPanY + (e.ClientY - _dragStartY);
+    }
+
+    private void HandleMouseUp(MouseEventArgs e)
+    {
+        _isDragging = false;
+    }
+
+    private void ToggleAutoPlay()
+    {
+        _autoPlay = !_autoPlay;
+        if (_autoPlay) StartAutoPlay();
+        else StopAutoPlay();
+    }
+
+    private void StartAutoPlay()
+    {
+        StopAutoPlay();
+        _autoPlay = true;
+        _autoPlayTimer = new System.Timers.Timer(Math.Max(_autoPlayInterval, 1) * 1000);
+        _autoPlayTimer.Elapsed += async (s, e) =>
+        {
+            await Next();
+            await InvokeAsync(StateHasChanged);
+        };
+        _autoPlayTimer.AutoReset = true;
+        _autoPlayTimer.Start();
+    }
+
+    private void StopAutoPlay()
+    {
+        _autoPlayTimer?.Stop();
+        _autoPlayTimer?.Dispose();
+        _autoPlayTimer = null;
+        _autoPlay = false;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape": await Close(); break;
+            case "ArrowLeft": await Previous(); break;
+            case "ArrowRight": await Next(); break;
+            case " ": ToggleAutoPlay(); break;
+            case "i": case "I": ToggleInfo(); break;
+            case "f": case "F": await ToggleFavorite(); break;
+            case "z": case "Z": TogglePanMode(); break;
+            case "r": case "R": ResetZoom(); break;
+            case "+": case "=": if (_isPanMode) { _zoom = Math.Min(_zoom + ZoomStep, MaxZoom); ShowZoomIndicator(); } break;
+            case "-": case "_": if (_isPanMode) { _zoom = Math.Max(_zoom - ZoomStep, MinZoom); ShowZoomIndicator(); } break;
+        }
+    }
+
+    private async Task ToggleFavorite()
+    {
+        if (CurrentImage == null) return;
+        CurrentImage.Favorite = !CurrentImage.Favorite;
+        if (CurrentImage.Favorite && CurrentImage.Score == 0)
+        {
+            CurrentImage.Score = 3;
+        }
+        await DB.UpdateImage(CurrentImage);
+    }
+
+    private async Task FavoriteAll()
+    {
+        foreach (var image in Images)
+        {
+            image.Favorite = true;
+            if (image.Score == 0)
+            {
+                image.Score = 3;
+            }
+            await DB.UpdateImage(image);
+        }
+        StateHasChanged();
+    }
+
+    private async Task SetScore(int score)
+    {
+        if (CurrentImage == null) return;
+        CurrentImage.Score = score;
+        await DB.UpdateImage(CurrentImage);
+    }
+
+    public void Dispose()
+    {
+        StopAutoPlay();
+        _zoomIndicatorTimer?.Stop();
+        _zoomIndicatorTimer?.Dispose();
+        _ = SetBodyScrollLock(false);
+    }
+}
