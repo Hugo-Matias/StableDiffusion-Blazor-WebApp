@@ -6,89 +6,117 @@
 @inject IDialogService DialogService
 @implements IDisposable
 
-<div class="@(UseFixedSize ? "fixed-size-card" : "")">
-    <MudRating Class="rating" SelectedValue="Image.Score" SelectedValueChanged="SetScore" MaxValue="3" />
-    @if (ShowSelectionCheckbox)
-    {
-        <MudCheckBox Class=@($"select-checkbox {(_isSelected ? "selected" : "")}") Checked=_isSelected T="bool" CheckedChanged="HandleSelected" Color="Color.Success" UnCheckedColor="Color.Default" />
-    }
-
-    <MudCard Style="width: 100%; height: 100%;" Elevation="4" Class="@(UseFixedSize ? "fixed-card" : "")">
-        @if (UseFixedSize)
-        {
-            <div class="fixed-image-container">
-                <MudImage Src="@IO.GetImageStaticFile(Image.Path)"
-                          Style="min-width: 100%; min-height: 100%; width: 100%; height: 100%; object-fit: cover; object-position: center;"
-                          Class="fixed-image"
-                          ObjectFit="ObjectFit.Cover" />
+<div class="@GetCardClasses()" @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false">
+    @* Image Container *@
+    <div class="image-wrapper">
+        <img src="@IO.GetImageStaticFile(Image.Path)" 
+             alt="Generated image" 
+             class="card-image"
+             loading="lazy" />
+        
+        @* Hover Overlay *@
+        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+            @* Top Section - Score & Selection *@
+            <div class="overlay-top">
+                <div class="rating-container @(_isHovered || Image.Score > 0 ? "visible" : "")">
+                    <MudRating SelectedValue="Image.Score" 
+                               SelectedValueChanged="SetScore" 
+                               MaxValue="3" 
+                               Size="Size.Small"
+                               Color="Color.Warning" />
+                </div>
+                
+                @if (ShowSelectionCheckbox)
+                {
+                    <div class="selection-container @(_isHovered || _isSelected ? "visible" : "")">
+                        <MudCheckBox Checked="_isSelected" 
+                                     T="bool" 
+                                     CheckedChanged="HandleSelected" 
+                                     Color="Color.Success" 
+                                     UncheckedColor="Color.Default"
+                                     Size="Size.Medium" />
+                    </div>
+                }
             </div>
-        }
-        else
-        {
-            <MudImage Src="@IO.GetImageStaticFile(Image.Path)"
-                      Style="display:block; width:100%; height:auto;"
-                      ObjectFit="ObjectFit.Contain" />
-        }
-        <MudCardContent Class="pb-n4">
-            @if (Image.ModeId != 3)
-            {
-                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-seedling info-icon" />@Image.Seed</MudText>
-                <MudSpacer />
-                <MudText Typo="Typo.caption">
-                    <MudIcon Icon="fa-solid fa-stairs info-icon" />@Image.Steps
-                    <span class="separator ms-2">|</span>
-                    <MudIcon Icon="fa-solid fa-scale-unbalanced info-icon" />@Image.CfgScale
-                    @if (Image.DenoisingStrength != null)
-                    {
-                        <span class="separator ms-2">|</span>
-                        <MudIcon Icon="fa-solid fa-braille info-icon" />
-                        @Image.DenoisingStrength
-                    }
-                </MudText>
-            }
-            else
-            {
-                <MudText Typo="Typo.caption">Upscaled</MudText>
-                <MudSpacer />
-                <MudText Typo="Typo.caption">
-                    <MudIcon Icon="fa-solid fa-arrows-left-right info-icon" />@($"{Image.Width} px")
-                    <span class="separator ms-2">|</span>
-                    <MudIcon Icon="fa-solid fa-arrows-up-down info-icon" />@($"{Image.Height} px")
-                </MudText>
-            }
-        </MudCardContent>
-        <MudCardActions>
-            <MudCheckBox T="bool" CheckedChanged=@(e => ToggleFavorite(e)) Checked="Image.Favorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
-            <MudIconButton OnClick=@(() => OnSelectImage.InvokeAsync(Image)) Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
-            <MudTooltip Color="Color.Dark" Style="max-width:50vw" Duration="500" ShowOnFocus=false>
-                <ChildContent>
-                    <MudIconButton OnClick=ShowImageInfoDialog Icon="fa-solid fa-info" ButtonType=ButtonType.Button Color="Color.Info" Class="icon">Info</MudIconButton>
-                </ChildContent>
-                <TooltipContent>
+            
+            @* Center Section - Quick Actions *@
+            <div class="overlay-center @(_isHovered ? "visible" : "")">
+                <div class="quick-actions">
+                    <button class="action-btn primary" @onclick="@(() => OnSelectImage.InvokeAsync(Image))" title="View Fullscreen">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button class="action-btn @(Image.Favorite ? "active" : "")" @onclick="@(() => ToggleFavorite(!Image.Favorite))" title="@(Image.Favorite ? "Remove from Favorites" : "Add to Favorites")">
+                        <i class="@(Image.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
+                    </button>
+                    <button class="action-btn" @onclick="ShowImageInfoDialog" title="View Info">
+                        <i class="fa-solid fa-info"></i>
+                    </button>
+                </div>
+            </div>
+            
+            @* Bottom Section - Info & More Actions *@
+            <div class="overlay-bottom @(_isHovered ? "visible" : "")">
+                <div class="image-info">
                     @if (Image.ModeId != 3)
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Success">@Image.Prompt</MudText>
-                        <br />
-                        <MudText Typo="Typo.caption" Color="Color.Error">@Image.NegativePrompt</MudText>
+                        <div class="info-row">
+                            <span class="info-item">
+                                <i class="fa-solid fa-seedling"></i>
+                                @Image.Seed
+                            </span>
+                            <span class="info-item">
+                                <i class="fa-solid fa-stairs"></i>
+                                @Image.Steps
+                            </span>
+                            <span class="info-item">
+                                <i class="fa-solid fa-scale-unbalanced"></i>
+                                @Image.CfgScale
+                            </span>
+                        </div>
                     }
-                </TooltipContent>
-            </MudTooltip>
-            <MudSpacer />
-            <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                <MudMenuItem OnClick=ShowSwitchProjectDialog Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Set Project</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem OnClick=OpenFileInExplorer Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem OnClick=SetProjectCover Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
-                <MudDivider />
-                <MudMenuItem OnClick=@(() => OnDeleteImage.InvokeAsync(Image)) Icon="fa-solid fa-trash-can" IconColor="Color.Default">Delete</MudMenuItem>
-            </MudMenu>
-        </MudCardActions>
-    </MudCard>
+                    else
+                    {
+                        <div class="info-row">
+                            <span class="info-item">Upscaled</span>
+                            <span class="info-item">@Image.Width × @Image.Height</span>
+                        </div>
+                    }
+                </div>
+                
+                <div class="more-actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" 
+                             AnchorOrigin="Origin.TopRight" 
+                             TransformOrigin="Origin.BottomRight"
+                             Size="Size.Small"
+                             Dense="true"
+                             Class="more-menu">
+                        <MudMenuItem OnClick="ShowSwitchProjectDialog" Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Set Project</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem OnClick="@(() => SendTo(img2img: true))" Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem OnClick="@(() => SendTo(img2img: false))" Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" IconColor="Color.Error">Delete</MudMenuItem>
+                    </MudMenu>
+                </div>
+            </div>
+        </div>
+        
+        @* Persistent Indicators (visible when not hovered but has state) *@
+        @if (!_isHovered)
+        {
+            @if (Image.Favorite)
+            {
+                <div class="favorite-indicator">
+                    <i class="fa-solid fa-heart"></i>
+                </div>
+            }
+        }
+    </div>
 </div>
 
 @code {
@@ -101,12 +129,22 @@
     [Parameter] public bool UseFixedSize { get; set; } = false;
 
     private bool _isSelected;
+    private bool _isHovered;
 
     protected override void OnInitialized()
     {
         _isSelected = M.SelectedImageIds.Contains(Image.Id);
         M.OnSelectedImagesChanged += Refresh;
         M.OnRefreshImagesContainer += Refresh;
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = "gallery-card";
+        if (UseFixedSize) classes += " fixed-size";
+        if (_isSelected) classes += " selected";
+        if (_isHovered) classes += " hovered";
+        return classes;
     }
 
     private async Task ToggleFavorite(bool isChecked)

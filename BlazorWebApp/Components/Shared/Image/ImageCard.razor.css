@@ -1,116 +1,425 @@
-﻿div {
-	position: relative;
+﻿/* ===========================================
+   Gallery Card - Base Styles
+   =========================================== */
+
+.gallery-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
 }
 
-	div:hover ::deep .select-checkbox {
-		opacity: 1;
-	}
-
-	div:hover ::deep .rating {
-		opacity: 1;
-	}
-
-div.fixed-size-card {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
+.gallery-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
 
-::deep .fixed-card {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
+.gallery-card.selected {
+    box-shadow: 0 0 0 3px var(--mud-palette-success), 0 8px 25px rgba(0, 0, 0, 0.4);
 }
 
-.fixed-image-container {
-	position: relative;
-	width: 100%;
-	height: 350px;
-	overflow: hidden;
-	background: #1a1a1a;
+/* ===========================================
+   Image Wrapper & Image
+   =========================================== */
+
+.image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
-.fixed-image {
-	display: block;
-	min-width: 100%;
-	min-height: 100%;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: center;
+.card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    transition: transform 0.3s ease;
 }
 
-	.fixed-image ::deep img {
-		display: block !important;
-		min-width: 100% !important;
-		min-height: 100% !important;
-		width: 100% !important;
-		height: 100% !important;
-		object-fit: cover !important;
-		object-position: center !important;
-	}
-
-::deep .mud-card-content {
-	text-align: center;
-	padding: 0.5rem 1rem;
-	padding-bottom: 0rem;
+.gallery-card:hover .card-image {
+    transform: scale(1.03);
 }
 
-::deep .info-icon {
-	font-size: 0.7rem;
-	margin: 0 0.4rem;
-	opacity: 0.5;
+/* ===========================================
+   Fixed Size Mode (Pagination)
+   =========================================== */
+
+.gallery-card.fixed-size {
+    height: 350px;
 }
 
-::deep .separator {
-	opacity: 0.2;
+.gallery-card.fixed-size .image-wrapper {
+    height: 100%;
 }
 
-::deep .select-checkbox {
-	opacity: 0;
-	position: absolute;
-	top: 0.5rem;
-	right: 0.5rem;
-	z-index: 1;
-	background: rgba(0,0,0,0.8);
-	border-radius: 3px;
-	transition: opacity 0.2s ease-in-out;
+/* ===========================================
+   Hover Overlay
+   =========================================== */
+
+.hover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 10;
 }
 
-	::deep .select-checkbox.selected {
-		opacity: 1;
-	}
+.hover-overlay.visible {
+    pointer-events: auto;
+}
 
-	::deep .select-checkbox .mud-icon-button {
-		padding: 0.2rem;
-	}
+/* Gradient backgrounds for overlay sections */
+.overlay-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
 
-::deep .rating {
-	opacity: 0;
-	position: absolute;
-	background: rgba(0,0,0,0.8);
-	padding: 0.3rem;
-	border-radius: 5px;
-	top: 0.5rem;
-	left: 0.5rem;
-	z-index: 1;
-	transition: opacity 0.2s ease-in-out;
+.hover-overlay.visible .overlay-top {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.overlay-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    opacity: 0;
+    transition: opacity 0.25s ease 0.05s;
+}
+
+.hover-overlay.visible .overlay-center {
+    opacity: 1;
+}
+
+.overlay-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 10px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hover-overlay.visible .overlay-bottom {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===========================================
+   Rating Container
+   =========================================== */
+
+.rating-container {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    padding: 4px 8px;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.rating-container.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.rating-container ::deep .mud-rating-item {
+    padding: 0 3px;
+}
+
+.rating-container ::deep .mud-icon-root {
+    font-size: 1.25rem;
+}
+
+/* ===========================================
+   Selection Checkbox
+   =========================================== */
+
+.selection-container {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.selection-container.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.selection-container ::deep .mud-checkbox {
+    margin: 0;
+    padding: 4px;
+}
+
+.selection-container ::deep .mud-icon-button {
+    padding: 4px;
+}
+
+/* ===========================================
+   Quick Actions (Center)
+   =========================================== */
+
+.quick-actions {
+    display: flex;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 30px;
+    padding: 10px 20px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.action-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+}
+
+.action-btn.primary {
+    background: var(--mud-palette-warning);
+    color: #000;
+}
+
+.action-btn.primary:hover {
+    background: var(--mud-palette-warning-darken);
+    box-shadow: 0 0 15px var(--mud-palette-warning);
+}
+
+.action-btn.active {
+    color: var(--mud-palette-error);
+}
+
+.action-btn.active:hover {
+    background: rgba(244, 67, 54, 0.2);
+}
+
+/* ===========================================
+   Bottom Info Section
+   =========================================== */
+
+.image-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.info-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.info-item i {
+    font-size: 0.65rem;
+    opacity: 0.8;
+}
+
+/* ===========================================
+   More Actions Menu
+   =========================================== */
+
+.more-actions {
+    margin-left: 8px;
+}
+
+.more-actions ::deep .mud-menu > button,
+.more-actions ::deep .mud-icon-button {
+    color: rgba(255, 255, 255, 0.8) !important;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+}
+
+.more-actions ::deep .mud-menu > button:hover,
+.more-actions ::deep .mud-icon-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ===========================================
+   Persistent Indicators (Always Visible)
+   =========================================== */
+
+.favorite-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--mud-palette-error);
+    font-size: 0.85rem;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* ===========================================
+   Responsive Adjustments
+   =========================================== */
+
+@media (max-width: 1400px) {
+    .gallery-card.fixed-size {
+        height: 320px;
+    }
 }
 
 @media (max-width: 1200px) {
-	.fixed-image-container {
-		height: 300px;
-	}
+    .gallery-card.fixed-size {
+        height: 300px;
+    }
+    
+    .quick-actions {
+        padding: 8px 16px;
+        gap: 10px;
+    }
+    
+    .action-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 0.9rem;
+    }
+    
+    .rating-container ::deep .mud-icon-root {
+        font-size: 1.15rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .gallery-card.fixed-size {
+        height: 280px;
+    }
 }
 
 @media (max-width: 768px) {
-	.fixed-image-container {
-		height: 250px;
-	}
+    .gallery-card.fixed-size {
+        height: 250px;
+    }
+    
+    .quick-actions {
+        padding: 6px 12px;
+        gap: 8px;
+    }
+    
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+    
+    .rating-container ::deep .mud-icon-root {
+        font-size: 1.1rem;
+    }
+    
+    .info-item {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        background: rgba(0, 0, 0, 0.7);
+    }
+    
+    .overlay-top,
+    .overlay-bottom {
+        padding: 8px;
+    }
 }
 
 @media (max-width: 480px) {
-	.fixed-image-container {
-		height: 200px;
-	}
+    .gallery-card.fixed-size {
+        height: 200px;
+    }
+    
+    .quick-actions {
+        padding: 5px 10px;
+        gap: 6px;
+    }
+    
+    .action-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+    }
+    
+    .rating-container ::deep .mud-icon-root {
+        font-size: 1rem;
+    }
+    
+    .info-row {
+        gap: 4px;
+    }
+    
+    .info-item {
+        font-size: 0.65rem;
+        padding: 2px 4px;
+    }
+}
+
+/* ===========================================
+   Animation for Score Visibility
+   =========================================== */
+
+.rating-container:not(.visible) {
+    pointer-events: none;
+}
+
+.gallery-card:not(.hovered) .rating-container.visible {
+    opacity: 0.7;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 5;
 }

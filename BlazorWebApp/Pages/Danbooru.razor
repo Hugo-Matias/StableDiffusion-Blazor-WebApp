@@ -2,30 +2,61 @@
 @using System.Text.RegularExpressions
 @inject DanbooruService Api
 @inject ManagerService M
+@inject IJSRuntime JS
 @inject IDialogService DialogService
+@implements IAsyncDisposable
 
 <MudGrid Class="mb-3 px-4" Justify="Justify.Center">
     <MudItem xs="10">
         <MudTextField Label="Search" @bind-Value="M.State.Danbooru.SearchString" OnAdornmentClick=@(() => SearchDrawer.Visible = true) T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable />
-     </MudItem>
-     <MudItem xs="2">
-         <MudButton Class="w-100 h-100" OnClick=Search ButtonType="ButtonType.Button" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
-     </MudItem>
-     <MudItem xs="12">
-         <MudTextField Label="Black List Tags" ValueChanged=HandleBlacklistTagsChanged Value=M.Settings.Resources.Danbooru.BlacklistTags T="string" Lines="2" />
-     </MudItem>
-
-     @if (Posts != null)
-    {
-        foreach (var post in Posts)
-        {
-            <DanbooruImageCard Post=post OnSendTags=@(isImg2Img => WriteDanbooruTags(post, isImg2Img)) OnShowImage=@(() => ShowImageViewerDialog(post)) />
-        }
-    }
-    <MudItem xs="12" Class="d-flex justify-content-center">
-        <MudButton Class="w-50" OnClick=LoadMore ButtonType="ButtonType.Button" Color="Color.Primary" Variant="Variant.Outlined">Load More</MudButton>
+    </MudItem>
+    <MudItem xs="2">
+        <MudButton Class="w-100 h-100" OnClick=Search ButtonType="ButtonType.Button" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField Label="Black List Tags" ValueChanged=HandleBlacklistTagsChanged Value=M.Settings.Resources.Danbooru.BlacklistTags T="string" Lines="2" />
     </MudItem>
 </MudGrid>
+
+@if (_initialLoading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+        <MudProgressCircular Color="Color.Primary" Indeterminate />
+        <MudText Typo="Typo.caption">Loading images...</MudText>
+    </MudStack>
+}
+else if (Posts != null && Posts.Count > 0)
+{
+    <div class="danbooru-masonry-wrapper">
+        <div class="danbooru-masonry">
+            @foreach (var post in Posts)
+            {
+                <div class="danbooru-item">
+                    <DanbooruImageCard Post=post OnSendTags=@(isImg2Img => WriteDanbooruTags(post, isImg2Img)) OnShowImage=@(() => ShowImageViewerDialog(post)) />
+                </div>
+            }
+        </div>
+        
+        @if (_isLoadingMore)
+        {
+            <div class="load-more-spinner">
+                <MudProgressCircular Color="Color.Primary" Indeterminate />
+            </div>
+        }
+        else if (!_hasMore)
+        {
+            <div class="end-of-results">
+                <MudText Typo="Typo.caption">End of results</MudText>
+            </div>
+        }
+    </div>
+}
+else if (!_initialLoading && (Posts == null || Posts.Count == 0))
+{
+    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+        <MudText Typo="Typo.body1" Style="opacity: 0.6;">No results found</MudText>
+    </MudStack>
+}
 
 <DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch=WriteSavedSearch OnAddCurrent=AddCurrentSearchToSaved/>
 
@@ -38,35 +69,145 @@
     [Parameter] public EventCallback<(string, bool)> OnSendTags { get; set; }
     [Parameter] public DanbooruSearchesDrawer? SearchDrawer { get; set; }
 
-    public List<DanbooruPost> Posts { get; set; }
+    public List<DanbooruPost> Posts { get; set; } = new();
     public int CurrentPage { get; set; }
 
-    private string _searchedString;
+    private string _searchedString = string.Empty;
     private string _loraRegex = @"<([^>]+)>";
+    private bool _initialLoading = true;
+    private bool _isLoadingMore;
+    private bool _hasMore = true;
 
     private bool _showViewer;
     private List<Image> _viewerImages = new();
     private int _viewerStartIndex;
 
+    private IJSObjectReference? _infiniteScrollModule;
+    private DotNetObjectReference<Danbooru>? _dotNetRef;
+    private bool _isDisposed;
+    private bool _jsInitialized;
+
     protected override async Task OnInitializedAsync()
     {
-        // https:hijiribe.donmai.us/wiki_pages/help%3Acheatsheet
-        await Search();
+        _initialLoading = true;
+        await LoadInitialData();
+        _initialLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Only initialize JS after we have data and haven't initialized yet
+        if (!_jsInitialized && !_isDisposed && Posts != null && Posts.Count > 0)
+        {
+            _jsInitialized = true;
+            // Small delay to ensure DOM is ready
+            await Task.Delay(100);
+            await InitializeInfiniteScroll();
+        }
+    }
+
+    private async Task LoadInitialData()
+    {
+        _searchedString = M.State.Danbooru.SearchString;
+        CurrentPage = 1;
+        Posts = await Api.GetPosts(M.State.Danbooru.SearchString, CurrentPage) ?? new();
+        _hasMore = Posts.Count >= 20;
+        await M.SaveState();
+    }
+
+    private async Task InitializeInfiniteScroll()
+    {
+        if (_isDisposed) return;
+        
+        try
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _infiniteScrollModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/DanbooruMasonry.js");
+            await _infiniteScrollModule.InvokeVoidAsync("attachWindowScroll", _dotNetRef, new { threshold = 1500 });
+            await _infiniteScrollModule.InvokeVoidAsync("setHasMore", _hasMore);
+        }
+        catch (Exception)
+        {
+            // Silently handle initialization errors (e.g., during navigation)
+        }
     }
 
     private async Task Search()
     {
+        if (_isDisposed) return;
+        
+        _initialLoading = true;
+        _hasMore = true;
+        StateHasChanged();
+        
         _searchedString = M.State.Danbooru.SearchString;
         CurrentPage = 1;
-        Posts = await Api.GetPosts(M.State.Danbooru.SearchString, CurrentPage);
+        Posts = await Api.GetPosts(M.State.Danbooru.SearchString, CurrentPage) ?? new();
+        _hasMore = Posts.Count >= 20;
         await M.SaveState();
+        
+        _initialLoading = false;
+        StateHasChanged();
+        
+        // Reset JS masonry after new search
+        if (_infiniteScrollModule != null && !_isDisposed)
+        {
+            try
+            {
+                await Task.Delay(100); // Wait for DOM update
+                await _infiniteScrollModule.InvokeVoidAsync("resetLayout");
+                await _infiniteScrollModule.InvokeVoidAsync("setHasMore", _hasMore);
+            }
+            catch (Exception)
+            {
+                // Silently handle errors
+            }
+        }
     }
 
-    private async Task LoadMore()
+    [JSInvokable]
+    public async Task LoadNextPage()
     {
-        CurrentPage++;
-        var data = await Api.GetPosts(_searchedString, CurrentPage);
-        if (data != null) Posts.AddRange(data);
+        if (_isLoadingMore || !_hasMore || _isDisposed) return;
+
+        _isLoadingMore = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            CurrentPage++;
+            var data = await Api.GetPosts(_searchedString, CurrentPage);
+            if (data != null && data.Count > 0)
+            {
+                Posts.AddRange(data);
+                _hasMore = data.Count >= 20;
+            }
+            else
+            {
+                _hasMore = false;
+            }
+        }
+        catch (Exception)
+        {
+            _hasMore = false;
+        }
+
+        _isLoadingMore = false;
+        
+        // Notify JS about hasMore state
+        if (_infiniteScrollModule != null && !_isDisposed)
+        {
+            try
+            {
+                await _infiniteScrollModule.InvokeVoidAsync("setHasMore", _hasMore);
+            }
+            catch (Exception)
+            {
+                // Silently handle errors
+            }
+        }
+        
+        await InvokeAsync(StateHasChanged);
     }
 
     private void WriteSavedSearch(string value) => M.State.Danbooru.SearchString = value;
@@ -108,5 +249,31 @@
     {
         M.Settings.Resources.Danbooru.BlacklistTags = value;
         M.SaveSettings();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _isDisposed = true;
+        
+        if (_infiniteScrollModule != null)
+        {
+            try
+            {
+                await _infiniteScrollModule.InvokeVoidAsync("dispose");
+            }
+            catch (JSDisconnectedException) { }
+            catch (Exception) { }
+            
+            try
+            {
+                await _infiniteScrollModule.DisposeAsync();
+            }
+            catch (Exception) { }
+            
+            _infiniteScrollModule = null;
+        }
+        
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
     }
 }

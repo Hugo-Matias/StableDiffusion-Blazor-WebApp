@@ -4,96 +4,154 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<div>
-    @if (Image.Meta != null)
-    {
-        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content=@(Image.Meta.Sampler) Color=@(SetSamplerBadgeColor().Result) Overlap />
-        <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
-            @if (Image.ImageType[0] != 0)
-            {
-                <MudCardMedia Image="@Image.Url" />
-            }
-            <MudCardContent Class="pb-n4">
-                @if (Image.ImageType[0] == 0)
+<div class="@GetCardClasses()" @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false">
+    <div class="image-wrapper">
+        @if (IsVideo())
+        {
+            @* Video content *@
+            <video class="card-video" autoplay loop muted playsinline>
+                <source src="@Image.Url" />
+            </video>
+        }
+        else
+        {
+            <img src="@Image.Url" 
+                 alt="Civitai image" 
+                 class="card-image" 
+                 loading="lazy"
+                 @onerror="HandleImageError" />
+        }
+        
+        @* Fallback for failed images *@
+        @if (_imageError)
+        {
+            <div class="image-fallback">
+                <i class="fa-solid fa-image"></i>
+                <span>Image unavailable</span>
+            </div>
+        }
+        
+        @* Hover Overlay *@
+        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+            @* Top Section - Sampler Badge *@
+            <div class="overlay-top @(_isHovered ? "visible" : "")">
+                @if (Image.Meta != null && !string.IsNullOrWhiteSpace(Image.Meta.Sampler))
                 {
-                        // If first byte is 0 it means the image is a video.
-                    <video style="max-width: 10rem;" controls autoplay loop muted="true">
-                        <source src="@Image.Url" />
-                    </video>
+                    <div class="sampler-badge" style="@GetSamplerBadgeStyle()">
+                        @Image.Meta.Sampler
+                    </div>
                 }
-                <MudSpacer />
-                <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-seedling info-icon" />@Image.Meta.Seed</MudText>
-                    <MudSpacer />
-                    <MudText Typo="Typo.caption">
-                        <MudIcon Icon="fa-solid fa-stairs info-icon" />@Image.Meta.Steps
-                    <span class="separator ms-2">|</span>
-                    <MudIcon Icon="fa-solid fa-scale-unbalanced info-icon" />@Image.Meta.CfgScale
-                    @if (Image.Meta.DenoisingStrength != null)
+                else
+                {
+                    <div></div>
+                }
+                @if (IsVideo())
+                {
+                    <div class="video-badge">
+                        <i class="fa-solid fa-video"></i>
+                    </div>
+                }
+            </div>
+            
+            @* Center Section - Quick Actions *@
+            <div class="overlay-center @(_isHovered ? "visible" : "")">
+                <div class="quick-actions">
+                    <button class="action-btn" @onclick="@(() => SendTo(true))" title="Send to Img2Img">
+                        <i class="fa-solid fa-file-image"></i>
+                    </button>
+                    <button class="action-btn" @onclick="@(() => SendTo(false))" title="Send to Upscale">
+                        <i class="fa-solid fa-panorama"></i>
+                    </button>
+                    @if (Image.Meta != null)
                     {
-                        <span class="separator ms-2">|</span>
-                        <MudIcon Icon="fa-solid fa-braille info-icon" />
-
-                        @Image.Meta.DenoisingStrength
+                        <button class="action-btn primary" @onclick="ShowImageInfoDialog" title="View Info">
+                            <i class="fa-solid fa-info"></i>
+                        </button>
                     }
-                </MudText>
-            </MudCardContent>
-            <MudCardActions>
-                @*             <MudIconButton OnClick=@(() => OnSelectImage.InvokeAsync(Image)) Icon="fa-solid fa-expand" Class="icon" ButtonType=ButtonType.Button Color=Color.Warning />
-            <MudIconButton OnClick=@(() => OnDeleteImage.InvokeAsync(Image)) Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color=Color.Default />
-            *@            <MudSpacer />
-                <MudTooltip Color="Color.Dark" Style="max-width:50vw">
-                    <ChildContent>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                            <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
-                            <MudDivider />
-                            <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
-                            <MudDivider />
-                            <MudMenuItem OnClick=ShowImageInfoDialog Icon="fa-solid fa-circle-info" IconColor="Color.Info">Info</MudMenuItem>
-                        </MudMenu>
-                    </ChildContent>
-                    <TooltipContent>
-                        <MudText Typo="Typo.caption" Color="Color.Success">@Image.Meta.Prompt</MudText>
-                            <br />
-                            <MudText Typo="Typo.caption" Color="Color.Error">@Image.Meta.NegativePrompt</MudText>
-                        </TooltipContent>
-                    </MudTooltip>
-                </MudCardActions>
-            </MudCard>
-    }
-    else
-    {
-        <MudBadge Class="mb-n7 ms-7" Style="opacity: 0;" Overlap />
-        <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
-            @if (Image.ImageType[0] != 0)
-            {
-                <MudCardMedia Image="@Image.Url" />
-            }
-            <MudCardContent Class="pb-n4">
-                @if (Image.ImageType[0] == 0)
+                </div>
+            </div>
+            
+            @* Bottom Section - Metadata Info *@
+            <div class="overlay-bottom @(_isHovered ? "visible" : "")">
+                @if (Image.Meta != null)
                 {
-                        // If first byte is 0 it means the image is a video.
-                    <video style="max-width: 10rem;" controls autoplay loop muted="true">
-                        <source src="@Image.Url" />
-                    </video>
+                    <div class="info-row">
+                        <span class="info-item">
+                            <i class="fa-solid fa-seedling"></i>
+                            @Image.Meta.Seed
+                        </span>
+                        <span class="info-item">
+                            <i class="fa-solid fa-stairs"></i>
+                            @Image.Meta.Steps
+                        </span>
+                        <span class="info-item">
+                            <i class="fa-solid fa-scale-unbalanced"></i>
+                            @Image.Meta.CfgScale
+                        </span>
+                        @if (Image.Meta.DenoisingStrength != null)
+                        {
+                            <span class="info-item">
+                                <i class="fa-solid fa-braille"></i>
+                                @Image.Meta.DenoisingStrength
+                            </span>
+                        }
+                    </div>
                 }
-                <MudSpacer />
-                <MudText Typo="Typo.caption">Metadata<br />Not Available</MudText>
-            </MudCardContent>
-            <MudCardActions>
-                <MudSpacer />
-                <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-                    <MudMenuItem OnClick=@(() => SendTo(img2img: true)) Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
-                    <MudDivider />
-                    <MudMenuItem OnClick=@(() => SendTo(img2img: false)) Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
-                </MudMenu>
-            </MudCardActions>
-        </MudCard>
-    }
+                else
+                {
+                    <div class="info-row">
+                        <span class="info-item no-meta">No metadata</span>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        @* Persistent Sampler Indicator *@
+        @if (!_isHovered && Image.Meta != null && !string.IsNullOrWhiteSpace(Image.Meta.Sampler))
+        {
+            <div class="sampler-indicator" style="@GetSamplerBadgeStyle()">
+                @GetSamplerAbbrev()
+            </div>
+        }
+    </div>
 </div>
 
 @code {
     [Parameter] public CivitaiImageDto Image { get; set; }
     [Parameter] public EventCallback OnSaveImage { get; set; }
+
+    private bool _isHovered;
+    private bool _imageError;
+
+    private string GetCardClasses()
+    {
+        var classes = "civitai-card";
+        if (_isHovered) classes += " hovered";
+        if (_imageError) classes += " error";
+        return classes;
+    }
+
+    private bool IsVideo()
+    {
+        // Check by ImageType bytes (first byte is 0 for video)
+        if (Image.ImageType != null && Image.ImageType.Length > 0 && Image.ImageType[0] == 0)
+            return true;
+        
+        // Also check URL extension as fallback
+        if (!string.IsNullOrWhiteSpace(Image.Url))
+        {
+            var url = Image.Url.ToLowerInvariant();
+            return url.Contains(".mp4") || url.Contains(".webm") || url.Contains(".webp") || url.Contains(".gif");
+        }
+        
+        return false;
+    }
+
+    private void HandleImageError()
+    {
+        _imageError = true;
+        StateHasChanged();
+    }
 
     private void SendTo(bool img2img)
     {
@@ -102,31 +160,34 @@
         // else M.UpscaleImageData = data;
     }
 
-    private async Task<Color> SetSamplerBadgeColor()
+    private string GetSamplerBadgeStyle()
     {
-        switch (Image.Meta.Sampler)
+        var color = GetSamplerColor();
+        return $"background: {color};";
+    }
+
+    private string GetSamplerColor()
+    {
+        if (Image.Meta?.Sampler == null) return "rgba(158, 158, 158, 0.8)";
+        
+        return Image.Meta.Sampler switch
         {
-            case "Euler":
-            case "Euler a":
-                return Color.Success;
-            case "Heun":
-                return Color.Secondary;
-            case "DDIM":
-                return Color.Dark;
-            case "DPM2":
-            case "DPM2 a":
-                return Color.Warning;
-            case "LMS":
-            case "PLMS":
-                return Color.Error;
-            case "DPM++ 2S a":
-            case "DPM++ 2M":
-            case "DPM fast":
-            case "DPM adaptive":
-                return Color.Tertiary;
-            default:
-                return Color.Info;
-        }
+            "Euler" or "Euler a" => "rgba(76, 175, 80, 0.85)",
+            "Heun" => "rgba(156, 39, 176, 0.85)",
+            "DDIM" => "rgba(66, 66, 66, 0.85)",
+            "DPM2" or "DPM2 a" => "rgba(255, 152, 0, 0.85)",
+            "LMS" or "PLMS" => "rgba(244, 67, 54, 0.85)",
+            "DPM++ 2S a" or "DPM++ 2M" or "DPM fast" or "DPM adaptive" => "rgba(0, 150, 136, 0.85)",
+            _ => "rgba(33, 150, 243, 0.85)"
+        };
+    }
+
+    private string GetSamplerAbbrev()
+    {
+        if (Image.Meta?.Sampler == null) return "?";
+        var sampler = Image.Meta.Sampler;
+        if (sampler.Length <= 3) return sampler;
+        return sampler.Length > 6 ? sampler[..3] : sampler[..Math.Min(4, sampler.Length)];
     }
 
     private void ShowImageInfoDialog()

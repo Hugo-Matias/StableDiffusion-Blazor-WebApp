@@ -2,37 +2,66 @@
 @inject DatabaseService DB
 @inject IOService IO
 
-<div>
-    <MudCard Elevation="4" Class="@("project-card" + (M.State.Gallery.ProjectId == ProjectId ? " selected" : ""))">
-        <MudCardMedia Image="@_image" />
-        <MudCardContent>
-            <MudText Typo="Typo.h6" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@Name</MudText>
-        </MudCardContent>
-        <MudCardActions Style="display: flex; justify-content: space-around">
-            <MudIconButton OnClick="() => OnSelected.InvokeAsync(ProjectId)" Icon="fa-solid fa-check" Class="icon" ButtonType=ButtonType.Button Color=Color.Success />
-            <MudIconButton OnClick="() => OnEdited.InvokeAsync(ProjectId)" Icon="fa-solid fa-pen" Class="icon" ButtonType=ButtonType.Button Color="Color.Info" />
-            <MudIconButton OnClick="() => OnDeleted.InvokeAsync(ProjectId)" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color="Color.Error" />
-        </MudCardActions>
-    </MudCard>
+<div class="@GetCardClasses()" @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false">
+    <div class="image-wrapper">
+        <img src="@_image" alt="@Name" class="card-image" loading="lazy" />
+        
+        @* Hover Overlay *@
+        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+            @* Top Section - Project Name *@
+            <div class="overlay-top @(_isHovered ? "visible" : "")">
+                <div class="project-name">
+                    <span>@Name</span>
+                </div>
+            </div>
+            
+            @* Center Section - Quick Actions *@
+            <div class="overlay-center @(_isHovered ? "visible" : "")">
+                <div class="quick-actions">
+                    <button class="action-btn primary" @onclick="() => OnSelected.InvokeAsync(ProjectId)" title="Select Project">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button class="action-btn" @onclick="() => OnEdited.InvokeAsync(ProjectId)" title="Edit Project">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="action-btn danger" @onclick="() => OnDeleted.InvokeAsync(ProjectId)" title="Delete Project">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        @* Selected Indicator *@
+        @if (M.State.Gallery.ProjectId == ProjectId && !_isHovered)
+        {
+            <div class="selected-indicator">
+                <i class="fa-solid fa-check"></i>
+            </div>
+        }
+    </div>
 </div>
 
 @code {
-    [Parameter]
-    public int ProjectId { get; set; }
-    [Parameter]
-    public string Name { get; set; }
-    [Parameter]
-    public EventCallback<int> OnDeleted { get; set; }
-    [Parameter]
-    public EventCallback<int> OnSelected { get; set; }
-    [Parameter]
-    public EventCallback<int> OnEdited { get; set; }
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public string Name { get; set; }
+    [Parameter] public EventCallback<int> OnDeleted { get; set; }
+    [Parameter] public EventCallback<int> OnSelected { get; set; }
+    [Parameter] public EventCallback<int> OnEdited { get; set; }
 
-    public string _image;
+    private string _image;
+    private bool _isHovered;
 
     protected override async Task OnParametersSetAsync()
     {
         _image = await SetProjectSampleImage(ProjectId);
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = "project-card";
+        if (M.State.Gallery.ProjectId == ProjectId) classes += " selected";
+        if (_isHovered) classes += " hovered";
+        return classes;
     }
 
     private async Task<string> SetProjectSampleImage(int projectId)

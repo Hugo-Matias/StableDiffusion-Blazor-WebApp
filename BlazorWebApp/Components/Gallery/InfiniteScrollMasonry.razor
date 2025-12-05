@@ -8,7 +8,7 @@
 
 <div class="masonry-gallery-wrapper">
     <div class="gallery-toolbar">
-        <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
+        <MudButton OnClick="() => OpenViewer(0)" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
         <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
         @if (M.SelectedImageIds.Count > 0)
         {
@@ -27,7 +27,7 @@
             <div class="gallery-item">
                 <ImageCard Image="@image"
                            Target="fullscreen-modal"
-                           OnSelectImage="ShowImageViewerDialog"
+                           OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
                            OnDeleteImage="async () => await DeleteSingleImage(image)"
                            OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
                            ShowSelectionCheckbox="true" />
@@ -49,12 +49,19 @@
     }
 </div>
 
+<ImageViewer @bind-IsVisible="_showViewer" 
+             Images="Images.Images" 
+             StartIndex="_viewerStartIndex" 
+             OnClosed="StateHasChanged" />
+
 @code {
     [Parameter, EditorRequired] public ImagesDto Images { get; set; } = new();
     [Parameter] public EventCallback OnLoadNextPage { get; set; }
     [Parameter] public EventCallback OnImagesChanged { get; set; }
 
     private bool _isLoadingNext;
+    private bool _showViewer;
+    private int _viewerStartIndex;
     private IJSObjectReference? _infiniteScrollModule;
     private DotNetObjectReference<InfiniteScrollMasonry>? _dotNetRef;
 
@@ -87,26 +94,16 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private void OpenViewer(int startIndex)
+    {
+        _viewerStartIndex = startIndex;
+        _showViewer = true;
+    }
+
     private void ShowSelectionsDialog()
     {
         var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
         DialogService.Show<SelectionsDialog>("", options);
-    }
-
-    private void ShowImageViewerDialog(Image image)
-    {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        param.Add("Images", new List<Image>() { image });
-        DialogService.Show<ImageViewerDialog>("", param, options);
-    }
-
-    private void ShowAllImagesViewerDialog()
-    {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.ExtraLarge, CloseButton = true };
-        param.Add("Images", Images.Images);
-        DialogService.Show<ImageViewerDialog>("", param, options);
     }
 
     private async Task DeleteSingleImage(Image image)

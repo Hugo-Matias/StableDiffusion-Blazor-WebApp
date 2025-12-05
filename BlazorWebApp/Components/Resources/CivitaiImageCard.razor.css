@@ -1,42 +1,320 @@
-﻿div {
-	position: relative;
+﻿/* ===========================================
+   Civitai Card - Base Styles
+   =========================================== */
+
+.civitai-card {
+    position: relative;
+    width: 14rem;
+    min-width: 14rem;
+    max-width: 14rem;
+    aspect-ratio: 3 / 4;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    margin: 0.5rem;
 }
 
-	div:hover ::deep .select-checkbox {
-		opacity: 1;
-	}
-
-::deep .mud-card-content {
-	text-align: center;
-	padding: 0.5rem 1rem;
-	padding-bottom: 0rem;
+.civitai-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
 
-::deep .info-icon {
-	font-size: 0.7rem;
-	margin: 0 0.4rem;
-	opacity: 0.5;
+.civitai-card.error {
+    border: 1px dashed var(--mud-palette-text-secondary);
 }
 
-::deep .separator {
-	opacity: 0.2;
+/* ===========================================
+   Image Wrapper & Image/Video
+   =========================================== */
+
+.image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
-::deep .select-checkbox {
-	opacity: 0;
-	position: absolute;
-	top: 1.75rem;
-	right: 0.5rem;
-	z-index: 1;
-	background: rgba(0,0,0,0.8);
-	border-radius: 3px;
-	transition: opacity 0.2s ease-in-out;
+.card-image,
+.card-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
+    transition: transform 0.3s ease;
 }
 
-	::deep .select-checkbox.selected {
-		opacity: 1;
-	}
+.civitai-card:hover .card-image,
+.civitai-card:hover .card-video {
+    transform: scale(1.05);
+}
 
-	::deep .select-checkbox .mud-icon-button {
-		padding: 0.2rem;
-	}
+/* ===========================================
+   Image Fallback
+   =========================================== */
+
+.image-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-secondary);
+}
+
+.image-fallback i {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.image-fallback span {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+/* ===========================================
+   Hover Overlay
+   =========================================== */
+
+.hover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.hover-overlay.visible {
+    pointer-events: auto;
+}
+
+/* ===========================================
+   Top Section - Sampler & Video Badge
+   =========================================== */
+
+.overlay-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 8px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.overlay-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.sampler-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    max-width: 70%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.video-badge {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 4px;
+    padding: 4px 8px;
+    backdrop-filter: blur(4px);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.75rem;
+}
+
+/* ===========================================
+   Center Section - Quick Actions
+   =========================================== */
+
+.overlay-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    opacity: 0;
+    transition: opacity 0.25s ease 0.05s;
+}
+
+.overlay-center.visible {
+    opacity: 1;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 25px;
+    padding: 8px 16px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.action-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+}
+
+.action-btn.primary {
+    background: var(--mud-palette-info);
+    color: #fff;
+}
+
+.action-btn.primary:hover {
+    background: var(--mud-palette-info-darken);
+    box-shadow: 0 0 12px var(--mud-palette-info);
+}
+
+/* ===========================================
+   Bottom Section - Metadata Info
+   =========================================== */
+
+.overlay-bottom {
+    padding: 8px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.overlay-bottom.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.info-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.info-item i {
+    font-size: 0.55rem;
+    opacity: 0.8;
+}
+
+.info-item.no-meta {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+/* ===========================================
+   Persistent Sampler Indicator
+   =========================================== */
+
+.sampler-indicator {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    min-width: 28px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #fff;
+    padding: 0 6px;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    z-index: 5;
+    text-transform: uppercase;
+}
+
+/* ===========================================
+   Responsive Adjustments
+   =========================================== */
+
+@media (max-width: 768px) {
+    .civitai-card {
+        width: 12rem;
+        min-width: 12rem;
+        max-width: 12rem;
+    }
+    
+    .quick-actions {
+        padding: 6px 12px;
+        gap: 8px;
+    }
+    
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+    
+    .info-item {
+        font-size: 0.65rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .civitai-card {
+        width: 10rem;
+        min-width: 10rem;
+        max-width: 10rem;
+    }
+    
+    .action-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+    }
+    
+    .sampler-badge {
+        font-size: 0.55rem;
+        padding: 2px 6px;
+    }
+}

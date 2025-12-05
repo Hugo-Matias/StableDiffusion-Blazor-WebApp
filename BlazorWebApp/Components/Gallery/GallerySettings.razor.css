@@ -1,5 +1,17 @@
 ﻿::deep .projects-container {
-	overflow: scroll;
+	overflow-x: auto;
+	overflow-y: visible;
+	padding: 8px;
+	margin: -8px;
+}
+
+::deep .projects-container > * {
+	flex-shrink: 0;
+}
+
+/* Ensure the parent paper doesn't clip card shadows */
+::deep .mud-paper:has(.projects-container) {
+	overflow: visible;
 }
 
 ::deep .mud-chip {

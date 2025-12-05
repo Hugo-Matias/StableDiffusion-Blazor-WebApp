@@ -1,52 +1,58 @@
 ﻿h2 {
-	color: var(--app-dark-7);
+    color: var(--app-dark-7);
 }
 
 .modal-dialog {
-	margin-left: auto;
-	margin-right: auto;
-	overflow: visible;
-	transition: all 0.3s ease-in;
+    margin-left: auto;
+    margin-right: auto;
+    overflow: visible;
+    transition: all 0.3s ease-in;
 }
 
-	.modal-dialog.expanded {
-		max-width: 60vw !important;
-	}
-
+    .modal-dialog.expanded {
+        max-width: 60vw !important;
+    }
 
 .modal-dialog-centered {
-	align-items: center;
-	justify-content: center;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-content {
-	z-index: 1500;
+    z-index: 1500;
 }
 
-	.modal-content img {
-		box-shadow: 0 0 10rem 1rem black;
-	}
-
+    .modal-content img {
+        box-shadow: 0 0 10rem 1rem black;
+    }
 
 .modal-controls {
-	position: fixed;
-	top: 5rem;
-	right: 2rem;
-	margin: auto;
-	opacity: 0;
-	transition: opacity 0.3s ease-in-out;
-	z-index: 2000;
+    position: fixed;
+    top: 5rem;
+    right: 2rem;
+    margin: auto;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 2000;
 }
 
-	.modal-controls.show {
-		opacity: 1;
-	}
+    .modal-controls.show {
+        opacity: 1;
+    }
+
+/* ===========================================
+   Container Wrapper
+   =========================================== */
 
 .images-container-wrapper {
     width: 100%;
-    max-width: 85vw;
+    max-width: 90vw;
     margin: 0 auto;
 }
+
+/* ===========================================
+   Toolbar
+   =========================================== */
 
 .images-container-toolbar {
     display: flex;
@@ -70,20 +76,42 @@
     flex-wrap: wrap;
 }
 
+/* ===========================================
+   Images Grid Container
+   =========================================== */
+
 .images-grid-container {
     width: 100%;
+}
+
+/* ===========================================
+   Fixed Height Grid (Pagination Mode)
+   =========================================== */
+
+::deep .fixed-height-grid {
+    gap: 16px !important;
 }
 
 ::deep .fixed-height-grid .mud-grid-item {
     display: flex;
     flex-direction: column;
-    min-width: 250px;
+    min-width: 280px;
+    padding: 8px !important;
 }
 
 ::deep .grid-item-fixed {
     height: 100%;
-    min-height: 450px;
+    min-height: 350px;
 }
+
+/* Card inside grid item */
+::deep .grid-item-fixed .gallery-card {
+    height: 100%;
+}
+
+/* ===========================================
+   Pagination
+   =========================================== */
 
 .pagination-bottom {
     display: flex;
@@ -95,9 +123,51 @@
     width: fit-content;
 }
 
-@media (max-width: 1200px) {
+/* ===========================================
+   Responsive Adjustments
+   =========================================== */
+
+@media (max-width: 1600px) {
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 260px;
+    }
+    
     ::deep .grid-item-fixed {
-        min-height: 400px;
+        min-height: 320px;
+    }
+}
+
+@media (max-width: 1400px) {
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 240px;
+    }
+    
+    ::deep .grid-item-fixed {
+        min-height: 300px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .images-container-wrapper {
+        max-width: 92vw;
+    }
+    
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 220px;
+    }
+    
+    ::deep .grid-item-fixed {
+        min-height: 280px;
+    }
+}
+
+@media (max-width: 992px) {
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 200px;
+    }
+    
+    ::deep .grid-item-fixed {
+        min-height: 260px;
     }
 }
 
@@ -106,21 +176,25 @@
         max-width: 95vw;
     }
     
-    ::deep .grid-item-fixed {
-        min-height: 350px;
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 180px;
     }
     
-    ::deep .fixed-height-grid .mud-grid-item {
-        min-width: 200px;
+    ::deep .grid-item-fixed {
+        min-height: 250px;
+    }
+    
+    .toolbar-buttons {
+        flex-direction: column;
     }
 }
 
 @media (max-width: 480px) {
-    ::deep .grid-item-fixed {
-        min-height: 300px;
+    ::deep .fixed-height-grid .mud-grid-item {
+        min-width: 160px;
     }
     
-    ::deep .fixed-height-grid .mud-grid-item {
-        min-width: 180px;
+    ::deep .grid-item-fixed {
+        min-height: 200px;
     }
 }

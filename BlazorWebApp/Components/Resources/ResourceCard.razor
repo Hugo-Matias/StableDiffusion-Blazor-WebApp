@@ -1,22 +1,55 @@
 ﻿@inject IOService IO
 
-<div>
-    <MudButton Class="resource-btn" Style=@($"--hover-color: var(--{HoverColor}) !important; opacity: {Opacity.ToString()};{(!string.IsNullOrWhiteSpace(Filter) ? $"filter: {Filter};" : "")}") OnClick="@(async () => await OnLoad.InvokeAsync(Resource))">
-        <MudCard Style=@($"max-width: {Width}; min-width: {Width};") Elevation="4" Class="m-2">
-            <MudCardMedia Image="@(string.IsNullOrWhiteSpace(Resource.ImageSrc) ? "./no_image.png" : Resource.ImageSrc)" />
-            <MudCardContent Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" Class="pb-n4">
-                <MudText Typo="Typo.caption">@(Title ?? Resource.Title) </MudText>
-            </MudCardContent>
-        </MudCard>
-    </MudButton>
+<div class="@GetCardClasses()" 
+     style="@GetCardStyle()"
+     @onmouseenter="() => _isHovered = true" 
+     @onmouseleave="() => _isHovered = false"
+     @onclick="@(async () => await OnLoad.InvokeAsync(Resource))">
+    <div class="image-wrapper">
+        <img src="@(string.IsNullOrWhiteSpace(Resource.ImageSrc) ? "./no_image.png" : Resource.ImageSrc)" 
+             alt="@(Title ?? Resource.Title)" 
+             class="card-image" 
+             loading="lazy" />
+        
+        @* Hover Overlay - for center action *@
+        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+            <div class="center-action @(_isHovered ? "visible" : "")">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </div>
+        </div>
+        
+        @* Bottom Title - Always Visible *@
+        <div class="title-section @(_isHovered ? "hovered" : "")">
+            <div class="resource-title">
+                <span>@(Title ?? Resource.Title)</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
     [Parameter] public BaseResource Resource { get; set; }
     [Parameter] public string HoverColor { get; set; } = "mud-palette-primary";
     [Parameter] public EventCallback OnLoad { get; set; }
-    [Parameter] public string Width { get; set; } = "12rem";
+    [Parameter] public string Width { get; set; } = "16rem";
     [Parameter] public string? Title { get; set; }
     [Parameter] public float Opacity { get; set; } = 1f;
     [Parameter] public string Filter { get; set; } = string.Empty;
+
+    private bool _isHovered;
+
+    private string GetCardClasses()
+    {
+        var classes = "resource-card";
+        if (_isHovered) classes += " hovered";
+        return classes;
+    }
+
+    private string GetCardStyle()
+    {
+        var style = $"--card-width: {Width}; --hover-color: var(--{HoverColor});";
+        if (Opacity < 1f) style += $" opacity: {Opacity};";
+        if (!string.IsNullOrWhiteSpace(Filter)) style += $" filter: {Filter};";
+        return style;
+    }
 }
