@@ -11,7 +11,7 @@ using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
-    public enum Outdir { Txt2ImgSamples, Txt2ImgGrid, Img2ImgSamples, Img2ImgGrid, Extras }
+    public enum Outdir { Txt2ImgSamples, Txt2ImgGrid, Img2ImgSamples, Img2ImgGrid, Extras, Img2VidSamples }
 
     public class ManagerService
     {
@@ -27,6 +27,7 @@ namespace BlazorWebApp.Services
         private bool _isConverging;
         private bool _isWebuiUp;
         private string _canvasImageData;
+        private string _img2VidInputImage;
         private bool _isComfyUIUp;
 
         public event Action OnSDModelsChange;
@@ -46,9 +47,11 @@ namespace BlazorWebApp.Services
         public event Action OnTxt2ImgParametersChanged;
         public event Action OnImg2ImgParametersChanged;
         public event Action OnUpscaleParametersChanged;
+        public event Action OnImg2VidParametersChanged;
         public event Action OnSelectedImagesChanged;
         public event Action OnRefreshImagesContainer;
         public event Action OnCanvasImageDataChanged;
+        public event Action OnImg2VidInputImageChanged;
         public event Action OnResourcesStateChanged;
         public event Action OnWorkflowBaseChanged;
 
@@ -58,6 +61,7 @@ namespace BlazorWebApp.Services
         public Txt2ImgParameters ParametersTxt2Img { get; set; }
         public Img2ImgParameters ParametersImg2Img { get; set; }
         public Models.UpscaleParameters ParametersUpscale { get; set; }
+        public Img2VidParameters ParametersImg2Vid { get; set; }
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
         public ImagesDto GeneratedImageEntities { get; set; }
@@ -92,6 +96,59 @@ namespace BlazorWebApp.Services
         }
         public string CanvasMaskData { get; set; }
         public string UpscaleImageData { get; set; }
+        
+        /// <summary>
+        /// Input image data for Img2Vid generation (stored separately from parameters due to size)
+        /// </summary>
+        public string Img2VidInputImage
+        {
+            get => _img2VidInputImage; 
+            set
+            {
+                _img2VidInputImage = value;
+                OnImg2VidInputImageChanged?.Invoke();
+            }
+        }
+        
+        /// <summary>
+        /// Session-persisted generated videos for Img2Vid
+        /// </summary>
+        public GeneratedVideos SessionGeneratedVideos { get; set; } = new();
+        
+        public event Action OnSessionVideosChanged;
+        
+        public void AddSessionVideo(GeneratedVideo video)
+        {
+            SessionGeneratedVideos.Videos.Insert(0, video);
+            OnSessionVideosChanged?.Invoke();
+        }
+        
+        public void AddSessionVideos(IEnumerable<GeneratedVideo> videos)
+        {
+            foreach (var video in videos)
+            {
+                SessionGeneratedVideos.Videos.Insert(0, video);
+            }
+            OnSessionVideosChanged?.Invoke();
+        }
+        
+        public void ClearSessionVideos()
+        {
+            SessionGeneratedVideos.Videos.Clear();
+            OnSessionVideosChanged?.Invoke();
+        }
+        
+        public void InvokeSessionVideosChanged()
+        {
+            OnSessionVideosChanged?.Invoke();
+        }
+        
+        public void RemoveSessionVideo(GeneratedVideo video)
+        {
+            SessionGeneratedVideos.Videos.Remove(video);
+            OnSessionVideosChanged?.Invoke();
+        }
+        
         public bool ControlNetEnabled { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
         public bool IsGalleryFiltered { get; set; }
@@ -189,91 +246,160 @@ namespace BlazorWebApp.Services
             };
 
             if (modes.Contains(ModeType.Txt2Img))
-                ParametersTxt2Img = new Txt2ImgParameters(defaultParameters)
-                {
-                    EnableHR = Settings.Generation.Txt2Img.HighRes.Enabled,
-                    FirstphaseWidth = Settings.Generation.Txt2Img.HighRes.FirstPass.Width,
-                    FirstphaseHeight = Settings.Generation.Txt2Img.HighRes.FirstPass.Height,
-                    HRUpscaler = Settings.Generation.Txt2Img.HighRes.Upscaler,
-                    HRScale = Settings.Generation.Txt2Img.HighRes.Scale.Value,
-                    HRWidth = Settings.Generation.Txt2Img.HighRes.Resolution.Width,
-                    HRHeight = Settings.Generation.Txt2Img.HighRes.Resolution.Height,
-                    HRSecondPassSteps = Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Value,
-                    SeedVR2 = new SeedVR2Parameters
-                    {
-                        IsActive = Settings.Generation.Txt2Img.SeedVR2.Enabled,
-                        Model = Settings.Generation.Txt2Img.SeedVR2.Model,
-                        BlocksToSwap = Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Value,
-                        VaeTileSize = Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Value,
-                        VaeTileOverlap = Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Value,
-                        Resolution = Settings.Generation.Txt2Img.SeedVR2.Resolution.Value,
-                        Scale = Settings.Generation.Txt2Img.SeedVR2.Scale.Value,
-                        BatchSize = Settings.Generation.Txt2Img.SeedVR2.BatchSize.Value,
-                        InputNoiseScale = Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Value,
-                        LatentNoiseScale = Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Value
-                    },
-                    ConditioningVariation = new ConditioningVariationParameters
-                    {
-                        IsActive = Settings.Generation.Txt2Img.ConditioningVariation.Enabled,
-                        SwitchPoint = Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Value,
-                    },
-                    Scripts = new()
-                    {
-                        ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
-                        Cutoff = CreateCutoff(),
-                        DynamicPrompts = CreateDynamicPrompts(),
-                        MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
-                        MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
-                        RegionalPrompter = CreateRegionalPrompter(),
-                        XYZPlot = CreateXYZPlot(),
-                        ADetailer = CreateADetailer(),
-                        Incantations = CreateIncantationsModel(),
-                    },
-                };
+                InitializeTxt2ImgParameters(defaultParameters);
 
             if (modes.Contains(ModeType.Img2Img))
-                ParametersImg2Img = new Img2ImgParameters(defaultParameters)
-                {
-                    MaskBlur = Settings.Generation.Img2Img.MaskBlur.Value,
-                    ResizeMode = Settings.Generation.Img2Img.ResizeMode,
-                    InpaintingFill = Settings.Generation.Img2Img.Inpainting.Fill,
-                    InpaintFullRes = Settings.Generation.Img2Img.Inpainting.FullRes.Value,
-                    InpaintFullResPadding = Settings.Generation.Img2Img.Inpainting.FullRes.Padding.Value,
-                    InpaintingMaskInvert = Settings.Generation.Img2Img.Inpainting.MaskInvert,
-                    Scripts = new()
-                    {
-                        ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
-                        Cutoff = CreateCutoff(),
-                        DynamicPrompts = CreateDynamicPrompts(),
-                        UltimateUpscale = CreateUltimateUpscale(),
-                        MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
-                        MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
-                        RegionalPrompter = CreateRegionalPrompter(),
-                        XYZPlot = CreateXYZPlot(),
-                        ADetailer = CreateADetailer(),
-                        Incantations = CreateIncantationsModel(),
-                    }
-                };
+                InitializeImg2ImgParameters(defaultParameters);
 
             if (modes.Contains(ModeType.Extras))
-                ParametersUpscale = new Models.UpscaleParameters(defaultParameters)
-                {
-                    ResizeMode = Settings.Generation.Upscale.ResizeMode,
-                    ShowResults = Settings.Generation.Upscale.ShowResults,
-                    GfpganVisibility = Settings.Generation.Upscale.FaceRestoration.GfpganVisibility,
-                    CodeformerVisibility = Settings.Generation.Upscale.FaceRestoration.CodeformerVisibility,
-                    CodeformerWeight = Settings.Generation.Upscale.FaceRestoration.CodeformerWeight,
-                    UpscalingMultiplier = Settings.Generation.Upscale.UpscalingMultiplier.DefaultValue,
-                    UpscalingWidth = Settings.Generation.Upscale.UpscalingResolution.Width,
-                    UpscalingHeight = Settings.Generation.Upscale.UpscalingResolution.Height,
-                    UpscalingCrop = Settings.Generation.Upscale.UpscalingResolution.CropToFit,
-                    UpscalerPrimary = Settings.Generation.Upscale.UpscalerPrimary,
-                    UpscalerSecondary = Settings.Generation.Upscale.UpscalerSecondary.Name,
-                    UpscalerSecondaryVisibility = Settings.Generation.Upscale.UpscalerSecondary.DefaultValue,
-                    UpscalePriority = Settings.Generation.Upscale.FaceRestoration.UpscaleBeforeRestoration
-                };
+                InitializeUpscaleParameters(defaultParameters);
+
+            if (modes.Contains(ModeType.Img2Vid))
+                InitializeImg2VidParameters();
         }
 
+        private void InitializeTxt2ImgParameters(SharedParameters defaultParameters)
+        {
+            ParametersTxt2Img = new Txt2ImgParameters(defaultParameters)
+            {
+                EnableHR = Settings.Generation.Txt2Img.HighRes.Enabled,
+                FirstphaseWidth = Settings.Generation.Txt2Img.HighRes.FirstPass.Width,
+                FirstphaseHeight = Settings.Generation.Txt2Img.HighRes.FirstPass.Height,
+                HRUpscaler = Settings.Generation.Txt2Img.HighRes.Upscaler,
+                HRScale = Settings.Generation.Txt2Img.HighRes.Scale.Value,
+                HRWidth = Settings.Generation.Txt2Img.HighRes.Resolution.Width,
+                HRHeight = Settings.Generation.Txt2Img.HighRes.Resolution.Height,
+                HRSecondPassSteps = Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Value,
+                SeedVR2 = new SeedVR2Parameters
+                {
+                    IsActive = Settings.Generation.Txt2Img.SeedVR2.Enabled,
+                    Model = Settings.Generation.Txt2Img.SeedVR2.Model,
+                    BlocksToSwap = Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Value,
+                    VaeTileSize = Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Value,
+                    VaeTileOverlap = Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Value,
+                    Resolution = Settings.Generation.Txt2Img.SeedVR2.Resolution.Value,
+                    Scale = Settings.Generation.Txt2Img.SeedVR2.Scale.Value,
+                    BatchSize = Settings.Generation.Txt2Img.SeedVR2.BatchSize.Value,
+                    InputNoiseScale = Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Value,
+                    LatentNoiseScale = Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Value
+                },
+                ConditioningVariation = new ConditioningVariationParameters
+                {
+                    IsActive = Settings.Generation.Txt2Img.ConditioningVariation.Enabled,
+                    SwitchPoint = Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Value,
+                },
+                Scripts = new()
+                {
+                    ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
+                    Cutoff = CreateCutoff(),
+                    DynamicPrompts = CreateDynamicPrompts(),
+                    MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
+                    MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
+                    RegionalPrompter = CreateRegionalPrompter(),
+                    XYZPlot = CreateXYZPlot(),
+                    ADetailer = CreateADetailer(),
+                    Incantations = CreateIncantationsModel(),
+                },
+            };
+        }
+
+        private void InitializeImg2ImgParameters(SharedParameters defaultParameters)
+        {
+            ParametersImg2Img = new Img2ImgParameters(defaultParameters)
+            {
+                MaskBlur = Settings.Generation.Img2Img.MaskBlur.Value,
+                ResizeMode = Settings.Generation.Img2Img.ResizeMode,
+                InpaintingFill = Settings.Generation.Img2Img.Inpainting.Fill,
+                InpaintFullRes = Settings.Generation.Img2Img.Inpainting.FullRes.Value,
+                InpaintFullResPadding = Settings.Generation.Img2Img.Inpainting.FullRes.Padding.Value,
+                InpaintingMaskInvert = Settings.Generation.Img2Img.Inpainting.MaskInvert,
+                Scripts = new()
+                {
+                    ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
+                    Cutoff = CreateCutoff(),
+                    DynamicPrompts = CreateDynamicPrompts(),
+                    UltimateUpscale = CreateUltimateUpscale(),
+                    MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
+                    MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
+                    RegionalPrompter = CreateRegionalPrompter(),
+                    XYZPlot = CreateXYZPlot(),
+                    ADetailer = CreateADetailer(),
+                    Incantations = CreateIncantationsModel(),
+                }
+            };
+        }
+
+        private void InitializeUpscaleParameters(SharedParameters defaultParameters)
+        {
+            ParametersUpscale = new Models.UpscaleParameters(defaultParameters)
+            {
+                ResizeMode = Settings.Generation.Upscale.ResizeMode,
+                ShowResults = Settings.Generation.Upscale.ShowResults,
+                GfpganVisibility = Settings.Generation.Upscale.FaceRestoration.GfpganVisibility,
+                CodeformerVisibility = Settings.Generation.Upscale.FaceRestoration.CodeformerVisibility,
+                CodeformerWeight = Settings.Generation.Upscale.FaceRestoration.CodeformerWeight,
+                UpscalingMultiplier = Settings.Generation.Upscale.UpscalingMultiplier.DefaultValue,
+                UpscalingWidth = Settings.Generation.Upscale.UpscalingResolution.Width,
+                UpscalingHeight = Settings.Generation.Upscale.UpscalingResolution.Height,
+                UpscalingCrop = Settings.Generation.Upscale.UpscalingResolution.CropToFit,
+                UpscalerPrimary = Settings.Generation.Upscale.UpscalerPrimary,
+                UpscalerSecondary = Settings.Generation.Upscale.UpscalerSecondary.Name,
+                UpscalerSecondaryVisibility = Settings.Generation.Upscale.UpscalerSecondary.DefaultValue,
+                UpscalePriority = Settings.Generation.Upscale.FaceRestoration.UpscaleBeforeRestoration
+            };
+        }
+
+        private void InitializeImg2VidParameters()
+        {
+            var i2vSettings = Settings.Generation?.Img2Vid;
+            
+            // Use defaults if settings are null
+            if (i2vSettings == null)
+            {
+                ParametersImg2Vid = new Img2VidParameters();
+                return;
+            }
+
+            ParametersImg2Vid = new Img2VidParameters
+            {
+                // Model settings
+                HighModel = i2vSettings.Models?.HighModel,
+                LowModel = i2vSettings.Models?.LowModel,
+                Clip = i2vSettings.Models?.Clip,
+                ClipVision = i2vSettings.Models?.ClipVision,
+                Vae = i2vSettings.Models?.Vae,
+
+                // Video settings
+                Length = i2vSettings.Video?.Length?.Value ?? 81,
+                FrameRate = i2vSettings.Video?.FrameRate?.Value ?? 16,
+                MotionAmplitude = i2vSettings.Video?.MotionAmplitude?.Value ?? 1.1f,
+
+                // Sampling settings
+                Shift = i2vSettings.Sampling?.Shift?.Value ?? 5,
+                Steps = i2vSettings.Sampling?.Steps?.Value ?? 8,
+                CfgScale = i2vSettings.Sampling?.CfgScale?.Value ?? 1.0f,
+                SamplerName = i2vSettings.Sampling?.Sampler ?? "euler",
+                Scheduler = i2vSettings.Sampling?.Scheduler ?? "simple",
+
+                // Resolution (from shared settings)
+                Width = Settings.Generation?.Shared?.Resolution?.Width ?? 768,
+                Height = Settings.Generation?.Shared?.Resolution?.Height ?? 768,
+                Seed = Settings.Generation?.Shared?.Seed ?? -1,
+                BatchSize = 1,
+
+                // Frame interpolation
+                FrameInterpolation = new Data.Dtos.ComfyUI.Workflow.FrameInterpolationParameters
+                {
+                    IsActive = i2vSettings.FrameInterpolation?.Enabled ?? true,
+                    ScaleBy = i2vSettings.FrameInterpolation?.ScaleBy?.Value ?? 2.0,
+                    Multiplier = i2vSettings.FrameInterpolation?.Multiplier?.Value ?? 2,
+                    RifeModel = i2vSettings.FrameInterpolation?.RifeModel ?? "rife49.pth"
+                },
+
+                // Initialize empty collections
+                Loras = new List<Lora>()
+            };
+        }
         #region Script Initializers
         public ScriptParametersControlNet CreateControlNet()
         {
@@ -769,16 +895,23 @@ namespace BlazorWebApp.Services
         {
             var modelKeys = new[] { "ckpt_name", "unet_name" };
             var workflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-            if (workflow != null)
+            if (workflow?.Pipeline != null)
             {
                 var defaultModel = workflow.Pipeline
                     .Select(s => modelKeys
                         .FirstOrDefault(k => s.Parameters?.ContainsKey(k) == true))
                     .Where(k => k != null)
                     .Select(k => workflow.Pipeline
-                        .FirstOrDefault(s => s.Parameters.ContainsKey(k))?
-                        .Parameters[k]?.ToString())?.FirstOrDefault()?.GetDefaultModelFromWorkflow();
-                State.Generation.SDModel = defaultModel;
+                        .FirstOrDefault(s => s.Parameters?.ContainsKey(k) == true)?
+                        .Parameters[k]?.ToString())
+                    .FirstOrDefault()?
+
+                    .GetDefaultModelFromWorkflow();
+                    
+                if (!string.IsNullOrWhiteSpace(defaultModel))
+                {
+                    State.Generation.SDModel = defaultModel;
+                }
             }
         }
 
@@ -916,7 +1049,7 @@ namespace BlazorWebApp.Services
                     else
                     {
                         // Transforms this "Base/v1-5-pruned-emaonly.safetensors" into "Base\\v1-5-pruned-emaonly"
-                        var modelAsPath = State.Generation.SDModel.Replace('/', Path.DirectorySeparatorChar);
+                        var modelAsPath = State.Generation.SDModel?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
                         return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
                     }
                 default:
@@ -950,6 +1083,21 @@ namespace BlazorWebApp.Services
                         return ParametersImg2Img.Steps.ToString();
                     case "[cfg]":
                         return ParametersImg2Img.CfgScale.ToString();
+                    default: break;
+                }
+            }
+            else if (mode == ModeType.Img2Vid)
+            {
+                switch (tag)
+                {
+                    case "[sampler]":
+                        return ParametersImg2Vid?.SamplerName ?? "euler";
+                    case "[seed]":
+                        return State.Generation.Seed.ToString();
+                    case "[steps]":
+                        return ParametersImg2Vid?.Steps?.ToString() ?? "8";
+                    case "[cfg]":
+                        return ParametersImg2Vid?.CfgScale?.ToString() ?? "1";
                     default: break;
                 }
             }
@@ -1099,7 +1247,7 @@ namespace BlazorWebApp.Services
             {
                 state = await _db.GetState(1);
                 State = new(Settings);
-                ModeType[] modes = new ModeType[3] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras };
+                ModeType[] modes = new ModeType[4] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras, ModeType.Img2Vid };
                 InitializeParameters(modes);
             }
 
@@ -1126,6 +1274,11 @@ namespace BlazorWebApp.Services
                     ParametersUpscale = state.UpscaleParameters;
                     OnUpscaleParametersChanged?.Invoke();
                 }
+                if (state.Img2VidParameters != null)
+                {
+                    ParametersImg2Vid = state.Img2VidParameters;
+                    OnImg2VidParametersChanged?.Invoke();
+                }
 
                 NormalizeState();
 
@@ -1133,6 +1286,7 @@ namespace BlazorWebApp.Services
                 OnTxt2ImgParametersChanged?.Invoke();
                 OnImg2ImgParametersChanged?.Invoke();
                 OnUpscaleParametersChanged?.Invoke();
+                OnImg2VidParametersChanged?.Invoke();
             }
             else await SaveState();
         }
@@ -1163,6 +1317,7 @@ namespace BlazorWebApp.Services
                 entity.Txt2ImgParameters = ParametersTxt2Img;
                 entity.Img2ImgParameters = ParametersImg2Img;
                 entity.UpscaleParameters = ParametersUpscale;
+                entity.Img2VidParameters = ParametersImg2Vid;
                 await _db.UpdateState(entity);
             }
             else await _db.UpdateState(state);
@@ -1178,6 +1333,7 @@ namespace BlazorWebApp.Services
             StateNormalizer.Normalize(ParametersTxt2Img);
             StateNormalizer.Normalize(ParametersImg2Img);
             StateNormalizer.Normalize(ParametersUpscale);
+            StateNormalizer.Normalize(ParametersImg2Vid);
         }
     }
 }

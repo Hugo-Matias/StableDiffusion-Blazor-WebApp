@@ -1,0 +1,22 @@
+#meta
+{
+  "outputs": {
+    "{{ model_output_name ?? 'model_output' }}": { "node": "{{ lora_loader_id }}", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ lora_loader_id }}": {
+    "inputs": {
+      "lora_name": {{ (lora_path ?? lora_name) | json }},
+      "strength_model": {{ lora_strength | json }},
+      "strength_clip": {{ lora_clip_strength ?? 1 | json }},
+      "model": {{ get_ref (model_input_name ?? "model_output") }}
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": {{ title ?? "LoRA Loader" | json }}
+    }
+  }
+}

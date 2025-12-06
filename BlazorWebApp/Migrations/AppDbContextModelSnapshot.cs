@@ -59,12 +59,6 @@ namespace BlazorWebApp.Migrations
                     b.Property<int>("Height")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Info")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("InfoPath")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("ModeId")
                         .HasColumnType("INTEGER");
 

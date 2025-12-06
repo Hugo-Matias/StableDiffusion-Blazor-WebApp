@@ -1,0 +1,73 @@
+@inject IOService IO
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Class="mr-2" />
+            Video Info
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Video != null)
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <video controls loop class="video-preview" src="@GetVideoUrl()">
+                        Your browser does not support the video tag.
+                    </video>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudStack Spacing="2">
+                        <MudTextField Value="@Video.Filename" Label="Filename" ReadOnly Variant="Variant.Outlined" />
+                        <MudTextField Value="@($"{Video.Width}×{Video.Height}")" Label="Resolution" ReadOnly Variant="Variant.Outlined" />
+                        <MudTextField Value="@Video.FrameCount.ToString()" Label="Frames" ReadOnly Variant="Variant.Outlined" />
+                        <MudTextField Value="@($"{Video.FrameRate} fps")" Label="Frame Rate" ReadOnly Variant="Variant.Outlined" />
+                        <MudTextField Value="@($"{Video.Duration:F2}s")" Label="Duration" ReadOnly Variant="Variant.Outlined" />
+                        <MudTextField Value="@Video.DateCreated.ToString("g")" Label="Generated" ReadOnly Variant="Variant.Outlined" />
+                        <MudTextField Value="@Video.FilePath" Label="Path" ReadOnly Variant="Variant.Outlined" Lines="2" />
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .video-preview {
+        width: 100%;
+        max-height: 300px;
+        border-radius: 8px;
+    }
+</style>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public GeneratedVideo Video { get; set; }
+
+    private string GetVideoUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(Video?.VideoData))
+        {
+            return $"data:video/mp4;base64,{Video.VideoData}";
+        }
+        
+        if (!string.IsNullOrWhiteSpace(Video?.FilePath))
+        {
+            try
+            {
+                return IO.GetImageStaticFile(Video.FilePath);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private void Close() => MudDialog.Close();
+}

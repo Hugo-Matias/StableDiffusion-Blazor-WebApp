@@ -1,0 +1,710 @@
+@using BlazorWebApp.Models
+@inject ManagerService M
+@inject DatabaseService DB
+@inject IOService IO
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<MudTabs Elevation="1" PanelClass="pa-3" MinimumTabWidth="100px" Rounded Centered>
+    <MudTabPanel Icon="fa-solid fa-play">
+        <div class="video-preview-container">
+            @if (_currentVideo != null && !string.IsNullOrWhiteSpace(GetVideoUrl(_currentVideo)))
+            {
+                <video controls autoplay loop class="video-player" src="@GetVideoUrl(_currentVideo)">
+                    Your browser does not support the video tag.
+                </video>
+                <MudStack Row Class="video-controls mt-2" Justify="Justify.Center" AlignItems="AlignItems.Center">
+                    <MudIconButton Icon="@(_currentVideo.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" 
+                                   Color="@(_currentVideo.Favorite ? Color.Error : Color.Default)"
+                                   OnClick="ToggleCurrentFavorite"
+                                   Title="Toggle Favorite" />
+                    <MudRating SelectedValue="_currentVideo.Score" 
+                               SelectedValueChanged="SetCurrentScore" 
+                               MaxValue="3" 
+                               Size="Size.Small" />
+                    <MudDivider Vertical FlexItem Class="mx-2" Style="height: 24px;" />
+                    <MudIconButton Icon="fa-solid fa-folder-open" 
+                                   OnClick="OpenCurrentInExplorer"
+                                   Title="Open in Explorer" />
+                    @if (_currentVideo != null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                            @GetVideoInfo(_currentVideo)
+                        </MudChip>
+                    }
+                </MudStack>
+            }
+            else
+            {
+                <div class="no-video-placeholder">
+                    <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Size="Size.Large" Class="mb-2" />
+                    <MudText Typo="Typo.body1">No video generated yet</MudText>
+                    <MudText Typo="Typo.caption">Upload an image and click Generate</MudText>
+                </div>
+            }
+        </div>
+    </MudTabPanel>
+    <MudTabPanel Icon="fa-solid fa-film">
+        <div class="video-gallery-container">
+            @* Toolbar *@
+            @if (M.SessionGeneratedVideos.Videos.Count > 0)
+            {
+                <div class="gallery-toolbar">
+                    <MudButton OnClick="() => OpenSessionViewer(0)" 
+                               StartIcon="fa-solid fa-window-maximize" 
+                               Color="Color.Secondary"
+                               Size="Size.Small">
+                        Fullscreen
+                    </MudButton>
+                    @if (M.SelectedImageIds.Count > 0)
+                    {
+                        <MudButton OnClick="M.ClearSelectedImages" 
+                                   StartIcon="fa-regular fa-square" 
+                                   Color="Color.Warning"
+                                   Size="Size.Small">Clear</MudButton>
+                    }
+                    <MudButton OnClick="ClearGallery" 
+                               StartIcon="fa-solid fa-trash-can" 
+                               Color="Color.Error"
+                               Size="Size.Small">
+                        Clear All (@M.SessionGeneratedVideos.Videos.Count)
+                    </MudButton>
+                </div>
+            }
+            
+            @* Video Grid *@
+            <div class="video-gallery">
+                @if (M.SessionGeneratedVideos.Videos.Count > 0)
+                {
+                    <MudGrid Spacing="2" Justify="Justify.Center">
+                        @for (int i = 0; i < M.SessionGeneratedVideos.Videos.Count; i++)
+                        {
+                            var index = i;
+                            var video = M.SessionGeneratedVideos.Videos[i];
+                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                <VideoCard Video="@video"
+                                           Index="@index"
+                                           OnSelectVideo="OpenSessionViewer"
+                                           OnDeleteVideo="RemoveVideo"
+                                           OnVideoChanged="HandleVideoChanged"
+                                           ShowSelectionCheckbox="true"
+                                           UseFixedSize="true" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <div class="no-video-placeholder">
+                        <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Size="Size.Large" Class="mb-2" />
+                        <MudText Typo="Typo.body2">No videos in session gallery</MudText>
+                        <MudText Typo="Typo.caption">Generated videos will appear here</MudText>
+                    </div>
+                }
+            </div>
+        </div>
+    </MudTabPanel>
+    <MudTabPanel Icon="fa-solid fa-spinner">
+        <div class="queue-panel">
+            @if (M.IsConverging)
+            {
+                <MudStack AlignItems="AlignItems.Center" Class="pa-4" Style="width: 100%;">
+                    @* Preview Image from KSampler *@
+                    <div class="preview-image-container">
+                        @if (!string.IsNullOrWhiteSpace(M.Progress?.CurrentImage))
+                        {
+                            <MudImage Src="@GetPreviewImageUrl()" 
+                                      Alt="Generation Preview" 
+                                      Class="preview-image"
+                                      ObjectFit="ObjectFit.Contain" />
+                        }
+                        else
+                        {
+                            <div class="preview-placeholder">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Secondary" />
+                            </div>
+                        }
+                    </div>
+                    
+                    @* Progress Information *@
+                    <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="mt-3" Style="width: 100%; max-width: 400px;">
+                        @if (!string.IsNullOrWhiteSpace(M.Progress?.State?.Job))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @M.Progress.State.Job
+                            </MudText>
+                        }
+                        
+                        @* Progress Bar *@
+                        @if (M.Progress?.Value > 0)
+                        {
+                            <MudProgressLinear Color="Color.Primary" 
+                                               Value="@(M.Progress.Value * 100)" 
+                                               Class="mt-2" 
+                                               Style="width: 100%;"
+                                               Rounded
+                                               Size="Size.Medium" />
+                            <MudText Typo="Typo.caption">
+                                @($"{M.Progress.Value * 100:F0}%")
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudProgressLinear Color="Color.Primary" Indeterminate Class="mt-2" Style="width: 100%;" />
+                        }
+                        
+                        <MudText Typo="Typo.body2" Class="mt-2">Generating video...</MudText>
+                    </MudStack>
+                </MudStack>
+            }
+            else
+            {
+                <div class="no-video-placeholder">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Large" Class="mb-2" />
+                    <MudText Typo="Typo.body2">Queue is empty</MudText>
+                </div>
+            }
+        </div>
+    </MudTabPanel>
+    <MudTabPanel Icon="fa-regular fa-square-check">
+        <div class="video-gallery-container">
+            @if (_selectedImages != null && _selectedImages.Images.Count > 0)
+            {
+                <div class="gallery-toolbar">
+                    <MudButton OnClick="() => OpenSelectedViewer(0)" 
+                               StartIcon="fa-solid fa-window-maximize" 
+                               Color="Color.Secondary"
+                               Size="Size.Small">
+                        Fullscreen
+                    </MudButton>
+                    <MudButton OnClick="ShowDeleteSelectedDialog" 
+                               StartIcon="fa-solid fa-trash-can" 
+                               Color="Color.Error"
+                               Size="Size.Small">
+                        Delete (@M.SelectedImageIds.Count)
+                    </MudButton>
+                    <MudButton OnClick="M.ClearSelectedImages" 
+                               StartIcon="fa-regular fa-square" 
+                               Color="Color.Warning"
+                               Size="Size.Small">
+                        Clear Selection
+                    </MudButton>
+                    @if (_selectedImages.PageCount > 1)
+                    {
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_selectedImages.PageCount" Selected="_selectedPage" SelectedChanged="page => LoadSelectedPage(page)" Size="Size.Small" />
+                    }
+                </div>
+                
+                <div class="video-gallery">
+                    <MudGrid Spacing="2" Justify="Justify.Center">
+                        @foreach (var image in _selectedImages.Images)
+                        {
+                            var index = _selectedImages.Images.IndexOf(image);
+                            @if (IsVideoFile(image.Path))
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <VideoCard Video="@ConvertToGeneratedVideo(image)"
+                                               Index="@index"
+                                               OnSelectVideo="OpenSelectedViewer"
+                                               OnDeleteVideo="video => RemoveSelectedVideo(video)"
+                                               OnVideoChanged="HandleVideoChanged"
+                                               ShowSelectionCheckbox="true"
+                                               UseFixedSize="true" />
+                                </MudItem>
+                            }
+                            else
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <ImageCard Image="@image"
+                                               Target="fullscreen-modal"
+                                               OnSelectImage="img => OpenSelectedViewer(_selectedImages.Images.IndexOf(img))"
+                                               OnDeleteImage="ShowDeleteImageDialog"
+                                               ShowSelectionCheckbox="true"
+                                               UseFixedSize="true" />
+                                </MudItem>
+                            }
+                        }
+                    </MudGrid>
+                </div>
+                
+                @if (_selectedImages.PageCount > 1)
+                {
+                    <div style="margin-top: 1rem; display: flex; justify-content: center;">
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_selectedImages.PageCount" Selected="_selectedPage" SelectedChanged="page => LoadSelectedPage(page)" />
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="no-video-placeholder">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" Size="Size.Large" Class="mb-2" />
+                    <MudText Typo="Typo.body2">No items selected</MudText>
+                    <MudText Typo="Typo.caption">Select images or videos using the checkbox</MudText>
+                </div>
+            }
+        </div>
+    </MudTabPanel>
+    <MudTabPanel Icon="fa-solid fa-shuffle">
+        <MudStack>
+            <MudText Typo="Typo.caption">Source:</MudText>
+            <MudRadioGroup T="string" @bind-Value="M.State.Generation.RandomImagesSource">
+                <MudRadio T="string" Value="@("generated")" Color="Color.Primary">Generated</MudRadio>
+                <MudRadio T="string" Value="@("resource")" Color="Color.Secondary">Resource</MudRadio>
+            </MudRadioGroup>
+            <MudStack Row=true>
+                <MudSlider @bind-Value="M.State.Generation.RandomImagesAmount" 
+                           Min="M.Settings.Generation.RandomImages.Min" 
+                           Max="M.Settings.Generation.RandomImages.Max" 
+                           Step="M.Settings.Generation.RandomImages.Step" 
+                           ValueLabel=true>
+                    <small>Amount: </small>@M.State.Generation.RandomImagesAmount
+                </MudSlider>
+                <MudButton OnClick="LoadRandomImages" Color="Color.Success">Random</MudButton>
+            </MudStack>
+        </MudStack>
+        @if (_randomImages != null && _randomImages.Images.Count > 0)
+        {
+            <div class="video-gallery-container" style="margin-top: 1rem;">
+                @if (_randomImages.PageCount > 1)
+                {
+                    <div class="gallery-toolbar">
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_randomImages.PageCount" Selected="_randomPage" SelectedChanged="page => LoadRandomPage(page)" Size="Size.Small" />
+                    </div>
+                }
+                
+                <div class="video-gallery">
+                    <MudGrid Spacing="2" Justify="Justify.Center">
+                        @foreach (var image in _randomImages.Images)
+                        {
+                            var index = _randomImages.Images.IndexOf(image);
+                            @if (IsVideoFile(image.Path))
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <VideoCard Video="@ConvertToGeneratedVideo(image)"
+                                               Index="@index"
+                                               OnSelectVideo="idx => OpenRandomViewer(idx)"
+                                               OnDeleteVideo="video => { }"
+                                               OnVideoChanged="HandleVideoChanged"
+                                               ShowSelectionCheckbox="true"
+                                               UseFixedSize="true" />
+                                </MudItem>
+                            }
+                            else
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <ImageCard Image="@image"
+                                               Target="fullscreen-modal"
+                                               OnSelectImage="img => OpenRandomViewer(_randomImages.Images.IndexOf(img))"
+                                               OnDeleteImage="img => { }"
+                                               ShowSelectionCheckbox="true"
+                                               UseFixedSize="true" />
+                                </MudItem>
+                            }
+                        }
+                    </MudGrid>
+                </div>
+                
+                @if (_randomImages.PageCount > 1)
+                {
+                    <div style="margin-top: 1rem; display: flex; justify-content: center;">
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_randomImages.PageCount" Selected="_randomPage" SelectedChanged="page => LoadRandomPage(page)" />
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="no-video-placeholder" style="margin-top: 2rem;">
+                <MudIcon Icon="@Icons.Material.Filled.Casino" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.body2">Click Random to load images</MudText>
+            </div>
+        }
+    </MudTabPanel>
+</MudTabs>
+
+@* Session Video Viewer - uses VideoViewer for session-only videos (not in database) *@
+<VideoViewer @bind-IsVisible="_showSessionViewer"
+             Videos="M.SessionGeneratedVideos.Videos"
+             StartIndex="_sessionViewerIndex"
+             OnVideoChanged="HandleVideoChanged"
+             OnClosed="StateHasChanged" />
+
+@* Unified Asset Viewer for Selected tab - seamless navigation across all asset types with pagination *@
+<AssetViewer @bind-IsVisible="_showSelectedViewer"
+             Assets="@(_selectedImages?.Images ?? new())"
+             StartIndex="_selectedViewerIndex"
+             CurrentPage="_selectedPage"
+             PageCount="@(_selectedImages?.PageCount ?? 1)"
+             TotalCount="@(M.SelectedImageIds.Count)"
+             OnPageChange="HandleSelectedViewerPageChange"
+             OnAssetChanged="HandleAssetChanged"
+             OnClosed="StateHasChanged" />
+
+@* Unified Asset Viewer for Random tab - seamless navigation across all asset types with pagination *@
+<AssetViewer @bind-IsVisible="_showRandomViewer"
+             Assets="@(_randomImages?.Images ?? new())"
+             StartIndex="_randomViewerIndex"
+             CurrentPage="_randomPage"
+             PageCount="@(_randomImages?.PageCount ?? 1)"
+             TotalCount="@(_randomImages?.Images?.Count ?? 0)"
+             OnPageChange="HandleRandomViewerPageChange"
+             OnAssetChanged="HandleAssetChanged"
+             OnClosed="StateHasChanged" />
+
+@code {
+    [Parameter] public GeneratedVideos GeneratedVideos { get; set; }
+
+    private GeneratedVideo _currentVideo;
+    
+    // Session viewer state (for generated videos not yet in database)
+    private bool _showSessionViewer;
+    private int _sessionViewerIndex;
+    
+    // Selected tab state
+    private ImagesDto _selectedImages;
+    private int _selectedPage = 1;
+    private bool _showSelectedViewer;
+    private int _selectedViewerIndex;
+    
+    // Random tab state
+    private ImagesDto _randomImages;
+    private int _randomPage = 1;
+    private bool _showRandomViewer;
+    private int _randomViewerIndex;
+
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        M.OnProgressChanged += HandleProgressChanged;
+        M.OnSessionVideosChanged += HandleSessionVideosChanged;
+        M.OnSelectedImagesChanged += HandleSelectedImagesChanged;
+        
+        // Set current video from session if available
+        if (M.SessionGeneratedVideos.Videos.Count > 0)
+        {
+            _currentVideo = M.SessionGeneratedVideos.Videos.First();
+        }
+        
+        // Load selected items
+        await LoadSelectedPage(1);
+    }
+
+    protected override void OnParametersSet()
+    {
+        // When new videos are generated, add them to session and select the first
+        if (GeneratedVideos?.Videos != null && GeneratedVideos.Videos.Count > 0)
+        {
+            foreach (var video in GeneratedVideos.Videos)
+            {
+                // Check if video is already in session (avoid duplicates)
+                if (!M.SessionGeneratedVideos.Videos.Any(v => v.FilePath == video.FilePath))
+                {
+                    M.SessionGeneratedVideos.Videos.Insert(0, video);
+                }
+            }
+            
+            // Select the first new video for preview
+            _currentVideo = GeneratedVideos.Videos.First();
+            M.InvokeSessionVideosChanged();
+        }
+        
+        // If current video is null but session has videos, select the first
+        if (_currentVideo == null && M.SessionGeneratedVideos.Videos.Count > 0)
+        {
+            _currentVideo = M.SessionGeneratedVideos.Videos.First();
+        }
+    }
+
+    private void HandleProgressChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSessionVideosChanged()
+    {
+        // Ensure current video is still valid
+        if (_currentVideo == null && M.SessionGeneratedVideos.Videos.Count > 0)
+        {
+            _currentVideo = M.SessionGeneratedVideos.Videos.First();
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleSelectedImagesChanged()
+    {
+        await LoadSelectedPage(_selectedPage);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleVideoChanged(GeneratedVideo video)
+    {
+        // Sync the video in session list
+        var sessionVideo = M.SessionGeneratedVideos.Videos.FirstOrDefault(v => v.FilePath == video.FilePath);
+        if (sessionVideo != null)
+        {
+            sessionVideo.Favorite = video.Favorite;
+            sessionVideo.Score = video.Score;
+        }
+        
+        // Update current video if it's the same
+        if (_currentVideo?.FilePath == video.FilePath)
+        {
+            _currentVideo = video;
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleAssetChanged(Image image)
+    {
+        StateHasChanged();
+    }
+
+    private bool IsVideoFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return VideoExtensions.Contains(extension);
+    }
+
+    private GeneratedVideo ConvertToGeneratedVideo(Image image)
+    {
+        return new GeneratedVideo
+        {
+            Id = image.Id,
+            FilePath = image.Path,
+            Filename = Path.GetFileName(image.Path),
+            Width = image.Width,
+            Height = image.Height,
+            Prompt = image.Prompt,
+            NegativePrompt = image.NegativePrompt,
+            Seed = image.Seed,
+            Steps = image.Steps,
+            CfgScale = image.CfgScale,
+            DateCreated = image.DateCreated,
+            Favorite = image.Favorite,
+            Score = image.Score
+        };
+    }
+
+    private async Task LoadSelectedPage(int page)
+    {
+        _selectedPage = page;
+        _selectedImages = await DB.GetPagedImages(page, M.SelectedImageIds);
+    }
+
+    private async Task LoadRandomImages()
+    {
+        _randomPage = 1;
+        switch (M.State.Generation.RandomImagesSource)
+        {
+            case "generated":
+                _randomImages = await DB.GetRandomImages(M.State.Generation.RandomImagesAmount);
+                break;
+            case "resource":
+                _randomImages = await DB.GetRandomResourceImages(M.State.Generation.RandomImagesAmount);
+                break;
+            default:
+                break;
+        }
+        await M.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task LoadRandomPage(int page)
+    {
+        _randomPage = page;
+        await LoadRandomImages();
+    }
+
+    private void OpenSessionViewer(int startIndex)
+    {
+        _sessionViewerIndex = startIndex;
+        _showSessionViewer = true;
+    }
+
+    private void OpenSelectedViewer(int startIndex)
+    {
+        _selectedViewerIndex = startIndex;
+        _showSelectedViewer = true;
+    }
+
+    private async Task HandleSelectedViewerPageChange(int newPage)
+    {
+        await LoadSelectedPage(newPage);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenRandomViewer(int startIndex)
+    {
+        _randomViewerIndex = startIndex;
+        _showRandomViewer = true;
+    }
+
+    private async Task HandleRandomViewerPageChange(int newPage)
+    {
+        await LoadRandomPage(newPage);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void RemoveVideo(GeneratedVideo video)
+    {
+        M.RemoveSessionVideo(video);
+        
+        // Update current video if it was removed
+        if (_currentVideo == video)
+        {
+            _currentVideo = M.SessionGeneratedVideos.Videos.FirstOrDefault();
+        }
+        
+        Snackbar.Add("Video removed from session", Severity.Info);
+    }
+
+    private void RemoveSelectedVideo(GeneratedVideo video)
+    {
+        if (video.Id > 0)
+        {
+            M.RemoveSelectedImage(video.Id);
+        }
+    }
+
+    private async Task ShowDeleteImageDialog(Image image)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this item?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Item", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await DB.DeleteImage(image);
+            M.RemoveSelectedImage(image.Id);
+            Snackbar.Add("Item deleted successfully.", Severity.Success);
+        }
+    }
+
+    private async Task ClearGallery()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span>Are you sure you want to clear all videos from the session gallery?</span><br/><small>This only removes them from the gallery view, not from disk.</small>"));
+        
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Clear Gallery", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            M.ClearSessionVideos();
+            _currentVideo = null;
+            Snackbar.Add("Session gallery cleared", Severity.Success);
+        }
+    }
+
+    private void ToggleCurrentFavorite()
+    {
+        if (_currentVideo == null) return;
+        _currentVideo.Favorite = !_currentVideo.Favorite;
+        if (_currentVideo.Favorite && _currentVideo.Score == 0)
+        {
+            _currentVideo.Score = 3;
+        }
+        HandleVideoChanged(_currentVideo);
+    }
+
+    private void SetCurrentScore(int score)
+    {
+        if (_currentVideo == null) return;
+        _currentVideo.Score = score;
+        HandleVideoChanged(_currentVideo);
+    }
+
+    private string GetVideoUrl(GeneratedVideo video)
+    {
+        if (!string.IsNullOrWhiteSpace(video.VideoData))
+        {
+            return $"data:video/mp4;base64,{video.VideoData}";
+        }
+        
+        if (!string.IsNullOrWhiteSpace(video.FilePath))
+        {
+            try
+            {
+                return IO.GetImageStaticFile(video.FilePath);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private string GetVideoInfo(GeneratedVideo video)
+    {
+        var parts = new List<string>();
+        
+        if (video.Width > 0 && video.Height > 0)
+            parts.Add($"{video.Width}×{video.Height}");
+        if (video.FrameCount > 0)
+            parts.Add($"{video.FrameCount} frames");
+        if (video.FrameRate > 0)
+            parts.Add($"{video.FrameRate} fps");
+        if (video.Duration > 0)
+            parts.Add($"{video.Duration:F1}s");
+            
+        return string.Join(" | ", parts);
+    }
+
+    private string GetPreviewImageUrl()
+    {
+        if (string.IsNullOrWhiteSpace(M.Progress?.CurrentImage))
+            return string.Empty;
+
+        return $"data:image/png;base64,{M.Progress.CurrentImage}";
+    }
+
+    private void OpenCurrentInExplorer()
+    {
+        if (_currentVideo != null && !string.IsNullOrWhiteSpace(_currentVideo.FilePath))
+        {
+            System.Diagnostics.Process.Start("explorer.exe", $"/select, {_currentVideo.FilePath}");
+        }
+    }
+
+    private async Task ShowDeleteSelectedDialog()
+    {
+        if (M.SelectedImageIds.Count == 0) return;
+        
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> {M.SelectedImageIds.Count} selected items?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            foreach (var image in selectedImages)
+            {
+                await DB.DeleteImage(image);
+            }
+            Snackbar.Add("All selected items deleted successfully.", Severity.Success);
+            M.ClearSelectedImages();
+        }
+    }
+
+    public void Dispose()
+    {
+        M.OnProgressChanged -= HandleProgressChanged;
+        M.OnSessionVideosChanged -= HandleSessionVideosChanged;
+        M.OnSelectedImagesChanged -= HandleSelectedImagesChanged;
+    }
+}

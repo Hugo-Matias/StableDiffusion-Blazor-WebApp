@@ -1,0 +1,39 @@
+#meta
+{
+  "outputs": {
+    "image_output": { "node": "image_resize", "index": 0 },
+    "image_width_output": { "node": "image_resize", "index": 1 },
+    "image_height_output": { "node": "image_resize", "index": 2 },
+    "original_image_output": { "node": "load_image", "index": 0 }
+  }
+}
+#end
+
+{
+  "load_image": {
+    "inputs": {
+      "image": {{ image_path | json }}
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "image_resize": {
+    "inputs": {
+      "width": {{ width ?? 768 | json }},
+      "height": {{ height ?? 768 | json }},
+      "upscale_method": "lanczos",
+      "keep_proportion": "resize",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 16,
+      "device": "cpu",
+      "image": ["load_image", 0]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image"
+    }
+  }
+}

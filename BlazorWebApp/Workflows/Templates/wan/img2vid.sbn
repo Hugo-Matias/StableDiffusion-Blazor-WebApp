@@ -1,0 +1,212 @@
+{
+  "Title": "Img2Vid",
+  "Base": "Wan",
+  "Mode": "img2vid",
+  "ModelType": "diffusion",
+  "Pipeline": [
+    {
+      "fragment": "wan/load-model-sage.sbn",
+      "parameters": {
+        "model_name": {{ HighModel ?? "wan22RemixT2VI2V_i2vHighV20.safetensors" | json }},
+        "node_prefix": "high",
+        "model_output_name": "high_model_output",
+        "loader_title": "Load High Noise Model"
+      }
+    },
+    {
+      "fragment": "wan/load-model-sage.sbn",
+      "parameters": {
+        "model_name": {{ LowModel ?? "wan22RemixT2VI2V_i2vLowV20.safetensors" | json }},
+        "node_prefix": "low",
+        "model_output_name": "low_model_output",
+        "loader_title": "Load Low Noise Model"
+      }
+    },
+    {
+      "fragment": "wan/load-clip-vae.sbn",
+      "parameters": {
+        "clip_name": {{ Clip ?? "umt5_xxl_fp8_e4m3fn_scaled.safetensors" | json }},
+        "vae_name": {{ Vae ?? "wan_2.1_vae.safetensors" | json }}
+      }
+    },
+    {{~ if Loras && Loras.size > 0 ~}}
+    {{~ for lora in Loras ~}}
+    {{~ if lora.HighPath && lora.HighPath != "" ~}}
+    {
+      "fragment": "wan/lora-loader-model-only.sbn",
+      "parameters": {
+        "lora_loader_id": "high_lora_loader_{{ for.index }}",
+        "lora_name": {{ lora.Name | json }},
+        "lora_path": {{ lora.HighPath | json }},
+        "lora_strength": {{ lora.Strength | json }},
+        "model_input_name": "high_model_output",
+        "model_output_name": "high_lora_model_output",
+        "title": "LoRA (High) {{ for.index }}"
+      }
+    },
+    {{~ end ~}}
+    {{~ if lora.LowPath && lora.LowPath != "" ~}}
+    {
+      "fragment": "wan/lora-loader-model-only.sbn",
+      "parameters": {
+        "lora_loader_id": "low_lora_loader_{{ for.index }}",
+        "lora_name": {{ lora.Name | json }},
+        "lora_path": {{ lora.LowPath | json }},
+        "lora_strength": {{ lora.Strength | json }},
+        "model_input_name": "low_model_output",
+        "model_output_name": "low_lora_model_output",
+        "title": "LoRA (Low) {{ for.index }}"
+      }
+    },
+    {{~ end ~}}
+    {{~ end ~}}
+    {{~ end ~}}
+    {
+      "fragment": "wan/model-sampling-sd3.sbn",
+      "parameters": {
+        "sampler_id": "high_model_sampling",
+        "shift": {{ Shift ?? 5 | json }},
+        {{~ has_high_lora = false ~}}
+        {{~ if Loras && Loras.size > 0 ~}}
+        {{~ for lora in Loras ~}}
+        {{~ if lora.HighPath && lora.HighPath != "" ~}}
+        {{~ has_high_lora = true ~}}
+        {{~ end ~}}
+        {{~ end ~}}
+        {{~ end ~}}
+        {{~ if has_high_lora ~}}
+        "model_input_name": "high_lora_model_output",
+        {{~ else ~}}
+        "model_input_name": "high_model_output",
+        {{~ end ~}}
+        "model_output_name": "high_sampled_model_output",
+        "title": "ModelSamplingSD3 (High)"
+      }
+    },
+    {
+      "fragment": "wan/model-sampling-sd3.sbn",
+      "parameters": {
+        "sampler_id": "low_model_sampling",
+        "shift": {{ Shift ?? 5 | json }},
+        {{~ has_low_lora = false ~}}
+        {{~ if Loras && Loras.size > 0 ~}}
+        {{~ for lora in Loras ~}}
+        {{~ if lora.LowPath && lora.LowPath != "" ~}}
+        {{~ has_low_lora = true ~}}
+        {{~ end ~}}
+        {{~ end ~}}
+        {{~ end ~}}
+        {{~ if has_low_lora ~}}
+        "model_input_name": "low_lora_model_output",
+        {{~ else ~}}
+        "model_input_name": "low_model_output",
+        {{~ end ~}}
+        "model_output_name": "low_sampled_model_output",
+        "title": "ModelSamplingSD3 (Low)"
+      }
+    },
+    {
+      "fragment": "wan/load-image.sbn",
+      "parameters": {
+        "image_path": {{ Image | json }},
+        "width": {{ Width ?? 768 | json }},
+        "height": {{ Height ?? 768 | json }}
+      }
+    },
+    {
+      "fragment": "wan/clip-vision.sbn",
+      "parameters": {
+        "clip_vision_name": {{ ClipVision ?? "clip_vision_h.safetensors" | json }}
+      }
+    },
+    {
+      "fragment": "wan/prompts.sbn",
+      "parameters": {
+        "positive": {{ Prompt | json }},
+        "negative": {{ NegativePrompt ?? "??????????????????????????????????????????????????JPEG???????????????????????????????????????????????????????????????????????????????????" | json }}
+      }
+    },
+    {
+      "fragment": "wan/painter-i2v.sbn",
+      "parameters": {
+        "length": {{ Length ?? 81 | json }},
+        "batch_size": {{ BatchSize ?? 1 | json }},
+        "motion_amplitude": {{ MotionAmplitude ?? 1.1 | json }}
+      }
+    },
+    {
+      "fragment": "wan/sampler-advanced.sbn",
+      "parameters": {
+        "sampler_id": "sampler_high",
+        "seed": {{ Seed ?? 42 | json }},
+        "steps": {{ Steps ?? 8 | json }},
+        "cfg": {{ CfgScale ?? 1 | json }},
+        "sampler_name": {{ SamplerName ?? "euler" | json }},
+        "scheduler": {{ Scheduler ?? "simple" | json }},
+        "start_at_step": 0,
+        "end_at_step": {{ (Steps ?? 8) / 2 | math.round | json }},
+        "add_noise": "enable",
+        "return_with_leftover_noise": "enable",
+        "model_input_name": "high_sampled_model_output",
+        "title": "KSampler High Noise"
+      }
+    },
+    {
+      "fragment": "wan/sampler-advanced.sbn",
+      "parameters": {
+        "sampler_id": "sampler_low",
+        "seed": 0,
+        "steps": {{ Steps ?? 8 | json }},
+        "cfg": {{ CfgScale ?? 1 | json }},
+        "sampler_name": {{ SamplerName ?? "euler" | json }},
+        "scheduler": {{ Scheduler ?? "simple" | json }},
+        "start_at_step": {{ (Steps ?? 8) / 2 | math.round | json }},
+        "end_at_step": 10000,
+        "add_noise": "disable",
+        "return_with_leftover_noise": "disable",
+        "model_input_name": "low_sampled_model_output",
+        "latent_input_name": "latent_output",
+        "title": "KSampler Low Noise"
+      }
+    },
+    {
+      "fragment": "wan/clean-vram.sbn",
+      "parameters": {
+        "node_id": "clean_sampler",
+        "input_name": "latent_output",
+        "output_name": "cleaned_latent_output",
+        "title": "Clean VRAM (Sampler)"
+      }
+    },
+    {
+      "fragment": "vae-decode.sbn",
+      "parameters": {
+        "latent_input_name": "cleaned_latent_output"
+      }
+    },
+    {
+      "fragment": "wan/frame-interpolation.sbn",
+      "parameters": {
+        "scale_by": {{ FrameInterpolation.ScaleBy ?? 2.0 | json }},
+        "frame_multiplier": {{ FrameInterpolation.Multiplier ?? 2 | json }},
+        "rife_model": {{ FrameInterpolation.RifeModel ?? "rife49.pth" | json }}
+      }
+    },
+    {
+      "fragment": "video-save.sbn",
+      "parameters": {
+        "node_id": "video_output",
+        {{~ if FrameInterpolation && FrameInterpolation.IsActive ~}}
+        "frame_rate": {{ (FrameRate ?? 16) * (FrameInterpolation.Multiplier ?? 2) | json }},
+        "image_input_name": "frames_output",
+        {{~ else ~}}
+        "frame_rate": {{ FrameRate ?? 16 | json }},
+        "image_input_name": "image_output",
+        {{~ end ~}}
+        "filename_prefix": "tmp/vid",
+        "save_metadata": true,
+        "save_output": true
+      }
+    }
+  ]
+}

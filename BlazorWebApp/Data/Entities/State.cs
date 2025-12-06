@@ -12,5 +12,6 @@ namespace BlazorWebApp.Data.Entities
         public Txt2ImgParameters? Txt2ImgParameters { get; set; }
         public Img2ImgParameters? Img2ImgParameters { get; set; }
         public UpscaleParameters? UpscaleParameters { get; set; }
+        public Img2VidParameters? Img2VidParameters { get; set; }
     }
 }

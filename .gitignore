@@ -379,3 +379,4 @@ FodyWeavers.xsd
 /BlazorWebApp/BlazorWebApp.db_
 /BlazorWebApp/llm_payload.json
 /CONTRIBUTING.md
+/BlazorWebApp/payload_img2vid.json

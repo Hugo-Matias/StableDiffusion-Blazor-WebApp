@@ -1,0 +1,331 @@
+@using System.Diagnostics
+@inject ManagerService M
+@inject DatabaseService DB
+@inject IOService IO
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@implements IDisposable
+
+<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+    @* Video Container *@
+    <div class="video-wrapper">
+        <video id="@_videoId"
+               src="@GetVideoUrl()"
+               class="card-video"
+               muted
+               loop
+               playsinline
+               preload="metadata" />
+        
+        @* Hover Overlay *@
+        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+            @* Top Section - Rating & Selection *@
+            <div class="overlay-top">
+                <div class="rating-container @(_isHovered || Video.Score > 0 ? "visible" : "")">
+                    <MudRating SelectedValue="Video.Score" 
+                               SelectedValueChanged="SetScore" 
+                               MaxValue="3" 
+                               Size="Size.Small"
+                               Color="Color.Warning" />
+                </div>
+                
+                @if (ShowSelectionCheckbox)
+                {
+                    <div class="selection-container @(_isHovered || _isSelected ? "visible" : "")">
+                        <MudCheckBox Checked="_isSelected" 
+                                     T="bool" 
+                                     CheckedChanged="HandleSelected" 
+                                     Color="Color.Success" 
+                                     UncheckedColor="Color.Default"
+                                     Size="Size.Medium" />
+                    </div>
+                }
+            </div>
+            
+            @* Center Section - Quick Actions *@
+            <div class="overlay-center @(_isHovered ? "visible" : "")">
+                <div class="quick-actions">
+                    <button class="action-btn primary" @onclick="HandleViewFullscreen" title="View Fullscreen">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button class="action-btn @(Video.Favorite ? "active" : "")" @onclick="ToggleFavorite" title="@(Video.Favorite ? "Remove from Favorites" : "Add to Favorites")">
+                        <i class="@(Video.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
+                    </button>
+                    <button class="action-btn" @onclick="ShowVideoInfo" title="View Info">
+                        <i class="fa-solid fa-info"></i>
+                    </button>
+                </div>
+            </div>
+            
+            @* Bottom Section - Info *@
+            <div class="overlay-bottom @(_isHovered ? "visible" : "")">
+                <div class="video-info">
+                    <div class="info-row">
+                        @if (Video.Width > 0 && Video.Height > 0)
+                        {
+                            <span class="info-item">
+                                <i class="fa-solid fa-expand"></i>
+                                @Video.Width×@Video.Height
+                            </span>
+                        }
+                        @if (Video.FrameCount > 0)
+                        {
+                            <span class="info-item">
+                                <i class="fa-solid fa-film"></i>
+                                @Video.FrameCount frames
+                            </span>
+                        }
+                        @if (Video.Duration > 0)
+                        {
+                            <span class="info-item">
+                                <i class="fa-solid fa-clock"></i>
+                                @Video.Duration.ToString("F1")s
+                            </span>
+                        }
+                    </div>
+                </div>
+                
+                <div class="more-actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" 
+                             AnchorOrigin="Origin.TopRight" 
+                             TransformOrigin="Origin.BottomRight"
+                             Size="Size.Small"
+                             Dense="true"
+                             Class="more-menu">
+                        <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem OnClick="HandleDelete" Icon="fa-solid fa-trash-can" IconColor="Color.Error">Remove</MudMenuItem>
+                    </MudMenu>
+                </div>
+            </div>
+        </div>
+        
+        @* Persistent Indicators (visible when not hovered) *@
+        @if (!_isHovered)
+        {
+            @if (Video.Favorite)
+            {
+                <div class="favorite-indicator">
+                    <i class="fa-solid fa-heart"></i>
+                </div>
+            }
+            <div class="video-indicator">
+                <i class="fa-solid fa-play"></i>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public GeneratedVideo Video { get; set; }
+    [Parameter] public int Index { get; set; }
+    [Parameter] public EventCallback<int> OnSelectVideo { get; set; }
+    [Parameter] public EventCallback<GeneratedVideo> OnDeleteVideo { get; set; }
+    [Parameter] public EventCallback<GeneratedVideo> OnVideoChanged { get; set; }
+    [Parameter] public bool ShowSelectionCheckbox { get; set; }
+    [Parameter] public bool UseFixedSize { get; set; } = false;
+
+    private IJSObjectReference? _jsModule;
+    private string _videoId = $"video-{Guid.NewGuid():N}";
+    private bool _isSelected;
+    private bool _isHovered;
+
+    protected override void OnInitialized()
+    {
+        // Initialize selection state from the shared selection list
+        if (Video.Id > 0)
+        {
+            _isSelected = M.SelectedImageIds.Contains(Video.Id);
+        }
+        
+        // Subscribe to selection changes to stay in sync
+        M.OnSelectedImagesChanged += Refresh;
+        M.OnRefreshImagesContainer += Refresh;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/VideoCard.js");
+        }
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = "video-card";
+        if (UseFixedSize) classes += " fixed-size";
+        if (_isSelected) classes += " selected";
+        if (_isHovered) classes += " hovered";
+        return classes;
+    }
+
+    private string GetVideoUrl()
+    {
+        // Prefer base64 data for display
+        if (!string.IsNullOrWhiteSpace(Video.VideoData))
+        {
+            return $"data:video/mp4;base64,{Video.VideoData}";
+        }
+        
+        // Fall back to file path
+        if (!string.IsNullOrWhiteSpace(Video.FilePath))
+        {
+            try
+            {
+                return IO.GetImageStaticFile(Video.FilePath);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        _isHovered = true;
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("playVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        _isHovered = false;
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("pauseVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task HandleViewFullscreen()
+    {
+        await OnSelectVideo.InvokeAsync(Index);
+    }
+
+    private async Task ToggleFavorite()
+    {
+        Video.Favorite = !Video.Favorite;
+        if (Video.Favorite && Video.Score == 0)
+        {
+            Video.Score = 3;
+        }
+        
+        // Update in database if persisted
+        if (Video.Id > 0)
+        {
+            var image = await DB.GetImageById(Video.Id);
+            if (image != null)
+            {
+                image.Favorite = Video.Favorite;
+                image.Score = Video.Score;
+                await DB.UpdateImage(image);
+            }
+        }
+        
+        await OnVideoChanged.InvokeAsync(Video);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetScore(int score)
+    {
+        Video.Score = score;
+        
+        // Update in database if persisted
+        if (Video.Id > 0)
+        {
+            var image = await DB.GetImageById(Video.Id);
+            if (image != null)
+            {
+                image.Score = score;
+                await DB.UpdateImage(image);
+            }
+        }
+        
+        await OnVideoChanged.InvokeAsync(Video);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ShowVideoInfo()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("Video", Video);
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        DialogService.Show<VideoInfoDialog>("Video Info", parameters, options);
+    }
+
+    private void OpenFileInExplorer()
+    {
+        if (!string.IsNullOrWhiteSpace(Video.FilePath))
+        {
+            Process.Start("explorer.exe", $"/select, {Video.FilePath}");
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        await OnDeleteVideo.InvokeAsync(Video);
+    }
+
+    private void HandleSelected(bool isChecked)
+    {
+        _isSelected = isChecked;
+        
+        // Integrate with the unified selection system (same as ImageCard)
+        if (Video.Id > 0)
+        {
+            if (isChecked)
+            {
+                M.AddSelectedImage(Video.Id);
+            }
+            else
+            {
+                M.RemoveSelectedImage(Video.Id);
+            }
+        }
+    }
+
+    private async void Refresh()
+    {
+        // Sync selection state from the shared list
+        if (Video.Id > 0)
+        {
+            _isSelected = M.SelectedImageIds.Contains(Video.Id);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        M.OnSelectedImagesChanged -= Refresh;
+        M.OnRefreshImagesContainer -= Refresh;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch { }
+        }
+    }
+}

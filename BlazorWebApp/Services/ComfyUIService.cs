@@ -3,6 +3,8 @@ using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Collections.Concurrent;
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -19,6 +21,18 @@ namespace BlazorWebApp.Services
         private readonly IConfiguration _configuration;
         private readonly JsonSerializerOptions _jsonIgnoreNull;
         private readonly ConcurrentDictionary<Guid, object> _pendingJobs = new();
+        
+        // Track uploaded images for cleanup: promptId -> list of uploaded filenames
+        private readonly ConcurrentDictionary<Guid, List<string>> _uploadedImages = new();
+        
+        // Cache of image hashes to filenames to avoid re-uploading identical images
+        private readonly ConcurrentDictionary<string, string> _imageHashCache = new();
+
+        // Supported video extensions
+        private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".mp4", ".webm", ".gif", ".avi", ".mov", ".mkv"
+        };
 
         public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, WorkflowService workflow, IOService io, ILogger<ComfyUIService> logger)
         {
@@ -34,7 +48,7 @@ namespace BlazorWebApp.Services
 
             _bus.ExecutionSucceeded += async promptId => await HandleExecutionSucceededAsync(promptId);
 
-            _bus.ExecutionFailed += (promptId, error) =>
+            _bus.ExecutionFailed += async (promptId, error) =>
             {
                 if (_pendingJobs.TryRemove(promptId, out var obj))
                 {
@@ -42,11 +56,18 @@ namespace BlazorWebApp.Services
                     {
                         imgTcs.SetException(new Exception(error));
                     }
+                    else if (obj is TaskCompletionSource<GeneratedVideos> vidTcs)
+                    {
+                        vidTcs.SetException(new Exception(error));
+                    }
                     else if (obj is TaskCompletionSource<LLMResponse> llmTcs)
                     {
                         llmTcs.SetException(new Exception(error));
                     }
                 }
+                
+                // Cleanup uploaded input images on failure
+                await CleanupUploadedImagesAsync(promptId);
             };
         }
 
@@ -60,6 +81,8 @@ namespace BlazorWebApp.Services
             }
 
             var objType = obj.GetType();
+            
+            // Check for LLM job
             var isLLMJob = objType.IsGenericType &&
                            objType.GetGenericTypeDefinition() == typeof(TaskCompletionSource<>) &&
                            objType.GetGenericArguments()[0] == typeof(LLMResponse);
@@ -88,8 +111,25 @@ namespace BlazorWebApp.Services
                 return;
             }
 
-            _logger.LogDebug("Handling image job completion for prompt {PromptId}", promptId);
+            // Check for Video job
+            var isVideoJob = objType.IsGenericType &&
+                             objType.GetGenericTypeDefinition() == typeof(TaskCompletionSource<>) &&
+                             objType.GetGenericArguments()[0] == typeof(GeneratedVideos);
 
+            if (isVideoJob)
+            {
+                _logger.LogDebug("Handling video job completion for prompt {PromptId}", promptId);
+                await HandleVideoJobCompletionAsync(promptId, (TaskCompletionSource<GeneratedVideos>)obj);
+                return;
+            }
+
+            // Default: Image job
+            _logger.LogDebug("Handling image job completion for prompt {PromptId}", promptId);
+            await HandleImageJobCompletionAsync(promptId, obj);
+        }
+
+        private async Task HandleImageJobCompletionAsync(Guid promptId, object obj)
+        {
             var files = await GetFilenameFromHistory(promptId);
             if (files == null || files.Count == 0)
             {
@@ -134,6 +174,65 @@ namespace BlazorWebApp.Services
                 tcs.SetResult(images);
         }
 
+        private async Task HandleVideoJobCompletionAsync(Guid promptId, TaskCompletionSource<GeneratedVideos> tcs)
+        {
+            try
+            {
+                var files = await GetVideoFilenameFromHistory(promptId);
+                if (files == null || files.Count == 0)
+                {
+                    _logger.LogError("Video file not found for prompt {PromptId}!", promptId);
+                    _pendingJobs.TryRemove(promptId, out _);
+                    tcs.SetException(new Exception("No video files generated"));
+                    return;
+                }
+
+                var videos = new GeneratedVideos();
+
+                foreach (var file in files)
+                {
+                    var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", file);
+                    
+                    if (!File.Exists(filepath))
+                    {
+                        _logger.LogWarning("Video file not found on disk: {FilePath}", filepath);
+                        continue;
+                    }
+
+                    var video = new GeneratedVideo
+                    {
+                        FilePath = filepath,
+                        Filename = Path.GetFileName(file),
+                        DateCreated = DateTime.Now
+                    };
+
+                    // For smaller videos, we can include base64 data
+                    var fileInfo = new FileInfo(filepath);
+                    if (fileInfo.Length < 50 * 1024 * 1024) // Less than 50MB
+                    {
+                        video.VideoData = await _io.GetBase64FromFileAsync(filepath);
+                    }
+
+                    videos.Videos.Add(video);
+                }
+
+                if (videos.Videos.Count == 0)
+                {
+                    _pendingJobs.TryRemove(promptId, out _);
+                    tcs.SetException(new Exception("No video files could be loaded"));
+                    return;
+                }
+
+                _pendingJobs.TryRemove(promptId, out _);
+                tcs.SetResult(videos);
+            }
+            finally
+            {
+                // Cleanup uploaded input images after job completion
+                await CleanupUploadedImagesAsync(promptId);
+            }
+        }
+
         // TODO: Load from AppSettings
         public async Task<Options> GenerateOptions()
         {
@@ -148,7 +247,8 @@ namespace BlazorWebApp.Services
                 FilenamePatternSamples = "[seed]_[steps]_[cfg]",
                 OutdirSamplesImg2Img = Path.Combine(_configuration["OutputDir"], "Image-2-Image\\_samples"),
                 OutdirSamplesTxt2Img = Path.Combine(_configuration["OutputDir"], "Text-2-Image\\_samples"),
-                OutdirSamplesExtras = Path.Combine(_configuration["OutputDir"], "Extras")
+                OutdirSamplesExtras = Path.Combine(_configuration["OutputDir"], "Extras"),
+                OutdirSamplesImg2Vid = Path.Combine(_configuration["OutputDir"], "Image-2-Video\\_samples")
             };
 
             return options;
@@ -262,6 +362,77 @@ namespace BlazorWebApp.Services
             }
             return files;
         }
+
+        /// <summary>
+        /// Gets video filenames from ComfyUI history. Video outputs are typically in "gifs" or "videos" property.
+        /// </summary>
+        public async Task<List<string>> GetVideoFilenameFromHistory(Guid promptId)
+        {
+            var files = new List<string>();
+            var response = await _httpClient.GetAsync($"/history/{promptId}");
+            response.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+
+            if (!doc.RootElement.TryGetProperty(promptId.ToString(), out var promptElement))
+            {
+                _logger.LogWarning("Prompt ID {PromptId} not found in history response", promptId);
+                return files;
+            }
+
+            if (!promptElement.TryGetProperty("outputs", out var outputsElement))
+            {
+                _logger.LogWarning("No outputs found for prompt ID {PromptId}", promptId);
+                return files;
+            }
+
+            // Iterate through all output nodes to find video outputs
+            foreach (var outputNode in outputsElement.EnumerateObject())
+            {
+                var nodeValue = outputNode.Value;
+
+                // Check for "gifs" property (common for video outputs in ComfyUI)
+                if (nodeValue.TryGetProperty("gifs", out var gifsElement) && gifsElement.ValueKind == JsonValueKind.Array)
+                {
+                    var videoFiles = JsonSerializer.Deserialize<List<ComfyUIHistoryImageResponse>>(gifsElement.GetRawText());
+                    foreach (var video in videoFiles ?? [])
+                    {
+                        var ext = Path.GetExtension(video.Filename);
+                        if (VideoExtensions.Contains(ext))
+                        {
+                            files.Add(Path.Combine(video.Subfolder ?? "", video.Filename));
+                        }
+                    }
+                }
+
+                // Check for "videos" property (alternative naming)
+                if (nodeValue.TryGetProperty("videos", out var videosElement) && videosElement.ValueKind == JsonValueKind.Array)
+                {
+                    var videoFiles = JsonSerializer.Deserialize<List<ComfyUIHistoryImageResponse>>(videosElement.GetRawText());
+                    foreach (var video in videoFiles ?? [])
+                    {
+                        files.Add(Path.Combine(video.Subfolder ?? "", video.Filename));
+                    }
+                }
+
+                // Also check images for mp4/gif files (some nodes output videos as "images")
+                if (nodeValue.TryGetProperty("images", out var imagesElement) && imagesElement.ValueKind == JsonValueKind.Array)
+                {
+                    var imageFiles = JsonSerializer.Deserialize<List<ComfyUIHistoryImageResponse>>(imagesElement.GetRawText());
+                    foreach (var file in imageFiles ?? [])
+                    {
+                        var ext = Path.GetExtension(file.Filename);
+                        if (VideoExtensions.Contains(ext))
+                        {
+                            files.Add(Path.Combine(file.Subfolder ?? "", file.Filename));
+                        }
+                    }
+                }
+            }
+
+            return files;
+        }
+
         private async Task<string?> GetTextFromHistory(Guid promptId)
         {
             var response = await _httpClient.GetAsync($"/history/{promptId}");
@@ -308,6 +479,107 @@ namespace BlazorWebApp.Services
         #endregion
 
         #region POST
+        /// <summary>
+        /// Uploads an image to ComfyUI's input folder. Uses content hash for deduplication.
+        /// Returns the filename that can be used in LoadImage nodes.
+        /// </summary>
+        public async Task<string> UploadImageAsync(string base64Data, Guid? promptId = null)
+        {
+            // Remove data URI prefix if present
+            var base64 = base64Data;
+            if (base64.Contains(","))
+            {
+                base64 = base64.Split(',')[1];
+            }
+
+            var imageBytes = Convert.FromBase64String(base64);
+            
+            // Generate hash of image content for deduplication
+            var hash = ComputeHash(imageBytes);
+            
+            // Check if we already uploaded this exact image
+            if (_imageHashCache.TryGetValue(hash, out var existingFilename))
+            {
+                _logger.LogDebug("Image already uploaded with hash {Hash}, reusing {Filename}", hash, existingFilename);
+                return existingFilename;
+            }
+
+            // Use hash as filename to ensure uniqueness and deduplication
+            var filename = $"blazor_input_{hash[..16]}.png";
+
+            using var content = new MultipartFormDataContent();
+            var imageContent = new ByteArrayContent(imageBytes);
+            imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            content.Add(imageContent, "image", filename);
+            content.Add(new StringContent("true"), "overwrite");
+
+            var response = await _httpClient.PostAsync("/upload/image", content);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<ComfyUIUploadResponse>();
+            var uploadedFilename = result?.Name ?? filename;
+            
+            // Cache the hash -> filename mapping
+            _imageHashCache[hash] = uploadedFilename;
+            
+            // Track for cleanup if we have a promptId
+            if (promptId.HasValue)
+            {
+                _uploadedImages.AddOrUpdate(
+                    promptId.Value,
+                    new List<string> { uploadedFilename },
+                    (_, list) => { list.Add(uploadedFilename); return list; }
+                );
+            }
+
+            _logger.LogDebug("Uploaded image {Filename} with hash {Hash}", uploadedFilename, hash);
+            return uploadedFilename;
+        }
+
+        /// <summary>
+        /// Computes a SHA256 hash of the image bytes
+        /// </summary>
+        private static string ComputeHash(byte[] bytes)
+        {
+            var hashBytes = SHA256.HashData(bytes);
+            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Cleans up uploaded input images for a completed job.
+        /// Called after job completion (success or failure).
+        /// </summary>
+        private async Task CleanupUploadedImagesAsync(Guid promptId)
+        {
+            if (!_uploadedImages.TryRemove(promptId, out var filenames))
+                return;
+
+            foreach (var filename in filenames)
+            {
+                try
+                {
+                    // Remove from hash cache so it can be re-uploaded if needed
+                    var hashToRemove = _imageHashCache.FirstOrDefault(kv => kv.Value == filename).Key;
+                    if (hashToRemove != null)
+                    {
+                        _imageHashCache.TryRemove(hashToRemove, out _);
+                    }
+
+                    // Delete the file from ComfyUI input folder
+                    var inputPath = Path.Combine(_configuration["ComfyUIPath"], "input", filename);
+                    if (File.Exists(inputPath))
+                    {
+                        File.Delete(inputPath);
+                        _logger.LogDebug("Cleaned up input image: {Filename}", filename);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to cleanup input image: {Filename}", filename);
+                }
+            }
+        }
+
         public async Task<TResponse> PostPromptAsync<TResponse>(object payload, string payloadLogPath = "payload.json")
         {
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
@@ -338,6 +610,51 @@ namespace BlazorWebApp.Services
 
             var payload = new { prompt = workflowObject, client_id = clientId };
             return await PostPromptAsync<GeneratedImages>(payload);
+        }
+
+        public async Task<GeneratedVideos> PostImg2Vid(Img2VidComfyUI param, string clientId, Workflow workflow)
+        {
+            // Generate a temporary prompt ID for tracking uploads
+            // We'll get the real one after submission
+            var tempId = Guid.NewGuid();
+            
+            // Upload the image first if it's base64 data
+            if (!string.IsNullOrEmpty(param.Image) && (param.Image.StartsWith("data:") || param.Image.Length > 260))
+            {
+                var uploadedFilename = await UploadImageAsync(param.Image, tempId);
+                param.Image = uploadedFilename;
+                _logger.LogDebug("Uploaded image for Img2Vid: {Filename}", uploadedFilename);
+            }
+
+            var workflowJson = _workflow.ComposeWorkflowFromTemplate(workflow, param);
+            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
+
+            var payload = new { prompt = workflowObject, client_id = clientId };
+            
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync("payload_img2vid.json", json);
+
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            response.EnsureSuccessStatusCode();
+
+            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            var promptId = Guid.Parse(submit.PromptId);
+            
+            // Transfer the uploaded images tracking from temp ID to real prompt ID
+            if (_uploadedImages.TryRemove(tempId, out var uploadedFiles))
+            {
+                _uploadedImages[promptId] = uploadedFiles;
+            }
+
+            var tcs = new TaskCompletionSource<GeneratedVideos>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingJobs[promptId] = tcs;
+
+            return await tcs.Task;
         }
 
         public async Task<string> PostInterrupt()
@@ -408,5 +725,20 @@ namespace BlazorWebApp.Services
             return await tcs.Task;
         }
         #endregion
+    }
+
+    /// <summary>
+    /// Response from ComfyUI upload endpoint
+    /// </summary>
+    public class ComfyUIUploadResponse
+    {
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("subfolder")]
+        public string? Subfolder { get; set; }
+
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
     }
 }

@@ -51,5 +51,19 @@ namespace BlazorWebApp.Services
                 return await _sdapi.PostImg2Img(parameters.ToImg2ImgWebUI());
             throw new InvalidOperationException("No backend available");
         }
+
+        public async Task<GeneratedVideos> PostImg2Vid(Img2VidParameters parameters)
+        {
+            if (_m.IsComfyUIUp)
+            {
+                var workflow = parameters.Comfy.Workflow ?? _m.ParametersImg2Vid.Comfy.Workflow;
+                if (workflow == null)
+                    throw new InvalidOperationException("No workflow configured for Img2Vid generation");
+
+                return await _capi.PostImg2Vid(parameters.ToComfyUI(), _m.ComfyWSClientId, workflow);
+            }
+
+            throw new InvalidOperationException("Img2Vid is only supported on ComfyUI backend");
+        }
     }
 }

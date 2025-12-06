@@ -1,0 +1,19 @@
+#meta
+{
+  "outputs": {
+    "{{ output_name ?? 'cleaned_output' }}": { "node": "{{ node_id ?? 'clean_vram' }}", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ node_id ?? 'clean_vram' }}": {
+    "inputs": {
+      "anything": {{ get_ref (input_name ?? "latent_output") }}
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": {{ title ?? "Clean VRAM Used" | json }}
+    }
+  }
+}

@@ -1,0 +1,40 @@
+#meta
+{
+  "outputs": {
+    "{{ model_output_name ?? 'model_output' }}": { "node": "{{ node_prefix ?? 'model' }}_torch", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ node_prefix ?? 'model' }}_unet_loader": {
+    "inputs": {
+      "unet_name": {{ model_name | json }},
+      "weight_dtype": {{ weight_dtype ?? "default" | json }}
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": {{ loader_title ?? "Load Diffusion Model" | json }}
+    }
+  },
+  "{{ node_prefix ?? 'model' }}_sage": {
+    "inputs": {
+      "sage_attention": {{ sage_attention ?? "sageattn_qk_int8_pv_fp16_triton" | json }},
+      "model": ["{{ node_prefix ?? 'model' }}_unet_loader", 0]
+    },
+    "class_type": "PathchSageAttentionKJ",
+    "_meta": {
+      "title": {{ sage_title ?? "Patch Sage Attention" | json }}
+    }
+  },
+  "{{ node_prefix ?? 'model' }}_torch": {
+    "inputs": {
+      "enable_fp16_accumulation": {{ enable_fp16_accumulation ?? true | json }},
+      "model": ["{{ node_prefix ?? 'model' }}_sage", 0]
+    },
+    "class_type": "ModelPatchTorchSettings",
+    "_meta": {
+      "title": {{ torch_title ?? "Model Patch Torch Settings" | json }}
+    }
+  }
+}

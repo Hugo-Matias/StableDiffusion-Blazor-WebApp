@@ -9,8 +9,8 @@
 {
   "vae_decoder": {
     "inputs": {
-      "samples": {{ get_ref "latent_output" }},
-      "vae": {{ get_ref "vae_output" }}
+      "samples": {{ get_ref (latent_input_name ?? "latent_output") }},
+      "vae": {{ get_ref (vae_input_name ?? "vae_output") }}
     },
     "class_type": "VAEDecode",
     "_meta": {

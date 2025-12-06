@@ -1,0 +1,254 @@
+@inject IJSRuntime JS
+@inject MagickService Magick
+@implements IAsyncDisposable
+
+<MudPaper Class="@CssClass" Style="@Style" Elevation="2">
+    <div class="image-input-header">
+        <MudText Typo="Typo.subtitle2" Class="image-input-title">@Title</MudText>
+        <MudStack Row Class="image-input-actions">
+            @if (!string.IsNullOrWhiteSpace(_currentImageSrc) && _currentImageSrc != _placeholderImage)
+            {
+                <MudTooltip Text="Clear image">
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear" 
+                                   Size="Size.Small" 
+                                   OnClick="ClearImage" />
+                </MudTooltip>
+                @if (_imageDimensions.width > 0)
+                {
+                    <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Info">
+                        @(_imageDimensions.width)x@(_imageDimensions.height)
+                    </MudChip>
+                }
+            }
+            <MudTooltip Text="Paste from clipboard">
+                <MudIconButton Icon="@Icons.Material.Filled.ContentPaste" 
+                               Size="Size.Small" 
+                               OnClick="PasteFromClipboard" />
+            </MudTooltip>
+        </MudStack>
+    </div>
+    
+    <div class="image-input-content" @ref="_dropzoneRef">
+        <img class="@ImagePreviewClass" 
+             src="@_currentImageSrc" 
+             alt="@(string.IsNullOrWhiteSpace(_currentImageSrc) ? "Drop image here" : "Input image")" />
+        
+        <div class="@OverlayClass">
+            <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="overlay-content">
+                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" />
+                <MudText Typo="Typo.body1">Drop image here</MudText>
+                <MudText Typo="Typo.caption">or click to browse</MudText>
+            </MudStack>
+        </div>
+        
+        @if (_isLoading)
+        {
+            <div class="image-input-loading">
+                <MudProgressCircular Indeterminate Color="Color.Primary" />
+            </div>
+        }
+        
+        <InputFile OnChange="OnFileSelected" 
+                   accept="image/*" 
+                   class="image-input-file" 
+                   @ref="_inputFileRef" />
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter] public string ImageData { get; set; }
+    [Parameter] public EventCallback<string> ImageDataChanged { get; set; }
+    [Parameter] public EventCallback<(int width, int height)> OnImageLoaded { get; set; }
+    [Parameter] public string Title { get; set; } = "Image Input";
+    [Parameter] public string Class { get; set; }
+    [Parameter] public string Style { get; set; }
+    [Parameter] public int MaxFileSizeMB { get; set; } = 50;
+    [Parameter] public bool AutoResize { get; set; } = false;
+    [Parameter] public int MaxResolution { get; set; } = 2048;
+
+    private string CssClass => $"image-input-container {Class}";
+    private string ImagePreviewClass => $"image-input-preview {(_isLoading ? "loading" : "")}";
+    private string OverlayClass => $"image-input-overlay {(_isDragOver ? "drag-over" : "")}";
+
+    private string _currentImageSrc;
+    private string _placeholderImage = "./no_image.png";
+    private bool _isDragOver;
+    private bool _isLoading;
+    private (int width, int height) _imageDimensions;
+    
+    private ElementReference _dropzoneRef;
+    private InputFile _inputFileRef;
+    private IJSObjectReference _module;
+    private IJSObjectReference _instance;
+
+    protected override void OnInitialized()
+    {
+        _currentImageSrc = string.IsNullOrWhiteSpace(ImageData) ? _placeholderImage : ImageData;
+        if (!string.IsNullOrWhiteSpace(ImageData))
+        {
+            _ = LoadImageDimensions(ImageData);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/ImageInput.js");
+            _instance = await _module.InvokeAsync<IJSObjectReference>("init", 
+                _dropzoneRef, 
+                _inputFileRef?.Element,
+                DotNetObjectReference.Create(this));
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        await LoadImageFromFile(e.File);
+    }
+
+    private async Task LoadImageFromFile(IBrowserFile file)
+    {
+        if (file == null) return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var maxSize = MaxFileSizeMB * 1024 * 1024;
+            using var stream = file.OpenReadStream(maxSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            
+            // Optionally resize if too large
+            string base64;
+            if (AutoResize)
+            {
+                base64 = Magick.ResizeImage(bytes, true);
+            }
+            else
+            {
+                base64 = Convert.ToBase64String(bytes);
+            }
+            
+            var imageData = $"data:{file.ContentType};base64,{base64}";
+            await SetImage(imageData);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading image: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetImage(string data)
+    {
+        _currentImageSrc = data;
+        ImageData = data;
+        await ImageDataChanged.InvokeAsync(data);
+        await LoadImageDimensions(data);
+    }
+
+    private async Task LoadImageDimensions(string data)
+    {
+        try
+        {
+            // Extract base64 data without the header
+            var base64Data = data;
+            if (data.Contains(","))
+            {
+                base64Data = data.Split(',')[1];
+            }
+            
+            _imageDimensions = Magick.GetImageSize(base64Data);
+            await OnImageLoaded.InvokeAsync(_imageDimensions);
+        }
+        catch
+        {
+            _imageDimensions = (0, 0);
+        }
+        StateHasChanged();
+    }
+
+    private async Task ClearImage()
+    {
+        _currentImageSrc = _placeholderImage;
+        _imageDimensions = (0, 0);
+        ImageData = null;
+        await ImageDataChanged.InvokeAsync(null);
+    }
+
+    private async Task PasteFromClipboard()
+    {
+        try
+        {
+            if (_instance != null)
+            {
+                await _instance.InvokeVoidAsync("pasteFromClipboard");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error pasting from clipboard: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnImagePasted(string imageData)
+    {
+        if (!string.IsNullOrWhiteSpace(imageData))
+        {
+            _isLoading = true;
+            StateHasChanged();
+            
+            await SetImage(imageData);
+            
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public void OnDragEnter()
+    {
+        _isDragOver = true;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnDragLeave()
+    {
+        _isDragOver = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnDrop()
+    {
+        _isDragOver = false;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_instance != null)
+        {
+            try
+            {
+                await _instance.InvokeVoidAsync("dispose");
+                await _instance.DisposeAsync();
+            }
+            catch { }
+        }
+        if (_module != null)
+        {
+            await _module.DisposeAsync();
+        }
+    }
+}

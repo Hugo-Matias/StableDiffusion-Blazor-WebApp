@@ -1,12 +1,14 @@
 ﻿@using System.Diagnostics;
+@using static BlazorWebApp.Data.Enums;
 @inject ManagerService M
 @inject DatabaseService DB
 @inject IOService IO
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager NavManager
 @implements IDisposable
 
-<div class="@GetCardClasses()" @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false">
+<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
     @* Image Container *@
     <div class="image-wrapper">
         <img src="@IO.GetImageStaticFile(Image.Path)" 
@@ -15,10 +17,10 @@
              loading="lazy" />
         
         @* Hover Overlay *@
-        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+        <div class="hover-overlay @(_isHovered || _isMenuOpen ? "visible" : "")">
             @* Top Section - Score & Selection *@
             <div class="overlay-top">
-                <div class="rating-container @(_isHovered || Image.Score > 0 ? "visible" : "")">
+                <div class="rating-container @(_isHovered || _isMenuOpen || Image.Score > 0 ? "visible" : "")">
                     <MudRating SelectedValue="Image.Score" 
                                SelectedValueChanged="SetScore" 
                                MaxValue="3" 
@@ -28,7 +30,7 @@
                 
                 @if (ShowSelectionCheckbox)
                 {
-                    <div class="selection-container @(_isHovered || _isSelected ? "visible" : "")">
+                    <div class="selection-container @(_isHovered || _isMenuOpen || _isSelected ? "visible" : "")">
                         <MudCheckBox Checked="_isSelected" 
                                      T="bool" 
                                      CheckedChanged="HandleSelected" 
@@ -40,7 +42,7 @@
             </div>
             
             @* Center Section - Quick Actions *@
-            <div class="overlay-center @(_isHovered ? "visible" : "")">
+            <div class="overlay-center @(_isHovered || _isMenuOpen ? "visible" : "")">
                 <div class="quick-actions">
                     <button class="action-btn primary" @onclick="@(() => OnSelectImage.InvokeAsync(Image))" title="View Fullscreen">
                         <i class="fa-solid fa-expand"></i>
@@ -55,7 +57,7 @@
             </div>
             
             @* Bottom Section - Info & More Actions *@
-            <div class="overlay-bottom @(_isHovered ? "visible" : "")">
+            <div class="overlay-bottom @(_isHovered || _isMenuOpen ? "visible" : "")">
                 <div class="image-info">
                     @if (Image.ModeId != 3)
                     {
@@ -84,30 +86,93 @@
                 </div>
                 
                 <div class="more-actions">
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" 
-                             AnchorOrigin="Origin.TopRight" 
-                             TransformOrigin="Origin.BottomRight"
+                    <MudMenu @bind-Open="_isMenuOpen"
+                             Icon="@Icons.Material.Filled.MoreVert" 
+                             AnchorOrigin="Origin.TopCenter" 
+                             TransformOrigin="Origin.BottomCenter"
                              Size="Size.Small"
                              Dense="true"
                              Class="more-menu">
-                        <MudMenuItem OnClick="ShowSwitchProjectDialog" Icon="fa-solid fa-layer-group" IconColor="Color.Tertiary">Set Project</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick="@(() => SendTo(img2img: true))" Icon="fa-solid fa-file-image" IconColor="Color.Warning">Send to Img2Img</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick="@(() => SendTo(img2img: false))" Icon="fa-solid fa-panorama" IconColor="Color.Warning">Send to Upsc.</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick="OpenFileInExplorer" Icon="fa-solid fa-folder-open" IconColor="Color.Primary">Open Explorer</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick="SetProjectCover" Icon="fa-solid fa-image-portrait" IconColor="Color.Secondary">Project Cover</MudMenuItem>
-                        <MudDivider />
-                        <MudMenuItem OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Icon="fa-solid fa-trash-can" IconColor="Color.Error">Delete</MudMenuItem>
+                        <ChildContent>
+                            <div class="action-menu">
+                                @* Only show "Send To" section if there are available workflows *@
+                                @if (HasWorkflowForMode(ModeType.Img2Img) || HasWorkflowForMode(ModeType.Img2Vid) || HasWorkflowForMode(ModeType.Extras))
+                                {
+                                    <div class="menu-section">
+                                        <div class="menu-section-title">Send To</div>
+                                        @if (HasWorkflowForMode(ModeType.Img2Img))
+                                        {
+                                            <MudMenuItem OnClick="@(() => SendTo(img2img: true))" Class="menu-item">
+                                                <div class="menu-item-content">
+                                                    <i class="fa-solid fa-file-image menu-icon warning"></i>
+                                                    <span>Img2Img</span>
+                                                </div>
+                                            </MudMenuItem>
+                                        }
+                                        @if (HasWorkflowForMode(ModeType.Img2Vid))
+                                        {
+                                            <MudMenuItem OnClick="SendToImg2Vid" Class="menu-item">
+                                                <div class="menu-item-content">
+                                                    <i class="fa-solid fa-video menu-icon info"></i>
+                                                    <span>Img2Vid</span>
+                                                </div>
+                                            </MudMenuItem>
+                                        }
+                                        @if (HasWorkflowForMode(ModeType.Extras))
+                                        {
+                                            <MudMenuItem OnClick="@(() => SendTo(img2img: false))" Class="menu-item">
+                                                <div class="menu-item-content">
+                                                    <i class="fa-solid fa-panorama menu-icon warning"></i>
+                                                    <span>Upscale</span>
+                                                </div>
+                                            </MudMenuItem>
+                                        }
+                                    </div>
+                                    
+                                    <div class="menu-divider"></div>
+                                }
+                                
+                                <div class="menu-section">
+                                    <div class="menu-section-title">Organize</div>
+                                    <MudMenuItem OnClick="ShowSwitchProjectDialog" Class="menu-item">
+                                        <div class="menu-item-content">
+                                            <i class="fa-solid fa-layer-group menu-icon tertiary"></i>
+                                            <span>Set Project</span>
+                                        </div>
+                                    </MudMenuItem>
+                                    <MudMenuItem OnClick="SetProjectCover" Class="menu-item">
+                                        <div class="menu-item-content">
+                                            <i class="fa-solid fa-image-portrait menu-icon secondary"></i>
+                                            <span>Project Cover</span>
+                                        </div>
+                                    </MudMenuItem>
+                                </div>
+                                
+                                <div class="menu-divider"></div>
+                                
+                                <div class="menu-section">
+                                    <MudMenuItem OnClick="OpenFileInExplorer" Class="menu-item">
+                                        <div class="menu-item-content">
+                                            <i class="fa-solid fa-folder-open menu-icon primary"></i>
+                                            <span>Open in Explorer</span>
+                                        </div>
+                                    </MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Class="menu-item danger">
+                                        <div class="menu-item-content">
+                                            <i class="fa-solid fa-trash-can menu-icon error"></i>
+                                            <span>Delete</span>
+                                        </div>
+                                    </MudMenuItem>
+                                </div>
+                            </div>
+                        </ChildContent>
                     </MudMenu>
                 </div>
             </div>
         </div>
         
         @* Persistent Indicators (visible when not hovered but has state) *@
-        @if (!_isHovered)
+        @if (!_isHovered && !_isMenuOpen)
         {
             @if (Image.Favorite)
             {
@@ -130,6 +195,7 @@
 
     private bool _isSelected;
     private bool _isHovered;
+    private bool _isMenuOpen;
 
     protected override void OnInitialized()
     {
@@ -143,8 +209,45 @@
         var classes = "gallery-card";
         if (UseFixedSize) classes += " fixed-size";
         if (_isSelected) classes += " selected";
-        if (_isHovered) classes += " hovered";
+        if (_isHovered || _isMenuOpen) classes += " hovered";
         return classes;
+    }
+
+    private void HandleMouseEnter()
+    {
+        _isHovered = true;
+    }
+
+    private void HandleMouseLeave()
+    {
+        // Don't clear hover if menu is open
+        if (!_isMenuOpen)
+        {
+            _isHovered = false;
+        }
+    }
+
+    private bool HasWorkflowForMode(ModeType mode)
+    {
+        // For WebUI, all modes are always available
+        if (M.IsWebuiUp) return true;
+        
+        // For ComfyUI, check if there's a workflow for the current model base and requested mode
+        if (M.IsComfyUIUp && M.State.Generation.Workflows != null)
+        {
+            var currentBase = M.State.Generation.WorkflowBase;
+            return M.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
+        }
+        
+        return false;
+    }
+
+    private Workflow? GetWorkflowForMode(ModeType mode)
+    {
+        if (M.State.Generation.Workflows == null) return null;
+        
+        var currentBase = M.State.Generation.WorkflowBase;
+        return M.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
     }
 
     private async Task ToggleFavorite(bool isChecked)
@@ -179,6 +282,24 @@
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
         if (img2img) M.CanvasImageData = data;
         else M.UpscaleImageData = data;
+    }
+
+    private void SendToImg2Vid()
+    {
+        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
+        M.Img2VidInputImage = data;
+        
+        // Find the Img2Vid workflow for the current model base
+        var workflow = GetWorkflowForMode(ModeType.Img2Vid);
+        if (workflow != null)
+        {
+            NavManager.NavigateTo($"/comfyui/img2vid/{workflow.Id}");
+            Snackbar.Add("Image sent to Img2Vid", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("No Img2Vid workflow found for current model base", Severity.Warning);
+        }
     }
 
     private void ShowImageInfoDialog()

@@ -21,6 +21,7 @@ namespace BlazorWebApp.Models
         public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
         public Img2ImgSettingsModel Img2Img { get; set; } = new();
         public UpscaleSettingsModel Upscale { get; set; } = new();
+        public Img2VidSettingsModel Img2Vid { get; set; } = new();
     }
 
     public class RandomImagesSettingsModel
@@ -262,6 +263,56 @@ namespace BlazorWebApp.Models
         public int Min { get; set; } = 64;
         public int Max { get; set; } = 8192;
         public int Step { get; set; } = 32;
+    }
+    #endregion
+
+    #region Img2Vid
+    public class Img2VidSettingsModel
+    {
+        public Img2VidModelSettingsModel Models { get; set; } = new();
+        public Img2VidVideoSettingsModel Video { get; set; } = new();
+        public Img2VidSamplingSettingsModel Sampling { get; set; } = new();
+        public Img2VidFrameInterpolationSettingsModel FrameInterpolation { get; set; } = new();
+    }
+
+    public class Img2VidModelSettingsModel
+    {
+        public string HighModel { get; set; } = "wan22RemixT2VI2V_i2vHighV20.safetensors";
+        public string LowModel { get; set; } = "wan22RemixT2VI2V_i2vLowV20.safetensors";
+        public string Clip { get; set; } = "umt5_xxl_fp8_e4m3fn_scaled.safetensors";
+        public string ClipVision { get; set; } = "clip_vision_h.safetensors";
+        public string Vae { get; set; } = "wan_2.1_vae.safetensors";
+    }
+
+    public class Img2VidVideoSettingsModel
+    {
+        public IntRange Length { get; set; } = new() { Value = 81, Min = 17, Max = 257, Step = 8 };
+        public IntRange FrameRate { get; set; } = new() { Value = 16, Min = 8, Max = 60, Step = 1 };
+        public FloatRange MotionAmplitude { get; set; } = new() { Value = 1.1f, Min = 0.1f, Max = 3.0f, Step = 0.1f };
+    }
+
+    public class Img2VidSamplingSettingsModel
+    {
+        public IntRange Shift { get; set; } = new() { Value = 5, Min = 1, Max = 20, Step = 1 };
+        public IntRange Steps { get; set; } = new() { Value = 8, Min = 1, Max = 50, Step = 1 };
+        public FloatRange CfgScale { get; set; } = new() { Value = 1.0f, Min = 1.0f, Max = 15.0f, Step = 0.5f };
+        public string Sampler { get; set; } = "euler";
+        public string Scheduler { get; set; } = "simple";
+    }
+
+    public class Img2VidFrameInterpolationSettingsModel
+    {
+        public bool Enabled { get; set; } = true;
+        public DoubleRange ScaleBy { get; set; } = new() { Value = 2.0, Min = 1.0, Max = 4.0, Step = 0.5 };
+        public IntRange Multiplier { get; set; } = new() { Value = 2, Min = 1, Max = 8, Step = 1 };
+        public string RifeModel { get; set; } = "rife49.pth";
+        public List<string> RifeModels { get; set; } = new()
+        {
+            "rife49.pth",
+            "rife48.pth",
+            "rife47.pth",
+            "rife46.pth"
+        };
     }
     #endregion
     #endregion

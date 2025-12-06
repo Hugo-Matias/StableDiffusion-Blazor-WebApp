@@ -117,7 +117,7 @@
             }
             else
             {
-                <MudTextField Label="Details" Text="@GetInfo()" Lines=3 T="string" ReadOnly=true />
+                <MudTextField Label="Details" Text="@_metadataInfo" Lines=3 T="string" ReadOnly=true />
                 <div class="spacer" />
                 <MudStack AlignItems="AlignItems.Center" Row=true>
                     <MudField Label="Width" Class="copy-btns">
@@ -161,26 +161,28 @@
     private Dictionary<string, string>? _webuiInfoParams;
     private JsonTreeNode? _comfyuiInfoParams;
     private string _modelName = string.Empty;
+    private string _metadataInfo = string.Empty;
 
     protected async override Task OnInitializedAsync()
     {
-        Image.Info = await IO.ReadMetadata(Image.Path);
-        if (string.IsNullOrWhiteSpace(Image.Info)) return;
+        // Read metadata from file
+        _metadataInfo = await IO.ReadMetadata(Image.Path);
+        if (string.IsNullOrWhiteSpace(_metadataInfo)) return;
 
-        if(Image.Info.StartsWith("parameters", StringComparison.InvariantCultureIgnoreCase))
+        if(_metadataInfo.StartsWith("parameters", StringComparison.InvariantCultureIgnoreCase))
             await LoadInfoWebUI();
 
-        if (Image.Info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase))
+        if (_metadataInfo.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase))
             await LoadInfoComfyUI();
     }
 
     private async Task LoadInfoComfyUI()
     {
         var saveImage = false;
-        Image.Info = Image.Info.Replace("prompt: ", "");
-        _comfyuiInfoParams = Parser.ParseComfyUIInfoParameters(Image.Info);
+        var infoJson = _metadataInfo.Replace("prompt: ", "");
+        _comfyuiInfoParams = Parser.ParseComfyUIInfoParameters(infoJson);
 
-        using var doc = JsonDocument.Parse(Image.Info);
+        using var doc = JsonDocument.Parse(infoJson);
 
         var scheduler = Parser.FindJsonValueByKey<string>(doc.RootElement, "scheduler");
         if (!string.IsNullOrWhiteSpace(scheduler) && Image.Scheduler != scheduler)
@@ -223,7 +225,7 @@
     private async Task LoadInfoWebUI()
     {
         var saveImage = false;
-        _webuiInfoParams = Parser.ParseWebUIInfoParameters(Image.Info);
+        _webuiInfoParams = Parser.ParseWebUIInfoParameters(_metadataInfo);
         if (_webuiInfoParams.ContainsKey("Seed") && !string.IsNullOrWhiteSpace(_webuiInfoParams["Seed"]) && Image.Seed != long.Parse(_webuiInfoParams["Seed"]))
         {
             Image.Seed = long.Parse(_webuiInfoParams["Seed"]);
@@ -242,16 +244,6 @@
         }
         if(saveImage)
             await DB.UpdateImage(Image);
-    }
-
-    private async Task WriteImageInfo()
-    {
-        var mode = await DB.GetMode(Image.ModeId);
-        var lines = Parser.ParseInfoStrings(IO.LoadText(Image.InfoPath), mode, M.IsComfyUIUp);
-        if (!string.IsNullOrWhiteSpace(lines["prompt"]) && !Image.Prompt.Equals(lines["prompt"], StringComparison.InvariantCultureIgnoreCase)) Image.Prompt = lines["prompt"];
-        if (!string.IsNullOrWhiteSpace(lines["negative"]) && !Image.NegativePrompt.Equals(lines["negative"], StringComparison.InvariantCultureIgnoreCase)) Image.NegativePrompt = lines["negative"];
-        Image.Info = lines["param"];
-        await DB.UpdateImage(Image);
     }
 
     private async Task ShowPromptDialog()
@@ -293,6 +285,4 @@
             _ => "Unknown"
         };
     }
-
-    private string GetInfo() => IO.LoadText(Image.InfoPath);
 }

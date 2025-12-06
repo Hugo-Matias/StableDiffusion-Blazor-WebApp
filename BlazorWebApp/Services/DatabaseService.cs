@@ -291,6 +291,12 @@ namespace BlazorWebApp.Services
             return await context.Images.Include(i => i.Model).Where(i => imageIds.Contains(i.Id)).ToListAsync();
         }
 
+        public async Task<Image?> GetImageById(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Images.Include(i => i.Model).FirstOrDefaultAsync(i => i.Id == id);
+        }
+
         public async Task<ImagesDto> GetPagedImages(int page)
         {
             using var context = await _factory.CreateDbContextAsync();
@@ -372,7 +378,11 @@ namespace BlazorWebApp.Services
             if (state.IsModeTxt2Img) modes.Add(1);
             if (state.IsModeImg2Img) modes.Add(2);
             if (state.IsModeUpscale) modes.Add(3);
-            query = query.Where(i => modes.Contains(i.ModeId));
+            if (state.IsModeImg2Vid) modes.Add(4);
+            
+            // Only filter by mode if at least one mode is selected, otherwise show all
+            if (modes.Count > 0)
+                query = query.Where(i => modes.Contains(i.ModeId));
 
             if (state.IsScore)
                 query = query.Where(i => i.Score == state.Score);

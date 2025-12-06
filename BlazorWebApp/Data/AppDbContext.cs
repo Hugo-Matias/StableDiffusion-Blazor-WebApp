@@ -21,9 +21,43 @@ namespace BlazorWebApp.Data
         private static List<Lora> DeserializeLoraList(string v)
             => string.IsNullOrWhiteSpace(v) ? new List<Lora>() : JsonSerializer.Deserialize<List<Lora>>(v) ?? new List<Lora>();
 
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            // Restrict EF Core to only scan types in the Data.Entities namespace
+            // This prevents EF from trying to map model/DTO classes as entities
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Explicitly ignore all non-entity types that EF Core might discover through navigation properties
+            // These are Models/DTOs that should not be mapped to database tables
+            
+            // Workflow-related models
+            modelBuilder.Ignore<Workflow>();
+            modelBuilder.Ignore<WorkflowStep>();
+            modelBuilder.Ignore<OutputMapping>();
+            modelBuilder.Ignore<SubgraphContext>();
+            modelBuilder.Ignore<NodeRegistry>();
+            
+            // Parameter models (used for JSON serialization, not as entities)
+            modelBuilder.Ignore<SharedParameters>();
+            modelBuilder.Ignore<SharedParameters.ComfySharedParameters>();
+            modelBuilder.Ignore<Txt2ImgParameters>();
+            modelBuilder.Ignore<Txt2ImgScriptParameters>();
+            modelBuilder.Ignore<Img2ImgParameters>();
+            modelBuilder.Ignore<Img2ImgScriptParameters>();
+            modelBuilder.Ignore<UpscaleParameters>();
+            modelBuilder.Ignore<Img2VidParameters>();
+            modelBuilder.Ignore<Img2VidParameters.ComfyImg2VidParameters>();
+            modelBuilder.Ignore<Lora>();
+            modelBuilder.Ignore<AppState>();
+            modelBuilder.Ignore<GeneratedVideo>();
+            modelBuilder.Ignore<GeneratedVideos>();
+            
+            // ComfyUI DTOs
+            modelBuilder.Ignore<Data.Dtos.ComfyUI.Workflow.FrameInterpolationParameters>();
 
             // Uses Json serialization to store List<string>, the converter and comparer keep the domain class unclutered.
             // Doc: https://stackoverflow.com/a/52499249/12173765

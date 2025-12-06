@@ -20,11 +20,17 @@ namespace BlazorWebApp.Services
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
         private Txt2ImgParameters _txt2imgParams;
+        private Img2VidParameters _img2vidParams;
         private int _canvasSourceWidth;
         private int _canvasSourceHeight;
         private string _currentModel = string.Empty;
 
         public event Action OnChange;
+
+        /// <summary>
+        /// Last generated video result
+        /// </summary>
+        public GeneratedVideos GeneratedVideos { get; private set; }
 
         public ImageService(SDAPIService api, IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router)
         {
@@ -40,10 +46,6 @@ namespace BlazorWebApp.Services
         public async Task<ImagesDto> GetImages(ModeType mode)
         {
             _m.IsConverging = true;
-            //var progress = new BaseProgress() { BarColor = MudBlazor.Color.Primary };
-            //StartProgressChecker(progress);
-
-            //_m.GridImage = string.Empty;
 
             ImagesDto images = new();
             string scriptName = string.Empty;
@@ -51,7 +53,6 @@ namespace BlazorWebApp.Services
 
             try
             {
-                // Using a temporary parameters model to parse selected dropdown Styles without writing them to the input fields
                 switch (mode)
                 {
                     case ModeType.Img2Img:
@@ -107,12 +108,202 @@ namespace BlazorWebApp.Services
                 await Console.Out.WriteLineAsync(e.ToString());
             }
 
-            //StopProgressChecker(progress.Id);
             _m.IsConverging = false;
             _m.State.Generation.IsInterrupted = false;
 
             NotifyStateChanged();
             return images;
+        }
+
+        /// <summary>
+        /// Generates a video from an image using Img2Vid parameters
+        /// </summary>
+        public async Task<GeneratedVideos> GetVideo()
+        {
+            _m.IsConverging = true;
+            GeneratedVideos = null;
+            _currentModel = _m.State.Generation.SDModel;
+
+            try
+            {
+                _img2vidParams = _m.ParametersImg2Vid;
+
+                // Ensure seed is set
+                if (_img2vidParams.Seed == -1)
+                {
+                    _img2vidParams.Seed = new Random().Next(0, int.MaxValue);
+                }
+
+                GeneratedVideos = await _router.PostImg2Vid(_img2vidParams);
+
+                if (_m.State.Generation.IsInterrupted)
+                {
+                    throw new Exception("Generation Canceled!");
+                }
+
+                // Store the seed used for this generation
+                _m.State.Generation.Seed = (long)_img2vidParams.Seed;
+
+                if ((bool)_m.Options.SamplesSave && GeneratedVideos?.Videos?.Count > 0)
+                {
+                    await SaveVideos(GeneratedVideos);
+                }
+            }
+            catch (Exception e)
+            {
+                await Console.Out.WriteLineAsync($"Video generation error: {e}");
+            }
+
+            _m.IsConverging = false;
+            _m.State.Generation.IsInterrupted = false;
+
+            NotifyStateChanged();
+            return GeneratedVideos;
+        }
+
+        /// <summary>
+        /// Saves generated videos to the output directory
+        /// </summary>
+        private async Task SaveVideos(GeneratedVideos videos)
+        {
+            await _m.GetOptions();
+
+            var saveDir = _io.CreateDirectory(GetVideoSaveFolder());
+            var fileIndex = GetVideoFileIndex(saveDir.FullName);
+
+            foreach (var video in videos.Videos)
+            {
+                fileIndex++;
+                var filename = GenerateVideoFilename(fileIndex);
+                var videoPath = Path.Combine(saveDir.FullName, filename);
+
+                // If video data is available as base64, decode and save
+                if (!string.IsNullOrWhiteSpace(video.VideoData))
+                {
+                    var videoBytes = Convert.FromBase64String(video.VideoData);
+                    await _io.SaveFileToDisk(videoPath, videoBytes);
+                    video.FilePath = videoPath;
+                }
+                // If we have a source file path from ComfyUI, copy it
+                else if (!string.IsNullOrWhiteSpace(video.FilePath) && File.Exists(video.FilePath))
+                {
+                    File.Copy(video.FilePath, videoPath, overwrite: true);
+                    video.FilePath = videoPath;
+                }
+
+                // Update video metadata
+                video.Filename = filename;
+                video.Prompt = _img2vidParams.Prompt;
+                video.NegativePrompt = _img2vidParams.NegativePrompt;
+                video.Seed = (long)_img2vidParams.Seed;
+                video.Steps = (int)_img2vidParams.Steps;
+                video.CfgScale = (float)_img2vidParams.CfgScale;
+                video.Sampler = _img2vidParams.SamplerName;
+                video.Model = _currentModel;
+                video.Width = (int)_img2vidParams.Width;
+                video.Height = (int)_img2vidParams.Height;
+                video.FrameCount = (int)_img2vidParams.Length;
+                video.FrameRate = (int)_img2vidParams.FrameRate;
+                video.Duration = (double)_img2vidParams.Length / (double)_img2vidParams.FrameRate;
+
+                // Persist to database using Image entity
+                await AddVideoToDb(video);
+            }
+        }
+
+        /// <summary>
+        /// Adds a generated video to the database using the Image entity
+        /// </summary>
+        private async Task<Image> AddVideoToDb(GeneratedVideo video)
+        {
+            var image = new Image
+            {
+                Path = video.FilePath,
+                Prompt = video.Prompt,
+                NegativePrompt = video.NegativePrompt,
+                Seed = video.Seed,
+                Width = video.Width,
+                Height = video.Height,
+                Steps = (int)_img2vidParams.Steps,
+                CfgScale = (float)_img2vidParams.CfgScale,
+                SamplerId = await _db.GetSamplerIdByName(_img2vidParams.SamplerName),
+                Scheduler = _img2vidParams.Scheduler,
+                ProjectId = _m.State.Gallery.ProjectId,
+                ModeId = await _db.GetMode(ModeType.Img2Vid),
+                Model = await _db.GetResourceByFilename(_currentModel)
+            };
+
+            return await _db.AddImage(image);
+        }
+
+        /// <summary>
+        /// Gets the save folder for Img2Vid outputs
+        /// </summary>
+        private string GetVideoSaveFolder()
+        {
+            var basePath = _m.Options.OutdirSamplesImg2Vid;
+            if (string.IsNullOrWhiteSpace(basePath))
+            {
+                basePath = Path.Combine(_m.Options.OutdirSamplesTxt2Img.Replace("Text-2-Image", "Image-2-Video"));
+            }
+
+            // Apply directory pattern if configured
+            var dirPattern = _m.Options.FilenamePatternDir;
+            if (!string.IsNullOrWhiteSpace(dirPattern))
+            {
+                var subPath = _m.ConvertPathPattern(dirPattern, ModeType.Img2Vid);
+                basePath = Path.Combine(basePath, subPath).Replace('/', Path.DirectorySeparatorChar);
+            }
+
+            return basePath;
+        }
+
+        /// <summary>
+        /// Gets the next file index for video files in the directory
+        /// </summary>
+        private int GetVideoFileIndex(string path)
+        {
+            if (!Directory.Exists(path)) return 0;
+
+            var files = Directory.GetFiles(path, "*.mp4")
+                .Concat(Directory.GetFiles(path, "*.webm"))
+                .Concat(Directory.GetFiles(path, "*.gif"))
+                .ToList();
+
+            if (files.Count == 0) return 0;
+
+            var maxIndex = 0;
+            foreach (var file in files)
+            {
+                var filename = Path.GetFileNameWithoutExtension(file);
+                var match = Regex.Match(filename, @"^(\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var index))
+                {
+                    maxIndex = Math.Max(maxIndex, index);
+                }
+            }
+
+            return maxIndex;
+        }
+
+        /// <summary>
+        /// Generates a filename for the video based on parameters
+        /// </summary>
+        private string GenerateVideoFilename(int fileIndex)
+        {
+            var pattern = _m.Options.FilenamePatternSamples;
+            var filename = $"{fileIndex.ToString().PadLeft(5, '0')}";
+
+            if (!string.IsNullOrWhiteSpace(pattern))
+            {
+                filename += "-" + pattern
+                    .Replace("[seed]", _img2vidParams.Seed.ToString())
+                    .Replace("[steps]", _img2vidParams.Steps.ToString())
+                    .Replace("[cfg]", _img2vidParams.CfgScale.ToString())
+                    .Replace("[sampler]", _img2vidParams.SamplerName ?? "euler");
+            }
+
+            return filename + ".mp4";
         }
 
         private void BuildTxt2ImgParameters(ref string scriptName)
@@ -239,14 +430,7 @@ namespace BlazorWebApp.Services
 
                 await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_m.Images.Images[i]));
 
-                if ((bool)_m.Options.SaveTxt)
-                {
-                    var infoPath = $"{fullpath}.txt";
-                    _io.SaveText(infoPath, _m.ImagesInfo.InfoTexts[i]);
-                    savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info, infoPath));
-                }
-                else
-                    savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info));
+                savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info));
             }
 
             if (outdirGrid != null && (bool)_m.Options.GridSave && (_m.Images.Images.Count > 1 && (bool)_m.Options.GridOnlyIfMultiple))
@@ -258,19 +442,12 @@ namespace BlazorWebApp.Services
                 string gridPath = $"{fullpath}.{extension}";
 
                 _m.GridImage = await _magick.SaveGrid(_m.Images.Images, gridPath);
-
-                if ((bool)_m.Options.SaveTxt)
-                {
-                    _io.SaveText($"{fullpath}.txt", _m.ImagesInfo.InfoTexts[0]);
-                }
             }
             return savedImages;
         }
 
         public async Task<ImagesDto?> SaveUpscaleImage()
         {
-            //if (_upscaledImage == null) return null;
-
             DirectoryInfo saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(Outdir.Extras));
             ImagesDto savedImage = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
 
@@ -281,25 +458,17 @@ namespace BlazorWebApp.Services
             await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_m.GeneratedUpscaleImage.Image));
 
             var info = Parser.ParseInfoStrings(_m.GeneratedUpscaleImage.Info, ModeType.Extras, _m.IsComfyUIUp);
-            if ((bool)_m.Options.SaveTxt)
-            {
-                var infoPath = $"{fullpath}.txt";
-                _io.SaveText(infoPath, _m.GeneratedUpscaleImage.Info);
-                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, info, infoPath));
-            }
-            else
-                savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, info));
+            savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, info));
 
             return savedImage;
         }
 
-        private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info, string infoPath = null)
+        private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info)
         {
             Image image = new();
 
             image.Path = path;
             image.ProjectId = _m.State.Gallery.ProjectId;
-            if (info != null) image.Info = info["param"];
             if (outdir == Outdir.Txt2ImgSamples && _txt2imgParams.EnableHR == true)
             {
                 var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _txt2imgParams.HRWidth, _txt2imgParams.HRHeight, _txt2imgParams.HRScale);
@@ -338,8 +507,6 @@ namespace BlazorWebApp.Services
                 Dictionary<string, string> param = new();
                 if (_m.IsWebuiUp)
                     param = Parser.ParseWebUIInfoParameters(info["param"]);
-                //if (_m.IsComfyUIUp && info != null)
-                //    param = Parser.ParseComfyUIInfoParameters(info["param"]);
 
                 // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
                 if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
@@ -356,7 +523,6 @@ namespace BlazorWebApp.Services
                     image.Height = (int)_parsingParams.Height;
                 }
             }
-            if (infoPath != null) { image.InfoPath = infoPath; }
             if (outdir != Outdir.Extras)
             {
                 image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
@@ -399,7 +565,7 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// In Img2Img, Width and Height are related to the section being masked and not the final image. <br/>
+        /// In Img2Img, Width and Height are related to the section being masked and not the final image.
         /// This method will set global variables with the proper dimensions to be used in the image's data.
         /// </summary>
         private void SetSourceImageSize()

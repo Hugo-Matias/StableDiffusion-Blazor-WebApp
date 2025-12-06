@@ -1,0 +1,20 @@
+#meta
+{
+  "outputs": {
+    "{{ model_output_name ?? 'model_output' }}": { "node": "{{ sampler_id }}", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ sampler_id }}": {
+    "inputs": {
+      "shift": {{ shift ?? 5 | json }},
+      "model": {{ get_ref (model_input_name ?? "model_output") }}
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": {{ title ?? "ModelSamplingSD3" | json }}
+    }
+  }
+}

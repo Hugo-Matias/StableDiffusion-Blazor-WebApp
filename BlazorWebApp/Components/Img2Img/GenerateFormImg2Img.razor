@@ -109,6 +109,42 @@
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
             </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.caption" Class="mb-2">Quick Resolution:</MudText>
+                <MudGrid Spacing="2" Justify="Justify.Center">
+                    @foreach (var res in M.Settings.Generation.Shared.QuickResolutions)
+                    {
+                        <MudItem xs="6" sm="4" md="3" lg="2">
+                            <MudButton OnClick="@(() => SetResolution(res.Width, res.Height))"
+                                       Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       FullWidth
+                                       Size="Size.Small">
+                                @res.Label
+                            </MudButton>
+                        </MudItem>
+                    }
+                </MudGrid>
+                <div class="d-flex justify-center mt-3">
+                    <MudButtonGroup Variant="Variant.Text" Color="Color.Primary">
+                        <MudButton OnClick="@(() => ScaleResolution(0.5))"
+                                   StartIcon="fa-solid fa-compress"
+                                   Size="Size.Small">
+                            x0.5
+                        </MudButton>
+                        <MudButton OnClick="@(() => SetResolution((int)Parameters.Height, (int)Parameters.Width))"
+                                   StartIcon="fa-solid fa-image-portrait"
+                                   Size="Size.Small">
+                            Rotate
+                        </MudButton>
+                        <MudButton OnClick="@(() => ScaleResolution(2.0))"
+                                   StartIcon="fa-solid fa-expand"
+                                   Size="Size.Small">
+                            x2
+                        </MudButton>
+                    </MudButtonGroup>
+                </div>
+            </MudItem>
             <MudItem xs="6">
                 <MudSlider @bind-Value=Parameters.Width Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
             </MudItem>
@@ -202,6 +238,32 @@
     {
         if (M.ImagesInfo != null && M.ImagesInfo.Seed != null)
             Parameters.Seed = M.ImagesInfo.Seed;
+    }
+
+    private void SetResolution(int width, int height)
+    {
+        Parameters.Width = width;
+        Parameters.Height = height;
+    }
+
+    private void ScaleResolution(double scale)
+    {
+        var currentWidth = Parameters.Width ?? 512;
+        var currentHeight = Parameters.Height ?? 512;
+        var step = M.Settings.Generation.Shared.Resolution.Step;
+        
+        // Scale and round to nearest step
+        var newWidth = (int)(Math.Round(currentWidth * scale / step) * step);
+        var newHeight = (int)(Math.Round(currentHeight * scale / step) * step);
+        
+        // Clamp to min/max
+        var min = M.Settings.Generation.Shared.Resolution.Min;
+        var max = M.Settings.Generation.Shared.Resolution.Max;
+        newWidth = Math.Clamp(newWidth, min, max);
+        newHeight = Math.Clamp(newHeight, min, max);
+        
+        Parameters.Width = newWidth;
+        Parameters.Height = newHeight;
     }
 
     private void HandleInpaintingParameterChecked(MudChip[] checkboxes)

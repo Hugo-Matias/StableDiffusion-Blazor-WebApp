@@ -592,6 +592,8 @@ namespace BlazorWebApp.Extensions
                 Outdir.Img2ImgSamples => ModeType.Img2Img,
                 Outdir.Img2ImgGrid => ModeType.Img2Img,
                 Outdir.Extras => ModeType.Extras,
+                Outdir.Img2VidSamples => ModeType.Img2Vid,
+                _ => ModeType.Txt2Img
             };
         }
 

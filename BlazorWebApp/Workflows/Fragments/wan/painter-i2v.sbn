@@ -1,0 +1,30 @@
+#meta
+{
+  "outputs": {
+    "painter_positive_output": { "node": "painter_i2v", "index": 0 },
+    "painter_negative_output": { "node": "painter_i2v", "index": 1 },
+    "painter_latent_output": { "node": "painter_i2v", "index": 2 }
+  }
+}
+#end
+
+{
+  "painter_i2v": {
+    "inputs": {
+      "width": {{ get_ref "image_width_output" }},
+      "height": {{ get_ref "image_height_output" }},
+      "length": {{ length ?? 81 | json }},
+      "batch_size": {{ batch_size ?? 1 | json }},
+      "motion_amplitude": {{ motion_amplitude ?? 1.1 | json }},
+      "positive": {{ get_ref "positive_output" }},
+      "negative": {{ get_ref "negative_output" }},
+      "vae": {{ get_ref "vae_output" }},
+      "clip_vision_output": {{ get_ref "clip_vision_output" }},
+      "start_image": {{ get_ref "image_output" }}
+    },
+    "class_type": "PainterI2V",
+    "_meta": {
+      "title": "PainterI2V"
+    }
+  }
+}

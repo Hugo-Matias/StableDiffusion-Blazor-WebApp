@@ -1,10 +1,25 @@
 ﻿@inject ManagerService M
 @inject DatabaseService DB
 @inject IOService IO
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<div class="@GetCardClasses()" @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false">
-    <div class="image-wrapper">
-        <img src="@_image" alt="@Name" class="card-image" loading="lazy" />
+<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+    <div class="media-wrapper">
+        @if (_isVideo)
+        {
+            <video id="@_videoId"
+                   src="@_mediaUrl"
+                   class="card-media"
+                   muted
+                   loop
+                   playsinline
+                   preload="metadata" />
+        }
+        else
+        {
+            <img src="@_mediaUrl" alt="@Name" class="card-media" loading="lazy" />
+        }
         
         @* Hover Overlay *@
         <div class="hover-overlay @(_isHovered ? "visible" : "")">
@@ -48,12 +63,25 @@
     [Parameter] public EventCallback<int> OnSelected { get; set; }
     [Parameter] public EventCallback<int> OnEdited { get; set; }
 
-    private string _image;
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+
+    private IJSObjectReference? _jsModule;
+    private string _videoId = $"project-video-{Guid.NewGuid():N}";
+    private string _mediaUrl;
+    private bool _isVideo;
     private bool _isHovered;
 
     protected override async Task OnParametersSetAsync()
     {
-        _image = await SetProjectSampleImage(ProjectId);
+        await SetProjectSampleMedia(ProjectId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _isVideo)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/VideoCard.js");
+        }
     }
 
     private string GetCardClasses()
@@ -64,16 +92,70 @@
         return classes;
     }
 
-    private async Task<string> SetProjectSampleImage(int projectId)
+    private bool IsVideoFile(string path)
     {
-        var image = await DB.GetSampleImage(projectId);
-        if (string.IsNullOrWhiteSpace(image))
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return VideoExtensions.Contains(extension);
+    }
+
+    private async Task SetProjectSampleMedia(int projectId)
+    {
+        var imagePath = await DB.GetSampleImage(projectId);
+        if (string.IsNullOrWhiteSpace(imagePath))
         {
             var imageEntity = await DB.GetRandomFavorite(projectId);
             if (imageEntity != null)
-                image ??= imageEntity.Path;
+                imagePath ??= imageEntity.Path;
         }
-        if (!string.IsNullOrWhiteSpace(image)) return IO.GetImageStaticFile(image);
-        else return "./no_image.png";
+        
+        if (!string.IsNullOrWhiteSpace(imagePath))
+        {
+            _mediaUrl = IO.GetImageStaticFile(imagePath);
+            _isVideo = IsVideoFile(imagePath);
+        }
+        else
+        {
+            _mediaUrl = "./no_image.png";
+            _isVideo = false;
+        }
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        _isHovered = true;
+        if (_isVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("playVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        _isHovered = false;
+        if (_isVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("pauseVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch { }
+        }
     }
 }

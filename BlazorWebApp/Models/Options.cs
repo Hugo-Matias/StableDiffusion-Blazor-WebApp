@@ -12,6 +12,8 @@ namespace BlazorWebApp.Models
         public string? OutdirSamplesImg2Img { get; set; }
         [JsonPropertyName("outdir_extras_samples")]
         public string? OutdirSamplesExtras { get; set; }
+        [JsonPropertyName("outdir_img2vid_samples")]
+        public string? OutdirSamplesImg2Vid { get; set; }
         [JsonPropertyName("outdir_txt2img_grids")]
         public string? OutdirGridTxt2Img { get; set; }
         [JsonPropertyName("outdir_img2img_grids")]

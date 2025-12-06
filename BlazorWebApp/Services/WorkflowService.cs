@@ -320,6 +320,16 @@ namespace BlazorWebApp.Services
 
         public string ComposeWorkflowFromTemplate(Workflow template, Txt2ImgComfyUI param)
         {
+            return ComposeWorkflowFromTemplateInternal(template, param);
+        }
+
+        public string ComposeWorkflowFromTemplate(Workflow template, Img2VidComfyUI param)
+        {
+            return ComposeWorkflowFromTemplateInternal(template, param);
+        }
+
+        private string ComposeWorkflowFromTemplateInternal<T>(Workflow template, T param) where T : class
+        {
             var composer = new WorkflowComposer();
 
             var globalParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);

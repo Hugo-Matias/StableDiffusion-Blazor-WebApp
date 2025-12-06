@@ -1,5 +1,6 @@
 ﻿@inject DatabaseService DB
 @inject ManagerService M
+@inject IOService IO
 @inject IJSRuntime JS
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -25,12 +26,24 @@
         @foreach (var image in Images.Images)
         {
             <div class="gallery-item">
-                <ImageCard Image="@image"
-                           Target="fullscreen-modal"
-                           OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
-                           OnDeleteImage="async () => await DeleteSingleImage(image)"
-                           OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
-                           ShowSelectionCheckbox="true" />
+                @if (IsVideoFile(image.Path))
+                {
+                    <VideoCard Video="@ConvertToGeneratedVideo(image)"
+                               Index="@Images.Images.IndexOf(image)"
+                               OnSelectVideo="idx => OpenVideoViewer(idx)"
+                               OnDeleteVideo="video => DeleteVideoFromImage(video)"
+                               OnVideoChanged="HandleVideoChanged"
+                               ShowSelectionCheckbox="true" />
+                }
+                else
+                {
+                    <ImageCard Image="@image"
+                               Target="fullscreen-modal"
+                               OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
+                               OnDeleteImage="async () => await DeleteSingleImage(image)"
+                               OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
+                               ShowSelectionCheckbox="true" />
+                }
             </div>
         }
     </div>
@@ -49,10 +62,18 @@
     }
 </div>
 
+<!-- Image Viewer (for non-video files) -->
 <ImageViewer @bind-IsVisible="_showViewer" 
-             Images="Images.Images" 
+             Images="@_cachedNonVideoImages" 
              StartIndex="_viewerStartIndex" 
-             OnClosed="StateHasChanged" />
+             OnClosed="HandleViewerClosed" />
+
+<!-- Video Viewer (for video files) -->
+<VideoViewer @bind-IsVisible="_showVideoViewer"
+             Videos="@_cachedVideoItems"
+             StartIndex="_videoViewerStartIndex"
+             OnVideoChanged="HandleVideoChanged"
+             OnClosed="HandleViewerClosed" />
 
 @code {
     [Parameter, EditorRequired] public ImagesDto Images { get; set; } = new();
@@ -61,9 +82,17 @@
 
     private bool _isLoadingNext;
     private bool _showViewer;
+    private bool _showVideoViewer;
     private int _viewerStartIndex;
+    private int _videoViewerStartIndex;
     private IJSObjectReference? _infiniteScrollModule;
     private DotNetObjectReference<InfiniteScrollMasonry>? _dotNetRef;
+    
+    // Cached lists for viewers - only updated when opening viewer
+    private List<Image> _cachedNonVideoImages = new();
+    private List<GeneratedVideo> _cachedVideoItems = new();
+
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -94,10 +123,78 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private bool IsVideoFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return VideoExtensions.Contains(extension);
+    }
+
+    private GeneratedVideo ConvertToGeneratedVideo(Image image)
+    {
+        return new GeneratedVideo
+        {
+            Id = image.Id,
+            FilePath = image.Path,
+            Filename = Path.GetFileName(image.Path),
+            Width = image.Width,
+            Height = image.Height,
+            Prompt = image.Prompt,
+            NegativePrompt = image.NegativePrompt,
+            Seed = image.Seed,
+            Steps = image.Steps,
+            CfgScale = image.CfgScale,
+            DateCreated = image.DateCreated,
+            Favorite = image.Favorite,
+            Score = image.Score
+        };
+    }
+
     private void OpenViewer(int startIndex)
     {
-        _viewerStartIndex = startIndex;
+        var image = Images.Images[startIndex];
+        
+        if (IsVideoFile(image.Path))
+        {
+            OpenVideoViewer(startIndex);
+            return;
+        }
+        
+        // Cache the non-video images list when opening
+        _cachedNonVideoImages = Images.Images.Where(i => !IsVideoFile(i.Path)).ToList();
+        _viewerStartIndex = _cachedNonVideoImages.IndexOf(image);
+        if (_viewerStartIndex < 0) _viewerStartIndex = 0;
         _showViewer = true;
+    }
+
+    private void OpenVideoViewer(int startIndex)
+    {
+        var image = Images.Images[startIndex];
+        
+        // Cache the video items list when opening
+        _cachedVideoItems = Images.Images
+            .Where(i => IsVideoFile(i.Path))
+            .Select(ConvertToGeneratedVideo)
+            .ToList();
+        
+        _videoViewerStartIndex = _cachedVideoItems.FindIndex(v => v.FilePath == image.Path);
+        if (_videoViewerStartIndex < 0) _videoViewerStartIndex = 0;
+        _showVideoViewer = true;
+    }
+
+    private void HandleViewerClosed()
+    {
+        // Sync any changes from cached items back to the main list
+        foreach (var video in _cachedVideoItems)
+        {
+            var image = Images.Images.FirstOrDefault(i => i.Id == video.Id);
+            if (image != null)
+            {
+                image.Favorite = video.Favorite;
+                image.Score = video.Score;
+            }
+        }
+        StateHasChanged();
     }
 
     private void ShowSelectionsDialog()
@@ -110,8 +207,29 @@
     {
         await DB.DeleteImage(image);
         Images.Images.Remove(image);
-        Snackbar.Add("Image deleted successfully.", Severity.Success);
+        Snackbar.Add("Item deleted successfully.", Severity.Success);
         await OnImagesChanged.InvokeAsync();
+    }
+
+    private async Task DeleteVideoFromImage(GeneratedVideo video)
+    {
+        var image = Images.Images.FirstOrDefault(i => i.Path == video.FilePath);
+        if (image != null)
+        {
+            await DeleteSingleImage(image);
+        }
+    }
+
+    private async Task HandleVideoChanged(GeneratedVideo video)
+    {
+        // Sync changes back to the Image entity
+        var image = Images.Images.FirstOrDefault(i => i.Id == video.Id);
+        if (image != null)
+        {
+            image.Favorite = video.Favorite;
+            image.Score = video.Score;
+        }
+        // Don't call StateHasChanged here - it would cause the viewer to re-render with a new list
     }
 
     private async Task ShowDeleteImagesDialog()
@@ -121,9 +239,9 @@
             { "OkButtonText", "Yes" },
             { "CancelButtonText", "No" },
             { "OkButtonColor", Color.Error },
-            { "Content", new MarkupString("<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected images?<br /></span><small>This action is irreversible!</small>") }
+            { "Content", new MarkupString("<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected items?<br /></span><small>This action is irreversible!</small>") }
         };
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Images", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled)
         {
@@ -133,7 +251,7 @@
                 await DB.DeleteImage(img);
                 Images.Images.RemoveAll(i => i.Id == img.Id);
             }
-            Snackbar.Add("All selected images deleted successfully.", Severity.Success);
+            Snackbar.Add("All selected items deleted successfully.", Severity.Success);
             M.ClearSelectedImages();
             await OnImagesChanged.InvokeAsync();
         }
@@ -151,7 +269,7 @@
         {
             var updatedImages = (List<Image>)result.Data;
             await DB.UpdateImages(updatedImages);
-            Snackbar.Add("Images projects were changed.", Severity.Success);
+            Snackbar.Add("Items projects were changed.", Severity.Success);
             M.ClearSelectedImages();
             await OnImagesChanged.InvokeAsync();
         }

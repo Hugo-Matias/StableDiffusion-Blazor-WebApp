@@ -6,8 +6,6 @@ namespace BlazorWebApp.Data.Entities
     {
         public int Id { get; set; }
         public string Path { get; set; }
-        public string? Info { get; set; }
-        public string? InfoPath { get; set; }
         public string? Prompt { get; set; }
         public string? NegativePrompt { get; set; }
         public int SamplerId { get; set; } = 0;
