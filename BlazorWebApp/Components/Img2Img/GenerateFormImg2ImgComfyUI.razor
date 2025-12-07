@@ -52,8 +52,8 @@
                 </MudSlider>
             </MudItem>
             <MudItem xs="4">
-                <MudSlider T="double?" Value="M.ParametersImg2Img.CfgScale" 
-                           ValueChanged="@((double? v) => { M.ParametersImg2Img.CfgScale = v; NotifyChanged(); })"
+                <MudSlider T="float?" Value="M.ParametersImg2Img.CfgScale" 
+                           ValueChanged="@((float? v) => { M.ParametersImg2Img.CfgScale = v; NotifyChanged(); })"
                            Min="GetCfgSettings().Min" 
                            Max="GetCfgSettings().Max" 
                            Step="GetCfgSettings().Step" 
@@ -64,9 +64,9 @@
             <MudItem xs="4">
                 <MudSlider T="float?" Value="M.ParametersImg2Img.Denoise" 
                            ValueChanged="@((float? v) => { M.ParametersImg2Img.Denoise = v; NotifyChanged(); })"
-                           Min="0" 
-                           Max="1" 
-                           Step="0.01" 
+                           Min="0.0f" 
+                           Max="1.0f" 
+                           Step="0.01f" 
                            Variant="Variant.Filled" ValueLabel>
                     <small>Denoise:</small> @M.ParametersImg2Img.Denoise?.ToString("F2")
                 </MudSlider>
@@ -93,9 +93,9 @@
             <MudItem xs="4">
                 <MudSlider T="float?" Value="M.ParametersImg2Img.Megapixels" 
                            ValueChanged="@((float? v) => { M.ParametersImg2Img.Megapixels = v; NotifyChanged(); })"
-                           Min="0.1" 
-                           Max="4" 
-                           Step="0.1" 
+                           Min="0.1f" 
+                           Max="4.0f" 
+                           Step="0.1f" 
                            Variant="Variant.Filled" ValueLabel>
                     <small>Megapixels:</small> @M.ParametersImg2Img.Megapixels?.ToString("F1")
                 </MudSlider>
@@ -103,9 +103,9 @@
             <MudItem xs="4">
                 <MudSlider T="float?" Value="M.ParametersImg2Img.LoraStrength" 
                            ValueChanged="@((float? v) => { M.ParametersImg2Img.LoraStrength = v; NotifyChanged(); })"
-                           Min="0" 
-                           Max="2" 
-                           Step="0.1" 
+                           Min="0.0f" 
+                           Max="2.0f" 
+                           Step="0.1f" 
                            Variant="Variant.Filled" ValueLabel>
                     <small>LoRA Strength:</small> @M.ParametersImg2Img.LoraStrength?.ToString("F1")
                 </MudSlider>
@@ -123,9 +123,9 @@
             <MudItem xs="6">
                 <MudSlider T="float?" Value="M.ParametersImg2Img.CfgNormStrength" 
                            ValueChanged="@((float? v) => { M.ParametersImg2Img.CfgNormStrength = v; NotifyChanged(); })"
-                           Min="0" 
-                           Max="2" 
-                           Step="0.1" 
+                           Min="0.0f" 
+                           Max="2.0f" 
+                           Step="0.1f" 
                            Variant="Variant.Filled" ValueLabel>
                     <small>CFG Norm Strength:</small> @M.ParametersImg2Img.CfgNormStrength?.ToString("F1")
                 </MudSlider>
@@ -202,8 +202,8 @@ else
 
 @code {
     // Settings getters with fallback defaults
-    private IntRange GetStepsSettings() => M.Settings?.Generation?.Shared?.Steps ?? new IntRange { Min = 1, Max = 50, Step = 1 };
-    private FloatRange GetCfgSettings() => M.Settings?.Generation?.Shared?.CfgScale ?? new FloatRange { Min = 1.0f, Max = 15.0f, Step = 0.5f };
+    private StepsSettingsModel GetStepsSettings() => M.Settings?.Generation?.Shared?.Steps ?? new StepsSettingsModel { Min = 1, Max = 50, Step = 1, Value = 4 };
+    private CfgScaleSettingsModel GetCfgSettings() => M.Settings?.Generation?.Shared?.CfgScale ?? new CfgScaleSettingsModel { Min = 1.0f, Max = 15.0f, Step = 0.5f, Value = 1.0f };
     private ResolutionSettingsModel GetResolutionSettings() => M.Settings?.Generation?.Shared?.Resolution ?? new ResolutionSettingsModel { Min = 64, Max = 2048, Step = 8 };
 
     private void NotifyChanged()

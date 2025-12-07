@@ -404,6 +404,11 @@ namespace BlazorWebApp.Services
             return ComposeWorkflowFromTemplateInternal(template, param);
         }
 
+        public string ComposeWorkflowFromTemplate(Workflow template, Img2ImgComfyUI param)
+        {
+            return ComposeWorkflowFromTemplateInternal(template, param);
+        }
+
         public string ComposeWorkflowFromTemplate(Workflow template, Img2VidComfyUI param)
         {
             return ComposeWorkflowFromTemplateInternal(template, param);

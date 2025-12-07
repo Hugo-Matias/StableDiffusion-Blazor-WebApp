@@ -28,6 +28,15 @@
 <MudGrid>
     <MudItem xs="6">
         <MudStack Spacing="3">
+            @* TODO: Future Enhancement - Advanced Image Editor
+                - Fullscreen modal for detailed editing
+                - Canvas-based pixel manipulation with undo/redo history
+                - Brush tools for masks and inpainting
+                - Zoom and pan capabilities
+                - Layer support for multiple inputs/masks
+                - Support for future inpainting workflows (black/white mask input)
+                Current ImageInput provides basic upload, paste, and drag-drop functionality
+            *@
             <ImageInput ImageData="@M.Img2ImgInputImage" 
                         ImageDataChanged="HandleImageDataChanged"
                         Title="Input Image"
