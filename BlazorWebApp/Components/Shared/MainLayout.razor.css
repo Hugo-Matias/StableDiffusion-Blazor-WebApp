@@ -31,6 +31,17 @@ main {
 		text-overflow: ellipsis;
 	}
 
+.toolbar-backdrop {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background-color: rgba(0, 0, 0, 0.8);
+	z-index: 1300;
+	cursor: pointer;
+}
+
 @media (max-width: 640.98px) {
 	.top-row:not(.auth) {
 		display: none;
@@ -82,4 +93,24 @@ main {
 	100% {
 		transform: rotate(360deg);
 	}
+}
+
+/* Base Selector in AppBar */
+::deep .base-selector {
+    min-width: 90px;
+    max-width: 140px;
+}
+
+::deep .base-selector .mud-input-slot {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+::deep .base-selector .mud-select-input {
+    padding: 4px 8px !important;
+    font-size: 0.85rem;
+}
+
+::deep .base-selector .mud-input-label {
+    font-size: 0.75rem;
 }

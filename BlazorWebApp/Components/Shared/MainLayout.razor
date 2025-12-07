@@ -1,8 +1,10 @@
 ﻿@inherits LayoutComponentBase
+@using static BlazorWebApp.Data.Enums
 @inject ManagerService M
 @inject SDAPIService SDAPI
 @inject ComfyUIService CAPI
 @inject ThemeService ThemeService
+@inject NavigationManager NavManager
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
@@ -13,31 +15,50 @@
 
 <div>
     <MudLayout Style="overflow:hidden;">
-        <MudAppBar>
+        <MudAppBar Style="z-index: 1400;">
             <ProgressContainer />
             <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" />
             <NavBar />
             <MudSpacer />
-            @if (M.SDModels != null && M.SDModels.Count > 0)
+            
+            @* Base Selector (ComfyUI only) *@
+            @if (M.IsComfyUIUp && _workflowBases != null && _workflowBases.Count > 0)
             {
-                <MudSelect T="string"
-                            Label="Model"
-                            @bind-Value="@M.State.Generation.SDModel"
-                            OnOpen="@(() => M.GetSDModels())"
-                            Style="min-width: 200px;"
-                            AnchorOrigin="Origin.BottomCenter">
-                    @foreach (var model in M.SDModels)
+                <MudSelect Value="M.State.Generation.WorkflowBase" 
+                           T="ModelBase" 
+                           ValueChanged="HandleWorkflowBaseSelected" 
+                           Label="Base" 
+                           Variant="Variant.Outlined"
+                           Class="base-selector mr-1"
+                           AnchorOrigin="Origin.BottomCenter" 
+                           TransformOrigin="Origin.TopCenter">
+                    @foreach (var workflowBase in _workflowBases)
                     {
-                        <MudSelectItem Value="@model.Model_name">@model.Title</MudSelectItem>
+                        <MudSelectItem Value="@workflowBase" />
                     }
                 </MudSelect>
             }
-            <MudIconButton Icon="@Icons.Material.Filled.Palette" Color="Color.Inherit" OnClick="ToggleTheme" Title="Toggle Theme" />
-            <MudIconButton Class=@(M.State.Generation.SDModel == "Loading..." ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(M.State.Generation.SDModel == "Loading..." ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
+            
+            @* Dark/Light Mode Toggle *@
+            <MudIconButton Icon="@(M.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
+                           Color="Color.Inherit" 
+                           Title="@(M.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
+                           OnClick="ToggleDarkMode" />
+            
+            <MudIconButton Class=@(_isModelLoading ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(_isModelLoading ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
         </MudAppBar>
-        <MudExpansionPanels Style="position: fixed; width:100%; z-index:100;">
-            <MudExpansionPanel HideIcon=true IsExpanded="_isToolbarOpen">
-                <TopToolbar />
+
+        @* Backdrop for TopToolbar *@
+        @if (_isToolbarOpen)
+        {
+            <div class="toolbar-backdrop" @onclick="CloseToolbar"></div>
+        }
+
+        <MudExpansionPanels Style="position: fixed; width:100%; z-index:1301; top: 0px;">
+            <MudExpansionPanel HideIcon=true @bind-IsExpanded="_isToolbarOpen">
+                <CascadingValue Value="@((Action)HandleThemeChanged)">
+                    <TopToolbar />
+                </CascadingValue>
             </MudExpansionPanel>
         </MudExpansionPanels>
         <MudMainContent>
@@ -50,18 +71,40 @@
 
 @code {
     private bool _isToolbarOpen = false;
+    private bool _isModelLoading = false;
     private MudTheme _currentTheme = new MudTheme();
+    private List<ModelBase> _workflowBases = new();
+    
+    // Pages that should NOT redirect when Base changes (non-generation pages)
+    private static readonly string[] _safePages = { "/", "/prompts", "/resources", "/danbooru" };
 
     protected override void OnInitialized()
     {
         M.OnProgressChanged += Refresh;
         M.OnSDModelsChange += Refresh;
+        M.OnWorkflowBaseChanged += Refresh;
+        M.OnComfyUIStateChanged += LoadWorkflowBases;
         LoadTheme();
     }
 
     protected async override Task OnInitializedAsync() 
     { 
         M.IsWebuiUp = await SDAPI.CheckWebuiState();
+        LoadWorkflowBases();
+    }
+
+    private void LoadWorkflowBases()
+    {
+        if (M.IsComfyUIUp && M.State?.Generation?.Workflows != null)
+        {
+            _workflowBases = M.State.Generation.Workflows
+                .Select(w => w.Base.ToString())
+                .Where(b => !string.IsNullOrWhiteSpace(b))
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .Select(b => Enum.Parse<ModelBase>(b, ignoreCase: true))
+                .OrderBy(b => b)
+                .ToList();
+        }
     }
 
     private void LoadTheme()
@@ -69,24 +112,77 @@
         _currentTheme = ThemeService.GetTheme(M.State.CurrentTheme ?? "Default");
     }
 
-    private async Task ToggleTheme()
+    private void HandleThemeChanged()
     {
-        var currentIndex = Array.IndexOf(ThemeService.ThemeNames, M.State.CurrentTheme ?? "Default");
-        var nextIndex = (currentIndex + 1) % ThemeService.ThemeNames.Length;
-        
-        M.State.CurrentTheme = ThemeService.ThemeNames[nextIndex];
         LoadTheme();
+        StateHasChanged();
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        M.State.IsDarkMode = !M.State.IsDarkMode;
         await M.SaveState();
         StateHasChanged();
     }
 
-    private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
+    private async Task HandleWorkflowBaseSelected(ModelBase selected)
+    {
+        var previousBase = M.State.Generation.WorkflowBase;
+        
+        M.SetWorkflowBase(selected);
+        await M.GetWorkflowModels();
+        
+        // If base changed and user is on a generation page, redirect to Index
+        if (previousBase != selected && !IsOnSafePage())
+        {
+            NavManager.NavigateTo("/");
+        }
+    }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    /// <summary>
+    /// Checks if the current page is a "safe" page that shouldn't redirect on Base change.
+    /// Safe pages: Index, Prompts, Resources, Danbooru
+    /// </summary>
+    private bool IsOnSafePage()
+    {
+        var currentPath = NavManager.ToBaseRelativePath(NavManager.Uri);
+        var normalizedPath = "/" + currentPath.ToLowerInvariant().TrimEnd('/');
+        
+        // Check exact matches first
+        if (_safePages.Any(p => normalizedPath.Equals(p, StringComparison.OrdinalIgnoreCase)))
+            return true;
+        
+        // Check prefix matches for sub-pages (e.g., /prompts/123)
+        if (_safePages.Any(p => p != "/" && normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            return true;
+        
+        return false;
+    }
+
+    private void DrawerToggler() 
+    {
+        _isToolbarOpen = !_isToolbarOpen;
+        StateHasChanged();
+    }
+
+    private void CloseToolbar()
+    {
+        _isToolbarOpen = false;
+        StateHasChanged();
+    }
+
+    private async void Refresh()
+    {
+        _isModelLoading = string.IsNullOrEmpty(M.GetCurrentModel()) || M.GetCurrentModel() == "Loading...";
+        LoadWorkflowBases();
+        await InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose()
     {
         M.OnProgressChanged -= Refresh;
-        M.OnSDModelsChange += Refresh;
+        M.OnSDModelsChange -= Refresh;
+        M.OnWorkflowBaseChanged -= Refresh;
+        M.OnComfyUIStateChanged -= LoadWorkflowBases;
     }
 }
