@@ -93,10 +93,10 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Refiner Checkpoint" @bind-Value=Parameters.RefinerCheckpoint AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (M.SDModels != null)
+                    @if (M.CheckpointModels != null)
                     {
                         <MudSelectItem Value=@("None")>None</MudSelectItem>
-                        @foreach (var model in M.SDModels)
+                        @foreach (var model in M.CheckpointModels)
                         {
                             <MudSelectItem Value=@model.Model_name >@model.Title</MudSelectItem>
                         }

@@ -107,11 +107,12 @@
                 // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
                 else if (command.Equals("Load", comp) && resource.Type.Name.Equals("Checkpoint", comp))
                 {
-                    await M.GetSDModels(refresh: true);
-                    var filename = file.File.Name.Replace(file.File.Extension, "");
-                    var model = M.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp))?.Title;
-                    await M.SetSDModel(model);
-                    await DB.UpdateResourceLoadedDate(file.ResourceId);
+                    // TODO: Checkpoint loading from Resources page is disabled pending model type refactoring
+                    // await M.GetWorkflowModels(refresh: true);
+                    // var filename = file.File.Name.Replace(file.File.Extension, "");
+                    // var model = M.CheckpointModels?.FirstOrDefault(m => m.Model_name.Contains(filename, comp))?.Title;
+                    // if (model != null) await M.SetSDModel(model);
+                    // await DB.UpdateResourceLoadedDate(file.ResourceId);
                 }
                 else
                 {

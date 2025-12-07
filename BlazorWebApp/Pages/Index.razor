@@ -253,7 +253,7 @@ else
         await LoadImages(false);
     }
 
-    private async void Refresh() => await LoadImages(false);
+    private async void Refresh() => await InvokeAsync(async () => await LoadImages(false));
 
     private async void RefreshUI() => await InvokeAsync(StateHasChanged);
 

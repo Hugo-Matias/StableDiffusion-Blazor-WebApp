@@ -12,7 +12,7 @@ namespace BlazorWebApp.Services
             Themes = new Dictionary<string, MudTheme>
             {
                 { "Default", CreateDefaultTheme() },
-                { "Custom", CreateCustomTheme() },
+                { "Dark", CreateDarkTheme() },
                 { "Ocean", CreateOceanTheme() },
                 { "Twilight", CreateTwilightTheme() },
                 { "Emerald", CreateEmeraldTheme() },
@@ -32,7 +32,7 @@ namespace BlazorWebApp.Services
             return new MudTheme();
         }
 
-        private static MudTheme CreateCustomTheme()
+        private static MudTheme CreateDarkTheme()
         {
             return new MudTheme
             {

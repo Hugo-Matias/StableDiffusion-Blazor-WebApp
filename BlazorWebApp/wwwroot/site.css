@@ -14,3 +14,17 @@ a:hover {
 	white-space: pre-line;
 	opacity: 0.4;
 }
+
+/* 
+ * Fix z-index layering for MudBlazor popovers/dropdowns
+ * MudBlazor renders popovers in a global provider, so we need global CSS.
+ * The TopToolbar expansion panel is at z-index 1301 and backdrop at 1300,
+ * so popovers need to be above both.
+ */
+.mud-popover-provider {
+	z-index: 1500 !important;
+}
+
+.mud-popover {
+	z-index: 1500 !important;
+}

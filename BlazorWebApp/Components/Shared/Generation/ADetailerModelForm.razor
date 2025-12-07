@@ -101,9 +101,12 @@
                                 <MudSelect @bind-Value=Parameters.Checkpoint AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Disabled=!Parameters.UseCheckpoint T="string">
                                     <MudSelectItem Value="@("Use same checkpoint")">Use same checkpoint</MudSelectItem>
                                     @{
-                                    foreach (var model in M.SDModels)
+                                    if (M.CheckpointModels != null)
                                     {
-                                        <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                                        foreach (var model in M.CheckpointModels)
+                                        {
+                                            <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
+                                        }
                                     }
                                 }
                             </MudSelect>
