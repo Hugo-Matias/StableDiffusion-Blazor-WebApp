@@ -14,10 +14,12 @@ namespace BlazorWebApp.Services
     {
         private readonly string _workflowPath = Path.Combine(AppContext.BaseDirectory, "Workflows");
         private readonly IOService _io;
+        private readonly ILogger<WorkflowService> _logger;
 
-        public WorkflowService(IOService io)
+        public WorkflowService(IOService io, ILogger<WorkflowService> logger)
         {
             _io = io;
+            _logger = logger;
         }
 
         public List<Workflow> GetWorkflows()
@@ -54,16 +56,95 @@ namespace BlazorWebApp.Services
             if (modeMatch.Success && Enum.TryParse<ModeType>(modeMatch.Groups[1].Value, true, out var mt))
                 wf.Mode = mt;
 
-            var modelTypeMatch = Regex.Match(templateText, @"""modeltype""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
-            if (modelTypeMatch.Success && Enum.TryParse<ModelType>(modelTypeMatch.Groups[1].Value, true, out var mtype))
-                wf.ModelType = mtype;
+            // Parse Assets from workflow template
+            wf.Assets = ParseAssetsFromTemplate(templateText);
 
-            var uniqueString = $"{wf.Title}_{wf.Base}_{wf.Mode}_{wf.ModelType}";
+            // Generate a unique ID based on available properties
+            var uniqueString = $"{wf.Title}_{wf.Base}_{wf.Mode}";
             wf.Id = GenerateDeterministicGuid(uniqueString);
 
             wf.Pipeline = null;
 
             return wf;
+        }
+
+        /// <summary>
+        /// Parses the Assets array from a workflow template.
+        /// Assets define the models/resources required by the workflow.
+        /// </summary>
+        private List<WorkflowAsset>? ParseAssetsFromTemplate(string templateText)
+        {
+            // Look for "Assets": [...] in the template
+            var assetsMatch = Regex.Match(templateText, @"""Assets""\s*:\s*\[(.*?)\]", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            if (!assetsMatch.Success)
+                return null;
+
+            var assetsArrayContent = assetsMatch.Groups[1].Value.Trim();
+            if (string.IsNullOrWhiteSpace(assetsArrayContent))
+                return null;
+
+            var assets = new List<WorkflowAsset>();
+
+            // Parse each asset object in the array
+            var assetMatches = Regex.Matches(assetsArrayContent, @"\{([^{}]*)\}", RegexOptions.Singleline);
+
+            foreach (Match assetMatch in assetMatches)
+            {
+                var assetContent = assetMatch.Groups[1].Value;
+                var asset = ParseSingleAsset(assetContent);
+                if (asset != null)
+                {
+                    assets.Add(asset);
+                }
+            }
+
+            return assets.Count > 0 ? assets : null;
+        }
+
+        /// <summary>
+        /// Parses a single asset definition from JSON-like content.
+        /// </summary>
+        private WorkflowAsset? ParseSingleAsset(string assetContent)
+        {
+            var asset = new WorkflowAsset();
+
+            // Parse parameter
+            var paramMatch = Regex.Match(assetContent, @"""parameter""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (paramMatch.Success)
+                asset.Parameter = paramMatch.Groups[1].Value;
+            else
+                return null; // Parameter is required
+
+            // Parse label
+            var labelMatch = Regex.Match(assetContent, @"""label""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (labelMatch.Success)
+                asset.Label = labelMatch.Groups[1].Value;
+            else
+                asset.Label = asset.Parameter; // Default to parameter name
+
+            // Parse type
+            var typeMatch = Regex.Match(assetContent, @"""type""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (typeMatch.Success && Enum.TryParse<AssetType>(typeMatch.Groups[1].Value, true, out var assetType))
+                asset.Type = assetType;
+            else
+                return null; // Type is required
+
+            // Parse default value
+            var defaultMatch = Regex.Match(assetContent, @"""default""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (defaultMatch.Success)
+                asset.DefaultValue = defaultMatch.Groups[1].Value;
+
+            // Parse order
+            var orderMatch = Regex.Match(assetContent, @"""order""\s*:\s*(\d+)", RegexOptions.IgnoreCase);
+            if (orderMatch.Success && int.TryParse(orderMatch.Groups[1].Value, out var order))
+                asset.Order = order;
+
+            // Parse column size
+            var columnMatch = Regex.Match(assetContent, @"""columnSize""\s*:\s*(\d+)", RegexOptions.IgnoreCase);
+            if (columnMatch.Success && int.TryParse(columnMatch.Groups[1].Value, out var columnSize))
+                asset.ColumnSize = columnSize;
+
+            return asset;
         }
 
         private Guid GenerateDeterministicGuid(string input)
@@ -347,7 +428,9 @@ namespace BlazorWebApp.Services
                 globalParams[prop.Name] = value;
             }
 
-            globalParams["ModelType"] = template.ModelType.ToString();
+            // Inject WorkflowAssets directly into global params for template access
+            // This allows templates to use {{ HighModel }}, {{ Vae }}, etc. directly
+            InjectWorkflowAssets(param, template, globalParams);
 
             var templateContext = new TemplateContext
             {
@@ -461,6 +544,186 @@ namespace BlazorWebApp.Services
             }
 
             return composer.BuildFinalWorkflow();
+        }
+
+        /// <summary>
+        /// Saves the current asset values as defaults in the workflow template file.
+        /// Updates the "default" field for each asset in the Assets array.
+        /// Also updates the in-memory workflow to reflect the new defaults.
+        /// </summary>
+        /// <param name="workflow">The workflow whose template should be updated</param>
+        /// <param name="assetValues">Dictionary of asset parameter names to their current values</param>
+        /// <param name="allWorkflows">Optional: The full list of workflows to update in-memory (typically State.Generation.Workflows)</param>
+        /// <returns>True if the file was updated successfully, false otherwise</returns>
+        public bool SaveAssetDefaults(Workflow workflow, Dictionary<string, string> assetValues, List<Workflow>? allWorkflows = null)
+        {
+            if (workflow == null || assetValues == null || assetValues.Count == 0)
+                return false;
+
+            // Get the list of valid asset parameters from the workflow
+            var validAssetParams = workflow.Assets?.Select(a => a.Parameter).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (validAssetParams == null || validAssetParams.Count == 0)
+                return false;
+
+            try
+            {
+                // Find the template file for this workflow
+                var templatePath = FindWorkflowTemplatePath(workflow);
+                if (string.IsNullOrEmpty(templatePath) || !File.Exists(templatePath))
+                    return false;
+
+                var templateText = File.ReadAllText(templatePath);
+                var updatedText = templateText;
+
+                // Find the workflow in the allWorkflows list to ensure we update the correct instance
+                var workflowToUpdate = allWorkflows?.FirstOrDefault(w => w.Id == workflow.Id) ?? workflow;
+
+                // Update each asset's default value in the template (only for assets that exist in the workflow)
+                foreach (var kvp in assetValues)
+                {
+                    // Skip if this asset parameter doesn't exist in the workflow
+                    if (!validAssetParams.Contains(kvp.Key))
+                    {
+                        _logger.LogDebug("Skipping asset '{AssetKey}' - not defined in workflow", kvp.Key);
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(kvp.Value))
+                        continue;
+
+                    var escapedParam = Regex.Escape(kvp.Key);
+                    var escapedValue = EscapeJsonString(kvp.Value);
+
+                    // Pattern to find the asset object with matching parameter and update its default
+                    // Uses a callback to handle the replacement
+                    var assetBlockPattern = @"\{[^{}]*""parameter""\s*:\s*""" + escapedParam + @"""[^{}]*\}";
+
+                    updatedText = Regex.Replace(updatedText, assetBlockPattern, match =>
+                    {
+                        var assetBlock = match.Value;
+                        // Update the default value within this asset block
+                        var defaultPattern = @"""default""\s*:\s*""[^""]*""";
+                        var newDefault = $@"""default"": ""{escapedValue}""";
+                        return Regex.Replace(assetBlock, defaultPattern, newDefault, RegexOptions.IgnoreCase);
+                    }, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+                    // Update the in-memory workflow asset default (on the workflow from the list)
+                    var asset = workflowToUpdate.Assets?.FirstOrDefault(a => 
+                        a.Parameter.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
+                    if (asset != null)
+                    {
+                        asset.DefaultValue = kvp.Value;
+                        _logger.LogDebug("Updated in-memory default for '{Parameter}': '{Value}' (workflow: {WorkflowTitle})", 
+                            kvp.Key, kvp.Value, workflowToUpdate.Title);
+                    }
+                }
+
+                // Only write if changes were made
+                if (updatedText != templateText)
+                {
+                    File.WriteAllText(templatePath, updatedText);
+                    _logger.LogDebug("Saved asset defaults to: {TemplatePath}", templatePath);
+                    return true;
+                }
+                else
+                {
+                    _logger.LogDebug("No changes made to asset defaults");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving asset defaults for workflow '{WorkflowTitle}'", workflow.Title);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Finds the template file path for a given workflow.
+        /// </summary>
+        private string? FindWorkflowTemplatePath(Workflow workflow)
+        {
+            var templatesPath = Path.Combine(_workflowPath, "Templates");
+            var workflowFiles = _io.GetFilesRecursive(templatesPath, ignorePath: "utils", extensionsWhitelist: new() { ".sbn" });
+
+            foreach (var file in workflowFiles)
+            {
+                var templateText = File.ReadAllText(file.FullName);
+                var parsedWorkflow = ParseWorkflowTemplate(templateText);
+
+                // Match by title, base, and mode
+                if (parsedWorkflow.Title == workflow.Title &&
+                    parsedWorkflow.Base == workflow.Base &&
+                    parsedWorkflow.Mode == workflow.Mode)
+                {
+                    return file.FullName;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Escapes a string for use in JSON.
+        /// </summary>
+        private string EscapeJsonString(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return value;
+
+            return value
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r")
+                .Replace("\t", "\\t");
+        }
+
+        /// <summary>
+        /// Injects WorkflowAssets from the parameter object into the global params dictionary.
+        /// This allows templates to access assets like {{ HighModel }}, {{ Vae }}, etc. directly.
+        /// Also injects default values from workflow Assets when parameter values are not set.
+        /// </summary>
+        /// <param name="param">The parameter object containing WorkflowAssets</param>
+        /// <param name="workflow">The workflow template being composed (used for Asset defaults)</param>
+        /// <param name="globalParams">The global parameters dictionary to inject into</param>
+        private void InjectWorkflowAssets<T>(T param, Workflow workflow, Dictionary<string, object> globalParams) where T : class
+        {
+            // Try to get WorkflowAssets dictionary via reflection
+            var workflowAssetsProp = param.GetType().GetProperty("WorkflowAssets");
+            var workflowAssets = workflowAssetsProp?.GetValue(param) as Dictionary<string, string>;
+            
+            if (workflowAssets != null)
+            {
+                foreach (var kvp in workflowAssets)
+                {
+                    if (!string.IsNullOrWhiteSpace(kvp.Value))
+                    {
+                        // Add to global params so they're accessible in templates
+                        globalParams[kvp.Key] = kvp.Value;
+                    }
+                }
+            }
+
+            // Also inject defaults from workflow Assets if parameter is not already set
+            // This ensures Assets defaults are used when WorkflowAssets doesn't have a value
+            if (workflow?.Assets != null)
+            {
+                foreach (var asset in workflow.Assets)
+                {
+                    // Only inject default if parameter not already in global params with a valid value
+                    if (!globalParams.ContainsKey(asset.Parameter) || 
+                        globalParams[asset.Parameter] == null ||
+                        string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
+                    {
+                        if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                        {
+                            globalParams[asset.Parameter] = asset.DefaultValue;
+                            _logger.LogDebug("Injected Asset default for '{Parameter}': '{Value}'", asset.Parameter, asset.DefaultValue);
+                        }
+                    }
+                }
+            }
         }
 
         public Workflow LoadWorkflowTemplate(string path)
