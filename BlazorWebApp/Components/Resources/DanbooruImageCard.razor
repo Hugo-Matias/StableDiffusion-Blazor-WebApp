@@ -1,9 +1,26 @@
-﻿<div class="@GetCardClasses()" @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false">
+﻿@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
     <div class="image-wrapper">
-        <img src="@(Post.IsVideo ? Post.PreviewUrl : Post.SampleUrl)" 
-             alt="Danbooru post" 
-             class="card-image" 
-             loading="lazy" />
+        @if (Post.IsVideo)
+        {
+            <video id="@_videoId"
+                   src="@Post.SampleUrl"
+                   poster="@Post.PreviewUrl"
+                   class="card-media"
+                   muted
+                   loop
+                   playsinline
+                   preload="metadata" />
+        }
+        else
+        {
+            <img src="@Post.SampleUrl" 
+                 alt="Danbooru post" 
+                 class="card-image" 
+                 loading="lazy" />
+        }
         
         @* Hover Overlay *@
         <div class="hover-overlay @(_isHovered ? "visible" : "")">
@@ -23,13 +40,13 @@
             @* Center Section - Quick Actions *@
             <div class="overlay-center @(_isHovered ? "visible" : "")">
                 <div class="quick-actions">
-                    <button class="action-btn" @onclick="@(() => SendTags(false))" title="Copy Tags">
+                    <button class="action-btn" @onclick="@(() => SendTags(false))" @onclick:stopPropagation title="Copy Tags">
                         <i class="fa-solid fa-file-lines"></i>
                     </button>
-                    <button class="action-btn" @onclick="@(() => SendTags(true))" title="Send to Img2Img">
+                    <button class="action-btn" @onclick="@(() => SendTags(true))" @onclick:stopPropagation title="Send to Img2Img">
                         <i class="fa-solid fa-file-image"></i>
                     </button>
-                    <button class="action-btn primary" @onclick="ShowImage" title="View Fullscreen">
+                    <button class="action-btn primary" @onclick="ShowImage" @onclick:stopPropagation title="View Fullscreen">
                         <i class="fa-solid fa-expand"></i>
                     </button>
                 </div>
@@ -68,13 +85,49 @@
     [Parameter] public EventCallback<bool> OnSendTags { get; set; }
     [Parameter] public EventCallback OnShowImage { get; set; }
 
+    private IJSObjectReference? _jsModule;
+    private string _videoId = $"danbooru-video-{Guid.NewGuid():N}";
     private bool _isHovered;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Post.IsVideo)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/VideoCard.js");
+        }
+    }
 
     private string GetCardClasses()
     {
         var classes = "danbooru-card";
         if (_isHovered) classes += " hovered";
         return classes;
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        _isHovered = true;
+        if (Post.IsVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("playVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        _isHovered = false;
+        if (Post.IsVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("pauseVideo", _videoId);
+            }
+            catch { }
+        }
     }
 
     private async Task SendTags(bool isImg2Img) => await OnSendTags.InvokeAsync(isImg2Img);
@@ -102,5 +155,17 @@
             "e" => "rating-explicit",
             _ => "rating-none"
         };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch { }
+        }
     }
 }

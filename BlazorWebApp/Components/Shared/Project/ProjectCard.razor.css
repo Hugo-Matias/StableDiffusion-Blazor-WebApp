@@ -8,7 +8,7 @@
     min-width: 13rem;
     max-width: 13rem;
     height: 16rem;
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
     background: var(--mud-palette-surface);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -16,8 +16,8 @@
 }
 
 .project-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
 
 .project-card.selected {
@@ -41,11 +41,52 @@
     object-fit: cover;
     object-position: center;
     display: block;
-    transition: transform 0.3s ease;
+    transition: transform 0.4s ease;
 }
 
 .project-card:hover .card-media {
-    transform: scale(1.05);
+    transform: scale(1.08);
+}
+
+/* ===========================================
+   Always Visible Title Bar
+   =========================================== */
+
+.title-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 12px;
+    background: linear-gradient(
+        to top, 
+        rgba(0, 0, 0, 0.9) 0%, 
+        rgba(0, 0, 0, 0.7) 50%,
+        transparent 100%
+    );
+    z-index: 15;
+    transition: background 0.25s ease, padding 0.25s ease;
+}
+
+.title-bar.hovered {
+    background: linear-gradient(
+        to top, 
+        rgba(0, 0, 0, 0.95) 0%, 
+        rgba(0, 0, 0, 0.8) 60%,
+        rgba(0, 0, 0, 0.4) 100%
+    );
+    padding-bottom: 12px;
+}
+
+.project-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 /* ===========================================
@@ -82,51 +123,17 @@
     bottom: 0;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
+    align-items: center;
     pointer-events: none;
     z-index: 10;
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.25s ease;
 }
 
 .hover-overlay.visible {
     pointer-events: auto;
-}
-
-/* ===========================================
-   Top Section - Project Name
-   =========================================== */
-
-.overlay-top {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 8px;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-.overlay-top.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.project-name {
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 4px;
-    padding: 4px 10px;
-    backdrop-filter: blur(4px);
-    max-width: 100%;
-}
-
-.project-name span {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.95);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
+    background: rgba(0, 0, 0, 0.3);
 }
 
 /* ===========================================
@@ -137,28 +144,29 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    flex: 1;
     opacity: 0;
-    transition: opacity 0.25s ease 0.05s;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .overlay-center.visible {
     opacity: 1;
+    transform: translateY(0);
 }
 
 .quick-actions {
     display: flex;
     gap: 10px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.75);
     border-radius: 25px;
     padding: 8px 16px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .action-btn {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border: none;
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.9);
@@ -173,7 +181,7 @@
 
 .action-btn:hover {
     background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.1);
+    transform: scale(1.15);
 }
 
 .action-btn.primary {
@@ -183,11 +191,11 @@
 
 .action-btn.primary:hover {
     background: var(--mud-palette-success-darken);
-    box-shadow: 0 0 12px var(--mud-palette-success);
+    box-shadow: 0 0 15px var(--mud-palette-success);
 }
 
 .action-btn.danger:hover {
-    background: rgba(244, 67, 54, 0.3);
+    background: rgba(244, 67, 54, 0.4);
     color: var(--mud-palette-error);
 }
 
@@ -197,10 +205,10 @@
 
 .selected-indicator {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 26px;
-    height: 26px;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
     background: var(--mud-palette-primary);
     border-radius: 50%;
     display: flex;
@@ -208,9 +216,9 @@
     justify-content: center;
     color: #fff;
     font-size: 0.75rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
     pointer-events: none;
-    z-index: 5;
+    z-index: 20;
 }
 
 /* ===========================================
@@ -230,12 +238,12 @@
     }
     
     .action-btn {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         font-size: 0.8rem;
     }
     
-    .project-name span {
+    .project-title {
         font-size: 0.8rem;
     }
 }
@@ -248,8 +256,8 @@
     }
     
     .action-btn {
-        width: 26px;
-        height: 26px;
+        width: 28px;
+        height: 28px;
         font-size: 0.7rem;
     }
 }

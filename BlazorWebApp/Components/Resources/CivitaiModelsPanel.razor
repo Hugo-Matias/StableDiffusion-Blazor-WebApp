@@ -105,10 +105,24 @@ else if (M.CivitaiModels != null)
     <MudGrid Spacing="1" Justify="Justify.Center">
         @foreach (var model in M.CivitaiModels.Models)
         {
-            <ResourceCard Resource="CreateResourceCard(model)"
-                HoverColor=@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType),
-        model.Type))) OnLoad="@(async () => await ShowInfo(model))" Opacity=CheckModelExists(model).Result
-                Filter=@CheckVersionImagesExist(model).Result />
+            <CivitaiResourceCard 
+                Title="@model.Name"
+                ImageSrc="@GetModelImage(model)"
+                Type="@model.Type"
+                HoverColor="@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)))"
+                OnLoad="@(async () => await ShowInfo(model))" 
+                Opacity="CheckModelExists(model).Result"
+                Filter="@CheckVersionImagesExist(model).Result"
+                CreatorUsername="@model.Creator?.Username"
+                CreatorImage="@model.Creator?.Image"
+                IsNsfw="@model.Nsfw"
+                IsEarlyAccess="@(model.ModelVersions?.Count > 0 && model.ModelVersions[0].Images?.Count > 0 && model.ModelVersions[0].Images[0].Availability == "EarlyAccess")"
+                DownloadCount="0"
+                FavoriteCount="0"
+                CommentCount="0"
+                Rating="0"
+                RatingCount="0"
+                ShowStats="false" />
         }
     </MudGrid>
 
@@ -147,14 +161,13 @@ else if (M.CivitaiModels != null)
         _isSearching = false;
     }
 
-    private BaseResource CreateResourceCard(CivitaiModelsModelDto model)
+    private string? GetModelImage(CivitaiModelsModelDto model)
     {
-        var resource = new BaseResource() { Title = model.Name };
-        if (model.ModelVersions.Count > 0 && model.ModelVersions[0].Images.Count > 0)
+        if (model.ModelVersions?.Count > 0 && model.ModelVersions[0].Images?.Count > 0)
         {
-            resource.ImageSrc = model.ModelVersions[0].Images[0].Url;
+            return model.ModelVersions[0].Images[0].Url;
         }
-        return resource;
+        return null;
     }
 
     private async Task ShowInfo(CivitaiModelsModelDto modelsModel)

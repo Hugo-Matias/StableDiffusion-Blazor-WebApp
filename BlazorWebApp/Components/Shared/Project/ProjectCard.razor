@@ -21,15 +21,13 @@
             <img src="@_mediaUrl" alt="@Name" class="card-media" loading="lazy" />
         }
         
+        @* Always Visible Title Section *@
+        <div class="title-bar @(_isHovered ? "hovered" : "")">
+            <span class="project-title">@Name</span>
+        </div>
+        
         @* Hover Overlay *@
         <div class="hover-overlay @(_isHovered ? "visible" : "")">
-            @* Top Section - Project Name *@
-            <div class="overlay-top @(_isHovered ? "visible" : "")">
-                <div class="project-name">
-                    <span>@Name</span>
-                </div>
-            </div>
-            
             @* Center Section - Quick Actions *@
             <div class="overlay-center @(_isHovered ? "visible" : "")">
                 <div class="quick-actions">
@@ -47,7 +45,7 @@
         </div>
         
         @* Selected Indicator *@
-        @if (M.State.Gallery.ProjectId == ProjectId && !_isHovered)
+        @if (M.State.Gallery.ProjectId == ProjectId)
         {
             <div class="selected-indicator">
                 <i class="fa-solid fa-check"></i>

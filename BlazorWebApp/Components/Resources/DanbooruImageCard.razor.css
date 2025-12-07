@@ -5,7 +5,7 @@
 .danbooru-card {
     position: relative;
     width: 100%;
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
     background: var(--mud-palette-surface);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -13,12 +13,12 @@
 }
 
 .danbooru-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
 
 /* ===========================================
-   Image Wrapper & Image
+   Image Wrapper & Media (Image/Video)
    =========================================== */
 
 .image-wrapper {
@@ -27,15 +27,18 @@
     overflow: hidden;
 }
 
-.card-image {
+.card-image,
+.card-media {
     width: 100%;
     height: auto;
     display: block;
-    transition: transform 0.3s ease;
+    transition: transform 0.4s ease;
+    object-fit: cover;
 }
 
-.danbooru-card:hover .card-image {
-    transform: scale(1.03);
+.danbooru-card:hover .card-image,
+.danbooru-card:hover .card-media {
+    transform: scale(1.08);
 }
 
 /* ===========================================
@@ -143,11 +146,11 @@
 .quick-actions {
     display: flex;
     gap: 10px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.75);
     border-radius: 25px;
     padding: 8px 16px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .action-btn {
@@ -167,7 +170,7 @@
 
 .action-btn:hover {
     background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.1);
+    transform: scale(1.15);
 }
 
 .action-btn.primary {
@@ -177,7 +180,7 @@
 
 .action-btn.primary:hover {
     background: var(--mud-palette-warning-darken);
-    box-shadow: 0 0 12px var(--mud-palette-warning);
+    box-shadow: 0 0 15px var(--mud-palette-warning);
 }
 
 /* ===========================================
