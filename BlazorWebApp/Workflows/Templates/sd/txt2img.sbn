@@ -11,7 +11,7 @@
       "parameters": {
         "loader_id": "model_loader",
         "latent_id": "latent_image",
-        "ckpt_name": {{ Model ?? "Base/v1-5-pruned-emaonly.safetensors" | json }},
+        "ckpt_name": {{ Model | json }},
         "prompt": {{ Prompt | json }},
         "negative": {{ NegativePrompt | json }},
         "width": {{ Width ?? 872 | json }},
@@ -70,7 +70,7 @@
         "scope_title": "Detailer ",
         "loader_id": "model_loader",
         "latent_id": "latent_image",
-        "ckpt_name": {{ Detailer.Checkpoint ?? Model ?? "Base/v1-5-pruned-emaonly.safetensors" | json }},
+        "ckpt_name": {{ Detailer.Checkpoint ?? Model | json }},
         "prompt": {{ Detailer.Prompt ?? Prompt | json }},
         "negative": {{ Detailer.NegativePrompt ?? NegativePrompt | json }},
         "width": {{ Width ?? 872 | json }},

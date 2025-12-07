@@ -12,10 +12,10 @@
       "fragment": "load-diffusion.sbn",
       "parameters": {
         "latent_id": "latent_image",
-        "unet_name": {{ Model ?? "z_image_turbo_bf16.safetensors" | json }},
-        "clip_name": {{ Clip ?? "qwen_3_4b.safetensors" | json }},
+        "unet_name": {{ Model | json }},
+        "clip_name": {{ Clip | json }},
         "clip_type": "lumina2",
-        "vae_name": {{ Vae ?? "ae.safetensors" | json }},
+        "vae_name": {{ Vae | json }},
         "width": {{ Width ?? 872 | json }},
         "height": {{ Height ?? 1248 | json }},
         "batch_size": {{ BatchSize ?? 1 | json }}

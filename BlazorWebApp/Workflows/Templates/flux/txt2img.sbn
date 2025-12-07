@@ -1,5 +1,5 @@
 {
-  "Title": "Txt2Img (Legacy)",
+  "Title": "Txt2Img",
   "Base": "Flux",
   "Mode": "txt2img",
   "Assets": [
@@ -8,792 +8,99 @@
     { "parameter": "Clip2", "label": "CLIP ViT", "type": "Clip", "default": "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors", "order": 3, "columnSize": 3 },
     { "parameter": "VAE", "label": "VAE", "type": "Vae", "default": "ae.safetensors", "order": 4, "columnSize": 3 }
   ],
-  "Prompt":
-  {
-  "7": {
-    "inputs": {
-      "eta": 0.5,
-      "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
-      "scheduler": {{ Scheduler ?? "beta" | json }},
-      "steps": {{ Steps ?? 20 | json }},
-      "steps_to_run": -1,
-      "denoise": 1,
-      "cfg": 1,
-      "seed": {{ Seed ?? 42 | json }},
-      "sampler_mode": "standard",
-      "bongmath": true,
-      "model": [
-        "79:5",
-        0
-      ],
-      "positive": [
-        "79:10",
-        0
-      ],
-      "latent_image": [
-        "79:7",
-        3
-      ]
+  "Pipeline": [
+    {
+      "fragment": "flux/load-flux.sbn",
+      "parameters": {
+        "unet_name": {{ Model | json }},
+        "clip_name1": {{ Clip1 | json }},
+        "clip_name2": {{ Clip2 | json }},
+        "vae_name": {{ VAE | json }},
+        "positive": {{ Prompt | json }},
+        "guidance": {{ DistilledCfgScale ?? 3.5 | json }},
+        "reflux_enabled": true,
+        "scaling": "exponential",
+        "max_shift": 1.35,
+        "base_shift": 0.85,
+        "width": {{ Width ?? 872 | json }},
+        "height": {{ Height ?? 1248 | json }},
+        "batch_size": {{ BatchSize ?? 1 | json }}
+      }
     },
-    "class_type": "ClownsharKSampler_Beta",
-    "_meta": {
-      "title": "ClownsharKSampler"
-    }
-  },
-  "29": {
-    "inputs": {
-      "filename_prefix": "tmp/img",
-      "images": [
-        "45",
-        1
-      ]
+    {
+      "fragment": "sampler.sbn",
+      "parameters": {
+        "title": "Main Sampler",
+        "sampler_id": "sampler_main",
+        "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
+        "scheduler": {{ Scheduler ?? "beta" | json }},
+        "steps": {{ Steps ?? 20 | json }},
+        "cfg": 1,
+        "seed": {{ Seed ?? 42 | json }}
+      }
     },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "Save Image"
-    }
-  },
-  "37": {
-    "inputs": {
-      "samples": [
-        "41",
-        1
-      ],
-      "vae": [
-        "79:1",
-        0
-      ]
+    {
+      "fragment": "upscale.sbn",
+      "parameters": {
+        "upscale_model": {{ Upscale.Model ?? "4x-UltraSharpV2.safetensors" | json }},
+        "upscale_width": {{ Upscale.Width ?? 1744 | json }},
+        "upscale_height": {{ Upscale.Height ?? 2496 | json }},
+        "upscale_steps": {{ Upscale.Steps ?? 20 | json }},
+        "upscale_denoise": {{ Upscale.Denoise ?? 1 | json }},
+        "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
+        "scheduler": {{ Scheduler ?? "beta" | json }},
+        "seed": {{ Seed ?? 42 | json }},
+        "cfg": 1
+      }
     },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE Decode"
-    }
-  },
-  "41": {
-    "inputs": {
-      "select": {{ Upscale.IsActive ?? false | json }},
-      "value": [
-        "7",
-        0
-      ]
+    {
+      "fragment": "vae-decode.sbn",
+      "parameters": {}
     },
-    "class_type": "Basic data handling: FlowSelect",
-    "_meta": {
-      "title": "Run Upscale?"
-    }
-  },
-  "43": {
-    "inputs": {
-      "filename_prefix": "tmp/img",
-      "images": [
-        "46",
-        1
-      ]
+    {
+      "fragment": "flux/load-flux.sbn",
+      "parameters": {
+        "scope": "detailer_",
+        "scope_title": "Detailer ",
+        "unet_name": {{ Detailer.Checkpoint ?? Model ?? "flux1-krea-dev_fp8_scaled.safetensors" | json }},
+        "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
+        "clip_name2": {{ Clip2 ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
+        "vae_name": {{ VAE ?? "ae.safetensors" | json }},
+        "positive": {{ Detailer.Prompt ?? Prompt | json }},
+        "guidance": {{ DistilledCfgScale ?? 3.5 | json }},
+        "reflux_enabled": true,
+        "scaling": "exponential",
+        "max_shift": 1.35,
+        "base_shift": 0.85,
+        "width": {{ Width ?? 872 | json }},
+        "height": {{ Height ?? 1248 | json }},
+        "batch_size": {{ BatchSize ?? 1 | json }}
+      }
     },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "Save Image"
-    }
-  },
-  "45": {
-    "inputs": {
-      "select": {{ Detailer.IsActive ?? false | json }},
-      "value": [
-        "37",
-        0
-      ]
+    {
+      "fragment": "detailer-core.sbn",
+      "parameters": {
+        "scope": "detailer_",
+        "detailer_detection_model": {{ Detailer.Model ?? "bbox/face_yolov8m.pt" | json }},
+        "detailer_sampler": {{ Detailer.Sampler ?? "dpmpp_2m" | json }},
+        "detailer_scheduler": {{ Detailer.Scheduler ?? "beta" | json }},
+        "detailer_seed": {{ Detailer.Seed ?? Seed ?? 42 | json }},
+        "detailer_steps": {{ Detailer.Steps ?? 20 | json }},
+        "detailer_cfg": {{ Detailer.CfgScale ?? 1 | json }},
+        "detailer_denoise": {{ Detailer.Denoise ?? 0.65 | json }},
+        "detailer_feather": {{ Detailer.Feather ?? 5 | json }},
+        "detailer_bbox_threshold": {{ Detailer.BBoxThreshold ?? 0.7 | json }},
+        "detailer_bbox_dilation": {{ Detailer.BBoxDilation ?? 10 | json }},
+        "detailer_bbox_crop_factor": {{ Detailer.BBoxCropFactor ?? 3 | json }},
+        "detailer_drop_size": {{ Detailer.DropSize ?? 70 | json }},
+        "detailer_guide_size": {{ Detailer.GuideSize ?? 512 | json }},
+        "detailer_max_size": {{ Detailer.MaxSize ?? 1024 | json }},
+        "detailer_cycle": {{ Detailer.Cycle ?? 1 | json }}
+      }
     },
-    "class_type": "Basic data handling: FlowSelect",
-    "_meta": {
-      "title": "Run Detailer?"
+    {
+      "fragment": "save.sbn",
+      "parameters": {}
     }
-  },
-  "46": {
-    "inputs": {
-      "select": {{ Detailer.IsActive ?? false | json }},
-      "value": [
-        "36:840",
-        0
-      ]
-    },
-    "class_type": "Basic data handling: FlowSelect",
-    "_meta": {
-      "title": "Run Detailer after Upscale?"
-    }
-  },
-  "63": {
-    "inputs": {
-      "filename_prefix": "tmp/img",
-      "images": [
-        "60:44",
-        0
-      ]
-    },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "Save Image"
-    }
-  },
-  "64": {
-    "inputs": {
-      "filename_prefix": "tmp/img",
-      "images": [
-        "61:44",
-        0
-      ]
-    },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "Save Image"
-    }
-  },
-  "81": {
-    "inputs": {
-      "value": {{ Prompt | json }}
-    },
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": {
-      "title": "String (Multiline)"
-    }
-  },
-  "82": {
-    "inputs": {
-      "text": "",
-      "clip": [
-        "79:2",
-        0
-      ]
-    },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "CLIP Text Encode (Prompt)"
-    }
-  },
-  "83": {
-    "inputs": {
-      "value": {{ Detailer.Prompt | json }}
-    },
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": {
-      "title": "String (Multiline)"
-    }
-  },
-  "79:4": {
-    "inputs": {
-      "style_dtype": "float64",
-      "enable": true,
-      "model": [
-        "79:9:30",
-        0
-      ]
-    },
-    "class_type": "ReFluxPatcher",
-    "_meta": {
-      "title": "ReFluxPatcher"
-    }
-  },
-  "79:3": {
-    "inputs": {
-      "unet_name": {{ Model ?? "flux1-krea-dev_fp8_scaled.safetensors" | json }},
-      "weight_dtype": "default"
-    },
-    "class_type": "UNETLoader",
-    "_meta": {
-      "title": "Load Diffusion Model"
-    }
-  },
-  "79:9:31": {
-    "inputs": {
-      "text": [
-        "79:9:22",
-        0
-      ],
-      "clip": [
-        "79:9:30",
-        1
-      ]
-    },
-    "class_type": "PCLazyTextEncode",
-    "_meta": {
-      "title": "PC: Schedule Prompt"
-    }
-  },
-  "79:9:30": {
-    "inputs": {
-      "text": [
-        "79:9:22",
-        0
-      ],
-      "model": [
-        "79:3",
-        0
-      ],
-      "clip": [
-        "79:2",
-        0
-      ]
-    },
-    "class_type": "PCLazyLoraLoader",
-    "_meta": {
-      "title": "PC: Schedule LoRAs"
-    }
-  },
-  "79:9:22": {
-    "inputs": {
-      "value": [
-        "81",
-        0
-      ]
-    },
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": {
-      "title": "String (Multiline)"
-    }
-  },
-  "79:1": {
-    "inputs": {
-      "vae_name": {{ VAE ?? "ae.safetensors" | json }}
-    },
-    "class_type": "VAELoader",
-    "_meta": {
-      "title": "Load VAE"
-    }
-  },
-  "79:8": {
-    "inputs": {
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "batch_size": {{ BatchSize ?? 1 | json }}
-    },
-    "class_type": "EmptySD3LatentImage",
-    "_meta": {
-      "title": "EmptySD3LatentImage"
-    }
-  },
-  "79:7": {
-    "inputs": {
-      "resize_to_input": "false",
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "mask_channel": "red",
-      "invert_mask": false,
-      "latent_type": "16_channels",
-      "latent": [
-        "79:8",
-        0
-      ],
-      "vae": [
-        "79:1",
-        0
-      ]
-    },
-    "class_type": "VAEEncodeAdvanced",
-    "_meta": {
-      "title": "VAEEncodeAdvanced"
-    }
-  },
-  "79:5": {
-    "inputs": {
-      "scaling": "exponential",
-      "max_shift": 1.35,
-      "base_shift": 0.85,
-      "model": [
-        "79:4",
-        0
-      ],
-      "latent_image": [
-        "79:7",
-        3
-      ]
-    },
-    "class_type": "ModelSamplingAdvancedResolution",
-    "_meta": {
-      "title": "ModelSamplingAdvancedResolution"
-    }
-  },
-  "79:2": {
-    "inputs": {
-      "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
-      "clip_name2": {{ Clip2 ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
-      "type": "flux",
-      "device": "default"
-    },
-    "class_type": "DualCLIPLoader",
-    "_meta": {
-      "title": "DualCLIPLoader"
-    }
-  },
-  "80:4": {
-    "inputs": {
-      "style_dtype": "float64",
-      "enable": true,
-      "model": [
-        "80:9:30",
-        0
-      ]
-    },
-    "class_type": "ReFluxPatcher",
-    "_meta": {
-      "title": "ReFluxPatcher"
-    }
-  },
-  "80:3": {
-    "inputs": {
-      "unet_name": {{ Detailer.Checkpoint ?? "flux1-krea-dev_fp8_scaled.safetensors" | json }},
-      "weight_dtype": "default"
-    },
-    "class_type": "UNETLoader",
-    "_meta": {
-      "title": "Load Diffusion Model"
-    }
-  },
-  "80:9:31": {
-    "inputs": {
-      "text": [
-        "80:9:22",
-        0
-      ],
-      "clip": [
-        "80:9:30",
-        1
-      ]
-    },
-    "class_type": "PCLazyTextEncode",
-    "_meta": {
-      "title": "PC: Schedule Prompt"
-    }
-  },
-  "80:9:30": {
-    "inputs": {
-      "text": [
-        "80:9:22",
-        0
-      ],
-      "model": [
-        "80:3",
-        0
-      ],
-      "clip": [
-        "80:2",
-        0
-      ]
-    },
-    "class_type": "PCLazyLoraLoader",
-    "_meta": {
-      "title": "PC: Schedule LoRAs"
-    }
-  },
-  "80:9:22": {
-    "inputs": {
-      "value": [
-        "81",
-        0
-      ]
-    },
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": {
-      "title": "String (Multiline)"
-    }
-  },
-  "80:1": {
-    "inputs": {
-      "vae_name": {{ VAE ?? "ae.safetensors" | json }}
-    },
-    "class_type": "VAELoader",
-    "_meta": {
-      "title": "Load VAE"
-    }
-  },
-  "80:10": {
-    "inputs": {
-      "guidance": {{ Guidance ?? 3.5 | json }},
-      "conditioning": [
-        "80:9:31",
-        0
-      ]
-    },
-    "class_type": "FluxGuidance",
-    "_meta": {
-      "title": "FluxGuidance"
-    }
-  },
-  "79:10": {
-    "inputs": {
-      "guidance": {{ Guidance ?? 3.5 | json }},
-      "conditioning": [
-        "79:9:31",
-        0
-      ]
-    },
-    "class_type": "FluxGuidance",
-    "_meta": {
-      "title": "FluxGuidance"
-    }
-  },
-  "80:8": {
-    "inputs": {
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "batch_size": {{ BatchSize ?? 1 | json }}
-    },
-    "class_type": "EmptySD3LatentImage",
-    "_meta": {
-      "title": "EmptySD3LatentImage"
-    }
-  },
-  "80:7": {
-    "inputs": {
-      "resize_to_input": "false",
-      "width": {{ Width ?? 872 | json }},
-      "height": {{ Height ?? 1248 | json }},
-      "mask_channel": "red",
-      "invert_mask": false,
-      "latent_type": "16_channels",
-      "latent": [
-        "80:8",
-        0
-      ],
-      "vae": [
-        "80:1",
-        0
-      ]
-    },
-    "class_type": "VAEEncodeAdvanced",
-    "_meta": {
-      "title": "VAEEncodeAdvanced"
-    }
-  },
-  "80:5": {
-    "inputs": {
-      "scaling": "exponential",
-      "max_shift": 1.35,
-      "base_shift": 0.85,
-      "model": [
-        "80:4",
-        0
-      ],
-      "latent_image": [
-        "80:7",
-        3
-      ]
-    },
-    "class_type": "ModelSamplingAdvancedResolution",
-    "_meta": {
-      "title": "ModelSamplingAdvancedResolution"
-    }
-  },
-  "80:2": {
-    "inputs": {
-      "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
-      "clip_name2": {{ Clip2 ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
-      "type": "flux",
-      "device": "default"
-    },
-    "class_type": "DualCLIPLoader",
-    "_meta": {
-      "title": "DualCLIPLoader"
-    }
-  },
-  "36:815": {
-    "inputs": {
-      "model_name": {{ Upscale.Model ?? "4x-UltraSharpV2.safetensors" | json }}
-    },
-    "class_type": "UpscaleModelLoader",
-    "_meta": {
-      "title": "Load Upscale Model"
-    }
-  },
-  "36:813": {
-    "inputs": {
-      "eta": 0.5,
-      "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
-      "scheduler": {{ Scheduler ?? "beta" | json }},
-      "steps": {{ Upscale.Steps ?? 20 | json }},
-      "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 2 | math.round | json }},
-      "denoise": {{ Upscale.Denoise ?? 1 | json }},
-      "cfg": 1,
-      "seed": {{ Seed ?? 42 | json }},
-      "sampler_mode": "unsample",
-      "bongmath": true,
-      "model": [
-        "79:5",
-        0
-      ],
-      "positive": [
-        "79:9:31",
-        0
-      ],
-      "latent_image": [
-        "36:818",
-        0
-      ]
-    },
-    "class_type": "ClownsharKSampler_Beta",
-    "_meta": {
-      "title": "ClownsharKSampler"
-    }
-  },
-  "36:791": {
-    "inputs": {
-      "eta": 0.5,
-      "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
-      "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 2 | math.round | json }},
-      "cfg": 1,
-      "sampler_mode": "resample",
-      "bongmath": true,
-      "latent_image": [
-        "36:813",
-        0
-      ]
-    },
-    "class_type": "ClownsharkChainsampler_Beta",
-    "_meta": {
-      "title": "ClownsharkChainsampler"
-    }
-  },
-  "36:818": {
-    "inputs": {
-      "pixels": [
-        "36:817",
-        0
-      ],
-      "vae": [
-        "79:1",
-        0
-      ]
-    },
-    "class_type": "VAEEncode",
-    "_meta": {
-      "title": "VAE Encode"
-    }
-  },
-  "36:816": {
-    "inputs": {
-      "samples": [
-        "41",
-        0
-      ],
-      "vae": [
-        "79:1",
-        0
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE Decode"
-    }
-  },
-  "36:790": {
-    "inputs": {
-      "eta": 0.5,
-      "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
-      "steps_to_run": -1,
-      "cfg": 1,
-      "sampler_mode": "resample",
-      "bongmath": true,
-      "latent_image": [
-        "36:791",
-        0
-      ]
-    },
-    "class_type": "ClownsharkChainsampler_Beta",
-    "_meta": {
-      "title": "ClownsharkChainsampler"
-    }
-  },
-  "36:840": {
-    "inputs": {
-      "samples": [
-        "36:790",
-        0
-      ],
-      "vae": [
-        "79:1",
-        0
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE Decode"
-    }
-  },
-  "36:814": {
-    "inputs": {
-      "upscale_model": [
-        "36:815",
-        0
-      ],
-      "image": [
-        "36:816",
-        0
-      ]
-    },
-    "class_type": "ImageUpscaleWithModel",
-    "_meta": {
-      "title": "Upscale Image (using Model)"
-    }
-  },
-  "36:817": {
-    "inputs": {
-      "upscale_method": "lanczos",
-      "width": {{ Upscale.Width ?? 1744 | json }},
-      "height": {{ Upscale.Height ?? 2496 | json }},
-      "crop": "disabled",
-      "image": [
-        "36:814",
-        0
-      ]
-    },
-    "class_type": "ImageScale",
-    "_meta": {
-      "title": "Upscale Image"
-    }
-  },
-  "61:56": {
-    "inputs": {
-      "model_name": {{ Detailer.Model ?? "bbox/face_yolov8m.pt" | json }}
-    },
-    "class_type": "UltralyticsDetectorProvider",
-    "_meta": {
-      "title": "UltralyticsDetectorProvider"
-    }
-  },
-  "61:44": {
-    "inputs": {
-      "guide_size": {{ Detailer.GuideSize ?? 512 | json }},
-      "guide_size_for": true,
-      "max_size": {{ Detailer.MaxSize ?? 1024 | json }},
-      "seed": {{ Detailer.Seed ?? 42 | json }},
-      "steps": {{ Detailer.Steps ?? 20 | json }},
-      "cfg": {{ Detailer.CfgScale ?? 1 | json }},
-      "sampler_name": {{ Detailer.Sampler ?? "dpmpp_2m" | json }},
-      "scheduler": {{ Detailer.Scheduler ?? "beta" | json }},
-      "denoise": {{ Detailer.Denoise ?? 0.65 | json }},
-      "feather": {{ Detailer.Feather ?? 5 | json }},
-      "noise_mask": true,
-      "force_inpaint": true,
-      "bbox_threshold": {{ Detailer.BBoxThreshold ?? 0.7 | json }},
-      "bbox_dilation": {{ Detailer.BBoxDilation ?? 10 | json }},
-      "bbox_crop_factor": {{ Detailer.BBoxCropFactor ?? 3 | json }},
-      "sam_detection_hint": "center-1",
-      "sam_dilation": 0,
-      "sam_threshold": 0.93,
-      "sam_bbox_expansion": 0,
-      "sam_mask_hint_threshold": 0.7,
-      "sam_mask_hint_use_negative": "False",
-      "drop_size": {{ Detailer.DropSize ?? 70 | json }},
-      "wildcard": "",
-      "cycle": {{ Detailer.Cycle ?? 1 | json }},
-      "inpaint_model": false,
-      "noise_mask_feather": 20,
-      "tiled_encode": false,
-      "tiled_decode": false,
-      "image": [
-        "46",
-        0
-      ],
-      "model": [
-        "79:5",
-        0
-      ],
-      "clip": [
-        "79:2",
-        0
-      ],
-      "vae": [
-        "79:1",
-        0
-      ],
-      "positive": [
-        "79:9:31",
-        0
-      ],
-      "negative": [
-        "82",
-        0
-      ],
-      "bbox_detector": [
-        "61:56",
-        0
-      ]
-    },
-    "class_type": "FaceDetailer",
-    "_meta": {
-      "title": "FaceDetailer"
-    }
-  },
-  "60:56": {
-    "inputs": {
-      "model_name": {{ Detailer.Model ?? "bbox/face_yolov8m.pt" | json }}
-    },
-    "class_type": "UltralyticsDetectorProvider",
-    "_meta": {
-      "title": "UltralyticsDetectorProvider"
-    }
-  },
-  "60:44": {
-    "inputs": {
-      "guide_size": {{ Detailer.GuideSize ?? 512 | json }},
-      "guide_size_for": true,
-      "max_size": {{ Detailer.MaxSize ?? 1024 | json }},
-      "seed": {{ Detailer.Seed ?? 42 | json }},
-      "steps": {{ Detailer.Steps ?? 20 | json }},
-      "cfg": {{ Detailer.CfgScale ?? 8 | json }},
-      "sampler_name": {{ Detailer.Sampler ?? "dpmpp_2m" | json }},
-      "scheduler": {{ Detailer.Scheduler ?? "beta" | json }},
-      "denoise": {{ Detailer.Denoise ?? 0.65 | json }},
-      "feather": {{ Detailer.Feather ?? 5 | json }},
-      "noise_mask": true,
-      "force_inpaint": true,
-      "bbox_threshold": {{ Detailer.BBoxThreshold ?? 0.7 | json }},
-      "bbox_dilation": {{ Detailer.BBoxDilation ?? 10 | json }},
-      "bbox_crop_factor": {{ Detailer.BBoxCropFactor ?? 3 | json }},
-      "sam_detection_hint": "center-1",
-      "sam_dilation": 0,
-      "sam_threshold": 0.93,
-      "sam_bbox_expansion": 0,
-      "sam_mask_hint_threshold": 0.7,
-      "sam_mask_hint_use_negative": "False",
-      "drop_size": {{ Detailer.DropSize ?? 70 | json }},
-      "wildcard": "",
-      "cycle": {{ Detailer.Cycle ?? 1 | json }},
-      "inpaint_model": false,
-      "noise_mask_feather": 20,
-      "tiled_encode": false,
-      "tiled_decode": false,
-      "image": [
-        "45",
-        0
-      ],
-      "model": [
-        "80:5",
-        0
-      ],
-      "clip": [
-        "80:2",
-        0
-      ],
-      "vae": [
-        "80:1",
-        0
-      ],
-      "positive": [
-        "80:10",
-        0
-      ],
-      "negative": [
-        "82",
-        0
-      ],
-      "bbox_detector": [
-        "60:56",
-        0
-      ]
-    },
-    "class_type": "FaceDetailer",
-    "_meta": {
-      "title": "FaceDetailer"
-    }
-  }
-  }
+  ]
 }

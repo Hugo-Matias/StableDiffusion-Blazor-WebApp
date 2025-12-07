@@ -45,27 +45,27 @@
     {
       "fragment": "wan/load-wan-model.sbn",
       "parameters": {
-        "model_name": {{ Model ?? "Wan21_SteadyDancer_fp8_e4m3fn_scaled_KJ.safetensors" | json }},
-        "lora_name": {{ SpeedLora ?? "Speed/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors" | json }},
+        "model_name": {{ Model | json }},
+        "lora_name": {{ SpeedLora | json }},
         "lora_strength": {{ LoraStrength ?? 1 | json }}
       }
     },
     {
       "fragment": "wan/load-wan-vae.sbn",
       "parameters": {
-        "vae_name": {{ Vae ?? "wan_2.1_vae.safetensors" | json }}
+        "vae_name": {{ Vae | json }}
       }
     },
     {
       "fragment": "load-clip-vision.sbn",
       "parameters": {
-        "clip_vision_name": {{ ClipVision ?? "clip_vision_h.safetensors" | json }}
+        "clip_vision_name": {{ ClipVision | json }}
       }
     },
     {
       "fragment": "wan/text-encode-wan.sbn",
       "parameters": {
-        "text_encoder_name": {{ TextEncoder ?? "umt5_xxl_fp16.safetensors" | json }},
+        "text_encoder_name": {{ TextEncoder | json }},
         "positive": {{ Prompt | json }},
         "negative": {{ NegativePrompt ?? "" | json }}
       }

@@ -13,7 +13,7 @@
     {
       "fragment": "wan/load-model-sage.sbn",
       "parameters": {
-        "model_name": {{ HighModel ?? "wan22RemixT2VI2V_i2vHighV20.safetensors" | json }},
+        "model_name": {{ HighModel | json }},
         "node_prefix": "high",
         "model_output_name": "high_model_output",
         "loader_title": "Load High Noise Model"
@@ -22,7 +22,7 @@
     {
       "fragment": "wan/load-model-sage.sbn",
       "parameters": {
-        "model_name": {{ LowModel ?? "wan22RemixT2VI2V_i2vLowV20.safetensors" | json }},
+        "model_name": {{ LowModel | json }},
         "node_prefix": "low",
         "model_output_name": "low_model_output",
         "loader_title": "Load Low Noise Model"
@@ -31,8 +31,8 @@
     {
       "fragment": "wan/load-clip-vae.sbn",
       "parameters": {
-        "clip_name": {{ Clip ?? "umt5_xxl_fp8_e4m3fn_scaled.safetensors" | json }},
-        "vae_name": {{ Vae ?? "wan_2.1_vae.safetensors" | json }}
+        "clip_name": {{ Clip | json }},
+        "vae_name": {{ Vae | json }}
       }
     },
     {{~ if Loras && Loras.size > 0 ~}}
@@ -122,7 +122,7 @@
     {
       "fragment": "wan/clip-vision.sbn",
       "parameters": {
-        "clip_vision_name": {{ ClipVision ?? "clip_vision_h.safetensors" | json }}
+        "clip_vision_name": {{ ClipVision | json }}
       }
     },
     {

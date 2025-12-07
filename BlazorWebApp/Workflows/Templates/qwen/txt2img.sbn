@@ -12,10 +12,10 @@
       "fragment": "load-diffusion-w-prompts.sbn",
       "parameters": {
         "latent_id": "latent_image",
-        "unet_name": {{ Model ?? "qwen_image_fp8_e4m3fn.safetensors" | json }},
-        "clip_name": {{ Clip ?? "qwen_2.5_vl_7b_fp8_scaled.safetensors" | json }},
+        "unet_name": {{ Model | json }},
+        "clip_name": {{ Clip | json }},
         "clip_type": "qwen_image",
-        "vae_name": {{ Vae ?? "qwen_image_vae.safetensors" | json }},
+        "vae_name": {{ Vae | json }},
         "positive": {{ Prompt | json }},
         "negative": {{ NegativePrompt | json }},
         "width": {{ Width ?? 872 | json }},

@@ -19,9 +19,9 @@
     {
       "fragment": "qwen/load-qwen-edit.sbn",
       "parameters": {
-        "unet_name": {{ Model ?? "qwen_image_edit_2509_fp8_e4m3fn.safetensors" | json }},
-        "clip_name": {{ Clip ?? "qwen_2.5_vl_7b_fp8_scaled.safetensors" | json }},
-        "vae_name": {{ Vae ?? "qwen_image_vae.safetensors" | json }},
+        "unet_name": {{ Model | json }},
+        "clip_name": {{ Clip | json }},
+        "vae_name": {{ Vae | json }},
         "lora_name": {{ LightningLora ?? "Speed/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors" | json }},
         "lora_strength": {{ LoraStrength ?? 1 | json }},
         "model_shift": {{ ModelShift ?? 3 | json }},
