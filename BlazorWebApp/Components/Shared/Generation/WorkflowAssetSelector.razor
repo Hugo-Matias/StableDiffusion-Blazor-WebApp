@@ -1,0 +1,278 @@
+@using BlazorWebApp.Models
+@using static BlazorWebApp.Data.Enums
+@inject ManagerService M
+@inject IAssetResolverService AssetResolver
+@implements IDisposable
+
+@* 
+    WorkflowAssetSelector - A reusable component for rendering workflow asset selectors.
+    
+    This component dynamically renders MudSelect dropdowns for each asset defined in the
+    current workflow's Assets list. It uses the IAssetResolverService to:
+    - Load available options from ComfyUI
+    - Resolve default values when assets are not set
+    - Cache options for performance
+    
+    Usage:
+    <WorkflowAssetSelector Mode="ModeType.Img2Vid" />
+    <WorkflowAssetSelector Mode="ModeType.Txt2Img" Columns="3" />
+*@
+
+@if (_isLoading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-2">
+        <MudProgressCircular Size="Size.Small" Indeterminate Color="Color.Primary" />
+        <MudText Typo="Typo.caption">Loading assets...</MudText>
+    </MudStack>
+}
+else if (_workflowAssets != null && _workflowAssets.Count > 0)
+{
+    <MudGrid Spacing="2">
+        @foreach (var asset in _workflowAssets.OrderBy(a => a.Order))
+        {
+            <MudItem xs="@GetColumnSize(asset)">
+                @if (_assetOptions.TryGetValue(asset.Type, out var options) && options.Count > 0)
+                {
+                    <MudSelect T="string" 
+                               Value="@GetAssetValue(asset.Parameter)"
+                               ValueChanged="@((string v) => HandleAssetChanged(asset.Parameter, v))"
+                               Label="@asset.Label"
+                               AdornmentIcon="@GetAssetIcon(asset.Type)"
+                               AdornmentColor="@GetAssetColor(asset.Type)"
+                               AnchorOrigin="Origin.BottomLeft" 
+                               TransformOrigin="Origin.TopLeft"
+                               MaxHeight="400"
+                               Dense="@Dense"
+                               Variant="@Variant">
+                        @foreach (var option in options)
+                        {
+                            <MudSelectItem Value="@option">@GetDisplayName(option)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else
+                {
+                    @* Fallback to text field if no options available *@
+                    <MudTextField T="string" 
+                                  Value="@GetAssetValue(asset.Parameter)"
+                                  ValueChanged="@((string v) => HandleAssetChanged(asset.Parameter, v))"
+                                  Label="@asset.Label"
+                                  Variant="@Variant"
+                                  HelperText="No options available"
+                                  HelperTextOnFocus />
+                }
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (ShowEmptyMessage)
+{
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="pa-2">
+        No workflow assets defined
+    </MudText>
+}
+
+@code {
+    /// <summary>
+    /// The generation mode to load/save assets for.
+    /// </summary>
+    [Parameter] public ModeType Mode { get; set; } = ModeType.Txt2Img;
+
+    /// <summary>
+    /// Number of columns in the grid (12 = full width, 6 = half, 4 = third, etc.)
+    /// </summary>
+    [Parameter] public int Columns { get; set; } = 4;
+
+    /// <summary>
+    /// Whether to use dense styling for the selectors.
+    /// </summary>
+    [Parameter] public bool Dense { get; set; } = false;
+
+    /// <summary>
+    /// The variant style for the selectors.
+    /// </summary>
+    [Parameter] public Variant Variant { get; set; } = Variant.Text;
+
+    /// <summary>
+    /// Whether to show a message when no assets are defined.
+    /// </summary>
+    [Parameter] public bool ShowEmptyMessage { get; set; } = false;
+
+    /// <summary>
+    /// Callback when any asset value changes.
+    /// </summary>
+    [Parameter] public EventCallback<(string Parameter, string Value)> OnAssetChanged { get; set; }
+
+    /// <summary>
+    /// Optional: Override the workflow to use (defaults to current workflow).
+    /// </summary>
+    [Parameter] public Workflow? Workflow { get; set; }
+
+    private List<WorkflowAsset>? _workflowAssets;
+    private Dictionary<AssetType, List<string>> _assetOptions = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        M.OnCurrentWorkflowChanged += HandleWorkflowChanged;
+        M.OnSDModelsChange += HandleModelsChanged;
+        M.OnWorkflowBaseChanged += HandleWorkflowBaseChanged;
+        
+        await LoadAssetsAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reload if mode or workflow changes
+        await LoadAssetsAsync();
+    }
+
+    private async Task LoadAssetsAsync()
+    {
+        _isLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Get workflow assets
+            var workflow = Workflow ?? M.GetCurrentWorkflow();
+            _workflowAssets = workflow?.Assets?.OrderBy(a => a.Order).ToList();
+
+            if (_workflowAssets == null || _workflowAssets.Count == 0)
+            {
+                _isLoading = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            // Preload options for all asset types
+            await AssetResolver.PreloadAssetOptions(workflow);
+
+            // Get cached options for each asset type
+            var assetTypes = _workflowAssets.Select(a => a.Type).Distinct();
+            foreach (var assetType in assetTypes)
+            {
+                var options = await AssetResolver.GetCachedAssetOptions(assetType);
+                _assetOptions[assetType] = options;
+            }
+
+            // Initialize asset values if not already set
+            var currentAssets = M.GetWorkflowAssetsForMode(Mode);
+            foreach (var asset in _workflowAssets)
+            {
+                var currentValue = currentAssets?.GetValueOrDefault(asset.Parameter);
+                if (string.IsNullOrWhiteSpace(currentValue))
+                {
+                    var (resolvedValue, _) = await AssetResolver.ResolveAssetValue(asset, currentValue);
+                    if (!string.IsNullOrWhiteSpace(resolvedValue))
+                    {
+                        M.SetWorkflowAsset(asset.Parameter, resolvedValue, Mode);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading workflow assets: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string GetAssetValue(string parameter)
+    {
+        return M.GetWorkflowAsset(parameter, Mode) ?? "";
+    }
+
+    private async Task HandleAssetChanged(string parameter, string value)
+    {
+        M.SetWorkflowAsset(parameter, value, Mode);
+        
+        if (OnAssetChanged.HasDelegate)
+        {
+            await OnAssetChanged.InvokeAsync((parameter, value));
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleWorkflowChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadAssetsAsync();
+        });
+    }
+
+    private async void HandleWorkflowBaseChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            // Clear cache when base changes to reload proper models
+            AssetResolver.ClearCache();
+            await LoadAssetsAsync();
+        });
+    }
+
+    private async void HandleModelsChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            // Refresh options when models change
+            AssetResolver.ClearCache();
+            await LoadAssetsAsync();
+        });
+    }
+
+    private int GetColumnSize(WorkflowAsset asset)
+    {
+        // Allow custom column size per asset, fallback to component default
+        return asset.ColumnSize > 0 ? asset.ColumnSize : Columns;
+    }
+
+    private string GetDisplayName(string fullPath)
+    {
+        // Extract just the filename for display
+        if (string.IsNullOrWhiteSpace(fullPath))
+            return fullPath;
+
+        var filename = Path.GetFileName(fullPath);
+        return string.IsNullOrWhiteSpace(filename) ? fullPath : filename;
+    }
+
+    private string GetAssetIcon(AssetType type)
+    {
+        return type switch
+        {
+            AssetType.CheckpointModel => "fa-solid fa-cube",
+            AssetType.DiffusionModel => "fa-solid fa-cubes",
+            AssetType.Vae => "fa-solid fa-wand-magic-sparkles",
+            AssetType.Clip => "fa-solid fa-font",
+            AssetType.ClipVision => "fa-solid fa-eye",
+            _ => "fa-solid fa-file"
+        };
+    }
+
+    private Color GetAssetColor(AssetType type)
+    {
+        return type switch
+        {
+            AssetType.CheckpointModel => Color.Primary,
+            AssetType.DiffusionModel => Color.Info,
+            AssetType.Vae => Color.Success,
+            AssetType.Clip => Color.Warning,
+            AssetType.ClipVision => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    public void Dispose()
+    {
+        M.OnCurrentWorkflowChanged -= HandleWorkflowChanged;
+        M.OnSDModelsChange -= HandleModelsChanged;
+        M.OnWorkflowBaseChanged -= HandleWorkflowBaseChanged;
+    }
+}
