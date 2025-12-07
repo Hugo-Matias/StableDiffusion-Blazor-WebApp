@@ -9,7 +9,13 @@ namespace BlazorWebApp.Models
         public string Title { get; set; }
         public ModelBase Base { get; set; }
         public ModeType Mode { get; set; }
-        public ModelType ModelType { get; set; }
+        
+        /// <summary>
+        /// List of assets (models/resources) required by this workflow.
+        /// These are dynamically loaded from ComfyUI and displayed in the TopToolbar.
+        /// </summary>
+        public List<WorkflowAsset>? Assets { get; set; }
+        
         public List<WorkflowStep> Pipeline { get; set; }
         public string RawJson { get; set; }
     }
@@ -57,5 +63,4 @@ namespace BlazorWebApp.Models
                 _outputs[kvp.Key] = kvp.Value;
         }
     }
-
 }

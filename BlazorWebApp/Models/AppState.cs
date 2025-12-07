@@ -81,15 +81,20 @@ namespace BlazorWebApp.Models
         public string RandomImagesSource { get; set; }
         public AppStateGenerationImg2Img Img2Img { get; set; }
         public IEnumerable<PromptStyle> Styles { get; set; }
-        public string SDModel { get; set; } = "Loading...";
-        public string Vae { get; set; }
         public long Seed { get; set; }
         public bool IsInterrupted { get; set; } = false;
         public List<Workflow> Workflows { get; set; }
         public ModelBase WorkflowBase { get; set; }
+        public Guid? CurrentWorkflowId { get; set; }
         public List<Lora> Loras { get; set; }
         public AppStateLLMEnhancer LLM { get; set; } = new();
         public AppStateGenerationAutocomplete Autocomplete { get; set; } = new();
+        
+        // Legacy properties - kept for state migration, will be removed in future versions
+        [Obsolete("Use ParametersTxt2Img.Model or ParametersImg2Img.Model instead")]
+        public string? SDModel { get; set; }
+        [Obsolete("Use ParametersTxt2Img.Vae or ParametersImg2Img.Vae instead")]
+        public string? Vae { get; set; }
     }
 
     public class AppStateGenerationImg2Img

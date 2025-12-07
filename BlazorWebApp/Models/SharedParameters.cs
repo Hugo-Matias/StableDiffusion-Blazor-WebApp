@@ -4,6 +4,17 @@
     {
         public ComfySharedParameters Comfy { get; set; }
         public List<Lora> Loras { get; set; }
+        
+        /// <summary>
+        /// Dynamic asset storage for workflow-specific models.
+        /// Key: Asset parameter name from WorkflowAsset.Parameter (e.g., "Model", "HighModel", "LowModel", "Vae", "Clip", "ClipVision")
+        /// Value: Selected asset filename
+        /// 
+        /// This replaces individual model properties (Model, Vae, HighModel, LowModel) with a unified 
+        /// dictionary that can dynamically store any asset type defined in workflow templates.
+        /// </summary>
+        public Dictionary<string, string> WorkflowAssets { get; set; } = new();
+        
         public double? DenoisingStrength { get; set; }
         public string? Prompt { get; set; }
         public string[]? Styles { get; set; }
@@ -41,6 +52,9 @@
         {
             Comfy = clone.Comfy;
             Loras = clone.Loras;
+            WorkflowAssets = clone.WorkflowAssets != null 
+                ? new Dictionary<string, string>(clone.WorkflowAssets) 
+                : new Dictionary<string, string>();
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;
@@ -74,6 +88,9 @@
         {
             Comfy = clone.Comfy;
             Loras = clone.Loras;
+            WorkflowAssets = clone.WorkflowAssets != null 
+                ? new Dictionary<string, string>(clone.WorkflowAssets) 
+                : new Dictionary<string, string>();
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;

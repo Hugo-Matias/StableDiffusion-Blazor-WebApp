@@ -17,6 +17,11 @@ namespace BlazorWebApp.Models
         public Img2ImgParameters() { }
         public Img2ImgParameters(SharedParameters clone)
         {
+            Comfy = clone.Comfy;
+            Loras = clone.Loras;
+            WorkflowAssets = clone.WorkflowAssets != null 
+                ? new Dictionary<string, string>(clone.WorkflowAssets) 
+                : new Dictionary<string, string>();
             DenoisingStrength = clone.DenoisingStrength;
             Prompt = clone.Prompt;
             Styles = clone.Styles;

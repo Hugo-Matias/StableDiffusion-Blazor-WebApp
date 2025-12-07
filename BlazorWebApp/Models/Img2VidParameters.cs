@@ -9,6 +9,13 @@ namespace BlazorWebApp.Models
     {
         public ComfyImg2VidParameters Comfy { get; set; } = new();
         public List<Lora> Loras { get; set; } = new();
+        
+        /// <summary>
+        /// Dynamic asset storage for workflow-specific models.
+        /// Key: Asset parameter name from WorkflowAsset.Parameter (e.g., "HighModel", "LowModel", "Vae", "Clip", "ClipVision")
+        /// Value: Selected asset filename
+        /// </summary>
+        public Dictionary<string, string> WorkflowAssets { get; set; } = new();
 
         // Core generation parameters
         public string? Prompt { get; set; }
@@ -24,11 +31,6 @@ namespace BlazorWebApp.Models
 
         // Video-specific parameters
         public string? Image { get; set; }
-        public string? HighModel { get; set; }
-        public string? LowModel { get; set; }
-        public string? Clip { get; set; }
-        public string? ClipVision { get; set; }
-        public string? Vae { get; set; }
         public int? Length { get; set; } = 81;
         public float? MotionAmplitude { get; set; } = 1.1f;
         public int? Shift { get; set; } = 5;
@@ -43,6 +45,9 @@ namespace BlazorWebApp.Models
         {
             Comfy = clone.Comfy;
             Loras = clone.Loras?.Select(l => new Lora(l)).ToList() ?? new List<Lora>();
+            WorkflowAssets = clone.WorkflowAssets != null 
+                ? new Dictionary<string, string>(clone.WorkflowAssets) 
+                : new Dictionary<string, string>();
             Prompt = clone.Prompt;
             NegativePrompt = clone.NegativePrompt;
             Seed = clone.Seed;
@@ -54,11 +59,6 @@ namespace BlazorWebApp.Models
             Height = clone.Height;
             BatchSize = clone.BatchSize;
             Image = clone.Image;
-            HighModel = clone.HighModel;
-            LowModel = clone.LowModel;
-            Clip = clone.Clip;
-            ClipVision = clone.ClipVision;
-            Vae = clone.Vae;
             Length = clone.Length;
             MotionAmplitude = clone.MotionAmplitude;
             Shift = clone.Shift;
@@ -90,11 +90,11 @@ namespace BlazorWebApp.Models
                 Height = Height,
                 BatchSize = BatchSize,
                 Image = Image,
-                HighModel = HighModel,
-                LowModel = LowModel,
-                Clip = Clip,
-                ClipVision = ClipVision,
-                Vae = Vae,
+                HighModel = WorkflowAssets?.GetValueOrDefault("HighModel"),
+                LowModel = WorkflowAssets?.GetValueOrDefault("LowModel"),
+                Clip = WorkflowAssets?.GetValueOrDefault("Clip"),
+                ClipVision = WorkflowAssets?.GetValueOrDefault("ClipVision"),
+                Vae = WorkflowAssets?.GetValueOrDefault("Vae"),
                 Loras = Loras?.Where(l => l.IsEnabled && !l.IsNegative).ToList(),
                 Length = Length,
                 MotionAmplitude = MotionAmplitude,
