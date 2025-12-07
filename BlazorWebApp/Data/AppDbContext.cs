@@ -77,6 +77,7 @@ namespace BlazorWebApp.Data
             var txt2imgConverter = new ValueConverter<Txt2ImgParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Txt2ImgParameters>(v, opt));
             var img2imgConverter = new ValueConverter<Img2ImgParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Img2ImgParameters>(v, opt));
             var upscaleConverter = new ValueConverter<UpscaleParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<UpscaleParameters>(v, opt));
+            var img2vidConverter = new ValueConverter<Img2VidParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Img2VidParameters>(v, opt));
             var listIntConverter = new ValueConverter<List<int>, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<List<int>>(v, opt));
             var listIntComparer = new ValueComparer<List<int>>((c1, c2) => c1.SequenceEqual(c2), c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())), c => c.ToList());
             var loraListConverter = new ValueConverter<List<Lora>, string>(
@@ -118,6 +119,7 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<State>().Property(nameof(State.Txt2ImgParameters)).HasConversion(txt2imgConverter);
             modelBuilder.Entity<State>().Property(nameof(State.Img2ImgParameters)).HasConversion(img2imgConverter);
             modelBuilder.Entity<State>().Property(nameof(State.UpscaleParameters)).HasConversion(upscaleConverter);
+            modelBuilder.Entity<State>().Property(nameof(State.Img2VidParameters)).HasConversion(img2vidConverter);
         }
 
         public DbSet<Image> Images { get; set; }
