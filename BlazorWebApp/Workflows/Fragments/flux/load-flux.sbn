@@ -1,0 +1,147 @@
+#meta
+{
+  "outputs": {
+    "{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}flux_model_sampling", "index": 0 },
+    "{{ scope ?? '' }}clip_output": { "node": "{{ scope ?? '' }}dual_clip_loader", "index": 0 },
+    "{{ scope ?? '' }}vae_output": { "node": "{{ scope ?? '' }}vae_loader", "index": 0 },
+    "{{ scope ?? '' }}latent_output": { "node": "{{ scope ?? '' }}vae_encode_advanced", "index": 3 },
+    "{{ scope ?? '' }}positive_output": { "node": "{{ scope ?? '' }}flux_guidance", "index": 0 },
+    "{{ scope ?? '' }}negative_output": { "node": "{{ scope ?? '' }}empty_encode", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ scope ?? '' }}unet_loader": {
+    "inputs": {
+      "unet_name": {{ unet_name | json }},
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Load Diffusion Model"
+    }
+  },
+  "{{ scope ?? '' }}dual_clip_loader": {
+    "inputs": {
+      "clip_name1": {{ clip_name1 | json }},
+      "clip_name2": {{ clip_name2 | json }},
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}DualCLIPLoader"
+    }
+  },
+  "{{ scope ?? '' }}vae_loader": {
+    "inputs": {
+      "vae_name": {{ vae_name | json }}
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Load VAE"
+    }
+  },
+  "{{ scope ?? '' }}text_positive": {
+    "inputs": {
+      "value": {{ positive | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Prompt"
+    }
+  },
+  "{{ scope ?? '' }}lora_loader": {
+    "inputs": {
+      "text": ["{{ scope ?? '' }}text_positive", 0],
+      "model": ["{{ scope ?? '' }}unet_loader", 0],
+      "clip": ["{{ scope ?? '' }}dual_clip_loader", 0]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}LoRAs"
+    }
+  },
+  "{{ scope ?? '' }}reflux_patcher": {
+    "inputs": {
+      "style_dtype": "float64",
+      "enable": {{ reflux_enabled ?? true | json }},
+      "model": ["{{ scope ?? '' }}lora_loader", 0]
+    },
+    "class_type": "ReFluxPatcher",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}ReFluxPatcher"
+    }
+  },
+  "{{ scope ?? '' }}prompt_encode": {
+    "inputs": {
+      "text": ["{{ scope ?? '' }}text_positive", 0],
+      "clip": ["{{ scope ?? '' }}lora_loader", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Encode Prompt"
+    }
+  },
+  "{{ scope ?? '' }}flux_guidance": {
+    "inputs": {
+      "guidance": {{ guidance ?? 3.5 | json }},
+      "conditioning": ["{{ scope ?? '' }}prompt_encode", 0]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}FluxGuidance"
+    }
+  },
+  "{{ scope ?? '' }}empty_encode": {
+    "inputs": {
+      "text": "",
+      "clip": ["{{ scope ?? '' }}dual_clip_loader", 0]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Empty Negative Encode"
+    }
+  },
+  "{{ scope ?? '' }}empty_latent": {
+    "inputs": {
+      "width": {{ width | json }},
+      "height": {{ height | json }},
+      "batch_size": {{ batch_size | json }}
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}EmptySD3LatentImage"
+    }
+  },
+  "{{ scope ?? '' }}vae_encode_advanced": {
+    "inputs": {
+      "resize_to_input": "false",
+      "width": {{ width | json }},
+      "height": {{ height | json }},
+      "mask_channel": "red",
+      "invert_mask": false,
+      "latent_type": "16_channels",
+      "latent": ["{{ scope ?? '' }}empty_latent", 0],
+      "vae": ["{{ scope ?? '' }}vae_loader", 0]
+    },
+    "class_type": "VAEEncodeAdvanced",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}VAEEncodeAdvanced"
+    }
+  },
+  "{{ scope ?? '' }}flux_model_sampling": {
+    "inputs": {
+      "scaling": {{ scaling ?? "exponential" | json }},
+      "max_shift": {{ max_shift ?? 1.35 | json }},
+      "base_shift": {{ base_shift ?? 0.85 | json }},
+      "model": ["{{ scope ?? '' }}reflux_patcher", 0],
+      "latent_image": ["{{ scope ?? '' }}vae_encode_advanced", 3]
+    },
+    "class_type": "ModelSamplingAdvancedResolution",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}ModelSamplingAdvancedResolution"
+    }
+  }
+}

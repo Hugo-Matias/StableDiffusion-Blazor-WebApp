@@ -1,0 +1,70 @@
+#meta
+{
+  "outputs": {
+    "steadydancer_embeds": { "node": "add_steadydancer", "index": 0 }
+  }
+}
+#end
+
+{
+  "pose_encode": {
+    "inputs": {
+      "enable_vae_tiling": false,
+      "tile_x": 272,
+      "tile_y": 272,
+      "tile_stride_x": 144,
+      "tile_stride_y": 128,
+      "noise_aug_strength": 0,
+      "latent_strength": {{ pose_latent_strength ?? 1 | json }},
+      "vae": {{ get_ref ((scope ?? "") + "vae_output") }},
+      "image": {{ get_ref "pose_images" }}
+    },
+    "class_type": "WanVideoEncode",
+    "_meta": {
+      "title": "Pose Encode"
+    }
+  },
+  "get_first_pose": {
+    "inputs": {
+      "start_index": 0,
+      "num_frames": 1,
+      "images": {{ get_ref "pose_images" }}
+    },
+    "class_type": "GetImageRangeFromBatch",
+    "_meta": {
+      "title": "Get First Pose Frame"
+    }
+  },
+  "pose_clip_vision": {
+    "inputs": {
+      "strength_1": {{ pose_clip_strength ?? 1 | json }},
+      "strength_2": 1,
+      "crop": "center",
+      "combine_embeds": "average",
+      "force_offload": true,
+      "tiles": 0,
+      "ratio": 0.2,
+      "clip_vision": {{ get_ref ((scope ?? "") + "clip_vision_output") }},
+      "image_1": ["get_first_pose", 0]
+    },
+    "class_type": "WanVideoClipVisionEncode",
+    "_meta": {
+      "title": "CLIP Vision Encode (Pose)"
+    }
+  },
+  "add_steadydancer": {
+    "inputs": {
+      "pose_strength_spatial": {{ pose_strength_spatial ?? 1 | json }},
+      "pose_strength_temporal": {{ pose_strength_temporal ?? 1 | json }},
+      "start_percent": {{ pose_start_percent ?? 0 | json }},
+      "end_percent": {{ pose_end_percent ?? 1 | json }},
+      "embeds": {{ get_ref "image_embeds" }},
+      "pose_latents_positive": ["pose_encode", 0],
+      "clip_vision_embeds": ["pose_clip_vision", 0]
+    },
+    "class_type": "WanVideoAddSteadyDancerEmbeds",
+    "_meta": {
+      "title": "Add SteadyDancer Embeds"
+    }
+  }
+}

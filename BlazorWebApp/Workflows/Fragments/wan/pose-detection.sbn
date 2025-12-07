@@ -1,0 +1,65 @@
+#meta
+{
+  "outputs": {
+    "pose_images": { "node": "resize_pose", "index": 0 }
+  }
+}
+#end
+
+{
+  "onnx_loader": {
+    "inputs": {
+      "vitpose_model": "onnx\\vitpose_h_wholebody_model.onnx",
+      "yolo_model": "onnx\\yolov10m.onnx",
+      "onnx_device": "CUDAExecutionProvider"
+    },
+    "class_type": "OnnxDetectionModelLoader",
+    "_meta": {
+      "title": "ONNX Detection Model Loader"
+    }
+  },
+  "pose_detection": {
+    "inputs": {
+      "width": {{ get_ref "width" }},
+      "height": {{ get_ref "height" }},
+      "model": ["onnx_loader", 0],
+      "images": {{ get_ref "image_size_info" }}
+    },
+    "class_type": "PoseAndFaceDetection",
+    "_meta": {
+      "title": "Pose and Face Detection"
+    }
+  },
+  "draw_pose": {
+    "inputs": {
+      "width": {{ get_ref "width" }},
+      "height": {{ get_ref "height" }},
+      "retarget_padding": {{ retarget_padding ?? 16 | json }},
+      "body_stick_width": {{ body_stick_width ?? -1 | json }},
+      "hand_stick_width": {{ hand_stick_width ?? -1 | json }},
+      "draw_head": {{ draw_head ?? true | json }},
+      "pose_data": ["pose_detection", 0]
+    },
+    "class_type": "DrawViTPose",
+    "_meta": {
+      "title": "Draw ViT Pose"
+    }
+  },
+  "resize_pose": {
+    "inputs": {
+      "width": {{ get_ref "width" }},
+      "height": {{ get_ref "height" }},
+      "upscale_method": "lanczos",
+      "keep_proportion": "crop",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 16,
+      "device": "cpu",
+      "image": ["draw_pose", 0]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Pose Images"
+    }
+  }
+}

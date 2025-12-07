@@ -1,0 +1,20 @@
+#meta
+{
+  "outputs": {
+    "latent_output": { "node": "vae_encoder", "index": 0 }
+  }
+}
+#end
+
+{
+  "vae_encoder": {
+    "inputs": {
+      "pixels": {{ get_ref (image_ref ?? "image_input") }},
+      "vae": {{ get_ref ((scope ?? "") + "vae_output") }}
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  }
+}

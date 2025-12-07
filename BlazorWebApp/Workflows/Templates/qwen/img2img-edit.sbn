@@ -1,0 +1,64 @@
+{
+  "Title": "Img2Img (Edit)",
+  "Base": "Qwen",
+  "Mode": "img2img",
+  "Assets": [
+    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "qwen_image_edit_2509_fp8_e4m3fn.safetensors", "order": 1, "columnSize": 4 },
+    { "parameter": "Clip", "label": "CLIP", "type": "Clip", "default": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "order": 2, "columnSize": 4 },
+    { "parameter": "Vae", "label": "VAE", "type": "Vae", "default": "qwen_image_vae.safetensors", "order": 3, "columnSize": 4 }
+  ],
+  "Pipeline": [
+    {
+      "fragment": "load-image-scaled.sbn",
+      "parameters": {
+        "image": {{ Image | json }},
+        "megapixels": {{ Megapixels ?? 1 | json }},
+        "upscale_method": "lanczos"
+      }
+    },
+    {
+      "fragment": "qwen/load-qwen-edit.sbn",
+      "parameters": {
+        "unet_name": {{ Model ?? "qwen_image_edit_2509_fp8_e4m3fn.safetensors" | json }},
+        "clip_name": {{ Clip ?? "qwen_2.5_vl_7b_fp8_scaled.safetensors" | json }},
+        "vae_name": {{ Vae ?? "qwen_image_vae.safetensors" | json }},
+        "lora_name": {{ LightningLora ?? "Speed/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors" | json }},
+        "lora_strength": {{ LoraStrength ?? 1 | json }},
+        "model_shift": {{ ModelShift ?? 3 | json }},
+        "cfg_norm_strength": {{ CfgNormStrength ?? 1 | json }}
+      }
+    },
+    {
+      "fragment": "vae-encode.sbn",
+      "parameters": {}
+    },
+    {
+      "fragment": "qwen/encode-edit.sbn",
+      "parameters": {
+        "positive": {{ Prompt | json }},
+        "negative": {{ NegativePrompt ?? "" | json }}
+      }
+    },
+    {
+      "fragment": "sampler-standard.sbn",
+      "parameters": {
+        "title": "KSampler",
+        "sampler_id": "sampler_main",
+        "sampler_name": {{ SamplerName ?? "euler" | json }},
+        "scheduler": {{ Scheduler ?? "simple" | json }},
+        "steps": {{ Steps ?? 4 | json }},
+        "cfg": {{ CfgScale ?? 1 | json }},
+        "denoise": {{ Denoise ?? 1 | json }},
+        "seed": {{ Seed ?? 42 | json }}
+      }
+    },
+    {
+      "fragment": "vae-decode.sbn",
+      "parameters": {}
+    },
+    {
+      "fragment": "save.sbn",
+      "parameters": {}
+    }
+  ]
+}

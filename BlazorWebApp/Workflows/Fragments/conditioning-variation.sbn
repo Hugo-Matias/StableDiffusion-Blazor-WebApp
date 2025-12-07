@@ -14,7 +14,7 @@
   "empty_encode": {
     "inputs": {
       "text": "",
-      "clip": {{ get_ref "clip_output" }}
+      "clip": {{ get_ref ((scope ?? "") + "clip_output") }}
     },
     "class_type": "CLIPTextEncode",
     "_meta": {

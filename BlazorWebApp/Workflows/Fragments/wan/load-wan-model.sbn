@@ -1,0 +1,89 @@
+#meta
+{
+  "outputs": {
+    "{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}set_loras", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ scope ?? '' }}compile_settings": {
+    "inputs": {
+      "backend": "inductor",
+      "fullgraph": false,
+      "mode": "default",
+      "dynamic": false,
+      "dynamo_cache_size_limit": 64,
+      "compile_transformer_blocks_only": true,
+      "dynamo_recompile_limit": 128,
+      "force_parameter_static_shapes": false,
+      "allow_unmerged_lora_compile": false
+    },
+    "class_type": "WanVideoTorchCompileSettings",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Torch Compile Settings"
+    }
+  },
+  "{{ scope ?? '' }}model_loader": {
+    "inputs": {
+      "model": {{ model_name | json }},
+      "base_precision": {{ base_precision ?? "fp16_fast" | json }},
+      "quantization": "disabled",
+      "load_device": "offload_device",
+      "attention_mode": {{ attention_mode ?? "sageattn" | json }},
+      "rms_norm_function": "default",
+      "compile_args": ["{{ scope ?? '' }}compile_settings", 0]
+    },
+    "class_type": "WanVideoModelLoader",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}WanVideo Model Loader"
+    }
+  },
+  "{{ scope ?? '' }}block_swap": {
+    "inputs": {
+      "blocks_to_swap": {{ blocks_to_swap ?? 35 | json }},
+      "offload_img_emb": false,
+      "offload_txt_emb": false,
+      "use_non_blocking": true,
+      "vace_blocks_to_swap": 0,
+      "prefetch_blocks": 1,
+      "block_swap_debug": false
+    },
+    "class_type": "WanVideoBlockSwap",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Block Swap"
+    }
+  },
+  "{{ scope ?? '' }}set_block_swap": {
+    "inputs": {
+      "model": ["{{ scope ?? '' }}model_loader", 0],
+      "block_swap_args": ["{{ scope ?? '' }}block_swap", 0]
+    },
+    "class_type": "WanVideoSetBlockSwap",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Set BlockSwap"
+    }
+  },
+  "{{ scope ?? '' }}lora_select": {
+    "inputs": {
+      "lora": {{ lora_name | json }},
+      "strength": {{ lora_strength ?? 1 | json }},
+      "low_mem_load": false,
+      "merge_loras": false
+    },
+    "class_type": "WanVideoLoraSelect",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}LoRA Select"
+    }
+  },
+  "{{ scope ?? '' }}set_loras": {
+    "inputs": {
+      "model": ["{{ scope ?? '' }}set_block_swap", 0],
+      "lora": ["{{ scope ?? '' }}lora_select", 0]
+    },
+    "class_type": "WanVideoSetLoRAs",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Set LoRAs"
+    }
+  }
+}

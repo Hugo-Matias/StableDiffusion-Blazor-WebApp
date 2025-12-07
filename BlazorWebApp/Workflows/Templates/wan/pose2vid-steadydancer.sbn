@@ -1,0 +1,128 @@
+{
+  "Title": "SteadyDancer (Pose2Vid)",
+  "Base": "Wan",
+  "Mode": "pose2vid",
+  "Assets": [
+    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "Wan21_SteadyDancer_fp8_e4m3fn_scaled_KJ.safetensors", "order": 1, "columnSize": 4 },
+    { "parameter": "Vae", "label": "VAE", "type": "Vae", "default": "wan_2.1_vae.safetensors", "order": 2, "columnSize": 4 },
+    { "parameter": "ClipVision", "label": "CLIP Vision", "type": "ClipVision", "default": "clip_vision_h.safetensors", "order": 3, "columnSize": 4 },
+    { "parameter": "TextEncoder", "label": "Text Encoder", "type": "Clip", "default": "umt5_xxl_fp16.safetensors", "order": 4, "columnSize": 4 },
+    { "parameter": "SpeedLora", "label": "Speed LoRA", "type": "Lora", "default": "Speed/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors", "order": 5, "columnSize": 4 }
+  ],
+  "Pipeline": [
+    {
+      "fragment": "load-video.sbn",
+      "parameters": {
+        "video": {{ Video | json }},
+        "force_rate": {{ VideoForceRate ?? 16 | json }},
+        "custom_width": {{ VideoWidth ?? 480 | json }},
+        "custom_height": {{ VideoHeight ?? 832 | json }},
+        "frame_load_cap": {{ FrameLoadCap ?? 176 | json }},
+        "skip_first_frames": {{ SkipFirstFrames ?? 0 | json }},
+        "select_every_nth": {{ SelectEveryNth ?? 1 | json }}
+      }
+    },
+    {
+      "fragment": "get-image-size.sbn",
+      "parameters": {
+        "image_ref": "video_frames"
+      }
+    },
+    {
+      "fragment": "load-image.sbn",
+      "parameters": {
+        "image": {{ Image | json }}
+      }
+    },
+    {
+      "fragment": "resize-image-kj.sbn",
+      "parameters": {
+        "node_id": "resize_subject",
+        "image_ref": "image_input",
+        "title": "Resize Subject Image"
+      }
+    },
+    {
+      "fragment": "wan/load-wan-model.sbn",
+      "parameters": {
+        "model_name": {{ Model ?? "Wan21_SteadyDancer_fp8_e4m3fn_scaled_KJ.safetensors" | json }},
+        "lora_name": {{ SpeedLora ?? "Speed/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors" | json }},
+        "lora_strength": {{ LoraStrength ?? 1 | json }}
+      }
+    },
+    {
+      "fragment": "wan/load-wan-vae.sbn",
+      "parameters": {
+        "vae_name": {{ Vae ?? "wan_2.1_vae.safetensors" | json }}
+      }
+    },
+    {
+      "fragment": "load-clip-vision.sbn",
+      "parameters": {
+        "clip_vision_name": {{ ClipVision ?? "clip_vision_h.safetensors" | json }}
+      }
+    },
+    {
+      "fragment": "wan/text-encode-wan.sbn",
+      "parameters": {
+        "text_encoder_name": {{ TextEncoder ?? "umt5_xxl_fp16.safetensors" | json }},
+        "positive": {{ Prompt | json }},
+        "negative": {{ NegativePrompt ?? "" | json }}
+      }
+    },
+    {
+      "fragment": "wan/pose-detection.sbn",
+      "parameters": {}
+    },
+    {
+      "fragment": "wan/i2v-encode.sbn",
+      "parameters": {
+        "resized_image_ref": "resized_image"
+      }
+    },
+    {
+      "fragment": "wan/steadydancer-embeds.sbn",
+      "parameters": {
+        "pose_strength_spatial": {{ PoseStrengthSpatial ?? 1 | json }},
+        "pose_strength_temporal": {{ PoseStrengthTemporal ?? 1 | json }}
+      }
+    },
+    {
+      "fragment": "wan/context-options.sbn",
+      "parameters": {
+        "context_frames": {{ ContextFrames ?? 81 | json }},
+        "context_overlap": {{ ContextOverlap ?? 16 | json }}
+      }
+    },
+    {
+      "fragment": "wan/sampler-wan.sbn",
+      "parameters": {
+        "steps": {{ Steps ?? 4 | json }},
+        "cfg": {{ CfgScale ?? 1 | json }},
+        "shift": {{ Shift ?? 5 | json }},
+        "seed": {{ Seed ?? 42 | json }},
+        "scheduler": {{ Scheduler ?? "dpm++_sde" | json }}
+      }
+    },
+    {
+      "fragment": "wan/decode-wan.sbn",
+      "parameters": {}
+    },
+    {
+      "fragment": "concat-preview.sbn",
+      "parameters": {}
+    },
+    {
+      "fragment": "save-video.sbn",
+      "parameters": {
+        "frame_rate": {{ OutputFrameRate ?? 24 | json }},
+        "filename_prefix": "wan/steadydancer",
+        {{~ if AppendPreview ~}}
+        "image_ref": "preview_concat"
+        {{~ else ~}}
+        "image_ref": "image_output"
+        {{~ end ~}}
+      }
+    }
+  ]
+}

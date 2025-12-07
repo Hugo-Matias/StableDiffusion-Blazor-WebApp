@@ -1,0 +1,21 @@
+#meta
+{
+  "outputs": {
+    "{{ scope ?? '' }}vae_output": { "node": "{{ scope ?? '' }}vae_loader", "index": 0 }
+  }
+}
+#end
+
+{
+  "{{ scope ?? '' }}vae_loader": {
+    "inputs": {
+      "model_name": {{ vae_name | json }},
+      "precision": {{ precision ?? "bf16" | json }},
+      "use_cpu_cache": false
+    },
+    "class_type": "WanVideoVAELoader",
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}WanVideo VAE Loader"
+    }
+  }
+}

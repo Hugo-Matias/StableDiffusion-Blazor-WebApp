@@ -9,7 +9,7 @@
 {
   "model_sampler_auraflow": {
     "inputs": {
-      "model": {{ get_ref "model_output" }},
+      "model": {{ get_ref ((scope ?? "") + "model_output") }},
       "shift": {{ model_shift | json }}
     },
     "class_type": "ModelSamplingAuraFlow",

@@ -1,0 +1,30 @@
+#meta
+{
+  "outputs": {
+    "image_input": { "node": "image_scale", "index": 0 }
+  }
+}
+#end
+
+{
+  "image_loader": {
+    "inputs": {
+      "image": {{ image | json }}
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "image_scale": {
+    "inputs": {
+      "upscale_method": {{ upscale_method ?? "lanczos" | json }},
+      "megapixels": {{ megapixels ?? 1 | json }},
+      "image": ["image_loader", 0]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image"
+    }
+  }
+}

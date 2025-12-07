@@ -1,8 +1,13 @@
 {
-  "Title": "Txt2Img",
+  "Title": "Txt2Img (Legacy)",
   "Base": "Flux",
   "Mode": "txt2img",
-  "ModelType": "diffusion",
+  "Assets": [
+    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "flux1-krea-dev_fp8_scaled.safetensors", "order": 1, "columnSize": 3 },
+    { "parameter": "Clip1", "label": "CLIP T5", "type": "Clip", "default": "t5xxl_fp8_e4m3fn_scaled.safetensors", "order": 2, "columnSize": 3 },
+    { "parameter": "Clip2", "label": "CLIP ViT", "type": "Clip", "default": "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors", "order": 3, "columnSize": 3 },
+    { "parameter": "VAE", "label": "VAE", "type": "Vae", "default": "ae.safetensors", "order": 4, "columnSize": 3 }
+  ],
   "Prompt":
   {
   "7": {
@@ -164,7 +169,7 @@
       "title": "CLIP Text Encode (Prompt)"
     }
   },
-	"83": {
+  "83": {
     "inputs": {
       "value": {{ Detailer.Prompt | json }}
     },
@@ -172,7 +177,7 @@
     "_meta": {
       "title": "String (Multiline)"
     }
-  },	 
+  },
   "79:4": {
     "inputs": {
       "style_dtype": "float64",
@@ -309,7 +314,7 @@
   "79:2": {
     "inputs": {
       "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
-      "clip_name2": {{ Clip2 ??  "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
+      "clip_name2": {{ Clip2 ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
       "type": "flux",
       "device": "default"
     },
@@ -480,7 +485,7 @@
   "80:2": {
     "inputs": {
       "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
-      "clip_name2": {{ Clip2 ??  "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
+      "clip_name2": {{ Clip2 ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
       "type": "flux",
       "device": "default"
     },
@@ -531,7 +536,7 @@
   "36:791": {
     "inputs": {
       "eta": 0.5,
-      "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json}},
+      "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
       "steps_to_run": {{ (Upscale.Steps ?? 20) | math.divided_by 2 | math.round | json }},
       "cfg": 1,
       "sampler_mode": "resample",
@@ -662,13 +667,13 @@
       "steps": {{ Detailer.Steps ?? 20 | json }},
       "cfg": {{ Detailer.CfgScale ?? 1 | json }},
       "sampler_name": {{ Detailer.Sampler ?? "dpmpp_2m" | json }},
-      "scheduler": {{ Detailer.Scheduler ?? "beta" | json}},
+      "scheduler": {{ Detailer.Scheduler ?? "beta" | json }},
       "denoise": {{ Detailer.Denoise ?? 0.65 | json }},
       "feather": {{ Detailer.Feather ?? 5 | json }},
       "noise_mask": true,
       "force_inpaint": true,
       "bbox_threshold": {{ Detailer.BBoxThreshold ?? 0.7 | json }},
-      "bbox_dilation": {{ Detailer.BBoxDilation ?? 10| json }},
+      "bbox_dilation": {{ Detailer.BBoxDilation ?? 10 | json }},
       "bbox_crop_factor": {{ Detailer.BBoxCropFactor ?? 3 | json }},
       "sam_detection_hint": "center-1",
       "sam_dilation": 0,
@@ -735,13 +740,13 @@
       "steps": {{ Detailer.Steps ?? 20 | json }},
       "cfg": {{ Detailer.CfgScale ?? 8 | json }},
       "sampler_name": {{ Detailer.Sampler ?? "dpmpp_2m" | json }},
-      "scheduler": {{ Detailer.Scheduler ?? "beta" | json}},
+      "scheduler": {{ Detailer.Scheduler ?? "beta" | json }},
       "denoise": {{ Detailer.Denoise ?? 0.65 | json }},
       "feather": {{ Detailer.Feather ?? 5 | json }},
       "noise_mask": true,
       "force_inpaint": true,
       "bbox_threshold": {{ Detailer.BBoxThreshold ?? 0.7 | json }},
-      "bbox_dilation": {{ Detailer.BBoxDilation ?? 10| json }},
+      "bbox_dilation": {{ Detailer.BBoxDilation ?? 10 | json }},
       "bbox_crop_factor": {{ Detailer.BBoxCropFactor ?? 3 | json }},
       "sam_detection_hint": "center-1",
       "sam_dilation": 0,

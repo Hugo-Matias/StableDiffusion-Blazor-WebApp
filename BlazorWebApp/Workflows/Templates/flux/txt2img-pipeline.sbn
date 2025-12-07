@@ -1,19 +1,27 @@
 {
   "Title": "Txt2Img",
-  "Base": "StableDiffusion",
+  "Base": "Flux",
   "Mode": "txt2img",
   "Assets": [
-    { "parameter": "Model", "label": "Model", "type": "CheckpointModel", "default": "Base/v1-5-pruned-emaonly.safetensors", "order": 1, "columnSize": 6 }
+    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "flux1-krea-dev_fp8_scaled.safetensors", "order": 1, "columnSize": 3 },
+    { "parameter": "Clip1", "label": "CLIP T5", "type": "Clip", "default": "t5xxl_fp8_e4m3fn_scaled.safetensors", "order": 2, "columnSize": 3 },
+    { "parameter": "Clip2", "label": "CLIP ViT", "type": "Clip", "default": "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors", "order": 3, "columnSize": 3 },
+    { "parameter": "VAE", "label": "VAE", "type": "Vae", "default": "ae.safetensors", "order": 4, "columnSize": 3 }
   ],
   "Pipeline": [
     {
-      "fragment": "load-checkpoint.sbn",
+      "fragment": "flux/load-flux.sbn",
       "parameters": {
-        "loader_id": "model_loader",
-        "latent_id": "latent_image",
-        "ckpt_name": {{ Model ?? "Base/v1-5-pruned-emaonly.safetensors" | json }},
-        "prompt": {{ Prompt | json }},
-        "negative": {{ NegativePrompt | json }},
+        "unet_name": {{ Model ?? "flux1-krea-dev_fp8_scaled.safetensors" | json }},
+        "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
+        "clip_name2": {{ Clip2 ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
+        "vae_name": {{ VAE ?? "ae.safetensors" | json }},
+        "positive": {{ Prompt | json }},
+        "guidance": {{ DistilledCfgScale ?? 3.5 | json }},
+        "reflux_enabled": true,
+        "scaling": "exponential",
+        "max_shift": 1.35,
+        "base_shift": 0.85,
         "width": {{ Width ?? 872 | json }},
         "height": {{ Height ?? 1248 | json }},
         "batch_size": {{ BatchSize ?? 1 | json }}
@@ -27,11 +35,11 @@
         "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
         "scheduler": {{ Scheduler ?? "beta" | json }},
         "steps": {{ Steps ?? 20 | json }},
-        "cfg": {{ CfgScale ?? 5.5 | json }},
+        "cfg": 1,
         "seed": {{ Seed ?? 42 | json }}
-       }
-     },
-     {
+      }
+    },
+    {
       "fragment": "upscale.sbn",
       "parameters": {
         "upscale_model": {{ Upscale.Model ?? "4x-UltraSharpV2.safetensors" | json }},
@@ -42,7 +50,7 @@
         "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},
         "scheduler": {{ Scheduler ?? "beta" | json }},
         "seed": {{ Seed ?? 42 | json }},
-        "cfg": {{ CfgScale ?? 5.5 | json }}
+        "cfg": 1
       }
     },
     {
@@ -50,29 +58,20 @@
       "parameters": {}
     },
     {
-      "fragment": "upscale-seedvr2.sbn",
-      "parameters": {
-        "seedvr2_model": {{ SeedVR2.Model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
-        "seedvr2_seed": {{ Seed ?? 42 | json }},
-        "seedvr2_resolution": {{ SeedVR2.Resolution ?? 2048 | json }},
-        "seedvr2_batch_size": {{ SeedVR2.BatchSize ?? 1 | json }},
-        "seedvr2_input_noise_scale": {{ SeedVR2.InputNoiseScale ?? 0.0 | json }},
-        "seedvr2_latent_noise_scale": {{ SeedVR2.LatentNoiseScale ?? 0.0 | json }},
-        "blocks_to_swap": {{ SeedVR2.BlocksToSwap ?? 36 | json }},
-        "vae_tile_size": {{ SeedVR2.VaeTileSize ?? 1024 | json }},
-        "vae_tile_overlap": {{ SeedVR2.VaeTileOverlap ?? 128 | json }}
-      }
-    },
-    {
-      "fragment": "load-checkpoint.sbn",
+      "fragment": "flux/load-flux.sbn",
       "parameters": {
         "scope": "detailer_",
         "scope_title": "Detailer ",
-        "loader_id": "model_loader",
-        "latent_id": "latent_image",
-        "ckpt_name": {{ Detailer.Checkpoint ?? Model ?? "Base/v1-5-pruned-emaonly.safetensors" | json }},
-        "prompt": {{ Detailer.Prompt ?? Prompt | json }},
-        "negative": {{ Detailer.NegativePrompt ?? NegativePrompt | json }},
+        "unet_name": {{ Detailer.Checkpoint ?? Model ?? "flux1-krea-dev_fp8_scaled.safetensors" | json }},
+        "clip_name1": {{ Clip1 ?? "t5xxl_fp8_e4m3fn_scaled.safetensors" | json }},
+        "clip_name2": {{ Clip2 ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors" | json }},
+        "vae_name": {{ VAE ?? "ae.safetensors" | json }},
+        "positive": {{ Detailer.Prompt ?? Prompt | json }},
+        "guidance": {{ DistilledCfgScale ?? 3.5 | json }},
+        "reflux_enabled": true,
+        "scaling": "exponential",
+        "max_shift": 1.35,
+        "base_shift": 0.85,
         "width": {{ Width ?? 872 | json }},
         "height": {{ Height ?? 1248 | json }},
         "batch_size": {{ BatchSize ?? 1 | json }}
@@ -87,7 +86,7 @@
         "detailer_scheduler": {{ Detailer.Scheduler ?? "beta" | json }},
         "detailer_seed": {{ Detailer.Seed ?? Seed ?? 42 | json }},
         "detailer_steps": {{ Detailer.Steps ?? 20 | json }},
-        "detailer_cfg": {{ Detailer.CfgScale ?? 8 | json }},
+        "detailer_cfg": {{ Detailer.CfgScale ?? 1 | json }},
         "detailer_denoise": {{ Detailer.Denoise ?? 0.65 | json }},
         "detailer_feather": {{ Detailer.Feather ?? 5 | json }},
         "detailer_bbox_threshold": {{ Detailer.BBoxThreshold ?? 0.7 | json }},

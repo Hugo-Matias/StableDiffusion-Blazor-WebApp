@@ -1,7 +1,7 @@
 {
 	"save": {
 		"inputs": {
-			"filename_prefix": "tmp/img",
+			"filename_prefix": {{ filename_prefix ?? "tmp/img" | json }},
 			"images": {{ get_ref "image_output" }}
 		},
 		"class_type": "SaveImage",

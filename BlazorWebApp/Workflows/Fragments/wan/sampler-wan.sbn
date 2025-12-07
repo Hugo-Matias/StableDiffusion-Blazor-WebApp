@@ -1,0 +1,57 @@
+#meta
+{
+  "outputs": {
+    "latent_output": { "node": "sampler", "index": 0 }
+  }
+}
+#end
+
+{
+  "scheduler": {
+    "inputs": {
+      "scheduler": {{ scheduler ?? "dpm++_sde" | json }},
+      "steps": {{ steps | json }},
+      "shift": {{ shift ?? 5 | json }},
+      "start_step": 0,
+      "end_step": -1
+    },
+    "class_type": "WanVideoScheduler",
+    "_meta": {
+      "title": "WanVideo Scheduler"
+    }
+  },
+  "sampler_settings": {
+    "inputs": {
+      "steps": {{ steps | json }},
+      "cfg": {{ cfg ?? 1 | json }},
+      "shift": {{ shift ?? 5 | json }},
+      "seed": {{ seed | json }},
+      "force_offload": true,
+      "scheduler": ["scheduler", 3],
+      "riflex_freq_index": 0,
+      "denoise_strength": {{ denoise ?? 1 | json }},
+      "batched_cfg": false,
+      "rope_function": "comfy",
+      "start_step": 0,
+      "end_step": -1,
+      "add_noise_to_samples": false,
+      "model": {{ get_ref ((scope ?? "") + "model_output") }},
+      "image_embeds": {{ get_ref "steadydancer_embeds" }},
+      "text_embeds": {{ get_ref ((scope ?? "") + "text_embeds") }},
+      "context_options": {{ get_ref "context_options" }}
+    },
+    "class_type": "WanVideoSamplerSettings",
+    "_meta": {
+      "title": "WanVideo Sampler Settings"
+    }
+  },
+  "sampler": {
+    "inputs": {
+      "sampler_inputs": ["sampler_settings", 0]
+    },
+    "class_type": "WanVideoSamplerFromSettings",
+    "_meta": {
+      "title": "WanVideo Sampler"
+    }
+  }
+}

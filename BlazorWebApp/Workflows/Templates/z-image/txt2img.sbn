@@ -2,12 +2,15 @@
   "Title": "Txt2Img",
   "Base": "ZImage",
   "Mode": "txt2img",
-  "ModelType": "diffusion",
+  "Assets": [
+    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "z_image_turbo_bf16.safetensors", "order": 1, "columnSize": 4 },
+    { "parameter": "Clip", "label": "CLIP", "type": "Clip", "default": "qwen_3_4b.safetensors", "order": 2, "columnSize": 4 },
+    { "parameter": "Vae", "label": "VAE", "type": "Vae", "default": "ae.safetensors", "order": 3, "columnSize": 4 }
+  ],
   "Pipeline": [
     {
       "fragment": "load-diffusion.sbn",
       "parameters": {
-        "loader_id": "model_loader",
         "latent_id": "latent_image",
         "unet_name": {{ Model ?? "z_image_turbo_bf16.safetensors" | json }},
         "clip_name": {{ Clip ?? "qwen_3_4b.safetensors" | json }},
@@ -49,7 +52,6 @@
       "fragment": "sampler.sbn",
       "parameters": {
         "title": "Main Sampler",
-        "class_type": "ClownsharKSampler_Beta",
         "sampler_id": "sampler_main",
         "sampler_name": {{ SamplerName ?? "linear/euler" | json }},
         "scheduler": {{ Scheduler ?? "simple" | json }},
@@ -59,8 +61,8 @@
        }
      },
      {
-         "fragment": "vae-decode.sbn",
-         "parameters": {}
+       "fragment": "vae-decode.sbn",
+       "parameters": {}
      },
     {
       "fragment": "upscale-seedvr2.sbn",
@@ -77,18 +79,30 @@
       }
     },
     {
-      "fragment": "detailer.sbn",
+      "fragment": "load-diffusion-w-prompts.sbn",
       "parameters": {
-        "detailer_checkpoint": {{ Detailer.Checkpoint | json }},
-        "detailer_clip": {{ Clip ?? "qwen_3_4b.safetensors" | json }},
-        "detailer_clip_type": "lumina2",
-        "detailer_vae": {{ Vae ?? "ae.safetensors" | json }},
-        "detailer_prompt": {{ Detailer.Prompt ?? Prompt | json }},
-        "detailer_negative": {{ Detailer.NegativePrompt ?? NegativePrompt | json }},
-        "detailer_model": {{ Detailer.Model ?? "bbox/face_yolov8m.pt" | json }},
+        "scope": "detailer_",
+        "scope_title": "Detailer ",
+        "latent_id": "latent_image",
+        "unet_name": {{ Detailer.Checkpoint ?? Model ?? "z_image_turbo_bf16.safetensors" | json }},
+        "clip_name": {{ Clip ?? "qwen_3_4b.safetensors" | json }},
+        "clip_type": "lumina2",
+        "vae_name": {{ Vae ?? "ae.safetensors" | json }},
+        "positive": {{ Detailer.Prompt ?? Prompt | json }},
+        "negative": {{ Detailer.NegativePrompt ?? NegativePrompt | json }},
+        "width": {{ Width ?? 872 | json }},
+        "height": {{ Height ?? 1248 | json }},
+        "batch_size": {{ BatchSize ?? 1 | json }}
+      }
+    },
+    {
+      "fragment": "detailer-core.sbn",
+      "parameters": {
+        "scope": "detailer_",
+        "detailer_detection_model": {{ Detailer.Model ?? "bbox/face_yolov8m.pt" | json }},
         "detailer_sampler": {{ Detailer.Sampler ?? "dpmpp_2m" | json }},
         "detailer_scheduler": {{ Detailer.Scheduler ?? "beta" | json }},
-        "detailer_seed": {{ Detailer.Seed ?? 42 | json }},
+        "detailer_seed": {{ Detailer.Seed ?? Seed ?? 42 | json }},
         "detailer_steps": {{ Detailer.Steps ?? 20 | json }},
         "detailer_cfg": {{ Detailer.CfgScale ?? 8 | json }},
         "detailer_denoise": {{ Detailer.Denoise ?? 0.65 | json }},
@@ -103,8 +117,8 @@
       }
     },
     {
-        "fragment": "save.sbn",
-        "parameters": {}
+      "fragment": "save.sbn",
+      "parameters": {}
     }
   ]
 }

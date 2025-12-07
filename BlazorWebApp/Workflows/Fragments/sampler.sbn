@@ -1,7 +1,7 @@
 #meta
 {
   "outputs": {
-    "latent_output": {"node": {{ sampler_id | json }}, "index": 0}
+    "latent_output": {"node": "{{ sampler_id }}", "index": 0}
   }
 }
 #end
@@ -9,24 +9,24 @@
 {
   "{{ sampler_id }}": {
     "inputs": {
-      "eta": 0.5,
+      "eta": {{ eta ?? 0.5 | json }},
       "sampler_name": {{ sampler_name | json }},
       "scheduler": {{ scheduler | json }},
       "steps": {{ steps | json }},
-      "steps_to_run": -1,
-      "denoise": 1,
+      "steps_to_run": {{ steps_to_run ?? -1 | json }},
+      "denoise": {{ denoise ?? 1 | json }},
       "cfg": {{ cfg | json }},
       "seed": {{ seed | json }},
-      "sampler_mode": "standard",
+      "sampler_mode": {{ sampler_mode ?? "standard" | json }},
       "bongmath": true,
-      "model": {{ get_ref "model_output" }},
-      "positive": {{ get_ref "positive_output" }},
-      "negative": {{ get_ref "negative_output" }},
-      "latent_image": {{ get_ref "latent_output" }}
+      "model": {{ get_ref ((scope ?? "") + "model_output") }},
+      "positive": {{ get_ref ((scope ?? "") + "positive_output") }},
+      "negative": {{ get_ref ((scope ?? "") + "negative_output") }},
+      "latent_image": {{ get_ref ((scope ?? "") + "latent_output") }}
     },
-    "class_type": {{ class_type | json }},
+    "class_type": {{ class_type ?? "ClownsharKSampler_Beta" | json }},
     "_meta": {
-      "title": {{ title | json }}
+      "title": {{ title ?? "Sampler" | json }}
     }
-  },
+  }
 }

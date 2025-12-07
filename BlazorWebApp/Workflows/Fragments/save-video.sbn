@@ -1,0 +1,27 @@
+#meta
+{
+  "outputs": {}
+}
+#end
+
+{
+  "save_video": {
+    "inputs": {
+      "frame_rate": {{ frame_rate ?? 24 | json }},
+      "loop_count": 0,
+      "filename_prefix": {{ filename_prefix ?? "output" | json }},
+      "format": {{ format ?? "video/h264-mp4" | json }},
+      "pix_fmt": "yuv420p",
+      "crf": {{ crf ?? 19 | json }},
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": {{ get_ref (image_ref ?? "image_output") }}
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Save Video"
+    }
+  }
+}

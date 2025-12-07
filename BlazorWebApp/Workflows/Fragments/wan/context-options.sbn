@@ -1,0 +1,25 @@
+#meta
+{
+  "outputs": {
+    "context_options": { "node": "context_opts", "index": 0 }
+  }
+}
+#end
+
+{
+  "context_opts": {
+    "inputs": {
+      "context_schedule": {{ context_schedule ?? "uniform_standard" | json }},
+      "context_frames": {{ context_frames ?? 81 | json }},
+      "context_stride": {{ context_stride ?? 4 | json }},
+      "context_overlap": {{ context_overlap ?? 16 | json }},
+      "freenoise": {{ freenoise ?? true | json }},
+      "verbose": false,
+      "fuse_method": {{ fuse_method ?? "linear" | json }}
+    },
+    "class_type": "WanVideoContextOptions",
+    "_meta": {
+      "title": "WanVideo Context Options"
+    }
+  }
+}
