@@ -1,3 +1,4 @@
+@using BlazorWebApp.Components.Shared.Generation
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 @using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
@@ -8,6 +9,12 @@
 @implements IDisposable
 
 @page "/comfyui/img2vid/{id}"
+
+@* Workflow Assets Panel - Full width before prompts *@
+<WorkflowAssetsPanel Mode="ModeType.Img2Vid" 
+                     Workflow="@GetCurrentWorkflow()"
+                     Columns="4"
+                     IsInitiallyExpanded="false" />
 
 <PromptFieldsSimple Prompt="@M.ParametersImg2Vid?.Prompt"
                     PromptChanged="HandlePromptChanged"
@@ -43,6 +50,15 @@
         M.OnWorkflowBaseChanged += Refresh;
         M.OnImg2VidParametersChanged += Refresh;
         M.OnImg2VidInputImageChanged += Refresh;
+    }
+
+    private Workflow? GetCurrentWorkflow()
+    {
+        if (!string.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out var workflowId))
+        {
+            return M.GetWorkflowById(workflowId);
+        }
+        return M.GetCurrentWorkflow();
     }
 
     private void HandlePromptChanged(string value)

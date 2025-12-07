@@ -1,4 +1,5 @@
 ﻿@page "/comfyui/txt2img/{id}"
+@using BlazorWebApp.Components.Shared.Generation
 @using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
 @inject ManagerService M
@@ -6,6 +7,12 @@
 @inject ImageService ImageService
 @inject NavigationManager NavManager
 @implements IDisposable
+
+@* Workflow Assets Panel - Full width before prompts *@
+<WorkflowAssetsPanel Mode="ModeType.Txt2Img" 
+                     Workflow="@GetCurrentWorkflow()"
+                     Columns="3"
+                     IsInitiallyExpanded="false" />
 
 <PromptFields @bind-Parameters="Parameters" T="Txt2ImgParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" OnStylesChanged="HandleStylesChanged"/>
 
@@ -29,6 +36,15 @@
         M.OnWorkflowBaseChanged += Refresh;
         M.OnTxt2ImgParametersChanged += InitializeParameters;
         InitializeParameters();
+    }
+
+    private Workflow? GetCurrentWorkflow()
+    {
+        if (!string.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out var workflowId))
+        {
+            return M.GetWorkflowById(workflowId);
+        }
+        return M.GetCurrentWorkflow();
     }
 
     private async void Generate()
@@ -73,6 +89,7 @@
         M.OnWorkflowBaseChanged -= Refresh;
         M.OnTxt2ImgParametersChanged -= InitializeParameters;
     }
+    
     private void HandleStylesChanged()
     {
         foreach (var style in M.State.Generation.Styles)

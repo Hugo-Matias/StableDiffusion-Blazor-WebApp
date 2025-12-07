@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Extensions;
+﻿using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using static BlazorWebApp.Data.Enums;
 
@@ -31,8 +32,8 @@ namespace BlazorWebApp.Services
         {
             if (_m.IsComfyUIUp)
             {
-                var model = _m.State.Generation.SDModel;
-                var vae = _m.State.Generation.Vae;
+                var model = _m.GetCurrentModel(ModeType.Txt2Img);
+                var vae = _m.GetCurrentVae(ModeType.Txt2Img);
                 var workflow = parameters.Comfy.Workflow ?? _m.ParametersTxt2Img.Comfy.Workflow;
                 return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _m.ComfyWSClientId, workflow);
             }

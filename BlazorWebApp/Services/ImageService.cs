@@ -49,7 +49,7 @@ namespace BlazorWebApp.Services
 
             ImagesDto images = new();
             string scriptName = string.Empty;
-            _currentModel = _m.State.Generation.SDModel;
+            _currentModel = _m.GetCurrentModel(mode);
 
             try
             {
@@ -87,7 +87,9 @@ namespace BlazorWebApp.Services
                     throw new Exception("Generation Canceled!");
                 }
 
-                if ((bool)_m.Options.SamplesSave)
+                await _m.GetOptions();
+
+                if (_m.Options?.SamplesSave == true)
                 {
                     switch (mode)
                     {
@@ -122,7 +124,7 @@ namespace BlazorWebApp.Services
         {
             _m.IsConverging = true;
             GeneratedVideos = null;
-            _currentModel = _m.State.Generation.SDModel;
+            _currentModel = _m.GetCurrentModel(ModeType.Img2Vid);
 
             try
             {
@@ -144,7 +146,9 @@ namespace BlazorWebApp.Services
                 // Store the seed used for this generation
                 _m.State.Generation.Seed = (long)_img2vidParams.Seed;
 
-                if ((bool)_m.Options.SamplesSave && GeneratedVideos?.Videos?.Count > 0)
+                await _m.GetOptions();
+
+                if (_m.Options?.SamplesSave == true && GeneratedVideos?.Videos?.Count > 0)
                 {
                     await SaveVideos(GeneratedVideos);
                 }

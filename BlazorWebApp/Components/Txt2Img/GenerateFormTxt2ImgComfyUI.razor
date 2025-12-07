@@ -1,5 +1,6 @@
 ﻿@using System.Text.Json
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
+@using BlazorWebApp.Components.Shared
 @using static BlazorWebApp.Data.Enums
 @inject ManagerService M
 
@@ -239,6 +240,36 @@
         
         RefreshHighresInfo();
         RefreshSeedVR2Info();
+    }
+
+    /// <summary>
+    /// Gets the current Txt2Img workflow based on the selected workflow or base.
+    /// </summary>
+    private Workflow? GetCurrentWorkflow()
+    {
+        // Get workflows for Txt2Img mode
+        var workflows = M.GetWorkflowsForMode(ModeType.Txt2Img);
+        if (workflows == null || workflows.Count == 0)
+            return null;
+
+        // If a specific workflow is selected, use that
+        if (M.State?.Generation?.CurrentWorkflowId.HasValue == true)
+        {
+            var selected = workflows.FirstOrDefault(w => w.Id == M.State.Generation.CurrentWorkflowId.Value);
+            if (selected != null)
+                return selected;
+        }
+
+        // Try to match by WorkflowBase
+        if (M.State?.Generation?.WorkflowBase != default)
+        {
+            var byBase = workflows.FirstOrDefault(w => w.Base == M.State.Generation.WorkflowBase);
+            if (byBase != null)
+                return byBase;
+        }
+
+        // Default to first Txt2Img workflow
+        return workflows.FirstOrDefault();
     }
 
     private void SetRandomSeed() => Parameters.Seed = -1;

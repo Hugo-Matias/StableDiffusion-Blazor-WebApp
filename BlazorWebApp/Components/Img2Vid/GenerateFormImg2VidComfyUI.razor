@@ -1,4 +1,5 @@
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
+@using BlazorWebApp.Components.Shared
 @using static BlazorWebApp.Data.Enums
 @inject ManagerService M
 
@@ -231,41 +232,6 @@
                     </MudGrid>
                 </MudItem>
             }
-
-            @* Model Settings (Collapsible Advanced Section) *@
-            <MudItem xs="12">
-                <MudExpansionPanels Elevation="0">
-                    <MudExpansionPanel Text="Model Settings" IsInitiallyExpanded="false" Class="mt-3">
-                        <MudGrid>
-                            <MudItem xs="6">
-                                <MudTextField T="string" Value="M.ParametersImg2Vid.HighModel" 
-                                              ValueChanged="@((string v) => { M.ParametersImg2Vid.HighModel = v; NotifyChanged(); })"
-                                              Label="High Noise Model" />
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudTextField T="string" Value="M.ParametersImg2Vid.LowModel" 
-                                              ValueChanged="@((string v) => { M.ParametersImg2Vid.LowModel = v; NotifyChanged(); })"
-                                              Label="Low Noise Model" />
-                            </MudItem>
-                            <MudItem xs="4">
-                                <MudTextField T="string" Value="M.ParametersImg2Vid.Clip" 
-                                              ValueChanged="@((string v) => { M.ParametersImg2Vid.Clip = v; NotifyChanged(); })"
-                                              Label="CLIP" />
-                            </MudItem>
-                            <MudItem xs="4">
-                                <MudTextField T="string" Value="M.ParametersImg2Vid.ClipVision" 
-                                              ValueChanged="@((string v) => { M.ParametersImg2Vid.ClipVision = v; NotifyChanged(); })"
-                                              Label="CLIP Vision" />
-                            </MudItem>
-                            <MudItem xs="4">
-                                <MudTextField T="string" Value="M.ParametersImg2Vid.Vae" 
-                                              ValueChanged="@((string v) => { M.ParametersImg2Vid.Vae = v; NotifyChanged(); })"
-                                              Label="VAE" />
-                            </MudItem>
-                        </MudGrid>
-                    </MudExpansionPanel>
-                </MudExpansionPanels>
-            </MudItem>
         </MudGrid>
     </EditForm>
 </div>
