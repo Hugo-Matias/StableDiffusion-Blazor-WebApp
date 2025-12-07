@@ -55,6 +55,17 @@ namespace BlazorWebApp.Services
         public event Action OnResourcesStateChanged;
         public event Action OnWorkflowBaseChanged;
 
+        /// <summary>
+        /// Fired when the current workflow changes (via SetCurrentWorkflow).
+        /// Subscribe to this event to update UI components that depend on workflow assets.
+        /// </summary>
+        public event Action OnCurrentWorkflowChanged;
+
+        /// <summary>
+        /// Fired when the current workflow changes. Async version for components that need to await.
+        /// </summary>
+        public event Func<Workflow?, Task>? OnCurrentWorkflowChangedAsync;
+
         public AppState State { get; set; }
         public AppSettings Settings { get; set; }
         public Options Options { get; set; }
@@ -67,9 +78,12 @@ namespace BlazorWebApp.Services
         public ImagesDto GeneratedImageEntities { get; set; }
         public string? GridImage { get; set; }
         public InferenceProgress Progress { get; set; }
-        public List<SDModel> SDModels { get; set; }
-        public List<string> SDVAEs { get; set; }
-        public List<string> SDADetailerModels { get; set; }
+        public List<SDModel> CheckpointModels { get; set; } = new();
+        public List<SDModel> DiffusionModels { get; set; } = new();
+        public List<string> SDVAEs { get; set; } = new();
+        public List<string> ClipModels { get; set; } = new();
+        public List<string> ClipVisionModels { get; set; } = new();
+        public List<string> SDADetailerModels { get; set; } = new();
         public List<Models.Sampler> Samplers { get; set; }
         public List<Scheduler> Schedulers { get; set; }
         public List<PromptStyle> Styles { get; set; }
@@ -96,33 +110,33 @@ namespace BlazorWebApp.Services
         }
         public string CanvasMaskData { get; set; }
         public string UpscaleImageData { get; set; }
-        
+
         /// <summary>
         /// Input image data for Img2Vid generation (stored separately from parameters due to size)
         /// </summary>
         public string Img2VidInputImage
         {
-            get => _img2VidInputImage; 
+            get => _img2VidInputImage;
             set
             {
                 _img2VidInputImage = value;
                 OnImg2VidInputImageChanged?.Invoke();
             }
         }
-        
+
         /// <summary>
         /// Session-persisted generated videos for Img2Vid
         /// </summary>
         public GeneratedVideos SessionGeneratedVideos { get; set; } = new();
-        
+
         public event Action OnSessionVideosChanged;
-        
+
         public void AddSessionVideo(GeneratedVideo video)
         {
             SessionGeneratedVideos.Videos.Insert(0, video);
             OnSessionVideosChanged?.Invoke();
         }
-        
+
         public void AddSessionVideos(IEnumerable<GeneratedVideo> videos)
         {
             foreach (var video in videos)
@@ -131,24 +145,24 @@ namespace BlazorWebApp.Services
             }
             OnSessionVideosChanged?.Invoke();
         }
-        
+
         public void ClearSessionVideos()
         {
             SessionGeneratedVideos.Videos.Clear();
             OnSessionVideosChanged?.Invoke();
         }
-        
+
         public void InvokeSessionVideosChanged()
         {
             OnSessionVideosChanged?.Invoke();
         }
-        
+
         public void RemoveSessionVideo(GeneratedVideo video)
         {
             SessionGeneratedVideos.Videos.Remove(video);
             OnSessionVideosChanged?.Invoke();
         }
-        
+
         public bool ControlNetEnabled { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
         public bool IsGalleryFiltered { get; set; }
@@ -197,6 +211,7 @@ namespace BlazorWebApp.Services
             _capi = capi;
             _workflow = workflow;
             LoadSettings();
+            State = new AppState(Settings);
             LoadState();
 
             GetUpscalers();
@@ -352,7 +367,7 @@ namespace BlazorWebApp.Services
         private void InitializeImg2VidParameters()
         {
             var i2vSettings = Settings.Generation?.Img2Vid;
-            
+
             // Use defaults if settings are null
             if (i2vSettings == null)
             {
@@ -362,12 +377,15 @@ namespace BlazorWebApp.Services
 
             ParametersImg2Vid = new Img2VidParameters
             {
-                // Model settings
-                HighModel = i2vSettings.Models?.HighModel,
-                LowModel = i2vSettings.Models?.LowModel,
-                Clip = i2vSettings.Models?.Clip,
-                ClipVision = i2vSettings.Models?.ClipVision,
-                Vae = i2vSettings.Models?.Vae,
+                // Initialize WorkflowAssets with default model settings
+                WorkflowAssets = new Dictionary<string, string>
+                {
+                    ["HighModel"] = i2vSettings.Models?.HighModel ?? "",
+                    ["LowModel"] = i2vSettings.Models?.LowModel ?? "",
+                    ["Clip"] = i2vSettings.Models?.Clip ?? "",
+                    ["ClipVision"] = i2vSettings.Models?.ClipVision ?? "",
+                    ["Vae"] = i2vSettings.Models?.Vae ?? ""
+                },
 
                 // Video settings
                 Length = i2vSettings.Video?.Length?.Value ?? 81,
@@ -678,41 +696,112 @@ namespace BlazorWebApp.Services
         }
         #endregion
 
-        public async Task GetSDModels(bool refresh = false)
+        /// <summary>
+        /// Loads models based on the current workflow's asset requirements.
+        /// For WebUI (deprecated): loads all models as CheckpointModels.
+        /// For ComfyUI: loads models based on workflow asset types (Checkpoint, Diffusion, VAE, CLIP, etc.)
+        /// </summary>
+        public async Task GetWorkflowModels(bool refresh = false)
         {
             if (IsWebuiUp)
             {
                 if (refresh) await _sdapi.PostRefreshModels();
-                SDModels = await _sdapi.GetSDModels();
-                SDModels = SDModels.OrderBy(m => m.Model_name).ToList();
+                // WebUI only supports checkpoint models
+                CheckpointModels = await _sdapi.GetSDModels();
+                CheckpointModels = CheckpointModels?.OrderBy(m => m.Model_name).ToList() ?? new List<SDModel>();
+                OnSDModelsChange?.Invoke();
+                return;
             }
-            else if (IsComfyUIUp)
+
+            if (!IsComfyUIUp)
+                return;
+
+            var currentWorkflow = GetCurrentWorkflow();
+            if (currentWorkflow?.Assets == null || currentWorkflow.Assets.Count == 0)
             {
-                //if (State.Generation.Workflows == null) GetComfyWorkflows();
+                // No assets defined, load checkpoints as fallback
+                CheckpointModels = await _capi.GetCheckpoints();
+                OnSDModelsChange?.Invoke();
+                return;
+            }
 
-                var currentWorkflowBase = new Workflow() { ModelType = ModelType.Checkpoint };
+            // Load models based on asset types defined in workflow
+            var assetTypes = currentWorkflow.Assets.Select(a => a.Type).Distinct().ToList();
 
-                if (State.Generation.Workflows != null && State.Generation.Workflows.Count > 0)
+            foreach (var assetType in assetTypes)
+            {
+                switch (assetType)
                 {
-                    currentWorkflowBase = State.Generation.WorkflowBase == null
-                                            ? State.Generation.Workflows.FirstOrDefault()
-                                            : State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-                }
+                    case AssetType.CheckpointModel:
+                        CheckpointModels = await _capi.GetCheckpoints();
+                        break;
 
-                SDModels = currentWorkflowBase.ModelType switch
-                {
-                    ModelType.Diffusion => await _capi.GetDiffusionModels(),
-                    _ => await _capi.GetCheckpoints(),
-                };
+                    case AssetType.DiffusionModel:
+                        DiffusionModels = await _capi.GetDiffusionModels();
+                        break;
 
-                if (!string.IsNullOrWhiteSpace(State.Generation.SDModel) &&
-                    (SDModels == null || !SDModels.Any(m => m.Model_name == State.Generation.SDModel)))
-                {
-                    SetDefaultBaseModel();
+                    case AssetType.Vae:
+                        SDVAEs = await _capi.GetVAEs();
+                        break;
+
+                    case AssetType.Clip:
+                        ClipModels = await _capi.GetClipModels();
+                        break;
+
+                    case AssetType.ClipVision:
+                        ClipVisionModels = await _capi.GetClipVisionModels();
+                        break;
                 }
             }
 
             OnSDModelsChange?.Invoke();
+        }
+
+        /// <summary>
+        /// Gets the models for the current workflow based on its asset types.
+        /// Returns DiffusionModels if workflow uses diffusion, otherwise CheckpointModels.
+        /// </summary>
+        public List<SDModel> GetCurrentWorkflowModels()
+        {
+            var workflow = GetCurrentWorkflow();
+            if (workflow?.Assets != null && workflow.Assets.Any(a => a.Type == AssetType.DiffusionModel))
+            {
+                return DiffusionModels ?? new List<SDModel>();
+            }
+            return CheckpointModels ?? new List<SDModel>();
+        }
+
+        /// <summary>
+        /// Legacy method - calls GetWorkflowModels for backward compatibility.
+        /// </summary>
+        [Obsolete("Use GetWorkflowModels() instead")]
+        public Task GetSDModels(bool refresh = false) => GetWorkflowModels(refresh);
+
+        /// <summary>
+        /// Gets the currently active workflow based on CurrentWorkflowId.
+        /// Falls back to first workflow matching WorkflowBase if CurrentWorkflowId is not set.
+        /// </summary>
+        public Workflow? GetCurrentWorkflow()
+        {
+            if (State?.Generation?.Workflows == null || State.Generation.Workflows.Count == 0)
+                return null;
+
+            // Priority 1: Use CurrentWorkflowId if set
+            if (State.Generation.CurrentWorkflowId.HasValue)
+            {
+                var workflow = State.Generation.Workflows.FirstOrDefault(w => w.Id == State.Generation.CurrentWorkflowId.Value);
+                if (workflow != null)
+                    return workflow;
+            }
+
+            // Priority 2: Fallback to first workflow matching WorkflowBase
+            if (State.Generation.WorkflowBase != default)
+            {
+                return State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+            }
+
+            // Priority 3: Return first available workflow
+            return State.Generation.Workflows.FirstOrDefault();
         }
 
         public async Task GetSDVAEs()
@@ -736,46 +825,22 @@ namespace BlazorWebApp.Services
             else if (IsComfyUIUp) SDADetailerModels = await _capi.GetBBoxDetailers();
         }
 
+        /// <summary>
+        /// Legacy method - use SetCurrentModel instead.
+        /// </summary>
+        [Obsolete("Use SetCurrentModel() instead")]
         public async Task SetSDModel(string modelTitle)
         {
-            if (IsWebuiUp)
-            {
-                State.Generation.SDModel = "Loading...";
-                OnSDModelsChange?.Invoke();
-                var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
-                _progress.Add(progressBar);
-                await _sdapi.PostOptions(new() { SDModelCheckpoint = modelTitle });
-                //await _api.PostReloadModel();
-                _progress.Remove(progressBar.Id);
-            }
-
-            if (IsComfyUIUp)
-            {
-                var currentWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-                var modelType = currentWorkflow?.ModelType ?? ModelType.Checkpoint;
-
-                List<SDModel> models = modelType switch
-                {
-                    ModelType.Diffusion => await _capi.GetDiffusionModels(),
-                    _ => await _capi.GetCheckpoints()
-                };
-
-                var matchedModel = models.FirstOrDefault(m => m.Model_name.Contains(modelTitle, StringComparison.OrdinalIgnoreCase));
-                if (matchedModel != null)
-                {
-                    modelTitle = matchedModel.Model_name;
-                }
-            }
-
-            State.Generation.SDModel = modelTitle;
-            OnSDModelsChange?.Invoke();
-            SaveState();
+            await SetCurrentModel(modelTitle);
         }
 
+        /// <summary>
+        /// Legacy method - use SetCurrentVae instead.
+        /// </summary>
+        [Obsolete("Use SetCurrentVae() instead")]
         public async Task SetVae(string vae)
         {
-            State.Generation.Vae = vae;
-            await _sdapi.PostOptions(new() { SDVae = vae });
+            await SetCurrentVae(vae);
         }
 
         public async Task GetOptions()
@@ -884,13 +949,151 @@ namespace BlazorWebApp.Services
 
         public Workflow GetWorkflowById(Guid id) => State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
 
+        /// <summary>
+        /// Sets the current workflow by ID and fires change events.
+        /// Updates CurrentWorkflowId in state and triggers OnCurrentWorkflowChanged.
+        /// </summary>
+        /// <param name="workflowId">The workflow ID to set as current</param>
+        /// <param name="mode">Optional mode to also set WorkflowAssets for (defaults to Txt2Img)</param>
+        public void SetCurrentWorkflow(Guid workflowId, ModeType? mode = null)
+        {
+            var workflow = GetWorkflowById(workflowId);
+            if (workflow == null) return;
+
+            State.Generation.CurrentWorkflowId = workflowId;
+            State.Generation.WorkflowBase = workflow.Base;
+
+            OnWorkflowBaseChanged?.Invoke();
+            OnCurrentWorkflowChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Sets the current workflow by ID and initializes workflow assets.
+        /// Use this when you want to resolve asset values against ComfyUI.
+        /// </summary>
+        /// <param name="workflowId">The workflow ID to set as current</param>
+        /// <param name="assetResolver">The asset resolver service to use for initialization</param>
+        /// <param name="mode">The mode to initialize assets for</param>
+        /// <returns>True if workflow was set and assets initialized successfully</returns>
+        public async Task<bool> SetCurrentWorkflowAsync(Guid workflowId, IAssetResolverService assetResolver, ModeType? mode = null)
+        {
+            var workflow = GetWorkflowById(workflowId);
+            if (workflow == null) return false;
+
+            State.Generation.CurrentWorkflowId = workflowId;
+            State.Generation.WorkflowBase = workflow.Base;
+
+            // Initialize workflow assets if workflow has assets defined
+            bool assetsInitialized = true;
+            if (workflow.Assets != null && workflow.Assets.Count > 0)
+            {
+                var assets = GetOrCreateWorkflowAssetsForMode(mode);
+                assetsInitialized = await assetResolver.InitializeWorkflowAssets(workflow, assets);
+            }
+
+            // Load models for this workflow
+            await GetWorkflowModels();
+
+            OnWorkflowBaseChanged?.Invoke();
+            OnCurrentWorkflowChanged?.Invoke();
+
+            // Fire async event
+            if (OnCurrentWorkflowChangedAsync != null)
+            {
+                await OnCurrentWorkflowChangedAsync.Invoke(workflow);
+            }
+
+            await SaveState();
+            return assetsInitialized;
+        }
+
+        /// <summary>
+        /// Gets the list of workflows available for a specific mode.
+        /// Filters workflows by the mode type they support.
+        /// </summary>
+        /// <param name="mode">The mode to filter workflows for</param>
+        /// <returns>List of workflows that support the specified mode</returns>
+        public List<Workflow> GetWorkflowsForMode(ModeType mode)
+        {
+            if (State?.Generation?.Workflows == null)
+                return new List<Workflow>();
+
+            return State.Generation.Workflows
+                .Where(w => w.Mode == mode)
+                .OrderBy(w => w.Title)
+                .ToList();
+        }
+
         public void SetWorkflowBase(ModelBase workflowBase)
         {
+            var previousBase = State.Generation.WorkflowBase;
             State.Generation.WorkflowBase = workflowBase;
+            
+            // If base changed, reset workflow assets to use workflow defaults
+            if (previousBase != workflowBase)
+            {
+                ResetWorkflowAssetsToDefaults();
+            }
+            
             OnWorkflowBaseChanged?.Invoke();
             SetDefaultBaseModel();
         }
 
+        /// <summary>
+        /// Resets all workflow assets for all modes to use the workflow template defaults.
+        /// This is called when WorkflowBase changes to ensure the correct models are loaded.
+        /// </summary>
+        private void ResetWorkflowAssetsToDefaults()
+        {
+            // Get the new workflow for each mode and reset assets to its defaults
+            var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
+            
+            foreach (var mode in modes)
+            {
+                var workflows = GetWorkflowsForMode(mode);
+                var workflow = workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+                
+                if (workflow?.Assets == null || workflow.Assets.Count == 0)
+                    continue;
+                
+                // Clear existing assets for this mode and set to workflow defaults
+                var assets = GetOrCreateWorkflowAssetsForMode(mode);
+                assets.Clear();
+                
+                foreach (var asset in workflow.Assets)
+                {
+                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                    {
+                        assets[asset.Parameter] = asset.DefaultValue;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Resets the current workflow ID and workflow assets to their default values.
+        /// This is typically used when clearing the current generation settings.
+        /// </summary>
+        public void ResetCurrentWorkflow()
+        {
+            State.Generation.CurrentWorkflowId = null;
+            State.Generation.WorkflowBase = default;
+
+            // Reset all workflow assets to defaults
+            var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
+            foreach (var mode in modes)
+            {
+                var assets = GetOrCreateWorkflowAssetsForMode(mode);
+                assets.Clear();
+            }
+
+            OnCurrentWorkflowChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Sets the default model for the current workflow based on its pipeline configuration.
+        /// This is called after setting the workflow base to ensure the correct default model is used.
+        /// </summary>
         public void SetDefaultBaseModel()
         {
             var modelKeys = new[] { "ckpt_name", "unet_name" };
@@ -905,12 +1108,17 @@ namespace BlazorWebApp.Services
                         .FirstOrDefault(s => s.Parameters?.ContainsKey(k) == true)?
                         .Parameters[k]?.ToString())
                     .FirstOrDefault()?
-
                     .GetDefaultModelFromWorkflow();
-                    
+
                 if (!string.IsNullOrWhiteSpace(defaultModel))
                 {
-                    State.Generation.SDModel = defaultModel;
+                    // Set model on Txt2Img parameters (primary mode) using WorkflowAssets
+                    if (ParametersTxt2Img != null)
+                    {
+                        ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
+                        ParametersTxt2Img.WorkflowAssets["Model"] = defaultModel;
+                    }
+                    OnSDModelsChange?.Invoke();
                 }
             }
         }
@@ -1049,7 +1257,7 @@ namespace BlazorWebApp.Services
                     else
                     {
                         // Transforms this "Base/v1-5-pruned-emaonly.safetensors" into "Base\\v1-5-pruned-emaonly"
-                        var modelAsPath = State.Generation.SDModel?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
+                        var modelAsPath = GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
                         return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
                     }
                 default:
@@ -1105,9 +1313,21 @@ namespace BlazorWebApp.Services
             return string.Empty;
         }
 
-        private string GetModelHash(string modelName) => SDModels.FirstOrDefault(m => m.Title.Contains(modelName))?.Hash;
+        private string GetModelHash(string modelName)
+        {
+            // Search in all model lists
+            var model = CheckpointModels?.FirstOrDefault(m => m.Title.Contains(modelName))
+                     ?? DiffusionModels?.FirstOrDefault(m => m.Title.Contains(modelName));
+            return model?.Hash;
+        }
 
-        private string GetModelName(string modelName) => SDModels.FirstOrDefault(m => m.Title.Contains(modelName))?.Model_name;
+        private string GetModelName(string modelName)
+        {
+            // Search in all model lists
+            var model = CheckpointModels?.FirstOrDefault(m => m.Title.Contains(modelName))
+                     ?? DiffusionModels?.FirstOrDefault(m => m.Title.Contains(modelName));
+            return model?.Model_name;
+        }
 
         public async Task GetResourceTypeDirectories()
         {
@@ -1282,6 +1502,9 @@ namespace BlazorWebApp.Services
 
                 NormalizeState();
 
+                // Migrate legacy model settings from AppState to parameter models
+                MigrateLegacyModelSettings();
+
                 OnAppStateChanged?.Invoke();
                 OnTxt2ImgParametersChanged?.Invoke();
                 OnImg2ImgParametersChanged?.Invoke();
@@ -1334,6 +1557,232 @@ namespace BlazorWebApp.Services
             StateNormalizer.Normalize(ParametersImg2Img);
             StateNormalizer.Normalize(ParametersUpscale);
             StateNormalizer.Normalize(ParametersImg2Vid);
+        }
+
+        /// <summary>
+        /// Gets the appropriate model list based on asset type
+        /// </summary>
+        public List<SDModel> GetModelsForAssetType(AssetType assetType)
+        {
+            return assetType switch
+            {
+                AssetType.CheckpointModel => CheckpointModels ?? new List<SDModel>(),
+                AssetType.DiffusionModel => DiffusionModels ?? new List<SDModel>(),
+                _ => new List<SDModel>()
+            };
+        }
+
+        /// <summary>
+        /// Gets available options for any asset type.
+        /// Returns a list of filenames/model names that can be selected for the given asset type.
+        /// </summary>
+        public async Task<List<string>> GetAssetOptions(AssetType assetType)
+        {
+            return assetType switch
+            {
+                AssetType.CheckpointModel => (CheckpointModels ?? await _capi.GetCheckpoints())?.Select(m => m.Model_name).ToList() ?? new List<string>(),
+                AssetType.DiffusionModel => (DiffusionModels ?? await _capi.GetDiffusionModels())?.Select(m => m.Model_name).ToList() ?? new List<string>(),
+                AssetType.Vae => SDVAEs ?? await _capi.GetVAEs(),
+                AssetType.Clip => ClipModels ?? await _capi.GetClipModels(),
+                AssetType.ClipVision => ClipVisionModels ?? await _capi.GetClipVisionModels(),
+                _ => new List<string>()
+            };
+        }
+
+        #region WorkflowAssets Management
+
+        /// <summary>
+        /// Gets a workflow asset value for the specified mode.
+        /// </summary>
+        /// <param name="parameter">The asset parameter name (e.g., "Model", "HighModel", "Vae")</param>
+        /// <param name="mode">The generation mode (defaults to Txt2Img)</param>
+        /// <returns>The asset value or null if not set</returns>
+        public string? GetWorkflowAsset(string parameter, ModeType? mode = null)
+        {
+            var assets = GetWorkflowAssetsForMode(mode);
+            return assets?.GetValueOrDefault(parameter);
+        }
+
+        /// <summary>
+        /// Sets a workflow asset value for the specified mode.
+        /// </summary>
+        /// <param name="parameter">The asset parameter name (e.g., "Model", "HighModel", "Vae")</param>
+        /// <param name="value">The asset value to set</param>
+        /// <param name="mode">The generation mode (defaults to Txt2Img)</param>
+        public void SetWorkflowAsset(string parameter, string value, ModeType? mode = null)
+        {
+            var assets = GetOrCreateWorkflowAssetsForMode(mode);
+            assets[parameter] = value;
+        }
+
+        /// <summary>
+        /// Gets the WorkflowAssets dictionary for the specified mode.
+        /// Returns null if the dictionary doesn't exist.
+        /// </summary>
+        public Dictionary<string, string>? GetWorkflowAssetsForMode(ModeType? mode)
+        {
+            return mode switch
+            {
+                ModeType.Img2Img => ParametersImg2Img?.WorkflowAssets,
+                ModeType.Img2Vid => ParametersImg2Vid?.WorkflowAssets,
+                ModeType.Extras => ParametersUpscale?.WorkflowAssets,
+                _ => ParametersTxt2Img?.WorkflowAssets
+            };
+        }
+
+        /// <summary>
+        /// Gets or creates the WorkflowAssets dictionary for the specified mode.
+        /// </summary>
+        private Dictionary<string, string> GetOrCreateWorkflowAssetsForMode(ModeType? mode)
+        {
+            switch (mode)
+            {
+                case ModeType.Img2Img:
+                    ParametersImg2Img.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersImg2Img.WorkflowAssets;
+                case ModeType.Img2Vid:
+                    ParametersImg2Vid.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersImg2Vid.WorkflowAssets;
+                case ModeType.Extras:
+                    ParametersUpscale.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersUpscale.WorkflowAssets;
+                default:
+                    ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersTxt2Img.WorkflowAssets;
+            }
+        }
+
+        /// <summary>
+        /// Gets the assets defined for the current workflow.
+        /// </summary>
+        public List<WorkflowAsset>? GetCurrentWorkflowAssets()
+        {
+            var workflow = GetCurrentWorkflow();
+            return workflow?.Assets?.OrderBy(a => a.Order).ToList();
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Gets the current model name based on mode using WorkflowAssets.
+        /// For Txt2Img/Img2Img: returns "Model" asset
+        /// For Img2Vid: returns "HighModel" asset
+        /// </summary>
+        public string GetCurrentModel(ModeType? mode = null)
+        {
+            var modelKey = mode == ModeType.Img2Vid ? "HighModel" : "Model";
+            var value = GetWorkflowAsset(modelKey, mode);
+            return !string.IsNullOrWhiteSpace(value) ? value : "Loading...";
+        }
+
+        /// <summary>
+        /// Sets the current model name based on mode using WorkflowAssets.
+        /// </summary>
+        public async Task SetCurrentModel(string modelTitle, ModeType? mode = null)
+        {
+            if (IsWebuiUp)
+            {
+                var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
+                _progress.Add(progressBar);
+                await _sdapi.PostOptions(new() { SDModelCheckpoint = modelTitle });
+                _progress.Remove(progressBar.Id);
+            }
+
+            if (IsComfyUIUp)
+            {
+                var currentWorkflow = GetCurrentWorkflow();
+
+                if (currentWorkflow?.Assets != null && currentWorkflow.Assets.Count > 0)
+                {
+                    var modelAssetTypes = currentWorkflow.Assets
+                        .Where(a => a.Type == AssetType.CheckpointModel || a.Type == AssetType.DiffusionModel)
+                        .Select(a => a.Type)
+                        .Distinct()
+                        .ToList();
+
+                    foreach (var assetType in modelAssetTypes)
+                    {
+                        var models = GetModelsForAssetType(assetType);
+                        var match = models.FirstOrDefault(m => m.Model_name.Contains(modelTitle, StringComparison.OrdinalIgnoreCase));
+
+                        if (match != null)
+                        {
+                            modelTitle = match.Model_name;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Set model using WorkflowAssets
+            var modelKey = mode == ModeType.Img2Vid ? "HighModel" : "Model";
+            SetWorkflowAsset(modelKey, modelTitle, mode);
+
+            OnSDModelsChange?.Invoke();
+            await SaveState();
+        }
+
+        /// <summary>
+        /// Gets the current VAE name based on mode using WorkflowAssets.
+        /// </summary>
+        public string? GetCurrentVae(ModeType? mode = null)
+        {
+            return GetWorkflowAsset("Vae", mode);
+        }
+
+        /// <summary>
+        /// Sets the current VAE name based on mode using WorkflowAssets.
+        /// </summary>
+        public async Task SetCurrentVae(string vae, ModeType? mode = null)
+        {
+            if (IsWebuiUp)
+            {
+                await _sdapi.PostOptions(new() { SDVae = vae });
+            }
+
+            SetWorkflowAsset("Vae", vae, mode);
+            await SaveState();
+        }
+
+        /// <summary>
+        /// Migrates legacy SDModel and Vae from AppState to WorkflowAssets.
+        /// Call this after loading state to ensure backward compatibility.
+        /// </summary>
+        private void MigrateLegacyModelSettings()
+        {
+#pragma warning disable CS0618 // Suppress obsolete warnings for migration
+
+            // Migrate legacy SDModel from AppState
+            if (!string.IsNullOrWhiteSpace(State?.Generation?.SDModel) && State.Generation.SDModel != "Loading...")
+            {
+                var currentTxt2ImgModel = GetWorkflowAsset("Model", ModeType.Txt2Img);
+                if (string.IsNullOrWhiteSpace(currentTxt2ImgModel))
+                    SetWorkflowAsset("Model", State.Generation.SDModel, ModeType.Txt2Img);
+
+                var currentImg2ImgModel = GetWorkflowAsset("Model", ModeType.Img2Img);
+                if (string.IsNullOrWhiteSpace(currentImg2ImgModel))
+                    SetWorkflowAsset("Model", State.Generation.SDModel, ModeType.Img2Img);
+
+                // Clear legacy property after migration
+                State.Generation.SDModel = null;
+            }
+
+            // Migrate legacy Vae from AppState
+            if (!string.IsNullOrWhiteSpace(State?.Generation?.Vae))
+            {
+                var currentTxt2ImgVae = GetWorkflowAsset("Vae", ModeType.Txt2Img);
+                if (string.IsNullOrWhiteSpace(currentTxt2ImgVae))
+                    SetWorkflowAsset("Vae", State.Generation.Vae, ModeType.Txt2Img);
+
+                var currentImg2ImgVae = GetWorkflowAsset("Vae", ModeType.Img2Img);
+                if (string.IsNullOrWhiteSpace(currentImg2ImgVae))
+                    SetWorkflowAsset("Vae", State.Generation.Vae, ModeType.Img2Img);
+
+                // Clear legacy property after migration
+                State.Generation.Vae = null;
+            }
+
+#pragma warning restore CS0618
         }
     }
 }
