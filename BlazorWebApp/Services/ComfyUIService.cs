@@ -21,10 +21,10 @@ namespace BlazorWebApp.Services
         private readonly IConfiguration _configuration;
         private readonly JsonSerializerOptions _jsonIgnoreNull;
         private readonly ConcurrentDictionary<Guid, object> _pendingJobs = new();
-        
+
         // Track uploaded images for cleanup: promptId -> list of uploaded filenames
         private readonly ConcurrentDictionary<Guid, List<string>> _uploadedImages = new();
-        
+
         // Cache of image hashes to filenames to avoid re-uploading identical images
         private readonly ConcurrentDictionary<string, string> _imageHashCache = new();
 
@@ -65,7 +65,7 @@ namespace BlazorWebApp.Services
                         llmTcs.SetException(new Exception(error));
                     }
                 }
-                
+
                 // Cleanup uploaded input images on failure
                 await CleanupUploadedImagesAsync(promptId);
             };
@@ -81,7 +81,7 @@ namespace BlazorWebApp.Services
             }
 
             var objType = obj.GetType();
-            
+
             // Check for LLM job
             var isLLMJob = objType.IsGenericType &&
                            objType.GetGenericTypeDefinition() == typeof(TaskCompletionSource<>) &&
@@ -192,7 +192,7 @@ namespace BlazorWebApp.Services
                 foreach (var file in files)
                 {
                     var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", file);
-                    
+
                     if (!File.Exists(filepath))
                     {
                         _logger.LogWarning("Video file not found on disk: {FilePath}", filepath);
@@ -281,6 +281,18 @@ namespace BlazorWebApp.Services
         public async Task<List<string>> GetTextEncoders() => await GetModels("text_encoders", m => m);
 
         public async Task<List<SDModel>> GetDiffusionModels() => await GetModels("diffusion_models", m => new SDModel { Title = m, Model_name = m });
+
+        /// <summary>
+        /// Gets available CLIP models from ComfyUI.
+        /// Maps to the "clip" model type which includes text encoders like T5, CLIP-L, etc.
+        /// </summary>
+        public async Task<List<string>> GetClipModels() => await GetModels("text_encoders", m => m);
+
+        /// <summary>
+        /// Gets available CLIP Vision models from ComfyUI.
+        /// Maps to the "clip_vision" model type for image understanding models.
+        /// </summary>
+        public async Task<List<string>> GetClipVisionModels() => await GetModels("clip_vision", m => m);
 
         public async Task<List<string>> GetLoras() => await GetModels("loras", m => m);
 
@@ -493,10 +505,10 @@ namespace BlazorWebApp.Services
             }
 
             var imageBytes = Convert.FromBase64String(base64);
-            
+
             // Generate hash of image content for deduplication
             var hash = ComputeHash(imageBytes);
-            
+
             // Check if we already uploaded this exact image
             if (_imageHashCache.TryGetValue(hash, out var existingFilename))
             {
@@ -518,10 +530,10 @@ namespace BlazorWebApp.Services
 
             var result = await response.Content.ReadFromJsonAsync<ComfyUIUploadResponse>();
             var uploadedFilename = result?.Name ?? filename;
-            
+
             // Cache the hash -> filename mapping
             _imageHashCache[hash] = uploadedFilename;
-            
+
             // Track for cleanup if we have a promptId
             if (promptId.HasValue)
             {
@@ -617,7 +629,7 @@ namespace BlazorWebApp.Services
             // Generate a temporary prompt ID for tracking uploads
             // We'll get the real one after submission
             var tempId = Guid.NewGuid();
-            
+
             // Upload the image first if it's base64 data
             if (!string.IsNullOrEmpty(param.Image) && (param.Image.StartsWith("data:") || param.Image.Length > 260))
             {
@@ -630,7 +642,7 @@ namespace BlazorWebApp.Services
             var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
 
             var payload = new { prompt = workflowObject, client_id = clientId };
-            
+
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -644,7 +656,7 @@ namespace BlazorWebApp.Services
 
             var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
             var promptId = Guid.Parse(submit.PromptId);
-            
+
             // Transfer the uploaded images tracking from temp ID to real prompt ID
             if (_uploadedImages.TryRemove(tempId, out var uploadedFiles))
             {

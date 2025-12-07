@@ -42,6 +42,8 @@ builder.Services.AddSingleton<WorkflowService>();
 builder.Services.AddSingleton<DynamicPromptsService>();
 builder.Services.AddSingleton<CacheService>();
 builder.Services.AddSingleton<ThemeService>();
+// Asset resolution service for workflow models
+builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddScoped<OllamaService>();
