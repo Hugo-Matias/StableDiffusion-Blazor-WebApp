@@ -1,9 +1,11 @@
-﻿using BlazorWebApp.Data.Dtos.WebUI;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
+using BlazorWebApp.Data.Dtos.WebUI;
 
 namespace BlazorWebApp.Models
 {
     public class Img2ImgParameters : SharedParameters
     {
+        // WebUI-specific properties
         public List<string> InitImages { get; set; }
         public string Mask { get; set; }
         public int MaskBlur { get; set; }
@@ -13,6 +15,15 @@ namespace BlazorWebApp.Models
         public int InpaintFullResPadding { get; set; }
         public int InpaintingMaskInvert { get; set; }
         public Img2ImgScriptParameters Scripts { get; set; }
+
+        // ComfyUI-specific properties
+        public string? Image { get; set; }
+        public float? Megapixels { get; set; } = 1;
+        public string? LightningLora { get; set; }
+        public float? LoraStrength { get; set; } = 1;
+        public int? ModelShift { get; set; } = 3;
+        public float? CfgNormStrength { get; set; } = 1;
+        public float? Denoise { get; set; } = 1;
 
         public Img2ImgParameters() { }
         public Img2ImgParameters(SharedParameters clone)
@@ -52,6 +63,37 @@ namespace BlazorWebApp.Models
             AlwaysOnScripts = clone.AlwaysOnScripts;
             ScriptName = clone.ScriptName;
             ScriptArgs = clone.ScriptArgs;
+        }
+
+        /// <summary>
+        /// Converts to Img2ImgComfyUI DTO for workflow rendering
+        /// </summary>
+        public Img2ImgComfyUI ToComfyUI()
+        {
+            return new Img2ImgComfyUI
+            {
+                Prompt = Prompt,
+                NegativePrompt = NegativePrompt,
+                Seed = Seed,
+                Steps = Steps,
+                CfgScale = CfgScale,
+                SamplerName = SamplerName,
+                Scheduler = Scheduler,
+                Width = Width,
+                Height = Height,
+                BatchSize = BatchSize,
+                Image = Image,
+                Model = WorkflowAssets?.GetValueOrDefault("Model"),
+                Clip = WorkflowAssets?.GetValueOrDefault("Clip"),
+                Vae = WorkflowAssets?.GetValueOrDefault("Vae"),
+                Megapixels = Megapixels,
+                LightningLora = LightningLora,
+                LoraStrength = LoraStrength,
+                ModelShift = ModelShift,
+                CfgNormStrength = CfgNormStrength,
+                Denoise = Denoise,
+                Loras = Loras?.Where(l => l.IsEnabled && !l.IsNegative).ToList()
+            };
         }
     }
 

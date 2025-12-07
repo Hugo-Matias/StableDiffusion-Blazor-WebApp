@@ -46,8 +46,13 @@ namespace BlazorWebApp.Services
         public async Task<GeneratedImages> PostImg2Img(Img2ImgParameters parameters)
         {
             if (_m.IsComfyUIUp)
-                //return await _capi.PostImg2Img(parameters);
-                throw new Exception("Not implemented");
+            {
+                var workflow = parameters.Comfy.Workflow ?? _m.ParametersImg2Img.Comfy.Workflow;
+                if (workflow == null)
+                    throw new InvalidOperationException("No workflow configured for Img2Img generation");
+
+                return await _capi.PostImg2Img(parameters.ToComfyUI(), _m.ComfyWSClientId, workflow);
+            }
             if (_m.IsWebuiUp)
                 return await _sdapi.PostImg2Img(parameters.ToImg2ImgWebUI());
             throw new InvalidOperationException("No backend available");

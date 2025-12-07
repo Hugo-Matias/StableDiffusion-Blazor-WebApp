@@ -1,0 +1,256 @@
+@using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
+@using BlazorWebApp.Components.Shared
+@using static BlazorWebApp.Data.Enums
+@inject ManagerService M
+
+@if (M.ParametersImg2Img != null)
+{
+<div style="margin-bottom:15rem;">
+    <EditForm Model="@M.ParametersImg2Img">
+        <MudGrid Class="pa-5">
+            @* LoRA Support *@
+            <MudItem xs="12">
+                <LoraForm Loras="M.ParametersImg2Img.Loras" Backend="Backend.ComfyUI" />
+            </MudItem>
+
+            @* Sampling Settings *@
+            <MudItem xs="6">
+                <MudSelect T="string" Label="Sampler" Value="M.ParametersImg2Img.SamplerName" 
+                           ValueChanged="@((string v) => { M.ParametersImg2Img.SamplerName = v; NotifyChanged(); })"
+                           AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    @if (M.Samplers != null)
+                    {
+                        @foreach (var sampler in M.Samplers)
+                        {
+                            <MudSelectItem Value="@sampler.Name" />
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSelect T="string" Label="Scheduler" Value="M.ParametersImg2Img.Scheduler" 
+                           ValueChanged="@((string v) => { M.ParametersImg2Img.Scheduler = v; NotifyChanged(); })"
+                           AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    @if (M.Schedulers != null)
+                    {
+                        @foreach (var scheduler in M.Schedulers)
+                        {
+                            <MudSelectItem Value="@scheduler.Name" />
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="4">
+                <MudSlider T="int?" Value="M.ParametersImg2Img.Steps" 
+                           ValueChanged="@((int? v) => { M.ParametersImg2Img.Steps = v; NotifyChanged(); })"
+                           Min="GetStepsSettings().Min" 
+                           Max="GetStepsSettings().Max" 
+                           Step="GetStepsSettings().Step" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>Steps:</small> @M.ParametersImg2Img.Steps
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double?" Value="M.ParametersImg2Img.CfgScale" 
+                           ValueChanged="@((double? v) => { M.ParametersImg2Img.CfgScale = v; NotifyChanged(); })"
+                           Min="GetCfgSettings().Min" 
+                           Max="GetCfgSettings().Max" 
+                           Step="GetCfgSettings().Step" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>CFG Scale:</small> @M.ParametersImg2Img.CfgScale
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="float?" Value="M.ParametersImg2Img.Denoise" 
+                           ValueChanged="@((float? v) => { M.ParametersImg2Img.Denoise = v; NotifyChanged(); })"
+                           Min="0" 
+                           Max="1" 
+                           Step="0.01" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>Denoise:</small> @M.ParametersImg2Img.Denoise?.ToString("F2")
+                </MudSlider>
+            </MudItem>
+
+            @* Seed *@
+            <MudItem xs="5">
+                <MudNumericField T="long?" Value="M.ParametersImg2Img.Seed" 
+                                 ValueChanged="@((long? v) => { M.ParametersImg2Img.Seed = v; NotifyChanged(); })"
+                                 Label="Seed" Min="-1" Max="long.MaxValue" />
+            </MudItem>
+            <MudItem xs="1">
+                <MudButtonGroup Variant="Variant.Text" VerticalAlign>
+                    <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" ButtonType="ButtonType.Button" Class="icon" />
+                    <MudIconButton OnClick="RestoreSeed" Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" />
+                </MudButtonGroup>
+            </MudItem>
+
+            @* Qwen-specific Settings *@
+            <MudItem xs="12">
+                <MudText Typo="Typo.overline" Class="mt-2">Qwen Edit Settings</MudText>
+            </MudItem>
+            
+            <MudItem xs="4">
+                <MudSlider T="float?" Value="M.ParametersImg2Img.Megapixels" 
+                           ValueChanged="@((float? v) => { M.ParametersImg2Img.Megapixels = v; NotifyChanged(); })"
+                           Min="0.1" 
+                           Max="4" 
+                           Step="0.1" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>Megapixels:</small> @M.ParametersImg2Img.Megapixels?.ToString("F1")
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="float?" Value="M.ParametersImg2Img.LoraStrength" 
+                           ValueChanged="@((float? v) => { M.ParametersImg2Img.LoraStrength = v; NotifyChanged(); })"
+                           Min="0" 
+                           Max="2" 
+                           Step="0.1" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>LoRA Strength:</small> @M.ParametersImg2Img.LoraStrength?.ToString("F1")
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="int?" Value="M.ParametersImg2Img.ModelShift" 
+                           ValueChanged="@((int? v) => { M.ParametersImg2Img.ModelShift = v; NotifyChanged(); })"
+                           Min="1" 
+                           Max="10" 
+                           Step="1" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>Model Shift:</small> @M.ParametersImg2Img.ModelShift
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="float?" Value="M.ParametersImg2Img.CfgNormStrength" 
+                           ValueChanged="@((float? v) => { M.ParametersImg2Img.CfgNormStrength = v; NotifyChanged(); })"
+                           Min="0" 
+                           Max="2" 
+                           Step="0.1" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>CFG Norm Strength:</small> @M.ParametersImg2Img.CfgNormStrength?.ToString("F1")
+                </MudSlider>
+            </MudItem>
+
+            @* Resolution *@
+            <MudItem xs="12">
+                <MudText Typo="Typo.caption" Class="mb-2">Quick Resolution:</MudText>
+                <MudGrid Spacing="2" Justify="Justify.Center">
+                    @foreach (var res in M.Settings.Generation.Shared.QuickResolutions)
+                    {
+                        <MudItem xs="6" sm="4" md="3" lg="2">
+                            <MudButton OnClick="@(() => SetResolution(res.Width, res.Height))"
+                                       Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       FullWidth
+                                       Size="Size.Small">
+                                @res.Label
+                            </MudButton>
+                        </MudItem>
+                    }
+                </MudGrid>
+                <div class="d-flex justify-center mt-3">
+                    <MudButtonGroup Variant="Variant.Text" Color="Color.Primary">
+                        <MudButton OnClick="@(() => ScaleResolution(0.5))"
+                                   StartIcon="fa-solid fa-compress"
+                                   Size="Size.Small">
+                            x0.5
+                        </MudButton>
+                        <MudButton OnClick="@(() => SetResolution((int)(M.ParametersImg2Img.Height ?? 768), (int)(M.ParametersImg2Img.Width ?? 768)))"
+                                   StartIcon="fa-solid fa-image-portrait"
+                                   Size="Size.Small">
+                            Rotate
+                        </MudButton>
+                        <MudButton OnClick="@(() => ScaleResolution(2.0))"
+                                   StartIcon="fa-solid fa-expand"
+                                   Size="Size.Small">
+                            x2
+                        </MudButton>
+                    </MudButtonGroup>
+                </div>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="int?" Value="M.ParametersImg2Img.Width" 
+                           ValueChanged="@((int? v) => { M.ParametersImg2Img.Width = v; NotifyChanged(); })"
+                           Min="GetResolutionSettings().Min" 
+                           Max="GetResolutionSettings().Max" 
+                           Step="GetResolutionSettings().Step" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>Width:</small> @(M.ParametersImg2Img.Width)px
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="int?" Value="M.ParametersImg2Img.Height" 
+                           ValueChanged="@((int? v) => { M.ParametersImg2Img.Height = v; NotifyChanged(); })"
+                           Min="GetResolutionSettings().Min" 
+                           Max="GetResolutionSettings().Max" 
+                           Step="GetResolutionSettings().Step" 
+                           Variant="Variant.Filled" ValueLabel>
+                    <small>Height:</small> @(M.ParametersImg2Img.Height)px
+                </MudSlider>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</div>
+}
+else
+{
+    <MudStack AlignItems="AlignItems.Center" Class="pa-4">
+        <MudProgressCircular Indeterminate Color="Color.Primary" />
+        <MudText Typo="Typo.caption" Class="mt-2">Loading settings...</MudText>
+    </MudStack>
+}
+
+@code {
+    // Settings getters with fallback defaults
+    private IntRange GetStepsSettings() => M.Settings?.Generation?.Shared?.Steps ?? new IntRange { Min = 1, Max = 50, Step = 1 };
+    private FloatRange GetCfgSettings() => M.Settings?.Generation?.Shared?.CfgScale ?? new FloatRange { Min = 1.0f, Max = 15.0f, Step = 0.5f };
+    private ResolutionSettingsModel GetResolutionSettings() => M.Settings?.Generation?.Shared?.Resolution ?? new ResolutionSettingsModel { Min = 64, Max = 2048, Step = 8 };
+
+    private void NotifyChanged()
+    {
+        StateHasChanged();
+    }
+
+    private void SetRandomSeed()
+    {
+        M.ParametersImg2Img.Seed = -1;
+        NotifyChanged();
+    }
+
+    private void RestoreSeed()
+    {
+        if (M.State?.Generation?.Seed > 0)
+        {
+            M.ParametersImg2Img.Seed = M.State.Generation.Seed;
+            NotifyChanged();
+        }
+    }
+
+    private void SetResolution(int width, int height)
+    {
+        M.ParametersImg2Img.Width = width;
+        M.ParametersImg2Img.Height = height;
+        NotifyChanged();
+    }
+
+    private void ScaleResolution(double scale)
+    {
+        var currentWidth = M.ParametersImg2Img.Width ?? 768;
+        var currentHeight = M.ParametersImg2Img.Height ?? 768;
+        var step = GetResolutionSettings().Step;
+        
+        // Scale and round to nearest step
+        var newWidth = (int)(Math.Round(currentWidth * scale / step) * step);
+        var newHeight = (int)(Math.Round(currentHeight * scale / step) * step);
+        
+        // Clamp to min/max
+        var min = GetResolutionSettings().Min;
+        var max = GetResolutionSettings().Max;
+        newWidth = Math.Clamp(newWidth, min, max);
+        newHeight = Math.Clamp(newHeight, min, max);
+        
+        M.ParametersImg2Img.Width = newWidth;
+        M.ParametersImg2Img.Height = newHeight;
+        NotifyChanged();
+    }
+}
