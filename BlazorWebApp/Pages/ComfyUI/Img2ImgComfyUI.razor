@@ -99,7 +99,7 @@
 
         // Update parameters with current values and input image
         M.ParametersImg2Img.Image = M.Img2ImgInputImage;
-        M.ParametersImg2Img.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
+        M.ParametersImg2Img.Comfy.Workflow = GetCurrentWorkflow();
         
         // Save state before generation
         await M.SaveState();
