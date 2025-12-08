@@ -28,6 +28,7 @@ namespace BlazorWebApp.Services
         private bool _isWebuiUp;
         private string _canvasImageData;
         private string _img2VidInputImage;
+        private string _img2ImgInputImage;
         private bool _isComfyUIUp;
 
         public event Action OnSDModelsChange;
@@ -52,6 +53,7 @@ namespace BlazorWebApp.Services
         public event Action OnRefreshImagesContainer;
         public event Action OnCanvasImageDataChanged;
         public event Action OnImg2VidInputImageChanged;
+        public event Action OnImg2ImgInputImageChanged;
         public event Action OnResourcesStateChanged;
         public event Action OnWorkflowBaseChanged;
 
@@ -121,6 +123,19 @@ namespace BlazorWebApp.Services
             {
                 _img2VidInputImage = value;
                 OnImg2VidInputImageChanged?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Input image data for Img2Img generation (stored separately from parameters due to size)
+        /// </summary>
+        public string Img2ImgInputImage
+        {
+            get => _img2ImgInputImage;
+            set
+            {
+                _img2ImgInputImage = value;
+                OnImg2ImgInputImageChanged?.Invoke();
             }
         }
 

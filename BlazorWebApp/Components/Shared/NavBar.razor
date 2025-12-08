@@ -27,7 +27,7 @@
                 {
                     foreach (var workflow in w.Where(w => w.Mode == ModeType.Img2Img && (b != null ? w.Base == b : true)))
                     {
-                        <MudNavLink Href="/comfyui/img2img" Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-image me-1" /> @(workflow.Title)</MudNavLink>
+                        <MudNavLink Href=@($"/comfyui/img2img/{workflow.Id}") Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-image me-1" /> @(workflow.Title)</MudNavLink>
                     }
                 }
                 if (w.Any(w => w.Mode == ModeType.Img2Vid))
