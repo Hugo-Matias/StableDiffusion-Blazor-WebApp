@@ -8,6 +8,10 @@ using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
+    /// <summary>
+    /// Service responsible for orchestrating image and video generation workflows.
+    /// Coordinates between API services, file I/O, database operations, and progress tracking.
+    /// </summary>
     public class ImageService
     {
         private readonly SDAPIService _api;
@@ -17,6 +21,7 @@ namespace BlazorWebApp.Services
         private readonly DatabaseService _db;
         private readonly ProgressService _progress;
         private readonly RouterService _router;
+        private readonly ILogger<ImageService> _logger;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
         private Txt2ImgParameters _txt2imgParams;
@@ -25,14 +30,17 @@ namespace BlazorWebApp.Services
         private int _canvasSourceHeight;
         private string _currentModel = string.Empty;
 
+        /// <summary>
+        /// Event fired when image generation state changes.
+        /// </summary>
         public event Action OnChange;
 
         /// <summary>
-        /// Last generated video result
+        /// Last generated video result.
         /// </summary>
         public GeneratedVideos GeneratedVideos { get; private set; }
 
-        public ImageService(SDAPIService api, IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router)
+        public ImageService(SDAPIService api, IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router, ILogger<ImageService> logger)
         {
             _api = api;
             _io = io;
@@ -41,10 +49,18 @@ namespace BlazorWebApp.Services
             _db = db;
             _progress = progress;
             _router = router;
+            _logger = logger;
         }
 
+        /// <summary>
+        /// Generates images based on the specified mode (Txt2Img, Img2Img, or Extras/Upscale).
+        /// Handles the full generation workflow including API calls, file saving, and database persistence.
+        /// </summary>
+        /// <param name="mode">The generation mode to use.</param>
+        /// <returns>DTO containing generated image information and metadata.</returns>
         public async Task<ImagesDto> GetImages(ModeType mode)
         {
+            _logger.LogInformation("Starting image generation for mode: {Mode}", mode);
             _m.IsConverging = true;
 
             ImagesDto images = new();
@@ -56,12 +72,14 @@ namespace BlazorWebApp.Services
                 switch (mode)
                 {
                     case ModeType.Img2Img:
+                        _logger.LogDebug("Building Img2Img parameters");
                         var img2imgParams = BuildImg2ImgParameters(ref scriptName);
                         _m.Images = await _router.PostImg2Img(img2imgParams);
                         _m.SerializeInfo();
                         break;
 
                     case ModeType.Extras:
+                        _logger.LogDebug("Processing upscale request");
                         _parsingParams = _m.ParametersUpscale;
                         _m.GeneratedUpscaleImage = await _api.PostExtraSingle(_m.ParametersUpscale);
                         if (_m.GeneratedUpscaleImage != null && !string.IsNullOrWhiteSpace(_m.GeneratedUpscaleImage.Image))
@@ -76,6 +94,7 @@ namespace BlazorWebApp.Services
                         break;
 
                     default:
+                        _logger.LogDebug("Building Txt2Img parameters");
                         BuildTxt2ImgParameters(ref scriptName);
                         _m.Images = await _router.PostTxt2Img(_txt2imgParams);
                         _m.SerializeInfo();
@@ -84,6 +103,7 @@ namespace BlazorWebApp.Services
 
                 if (_m.State.Generation.IsInterrupted)
                 {
+                    _logger.LogWarning("Generation was interrupted by user");
                     throw new Exception("Generation Canceled!");
                 }
 
@@ -104,10 +124,12 @@ namespace BlazorWebApp.Services
                             break;
                     }
                 }
+
+                _logger.LogInformation("Image generation completed successfully for mode: {Mode}, generated {ImageCount} images", mode, images?.Images?.Count ?? 0);
             }
             catch (Exception e)
             {
-                await Console.Out.WriteLineAsync(e.ToString());
+                _logger.LogError(e, "Error occurred during image generation for mode: {Mode}", mode);
             }
 
             _m.IsConverging = false;
