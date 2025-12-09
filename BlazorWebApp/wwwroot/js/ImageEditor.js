@@ -765,7 +765,6 @@ class ImageEditor {
                     this.maskObjects.push(obj);
                 }
             });
-            console.log('loadState: added', enlivenedObjects.length, 'objects to canvas');
         }
         
         // Ensure viewport is preserved
@@ -778,8 +777,6 @@ class ImageEditor {
     }
     
     _restoreObjectsDirectly(objectsData, viewportTransform) {
-        console.log('loadState: restoring', objectsData.length, 'objects directly');
-        
         let restored = 0;
         objectsData.forEach(objData => {
             try {
@@ -818,7 +815,7 @@ class ImageEditor {
                     restored++;
                 }
             } catch (err) {
-                console.error('Failed to create object:', err);
+                console.error('Failed to restore object:', err);
             }
         });
         
@@ -829,26 +826,14 @@ class ImageEditor {
     }
     
     getState() {
-        // Get state with custom properties included
         const state = this.canvas.toJSON(['name']);
-        
-        // Debug: log all objects and their names
-        const allObjects = state.objects || [];
-        console.log('getState: all objects:', allObjects.map(o => ({ type: o.type, name: o.name })));
-        
-        const drawingCount = allObjects.filter(o => o.name === 'drawing' || o.name === 'mask').length;
-        console.log('getState: saving state with', drawingCount, 'drawing/mask objects out of', allObjects.length, 'total');
-        
         return JSON.stringify(state);
     }
 
     // ==================== Export ====================
     
     exportImage(includeBackground = true) {
-        console.log('Exporting image, baseImageObject:', this.baseImageObject ? 'exists' : 'null');
-        
         if (!this.baseImageObject) {
-            console.warn('No base image to export');
             return null;
         }
         
@@ -861,8 +846,6 @@ class ImageEditor {
             width: this.baseImageObject.width,
             height: this.baseImageObject.height
         };
-        
-        console.log('Export bounds:', bounds);
         
         // Temporarily hide mask layer for image export
         const maskWasVisible = this.maskVisible;
@@ -883,8 +866,6 @@ class ImageEditor {
                 height: bounds.height,
                 multiplier: 1
             });
-            
-            console.log('Exported image, data URL length:', dataUrl ? dataUrl.length : 0);
             
             this.canvas.setViewportTransform(currentVPT);
             
@@ -907,17 +888,13 @@ class ImageEditor {
     
     exportMask() {
         if (!this.baseImageObject) {
-            console.warn('No base image for mask export');
             return null;
         }
         
         const maskObjs = this.canvas.getObjects().filter(obj => obj.name === 'mask');
         if (maskObjs.length === 0) {
-            console.log('No mask objects to export');
             return null;
         }
-        
-        console.log('Exporting mask with', maskObjs.length, 'objects');
         
         // Create a temporary canvas for mask export
         const tempCanvas = document.createElement('canvas');
@@ -1092,16 +1069,17 @@ class ImageEditor {
                 
             case 'maskeraser':
                 // Find and remove mask paths that this stroke overlaps
-                this.canvas.remove(path); // Remove the eraser stroke
+                this.canvas.remove(path);
                 this._eraseMaskAtPath(path);
-                // Reset the flag and return early - no path to save
                 this._afterPathCreated();
                 return;
                 
             case 'eraser':
-                // For simplicity, eraser draws white on the canvas
-                pathName = 'drawing';
-                break;
+                // Find and remove drawing paths that this stroke overlaps
+                this.canvas.remove(path);
+                this._eraseDrawingAtPath(path);
+                this._afterPathCreated();
+                return;
                 
             default:
                 pathName = 'drawing';
@@ -1124,6 +1102,34 @@ class ImageEditor {
         
         // Mark as dirty
         if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnCanvasModified');
+        }
+    }
+    
+    _eraseDrawingAtPath(eraserPath) {
+        // Remove drawing objects that intersect with eraser path
+        const eraserBounds = eraserPath.getBoundingRect();
+        
+        const drawingObjects = this.canvas.getObjects().filter(obj => obj.name === 'drawing');
+        const toRemove = [];
+        
+        drawingObjects.forEach(drawingObj => {
+            const drawingBounds = drawingObj.getBoundingRect();
+            
+            // Check if bounding boxes intersect
+            if (this._boundsIntersect(eraserBounds, drawingBounds)) {
+                toRemove.push(drawingObj);
+            }
+        });
+        
+        toRemove.forEach(obj => {
+            this.canvas.remove(obj);
+        });
+        
+        this.canvas.renderAll();
+        
+        // Mark as dirty if we removed anything
+        if (toRemove.length > 0 && this.dotNetRef) {
             this.dotNetRef.invokeMethodAsync('OnCanvasModified');
         }
     }
