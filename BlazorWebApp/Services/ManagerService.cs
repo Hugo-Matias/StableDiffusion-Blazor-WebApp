@@ -148,12 +148,36 @@ namespace BlazorWebApp.Services
         /// </summary>
         public ImageEditorState ImageEditorState
         {
-            get => _imageEditorState;
-            set
+            get => _imageEditorState; set
             {
                 _imageEditorState = value;
                 OnImageEditorStateChanged?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// Resets the image editor state, clearing all edits and layers.
+        /// Call this when the user manually changes the input image (not when editor outputs a result).
+        /// </summary>
+        public void ResetImageEditorState()
+        {
+            _imageEditorState = new ImageEditorState();
+            OnImageEditorStateChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Sets the Img2Img input image and optionally resets the editor state.
+        /// Use resetEditorState=true when user is loading a new image (not from editor output).
+        /// Use resetEditorState=false when setting from editor output.
+        /// </summary>
+        public void SetImg2ImgInputImage(string imageData, bool resetEditorState)
+        {
+            if (resetEditorState && _img2ImgInputImage != imageData)
+            {
+                _imageEditorState = new ImageEditorState();
+            }
+            _img2ImgInputImage = imageData;
+            OnImg2ImgInputImageChanged?.Invoke();
         }
 
         /// <summary>

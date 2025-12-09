@@ -136,6 +136,24 @@
                             </MudTooltip>
                         </MudButtonGroup>
                         
+                        @* Import Image *@
+                        <MudTooltip Text="Import Image (Drag & Drop, Paste, or Click)">
+                            <MudFileUpload T="IBrowserFile" 
+                                           Accept="image/*" 
+                                           FilesChanged="HandleFileImport"
+                                           MaximumFileCount="1"
+                                           Class="import-button-wrapper">
+                                <ButtonTemplate>
+                                    <MudIconButton HtmlTag="label"
+                                                   Icon="@Icons.Material.Filled.AddPhotoAlternate" 
+                                                   Size="Size.Small"
+                                                   Variant="Variant.Outlined"
+                                                   Color="Color.Default"
+                                                   for="@context" />
+                                </ButtonTemplate>
+                            </MudFileUpload>
+                        </MudTooltip>
+                        
                         @* Clear Actions *@
                         <MudMenu Icon="@Icons.Material.Filled.LayersClear" Size="Size.Small" Variant="Variant.Outlined">
                             <MudMenuItem Icon="@Icons.Material.Filled.Brush" OnClick="ClearDrawing">Clear Drawing</MudMenuItem>
@@ -659,6 +677,46 @@
         }
     }
     
+    private async Task HandleFileImport(IBrowserFile? file)
+    {
+        if (file == null || _editorInstance == null) return;
+        
+        try
+        {
+            // Validate file type
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                Logger.LogWarning("Invalid file type for import: {ContentType}", file.ContentType);
+                return;
+            }
+            
+            // Limit file size to 10MB
+            const long maxSize = 10 * 1024 * 1024;
+            if (file.Size > maxSize)
+            {
+                Logger.LogWarning("File too large for import: {Size} bytes", file.Size);
+                return;
+            }
+            
+            // Read file as data URL
+            using var stream = file.OpenReadStream(maxSize);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+            var dataUrl = $"data:{file.ContentType};base64,{base64}";
+            
+            // Import via JavaScript
+            await _editorInstance.InvokeVoidAsync("importImage", dataUrl);
+            
+            Logger.LogInformation("Imported image file: {FileName}", file.Name);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to import image file");
+        }
+    }
+    
     // ==================== Actions ====================
     
     /// <summary>
@@ -895,6 +953,14 @@
     [JSInvokable]
     public void OnCanvasModified()
     {
+        _state.IsDirty = true;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnImageImported(int width, int height)
+    {
+        Logger.LogInformation("Image imported: {Width}x{Height}", width, height);
         _state.IsDirty = true;
         InvokeAsync(StateHasChanged);
     }

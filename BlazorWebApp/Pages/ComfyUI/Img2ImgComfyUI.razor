@@ -87,7 +87,8 @@
     
     private void HandleImageDataChanged(string value)
     {
-        M.Img2ImgInputImage = value;
+        // User manually changed the input image - reset editor state
+        M.SetImg2ImgInputImage(value, resetEditorState: true);
         StateHasChanged();
     }
     
@@ -116,8 +117,9 @@
             result.image?.Length ?? 0, 
             !string.IsNullOrWhiteSpace(result.mask));
         
-        // Update input image with edited result
-        M.Img2ImgInputImage = result.image;
+        // Update input image with edited result - DO NOT reset editor state
+        // The editor already saved/reset its state appropriately
+        M.SetImg2ImgInputImage(result.image, resetEditorState: false);
         
         Logger.LogInformation("Updated M.Img2ImgInputImage, length: {Length}", M.Img2ImgInputImage?.Length ?? 0);
         

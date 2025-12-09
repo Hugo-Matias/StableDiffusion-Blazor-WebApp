@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 3.1  
+> **Document Version:** 3.3  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 3.1 Complete  
+> **Status:** Phase 3.2 Complete  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -30,11 +30,11 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 | Sub-phase | Description | Status |
 |-----------|-------------|--------|
 | **3.1** | Core Layer Infrastructure | ✅ Complete |
-| **3.2** | Image Import | 🔴 Not Started |
+| **3.2** | Image Import | ✅ Complete |
 | **3.3** | Layer Panel UI | 🔴 Not Started |
 | **3.4** | Object Management | 🟡 Partial |
 | **3.5** | State Preservation | ✅ Complete |
-| **3.6** | Integration & Limits | 🟡 Partial |
+| **3.6** | Integration & Limits | ✅ Complete |
 
 ---
 
@@ -136,17 +136,48 @@ _reorderCanvasObjects()
 
 ---
 
-### Phase 3.2: Image Import 🔴 NOT STARTED
+### Phase 3.2: Image Import ✅ COMPLETE
 
-#### Planned Features
+#### Implemented Features
 
-| Item | Description | Complexity |
-|------|-------------|------------|
-| Drag-drop import | Drop image file onto canvas | 🟢 Low |
-| File picker button | Toolbar button opens file dialog | 🟢 Low |
-| Clipboard paste | Ctrl+V pastes image from clipboard | 🟡 Medium |
-| Transform controls | Fabric built-in: move, resize, rotate | 🟢 Low |
-| Layer assignment | Imported images assigned to active layer | 🟢 Low |
+| Item | Description | Status |
+|------|-------------|--------|
+| Drag-drop import | Drop image file onto canvas | ✅ |
+| File picker button | Toolbar button opens file dialog | ✅ |
+| Clipboard paste | Ctrl+V / paste pastes image from clipboard | ✅ |
+| Transform controls | Fabric built-in: move, resize, rotate | ✅ |
+| Layer assignment | Imported images assigned to active layer | ✅ |
+| Auto-scaling | Large images scaled to fit canvas (max 80%) | ✅ |
+| Size limit | Images limited to 4096px max dimension | ✅ |
+| Visual feedback | Drag-over state shows drop zone | ✅ |
+| Image persistence | Imported images restored on editor reopen | ✅ |
+| Exclusive clipboard | Paste only targets editor when open | ✅ |
+
+#### Implementation Details
+
+**JavaScript Methods (ImageEditor.js):**
+```javascript
+importImage(dataUrl, options)      // Import from data URL
+importImageFromFile(file)           // Import from File object
+importFromClipboard(e)              // Import from ClipboardEvent
+_setupDragDrop()                    // Setup drag-drop handlers
+_setupPasteHandler()                // Setup Ctrl+V paste handler (capture phase)
+_restoreObjectsDirectly()           // Restore paths AND images from state
+```
+
+**Blazor Integration:**
+- `MudFileUpload` component in toolbar for file picker
+- `HandleFileImport(IBrowserFile)` method converts to data URL
+- `OnImageImported` JSInvokable callback for import notification
+- 10MB file size limit for uploads
+
+**Import Behavior:**
+- Imported images centered on canvas
+- Auto-scaled to 80% of canvas size if too large
+- Assigned to active layer
+- Immediately selectable with Select tool (V)
+- Transform handles (resize, rotate) available
+- Persisted in canvas state for restoration
 
 ---
 
@@ -189,7 +220,7 @@ _reorderCanvasObjects()
 
 ---
 
-### Phase 3.6: Integration & Limits 🟡 PARTIAL
+### Phase 3.6: Integration & Limits ✅ COMPLETE
 
 #### Implemented
 
@@ -197,40 +228,62 @@ _reorderCanvasObjects()
 |------|--------|
 | Layer limit constant (20) | ✅ |
 | Layer limit in addLayer() | ✅ |
-
-#### Remaining
-
-| Item | Status |
-|------|--------|
-| Import size limit (4096px) | 🔴 |
-| Object limit per layer warning | 🔴 |
+| Import size limit (4096px) | ✅ |
+| Exclusive clipboard handling | ✅ |
+| Auto-reset on input image change | ✅ |
 
 ---
 
 ## Changelog
 
-### Version 3.1 (December 2024) - Phase 3.1 Complete
+### Version 3.3 (December 2024) - Bug Fixes & Polish
 
-#### Core Layer Infrastructure
-- Added `LayerInfo` class with full property set (Id, Name, IsVisible, IsLocked, Opacity, Order, LayerType)
-- Added `LayerType` enum (Base, Drawing, Import, Mask)
-- Layer properties on all Fabric objects (`layer`, `layerId`, `name`)
-- Active layer tracking in JS (`activeLayerId`) and C# (`ActiveLayerId`)
-- Default layers created on initialization ("Base Image" locked, "Drawing Layer" active)
-- Layer-aware erasing (only erases from active layer)
+#### Bug Fixes
+- **Clipboard paste exclusive**: Paste events now only target the editor when open, preventing double-paste to both editor and main I2I page
+  - Uses capture phase (`addEventListener(..., true)`) to intercept before other handlers
+  - Calls `stopImmediatePropagation()` to prevent event bubbling
+- **Image persistence**: Imported images now properly restored when reopening editor
+  - Updated `_restoreObjectsDirectly()` to handle both `path` and `image` object types
+  - Images restored with all transform properties (position, scale, rotation)
+- **Syntax error fix**: Fixed missing parenthesis in `_addRestoredObjects()` that broke the canvas
+- **Save vs Apply state preservation**: Fixed issue where Save was acting like Apply (flattening and losing state)
+  - Root cause: Setting `Img2ImgInputImage` from editor output triggered auto-reset of editor state
+  - Solution: Added `SetImg2ImgInputImage(value, resetEditorState)` method to differentiate user actions from editor output
+  - `HandleImageDataChanged`: User loading new image → reset editor state
+  - `HandleEditorApply`: Editor output → preserve editor state
 
-#### State Preservation
-- **Save button**: Exports flattened image for use, preserves original base image and layer state
-- **Apply button**: Flattens all layers to new base, resets state for fresh start
-- Separate storage for `BaseImageData` (original) vs output image
-- `CanvasJson` stores full canvas state for re-editing
-- Proper restoration of layers and strokes on editor reopen
+#### State Management
+- **Explicit reset control**: Editor state only resets when user manually changes input image
+  - Removed auto-reset from `Img2ImgInputImage` setter
+  - Added `SetImg2ImgInputImage()` method with explicit `resetEditorState` parameter
+  - `ResetImageEditorState()` available for manual resets
 
-#### Select Tool & Object Management
-- Select tool (V) for selecting objects on canvas
-- Objects become selectable when Select tool is active (respects layer lock)
-- Delete key removes selected objects
-- Tool state synced with JS on editor reopen (fixes cursor mismatch bug)
+#### CSS Fixes
+- **Import button alignment**: Fixed `MudFileUpload` button alignment using `::deep` selector
+- **ButtonTemplate fix**: Changed from `ActivatorContent` to `ButtonTemplate` for proper MudBlazor integration
+
+### Version 3.2 (December 2024) - Phase 3.2 Complete
+
+#### Image Import
+- **Drag & Drop**: Drop image files directly onto canvas
+- **File Picker**: Import button in toolbar opens file dialog (MudFileUpload)
+- **Clipboard Paste**: Ctrl+V or paste event imports images from clipboard
+- **Auto-scaling**: Large images automatically scaled to 80% of canvas size
+- **Size limits**: Maximum 4096px dimension, 10MB file size
+- **Visual feedback**: Drag-over state shows "Drop image here" overlay
+- **Layer assignment**: Imported images assigned to active layer
+- **Transform controls**: Fabric.js built-in move, resize, rotate handles
+
+#### New JavaScript Methods
+- `importImage(dataUrl, options)` - Core import function
+- `importImageFromFile(file)` - Import from File object  
+- `importFromClipboard(e)` - Import from ClipboardEvent
+- `_setupDragDrop()` - Initialize drag-drop handlers
+- `_setupPasteHandler()` - Initialize paste event handler
+
+#### New Blazor Integration
+- `HandleFileImport(IBrowserFile)` - File upload handler
+- `OnImageImported` JSInvokable callback
 
 #### UI Updates
 - Save/Apply buttons with descriptive tooltips
@@ -266,12 +319,14 @@ _reorderCanvasObjects()
 - [x] CanvasJson storage and restoration
 - [x] Tool state sync on reopen
 
-### Phase 3.2: Image Import
-- [ ] Implement drag-drop handler on canvas
-- [ ] Add import button to toolbar
-- [ ] Implement clipboard paste (Ctrl+V)
-- [ ] Scale imported images to fit canvas
-- [ ] Assign imports to active layer
+### Phase 3.2: Image Import ✅ COMPLETE
+- [x] Implement drag-drop handler on canvas
+- [x] Add import button to toolbar
+- [x] Implement clipboard paste (Ctrl+V)
+- [x] Scale imported images to fit canvas
+- [x] Assign imports to active layer
+- [x] Persist imported images in state
+- [x] Exclusive clipboard handling when editor open
 
 ### Phase 3.3: Layer Panel UI
 - [ ] Create `LayerPanel.razor` component
@@ -289,10 +344,11 @@ _reorderCanvasObjects()
 - [ ] Duplicate (Ctrl+D)
 - [ ] Flip horizontal/vertical
 
-### Phase 3.6: Integration
+### Phase 3.6: Integration ✅ COMPLETE
 - [x] Layer limit enforcement (20)
-- [ ] Import size limit (4096px)
-- [ ] Object limit per layer warning
+- [x] Import size limit (4096px)
+- [x] Exclusive clipboard handling
+- [x] Auto-reset state on input image change
 
 ---
 
@@ -305,13 +361,15 @@ _reorderCanvasObjects()
 | `Components/ImageEditor/ImageEditorModal.razor.css` | Scoped CSS styles |
 | `wwwroot/js/ImageEditor.js` | Fabric.js integration with layer support |
 | `Models/ImageEditorState.cs` | C# state model with LayerInfo class |
+| `Services/ManagerService.cs` | ImageEditorState storage and auto-reset |
 
-### Key Changes in 3.1
+### Key Changes in 3.3
 | File | Changes |
 |------|---------|
-| `ImageEditorState.cs` | Added `LayerInfo`, `LayerType`, layer management methods |
-| `ImageEditor.js` | Added layer tracking, `setTool` select mode, layer-aware operations |
-| `ImageEditorModal.razor` | Save/Apply buttons, state preservation, tool sync on init |
+| `ImageEditor.js` | Fixed paste handler (capture phase), image restoration in `_restoreObjectsDirectly()`, syntax fix |
+| `ManagerService.cs` | Added `ResetImageEditorState()`, auto-reset in `Img2ImgInputImage` and `CanvasImageData` setters |
+| `ImageEditorModal.razor` | Fixed `MudFileUpload` to use `ButtonTemplate` |
+| `ImageEditorModal.razor.css` | Added `::deep` for import button alignment |
 
 ---
 
@@ -341,5 +399,23 @@ _reorderCanvasObjects()
 
 5. **Tool State Restoration**
    - Select tool, Save, Reopen → Select tool still active ✅
+
+### Image Import Verification
+
+6. **Drag & Drop**
+   - Drag image file onto canvas → Image imported, centered ✅
+
+7. **File Picker**
+   - Click import button → File dialog opens → Image imported ✅
+
+8. **Clipboard Paste**
+   - Copy image to clipboard, Ctrl+V in editor → Image imported ✅
+   - Paste does NOT affect main I2I page when editor is open ✅
+
+9. **Import Persistence**
+   - Import image → Save → Reopen → Imported image restored ✅
+
+10. **State Reset on Input Change**
+    - Edit image → Close editor → Change input image → Reopen → Fresh editor state ✅
 
 ---

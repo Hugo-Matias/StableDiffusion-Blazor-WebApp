@@ -174,3 +174,42 @@
 .w-100 {
     width: 100%;
 }
+
+/* Import button wrapper */
+::deep .import-button-wrapper {
+	display: inline-flex;
+	align-items: center;
+	margin: 0 !important;
+}
+
+::deep .import-button-wrapper .mud-file-upload {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Hide the default file input styling */
+.import-button-wrapper .mud-file-upload-content {
+    display: none;
+}
+
+/* Drag-over visual feedback */
+.image-editor-canvas-wrapper.drag-over {
+    outline: 3px dashed var(--mud-palette-primary);
+    outline-offset: -3px;
+}
+
+.image-editor-canvas-wrapper.drag-over::after {
+    content: 'Drop image here';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 16px 32px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: 500;
+    z-index: 1000;
+    pointer-events: none;
+}

@@ -135,6 +135,8 @@ class ImageEditor {
         this._initCanvas();
         this._setupEventListeners();
         this._createBrushCursor();
+        this._setupDragDrop();
+        this._setupPasteHandler();
         
         // Initialize default layers
         this._initializeDefaultLayers();
@@ -1024,7 +1026,7 @@ class ImageEditor {
                     hasBorders: false
                 });
                 
-                // Restore the name from original data since enlivenObjects doesn't preserve it
+                // Restore the name from original data since enlivenedObjects doesn't preserve it
                 const objData = originalData[index];
                 if (objData && objData.name) {
                     obj.name = objData.name;
@@ -1061,10 +1063,13 @@ class ImageEditor {
     
     _restoreObjectsDirectly(objectsData, viewportTransform) {
         let restored = 0;
+        const imagePromises = [];
+        
         objectsData.forEach(objData => {
             try {
-                // Create path objects directly - handle both 'path' and 'Path' type names
                 const objType = (objData.type || '').toLowerCase();
+                
+                // Handle path objects (drawings, masks)
                 if (objType === 'path' && objData.path) {
                     const path = new fabric.Path(objData.path, {
                         left: objData.left || 0,
@@ -1081,7 +1086,6 @@ class ImageEditor {
                         hasBorders: false
                     });
                     
-                    // Set and preserve name
                     path.name = objData.name;
                     path.layerId = objData.layerId || this.activeLayerId;
                     path.layer = objData.layer;
@@ -1102,15 +1106,93 @@ class ImageEditor {
                     }
                     restored++;
                 }
+                // Handle image objects (imported images)
+                else if (objType === 'image' && objData.src) {
+                    const imgPromise = new Promise((resolve) => {
+                        const loadImage = async () => {
+                            try {
+                                let img;
+                                const result = fabric.Image.fromURL(objData.src, { crossOrigin: 'anonymous' });
+                                
+                                if (result instanceof Promise) {
+                                    img = await result;
+                                } else {
+                                    img = await new Promise((res, rej) => {
+                                        fabric.Image.fromURL(objData.src, (loadedImg) => {
+                                            if (loadedImg) res(loadedImg);
+                                            else rej(new Error('Failed to load image'));
+                                        }, { crossOrigin: 'anonymous' });
+                                    });
+                                }
+                                
+                                if (img) {
+                                    img.set({
+                                        left: objData.left || 0,
+                                        top: objData.top || 0,
+                                        scaleX: objData.scaleX || 1,
+                                        scaleY: objData.scaleY || 1,
+                                        angle: objData.angle || 0,
+                                        flipX: objData.flipX || false,
+                                        flipY: objData.flipY || false,
+                                        originX: objData.originX || 'left',
+                                        originY: objData.originY || 'top',
+                                        opacity: objData.opacity !== undefined ? objData.opacity : 1,
+                                        selectable: this.currentTool === 'select',
+                                        evented: this.currentTool === 'select',
+                                        hasControls: true,
+                                        hasBorders: true,
+                                        cornerStyle: 'circle',
+                                        cornerColor: '#4285f4',
+                                        cornerStrokeColor: '#ffffff',
+                                        borderColor: '#4285f4',
+                                        transparentCorners: false
+                                    });
+                                    
+                                    img.name = objData.name || 'imported';
+                                    img.layerId = objData.layerId || this.activeLayerId;
+                                    img.layer = objData.layer || 'Drawing Layer';
+                                    
+                                    const originalToObject = img.toObject.bind(img);
+                                    img.toObject = function(propertiesToInclude) {
+                                        const result = originalToObject(propertiesToInclude);
+                                        result.name = this.name;
+                                        result.layerId = this.layerId;
+                                        result.layer = this.layer;
+                                        return result;
+                                    };
+                                    
+                                    this.canvas.add(img);
+                                    restored++;
+                                }
+                                resolve();
+                            } catch (err) {
+                                console.error('Failed to restore image:', err);
+                                resolve();
+                            }
+                        };
+                        loadImage();
+                    });
+                    imagePromises.push(imgPromise);
+                }
             } catch (err) {
                 console.error('Failed to restore object:', err);
             }
         });
         
-        this.canvas.setViewportTransform(viewportTransform);
-        this.canvas.renderAll();
-        this.historyLocked = false;
-        this._notifyMaskChanged(this.maskObjects.length > 0);
+        // Wait for all images to load, then finalize
+        if (imagePromises.length > 0) {
+            Promise.all(imagePromises).then(() => {
+                this.canvas.setViewportTransform(viewportTransform);
+                this.canvas.renderAll();
+                this.historyLocked = false;
+                this._notifyMaskChanged(this.maskObjects.length > 0);
+            });
+        } else {
+            this.canvas.setViewportTransform(viewportTransform);
+            this.canvas.renderAll();
+            this.historyLocked = false;
+            this._notifyMaskChanged(this.maskObjects.length > 0);
+        }
     }
     
     getState() {
@@ -1700,11 +1782,259 @@ class ImageEditor {
         }
     }
     
+    // ==================== Image Import ====================
+    
+    /**
+     * Import an image from a data URL and add it to the active layer
+     * @param {string} dataUrl - The image data URL
+     * @param {object} options - Optional settings (x, y, scale, name)
+     */
+    async importImage(dataUrl, options = {}) {
+        if (!dataUrl) {
+            console.warn('No image data provided for import');
+            return null;
+        }
+        
+        try {
+            let img;
+            const result = fabric.Image.fromURL(dataUrl, { crossOrigin: 'anonymous' });
+            
+            if (result instanceof Promise) {
+                img = await result;
+            } else {
+                img = await new Promise((resolve, reject) => {
+                    fabric.Image.fromURL(dataUrl, (loadedImg) => {
+                        if (loadedImg) resolve(loadedImg);
+                        else reject(new Error('Failed to load imported image'));
+                    }, { crossOrigin: 'anonymous' });
+                });
+            }
+            
+            if (!img) throw new Error('Failed to import image - null result');
+            
+            // Get canvas/base dimensions for scaling
+            const maxSize = this.baseImageObject 
+                ? Math.min(this.baseImageObject.width, this.baseImageObject.height) * 0.8
+                : Math.min(this.canvas.getWidth(), this.canvas.getHeight()) * 0.6;
+            
+            // Scale down if larger than max size
+            let scale = 1;
+            if (img.width > maxSize || img.height > maxSize) {
+                scale = maxSize / Math.max(img.width, img.height);
+            }
+            
+            // Limit import size to 4096px
+            if (img.width > this.options.maxCanvasSize || img.height > this.options.maxCanvasSize) {
+                const maxDim = Math.max(img.width, img.height);
+                scale = Math.min(scale, this.options.maxCanvasSize / maxDim);
+            }
+            
+            // Calculate center position
+            const centerX = this.baseImageObject 
+                ? this.baseImageObject.width / 2
+                : this.canvas.getWidth() / 2 / this.canvas.getZoom();
+            const centerY = this.baseImageObject 
+                ? this.baseImageObject.height / 2
+                : this.canvas.getHeight() / 2 / this.canvas.getZoom();
+            
+            // Apply settings
+            img.set({
+                left: options.x !== undefined ? options.x : centerX,
+                top: options.y !== undefined ? options.y : centerY,
+                originX: 'center',
+                originY: 'center',
+                scaleX: options.scale !== undefined ? options.scale : scale,
+                scaleY: options.scale !== undefined ? options.scale : scale,
+                selectable: this.currentTool === 'select',
+                evented: this.currentTool === 'select',
+                hasControls: true,
+                hasBorders: true,
+                cornerStyle: 'circle',
+                cornerColor: '#4285f4',
+                cornerStrokeColor: '#ffffff',
+                borderColor: '#4285f4',
+                transparentCorners: false
+            });
+            
+            // Set layer properties
+            const activeLayer = this.getActiveLayer();
+            img.name = 'imported';
+            img.layerId = activeLayer?.id || this.activeLayerId;
+            img.layer = activeLayer?.name || 'Drawing Layer';
+            
+            // Override toObject to include layer properties
+            const originalToObject = img.toObject.bind(img);
+            img.toObject = function(propertiesToInclude) {
+                const obj = originalToObject(propertiesToInclude);
+                obj.name = this.name;
+                obj.layerId = this.layerId;
+                obj.layer = this.layer;
+                return obj;
+            };
+            
+            // Save state before adding
+            this._saveStateBeforeAction();
+            
+            this.canvas.add(img);
+            this.canvas.setActiveObject(img);
+            this.canvas.renderAll();
+            
+            this._afterPathCreated();
+            
+            // Notify that canvas was modified
+            if (this.dotNetRef) {
+                this.dotNetRef.invokeMethodAsync('OnCanvasModified');
+            }
+            
+            // Notify import success
+            this._notifyImageImported(img.width * img.scaleX, img.height * img.scaleY);
+            
+            return img;
+        } catch (error) {
+            console.error('Error importing image:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Import image from file input
+     * @param {File} file - The file to import
+     */
+    async importImageFromFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            console.warn('Invalid file for import');
+            return null;
+        }
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const img = await this.importImage(e.target.result);
+                    resolve(img);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    /**
+     * Import image from clipboard
+     * @param {ClipboardEvent} e - The clipboard event
+     */
+    async importFromClipboard(e) {
+        if (!e.clipboardData) return null;
+        
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    return await this.importImageFromFile(file);
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Setup paste handler for clipboard image import
+     */
+    _setupPasteHandler() {
+        this._boundPasteHandler = async (e) => {
+            // Don't intercept if typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            // Check if the modal overlay is present (editor is open)
+            const overlay = document.querySelector('.image-editor-overlay');
+            if (!overlay) return;
+            
+            // Check if there's image data in clipboard
+            if (!e.clipboardData || !e.clipboardData.items) return;
+            
+            let hasImage = false;
+            for (let i = 0; i < e.clipboardData.items.length; i++) {
+                if (e.clipboardData.items[i].type.startsWith('image/')) {
+                    hasImage = true;
+                    break;
+                }
+            }
+            
+            if (!hasImage) return;
+            
+            // Prevent the paste from going to other handlers (like the main I2I page)
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            await this.importFromClipboard(e);
+        };
+        
+        // Use capture phase to intercept before other handlers
+        document.addEventListener('paste', this._boundPasteHandler, true);
+    }
+    
+    /**
+     * Setup drag and drop for image import
+     */
+    _setupDragDrop() {
+        const wrapper = document.getElementById(this.canvasId)?.parentElement;
+        if (!wrapper) return;
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            wrapper.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        // Visual feedback
+        ['dragenter', 'dragover'].forEach(eventName => {
+            wrapper.addEventListener(eventName, () => {
+                wrapper.classList.add('drag-over');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            wrapper.addEventListener(eventName, () => {
+                wrapper.classList.remove('drag-over');
+            }, false);
+        });
+        
+        // Handle drop
+        wrapper.addEventListener('drop', async (e) => {
+            const files = e.dataTransfer?.files;
+            if (files && files.length > 0) {
+                for (let i = 0; i < files.length; i++) {
+                    if (files[i].type.startsWith('image/')) {
+                        await this.importImageFromFile(files[i]);
+                        break; // Only import first image
+                    }
+                }
+            }
+        }, false);
+    }
+    
+    /**
+     * Notify .NET of image import
+     */
+    _notifyImageImported(width, height) {
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnImageImported', Math.round(width), Math.round(height));
+        }
+    }
+    
     // ==================== Cleanup ====================
     
     dispose() {
         document.removeEventListener('keydown', this._boundKeyDown);
         document.removeEventListener('keyup', this._boundKeyUp);
+        document.removeEventListener('paste', this._boundPasteHandler, true);
         window.removeEventListener('resize', this._boundResize);
         
         const wrapper = document.getElementById(this.canvasId)?.parentElement;
