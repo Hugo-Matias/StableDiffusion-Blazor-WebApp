@@ -30,6 +30,7 @@ namespace BlazorWebApp.Services
         private string _img2VidInputImage;
         private string _img2ImgInputImage;
         private bool _isComfyUIUp;
+        private ImageEditorState _imageEditorState = new();
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -56,6 +57,8 @@ namespace BlazorWebApp.Services
         public event Action OnImg2ImgInputImageChanged;
         public event Action OnResourcesStateChanged;
         public event Action OnWorkflowBaseChanged;
+        public event Action? OnImageEditorStateChanged;
+        public event Action? OnSamplersSchedulersChanged;
 
         /// <summary>
         /// Fired when the current workflow changes (via SetCurrentWorkflow).
@@ -136,6 +139,20 @@ namespace BlazorWebApp.Services
             {
                 _img2ImgInputImage = value;
                 OnImg2ImgInputImageChanged?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Image editor state for session-level persistence.
+        /// Survives page navigation within the same browser session.
+        /// </summary>
+        public ImageEditorState ImageEditorState
+        {
+            get => _imageEditorState;
+            set
+            {
+                _imageEditorState = value;
+                OnImageEditorStateChanged?.Invoke();
             }
         }
 
@@ -229,7 +246,10 @@ namespace BlazorWebApp.Services
             State = new AppState(Settings);
             LoadState();
 
-            GetUpscalers();
+            // Initialize to empty lists - these will be populated when the backend comes online
+            Upscalers = new();
+            Samplers = new();
+            Schedulers = new();
             Images = new();
             Progress = new();
             Folders = new();
@@ -936,6 +956,7 @@ namespace BlazorWebApp.Services
             if (IsWebuiUp) Samplers = await _sdapi.GetSamplers();
             else if (IsComfyUIUp) Samplers = await _capi.GetSamplers();
             else Samplers = new();
+            OnSamplersSchedulersChanged?.Invoke();
         }
 
         public async Task GetSchedulers()
@@ -943,6 +964,18 @@ namespace BlazorWebApp.Services
             if (IsWebuiUp) Schedulers = await _sdapi.GetSchedulers();
             else if (IsComfyUIUp) Schedulers = await _capi.GetSchedulers();
             else Schedulers = new();
+            OnSamplersSchedulersChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Loads all backend-dependent resources (samplers, schedulers, upscalers).
+        /// Call this method when the backend comes online.
+        /// </summary>
+        public async Task LoadBackendDependentResources()
+        {
+            await GetSamplers();
+            await GetSchedulers();
+            await GetUpscalers();
         }
 
         public string GetDynamicPromptsVersion()
@@ -961,6 +994,64 @@ namespace BlazorWebApp.Services
         }
 
         public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
+
+        /// <summary>
+        /// Refreshes workflows from disk template files.
+        /// This ensures that any changes to workflow templates are picked up on application restart.
+        /// Preserves the current WorkflowBase and CurrentWorkflowId selection if the workflow still exists.
+        /// </summary>
+        private void RefreshWorkflowsFromDisk()
+        {
+            try
+            {
+                var currentWorkflowBase = State?.Generation?.WorkflowBase;
+                var currentWorkflowId = State?.Generation?.CurrentWorkflowId;
+                
+                // Load workflows from disk
+                GetComfyWorkflows();
+                
+                // Try to restore the previous workflow selection
+                if (State?.Generation?.Workflows != null && State.Generation.Workflows.Count > 0)
+                {
+                    // First, try to find workflow by ID (most specific)
+                    if (currentWorkflowId.HasValue)
+                    {
+                        var matchById = State.Generation.Workflows.FirstOrDefault(w => w.Id == currentWorkflowId.Value);
+                        if (matchById != null)
+                        {
+                            State.Generation.CurrentWorkflowId = matchById.Id;
+                            State.Generation.WorkflowBase = matchById.Base;
+                            return;
+                        }
+                    }
+                    
+                    // Fallback: try to match by base
+                    if (currentWorkflowBase != default)
+                    {
+                        var matchByBase = State.Generation.Workflows.FirstOrDefault(w => w.Base == currentWorkflowBase);
+                        if (matchByBase != null)
+                        {
+                            State.Generation.CurrentWorkflowId = matchByBase.Id;
+                            State.Generation.WorkflowBase = matchByBase.Base;
+                            return;
+                        }
+                    }
+                    
+                    // Last resort: use first available workflow
+                    var firstWorkflow = State.Generation.Workflows.FirstOrDefault();
+                    if (firstWorkflow != null)
+                    {
+                        State.Generation.CurrentWorkflowId = firstWorkflow.Id;
+                        State.Generation.WorkflowBase = firstWorkflow.Base;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail - workflows will be empty but app should still work
+                Console.WriteLine($"Error refreshing workflows from disk: {ex.Message}");
+            }
+        }
 
         public Workflow GetWorkflowById(Guid id) => State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
 
@@ -1519,6 +1610,10 @@ namespace BlazorWebApp.Services
 
                 // Migrate legacy model settings from AppState to parameter models
                 MigrateLegacyModelSettings();
+                
+                // Always refresh workflows from disk to pick up any template changes
+                // This ensures new deployments with updated workflow files are loaded
+                RefreshWorkflowsFromDisk();
 
                 OnAppStateChanged?.Invoke();
                 OnTxt2ImgParametersChanged?.Invoke();

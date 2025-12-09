@@ -28,7 +28,7 @@ namespace BlazorWebApp.Extensions
                 Scheduler = src.Scheduler,
                 BatchSize = src.BatchSize,
                 Model = model,
-                VAE = vae,
+                Vae = vae,
                 Upscale = new()
                 {
                     IsActive = src.EnableHR,

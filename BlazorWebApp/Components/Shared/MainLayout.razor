@@ -83,14 +83,35 @@
         M.OnProgressChanged += Refresh;
         M.OnSDModelsChange += Refresh;
         M.OnWorkflowBaseChanged += Refresh;
-        M.OnComfyUIStateChanged += LoadWorkflowBases;
+        M.OnComfyUIStateChanged += OnBackendStateChanged;
+        M.OnWebuiStateChanged += OnBackendStateChanged;
         LoadTheme();
     }
 
     protected async override Task OnInitializedAsync() 
     { 
         M.IsWebuiUp = await SDAPI.CheckWebuiState();
+        
+        // Load backend-dependent resources if a backend is up
+        if (M.IsWebuiUp || M.IsComfyUIUp)
+        {
+            await M.LoadBackendDependentResources();
+        }
+        
         LoadWorkflowBases();
+    }
+
+    private async void OnBackendStateChanged()
+    {
+        LoadWorkflowBases();
+        
+        // Load backend-dependent resources when a backend comes online
+        if (M.IsWebuiUp || M.IsComfyUIUp)
+        {
+            await M.LoadBackendDependentResources();
+        }
+        
+        await InvokeAsync(StateHasChanged);
     }
 
     private void LoadWorkflowBases()
@@ -183,6 +204,7 @@
         M.OnProgressChanged -= Refresh;
         M.OnSDModelsChange -= Refresh;
         M.OnWorkflowBaseChanged -= Refresh;
-        M.OnComfyUIStateChanged -= LoadWorkflowBases;
+        M.OnComfyUIStateChanged -= OnBackendStateChanged;
+        M.OnWebuiStateChanged -= OnBackendStateChanged;
     }
 }

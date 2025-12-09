@@ -5,7 +5,7 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
     public class Txt2ImgComfyUI : SharedComfyUI
     {
         public string? Model { get; set; }
-        public string? VAE { get; set; }
+        public string? Vae { get; set; }
         public string? Clip1 { get; set; }
         public string? Clip2 { get; set; }
         public List<Lora>? Loras { get; set; }
