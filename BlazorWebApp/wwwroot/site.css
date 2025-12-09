@@ -28,3 +28,33 @@ a:hover {
 .mud-popover {
 	z-index: 1500 !important;
 }
+
+/*
+ * Image Editor Modal - Lock body scroll when editor is open
+ */
+body:has(.image-editor-overlay) {
+	overflow: hidden !important;
+}
+
+/*
+ * Image Editor Modal z-index overrides
+ * The image editor overlay is at z-index 9999, so popovers/tooltips 
+ * inside it need to be even higher.
+ */
+.image-editor-overlay ~ .mud-popover-provider,
+.image-editor-overlay + .mud-popover-provider,
+body:has(.image-editor-overlay) .mud-popover-provider {
+	z-index: 10001 !important;
+}
+
+body:has(.image-editor-overlay) .mud-popover {
+	z-index: 10002 !important;
+}
+
+body:has(.image-editor-overlay) .mud-tooltip {
+	z-index: 10003 !important;
+}
+
+body:has(.image-editor-overlay) .mud-menu-popover {
+	z-index: 10002 !important;
+}

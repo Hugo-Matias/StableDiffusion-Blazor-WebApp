@@ -8,6 +8,12 @@
         <MudStack Row Class="image-input-actions">
             @if (!string.IsNullOrWhiteSpace(_currentImageSrc) && _currentImageSrc != _placeholderImage)
             {
+                <MudTooltip Text="Edit in Image Editor">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Size="Size.Small" 
+                                   Color="Color.Primary"
+                                   OnClick="OpenEditor" />
+                </MudTooltip>
                 <MudTooltip Text="Clear image">
                     <MudIconButton Icon="@Icons.Material.Filled.Clear" 
                                    Size="Size.Small" 
@@ -19,6 +25,15 @@
                         @(_imageDimensions.width)x@(_imageDimensions.height)
                     </MudChip>
                 }
+            }
+            else
+            {
+                <MudTooltip Text="Create blank canvas">
+                    <MudIconButton Icon="@Icons.Material.Filled.AddPhotoAlternate" 
+                                   Size="Size.Small" 
+                                   Color="Color.Secondary"
+                                   OnClick="OpenBlankCanvas" />
+                </MudTooltip>
             }
             <MudTooltip Text="Paste from clipboard">
                 <MudIconButton Icon="@Icons.Material.Filled.ContentPaste" 
@@ -59,6 +74,8 @@
     [Parameter] public string ImageData { get; set; }
     [Parameter] public EventCallback<string> ImageDataChanged { get; set; }
     [Parameter] public EventCallback<(int width, int height)> OnImageLoaded { get; set; }
+    [Parameter] public EventCallback OnEditClicked { get; set; }
+    [Parameter] public EventCallback OnBlankCanvasClicked { get; set; }
     [Parameter] public string Title { get; set; } = "Image Input";
     [Parameter] public string Class { get; set; }
     [Parameter] public string Style { get; set; }
@@ -71,6 +88,7 @@
     private string OverlayClass => $"image-input-overlay {(_isDragOver ? "drag-over" : "")}";
 
     private string _currentImageSrc;
+    private string _previousImageData;
     private string _placeholderImage = "./no_image.png";
     private bool _isDragOver;
     private bool _isLoading;
@@ -84,9 +102,29 @@
     protected override void OnInitialized()
     {
         _currentImageSrc = string.IsNullOrWhiteSpace(ImageData) ? _placeholderImage : ImageData;
+        _previousImageData = ImageData;
         if (!string.IsNullOrWhiteSpace(ImageData))
         {
             _ = LoadImageDimensions(ImageData);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Check if the ImageData parameter changed from outside
+        if (ImageData != _previousImageData)
+        {
+            _previousImageData = ImageData;
+            _currentImageSrc = string.IsNullOrWhiteSpace(ImageData) ? _placeholderImage : ImageData;
+            
+            if (!string.IsNullOrWhiteSpace(ImageData))
+            {
+                await LoadImageDimensions(ImageData);
+            }
+            else
+            {
+                _imageDimensions = (0, 0);
+            }
         }
     }
 
@@ -150,6 +188,7 @@
     private async Task SetImage(string data)
     {
         _currentImageSrc = data;
+        _previousImageData = data;
         ImageData = data;
         await ImageDataChanged.InvokeAsync(data);
         await LoadImageDimensions(data);
@@ -179,6 +218,7 @@
     private async Task ClearImage()
     {
         _currentImageSrc = _placeholderImage;
+        _previousImageData = null;
         _imageDimensions = (0, 0);
         ImageData = null;
         await ImageDataChanged.InvokeAsync(null);
@@ -197,6 +237,16 @@
         {
             Console.WriteLine($"Error pasting from clipboard: {ex.Message}");
         }
+    }
+
+    private async Task OpenEditor()
+    {
+        await OnEditClicked.InvokeAsync();
+    }
+    
+    private async Task OpenBlankCanvas()
+    {
+        await OnBlankCanvasClicked.InvokeAsync();
     }
 
     [JSInvokable]

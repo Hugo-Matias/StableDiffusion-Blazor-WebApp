@@ -36,16 +36,14 @@ async function ensureFabricLoaded() {
     fabricLoadPromise = (async () => {
         for (const cdn of FABRIC_CDNS) {
             try {
-                console.log(`Attempting to load Fabric.js from: ${cdn}`);
                 await loadScript(cdn);
                 
                 if (typeof fabric !== 'undefined') {
                     fabricLoaded = true;
-                    console.log('Fabric.js loaded successfully from:', cdn);
                     return;
                 }
             } catch (err) {
-                console.warn(`Failed to load from ${cdn}:`, err.message);
+                console.warn(`Failed to load Fabric.js from ${cdn}`);
             }
         }
         
@@ -96,6 +94,10 @@ class ImageEditor {
         this._baseBrushSize = this.options.defaultBrushSize;
         this._currentBrushColor = this.options.defaultBrushColor;
         
+        // History state tracking
+        this._stateBeforeActionSaved = false;
+        this._pendingUndoState = null;
+        
         // Zoom debounce state
         this._lastZoomNotify = 0;
         this._zoomNotifyTimeout = null;
@@ -127,7 +129,6 @@ class ImageEditor {
         this._createBrushCursor();
         
         this.isInitialized = true;
-        console.log('ImageEditor initialized for canvas:', canvasId);
     }
     
     // ==================== Initialization ====================
@@ -161,12 +162,10 @@ class ImageEditor {
         
         switch (toolType) {
             case 'eraser':
-                // Eraser: use destination-out to actually erase
                 this.canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)';
                 // We'll handle eraser in path:created by setting globalCompositeOperation
                 break;
             case 'maskbrush':
-                // Mask brush: solid color, opacity applied at layer level
                 this.canvas.freeDrawingBrush.color = this.maskColor;
                 break;
             case 'maskeraser':
@@ -294,8 +293,6 @@ class ImageEditor {
     resize(width, height) {
         if (!this.canvas) return;
         
-        console.log('Resizing canvas to:', width, 'x', height);
-        
         this.canvas.setWidth(width);
         this.canvas.setHeight(height);
         this.canvas.renderAll();
@@ -309,8 +306,6 @@ class ImageEditor {
         if (!imageData) {
             throw new Error('No image data provided');
         }
-        
-        console.log('Loading image, data length:', imageData.length);
         
         try {
             let img;
@@ -329,8 +324,6 @@ class ImageEditor {
             
             if (!img) throw new Error('Failed to load image - null result');
             
-            console.log('Image object created, dimensions:', img.width, 'x', img.height);
-            
             if (this.baseImageObject) {
                 this.canvas.remove(this.baseImageObject);
             }
@@ -344,20 +337,23 @@ class ImageEditor {
                 lockScalingX: true,
                 lockScalingY: true,
                 hasControls: false,
-                hasBorders: false,
-                name: 'baseImage'
+                hasBorders: false
             });
+            
+            img.name = 'baseImage';
+            const originalToObject = img.toObject.bind(img);
+            img.toObject = function(propertiesToInclude) {
+                const obj = originalToObject(propertiesToInclude);
+                obj.name = this.name;
+                return obj;
+            };
             
             this.baseImageObject = img;
             this.canvas.add(img);
             this._sendToBack(img);
             
-            console.log('Image added to canvas');
             this.fitToView();
             this._notifyImageLoaded(img.width, img.height);
-            
-            // Save initial state for undo (so first action can be undone)
-            this._saveHistoryState();
             
         } catch (error) {
             console.error('Error loading image:', error);
@@ -366,8 +362,6 @@ class ImageEditor {
     }
     
     createBlankCanvas(width, height, backgroundColor = '#FFFFFF') {
-        console.log('Creating blank canvas:', width, 'x', height);
-        
         if (this.baseImageObject) {
             this.canvas.remove(this.baseImageObject);
             this.baseImageObject = null;
@@ -382,9 +376,16 @@ class ImageEditor {
             lockMovementX: true,
             lockMovementY: true,
             hasControls: false,
-            hasBorders: false,
-            name: 'baseImage'
+            hasBorders: false
         });
+        
+        background.name = 'baseImage';
+        const originalToObject = background.toObject.bind(background);
+        background.toObject = function(propertiesToInclude) {
+            const obj = originalToObject(propertiesToInclude);
+            obj.name = this.name;
+            return obj;
+        };
         
         this.baseImageObject = background;
         this.canvas.add(background);
@@ -392,9 +393,6 @@ class ImageEditor {
         
         this.fitToView();
         this._notifyImageLoaded(width, height);
-        
-        // Save initial state for undo (so first action can be undone)
-        this._saveHistoryState();
     }
     
     _sendToBack(obj) {
@@ -439,12 +437,7 @@ class ImageEditor {
     
     // ==================== Zoom & Pan ====================
     
-    /**
-     * Set zoom level - called from .NET when slider changes
-     * Uses flag to prevent feedback loop
-     */
     setZoom(zoom, point = null) {
-        // Prevent feedback loop when called from .NET
         this._isSettingZoomFromExternal = true;
         
         zoom = Math.min(Math.max(zoom, 0.1), 5.0);
@@ -459,7 +452,6 @@ class ImageEditor {
         this._updateBrushSize();
         this.canvas.renderAll();
         
-        // Reset flag after a short delay
         setTimeout(() => {
             this._isSettingZoomFromExternal = false;
         }, 50);
@@ -664,6 +656,40 @@ class ImageEditor {
         this._saveHistoryState();
     }
     
+    /**
+     * Save state before an action begins (called on mouse:down in drawing mode)
+     * This captures the canvas state BEFORE the new stroke is added
+     */
+    _saveStateBeforeAction() {
+        if (this.historyLocked || this._stateBeforeActionSaved || !this.canvas.isDrawingMode) {
+            return;
+        }
+        
+        // Capture the current state (before new stroke is added)
+        // This will be sent to .NET after the stroke completes
+        this._pendingUndoState = this.getState();
+        this._stateBeforeActionSaved = true;
+    }
+    
+    /**
+     * Called after path is created to save the captured state and reset the flag
+     */
+    _afterPathCreated() {
+        // Now send the previously captured state to .NET for undo stack
+        if (this._pendingUndoState) {
+            this._notifySaveState(this._pendingUndoState);
+            this._pendingUndoState = null;
+        }
+        this._stateBeforeActionSaved = false;
+    }
+    
+    _saveHistoryState() {
+        if (this.historyLocked) return;
+        
+        const state = this.getState();
+        this._notifySaveState(state);
+    }
+    
     loadState(json) {
         if (!json) return;
         
@@ -682,7 +708,12 @@ class ImageEditor {
             return;
         }
         
-        // Remove all non-base objects (drawings, masks) without clearing canvas
+        // Get objects to restore from saved state (only drawings and masks)
+        const objectsToRestore = stateData.objects?.filter(
+            objData => objData.name === 'drawing' || objData.name === 'mask'
+        ) || [];
+        
+        // Remove all current drawings and masks
         const objectsToRemove = this.canvas.getObjects().filter(obj => 
             obj.name === 'drawing' || obj.name === 'mask' || obj.name === '_brushCursor'
         );
@@ -690,13 +721,6 @@ class ImageEditor {
         
         // Clear mask objects array
         this.maskObjects = [];
-        
-        // Get objects to restore from saved state
-        const objectsToRestore = stateData.objects?.filter(
-            objData => objData.name === 'drawing' || objData.name === 'mask'
-        ) || [];
-        
-        console.log('loadState: restoring', objectsToRestore.length, 'objects');
         
         if (objectsToRestore.length === 0) {
             // No objects to restore, just render
@@ -707,57 +731,117 @@ class ImageEditor {
             return;
         }
         
-        // Use fabric.util.enlivenObjects - check both Fabric 5 and 6 APIs
-        const enlivenFn = fabric.util.enlivenObjects;
+        // Use direct object creation instead of enlivenObjects to preserve custom properties
+        this._restoreObjectsDirectly(objectsToRestore, currentVPT);
+    }
+    
+    _addRestoredObjects(enlivenedObjects, viewportTransform, originalData) {
+        if (enlivenedObjects && enlivenedObjects.length > 0) {
+            enlivenedObjects.forEach((obj, index) => {
+                obj.set({
+                    selectable: false,
+                    evented: false,
+                    hasControls: false,
+                    hasBorders: false
+                });
+                
+                // Restore the name from original data since enlivenObjects doesn't preserve it
+                const objData = originalData[index];
+                if (objData && objData.name) {
+                    obj.name = objData.name;
+                    
+                    // Override toObject to include name in serialization
+                    const originalToObject = obj.toObject.bind(obj);
+                    obj.toObject = function(propertiesToInclude) {
+                        const result = originalToObject(propertiesToInclude);
+                        result.name = this.name;
+                        return result;
+                    };
+                }
+                
+                this.canvas.add(obj);
+                
+                if (obj.name === 'mask') {
+                    this.maskObjects.push(obj);
+                }
+            });
+            console.log('loadState: added', enlivenedObjects.length, 'objects to canvas');
+        }
         
-        // Fabric 6 uses promises, Fabric 5 uses callbacks
-        const enlivenResult = enlivenFn(objectsToRestore);
+        // Ensure viewport is preserved
+        this.canvas.setViewportTransform(viewportTransform);
+        this.canvas.renderAll();
+        this.historyLocked = false;
         
-        const handleEnlivenedObjects = (enlivenedObjects) => {
-            if (enlivenedObjects && enlivenedObjects.length > 0) {
-                enlivenedObjects.forEach(obj => {
-                    obj.set({
+        // Update mask state
+        this._notifyMaskChanged(this.maskObjects.length > 0);
+    }
+    
+    _restoreObjectsDirectly(objectsData, viewportTransform) {
+        console.log('loadState: restoring', objectsData.length, 'objects directly');
+        
+        let restored = 0;
+        objectsData.forEach(objData => {
+            try {
+                // Create path objects directly - handle both 'path' and 'Path' type names
+                const objType = (objData.type || '').toLowerCase();
+                if (objType === 'path' && objData.path) {
+                    const path = new fabric.Path(objData.path, {
+                        left: objData.left || 0,
+                        top: objData.top || 0,
+                        fill: objData.fill,
+                        stroke: objData.stroke,
+                        strokeWidth: objData.strokeWidth,
+                        strokeLineCap: objData.strokeLineCap,
+                        strokeLineJoin: objData.strokeLineJoin,
+                        opacity: objData.opacity !== undefined ? objData.opacity : 1,
                         selectable: false,
                         evented: false,
                         hasControls: false,
                         hasBorders: false
                     });
-                    this.canvas.add(obj);
                     
-                    if (obj.name === 'mask') {
-                        this.maskObjects.push(obj);
+                    // Set and preserve name
+                    path.name = objData.name;
+                    const originalToObject = path.toObject.bind(path);
+                    path.toObject = function(propertiesToInclude) {
+                        const result = originalToObject(propertiesToInclude);
+                        result.name = this.name;
+                        return result;
+                    };
+                    
+                    this.canvas.add(path);
+                    
+                    if (objData.name === 'mask') {
+                        this.maskObjects.push(path);
                     }
-                });
+                    restored++;
+                }
+            } catch (err) {
+                console.error('Failed to create object:', err);
             }
-            
-            // Ensure viewport is preserved
-            this.canvas.setViewportTransform(currentVPT);
-            this.canvas.renderAll();
-            this.historyLocked = false;
-            
-            // Update mask state
-            this._notifyMaskChanged(this.maskObjects.length > 0);
-        };
+        });
         
-        if (enlivenResult instanceof Promise) {
-            // Fabric 6 API
-            enlivenResult.then(handleEnlivenedObjects).catch(err => {
-                console.error('Failed to enliven objects:', err);
-                this.canvas.setViewportTransform(currentVPT);
-                this.canvas.renderAll();
-                this.historyLocked = false;
-            });
-        } else {
-            // Fabric 5 API (callback-based) - this shouldn't happen with v6
-            // but handle it just in case
-            handleEnlivenedObjects(enlivenResult);
-        }
+        this.canvas.setViewportTransform(viewportTransform);
+        this.canvas.renderAll();
+        this.historyLocked = false;
+        this._notifyMaskChanged(this.maskObjects.length > 0);
     }
     
     getState() {
-        return JSON.stringify(this.canvas.toJSON(['name']));
+        // Get state with custom properties included
+        const state = this.canvas.toJSON(['name']);
+        
+        // Debug: log all objects and their names
+        const allObjects = state.objects || [];
+        console.log('getState: all objects:', allObjects.map(o => ({ type: o.type, name: o.name })));
+        
+        const drawingCount = allObjects.filter(o => o.name === 'drawing' || o.name === 'mask').length;
+        console.log('getState: saving state with', drawingCount, 'drawing/mask objects out of', allObjects.length, 'total');
+        
+        return JSON.stringify(state);
     }
-    
+
     // ==================== Export ====================
     
     exportImage(includeBackground = true) {
@@ -856,7 +940,7 @@ class ImageEditor {
                 ctx.beginPath();
                 ctx.lineWidth = obj.strokeWidth || this._baseBrushSize;
                 
-                obj.path.forEach((cmd, i) => {
+                obj.path.forEach((cmd) => {
                     if (cmd[0] === 'M') {
                         ctx.moveTo(cmd[1], cmd[2]);
                     } else if (cmd[0] === 'Q') {
@@ -933,6 +1017,12 @@ class ImageEditor {
         if (this.currentTool === 'colorpicker' && e.button === 0) {
             const color = this.getColorAtPoint(e.offsetX, e.offsetY);
             this._notifyColorPicked(color);
+            return;
+        }
+        
+        // Save state before drawing starts (for proper undo)
+        if (this.canvas.isDrawingMode && e.button === 0) {
+            this._saveStateBeforeAction();
         }
     }
     
@@ -990,9 +1080,11 @@ class ImageEditor {
             hasBorders: false
         });
         
+        // Determine the name based on current tool
+        let pathName = 'drawing';
         switch (this.currentTool) {
             case 'maskbrush':
-                path.name = 'mask';
+                pathName = 'mask';
                 path.set('opacity', this.maskOpacity);
                 this.maskObjects.push(path);
                 this._notifyMaskChanged(true);
@@ -1002,23 +1094,37 @@ class ImageEditor {
                 // Find and remove mask paths that this stroke overlaps
                 this.canvas.remove(path); // Remove the eraser stroke
                 this._eraseMaskAtPath(path);
-                break;
+                // Reset the flag and return early - no path to save
+                this._afterPathCreated();
+                return;
                 
             case 'eraser':
-                // Find and remove drawing paths that this stroke overlaps
-                path.name = 'eraser';
                 // For simplicity, eraser draws white on the canvas
-                // A more sophisticated approach would use clipping or destination-out
-                path.name = 'drawing';
+                pathName = 'drawing';
                 break;
                 
             default:
-                path.name = 'drawing';
+                pathName = 'drawing';
                 break;
         }
         
-        if (!this.historyLocked) {
-            this._saveHistoryState();
+        // Set the name property AND ensure it's included in serialization
+        path.name = pathName;
+        
+        // Fabric.js 6: Override toObject to include custom properties
+        const originalToObject = path.toObject.bind(path);
+        path.toObject = function(propertiesToInclude) {
+            const obj = originalToObject(propertiesToInclude);
+            obj.name = this.name;
+            return obj;
+        };
+        
+        // Reset the flag so next stroke can save state before starting
+        this._afterPathCreated();
+        
+        // Mark as dirty
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnCanvasModified');
         }
     }
     
@@ -1169,13 +1275,6 @@ class ImageEditor {
         }).join('');
     }
     
-    _saveHistoryState() {
-        if (this.historyLocked) return;
-        
-        const state = this.getState();
-        this._notifySaveState(state);
-    }
-    
     // ==================== .NET Callbacks ====================
     
     _notifyImageLoaded(width, height) {
@@ -1261,8 +1360,6 @@ class ImageEditor {
     // ==================== Cleanup ====================
     
     dispose() {
-        console.log('Disposing ImageEditor...');
-        
         document.removeEventListener('keydown', this._boundKeyDown);
         document.removeEventListener('keyup', this._boundKeyUp);
         window.removeEventListener('resize', this._boundResize);

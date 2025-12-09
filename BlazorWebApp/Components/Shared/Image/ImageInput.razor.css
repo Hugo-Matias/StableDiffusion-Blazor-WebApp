@@ -14,6 +14,9 @@
     padding: 8px 12px;
     background: var(--mud-palette-surface);
     border-bottom: 1px solid var(--mud-palette-lines-default);
+    /* Header should be above the file input */
+    position: relative;
+    z-index: 20;
 }
 
 .image-input-title {
@@ -32,7 +35,6 @@
     align-items: center;
     justify-content: center;
     background: var(--mud-palette-background);
-    cursor: pointer;
     overflow: hidden;
 }
 
@@ -44,6 +46,8 @@
     height: 100%;
     object-fit: contain;
     transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .image-input-preview.loading {
@@ -60,10 +64,11 @@
     opacity: 0;
     transition: opacity 0.2s ease;
     pointer-events: none;
+    z-index: 2;
 }
 
-.image-input-overlay.drag-over,
-.image-input-content:hover .image-input-overlay {
+.image-input-content:hover .image-input-overlay,
+.image-input-overlay.drag-over {
     opacity: 1;
 }
 
@@ -75,6 +80,7 @@
 .overlay-content {
     color: var(--mud-palette-text-primary);
     text-align: center;
+    pointer-events: none;
 }
 
 .image-input-loading {
@@ -84,20 +90,53 @@
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 15;
 }
 
+/* 
+ * Hide the native file input completely while keeping it interactive.
+ * We use a large negative text-indent and set font-size to 0 to hide
+ * the native "Choose file" button and text.
+ */
 .image-input-file {
     position: absolute;
     inset: 0;
+    width: 100%;
+    height: 100%;
     opacity: 0;
     cursor: pointer;
     z-index: 10;
+    /* Hide native button and text */
+    font-size: 0;
+    color: transparent;
 }
 
-/* Hide file input visually but keep it accessible */
-::deep input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
+/* Target the actual input inside the InputFile component wrapper */
+::deep .image-input-file,
+::deep .image-input-file input,
+::deep .image-input-file input[type="file"] {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    font-size: 0 !important;
+    color: transparent !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+/* Additional selectors for browser compatibility */
+::deep input[type="file"]::file-selector-button {
+    display: none;
+}
+
+::deep input[type="file"]::-webkit-file-upload-button {
+    display: none;
+}
+
+::deep input[type="file"]::-ms-browse {
+    display: none;
 }

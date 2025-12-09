@@ -1,4 +1,5 @@
-// ImageInput.js - Handles drag/drop, paste, and file input interactions
+// ImageInput.js - Handles drag/drop and paste interactions only
+// Click handling is done by the native InputFile component
 
 export function init(dropzoneElement, inputElement, dotNetRef) {
     const instance = new ImageInputHandler(dropzoneElement, inputElement, dotNetRef);
@@ -11,27 +12,32 @@ class ImageInputHandler {
         this.input = inputElement;
         this.dotNetRef = dotNetRef;
         
+        // Bind handlers for proper cleanup
+        this._handleDragEnter = this.handleDragEnter.bind(this);
+        this._handleDragLeave = this.handleDragLeave.bind(this);
+        this._handleDragOver = this.handleDragOver.bind(this);
+        this._handleDrop = this.handleDrop.bind(this);
+        this._handlePaste = this.handlePaste.bind(this);
+        
         this.setupEventListeners();
     }
     
     setupEventListeners() {
-        // Drag and drop events
-        this.dropzone.addEventListener('dragenter', this.handleDragEnter.bind(this));
-        this.dropzone.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        this.dropzone.addEventListener('dragover', this.handleDragOver.bind(this));
-        this.dropzone.addEventListener('drop', this.handleDrop.bind(this));
+        if (!this.dropzone) {
+            console.warn('ImageInputHandler: dropzone element is null');
+            return;
+        }
         
-        // Paste event (global, but we'll filter)
-        document.addEventListener('paste', this.handlePaste.bind(this));
+        // Drag and drop events only
+        this.dropzone.addEventListener('dragenter', this._handleDragEnter);
+        this.dropzone.addEventListener('dragleave', this._handleDragLeave);
+        this.dropzone.addEventListener('dragover', this._handleDragOver);
+        this.dropzone.addEventListener('drop', this._handleDrop);
         
-        // Click to open file dialog
-        this.dropzone.addEventListener('click', (e) => {
-            // Don't trigger if clicking on buttons
-            if (e.target.closest('button')) return;
-            if (this.input) {
-                this.input.click();
-            }
-        });
+        // Paste event (global)
+        document.addEventListener('paste', this._handlePaste);
+        
+        // NO click handler - the InputFile component handles clicks natively
     }
     
     handleDragEnter(e) {
@@ -52,6 +58,7 @@ class ImageInputHandler {
     handleDragOver(e) {
         e.preventDefault();
         e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
     }
     
     handleDrop(e) {
@@ -59,15 +66,13 @@ class ImageInputHandler {
         e.stopPropagation();
         this.dotNetRef.invokeMethodAsync('OnDrop');
         
-        const files = e.dataTransfer.files;
-        if (files.length > 0 && files[0].type.startsWith('image/')) {
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0 && files[0].type.startsWith('image/')) {
             this.loadImageFile(files[0]);
         }
     }
     
     handlePaste(e) {
-        // Only handle paste if this dropzone or its children are focused
-        // Or if the paste contains image data
         const items = e.clipboardData?.items;
         if (!items) return;
         
@@ -97,7 +102,6 @@ class ImageInputHandler {
             }
         } catch (err) {
             console.warn('Failed to read clipboard:', err);
-            // Fallback: try to trigger paste event
         }
     }
     
@@ -107,10 +111,19 @@ class ImageInputHandler {
             const imageData = e.target.result;
             this.dotNetRef.invokeMethodAsync('OnImagePasted', imageData);
         };
+        reader.onerror = (e) => {
+            console.error('Failed to read file:', e);
+        };
         reader.readAsDataURL(file);
     }
     
     dispose() {
-        document.removeEventListener('paste', this.handlePaste.bind(this));
+        if (this.dropzone) {
+            this.dropzone.removeEventListener('dragenter', this._handleDragEnter);
+            this.dropzone.removeEventListener('dragleave', this._handleDragLeave);
+            this.dropzone.removeEventListener('dragover', this._handleDragOver);
+            this.dropzone.removeEventListener('drop', this._handleDrop);
+        }
+        document.removeEventListener('paste', this._handlePaste);
     }
 }

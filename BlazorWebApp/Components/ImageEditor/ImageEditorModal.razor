@@ -746,6 +746,13 @@
         InvokeAsync(StateHasChanged);
     }
     
+    [JSInvokable]
+    public void OnCanvasModified()
+    {
+        _state.IsDirty = true;
+        InvokeAsync(StateHasChanged);
+    }
+    
     private void HandleOverlayClick()
     {
         // Do nothing - user must click Cancel or Apply to close

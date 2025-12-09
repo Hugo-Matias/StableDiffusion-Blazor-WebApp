@@ -1,4 +1,5 @@
 @using BlazorWebApp.Components.Shared.Generation
+@using BlazorWebApp.Components.ImageEditor
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 @using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
@@ -6,11 +7,11 @@
 @inject WorkflowService WorkflowService
 @inject ImageService ImageService
 @inject NavigationManager NavManager
+@inject ILogger<Img2ImgComfyUI> Logger
 @implements IDisposable
 
 @page "/comfyui/img2img/{id}"
 
-@* Workflow Assets Panel - Full width before prompts *@
 <WorkflowAssetsPanel Mode="ModeType.Img2Img" 
                      Workflow="@GetCurrentWorkflow()"
                      Columns="3"
@@ -20,27 +21,20 @@
                     PromptChanged="HandlePromptChanged"
                     NegativePrompt="@M.ParametersImg2Img?.NegativePrompt"
                     NegativePromptChanged="HandleNegativePromptChanged"
-                    OnGenerate="Generate"
-                    OnSkip="Skip"
-                    OnInterrupt="Interrupt"
+                    OnGenerate="GenerateAsync"
+                    OnSkip="SkipAsync"
+                    OnInterrupt="InterruptAsync"
                     IsGenerateDisabled="@(string.IsNullOrWhiteSpace(M.Img2ImgInputImage))" />
 
 <MudGrid>
     <MudItem xs="6">
         <MudStack Spacing="3">
-            @* TODO: Future Enhancement - Advanced Image Editor
-                - Fullscreen modal for detailed editing
-                - Canvas-based pixel manipulation with undo/redo history
-                - Brush tools for masks and inpainting
-                - Zoom and pan capabilities
-                - Layer support for multiple inputs/masks
-                - Support for future inpainting workflows (black/white mask input)
-                Current ImageInput provides basic upload, paste, and drag-drop functionality
-            *@
             <ImageInput ImageData="@M.Img2ImgInputImage" 
                         ImageDataChanged="HandleImageDataChanged"
                         Title="Input Image"
-                        OnImageLoaded="HandleImageLoaded" />
+                        OnImageLoaded="HandleImageLoaded"
+                        OnEditClicked="OpenImageEditor"
+                        OnBlankCanvasClicked="OpenBlankCanvasEditor" />
             <GenerateFormImg2ImgComfyUI />
         </MudStack>
     </MudItem>
@@ -49,14 +43,21 @@
     </MudItem>
 </MudGrid>
 
+@* Image Editor Modal *@
+<ImageEditorModal @ref="_editorModal"
+                  OnApply="HandleEditorApply"
+                  OnCancel="HandleEditorCancel" />
+
 @code {
     [Parameter] public string Id { get; set; }
+    
+    private ImageEditorModal _editorModal;
 
     protected override void OnInitialized()
     {
-        M.OnWorkflowBaseChanged += Refresh;
-        M.OnImg2ImgParametersChanged += Refresh;
-        M.OnImg2ImgInputImageChanged += Refresh;
+        M.OnWorkflowBaseChanged += HandleRefresh;
+        M.OnImg2ImgParametersChanged += HandleRefresh;
+        M.OnImg2ImgInputImageChanged += HandleRefresh;
     }
 
     private Workflow? GetCurrentWorkflow()
@@ -89,39 +90,107 @@
         M.Img2ImgInputImage = value;
         StateHasChanged();
     }
+    
+    private async Task OpenImageEditor()
+    {
+        if (_editorModal != null)
+        {
+            await _editorModal.Open(M.Img2ImgInputImage);
+        }
+    }
+    
+    private async Task OpenBlankCanvasEditor()
+    {
+        if (_editorModal != null)
+        {
+            // Default blank canvas size based on current parameters or 1024x1024
+            var width = M.ParametersImg2Img?.Width > 0 ? (int)M.ParametersImg2Img.Width : 1024;
+            var height = M.ParametersImg2Img?.Height > 0 ? (int)M.ParametersImg2Img.Height : 1024;
+            await _editorModal.OpenBlank(width, height);
+        }
+    }
+    
+    private void HandleEditorApply((string image, string? mask) result)
+    {
+        Logger.LogInformation("HandleEditorApply received. Image length: {Length}, Has mask: {HasMask}", 
+            result.image?.Length ?? 0, 
+            !string.IsNullOrWhiteSpace(result.mask));
+        
+        // Update input image with edited result
+        M.Img2ImgInputImage = result.image;
+        
+        Logger.LogInformation("Updated M.Img2ImgInputImage, length: {Length}", M.Img2ImgInputImage?.Length ?? 0);
+        
+        // If mask was created, store it for inpainting workflows
+        if (!string.IsNullOrWhiteSpace(result.mask) && M.ParametersImg2Img != null)
+        {
+            M.ParametersImg2Img.Mask = result.mask;
+        }
+        
+        StateHasChanged();
+    }
+    
+    private void HandleEditorCancel()
+    {
+        // Nothing to do on cancel, state is preserved in editor for next open
+    }
 
-    private async void Generate()
+    private async Task GenerateAsync()
     {
         if (string.IsNullOrWhiteSpace(M.Img2ImgInputImage) || M.ParametersImg2Img == null)
         {
             return;
         }
 
-        // Update parameters with current values and input image
-        M.ParametersImg2Img.Image = M.Img2ImgInputImage;
-        M.ParametersImg2Img.Comfy.Workflow = GetCurrentWorkflow();
-        
-        // Save state before generation
-        await M.SaveState();
-        
-        // Generate image
-        var generated = await ImageService.GetImages(ModeType.Img2Img);
-        if (generated != null && generated.Images != null && generated.Images.Count > 0)
+        try
         {
-            M.GeneratedImageEntities = generated;
+            // Update parameters with current values and input image
+            M.ParametersImg2Img.Image = M.Img2ImgInputImage;
+            M.ParametersImg2Img.Comfy.Workflow = GetCurrentWorkflow();
+            
+            // Save state before generation
+            await M.SaveState();
+            
+            // Generate image
+            var generated = await ImageService.GetImages(ModeType.Img2Img);
+            if (generated != null && generated.Images != null && generated.Images.Count > 0)
+            {
+                M.GeneratedImageEntities = generated;
+            }
+            
+            // Save state after generation (includes seed, etc.)
+            await M.SaveState();
+            await InvokeAsync(StateHasChanged);
         }
-        
-        // Save state after generation (includes seed, etc.)
-        await M.SaveState();
-        await InvokeAsync(StateHasChanged);
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during image generation");
+        }
     }
 
-    private async void Skip() => await API.PostClearQueue();
-
-    private async void Interrupt()
+    private async Task SkipAsync()
     {
-        M.State.Generation.IsInterrupted = true;
-        await API.PostInterrupt();
+        try
+        {
+            await API.PostClearQueue();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error skipping generation");
+        }
+    }
+
+    private async Task InterruptAsync()
+    {
+        try
+        {
+            M.State.Generation.IsInterrupted = true;
+            await API.PostInterrupt();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error interrupting generation");
+        }
     }
 
     private void HandleImageLoaded((int width, int height) dimensions)
@@ -148,15 +217,35 @@
         }
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async void HandleRefresh()
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component was disposed, ignore
+        }
+    }
 
     public void Dispose()
     {
-        M.OnWorkflowBaseChanged -= Refresh;
-        M.OnImg2ImgParametersChanged -= Refresh;
-        M.OnImg2ImgInputImageChanged -= Refresh;
+        M.OnWorkflowBaseChanged -= HandleRefresh;
+        M.OnImg2ImgParametersChanged -= HandleRefresh;
+        M.OnImg2ImgInputImageChanged -= HandleRefresh;
         
-        // Save state on dispose
-        _ = M.SaveState();
+        // Fire and forget state save - acceptable in Dispose
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await M.SaveState();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to save state on dispose");
+            }
+        });
     }
 }
