@@ -337,5 +337,51 @@ export const LayerMixin = {
                 this.activeLayerId = defaultLayer ? defaultLayer.id : null;
             }
         }
+    },
+    
+    /**
+     * Copy selected objects to clipboard (callable from C#)
+     */
+    copySelection() {
+        if (typeof this._copySelectedObjects === 'function') {
+            this._copySelectedObjects();
+        }
+    },
+    
+    /**
+     * Paste objects from clipboard (callable from C#)
+     */
+    pasteClipboard() {
+        if (typeof this._pasteObjects === 'function') {
+            this._pasteObjects();
+        }
+    },
+    
+    /**
+     * Duplicate selected objects (callable from C#)
+     */
+    duplicateSelection() {
+        if (typeof this._duplicateSelectedObjects === 'function') {
+            this._duplicateSelectedObjects();
+        }
+    },
+    
+    /**
+     * Flip selected objects (callable from C#)
+     * @param {string} direction - 'horizontal' or 'vertical'
+     */
+    flipSelection(direction) {
+        if (typeof this._flipSelectedObjects === 'function') {
+            this._flipSelectedObjects(direction);
+        }
+    },
+    
+    /**
+     * Delete selected objects (callable from C#)
+     */
+    deleteSelection() {
+        if (typeof this._deleteSelectedObjects === 'function') {
+            this._deleteSelectedObjects();
+        }
     }
 };

@@ -92,6 +92,9 @@ class ImageEditor {
         this.maskOpacity = this.options.maskOpacity;
         this.maskColor = this.options.maskColor;
         
+        // Clipboard for copy/paste
+        this._clipboard = [];
+        
         // Brush cursor
         this._brushCursorOuter = null;
         this._brushCursorInner = null;

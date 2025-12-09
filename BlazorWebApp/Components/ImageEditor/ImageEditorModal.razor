@@ -153,6 +153,30 @@
                             <MudMenuItem Icon="@Icons.Material.Filled.FormatColorFill" OnClick="ClearMask" Disabled="@(!_state.HasMask)">Clear Mask</MudMenuItem>
                         </MudMenu>
                         
+                        @* Object Actions (when in Select mode) *@
+                        @if (_state.CurrentTool == ImageEditorTool.Select)
+                        {
+                            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                <MudTooltip Text="Flip Horizontal (Ctrl+Shift+H)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Flip" 
+                                                   OnClick="FlipHorizontal" />
+                                </MudTooltip>
+                                <MudTooltip Text="Flip Vertical (Ctrl+Shift+V)">
+                                    <MudIconButton OnClick="FlipVertical">
+                                        <MudIcon Icon="@Icons.Material.Filled.Flip" Style="transform: rotate(90deg);" />
+                                    </MudIconButton>
+                                </MudTooltip>
+                                <MudTooltip Text="Duplicate (Ctrl+D)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                                   OnClick="DuplicateSelection" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete (Del)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                   OnClick="DeleteSelection" />
+                                </MudTooltip>
+                            </MudButtonGroup>
+                        }
+                        
                         <MudSpacer />
                         
                         @* Layer Controls (Right side) *@
@@ -685,6 +709,38 @@
             await _editorInstance.InvokeVoidAsync("clearMask");
             _state.HasMask = false;
             StateHasChanged();
+        }
+    }
+    
+    private async Task FlipHorizontal()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("flipSelection", "horizontal");
+        }
+    }
+    
+    private async Task FlipVertical()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("flipSelection", "vertical");
+        }
+    }
+    
+    private async Task DuplicateSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("duplicateSelection");
+        }
+    }
+    
+    private async Task DeleteSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("deleteSelection");
         }
     }
     

@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 3.6  
+> **Document Version:** 3.7  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 3.3 Complete  
+> **Status:** Phase 3 Complete  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -22,7 +22,7 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 |-------|-------------|--------|----------|
 | **Phase 1** | Core Canvas Infrastructure | ✅ Complete | P0 |
 | **Phase 2** | Drawing & Mask Tools | ✅ Complete | P0 |
-| **Phase 3** | Layer System & Compositing | 🟡 In Progress | P1 |
+| **Phase 3** | Layer System & Compositing | ✅ Complete | P1 |
 | **Phase 4** | Polish & UX | 🔴 Not Started | P2 |
 
 ### Phase 3 Sub-phases
@@ -32,7 +32,7 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 | **3.1** | Core Layer Infrastructure | ✅ Complete |
 | **3.2** | Image Import | ✅ Complete |
 | **3.3** | Layer Panel UI | ✅ Complete |
-| **3.4** | Object Management | 🟡 Partial |
+| **3.4** | Object Management | ✅ Complete |
 | **3.5** | State Preservation | ✅ Complete |
 | **3.6** | Integration & Limits | ✅ Complete |
 
@@ -86,7 +86,7 @@ public class LayerInfo
 public enum LayerType { Base, Drawing, Import, Mask }
 ```
 
-#### JavaScript Layer Methods (ImageEditor.js)
+#### JavaScript Layer Methods (ImageEditor.layers.js)
 
 ```javascript
 // Layer management
@@ -105,6 +105,13 @@ _updateLayerVisibility(layerId, visible)
 _updateLayerOpacity(layerId, opacity)
 _updateLayerLocked(layerId, locked)
 _reorderCanvasObjects()
+
+// Object management (callable from C#)
+copySelection()
+pasteClipboard()
+duplicateSelection()
+flipSelection(direction)
+deleteSelection()
 ```
 
 ---
@@ -156,7 +163,7 @@ _reorderCanvasObjects()
 
 #### Implementation Details
 
-**JavaScript Methods (ImageEditor.js):**
+**JavaScript Methods (ImageEditor.export.js):**
 ```javascript
 importImage(dataUrl, options)      // Import from data URL
 importImageFromFile(file)           // Import from File object
@@ -227,26 +234,54 @@ HandleLayerReorder((string layerId, int direction))
 
 ---
 
-### Phase 3.4: Object Management 🟡 PARTIAL
+### Phase 3.4: Object Management ✅ COMPLETE
 
-#### Implemented
+#### Implemented Features
 
-| Item | Status |
-|------|--------|
-| Select tool (V) | ✅ |
-| Delete selected (Delete/Backspace) | ✅ |
-| Object selection in Select mode | ✅ |
-| Respect layer lock on delete | ✅ |
-| Respect layer lock on selection | ✅ |
+| Item | Keyboard Shortcut | Toolbar Button | Status |
+|------|-------------------|----------------|--------|
+| Select tool | V | ✅ | ✅ |
+| Delete selected | Delete / Backspace | ✅ | ✅ |
+| Copy | Ctrl+C | - | ✅ |
+| Paste | Ctrl+V | - | ✅ |
+| Duplicate | Ctrl+D | ✅ | ✅ |
+| Flip Horizontal | Ctrl+Shift+H | ✅ | ✅ |
+| Flip Vertical | Ctrl+Shift+V | ✅ | ✅ |
 
-#### Remaining
+#### Implementation Details
 
-| Item | Status |
-|------|--------|
-| Copy (Ctrl+C) | 🔴 |
-| Paste object (Ctrl+V with objects) | 🔴 |
-| Duplicate (Ctrl+D) | 🔴 |
-| Flip horizontal/vertical | 🔴 |
+**JavaScript Methods (ImageEditor.events.js):**
+```javascript
+// Async methods for Fabric.js 6.x compatibility
+async _copySelectedObjects()      // Copy to internal clipboard
+async _pasteObjects()             // Paste from clipboard (+20px offset)
+async _duplicateSelectedObjects() // Clone in place (+20px offset)
+_flipSelectedObjects(direction)   // Toggle flipX/flipY
+_deleteSelectedObjects()          // Remove selected objects
+```
+
+**Public Methods (ImageEditor.layers.js):**
+```javascript
+// Callable from C#
+copySelection()
+pasteClipboard()
+duplicateSelection()
+flipSelection(direction)  // 'horizontal' or 'vertical'
+deleteSelection()
+```
+
+**Toolbar UI:**
+- Object action buttons appear when Select tool is active
+- Buttons: Flip H, Flip V, Duplicate, Delete
+- Flip Vertical icon uses rotated Flip icon for distinction
+
+**Safety Features:**
+- All operations skip base image objects
+- All operations respect layer lock status
+- All operations save undo state before execution
+- All operations notify C# of canvas modification
+- Paste targets active layer (not original layer)
+- Pasted/duplicated objects offset +20px for visibility
 
 ---
 
@@ -265,6 +300,30 @@ HandleLayerReorder((string layerId, int direction))
 ---
 
 ## Changelog
+
+### Version 3.7 (December 2024) - Phase 3.4 Complete
+
+#### Object Management Features
+- **Copy (Ctrl+C)**: Copies selected objects to internal clipboard
+- **Paste (Ctrl+V)**: Pastes from clipboard to active layer with +20px offset
+- **Duplicate (Ctrl+D)**: Clones selected objects with +20px offset
+- **Flip Horizontal (Ctrl+Shift+H)**: Toggles horizontal flip on selection
+- **Flip Vertical (Ctrl+Shift+V)**: Toggles vertical flip on selection
+- **Delete (Del/Backspace)**: Removes selected objects
+
+#### Toolbar Updates
+- Object action buttons appear when Select tool is active
+- Buttons: Flip H, Flip V, Duplicate, Delete
+- Flip Vertical icon uses rotated Flip icon for distinction
+
+#### Fabric.js 6.x Compatibility
+- Converted `_copySelectedObjects`, `_pasteObjects`, `_duplicateSelectedObjects` to async/await
+- Fabric.js 6.x `clone()` returns Promise instead of using callback
+- Methods preserve custom properties (name, layerId, layer) on cloned objects
+
+#### Bug Fixes
+- Fixed duplicate error "t is not iterable" caused by Fabric.js 6.x Promise-based clone
+- Fixed flip vertical button styling - now only rotates the icon, not the button
 
 ### Version 3.6 (December 2024) - Layer Locking & State Fixes
 
@@ -405,12 +464,15 @@ HandleLayerReorder((string layerId, int direction))
 - [x] Layer lock enforcement on canvas objects
 - [x] State persistence for layers
 
-### Phase 3.4: Object Management
+### Phase 3.4: Object Management ✅ COMPLETE
 - [x] Select tool (V)
 - [x] Delete key handler
-- [ ] Copy/paste (Ctrl+C/V)
-- [ ] Duplicate (Ctrl+D)
-- [ ] Flip horizontal/vertical
+- [x] Copy (Ctrl+C) - internal clipboard
+- [x] Paste (Ctrl+V) - from internal clipboard
+- [x] Duplicate (Ctrl+D)
+- [x] Flip horizontal (Ctrl+Shift+H)
+- [x] Flip vertical (Ctrl+Shift+V)
+- [x] Toolbar buttons for object actions
 
 ### Phase 3.6: Integration ✅ COMPLETE
 - [x] Layer limit enforcement (20)
@@ -441,9 +503,10 @@ HandleLayerReorder((string layerId, int direction))
 | `Models/ImageEditorState.cs` | C# state model with LayerInfo class |
 | `Services/ManagerService.cs` | ImageEditorState storage and auto-reset |
 
-### Key Changes in 3.6
+### Key Changes in 3.7
 | File | Changes |
 |------|---------|
-| `ImageEditor.layers.js` | Added `_updateLayerLocked()` method, updated `updateLayer()` to call it |
-| `ImageEditor.history.js` | Added layer state to `getState()`, restore in `loadState()`, apply locked state in `_finalizeStateRestore()` |
-| `LayerPanel.razor` | Added local opacity state to prevent feedback loops, cleaned up debug code |
+| `ImageEditor.js` | Added `_clipboard` array to constructor |
+| `ImageEditor.events.js` | Added async `_copySelectedObjects`, `_pasteObjects`, `_duplicateSelectedObjects`, `_flipSelectedObjects` methods |
+| `ImageEditor.layers.js` | Added public wrapper methods: `copySelection`, `pasteClipboard`, `duplicateSelection`, `flipSelection`, `deleteSelection` |
+| `ImageEditorModal.razor` | Added object action toolbar buttons, `FlipHorizontal`, `FlipVertical`, `DuplicateSelection`, `DeleteSelection` methods |

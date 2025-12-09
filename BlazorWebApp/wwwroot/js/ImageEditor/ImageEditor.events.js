@@ -426,18 +426,51 @@ export const EventsMixin = {
             e.preventDefault();
         }
         
+        // Undo: Ctrl+Z
         if (e.ctrlKey && e.code === 'KeyZ' && !e.shiftKey) {
             this.undo();
             e.preventDefault();
         }
         
+        // Redo: Ctrl+Y or Ctrl+Shift+Z
         if ((e.ctrlKey && e.code === 'KeyY') || (e.ctrlKey && e.shiftKey && e.code === 'KeyZ')) {
             this.redo();
             e.preventDefault();
         }
         
+        // Delete selected objects
         if ((e.code === 'Delete' || e.code === 'Backspace') && this.currentTool === 'select') {
             this._deleteSelectedObjects();
+            e.preventDefault();
+        }
+        
+        // Copy: Ctrl+C
+        if (e.ctrlKey && e.code === 'KeyC' && this.currentTool === 'select') {
+            this._copySelectedObjects(); // async but we don't need to await
+            e.preventDefault();
+        }
+        
+        // Paste: Ctrl+V (only when we have copied objects, otherwise let clipboard paste handle it)
+        if (e.ctrlKey && e.code === 'KeyV' && this.currentTool === 'select' && this._clipboard && this._clipboard.length > 0) {
+            this._pasteObjects(); // async but we don't need to await
+            e.preventDefault();
+        }
+        
+        // Duplicate: Ctrl+D
+        if (e.ctrlKey && e.code === 'KeyD' && this.currentTool === 'select') {
+            this._duplicateSelectedObjects(); // async but we don't need to await
+            e.preventDefault();
+        }
+        
+        // Flip Horizontal: Ctrl+Shift+H (only in select mode with selection)
+        if (e.ctrlKey && e.shiftKey && e.code === 'KeyH' && this.currentTool === 'select') {
+            this._flipSelectedObjects('horizontal');
+            e.preventDefault();
+        }
+        
+        // Flip Vertical: Ctrl+Shift+V (only in select mode with selection)
+        if (e.ctrlKey && e.shiftKey && e.code === 'KeyV' && this.currentTool === 'select') {
+            this._flipSelectedObjects('vertical');
             e.preventDefault();
         }
         
@@ -519,6 +552,225 @@ export const EventsMixin = {
         });
         
         this.canvas.discardActiveObject();
+        this.canvas.renderAll();
+        
+        this._afterPathCreated();
+        
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnCanvasModified');
+        }
+    },
+    
+    /**
+     * Copy selected objects to internal clipboard
+     */
+    async _copySelectedObjects() {
+        const activeObjects = this.canvas.getActiveObjects();
+        if (activeObjects.length === 0) return;
+        
+        // Filter out base image and locked layer objects
+        const copyableObjects = activeObjects.filter(obj => {
+            if (obj.name === 'baseImage') return false;
+            const layer = this.layers.find(l => l.id === obj.layerId);
+            return !(layer && layer.locked);
+        });
+        
+        if (copyableObjects.length === 0) return;
+        
+        // Clone the objects for clipboard
+        this._clipboard = [];
+        
+        for (const obj of copyableObjects) {
+            try {
+                const cloned = await obj.clone();
+                // Preserve custom properties
+                cloned.name = obj.name;
+                cloned.layerId = obj.layerId;
+                cloned.layer = obj.layer;
+                this._clipboard.push(cloned);
+            } catch (err) {
+                console.warn('Failed to clone object for clipboard:', err);
+            }
+        }
+    },
+    
+    /**
+     * Paste objects from internal clipboard
+     */
+    async _pasteObjects() {
+        if (!this._clipboard || this._clipboard.length === 0) return;
+        
+        this._saveStateBeforeAction();
+        
+        const pastedObjects = [];
+        const activeLayer = this.getActiveLayer();
+        const targetLayerId = activeLayer?.id || this.activeLayerId;
+        const targetLayerName = activeLayer?.name || 'Drawing Layer';
+        
+        // Check if target layer is locked
+        if (activeLayer && activeLayer.locked) {
+            console.warn('Cannot paste to locked layer');
+            return;
+        }
+        
+        for (const obj of this._clipboard) {
+            try {
+                const cloned = await obj.clone();
+                // Offset pasted objects slightly
+                cloned.set({
+                    left: cloned.left + 20,
+                    top: cloned.top + 20,
+                    selectable: true,
+                    evented: true
+                });
+                
+                // Assign to active layer
+                cloned.name = obj.name === 'mask' ? 'mask' : (obj.name || 'imported');
+                cloned.layerId = targetLayerId;
+                cloned.layer = targetLayerName;
+                
+                // Add toObject override for serialization
+                const originalToObject = cloned.toObject.bind(cloned);
+                cloned.toObject = function(propertiesToInclude) {
+                    const result = originalToObject(propertiesToInclude);
+                    result.name = this.name;
+                    result.layerId = this.layerId;
+                    result.layer = this.layer;
+                    return result;
+                };
+                
+                this.canvas.add(cloned);
+                pastedObjects.push(cloned);
+            } catch (err) {
+                console.warn('Failed to paste object:', err);
+            }
+        }
+        
+        // Update clipboard positions for next paste
+        this._clipboard.forEach(obj => {
+            obj.set({
+                left: obj.left + 20,
+                top: obj.top + 20
+            });
+        });
+        
+        // Select pasted objects
+        if (pastedObjects.length === 1) {
+            this.canvas.setActiveObject(pastedObjects[0]);
+        } else if (pastedObjects.length > 1) {
+            const selection = new fabric.ActiveSelection(pastedObjects, { canvas: this.canvas });
+            this.canvas.setActiveObject(selection);
+        }
+        
+        this._reorderCanvasObjects();
+        this.canvas.renderAll();
+        
+        this._afterPathCreated();
+        
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnCanvasModified');
+        }
+    },
+    
+    /**
+     * Duplicate selected objects (copy + paste in one step)
+     */
+    async _duplicateSelectedObjects() {
+        const activeObjects = this.canvas.getActiveObjects();
+        if (activeObjects.length === 0) return;
+        
+        // Filter out base image and locked layer objects
+        const duplicableObjects = activeObjects.filter(obj => {
+            if (obj.name === 'baseImage') return false;
+            const layer = this.layers.find(l => l.id === obj.layerId);
+            return !(layer && layer.locked);
+        });
+        
+        if (duplicableObjects.length === 0) return;
+        
+        this._saveStateBeforeAction();
+        
+        const duplicatedObjects = [];
+        
+        for (const obj of duplicableObjects) {
+            try {
+                const cloned = await obj.clone();
+                // Offset duplicated objects slightly
+                cloned.set({
+                    left: obj.left + 20,
+                    top: obj.top + 20,
+                    selectable: true,
+                    evented: true
+                });
+                
+                // Preserve layer assignment
+                cloned.name = obj.name;
+                cloned.layerId = obj.layerId;
+                cloned.layer = obj.layer;
+                
+                // Add toObject override for serialization
+                const originalToObject = cloned.toObject.bind(cloned);
+                cloned.toObject = function(propertiesToInclude) {
+                    const result = originalToObject(propertiesToInclude);
+                    result.name = this.name;
+                    result.layerId = this.layerId;
+                    result.layer = this.layer;
+                    return result;
+                };
+                
+                this.canvas.add(cloned);
+                duplicatedObjects.push(cloned);
+            } catch (err) {
+                console.warn('Failed to duplicate object:', err);
+            }
+        }
+        
+        // Select duplicated objects
+        this.canvas.discardActiveObject();
+        if (duplicatedObjects.length === 1) {
+            this.canvas.setActiveObject(duplicatedObjects[0]);
+        } else if (duplicatedObjects.length > 1) {
+            const selection = new fabric.ActiveSelection(duplicatedObjects, { canvas: this.canvas });
+            this.canvas.setActiveObject(selection);
+        }
+        
+        this._reorderCanvasObjects();
+        this.canvas.renderAll();
+        
+        this._afterPathCreated();
+        
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnCanvasModified');
+        }
+    },
+    
+    /**
+     * Flip selected objects horizontally or vertically
+     * @param {string} direction - 'horizontal' or 'vertical'
+     */
+    _flipSelectedObjects(direction) {
+        const activeObjects = this.canvas.getActiveObjects();
+        if (activeObjects.length === 0) return;
+        
+        // Filter out base image and locked layer objects
+        const flippableObjects = activeObjects.filter(obj => {
+            if (obj.name === 'baseImage') return false;
+            const layer = this.layers.find(l => l.id === obj.layerId);
+            return !(layer && layer.locked);
+        });
+        
+        if (flippableObjects.length === 0) return;
+        
+        this._saveStateBeforeAction();
+        
+        flippableObjects.forEach(obj => {
+            if (direction === 'horizontal') {
+                obj.set('flipX', !obj.flipX);
+            } else if (direction === 'vertical') {
+                obj.set('flipY', !obj.flipY);
+            }
+        });
+        
         this.canvas.renderAll();
         
         this._afterPathCreated();
