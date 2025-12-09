@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 3.7  
+> **Document Version:** 4.0  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 3 Complete  
+> **Status:** Phase 3 Complete, Planning Phase 4+  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -12,7 +12,7 @@
 
 The Image Editor is a Fabric.js-based drawing and masking tool integrated into the Blazor WebApp. It enables users to edit images before sending them to ComfyUI for img2img generation, and to create inpainting masks for targeted image modifications.
 
-**Phase 3** introduces a layer system for compositing, allowing users to import external images, organize content into layers, and build complex compositions for AI image generation.
+**Primary Focus**: Inpainting and outpainting workflows for AI image generation.
 
 ---
 
@@ -23,462 +23,281 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 | **Phase 1** | Core Canvas Infrastructure | ✅ Complete | P0 |
 | **Phase 2** | Drawing & Mask Tools | ✅ Complete | P0 |
 | **Phase 3** | Layer System & Compositing | ✅ Complete | P1 |
-| **Phase 4** | Polish & UX | 🔴 Not Started | P2 |
-
-### Phase 3 Sub-phases
-
-| Sub-phase | Description | Status |
-|-----------|-------------|--------|
-| **3.1** | Core Layer Infrastructure | ✅ Complete |
-| **3.2** | Image Import | ✅ Complete |
-| **3.3** | Layer Panel UI | ✅ Complete |
-| **3.4** | Object Management | ✅ Complete |
-| **3.5** | State Preservation | ✅ Complete |
-| **3.6** | Integration & Limits | ✅ Complete |
+| **Phase 4** | Mask Optimization | 🔴 Not Started | P0 |
+| **Phase 5** | Selection Tools | 🔴 Not Started | P1 |
+| **Phase 6** | Outpainting Support | 🔴 Not Started | P1 |
+| **Phase 7** | Additional Tools | 🔴 Not Started | P2 |
+| **Phase 8** | Polish & Enhancements | 🔴 Not Started | P3 |
 
 ---
 
-## Phase 1 & 2: COMPLETE
+## Completed Phases Summary
 
-See previous documentation for Phase 1 and 2 details.
+### Phase 1: Core Canvas Infrastructure ✅
+- Fabric.js integration with Blazor
+- Canvas zoom/pan with mouse wheel and space+drag
+- Image loading and display
+- Viewport management
+- Basic state management
+
+### Phase 2: Drawing & Mask Tools ✅
+- Brush tool with customizable size/color
+- Eraser tool (stroke-level)
+- Mask brush and mask eraser
+- Color picker tool
+- Undo/redo system
+
+### Phase 3: Layer System & Compositing ✅
+- Layer panel UI with visibility/lock/opacity controls
+- Layer reordering
+- Image import (drag-drop, paste, file picker)
+- Object selection and transformation
+- Copy/paste/duplicate/flip operations
+- State preservation (Save vs Apply workflow)
 
 ---
 
-## Phase 3: Layer System & Compositing
+## Phase 4: Mask Optimization 🔴 NOT STARTED
 
-### Phase 3.1: Core Layer Infrastructure ✅ COMPLETE
+### Objectives
+Fix mask UX issues to provide professional inpainting experience.
 
-#### Implemented Features
+### Current Issues
+1. **Opacity stacking**: Overlapping mask strokes create darker areas
+2. **No visual distinction**: Mask doesn't clearly indicate "mask mode"
+3. **Export format**: Needs guaranteed binary black/white output
 
+### Planned Deliverables
+
+#### 4.1 Flat Mask Rendering
 | Item | Description | Status |
 |------|-------------|--------|
-| `LayerInfo` class | Layer data model with Id, Name, Visibility, Lock, Opacity, Order, Type | ✅ |
-| `LayerType` enum | Base, Drawing, Import, Mask layer types | ✅ |
-| Layer property on objects | All Fabric objects have `layer`, `layerId`, `name` properties | ✅ |
-| Active layer tracking | `activeLayerId` in JS and C# state | ✅ |
-| Layer assignment | New drawings assigned to active layer | ✅ |
-| Default layers | "Base Image" (locked) and "Drawing Layer" created on init | ✅ |
-| `InitializeDefaultLayers()` | Reset creates proper default layers | ✅ |
-| Layer state in undo/redo | Layer properties preserved in serialization | ✅ |
-| Select tool (V) | Tool for selecting/moving objects on canvas | ✅ |
-| Layer-aware erasing | Eraser only affects objects on active layer | ✅ |
+| Offscreen mask canvas | Composite all mask strokes to single canvas | 🔴 |
+| Union rendering | Any painted pixel = fully masked (no opacity stacking) | 🔴 |
+| Real-time preview | Update mask overlay after each stroke | 🔴 |
 
-#### Data Model (ImageEditorState.cs)
+**Technical Approach**:
+```
+┌─────────────────────────────────────┐
+│  Mask Stroke Objects (Fabric.js)   │
+│  - Individual vector paths         │
+│  - Used for undo/redo              │
+│  - Hidden from direct display      │
+└─────────────────────────────────────┘
+                 ↓ (composite on stroke end)
+┌─────────────────────────────────────┐
+│  Offscreen Canvas (mask-buffer)    │
+│  - Renders all strokes as white    │
+│  - Full opacity (no stacking)      │
+│  - globalCompositeOperation: src   │
+└─────────────────────────────────────┘
+                 ↓ (display)
+┌─────────────────────────────────────┐
+│  Mask Display Layer                 │
+│  - User-configurable color         │
+│  - User-configurable opacity       │
+│  - CSS animation overlay           │
+└─────────────────────────────────────┘
+```
 
-```csharp
-public class LayerInfo
-{
-    public const string BaseLayerId = "base-image-layer";
-    public const string MaskLayerId = "mask-layer";
-    
-    public string Id { get; set; }
-    public string Name { get; set; }
-    public bool IsVisible { get; set; }
-    public bool IsLocked { get; set; }
-    public float Opacity { get; set; }
-    public int Order { get; set; }
-    public LayerType LayerType { get; set; }
-    
-    public bool CanDelete => LayerType != LayerType.Base && LayerType != LayerType.Mask;
-    public bool CanReorder => LayerType != LayerType.Base && LayerType != LayerType.Mask;
+#### 4.2 Binary Mask Export
+| Item | Description | Status |
+|------|-------------|--------|
+| Black/white output | Export mask as pure B/W PNG | 🔴 |
+| Same dimensions | Match base image dimensions | 🔴 |
+| No anti-aliasing artifacts | Clean edges for AI processing | 🔴 |
+
+#### 4.3 Animated Mask Overlay
+| Item | Description | Status |
+|------|-------------|--------|
+| CSS stripe animation | Animated diagonal lines over masked areas | 🔴 |
+| CSS mask-image clipping | Pattern only shows over mask pixels | 🔴 |
+| Fallback to glow | If CSS animation too complex, use pulsing border | 🔴 |
+
+**Primary CSS Implementation**:
+```css
+.mask-pattern-overlay {
+    position: absolute;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    opacity: 0.3;
+    background: repeating-linear-gradient(
+        -45deg,
+        transparent 0px,
+        transparent 4px,
+        rgba(255,255,255,0.5) 4px,
+        rgba(255,255,255,0.5) 8px
+    );
+    animation: stripe-move 1s linear infinite;
 }
 
-public enum LayerType { Base, Drawing, Import, Mask }
+@keyframes stripe-move {
+    from { background-position: 0 0; }
+    to { background-position: 11.3px 0; }
+}
 ```
 
-#### JavaScript Layer Methods (ImageEditor.layers.js)
-
+**Mask clipping**:
 ```javascript
-// Layer management
-_initializeDefaultLayers()
-getActiveLayer()
-setActiveLayer(layerId)
-addLayer(name, type)
-removeLayer(layerId)
-updateLayer(layerId, props)
-getLayers()
-getLayerState()
-restoreLayerState(state)
-
-// Layer-aware operations
-_updateLayerVisibility(layerId, visible)
-_updateLayerOpacity(layerId, opacity)
-_updateLayerLocked(layerId, locked)
-_reorderCanvasObjects()
-
-// Object management (callable from C#)
-copySelection()
-pasteClipboard()
-duplicateSelection()
-flipSelection(direction)
-deleteSelection()
+// Clip pattern to mask shape
+patternOverlay.style.maskImage = `url(${maskCanvas.toDataURL()})`;
+patternOverlay.style.webkitMaskImage = `url(${maskCanvas.toDataURL()})`;
 ```
 
----
-
-### Phase 3.5: State Preservation ✅ COMPLETE
-
-#### Implemented Features
-
+#### 4.4 Mask Color Picker
 | Item | Description | Status |
 |------|-------------|--------|
-| Save button | Exports flattened image, preserves original base + layers | ✅ |
-| Apply button | Flattens to new base, resets layer state | ✅ |
-| Separate base preservation | `BaseImageData` stored separately from output | ✅ |
-| Canvas JSON storage | Full canvas state saved in `CanvasJson` for re-editing | ✅ |
-| State restoration | Layers and strokes restored when reopening editor | ✅ |
-| Tool state sync | Current tool synced with JS on editor reopen | ✅ |
-| Layer state in JSON | Layer metadata included in canvas state serialization | ✅ |
-| Locked state persistence | Locked layers remain locked after restore | ✅ |
+| Reuse brush color picker | Same UI, context-aware (brush vs mask) | 🔴 |
+| Separate mask color state | Store in `_state.MaskOverlayColor` | 🔴 |
+| Update display on change | Re-render mask overlay with new color | 🔴 |
 
-#### Save vs Apply Workflow
-
-| Action | Output Image | Base Image (State) | Canvas JSON | Layers |
-|--------|-------------|-------------------|-------------|--------|
-| **Save** | Flattened export | Preserved (original) | Saved | Preserved |
-| **Apply** | Flattened export | Updated (flattened) | Cleared | Reset |
-
-**Save**: User can reopen and continue editing with original base + all strokes editable.
-
-**Apply**: Commits all edits permanently. Flattened image becomes new base for fresh start.
-
----
-
-### Phase 3.2: Image Import ✅ COMPLETE
-
-#### Implemented Features
-
-| Item | Description | Status |
-|------|-------------|--------|
-| Drag-drop import | Drop image file onto canvas | ✅ |
-| File picker button | Toolbar button opens file dialog | ✅ |
-| Clipboard paste | Ctrl+V / paste pastes image from clipboard | ✅ |
-| Transform controls | Fabric built-in: move, resize, rotate | ✅ |
-| Layer assignment | Imported images assigned to active layer | ✅ |
-| Auto-scaling | Large images scaled to fit canvas (max 80%) | ✅ |
-| Size limit | Images limited to 4096px max dimension | ✅ |
-| Visual feedback | Drag-over state shows drop zone | ✅ |
-| Image persistence | Imported images restored on editor reopening | ✅ |
-| Exclusive clipboard | Paste only targets editor when open | ✅ |
-
-#### Implementation Details
-
-**JavaScript Methods (ImageEditor.export.js):**
-```javascript
-importImage(dataUrl, options)      // Import from data URL
-importImageFromFile(file)           // Import from File object
-importFromClipboard(e)              // Import from ClipboardEvent
-_setupDragDrop()                    // Setup drag-drop handlers
-_setupPasteHandler()                // Setup Ctrl+V paste handler (capture phase)
-_restoreObjectsDirectly()           // Restore paths AND images from state
-```
-
-**Import Behavior:**
-- Imported images centered on canvas
-- Auto-scaled to 80% of canvas size if too large
-- Assigned to active layer
-- Immediately selectable with Select tool (V)
-- Transform handles (resize, rotate) available
-- Persisted in canvas state for restoration
-
----
-
-### Phase 3.3: Layer Panel UI ✅ COMPLETE
-
-#### Implemented Features
-
-| Item | Description | Status |
-|------|-------------|--------|
-| LayerPanel component | Collapsible right sidebar panel | ✅ |
-| Layer list | Display layers with type icons (brush, image, mask) | ✅ |
-| Visibility toggle | Eye icon to show/hide layer | ✅ |
-| Lock toggle | Lock icon to prevent edits (objects become non-selectable) | ✅ |
-| Layer rename | Double-click layer name to edit | ✅ |
-| Layer reorder | Up/down buttons for reorderable layers | ✅ |
-| Opacity slider | Per-layer opacity control (shown when layer is active) | ✅ |
-| Add layer button | Create new drawing layers | ✅ |
-| Delete layer button | Remove deletable layers (not base/mask) | ✅ |
-| Active layer highlight | Visual indicator for selected layer | ✅ |
-| Collapsed state | Toggle button to collapse panel | ✅ |
-| Layer lock enforcement | Locked layers prevent object selection/movement | ✅ |
-
-#### Component Structure
-
-**LayerPanel.razor:**
-- Collapsible sidebar positioned in canvas wrapper
-- Parameters for layers list, active layer, max count
-- Event callbacks for all layer operations
-- Displays layers in order (highest to lowest)
-- Icons based on layer type
-- Local opacity state to prevent slider feedback loops
-
-**LayerPanel.razor.css:**
-- Scoped styles for panel layout
-- Active/hover states for layer items
-- Opacity control styling
-- Scrollable layer list
-
-#### Integration with ImageEditorModal
-
-```csharp
-// Event handlers added to ImageEditorModal
-HandleLayerSelected(string layerId)
-HandleAddLayer()
-HandleDeleteLayer(string layerId)
-HandleLayerVisibilityChanged((string layerId, bool visible))
-HandleLayerLockChanged((string layerId, bool locked))
-HandleLayerOpacityChanged((string layerId, float opacity))
-HandleLayerRename((string layerId, string name))
-HandleLayerReorder((string layerId, int direction))
-```
-
----
-
-### Phase 3.4: Object Management ✅ COMPLETE
-
-#### Implemented Features
-
-| Item | Keyboard Shortcut | Toolbar Button | Status |
-|------|-------------------|----------------|--------|
-| Select tool | V | ✅ | ✅ |
-| Delete selected | Delete / Backspace | ✅ | ✅ |
-| Copy | Ctrl+C | - | ✅ |
-| Paste | Ctrl+V | - | ✅ |
-| Duplicate | Ctrl+D | ✅ | ✅ |
-| Flip Horizontal | Ctrl+Shift+H | ✅ | ✅ |
-| Flip Vertical | Ctrl+Shift+V | ✅ | ✅ |
-
-#### Implementation Details
-
-**JavaScript Methods (ImageEditor.events.js):**
-```javascript
-// Async methods for Fabric.js 6.x compatibility
-async _copySelectedObjects()      // Copy to internal clipboard
-async _pasteObjects()             // Paste from clipboard (+20px offset)
-async _duplicateSelectedObjects() // Clone in place (+20px offset)
-_flipSelectedObjects(direction)   // Toggle flipX/flipY
-_deleteSelectedObjects()          // Remove selected objects
-```
-
-**Public Methods (ImageEditor.layers.js):**
-```javascript
-// Callable from C#
-copySelection()
-pasteClipboard()
-duplicateSelection()
-flipSelection(direction)  // 'horizontal' or 'vertical'
-deleteSelection()
-```
-
-**Toolbar UI:**
-- Object action buttons appear when Select tool is active
-- Buttons: Flip H, Flip V, Duplicate, Delete
-- Flip Vertical icon uses rotated Flip icon for distinction
-
-**Safety Features:**
-- All operations skip base image objects
-- All operations respect layer lock status
-- All operations save undo state before execution
-- All operations notify C# of canvas modification
-- Paste targets active layer (not original layer)
-- Pasted/duplicated objects offset +20px for visibility
-
----
-
-### Phase 3.6: Integration & Limits ✅ COMPLETE
-
-#### Implemented
-
+#### Already Implemented
 | Item | Status |
 |------|--------|
-| Layer limit constant (20) | ✅ |
-| Layer limit in addLayer() | ✅ |
-| Import size limit (4096px) | ✅ |
-| Exclusive clipboard handling | ✅ |
-| Auto-reset on input image change | ✅ |
+| Mask visibility toggle | ✅ Done |
+| Mask opacity slider | ✅ Done |
+
+### Implementation Notes
+- Keep vector strokes for undo/redo capability
+- Only composite to offscreen canvas for display and export
+- Mask eraser should erase from the composited result conceptually, but still work on strokes
 
 ---
 
-## Changelog
+## Phase 5: Selection Tools 🔴 NOT STARTED
 
-### Version 3.7 (December 2024) - Phase 3.4 Complete
+### Objectives
+Enable precise area selection for mask creation and editing.
 
-#### Object Management Features
-- **Copy (Ctrl+C)**: Copies selected objects to internal clipboard
-- **Paste (Ctrl+V)**: Pastes from clipboard to active layer with +20px offset
-- **Duplicate (Ctrl+D)**: Clones selected objects with +20px offset
-- **Flip Horizontal (Ctrl+Shift+H)**: Toggles horizontal flip on selection
-- **Flip Vertical (Ctrl+Shift+V)**: Toggles vertical flip on selection
-- **Delete (Del/Backspace)**: Removes selected objects
+### Planned Deliverables
 
-#### Toolbar Updates
-- Object action buttons appear when Select tool is active
-- Buttons: Flip H, Flip V, Duplicate, Delete
-- Flip Vertical icon uses rotated Flip icon for distinction
+#### 5.1 Selection Tools
+| Item | Description | Priority |
+|------|-------------|----------|
+| Rectangular selection | Click-drag rectangle | High |
+| Elliptical selection | Click-drag ellipse | High |
+| Lasso selection | Freeform polygon/path | High |
+| Clear selection | Deselect all (Escape key) | High |
+| Invert selection | Flip selected/unselected | High |
 
-#### Fabric.js 6.x Compatibility
-- Converted `_copySelectedObjects`, `_pasteObjects`, `_duplicateSelectedObjects` to async/await
-- Fabric.js 6.x `clone()` returns Promise instead of using callback
-- Methods preserve custom properties (name, layerId, layer) on cloned objects
+#### 5.2 Selection to Mask
+| Item | Description | Priority |
+|------|-------------|----------|
+| Convert to mask | Fill selection area as mask | Critical |
+| Additive mode | Add to existing mask (not replace) | High |
+| Selection visualization | Marching ants or highlight | Medium |
 
-#### Bug Fixes
-- Fixed duplicate error "t is not iterable" caused by Fabric.js 6.x Promise-based clone
-- Fixed flip vertical button styling - now only rotates the icon, not the button
+**Workflow**:
+1. User draws selection (rect/ellipse/lasso)
+2. Click "Selection to Mask" button or keyboard shortcut
+3. Selection area is added to existing mask
+4. User can refine with mask brush/eraser
 
-### Version 3.6 (December 2024) - Layer Locking & State Fixes
-
-#### Layer Lock Enforcement
-- **Object selectability**: Locked layers now prevent object selection and movement
-- **New `_updateLayerLocked()` method**: Updates all objects in a layer when lock state changes
-  - Sets `selectable`, `evented`, `lockMovementX/Y`, `lockRotation`, `lockScalingX/Y`, `hasControls`, `hasBorders`
-  - Deselects any selected objects when locking the active layer
-- **Select tool respects lock**: `setTool('select')` now checks layer lock status for each object
-- **State restoration**: `_finalizeStateRestore()` applies locked state after restoring canvas
-
-#### State Persistence Improvements  
-- **Layer state in JSON**: `getState()` now includes full `layerState` (layers array + activeLayerId)
-- **Layer restoration**: `loadState()` restores layer metadata before canvas objects
-- **Object property sync**: After restoration, visibility, opacity, and locked state applied to all objects
-
-#### Layer Panel Fixes
-- **Opacity slider feedback loop**: Fixed by using local state (`_localOpacity`) that syncs only on active layer change
-- **Active layer sync**: `OnParametersSet()` detects active layer changes and updates local opacity
-- **Removed debug code**: Cleaned up console.log statements and debug UI elements
-
-### Version 3.5 (December 2024) - Bug Fixes
-
-#### Layer Panel Fixes
-- **Rename Enter key**: Fixed input field not responding to Enter key - added `@onkeydown:stopPropagation`
-- **Active layer highlight**: Added primary color for active layer name and icon
-- **Opacity slider**: Fixed visibility with `::deep` CSS selector
-- **Reorder buttons**: Moved to header for better accessibility (always visible)
-- **Panel width**: Reduced to 220px for more canvas space
-
-#### Canvas Centering
-- **Layer panel offset**: Canvas now centers accounting for layer panel width (110px offset)
-- Updated `fitToView()` and `zoomToActual()` in JavaScript
-
-#### Layer Z-Order
-- **Stroke ordering**: Added `_reorderCanvasObjects()` call after path creation
-- Strokes now respect layer order instead of just canvas add order
-
-#### Middle Mouse Pan
-- **Event handling**: Added `auxclick` handler and upper canvas event listener
-- Middle mouse button now properly initiates pan without scrolling
-
-### Version 3.4 (December 2024) - Phase 3.3 Complete
-
-#### Layer Panel UI
-- **New Component**: `LayerPanel.razor` - Collapsible sidebar for layer management
-- **Layer List**: Displays all layers with type-specific icons (brush, image, mask)
-- **Visibility Toggle**: Eye icon to show/hide individual layers
-- **Lock Toggle**: Lock icon to prevent accidental edits
-- **Layer Rename**: Double-click layer name to edit inline
-- **Layer Reorder**: Up/down buttons to change layer stacking order
-- **Opacity Control**: Per-layer opacity slider (shown for active layer)
-- **Add/Delete**: Create new layers, delete non-essential layers
-- **Collapsible**: Toggle button to minimize panel and maximize canvas space
-
-#### Layout Changes
-- Moved active layer indicator from title bar to footer
-- Canvas area restructured to accommodate layer panel
-- New CSS classes: `image-editor-canvas-area`, `image-editor-canvas-main`
-
-#### New Files
-- `Components/ImageEditor/LayerPanel.razor` - Layer panel component
-- `Components/ImageEditor/LayerPanel.razor.css` - Scoped styles
-
-### Version 3.3 (December 2024) - Bug Fixes & Polish
-
-#### Image Import
-- **Drag & Drop**: Drop image files directly onto canvas
-- **File Picker**: Import button in toolbar opens file dialog (MudFileUpload)
-- **Clipboard Paste**: Ctrl+V or paste event imports images from clipboard
-- **Auto-scaling**: Large images automatically scaled to 80% of canvas size
-- **Size limits**: Maximum 4096px dimension, 10MB file size
-- **Visual feedback**: Drag-over state shows "Drop image here" overlay
-- **Layer assignment**: Imported images assigned to active layer
-- **Transform controls**: Fabric.js built-in move, resize, rotate handles
-
-#### New JavaScript Methods
-- `importImage(dataUrl, options)` - Core import function
-- `importImageFromFile(file)` - Import from File object  
-- `importFromClipboard(e)` - Import from ClipboardEvent
-- `_setupDragDrop()` - Initialize drag-drop handlers
-- `_setupPasteHandler()` - Initialize paste event handler
-
-#### New Blazor Integration
-- `HandleFileImport(IBrowserFile)` - File upload handler
-- `OnImageImported` JSInvokable callback
-
-#### UI Updates
-- Save/Apply buttons with descriptive tooltips
-- Layer count display in footer ("Layers: X / 20")
-- Active layer indicator chip in title bar
-
-### Version 3.2 (December 2024) - Phase 3.2 Complete
-- Eraser tool removes intersecting strokes
-- Phase 2 marked complete
+#### 5.3 Deferred
+| Item | Status | Notes |
+|------|--------|-------|
+| Magic wand | Deferred | Complex, results may be unsatisfactory |
 
 ---
 
-## Implementation Checklist
+## Phase 6: Outpainting Support 🔴 NOT STARTED
 
-### Phase 3.1: Core Layer Infrastructure ✅ COMPLETE
-- [x] Add `layer` and `layerId` properties to object creation
-- [x] Add `LayerInfo` class to `ImageEditorState.cs`
-- [x] Add `LayerType` enum
-- [x] Track `activeLayerId` in JS state
-- [x] Assign active layer to new drawings
-- [x] Create default layers (Base Image, Drawing Layer)
-- [x] Layer-aware erasing
-- [x] Select tool implementation
+### Objectives
+Enable canvas extension beyond original image boundaries for outpainting workflows.
 
-### Phase 3.5: State Preservation ✅ COMPLETE
-- [x] Save button (preserve layers, original base)
-- [x] Apply button (flatten, reset state)
-- [x] Separate BaseImageData from output
-- [x] CanvasJson storage and restoration
-- [x] Tool state sync on reopen
-- [x] Layer state in serialization
+### Planned Deliverables
 
-### Phase 3.2: Image Import ✅ COMPLETE
-- [x] Implement drag-drop handler on canvas
-- [x] Add import button to toolbar
-- [x] Implement clipboard paste (Ctrl+V)
-- [x] Scale imported images to fit canvas
-- [x] Assign imports to active layer
-- [x] Persist imported images in state
-- [x] Exclusive clipboard handling when editor open
+#### 6.1 Canvas Extension
+| Item | Description | Priority |
+|------|-------------|----------|
+| Canvas resize | Extend canvas in any direction | Critical |
+| Anchor options | Position original image (center, corners, edges) | High |
+| Fill options | Transparent, white, black, or custom color | High |
 
-### Phase 3.3: Layer Panel UI ✅ COMPLETE
-- [x] Create `LayerPanel.razor` component
-- [x] Implement collapsible sidebar
-- [x] Layer list with visibility/lock toggles
-- [x] Double-click to rename layer
-- [x] Add/delete layer buttons
-- [x] Layer reordering (up/down buttons)
-- [x] Opacity slider for selected layer
-- [x] Integrate with ImageEditorModal
-- [x] Event handlers for all layer operations
-- [x] Layer lock enforcement on canvas objects
-- [x] State persistence for layers
+#### 6.2 Outpaint Mask Generation
+| Item | Description | Priority |
+|------|-------------|----------|
+| Auto-mask extended areas | New canvas areas automatically masked | High |
+| Combined with inpaint mask | Single mask output for workflow | Medium |
 
-### Phase 3.4: Object Management ✅ COMPLETE
-- [x] Select tool (V)
-- [x] Delete key handler
-- [x] Copy (Ctrl+C) - internal clipboard
-- [x] Paste (Ctrl+V) - from internal clipboard
-- [x] Duplicate (Ctrl+D)
-- [x] Flip horizontal (Ctrl+Shift+H)
-- [x] Flip vertical (Ctrl+Shift+V)
-- [x] Toolbar buttons for object actions
+#### 6.3 Presets & UI
+| Item | Description | Priority |
+|------|-------------|----------|
+| Aspect ratio presets | 16:9, 4:3, 1:1, etc. | Medium |
+| Directional extension | Add Npx to specific side | Medium |
+| Target resolution mode | Extend to specific dimensions | Low |
 
-### Phase 3.6: Integration ✅ COMPLETE
-- [x] Layer limit enforcement (20)
-- [x] Import size limit (4096px)
-- [x] Exclusive clipboard handling
-- [x] Auto-reset state on input image change
+### Open Questions (Pending ComfyUI Integration)
+> These questions will be resolved when implementing the ComfyUI outpainting workflow:
+
+1. **Mask handling**: Should outpaint mask be separate from inpaint mask, or combined into single output?
+2. **Extension mode**: Prefer directional (add 256px to right) or target resolution (extend to 1920x1080)?
+3. **Auto-mask behavior**: Should extended areas automatically become masked, or require user confirmation?
+4. **Workflow integration**: How does the outpainting workflow differ from inpainting in ComfyUI nodes?
+
+---
+
+## Phase 7: Additional Tools 🔴 NOT STARTED
+
+### Objectives
+Complete the editing toolkit with commonly needed features.
+
+### Planned Deliverables
+
+| Item | Description | Priority |
+|------|-------------|----------|
+| Crop tool | Crop canvas to selection or custom area | Medium |
+| Flatten layer | Convert vector layer to raster (enables pixel erasing) | Medium |
+| Pixel-level eraser | Requires rasterized layer | Low |
+
+### Implementation Notes
+- Crop tool should offer aspect ratio constraints
+- Flatten layer is prerequisite for true pixel-level operations
+- Consider "Flatten visible" vs "Flatten selected layer"
+
+---
+
+## Phase 8: Polish & Enhancements 🔴 NOT STARTED
+
+### Objectives
+Nice-to-have features for future consideration.
+
+### Potential Deliverables
+
+| Item | Description | Priority |
+|------|-------------|----------|
+| Layer blending modes | Multiply, Screen, Overlay, etc. | Low |
+| Image adjustments | Brightness, Contrast, Blur | Low |
+| Shapes & Text | Rectangle, Ellipse, Line, Text tools | Low |
+| Magic wand selection | Color-based selection | Low |
+| Touch/mobile support | Touch gestures for tablet use | Low |
+| Keyboard shortcuts help | Modal showing all shortcuts | Low |
+
+---
+
+## Design Decisions Log
+
+### Mask System
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Mask overlay opacity stacking | Fix with offscreen compositing | Better UX, matches user expectations |
+| Mask visual feedback | Animated stripe pattern (CSS) | Clear indication of mask mode, low performance impact |
+| Mask color | Customizable via color picker | Reuses existing UI, flexible for different images |
+| Selection to mask mode | Additive | User can clear mask if they want to replace |
+| Mask export format | Binary B/W PNG | Required for AI inpainting workflows |
+
+### Layer System
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Raster vs Vector | Vector (Fabric.js paths) | Enables undo/redo, scales well |
+| Pixel-level erasing | Deferred to Phase 7 | Requires rasterization, complex |
+| Layer blending | Deferred to Phase 8 | Normal blending sufficient for now |
+
+### Outpainting
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Implementation timing | Phase 6 | Depends on ComfyUI workflow research |
+| Questions preserved | In document | Will resolve during implementation |
 
 ---
 
@@ -491,22 +310,107 @@ deleteSelection()
 | `Components/ImageEditor/ImageEditorModal.razor.css` | Scoped CSS styles |
 | `Components/ImageEditor/LayerPanel.razor` | Layer management sidebar |
 | `Components/ImageEditor/LayerPanel.razor.css` | Layer panel styles |
-| `wwwroot/js/ImageEditor/ImageEditor.js` | Main entry point, initialization |
-| `wwwroot/js/ImageEditor/ImageEditor.layers.js` | Layer management mixin |
-| `wwwroot/js/ImageEditor/ImageEditor.canvas.js` | Canvas operations mixin |
-| `wwwroot/js/ImageEditor/ImageEditor.tools.js` | Tool handling mixin |
-| `wwwroot/js/ImageEditor/ImageEditor.history.js` | Undo/redo and state serialization |
-| `wwwroot/js/ImageEditor/ImageEditor.export.js` | Export and import functionality |
-| `wwwroot/js/ImageEditor/ImageEditor.events.js` | Event handlers mixin |
-| `wwwroot/js/ImageEditor/ImageEditor.callbacks.js` | .NET interop callbacks |
-| `wwwroot/js/ImageEditor/ImageEditor.utils.js` | Utility functions and constants |
-| `Models/ImageEditorState.cs` | C# state model with LayerInfo class |
-| `Services/ManagerService.cs` | ImageEditorState storage and auto-reset |
+| `wwwroot/js/ImageEditor/ImageEditor.js` | Main entry point |
+| `wwwroot/js/ImageEditor/ImageEditor.layers.js` | Layer management |
+| `wwwroot/js/ImageEditor/ImageEditor.canvas.js` | Canvas operations |
+| `wwwroot/js/ImageEditor/ImageEditor.tools.js` | Tool handling |
+| `wwwroot/js/ImageEditor/ImageEditor.history.js` | Undo/redo |
+| `wwwroot/js/ImageEditor/ImageEditor.export.js` | Export/import |
+| `wwwroot/js/ImageEditor/ImageEditor.events.js` | Event handlers |
+| `wwwroot/js/ImageEditor/ImageEditor.callbacks.js` | .NET interop |
+| `wwwroot/js/ImageEditor/ImageEditor.utils.js` | Utilities |
+| `Models/ImageEditorState.cs` | C# state model |
+| `Services/ManagerService.cs` | State storage |
 
-### Key Changes in 3.7
-| File | Changes |
-|------|---------|
-| `ImageEditor.js` | Added `_clipboard` array to constructor |
-| `ImageEditor.events.js` | Added async `_copySelectedObjects`, `_pasteObjects`, `_duplicateSelectedObjects`, `_flipSelectedObjects` methods |
-| `ImageEditor.layers.js` | Added public wrapper methods: `copySelection`, `pasteClipboard`, `duplicateSelection`, `flipSelection`, `deleteSelection` |
-| `ImageEditorModal.razor` | Added object action toolbar buttons, `FlipHorizontal`, `FlipVertical`, `DuplicateSelection`, `DeleteSelection` methods |
+---
+
+## Changelog
+
+### Version 4.0 (December 2024) - Phase Planning Update
+
+#### Document Restructure
+- Added Phases 4-8 with detailed planning
+- Moved completed phases to summary section
+- Added Design Decisions Log
+- Added Open Questions for outpainting
+
+#### Phase 4: Mask Optimization (Planned)
+- Flat mask rendering with offscreen canvas compositing
+- Binary B/W mask export
+- Animated CSS stripe overlay for mask visualization
+- Mask color picker (reusing brush color UI)
+
+#### Phase 5: Selection Tools (Planned)
+- Rectangular, Elliptical, Lasso selection
+- Selection to Mask conversion (additive mode)
+- Invert selection
+- Magic wand deferred
+
+#### Phase 6: Outpainting Support (Planned)
+- Canvas extension with anchor options
+- Auto-mask for extended areas
+- Open questions documented for ComfyUI integration
+
+#### Phase 7: Additional Tools (Planned)
+- Crop tool
+- Flatten layer / rasterization
+- Pixel-level eraser (post-rasterization)
+
+#### Phase 8: Polish (Planned)
+- Blending modes, adjustments, shapes, text
+- Touch support, help modal
+
+### Version 3.7 (December 2024) - Phase 3 Complete
+- Object management: Copy/Paste/Duplicate/Flip
+- Fabric.js 6.x async clone compatibility
+- Toolbar buttons for object actions
+
+### Previous Versions
+See git history for earlier changelog entries.
+
+---
+
+## Implementation Checklist
+
+### Phase 4: Mask Optimization
+- [ ] Create offscreen canvas for mask compositing
+- [ ] Render mask strokes as union (no opacity stacking)
+- [ ] Update mask display after each stroke
+- [ ] Implement CSS stripe animation overlay
+- [ ] Add CSS mask-image clipping to pattern
+- [ ] Implement fallback glow effect if needed
+- [ ] Add mask color to color picker (context-aware)
+- [ ] Ensure binary B/W export
+- [ ] Test with various mask stroke patterns
+
+### Phase 5: Selection Tools
+- [ ] Add selection tool to toolbar
+- [ ] Implement rectangular selection
+- [ ] Implement elliptical selection
+- [ ] Implement lasso/freeform selection
+- [ ] Add selection visualization (marching ants or highlight)
+- [ ] Implement "Selection to Mask" action
+- [ ] Implement "Invert Selection" action
+- [ ] Implement "Clear Selection" (Escape key)
+- [ ] Test selection + mask workflow
+
+### Phase 6: Outpainting
+- [ ] Research ComfyUI outpainting workflow
+- [ ] Resolve open questions
+- [ ] Implement canvas resize with anchor
+- [ ] Implement fill options for extended areas
+- [ ] Implement auto-mask for extended areas
+- [ ] Add UI for outpaint controls
+- [ ] Test with ComfyUI workflow
+
+### Phase 7: Additional Tools
+- [ ] Implement crop tool
+- [ ] Implement layer flattening
+- [ ] Implement pixel-level eraser (on raster layers)
+
+### Phase 8: Polish
+- [ ] Layer blending modes
+- [ ] Image adjustments
+- [ ] Shapes and text
+- [ ] Touch support
+- [ ] Keyboard shortcuts help
