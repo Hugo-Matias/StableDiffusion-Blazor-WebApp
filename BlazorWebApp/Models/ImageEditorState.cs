@@ -2,7 +2,7 @@ namespace BlazorWebApp.Models
 {
     /// <summary>
     /// Represents the complete state of the image editor, including canvas data,
-    /// tool settings, view settings, and history.
+    /// tool settings, view settings, history, and layers.
     /// </summary>
     public class ImageEditorState
     {
@@ -170,7 +170,141 @@ namespace BlazorWebApp.Models
         
         #endregion
         
-        #region Layer Visibility
+        #region Layers
+        
+        /// <summary>
+        /// Maximum number of layers allowed
+        /// </summary>
+        public const int MaxLayerCount = 20;
+        
+        /// <summary>
+        /// List of layers in the editor (ordered bottom to top)
+        /// </summary>
+        public List<LayerInfo> Layers { get; set; } = new();
+        
+        /// <summary>
+        /// ID of the currently active/selected layer
+        /// </summary>
+        public string? ActiveLayerId { get; set; }
+        
+        /// <summary>
+        /// Gets the currently active layer
+        /// </summary>
+        public LayerInfo? ActiveLayer => Layers.FirstOrDefault(l => l.Id == ActiveLayerId);
+        
+        /// <summary>
+        /// Whether the layer panel is expanded
+        /// </summary>
+        public bool LayerPanelExpanded { get; set; } = true;
+        
+        /// <summary>
+        /// Creates default layers for a new editor session
+        /// </summary>
+        public void InitializeDefaultLayers()
+        {
+            Layers.Clear();
+            
+            // Base Image layer - always at bottom, locked by default
+            var baseLayer = new LayerInfo
+            {
+                Id = LayerInfo.BaseLayerId,
+                Name = "Base Image",
+                IsVisible = true,
+                IsLocked = true,
+                Opacity = 1.0f,
+                Order = 0,
+                LayerType = LayerType.Base
+            };
+            Layers.Add(baseLayer);
+            
+            // Default drawing layer
+            var drawingLayer = new LayerInfo
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Drawing Layer",
+                IsVisible = true,
+                IsLocked = false,
+                Opacity = 1.0f,
+                Order = 1,
+                LayerType = LayerType.Drawing
+            };
+            Layers.Add(drawingLayer);
+            
+            // Set drawing layer as active
+            ActiveLayerId = drawingLayer.Id;
+        }
+        
+        /// <summary>
+        /// Adds a new layer
+        /// </summary>
+        public LayerInfo? AddLayer(string name, LayerType type = LayerType.Drawing)
+        {
+            if (Layers.Count >= MaxLayerCount)
+                return null;
+            
+            var maxOrder = Layers.Where(l => l.LayerType != LayerType.Mask).Max(l => l.Order);
+            
+            var layer = new LayerInfo
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = name,
+                IsVisible = true,
+                IsLocked = false,
+                Opacity = 1.0f,
+                Order = maxOrder + 1,
+                LayerType = type
+            };
+            
+            Layers.Add(layer);
+            ActiveLayerId = layer.Id;
+            
+            return layer;
+        }
+        
+        /// <summary>
+        /// Removes a layer by ID
+        /// </summary>
+        public bool RemoveLayer(string layerId)
+        {
+            var layer = Layers.FirstOrDefault(l => l.Id == layerId);
+            if (layer == null || layer.LayerType == LayerType.Base || layer.LayerType == LayerType.Mask)
+                return false;
+            
+            Layers.Remove(layer);
+            
+            // If removed layer was active, select another
+            if (ActiveLayerId == layerId)
+            {
+                ActiveLayerId = Layers
+                    .Where(l => l.LayerType != LayerType.Base && l.LayerType != LayerType.Mask)
+                    .OrderByDescending(l => l.Order)
+                    .FirstOrDefault()?.Id;
+            }
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// Gets layers ordered for display (top to bottom in UI)
+        /// </summary>
+        public IEnumerable<LayerInfo> GetLayersForDisplay()
+        {
+            // Mask layer first (if exists), then others by descending order
+            var maskLayer = Layers.FirstOrDefault(l => l.LayerType == LayerType.Mask);
+            var otherLayers = Layers
+                .Where(l => l.LayerType != LayerType.Mask)
+                .OrderByDescending(l => l.Order);
+            
+            if (maskLayer != null)
+                yield return maskLayer;
+            
+            foreach (var layer in otherLayers)
+                yield return layer;
+        }
+        
+        #endregion
+        
+        #region Layer Visibility (Legacy - kept for compatibility)
         
         /// <summary>
         /// Whether the base image layer is visible
@@ -218,6 +352,21 @@ namespace BlazorWebApp.Models
             BaseLayerVisible = true;
             DrawingLayerVisible = true;
             DrawingLayerOpacity = 1.0f;
+            
+            // Initialize default layers
+            InitializeDefaultLayers();
+        }
+        
+        /// <summary>
+        /// Resets layers to a fresh state with the current image as base
+        /// Used by "Flatten & Apply" functionality
+        /// </summary>
+        public void ResetLayersToBase()
+        {
+            InitializeDefaultLayers();
+            IsDirty = false;
+            UndoStack.Clear();
+            RedoStack.Clear();
         }
         
         /// <summary>
@@ -288,6 +437,93 @@ namespace BlazorWebApp.Models
     }
     
     /// <summary>
+    /// Represents a single layer in the image editor
+    /// </summary>
+    public class LayerInfo
+    {
+        /// <summary>
+        /// Special ID for the base image layer
+        /// </summary>
+        public const string BaseLayerId = "base-image-layer";
+        
+        /// <summary>
+        /// Special ID for the mask layer
+        /// </summary>
+        public const string MaskLayerId = "mask-layer";
+        
+        /// <summary>
+        /// Unique identifier for this layer
+        /// </summary>
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        
+        /// <summary>
+        /// Display name of the layer
+        /// </summary>
+        public string Name { get; set; } = "New Layer";
+        
+        /// <summary>
+        /// Whether this layer is visible
+        /// </summary>
+        public bool IsVisible { get; set; } = true;
+        
+        /// <summary>
+        /// Whether this layer is locked (prevents editing)
+        /// </summary>
+        public bool IsLocked { get; set; } = false;
+        
+        /// <summary>
+        /// Opacity of this layer (0.0 - 1.0)
+        /// </summary>
+        public float Opacity { get; set; } = 1.0f;
+        
+        /// <summary>
+        /// Z-order of this layer (higher = on top)
+        /// </summary>
+        public int Order { get; set; }
+        
+        /// <summary>
+        /// Type of layer content
+        /// </summary>
+        public LayerType LayerType { get; set; } = LayerType.Drawing;
+        
+        /// <summary>
+        /// Whether this layer can be deleted
+        /// </summary>
+        public bool CanDelete => LayerType != LayerType.Base && LayerType != LayerType.Mask;
+        
+        /// <summary>
+        /// Whether this layer can be reordered
+        /// </summary>
+        public bool CanReorder => LayerType != LayerType.Base && LayerType != LayerType.Mask;
+    }
+    
+    /// <summary>
+    /// Type of layer content
+    /// </summary>
+    public enum LayerType
+    {
+        /// <summary>
+        /// Base image layer (background)
+        /// </summary>
+        Base,
+        
+        /// <summary>
+        /// Drawing/brush strokes layer
+        /// </summary>
+        Drawing,
+        
+        /// <summary>
+        /// Imported image layer
+        /// </summary>
+        Import,
+        
+        /// <summary>
+        /// Inpainting mask layer
+        /// </summary>
+        Mask
+    }
+    
+    /// <summary>
     /// Available tools in the image editor
     /// </summary>
     public enum ImageEditorTool
@@ -325,6 +561,11 @@ namespace BlazorWebApp.Models
         /// <summary>
         /// Mask eraser (erases from mask layer)
         /// </summary>
-        MaskEraser
+        MaskEraser,
+        
+        /// <summary>
+        /// Selection tool for imported objects
+        /// </summary>
+        Select
     }
 }

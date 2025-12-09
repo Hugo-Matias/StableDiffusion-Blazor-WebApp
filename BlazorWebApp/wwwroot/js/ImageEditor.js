@@ -1,6 +1,6 @@
 /**
  * ImageEditor.js - Fabric.js-based image editor module
- * Provides canvas manipulation, drawing tools, zoom/pan, and history management
+ * Provides canvas manipulation, drawing tools, zoom/pan, history management, and layer support
  */
 
 let fabricLoaded = typeof fabric !== 'undefined';
@@ -11,6 +11,10 @@ const FABRIC_CDNS = [
     'https://unpkg.com/fabric@6.0.2/dist/index.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/6.0.2/fabric.min.js'
 ];
+
+// Layer constants
+const LAYER_BASE = 'base-image-layer';
+const LAYER_MASK = 'mask-layer';
 
 function loadScript(url) {
     return new Promise((resolve, reject) => {
@@ -107,6 +111,10 @@ class ImageEditor {
         this.baseImageObject = null;
         this.maskObjects = [];
         
+        // Layer system
+        this.layers = [];
+        this.activeLayerId = null;
+        
         // Mask settings
         this.maskVisible = true;
         this.maskOpacity = this.options.maskOpacity;
@@ -128,7 +136,243 @@ class ImageEditor {
         this._setupEventListeners();
         this._createBrushCursor();
         
+        // Initialize default layers
+        this._initializeDefaultLayers();
+        
         this.isInitialized = true;
+    }
+    
+    // ==================== Layer Management ====================
+    
+    _initializeDefaultLayers() {
+        this.layers = [
+            {
+                id: LAYER_BASE,
+                name: 'Base Image',
+                visible: true,
+                locked: true,
+                opacity: 1.0,
+                order: 0,
+                type: 'base'
+            },
+            {
+                id: this._generateId(),
+                name: 'Drawing Layer',
+                visible: true,
+                locked: false,
+                opacity: 1.0,
+                order: 1,
+                type: 'drawing'
+            }
+        ];
+        
+        // Set the drawing layer as active
+        this.activeLayerId = this.layers[1].id;
+    }
+    
+    _generateId() {
+        return 'layer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    /**
+     * Get the currently active layer
+     */
+    getActiveLayer() {
+        return this.layers.find(l => l.id === this.activeLayerId);
+    }
+    
+    /**
+     * Set the active layer by ID
+     */
+    setActiveLayer(layerId) {
+        const layer = this.layers.find(l => l.id === layerId);
+        if (layer && !layer.locked) {
+            this.activeLayerId = layerId;
+            this._notifyLayerChanged();
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Add a new layer
+     */
+    addLayer(name, type = 'drawing') {
+        if (this.layers.length >= 20) {
+            console.warn('Maximum layer count reached');
+            return null;
+        }
+        
+        const maxOrder = Math.max(...this.layers.filter(l => l.type !== 'mask').map(l => l.order));
+        
+        const layer = {
+            id: this._generateId(),
+            name: name || `Layer ${this.layers.length}`,
+            visible: true,
+            locked: false,
+            opacity: 1.0,
+            order: maxOrder + 1,
+            type: type
+        };
+        
+        this.layers.push(layer);
+        this.activeLayerId = layer.id;
+        this._notifyLayerChanged();
+        
+        return layer;
+    }
+    
+    /**
+     * Remove a layer by ID
+     */
+    removeLayer(layerId) {
+        const layer = this.layers.find(l => l.id === layerId);
+        if (!layer || layer.type === 'base' || layer.type === 'mask') {
+            return false;
+        }
+        
+        // Remove all objects belonging to this layer
+        const objectsToRemove = this.canvas.getObjects().filter(obj => obj.layerId === layerId);
+        objectsToRemove.forEach(obj => this.canvas.remove(obj));
+        
+        // Remove layer from list
+        this.layers = this.layers.filter(l => l.id !== layerId);
+        
+        // If removed layer was active, select another
+        if (this.activeLayerId === layerId) {
+            const availableLayers = this.layers.filter(l => l.type !== 'base' && l.type !== 'mask');
+            this.activeLayerId = availableLayers.length > 0 
+                ? availableLayers.sort((a, b) => b.order - a.order)[0].id 
+                : null;
+        }
+        
+        this.canvas.renderAll();
+        this._notifyLayerChanged();
+        
+        return true;
+    }
+    
+    /**
+     * Update layer properties
+     */
+    updateLayer(layerId, props) {
+        const layer = this.layers.find(l => l.id === layerId);
+        if (!layer) return false;
+        
+        if (props.name !== undefined) layer.name = props.name;
+        if (props.visible !== undefined) {
+            layer.visible = props.visible;
+            this._updateLayerVisibility(layerId, props.visible);
+        }
+        if (props.locked !== undefined) layer.locked = props.locked;
+        if (props.opacity !== undefined) {
+            layer.opacity = props.opacity;
+            this._updateLayerOpacity(layerId, props.opacity);
+        }
+        if (props.order !== undefined) layer.order = props.order;
+        
+        this._notifyLayerChanged();
+        return true;
+    }
+    
+    /**
+     * Update visibility of all objects in a layer
+     */
+    _updateLayerVisibility(layerId, visible) {
+        const objects = this.canvas.getObjects().filter(obj => obj.layerId === layerId);
+        objects.forEach(obj => obj.set('visible', visible));
+        
+        // Special handling for base image
+        if (layerId === LAYER_BASE && this.baseImageObject) {
+            this.baseImageObject.set('visible', visible);
+        }
+        
+        this.canvas.renderAll();
+    }
+    
+    /**
+     * Update opacity of all objects in a layer
+     */
+    _updateLayerOpacity(layerId, opacity) {
+        const objects = this.canvas.getObjects().filter(obj => obj.layerId === layerId);
+        objects.forEach(obj => obj.set('opacity', opacity));
+        
+        // Special handling for base image
+        if (layerId === LAYER_BASE && this.baseImageObject) {
+            this.baseImageObject.set('opacity', opacity);
+        }
+        
+        this.canvas.renderAll();
+    }
+    
+    /**
+     * Reorder layers
+     */
+    reorderLayers(layerIds) {
+        layerIds.forEach((id, index) => {
+            const layer = this.layers.find(l => l.id === id);
+            if (layer) {
+                layer.order = index;
+            }
+        });
+        
+        // Reorder objects on canvas based on layer order
+        this._reorderCanvasObjects();
+        this._notifyLayerChanged();
+    }
+    
+    /**
+     * Reorder canvas objects based on layer order
+     */
+    _reorderCanvasObjects() {
+        // Sort layers by order
+        const sortedLayers = [...this.layers].sort((a, b) => a.order - b.order);
+        
+        // Move objects to match layer order
+        sortedLayers.forEach(layer => {
+            const objects = this.canvas.getObjects().filter(obj => obj.layerId === layer.id);
+            objects.forEach(obj => {
+                this.canvas.bringToFront(obj);
+            });
+        });
+        
+        // Ensure mask objects are always on top
+        this.maskObjects.forEach(obj => {
+            this.canvas.bringToFront(obj);
+        });
+        
+        // Brush cursor always on very top
+        if (this._brushCursorOuter) this.canvas.bringToFront(this._brushCursorOuter);
+        if (this._brushCursorInner) this.canvas.bringToFront(this._brushCursorInner);
+        
+        this.canvas.renderAll();
+    }
+    
+    /**
+     * Get all layers for UI
+     */
+    getLayers() {
+        return this.layers.map(l => ({...l}));
+    }
+    
+    /**
+     * Get layer state for serialization
+     */
+    getLayerState() {
+        return {
+            layers: this.layers.map(l => ({...l})),
+            activeLayerId: this.activeLayerId
+        };
+    }
+    
+    /**
+     * Restore layer state from serialization
+     */
+    restoreLayerState(state) {
+        if (state && state.layers) {
+            this.layers = state.layers;
+            this.activeLayerId = state.activeLayerId;
+        }
     }
     
     // ==================== Initialization ====================
@@ -163,7 +407,6 @@ class ImageEditor {
         switch (toolType) {
             case 'eraser':
                 this.canvas.freeDrawingBrush.color = 'rgba(255,255,255,1)';
-                // We'll handle eraser in path:created by setting globalCompositeOperation
                 break;
             case 'maskbrush':
                 this.canvas.freeDrawingBrush.color = this.maskColor;
@@ -219,7 +462,6 @@ class ImageEditor {
         const radius = (this._baseBrushSize / 2) / zoom;
         const strokeWidth = Math.max(1 / zoom, 0.5);
         
-        // Update outer circle (black)
         this._brushCursorOuter.set({
             left: x,
             top: y,
@@ -227,7 +469,6 @@ class ImageEditor {
             strokeWidth: strokeWidth
         });
         
-        // Update inner circle (white dashed)
         this._brushCursorInner.set({
             left: x,
             top: y,
@@ -235,14 +476,12 @@ class ImageEditor {
             strokeWidth: strokeWidth
         });
         
-        // Add circles if not visible
         if (!this._cursorVisible && this.canvas.isDrawingMode) {
             this.canvas.add(this._brushCursorOuter);
             this.canvas.add(this._brushCursorInner);
             this._cursorVisible = true;
         }
         
-        // Ensure cursors are on top
         this._brushCursorOuter.bringToFront?.() || this.canvas.bringToFront?.(this._brushCursorOuter);
         this._brushCursorInner.bringToFront?.() || this.canvas.bringToFront?.(this._brushCursorInner);
         
@@ -274,7 +513,6 @@ class ImageEditor {
         document.addEventListener('keyup', this._boundKeyUp);
         window.addEventListener('resize', this._boundResize);
         
-        // Prevent middle mouse button default scroll behavior
         const wrapper = document.getElementById(this.canvasId)?.parentElement;
         if (wrapper) {
             wrapper.addEventListener('mousedown', this._boundPreventMiddleScroll);
@@ -340,11 +578,17 @@ class ImageEditor {
                 hasBorders: false
             });
             
+            // Set layer properties
             img.name = 'baseImage';
+            img.layerId = LAYER_BASE;
+            img.layer = 'Base Image';
+            
             const originalToObject = img.toObject.bind(img);
             img.toObject = function(propertiesToInclude) {
                 const obj = originalToObject(propertiesToInclude);
                 obj.name = this.name;
+                obj.layerId = this.layerId;
+                obj.layer = this.layer;
                 return obj;
             };
             
@@ -379,11 +623,17 @@ class ImageEditor {
             hasBorders: false
         });
         
+        // Set layer properties
         background.name = 'baseImage';
+        background.layerId = LAYER_BASE;
+        background.layer = 'Base Image';
+        
         const originalToObject = background.toObject.bind(background);
         background.toObject = function(propertiesToInclude) {
             const obj = originalToObject(propertiesToInclude);
             obj.name = this.name;
+            obj.layerId = this.layerId;
+            obj.layer = this.layer;
             return obj;
         };
         
@@ -432,6 +682,7 @@ class ImageEditor {
         this.canvas.backgroundColor = '#1a1a1a';
         this.baseImageObject = null;
         this.maskObjects = [];
+        this._initializeDefaultLayers();
         this.canvas.renderAll();
     }
     
@@ -537,10 +788,29 @@ class ImageEditor {
         this.previousTool = this.currentTool;
         this.currentTool = tool;
         
-        // Disable object selection for all tools
-        this.canvas.selection = false;
+        // Disable object selection for most tools
+        this.canvas.selection = (tool === 'select');
+        
+        // Update selectability of objects based on tool
         this.canvas.forEachObject(obj => {
-            if (obj.name !== 'baseImage') {
+            if (obj.name === 'baseImage' || obj.name === '_brushCursor') {
+                // Never selectable
+                obj.selectable = false;
+                obj.evented = false;
+            } else if (obj.name === 'mask') {
+                // Mask objects are never directly selectable
+                obj.selectable = false;
+                obj.evented = false;
+            } else if (tool === 'select') {
+                // In select mode, drawings and imports are selectable (unless layer is locked)
+                const layer = this.layers.find(l => l.id === obj.layerId);
+                const isLocked = layer ? layer.locked : false;
+                obj.selectable = !isLocked;
+                obj.evented = !isLocked;
+                obj.hasControls = !isLocked;
+                obj.hasBorders = !isLocked;
+            } else {
+                // In other modes, nothing is selectable
                 obj.selectable = false;
                 obj.evented = false;
             }
@@ -549,7 +819,7 @@ class ImageEditor {
         switch (tool) {
             case 'brush':
                 this.canvas.isDrawingMode = true;
-                this.canvas.defaultCursor = 'none'; // Hide cursor, we show brush circle
+                this.canvas.defaultCursor = 'none';
                 this._setupBrush('brush');
                 break;
                 
@@ -587,6 +857,15 @@ class ImageEditor {
                 this.canvas.isDrawingMode = false;
                 this.canvas.defaultCursor = 'crosshair';
                 this._hideBrushCursor();
+                break;
+                
+            case 'select':
+                this.canvas.isDrawingMode = false;
+                this.canvas.defaultCursor = 'default';
+                this._hideBrushCursor();
+                // Deselect any current selection
+                this.canvas.discardActiveObject();
+                this.canvas.renderAll();
                 break;
                 
             default:
@@ -710,12 +989,12 @@ class ImageEditor {
         
         // Get objects to restore from saved state (only drawings and masks)
         const objectsToRestore = stateData.objects?.filter(
-            objData => objData.name === 'drawing' || objData.name === 'mask'
+            objData => objData.name === 'drawing' || objData.name === 'mask' || objData.name === 'imported'
         ) || [];
         
         // Remove all current drawings and masks
         const objectsToRemove = this.canvas.getObjects().filter(obj => 
-            obj.name === 'drawing' || obj.name === 'mask' || obj.name === '_brushCursor'
+            obj.name === 'drawing' || obj.name === 'mask' || obj.name === 'imported' || obj.name === '_brushCursor'
         );
         objectsToRemove.forEach(obj => this.canvas.remove(obj));
         
@@ -749,12 +1028,16 @@ class ImageEditor {
                 const objData = originalData[index];
                 if (objData && objData.name) {
                     obj.name = objData.name;
+                    obj.layerId = objData.layerId;
+                    obj.layer = objData.layer;
                     
-                    // Override toObject to include name in serialization
+                    // Override toObject to include layer properties
                     const originalToObject = obj.toObject.bind(obj);
                     obj.toObject = function(propertiesToInclude) {
                         const result = originalToObject(propertiesToInclude);
                         result.name = this.name;
+                        result.layerId = this.layerId;
+                        result.layer = this.layer;
                         return result;
                     };
                 }
@@ -800,10 +1083,15 @@ class ImageEditor {
                     
                     // Set and preserve name
                     path.name = objData.name;
+                    path.layerId = objData.layerId || this.activeLayerId;
+                    path.layer = objData.layer;
+                    
                     const originalToObject = path.toObject.bind(path);
                     path.toObject = function(propertiesToInclude) {
                         const result = originalToObject(propertiesToInclude);
                         result.name = this.name;
+                        result.layerId = this.layerId;
+                        result.layer = this.layer;
                         return result;
                     };
                     
@@ -826,7 +1114,7 @@ class ImageEditor {
     }
     
     getState() {
-        const state = this.canvas.toJSON(['name']);
+        const state = this.canvas.toJSON(['name', 'layerId', 'layer']);
         return JSON.stringify(state);
     }
 
@@ -837,7 +1125,6 @@ class ImageEditor {
             return null;
         }
         
-        // Hide brush cursor during export
         this._hideBrushCursor();
         
         const bounds = {
@@ -847,7 +1134,6 @@ class ImageEditor {
             height: this.baseImageObject.height
         };
         
-        // Temporarily hide mask layer for image export
         const maskWasVisible = this.maskVisible;
         if (maskWasVisible) {
             this.maskObjects.forEach(obj => obj.set('visible', false));
@@ -896,17 +1182,14 @@ class ImageEditor {
             return null;
         }
         
-        // Create a temporary canvas for mask export
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = this.baseImageObject.width;
         tempCanvas.height = this.baseImageObject.height;
         const ctx = tempCanvas.getContext('2d');
         
-        // Fill with black (keep areas)
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
         
-        // Draw mask objects in white (inpaint areas)
         ctx.fillStyle = '#FFFFFF';
         ctx.strokeStyle = '#FFFFFF';
         ctx.lineCap = 'round';
@@ -1059,23 +1342,27 @@ class ImageEditor {
         
         // Determine the name based on current tool
         let pathName = 'drawing';
+        let layerId = this.activeLayerId;
+        let layerName = this.getActiveLayer()?.name || 'Drawing Layer';
+        const isMaskTool = this.currentTool === 'maskbrush' || this.currentTool === 'maskeraser';
+        
         switch (this.currentTool) {
             case 'maskbrush':
                 pathName = 'mask';
+                layerId = LAYER_MASK;
+                layerName = 'Mask';
                 path.set('opacity', this.maskOpacity);
                 this.maskObjects.push(path);
                 this._notifyMaskChanged(true);
                 break;
                 
             case 'maskeraser':
-                // Find and remove mask paths that this stroke overlaps
                 this.canvas.remove(path);
                 this._eraseMaskAtPath(path);
                 this._afterPathCreated();
                 return;
                 
             case 'eraser':
-                // Find and remove drawing paths that this stroke overlaps
                 this.canvas.remove(path);
                 this._eraseDrawingAtPath(path);
                 this._afterPathCreated();
@@ -1086,18 +1373,26 @@ class ImageEditor {
                 break;
         }
         
-        // Set the name property AND ensure it's included in serialization
+        // Set layer properties on the path
         path.name = pathName;
+        path.layerId = layerId;
+        path.layer = layerName;
         
-        // Fabric.js 6: Override toObject to include custom properties
+        // Override toObject to include layer properties
         const originalToObject = path.toObject.bind(path);
         path.toObject = function(propertiesToInclude) {
             const obj = originalToObject(propertiesToInclude);
             obj.name = this.name;
+            obj.layerId = this.layerId;
+            obj.layer = this.layer;
             return obj;
         };
         
-        // Reset the flag so next stroke can save state before starting
+        // Notify layer change for masking
+        if (isMaskTool) {
+            this._notifyLayerChanged();
+        }
+        
         this._afterPathCreated();
         
         // Mark as dirty
@@ -1110,7 +1405,10 @@ class ImageEditor {
         // Remove drawing objects that intersect with eraser path
         const eraserBounds = eraserPath.getBoundingRect();
         
-        const drawingObjects = this.canvas.getObjects().filter(obj => obj.name === 'drawing');
+        // Only erase from the active layer
+        const drawingObjects = this.canvas.getObjects().filter(obj => 
+            obj.name === 'drawing' && obj.layerId === this.activeLayerId
+        );
         const toRemove = [];
         
         drawingObjects.forEach(drawingObj => {
@@ -1194,6 +1492,12 @@ class ImageEditor {
             e.preventDefault();
         }
         
+        // Delete selected objects
+        if ((e.code === 'Delete' || e.code === 'Backspace') && this.currentTool === 'select') {
+            this._deleteSelectedObjects();
+            e.preventDefault();
+        }
+        
         if (!e.ctrlKey && !e.altKey) {
             switch (e.code) {
                 case 'KeyB':
@@ -1210,6 +1514,9 @@ class ImageEditor {
                     break;
                 case 'KeyI':
                     this._notifyToolChange('colorpicker');
+                    break;
+                case 'KeyV':
+                    this._notifyToolChange('select');
                     break;
                 case 'BracketLeft':
                     this._notifyBrushSizeChange(-5);
@@ -1242,6 +1549,36 @@ class ImageEditor {
     
     _handleResize() {
         // Will be called from Blazor with new dimensions
+    }
+    
+    /**
+     * Delete currently selected objects
+     */
+    _deleteSelectedObjects() {
+        const activeObjects = this.canvas.getActiveObjects();
+        if (activeObjects.length === 0) return;
+        
+        // Save state before deletion
+        this._saveStateBeforeAction();
+        
+        activeObjects.forEach(obj => {
+            // Don't delete base image or locked layer objects
+            if (obj.name === 'baseImage') return;
+            
+            const layer = this.layers.find(l => l.id === obj.layerId);
+            if (layer && layer.locked) return;
+            
+            this.canvas.remove(obj);
+        });
+        
+        this.canvas.discardActiveObject();
+        this.canvas.renderAll();
+        
+        this._afterPathCreated();
+        
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnCanvasModified');
+        }
     }
     
     // ==================== Helper Methods ====================
@@ -1289,21 +1626,15 @@ class ImageEditor {
         }
     }
     
-    /**
-     * Debounced zoom notification to prevent feedback loops
-     */
     _notifyZoomChangedDebounced(zoom) {
-        // Skip if this is from an external setZoom call
         if (this._isSettingZoomFromExternal) {
             return;
         }
         
-        // Clear any pending timeout
         if (this._zoomNotifyTimeout) {
             clearTimeout(this._zoomNotifyTimeout);
         }
         
-        // Debounce: only notify after 100ms of no changes
         this._zoomNotifyTimeout = setTimeout(() => {
             this._notifyZoomChanged(zoom);
         }, 100);
@@ -1360,6 +1691,12 @@ class ImageEditor {
     _notifyMaskChanged(hasMask) {
         if (this.dotNetRef) {
             this.dotNetRef.invokeMethodAsync('OnMaskChanged', hasMask);
+        }
+    }
+    
+    _notifyLayerChanged() {
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnLayerChanged', this.getLayerState());
         }
     }
     

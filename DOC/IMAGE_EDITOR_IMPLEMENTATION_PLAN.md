@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 3.0  
+> **Document Version:** 3.1  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 3 Planning Complete  
+> **Status:** Phase 3.1 Complete  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -22,175 +22,137 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 |-------|-------------|--------|----------|
 | **Phase 1** | Core Canvas Infrastructure | ✅ Complete | P0 |
 | **Phase 2** | Drawing & Mask Tools | ✅ Complete | P0 |
-| **Phase 3** | Layer System & Compositing | 🟡 Planning Complete | P1 |
+| **Phase 3** | Layer System & Compositing | 🟡 In Progress | P1 |
 | **Phase 4** | Polish & UX | 🔴 Not Started | P2 |
 
----
+### Phase 3 Sub-phases
 
-## Phase 1: Core Canvas Infrastructure ✅ COMPLETE
-
-### Deliverables
-- [x] Fabric.js integration with Blazor
-- [x] Modal component structure
-- [x] Zoom/pan functionality
-- [x] JS interop communication
-- [x] Canvas initialization and disposal
-
----
-
-## Phase 2: Drawing & Mask Tools ✅ COMPLETE
-
-### Deliverables
-- [x] Brush tool with configurable size/color
-- [x] Eraser tool (removes intersecting strokes)
-- [x] Mask brush and mask eraser
-- [x] Color picker (eyedropper)
-- [x] Undo/Redo system
-- [x] Keyboard shortcuts
-- [x] Export image and mask as PNG
+| Sub-phase | Description | Status |
+|-----------|-------------|--------|
+| **3.1** | Core Layer Infrastructure | ✅ Complete |
+| **3.2** | Image Import | 🔴 Not Started |
+| **3.3** | Layer Panel UI | 🔴 Not Started |
+| **3.4** | Object Management | 🟡 Partial |
+| **3.5** | State Preservation | ✅ Complete |
+| **3.6** | Integration & Limits | 🟡 Partial |
 
 ---
 
-## Phase 3: Layer System & Compositing 🟡 PLANNING COMPLETE
+## Phase 1 & 2: COMPLETE
 
-### Objectives
-- Implement logical layer system using Fabric.js object properties
-- Enable image import for photo compositing
-- Provide layer management UI (visibility, opacity, ordering, renaming)
-- Support multiple drawing layers
-- Preserve editor state across sessions
-- Add "Flatten & Apply" for committing compositions
-
-### Architecture Decision: Option A - Object Property Grouping
-
-Each Fabric.js object has a `layer` property that groups it logically:
-
-```javascript
-// Example object structure
-{
-    type: 'image',
-    name: 'imported',
-    layer: 'Background Elements',  // Logical layer grouping
-    opacity: 1.0,
-    // ... other Fabric properties
-}
-```
-
-**Benefits:**
-- Minimal code changes to existing infrastructure
-- Leverages Fabric's built-in z-ordering
-- Objects remain individually selectable/movable
-- Layer operations (hide, delete, opacity) apply to all objects with matching `layer` property
-
-**Trade-offs (acceptable for our use case):**
-- Effects/filters apply per-object, not per-layer
-- No true layer isolation (Photoshop-style)
+See previous documentation for Phase 1 and 2 details.
 
 ---
 
-### Phase 3.1: Core Layer Infrastructure
+## Phase 3: Layer System & Compositing
 
-#### Objectives
-- Add layer tracking to state management
-- Assign layers to new objects
-- Track active/selected layer
+### Phase 3.1: Core Layer Infrastructure ✅ COMPLETE
 
-#### Deliverables
+#### Implemented Features
 
-| Item | Description | Complexity |
-|------|-------------|------------|
-| Layer property | Add `layer` property to all Fabric objects | 🟢 Low |
-| Active layer tracking | Track currently selected layer in JS state | 🟢 Low |
-| Layer assignment | New drawings assigned to active layer | 🟢 Low |
-| Layer data model | Add layer list to `ImageEditorState.cs` | 🟢 Low |
-| Default layers | Create default "Base" and "Drawing" layers | 🟢 Low |
+| Item | Description | Status |
+|------|-------------|--------|
+| `LayerInfo` class | Layer data model with Id, Name, Visibility, Lock, Opacity, Order, Type | ✅ |
+| `LayerType` enum | Base, Drawing, Import, Mask layer types | ✅ |
+| Layer property on objects | All Fabric objects have `layer`, `layerId`, `name` properties | ✅ |
+| Active layer tracking | `activeLayerId` in JS and C# state | ✅ |
+| Layer assignment | New drawings assigned to active layer | ✅ |
+| Default layers | "Base Image" (locked) and "Drawing Layer" created on init | ✅ |
+| `InitializeDefaultLayers()` | Reset creates proper default layers | ✅ |
+| Layer state in undo/redo | Layer properties preserved in serialization | ✅ |
+| Select tool (V) | Tool for selecting/moving objects on canvas | ✅ |
+| Layer-aware erasing | Eraser only affects objects on active layer | ✅ |
 
-#### Data Model
+#### Data Model (ImageEditorState.cs)
 
 ```csharp
-// ImageEditorState.cs additions
 public class LayerInfo
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name { get; set; } = "New Layer";
-    public bool IsVisible { get; set; } = true;
-    public bool IsLocked { get; set; } = false;
-    public float Opacity { get; set; } = 1.0f;
-    public int Order { get; set; } // Z-index order
+    public const string BaseLayerId = "base-image-layer";
+    public const string MaskLayerId = "mask-layer";
+    
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public bool IsVisible { get; set; }
+    public bool IsLocked { get; set; }
+    public float Opacity { get; set; }
+    public int Order { get; set; }
+    public LayerType LayerType { get; set; }
+    
+    public bool CanDelete => LayerType != LayerType.Base && LayerType != LayerType.Mask;
+    public bool CanReorder => LayerType != LayerType.Base && LayerType != LayerType.Mask;
 }
 
-public List<LayerInfo> Layers { get; set; } = new();
-public string ActiveLayerId { get; set; }
+public enum LayerType { Base, Drawing, Import, Mask }
+```
+
+#### JavaScript Layer Methods (ImageEditor.js)
+
+```javascript
+// Layer management
+_initializeDefaultLayers()
+getActiveLayer()
+setActiveLayer(layerId)
+addLayer(name, type)
+removeLayer(layerId)
+updateLayer(layerId, props)
+getLayers()
+getLayerState()
+restoreLayerState(state)
+
+// Layer-aware operations
+_updateLayerVisibility(layerId, visible)
+_updateLayerOpacity(layerId, opacity)
+_reorderCanvasObjects()
 ```
 
 ---
 
-### Phase 3.2: Image Import
+### Phase 3.5: State Preservation ✅ COMPLETE
 
-#### Objectives
-- Allow users to import PNG/JPG/WebP images
-- Support drag-drop, file picker, and clipboard paste
-- Imported images are movable, resizable, rotatable
+#### Implemented Features
 
-#### Deliverables
+| Item | Description | Status |
+|------|-------------|--------|
+| Save button | Exports flattened image, preserves original base + layers | ✅ |
+| Apply button | Flattens to new base, resets layer state | ✅ |
+| Separate base preservation | `BaseImageData` stored separately from output | ✅ |
+| Canvas JSON storage | Full canvas state saved in `CanvasJson` for re-editing | ✅ |
+| State restoration | Layers and strokes restored when reopening editor | ✅ |
+| Tool state sync | Current tool synced with JS on editor reopen | ✅ |
+| Layer count display | Shows "Layers: X / 20" in footer | ✅ |
+| Active layer indicator | Chip in title bar shows current layer | ✅ |
+
+#### Save vs Apply Workflow
+
+| Action | Output Image | Base Image (State) | Canvas JSON | Layers |
+|--------|-------------|-------------------|-------------|--------|
+| **Save** | Flattened export | Preserved (original) | Saved | Preserved |
+| **Apply** | Flattened export | Updated (flattened) | Cleared | Reset |
+
+**Save**: User can reopen and continue editing with original base + all strokes editable.
+
+**Apply**: Commits all edits permanently. Flattened image becomes new base for fresh start.
+
+---
+
+### Phase 3.2: Image Import 🔴 NOT STARTED
+
+#### Planned Features
 
 | Item | Description | Complexity |
 |------|-------------|------------|
 | Drag-drop import | Drop image file onto canvas | 🟢 Low |
 | File picker button | Toolbar button opens file dialog | 🟢 Low |
 | Clipboard paste | Ctrl+V pastes image from clipboard | 🟡 Medium |
-| Transform controls | Fabric built-in: move, resize, rotate | 🟢 Low (built-in) |
+| Transform controls | Fabric built-in: move, resize, rotate | 🟢 Low |
 | Layer assignment | Imported images assigned to active layer | 🟢 Low |
-| File type support | PNG, JPG, WebP | 🟢 Low |
-
-#### Implementation Notes
-
-```javascript
-// Drag-drop handling
-canvas.on('drop', async (e) => {
-    const file = e.e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-        const dataUrl = await readFileAsDataURL(file);
-        addImportedImage(dataUrl);
-    }
-});
-
-// Add imported image
-function addImportedImage(dataUrl) {
-    fabric.Image.fromURL(dataUrl, (img) => {
-        img.set({
-            left: canvas.width / 2,
-            top: canvas.height / 2,
-            originX: 'center',
-            originY: 'center',
-            selectable: true,
-            hasControls: true,
-            hasBorders: true,
-            name: 'imported',
-            layer: this.activeLayer
-        });
-        // Scale down if larger than canvas
-        const maxSize = Math.min(canvas.width, canvas.height) * 0.8;
-        if (img.width > maxSize || img.height > maxSize) {
-            const scale = maxSize / Math.max(img.width, img.height);
-            img.scale(scale);
-        }
-        canvas.add(img);
-        canvas.setActiveObject(img);
-    });
-}
-```
 
 ---
 
-### Phase 3.3: Layer Panel UI
+### Phase 3.3: Layer Panel UI 🔴 NOT STARTED
 
-#### Objectives
-- Collapsible right sidebar for layer management
-- Visual layer list with controls
-- Layer selection, reordering, and editing
-
-#### Deliverables
+#### Planned Features
 
 | Item | Description | Complexity |
 |------|-------------|------------|
@@ -200,257 +162,109 @@ function addImportedImage(dataUrl) {
 | Lock toggle | Lock icon to prevent edits | 🟢 Low |
 | Layer rename | Double-click to edit name | 🟢 Low |
 | Layer reorder | Drag or up/down buttons | 🟡 Medium |
-| Active layer indicator | Highlight selected layer | 🟢 Low |
-| Add layer button | Create new empty layer | 🟢 Low |
-| Delete layer button | Remove layer and its objects | 🟢 Low |
 | Opacity slider | Per-layer opacity control | 🟡 Medium |
-
-#### UI Mockup
-
-```
-┌─────────────────────────────┐
-│ Layers                   [×]│  ← Collapse button
-├─────────────────────────────┤
-│ 👁 🔒 Mask Layer         ▲  │  ← Always on top
-├─────────────────────────────┤
-│ 👁 🔒 Character              │  ← Active layer (highlighted)
-│ 👁 🔒 Background Elements    │
-│ 👁 🔒 Drawing Layer          │
-│ 👁 🔒 Base Image          ▼  │  ← Always at bottom
-├─────────────────────────────┤
-│ Opacity: [========●==] 100% │  ← Selected layer opacity
-├─────────────────────────────┤
-│ [+ Add]  [🗑 Delete]  [⬆][⬇]│
-└─────────────────────────────┘
-```
-
-#### Special Layers
-
-| Layer | Behavior |
-|-------|----------|
-| **Base Image** | Always at bottom, not deletable, locked by default |
-| **Mask Layer** | Always on top, not deletable, only mask objects |
+| Add/Delete buttons | Create/remove layers | 🟢 Low |
 
 ---
 
-### Phase 3.4: Object Management
+### Phase 3.4: Object Management 🟡 PARTIAL
 
-#### Objectives
-- Keyboard shortcuts for common operations
-- Object manipulation tools
+#### Implemented
 
-#### Deliverables
+| Item | Status |
+|------|--------|
+| Select tool (V) | ✅ |
+| Delete selected (Delete/Backspace) | ✅ |
+| Object selection in Select mode | ✅ |
+| Respect layer lock on delete | ✅ |
 
-| Item | Description | Complexity |
-|------|-------------|------------|
-| Delete selected | Delete/Backspace removes selection | 🟢 Low |
-| Copy | Ctrl+C copies selected object(s) | 🟢 Low |
-| Paste | Ctrl+V pastes copied object(s) | 🟢 Low |
-| Duplicate | Ctrl+D duplicates in place | 🟢 Low |
-| Flip horizontal | Mirror object horizontally | 🟢 Low |
-| Flip vertical | Mirror object vertically | 🟢 Low |
-| Select all in layer | Click layer to select its objects | 🟡 Medium |
+#### Remaining
 
-#### Keyboard Shortcuts (New)
-
-| Shortcut | Action |
-|----------|--------|
-| Delete / Backspace | Delete selected object(s) |
-| Ctrl+C | Copy selected |
-| Ctrl+V | Paste (image from clipboard OR copied objects) |
-| Ctrl+D | Duplicate selected |
-| Ctrl+A | Select all objects in active layer |
+| Item | Status |
+|------|--------|
+| Copy (Ctrl+C) | 🔴 |
+| Paste (Ctrl+V) | 🔴 |
+| Duplicate (Ctrl+D) | 🔴 |
+| Flip horizontal/vertical | 🔴 |
 
 ---
 
-### Phase 3.5: State Preservation
+### Phase 3.6: Integration & Limits 🟡 PARTIAL
 
-#### Objectives
-- Preserve layer state across editor sessions
-- Support "Apply" (preserve) and "Flatten & Apply" (reset) modes
+#### Implemented
 
-#### Deliverables
+| Item | Status |
+|------|--------|
+| Layer limit constant (20) | ✅ |
+| Layer limit in addLayer() | ✅ |
 
-| Item | Description | Complexity |
-|------|-------------|------------|
-| State serialization | Save full layer state to `ImageEditorState` | 🟡 Medium |
-| State restoration | Restore layers when reopening editor | 🟡 Medium |
-| Apply button | Flatten visible → Update input → Preserve state | 🟡 Medium |
-| Flatten & Apply | Flatten → Update input → Reset state (new base) | 🟡 Medium |
-| UI for flatten | Menu or button for "Flatten & Apply" | 🟢 Low |
+#### Remaining
 
-#### Workflow: Apply vs Flatten & Apply
-
-**Apply (Preserve State)**
-```
-User edits → Clicks Apply → 
-  1. Flatten visible layers to PNG
-  2. Send PNG to Blazor (input image updated)
-  3. Layer state preserved in ImageEditorState
-  4. User can reopen and continue editing layers
-```
-
-**Flatten & Apply (Reset State)**
-```
-User edits → Clicks Flatten & Apply →
-  1. Flatten visible layers to PNG
-  2. Send PNG to Blazor (input image updated)
-  3. Layer state RESET
-  4. Flattened image becomes new "Base Image" layer
-  5. User reopens with clean slate (single base layer)
-```
-
-**Use Case:**
-- Build complex composition with 10+ imported elements
-- "Flatten & Apply" to commit as single base image
-- Import more elements on top
-- Prevents unbounded layer growth
-
----
-
-### Phase 3.6: Integration & Limits
-
-#### Deliverables
-
-| Item | Description | Complexity |
-|------|-------------|------------|
-| Layer limit | Maximum 20 layers (configurable) | 🟢 Low |
-| Object limit per layer | Soft limit warning at 50 objects | 🟢 Low |
-| Import size limit | Scale down images > 4096px | 🟢 Low |
-| Layer in undo/redo | Layer changes included in history | 🟡 Medium |
-
----
-
-### Deferred to Future Phase (Raster Layer Phase)
-
-| Feature | Reason |
-|---------|--------|
-| Raster drawing layers | Requires hybrid canvas architecture |
-| Pixel-level eraser | Requires raster layers |
-| Image effects (brightness, contrast) | Requires per-layer raster processing |
-| Blending modes (multiply, overlay, etc.) | Complex, low priority |
-| Layer thumbnails | Performance overhead, low value |
-| Layer merge/flatten (selective) | Nice to have, not critical |
-
----
-
-## Phase 4: Polish & UX 🔴 NOT STARTED
-
-### Planned Deliverables
-- Performance optimization (large images, many layers)
-- History state compression
-- Save/load editor presets
-- Recent colors palette
-- Touch device support
-- Accessibility improvements
-
----
-
-## Technical Specifications
-
-### Layer Data Flow
-
-```
-Blazor Component                    ImageEditor.js
-      │                                   │
-      │──── Open editor ─────────────────►│
-      │     (with LayerState JSON)        │
-      │                                   │
-      │◄─── Restore layers ───────────────│
-      │                                   │
-      │     [User edits layers]           │
-      │                                   │
-      │◄─── OnLayerChanged() ─────────────│
-      │     (layer added/removed/modified)│
-      │                                   │
-      │──── Apply ────────────────────────►│
-      │                                   │
-      │◄─── Return (image, mask, state) ──│
-      │                                   │
-```
-
-### Object Layer Property
-
-All Fabric objects include:
-
-```javascript
-{
-    name: 'drawing' | 'imported' | 'mask' | 'baseImage',
-    layer: 'Layer Name',        // Logical layer grouping
-    layerId: 'guid-string',     // For precise matching
-    // ... standard Fabric properties
-}
-```
-
-### Layer State Serialization
-
-```javascript
-// On Apply, serialize:
-{
-    layers: [
-        { id: 'abc', name: 'Background', visible: true, locked: false, opacity: 1.0, order: 0 },
-        { id: 'def', name: 'Characters', visible: true, locked: false, opacity: 0.8, order: 1 },
-        // ...
-    ],
-    activeLayerId: 'def',
-    objects: [...], // Full Fabric canvas JSON
-}
-```
-
----
-
-## File Reference
-
-### Core Files
-| File | Purpose |
-|------|---------|
-| `Components/ImageEditor/ImageEditorModal.razor` | Main Blazor component |
-| `Components/ImageEditor/ImageEditorModal.razor.css` | Scoped CSS styles |
-| `Components/ImageEditor/LayerPanel.razor` | **NEW: Layer panel component** |
-| `wwwroot/js/ImageEditor.js` | Fabric.js integration |
-| `Models/ImageEditorState.cs` | C# state model (with layer info) |
-
-### External Dependencies
-| Dependency | Version | CDN |
-|------------|---------|-----|
-| Fabric.js | 6.0.2 | jsdelivr, unpkg, cdnjs |
+| Item | Status |
+|------|--------|
+| Import size limit (4096px) | 🔴 |
+| Object limit per layer warning | 🔴 |
 
 ---
 
 ## Changelog
 
+### Version 3.1 (December 2024) - Phase 3.1 Complete
+
+#### Core Layer Infrastructure
+- Added `LayerInfo` class with full property set (Id, Name, IsVisible, IsLocked, Opacity, Order, LayerType)
+- Added `LayerType` enum (Base, Drawing, Import, Mask)
+- Layer properties on all Fabric objects (`layer`, `layerId`, `name`)
+- Active layer tracking in JS (`activeLayerId`) and C# (`ActiveLayerId`)
+- Default layers created on initialization ("Base Image" locked, "Drawing Layer" active)
+- Layer-aware erasing (only erases from active layer)
+
+#### State Preservation
+- **Save button**: Exports flattened image for use, preserves original base image and layer state
+- **Apply button**: Flattens all layers to new base, resets state for fresh start
+- Separate storage for `BaseImageData` (original) vs output image
+- `CanvasJson` stores full canvas state for re-editing
+- Proper restoration of layers and strokes on editor reopen
+
+#### Select Tool & Object Management
+- Select tool (V) for selecting objects on canvas
+- Objects become selectable when Select tool is active (respects layer lock)
+- Delete key removes selected objects
+- Tool state synced with JS on editor reopen (fixes cursor mismatch bug)
+
+#### UI Updates
+- Save/Apply buttons with descriptive tooltips
+- Layer count display in footer ("Layers: X / 20")
+- Active layer indicator chip in title bar
+
 ### Version 3.0 (December 2024) - Phase 3 Planning
-- **Comprehensive Phase 3 specification**
-  - Layer system using object property grouping (Option A)
-  - Image import via drag-drop, file picker, clipboard
-  - Layer panel UI with visibility, lock, opacity, rename, reorder
-  - Multiple drawing layers (draw to active layer)
-  - State preservation across editor sessions
-  - "Apply" (preserve state) vs "Flatten & Apply" (reset state)
-- **Technical decisions documented**
-  - 20 layer limit
-  - Object property grouping vs multiple canvases
-  - Hybrid approach for imported images (grouped by layer)
-- **Deferred features identified** for future Raster Layer Phase
+- Comprehensive Phase 3 specification
+- Technical decisions documented
 
 ### Version 2.3 (December 2024) - Phase 2 Complete
 - Eraser tool removes intersecting strokes
 - Phase 2 marked complete
 
-### Version 2.2 (December 2024) - Undo/Redo Fix
-- Complete undo/redo functionality
-- Fabric.js 6 custom property serialization
-
 ---
 
 ## Implementation Checklist
 
-### Phase 3.1: Core Layer Infrastructure
-- [ ] Add `layer` and `layerId` properties to object creation
-- [ ] Add `LayerInfo` class to `ImageEditorState.cs`
-- [ ] Track `activeLayerId` in JS state
-- [ ] Assign active layer to new drawings
-- [ ] Create default layers (Base Image, Drawing Layer)
+### Phase 3.1: Core Layer Infrastructure ✅ COMPLETE
+- [x] Add `layer` and `layerId` properties to object creation
+- [x] Add `LayerInfo` class to `ImageEditorState.cs`
+- [x] Add `LayerType` enum
+- [x] Track `activeLayerId` in JS state
+- [x] Assign active layer to new drawings
+- [x] Create default layers (Base Image, Drawing Layer)
+- [x] Layer-aware erasing
+- [x] Select tool implementation
+
+### Phase 3.5: State Preservation ✅ COMPLETE
+- [x] Save button (preserve layers, original base)
+- [x] Apply button (flatten, reset state)
+- [x] Separate BaseImageData from output
+- [x] CanvasJson storage and restoration
+- [x] Tool state sync on reopen
 
 ### Phase 3.2: Image Import
 - [ ] Implement drag-drop handler on canvas
@@ -469,23 +283,63 @@ All Fabric objects include:
 - [ ] Opacity slider for selected layer
 
 ### Phase 3.4: Object Management
-- [ ] Delete key handler
+- [x] Select tool (V)
+- [x] Delete key handler
 - [ ] Copy/paste (Ctrl+C/V)
 - [ ] Duplicate (Ctrl+D)
 - [ ] Flip horizontal/vertical
-- [ ] Select all in layer
-
-### Phase 3.5: State Preservation
-- [ ] Serialize layer state on Apply
-- [ ] Restore layer state on editor open
-- [ ] "Flatten & Apply" button/menu
-- [ ] Reset state after flatten
 
 ### Phase 3.6: Integration
-- [ ] Layer limit enforcement (20)
+- [x] Layer limit enforcement (20)
 - [ ] Import size limit (4096px)
-- [ ] Layer operations in undo/redo
+- [ ] Object limit per layer warning
 
 ---
 
-*Document maintained in: `DOC/IMAGE_EDITOR_IMPLEMENTATION_PLAN.md`*
+## File Reference
+
+### Core Files
+| File | Purpose |
+|------|---------|
+| `Components/ImageEditor/ImageEditorModal.razor` | Main Blazor component |
+| `Components/ImageEditor/ImageEditorModal.razor.css` | Scoped CSS styles |
+| `wwwroot/js/ImageEditor.js` | Fabric.js integration with layer support |
+| `Models/ImageEditorState.cs` | C# state model with LayerInfo class |
+
+### Key Changes in 3.1
+| File | Changes |
+|------|---------|
+| `ImageEditorState.cs` | Added `LayerInfo`, `LayerType`, layer management methods |
+| `ImageEditor.js` | Added layer tracking, `setTool` select mode, layer-aware operations |
+| `ImageEditorModal.razor` | Save/Apply buttons, state preservation, tool sync on init |
+
+---
+
+## Testing Notes
+
+### Save/Apply Workflow Verification
+
+1. **Blank Canvas + Save**
+   - Create blank canvas, draw strokes
+   - Click Save → Strokes visible in output
+   - Reopen → Blank canvas with editable strokes on top ✅
+
+2. **Blank Canvas + Apply**
+   - Create blank canvas, draw strokes
+   - Click Apply → Strokes visible in output
+   - Reopen → Flattened image as new base, no editable strokes ✅
+
+3. **Image + Save**
+   - Load image, draw strokes
+   - Click Save → Original + strokes in output
+   - Reopen → Original image with editable strokes on top ✅
+
+4. **Image + Apply**
+   - Load image, draw strokes
+   - Click Apply → Flattened output
+   - Reopen → Flattened image as new base ✅
+
+5. **Tool State Restoration**
+   - Select tool, Save, Reopen → Select tool still active ✅
+
+---

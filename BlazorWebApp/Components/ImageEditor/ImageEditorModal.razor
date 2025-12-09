@@ -1,4 +1,5 @@
 @using BlazorWebApp.Models
+@using System.Text.Json
 @inject IJSRuntime JS
 @inject ManagerService M
 @inject ILogger<ImageEditorModal> Logger
@@ -21,6 +22,13 @@
                         @if (_state.HasMask)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">Mask</MudChip>
+                        }
+                        @* Active Layer indicator *@
+                        @if (_state.ActiveLayer != null)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                @_state.ActiveLayer.Name
+                            </MudChip>
                         }
                     </MudStack>
                     <MudStack Row Spacing="1">
@@ -56,6 +64,11 @@
                                 <MudIconButton Icon="@Icons.Material.Filled.Colorize" 
                                                Color="@(_state.CurrentTool == ImageEditorTool.ColorPicker ? Color.Primary : Color.Default)"
                                                OnClick="@(() => SetTool(ImageEditorTool.ColorPicker))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Select (V)">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenWith" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.Select ? Color.Primary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.Select))" />
                             </MudTooltip>
                             <MudTooltip Text="Pan (Hold Space)">
                                 <MudIconButton Icon="@Icons.Material.Filled.PanTool" 
@@ -200,6 +213,11 @@
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@GetToolColor()">
                                 @GetToolDisplayName()
                             </MudChip>
+                            
+                            @* Layer count *@
+                            <MudText Typo="Typo.caption" Class="text-muted">
+                                Layers: @_state.Layers.Count / @ImageEditorState.MaxLayerCount
+                            </MudText>
                         </MudStack>
                         
                         <MudStack Row Spacing="2">
@@ -208,12 +226,22 @@
                                        OnClick="Cancel">
                                 Cancel
                             </MudButton>
-                            <MudButton Variant="Variant.Filled" 
-                                       Color="Color.Primary" 
-                                       OnClick="Apply"
-                                       StartIcon="@Icons.Material.Filled.Check">
-                                Apply
-                            </MudButton>
+                            <MudTooltip Text="Save current edits and close. Preserves layers for further editing. The original base image remains unchanged." Delay="600" Duration="1000">
+                                <MudButton Variant="Variant.Outlined" 
+                                           Color="Color.Primary" 
+                                           OnClick="Save"
+                                           StartIcon="@Icons.Material.Filled.Save">
+                                    Save
+                                </MudButton>
+                            </MudTooltip>
+                            <MudTooltip Text="Flatten all visible layers into a new image and apply as the new base. This commits all edits permanently." Delay="600" Duration="1000">
+                                <MudButton Variant="Variant.Filled" 
+                                           Color="Color.Primary" 
+                                           OnClick="Apply"
+                                           StartIcon="@Icons.Material.Filled.Check">
+                                    Apply
+                                </MudButton>
+                            </MudTooltip>
                         </MudStack>
                     </MudStack>
                 </div>
@@ -276,15 +304,36 @@
         _sessionId = $"{DateTime.Now.Ticks}-{_instanceCounter}";
         _canvasId = $"editor-canvas-{_sessionId}";
         
-        _pendingImageData = imageData;
-        _pendingIsBlank = string.IsNullOrWhiteSpace(imageData);
-        _pendingWidth = 1024;
-        _pendingHeight = 1024;
-        
         _isVisible = true;
         _isLoading = true;
         _isInitialized = false;
-        _state.Reset();
+        
+        // Check if we should restore previous state (has saved canvas with layers)
+        if (M.ImageEditorState != null && M.ImageEditorState.CanvasJson != null && M.ImageEditorState.Layers.Count > 0)
+        {
+            // Restore previous session - use the PRESERVED base image, not the input
+            _state = M.ImageEditorState;
+            _pendingImageData = _state.BaseImageData; // Use the original base, not the new input
+            _pendingIsBlank = _state.IsBlankCanvas;
+            _pendingWidth = _state.BlankCanvasWidth;
+            _pendingHeight = _state.BlankCanvasHeight;
+            Logger.LogInformation("Restoring previous editor state with {LayerCount} layers, using preserved base image", _state.Layers.Count);
+        }
+        else
+        {
+            // Fresh session - use the provided image data
+            _state.Reset();
+            _pendingImageData = imageData;
+            _pendingIsBlank = string.IsNullOrWhiteSpace(imageData);
+            _pendingWidth = 1024;
+            _pendingHeight = 1024;
+            
+            // Store the original base image
+            if (!_pendingIsBlank)
+            {
+                _state.BaseImageData = imageData;
+            }
+        }
         
         StateHasChanged();
     }
@@ -299,18 +348,33 @@
         _sessionId = $"{DateTime.Now.Ticks}-{_instanceCounter}";
         _canvasId = $"editor-canvas-{_sessionId}";
         
-        _pendingImageData = null;
-        _pendingIsBlank = true;
-        _pendingWidth = width;
-        _pendingHeight = height;
-        
         _isVisible = true;
         _isLoading = true;
         _isInitialized = false;
-        _state.Reset();
-        _state.IsBlankCanvas = true;
-        _state.BlankCanvasWidth = width;
-        _state.BlankCanvasHeight = height;
+        
+        // Check if we should restore previous state (has saved canvas with layers)
+        if (M.ImageEditorState != null && M.ImageEditorState.CanvasJson != null && M.ImageEditorState.Layers.Count > 0 && M.ImageEditorState.IsBlankCanvas)
+        {
+            // Restore previous blank canvas session
+            _state = M.ImageEditorState;
+            _pendingImageData = null;
+            _pendingIsBlank = true;
+            _pendingWidth = _state.BlankCanvasWidth;
+            _pendingHeight = _state.BlankCanvasHeight;
+            Logger.LogInformation("Restoring previous blank canvas state with {LayerCount} layers", _state.Layers.Count);
+        }
+        else
+        {
+            // Fresh blank canvas
+            _state.Reset();
+            _state.IsBlankCanvas = true;
+            _state.BlankCanvasWidth = width;
+            _state.BlankCanvasHeight = height;
+            _pendingImageData = null;
+            _pendingIsBlank = true;
+            _pendingWidth = width;
+            _pendingHeight = height;
+        }
         
         StateHasChanged();
     }
@@ -360,7 +424,19 @@
                 await LoadImageAsync(_pendingImageData);
             }
             
-            Logger.LogInformation("Image editor initialized successfully");
+            // Restore layer state if available
+            if (_state.CanvasJson != null && _editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("loadState", _state.CanvasJson);
+            }
+            
+            // Sync the current tool with JS (ensures cursor matches tool button state)
+            if (_editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("setTool", _state.CurrentTool.ToString().ToLowerInvariant());
+            }
+            
+            Logger.LogInformation("Image editor initialized successfully with {LayerCount} layers", _state.Layers.Count);
         }
         catch (Exception ex)
         {
@@ -402,7 +478,12 @@
     {
         if (_editorInstance == null) return;
         
-        _state.BaseImageData = imageData;
+        // Only update BaseImageData if this is a fresh session (not restoring)
+        // When restoring, BaseImageData is already set correctly
+        if (string.IsNullOrWhiteSpace(_state.BaseImageData))
+        {
+            _state.BaseImageData = imageData;
+        }
         _state.IsBlankCanvas = false;
         
         try
@@ -450,12 +531,14 @@
         ImageEditorTool.MaskBrush => "Mask Brush",
         ImageEditorTool.MaskEraser => "Mask Eraser",
         ImageEditorTool.Fill => "Fill",
+        ImageEditorTool.Select => "Select",
         _ => "Unknown"
     };
     
     private Color GetToolColor() => _state.CurrentTool switch
     {
         ImageEditorTool.MaskBrush or ImageEditorTool.MaskEraser => Color.Secondary,
+        ImageEditorTool.Select => Color.Info,
         _ => Color.Primary
     };
     
@@ -578,18 +661,22 @@
     
     // ==================== Actions ====================
     
-    private async Task Apply()
+    /// <summary>
+    /// Save: Exports flattened image for use, but preserves original base image and layer state for re-editing
+    /// </summary>
+    private async Task Save()
     {
         if (_editorInstance == null) 
         {
-            Logger.LogWarning("Cannot apply - editor instance is null");
+            Logger.LogWarning("Cannot save - editor instance is null");
             return;
         }
         
         try
         {
-            Logger.LogInformation("Exporting edited image...");
+            Logger.LogInformation("Saving edited image (preserving layers and original base)...");
             
+            // Export the flattened visible image
             var imageData = await _editorInstance.InvokeAsync<string>("exportImage", true);
             var maskData = await _editorInstance.InvokeAsync<string?>("exportMask");
             
@@ -609,7 +696,67 @@
                 _state.MaskData = maskData;
             }
             
+            // Save canvas state for re-editing - but keep the ORIGINAL base image
+            _state.CanvasJson = await _editorInstance.InvokeAsync<string>("getState");
+            // Note: BaseImageData stays as the original, not the flattened export
+            _state.IsDirty = false;
             M.ImageEditorState = _state;
+            Logger.LogInformation("Saved editor state with {LayerCount} layers, original base preserved", _state.Layers.Count);
+            
+            await CleanupEditorAsync();
+            
+            _isVisible = false;
+            StateHasChanged();
+            
+            // Send the flattened image for use (but original base is preserved in state)
+            await OnApply.InvokeAsync((imageData, maskData));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save image");
+        }
+    }
+    
+    /// <summary>
+    /// Apply: Flattens all layers into a new base image, resets layer state
+    /// </summary>
+    private async Task Apply()
+    {
+        if (_editorInstance == null) 
+        {
+            Logger.LogWarning("Cannot apply - editor instance is null");
+            return;
+        }
+        
+        try
+        {
+            Logger.LogInformation("Applying edited image (flattening to new base)...");
+            
+            var imageData = await _editorInstance.InvokeAsync<string>("exportImage", true);
+            var maskData = await _editorInstance.InvokeAsync<string?>("exportMask");
+            
+            Logger.LogInformation("Export complete. Image data length: {ImageLength}, Mask: {HasMask}", 
+                imageData?.Length ?? 0, 
+                !string.IsNullOrWhiteSpace(maskData));
+            
+            if (string.IsNullOrWhiteSpace(imageData))
+            {
+                Logger.LogWarning("Exported image data is empty");
+                return;
+            }
+            
+            // Store mask data
+            if (!string.IsNullOrWhiteSpace(maskData))
+            {
+                _state.MaskData = maskData;
+            }
+            
+            // Flatten & Apply - reset layers, use exported image as new base
+            _state.ResetLayersToBase();
+            _state.BaseImageData = imageData; // NEW base image is the flattened result
+            _state.CanvasJson = null; // Clear saved state
+            M.ImageEditorState = _state;
+            Logger.LogInformation("Applied and flattened - new base image created");
             
             await CleanupEditorAsync();
             
@@ -620,7 +767,7 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to export image");
+            Logger.LogError(ex, "Failed to apply image");
         }
     }
     
@@ -716,7 +863,6 @@
     {
         _cursorX = x;
         _cursorY = y;
-        // Throttle UI updates for cursor position
         InvokeAsync(StateHasChanged);
     }
     
@@ -751,6 +897,44 @@
     {
         _state.IsDirty = true;
         InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnLayerChanged(JsonElement layerState)
+    {
+        try
+        {
+            // Update layers from JS state
+            if (layerState.TryGetProperty("layers", out var layersElement))
+            {
+                _state.Layers.Clear();
+                foreach (var layerJson in layersElement.EnumerateArray())
+                {
+                    var layer = new LayerInfo
+                    {
+                        Id = layerJson.GetProperty("id").GetString() ?? "",
+                        Name = layerJson.GetProperty("name").GetString() ?? "Layer",
+                        IsVisible = layerJson.GetProperty("visible").GetBoolean(),
+                        IsLocked = layerJson.GetProperty("locked").GetBoolean(),
+                        Opacity = (float)layerJson.GetProperty("opacity").GetDouble(),
+                        Order = layerJson.GetProperty("order").GetInt32(),
+                        LayerType = Enum.TryParse<LayerType>(layerJson.GetProperty("type").GetString(), true, out var lt) ? lt : LayerType.Drawing
+                    };
+                    _state.Layers.Add(layer);
+                }
+            }
+            
+            if (layerState.TryGetProperty("activeLayerId", out var activeIdElement))
+            {
+                _state.ActiveLayerId = activeIdElement.GetString();
+            }
+            
+            InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to parse layer state from JS");
+        }
     }
     
     private void HandleOverlayClick()
