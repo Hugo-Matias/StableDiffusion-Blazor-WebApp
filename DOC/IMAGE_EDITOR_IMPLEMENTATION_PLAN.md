@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 3.3  
+> **Document Version:** 3.6  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 3.2 Complete  
+> **Status:** Phase 3.3 Complete  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -31,7 +31,7 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 |-----------|-------------|--------|
 | **3.1** | Core Layer Infrastructure | ✅ Complete |
 | **3.2** | Image Import | ✅ Complete |
-| **3.3** | Layer Panel UI | 🔴 Not Started |
+| **3.3** | Layer Panel UI | ✅ Complete |
 | **3.4** | Object Management | 🟡 Partial |
 | **3.5** | State Preservation | ✅ Complete |
 | **3.6** | Integration & Limits | ✅ Complete |
@@ -103,6 +103,7 @@ restoreLayerState(state)
 // Layer-aware operations
 _updateLayerVisibility(layerId, visible)
 _updateLayerOpacity(layerId, opacity)
+_updateLayerLocked(layerId, locked)
 _reorderCanvasObjects()
 ```
 
@@ -120,8 +121,8 @@ _reorderCanvasObjects()
 | Canvas JSON storage | Full canvas state saved in `CanvasJson` for re-editing | ✅ |
 | State restoration | Layers and strokes restored when reopening editor | ✅ |
 | Tool state sync | Current tool synced with JS on editor reopen | ✅ |
-| Layer count display | Shows "Layers: X / 20" in footer | ✅ |
-| Active layer indicator | Chip in title bar shows current layer | ✅ |
+| Layer state in JSON | Layer metadata included in canvas state serialization | ✅ |
+| Locked state persistence | Locked layers remain locked after restore | ✅ |
 
 #### Save vs Apply Workflow
 
@@ -150,7 +151,7 @@ _reorderCanvasObjects()
 | Auto-scaling | Large images scaled to fit canvas (max 80%) | ✅ |
 | Size limit | Images limited to 4096px max dimension | ✅ |
 | Visual feedback | Drag-over state shows drop zone | ✅ |
-| Image persistence | Imported images restored on editor reopen | ✅ |
+| Image persistence | Imported images restored on editor reopening | ✅ |
 | Exclusive clipboard | Paste only targets editor when open | ✅ |
 
 #### Implementation Details
@@ -165,12 +166,6 @@ _setupPasteHandler()                // Setup Ctrl+V paste handler (capture phase
 _restoreObjectsDirectly()           // Restore paths AND images from state
 ```
 
-**Blazor Integration:**
-- `MudFileUpload` component in toolbar for file picker
-- `HandleFileImport(IBrowserFile)` method converts to data URL
-- `OnImageImported` JSInvokable callback for import notification
-- 10MB file size limit for uploads
-
 **Import Behavior:**
 - Imported images centered on canvas
 - Auto-scaled to 80% of canvas size if too large
@@ -181,20 +176,54 @@ _restoreObjectsDirectly()           // Restore paths AND images from state
 
 ---
 
-### Phase 3.3: Layer Panel UI 🔴 NOT STARTED
+### Phase 3.3: Layer Panel UI ✅ COMPLETE
 
-#### Planned Features
+#### Implemented Features
 
-| Item | Description | Complexity |
-|------|-------------|------------|
-| Panel component | Collapsible right sidebar | 🟡 Medium |
-| Layer list | Display layers with icons | 🟢 Low |
-| Visibility toggle | Eye icon to show/hide layer | 🟢 Low |
-| Lock toggle | Lock icon to prevent edits | 🟢 Low |
-| Layer rename | Double-click to edit name | 🟢 Low |
-| Layer reorder | Drag or up/down buttons | 🟡 Medium |
-| Opacity slider | Per-layer opacity control | 🟡 Medium |
-| Add/Delete buttons | Create/remove layers | 🟢 Low |
+| Item | Description | Status |
+|------|-------------|--------|
+| LayerPanel component | Collapsible right sidebar panel | ✅ |
+| Layer list | Display layers with type icons (brush, image, mask) | ✅ |
+| Visibility toggle | Eye icon to show/hide layer | ✅ |
+| Lock toggle | Lock icon to prevent edits (objects become non-selectable) | ✅ |
+| Layer rename | Double-click layer name to edit | ✅ |
+| Layer reorder | Up/down buttons for reorderable layers | ✅ |
+| Opacity slider | Per-layer opacity control (shown when layer is active) | ✅ |
+| Add layer button | Create new drawing layers | ✅ |
+| Delete layer button | Remove deletable layers (not base/mask) | ✅ |
+| Active layer highlight | Visual indicator for selected layer | ✅ |
+| Collapsed state | Toggle button to collapse panel | ✅ |
+| Layer lock enforcement | Locked layers prevent object selection/movement | ✅ |
+
+#### Component Structure
+
+**LayerPanel.razor:**
+- Collapsible sidebar positioned in canvas wrapper
+- Parameters for layers list, active layer, max count
+- Event callbacks for all layer operations
+- Displays layers in order (highest to lowest)
+- Icons based on layer type
+- Local opacity state to prevent slider feedback loops
+
+**LayerPanel.razor.css:**
+- Scoped styles for panel layout
+- Active/hover states for layer items
+- Opacity control styling
+- Scrollable layer list
+
+#### Integration with ImageEditorModal
+
+```csharp
+// Event handlers added to ImageEditorModal
+HandleLayerSelected(string layerId)
+HandleAddLayer()
+HandleDeleteLayer(string layerId)
+HandleLayerVisibilityChanged((string layerId, bool visible))
+HandleLayerLockChanged((string layerId, bool locked))
+HandleLayerOpacityChanged((string layerId, float opacity))
+HandleLayerRename((string layerId, string name))
+HandleLayerReorder((string layerId, int direction))
+```
 
 ---
 
@@ -208,13 +237,14 @@ _restoreObjectsDirectly()           // Restore paths AND images from state
 | Delete selected (Delete/Backspace) | ✅ |
 | Object selection in Select mode | ✅ |
 | Respect layer lock on delete | ✅ |
+| Respect layer lock on selection | ✅ |
 
 #### Remaining
 
 | Item | Status |
 |------|--------|
 | Copy (Ctrl+C) | 🔴 |
-| Paste (Ctrl+V) | 🔴 |
+| Paste object (Ctrl+V with objects) | 🔴 |
 | Duplicate (Ctrl+D) | 🔴 |
 | Flip horizontal/vertical | 🔴 |
 
@@ -236,33 +266,70 @@ _restoreObjectsDirectly()           // Restore paths AND images from state
 
 ## Changelog
 
+### Version 3.6 (December 2024) - Layer Locking & State Fixes
+
+#### Layer Lock Enforcement
+- **Object selectability**: Locked layers now prevent object selection and movement
+- **New `_updateLayerLocked()` method**: Updates all objects in a layer when lock state changes
+  - Sets `selectable`, `evented`, `lockMovementX/Y`, `lockRotation`, `lockScalingX/Y`, `hasControls`, `hasBorders`
+  - Deselects any selected objects when locking the active layer
+- **Select tool respects lock**: `setTool('select')` now checks layer lock status for each object
+- **State restoration**: `_finalizeStateRestore()` applies locked state after restoring canvas
+
+#### State Persistence Improvements  
+- **Layer state in JSON**: `getState()` now includes full `layerState` (layers array + activeLayerId)
+- **Layer restoration**: `loadState()` restores layer metadata before canvas objects
+- **Object property sync**: After restoration, visibility, opacity, and locked state applied to all objects
+
+#### Layer Panel Fixes
+- **Opacity slider feedback loop**: Fixed by using local state (`_localOpacity`) that syncs only on active layer change
+- **Active layer sync**: `OnParametersSet()` detects active layer changes and updates local opacity
+- **Removed debug code**: Cleaned up console.log statements and debug UI elements
+
+### Version 3.5 (December 2024) - Bug Fixes
+
+#### Layer Panel Fixes
+- **Rename Enter key**: Fixed input field not responding to Enter key - added `@onkeydown:stopPropagation`
+- **Active layer highlight**: Added primary color for active layer name and icon
+- **Opacity slider**: Fixed visibility with `::deep` CSS selector
+- **Reorder buttons**: Moved to header for better accessibility (always visible)
+- **Panel width**: Reduced to 220px for more canvas space
+
+#### Canvas Centering
+- **Layer panel offset**: Canvas now centers accounting for layer panel width (110px offset)
+- Updated `fitToView()` and `zoomToActual()` in JavaScript
+
+#### Layer Z-Order
+- **Stroke ordering**: Added `_reorderCanvasObjects()` call after path creation
+- Strokes now respect layer order instead of just canvas add order
+
+#### Middle Mouse Pan
+- **Event handling**: Added `auxclick` handler and upper canvas event listener
+- Middle mouse button now properly initiates pan without scrolling
+
+### Version 3.4 (December 2024) - Phase 3.3 Complete
+
+#### Layer Panel UI
+- **New Component**: `LayerPanel.razor` - Collapsible sidebar for layer management
+- **Layer List**: Displays all layers with type-specific icons (brush, image, mask)
+- **Visibility Toggle**: Eye icon to show/hide individual layers
+- **Lock Toggle**: Lock icon to prevent accidental edits
+- **Layer Rename**: Double-click layer name to edit inline
+- **Layer Reorder**: Up/down buttons to change layer stacking order
+- **Opacity Control**: Per-layer opacity slider (shown for active layer)
+- **Add/Delete**: Create new layers, delete non-essential layers
+- **Collapsible**: Toggle button to minimize panel and maximize canvas space
+
+#### Layout Changes
+- Moved active layer indicator from title bar to footer
+- Canvas area restructured to accommodate layer panel
+- New CSS classes: `image-editor-canvas-area`, `image-editor-canvas-main`
+
+#### New Files
+- `Components/ImageEditor/LayerPanel.razor` - Layer panel component
+- `Components/ImageEditor/LayerPanel.razor.css` - Scoped styles
+
 ### Version 3.3 (December 2024) - Bug Fixes & Polish
-
-#### Bug Fixes
-- **Clipboard paste exclusive**: Paste events now only target the editor when open, preventing double-paste to both editor and main I2I page
-  - Uses capture phase (`addEventListener(..., true)`) to intercept before other handlers
-  - Calls `stopImmediatePropagation()` to prevent event bubbling
-- **Image persistence**: Imported images now properly restored when reopening editor
-  - Updated `_restoreObjectsDirectly()` to handle both `path` and `image` object types
-  - Images restored with all transform properties (position, scale, rotation)
-- **Syntax error fix**: Fixed missing parenthesis in `_addRestoredObjects()` that broke the canvas
-- **Save vs Apply state preservation**: Fixed issue where Save was acting like Apply (flattening and losing state)
-  - Root cause: Setting `Img2ImgInputImage` from editor output triggered auto-reset of editor state
-  - Solution: Added `SetImg2ImgInputImage(value, resetEditorState)` method to differentiate user actions from editor output
-  - `HandleImageDataChanged`: User loading new image → reset editor state
-  - `HandleEditorApply`: Editor output → preserve editor state
-
-#### State Management
-- **Explicit reset control**: Editor state only resets when user manually changes input image
-  - Removed auto-reset from `Img2ImgInputImage` setter
-  - Added `SetImg2ImgInputImage()` method with explicit `resetEditorState` parameter
-  - `ResetImageEditorState()` available for manual resets
-
-#### CSS Fixes
-- **Import button alignment**: Fixed `MudFileUpload` button alignment using `::deep` selector
-- **ButtonTemplate fix**: Changed from `ActivatorContent` to `ButtonTemplate` for proper MudBlazor integration
-
-### Version 3.2 (December 2024) - Phase 3.2 Complete
 
 #### Image Import
 - **Drag & Drop**: Drop image files directly onto canvas
@@ -290,11 +357,7 @@ _restoreObjectsDirectly()           // Restore paths AND images from state
 - Layer count display in footer ("Layers: X / 20")
 - Active layer indicator chip in title bar
 
-### Version 3.0 (December 2024) - Phase 3 Planning
-- Comprehensive Phase 3 specification
-- Technical decisions documented
-
-### Version 2.3 (December 2024) - Phase 2 Complete
+### Version 3.2 (December 2024) - Phase 3.2 Complete
 - Eraser tool removes intersecting strokes
 - Phase 2 marked complete
 
@@ -318,6 +381,7 @@ _restoreObjectsDirectly()           // Restore paths AND images from state
 - [x] Separate BaseImageData from output
 - [x] CanvasJson storage and restoration
 - [x] Tool state sync on reopen
+- [x] Layer state in serialization
 
 ### Phase 3.2: Image Import ✅ COMPLETE
 - [x] Implement drag-drop handler on canvas
@@ -328,14 +392,18 @@ _restoreObjectsDirectly()           // Restore paths AND images from state
 - [x] Persist imported images in state
 - [x] Exclusive clipboard handling when editor open
 
-### Phase 3.3: Layer Panel UI
-- [ ] Create `LayerPanel.razor` component
-- [ ] Implement collapsible sidebar
-- [ ] Layer list with visibility/lock toggles
-- [ ] Double-click to rename layer
-- [ ] Add/delete layer buttons
-- [ ] Layer reordering (drag or buttons)
-- [ ] Opacity slider for selected layer
+### Phase 3.3: Layer Panel UI ✅ COMPLETE
+- [x] Create `LayerPanel.razor` component
+- [x] Implement collapsible sidebar
+- [x] Layer list with visibility/lock toggles
+- [x] Double-click to rename layer
+- [x] Add/delete layer buttons
+- [x] Layer reordering (up/down buttons)
+- [x] Opacity slider for selected layer
+- [x] Integrate with ImageEditorModal
+- [x] Event handlers for all layer operations
+- [x] Layer lock enforcement on canvas objects
+- [x] State persistence for layers
 
 ### Phase 3.4: Object Management
 - [x] Select tool (V)
@@ -359,63 +427,23 @@ _restoreObjectsDirectly()           // Restore paths AND images from state
 |------|---------|
 | `Components/ImageEditor/ImageEditorModal.razor` | Main Blazor component |
 | `Components/ImageEditor/ImageEditorModal.razor.css` | Scoped CSS styles |
-| `wwwroot/js/ImageEditor.js` | Fabric.js integration with layer support |
+| `Components/ImageEditor/LayerPanel.razor` | Layer management sidebar |
+| `Components/ImageEditor/LayerPanel.razor.css` | Layer panel styles |
+| `wwwroot/js/ImageEditor/ImageEditor.js` | Main entry point, initialization |
+| `wwwroot/js/ImageEditor/ImageEditor.layers.js` | Layer management mixin |
+| `wwwroot/js/ImageEditor/ImageEditor.canvas.js` | Canvas operations mixin |
+| `wwwroot/js/ImageEditor/ImageEditor.tools.js` | Tool handling mixin |
+| `wwwroot/js/ImageEditor/ImageEditor.history.js` | Undo/redo and state serialization |
+| `wwwroot/js/ImageEditor/ImageEditor.export.js` | Export and import functionality |
+| `wwwroot/js/ImageEditor/ImageEditor.events.js` | Event handlers mixin |
+| `wwwroot/js/ImageEditor/ImageEditor.callbacks.js` | .NET interop callbacks |
+| `wwwroot/js/ImageEditor/ImageEditor.utils.js` | Utility functions and constants |
 | `Models/ImageEditorState.cs` | C# state model with LayerInfo class |
 | `Services/ManagerService.cs` | ImageEditorState storage and auto-reset |
 
-### Key Changes in 3.3
+### Key Changes in 3.6
 | File | Changes |
 |------|---------|
-| `ImageEditor.js` | Fixed paste handler (capture phase), image restoration in `_restoreObjectsDirectly()`, syntax fix |
-| `ManagerService.cs` | Added `ResetImageEditorState()`, auto-reset in `Img2ImgInputImage` and `CanvasImageData` setters |
-| `ImageEditorModal.razor` | Fixed `MudFileUpload` to use `ButtonTemplate` |
-| `ImageEditorModal.razor.css` | Added `::deep` for import button alignment |
-
----
-
-## Testing Notes
-
-### Save/Apply Workflow Verification
-
-1. **Blank Canvas + Save**
-   - Create blank canvas, draw strokes
-   - Click Save → Strokes visible in output
-   - Reopen → Blank canvas with editable strokes on top ✅
-
-2. **Blank Canvas + Apply**
-   - Create blank canvas, draw strokes
-   - Click Apply → Strokes visible in output
-   - Reopen → Flattened image as new base, no editable strokes ✅
-
-3. **Image + Save**
-   - Load image, draw strokes
-   - Click Save → Original + strokes in output
-   - Reopen → Original image with editable strokes on top ✅
-
-4. **Image + Apply**
-   - Load image, draw strokes
-   - Click Apply → Flattened output
-   - Reopen → Flattened image as new base ✅
-
-5. **Tool State Restoration**
-   - Select tool, Save, Reopen → Select tool still active ✅
-
-### Image Import Verification
-
-6. **Drag & Drop**
-   - Drag image file onto canvas → Image imported, centered ✅
-
-7. **File Picker**
-   - Click import button → File dialog opens → Image imported ✅
-
-8. **Clipboard Paste**
-   - Copy image to clipboard, Ctrl+V in editor → Image imported ✅
-   - Paste does NOT affect main I2I page when editor is open ✅
-
-9. **Import Persistence**
-   - Import image → Save → Reopen → Imported image restored ✅
-
-10. **State Reset on Input Change**
-    - Edit image → Close editor → Change input image → Reopen → Fresh editor state ✅
-
----
+| `ImageEditor.layers.js` | Added `_updateLayerLocked()` method, updated `updateLayer()` to call it |
+| `ImageEditor.history.js` | Added layer state to `getState()`, restore in `loadState()`, apply locked state in `_finalizeStateRestore()` |
+| `LayerPanel.razor` | Added local opacity state to prevent feedback loops, cleaned up debug code |

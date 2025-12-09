@@ -58,3 +58,26 @@ body:has(.image-editor-overlay) .mud-tooltip {
 body:has(.image-editor-overlay) .mud-menu-popover {
 	z-index: 10002 !important;
 }
+
+/*
+ * Image Editor Layer Panel - Active Layer Styling
+ * These rules ensure the active layer is visually distinct.
+ * Added as global styles because scoped CSS doesn't always apply to MudBlazor child components.
+ */
+.layer-item.active {
+    background: rgba(var(--mud-palette-primary-rgb), 0.2) !important;
+    border-left: 3px solid var(--mud-palette-primary) !important;
+}
+
+.layer-item.active .layer-icon,
+.layer-item.active .layer-icon .mud-icon-root,
+.layer-item.active .layer-icon svg {
+    color: var(--mud-palette-primary) !important;
+    fill: var(--mud-palette-primary) !important;
+}
+
+.layer-item.active .layer-name,
+.layer-item.active .layer-name span {
+    color: var(--mud-palette-primary) !important;
+    font-weight: 600 !important;
+}

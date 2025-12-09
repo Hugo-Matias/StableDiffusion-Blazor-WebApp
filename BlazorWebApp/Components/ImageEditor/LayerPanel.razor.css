@@ -1,0 +1,240 @@
+/* Layer Panel Styles */
+
+.layer-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    z-index: 100;
+    pointer-events: auto;
+}
+
+.layer-panel.expanded {
+    width: 220px;
+}
+
+.layer-panel.collapsed {
+    width: 28px;
+}
+
+/* Toggle button */
+.layer-panel-toggle {
+    width: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 2px;
+    background: var(--mud-palette-surface);
+    border-left: 1px solid var(--mud-palette-lines-default);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.layer-panel-toggle:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+/* Panel content */
+.layer-panel-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--mud-palette-surface);
+    border-left: 1px solid var(--mud-palette-lines-default);
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* Header */
+.layer-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    flex-shrink: 0;
+}
+
+/* Layer list */
+.layer-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Layer item */
+.layer-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    gap: 4px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    transition: background-color 0.15s, border-left-color 0.15s;
+    min-height: 36px;
+    border-left: 3px solid transparent;
+}
+
+.layer-item:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.layer-item.active {
+    background: rgba(var(--mud-palette-primary-rgb), 0.2) !important;
+    border-left-color: var(--mud-palette-primary) !important;
+}
+
+.layer-item.locked {
+    opacity: 0.7;
+}
+
+/* Layer icon - default */
+.layer-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Active layer icon - use primary color */
+.layer-item.active .layer-icon {
+    color: var(--mud-palette-primary) !important;
+}
+
+/* Style the MudIcon SVG inside */
+::deep .layer-icon svg,
+::deep .layer-item.active .layer-icon svg {
+    fill: currentColor;
+}
+
+/* Layer name - default */
+.layer-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    min-width: 0;
+    color: var(--mud-palette-text-primary);
+    font-weight: 400;
+}
+
+.layer-name span {
+    color: inherit;
+    font-weight: inherit;
+}
+
+/* Active layer name - use primary color and bold */
+.layer-item.active .layer-name {
+    color: var(--mud-palette-primary) !important;
+    font-weight: 600 !important;
+}
+
+.layer-item.active .layer-name span {
+    color: var(--mud-palette-primary) !important;
+    font-weight: 600 !important;
+}
+
+.layer-rename-input {
+    width: 100%;
+    border: 1px solid var(--mud-palette-primary);
+    background: var(--mud-palette-background);
+    color: var(--mud-palette-text-primary);
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    outline: none;
+}
+
+/* Layer controls */
+.layer-controls {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.layer-item:hover .layer-controls,
+.layer-item.active .layer-controls {
+    opacity: 1;
+}
+
+/* Style for control buttons using ::deep for child component styles */
+::deep .layer-control-btn {
+    padding: 2px !important;
+    min-width: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+::deep .layer-control-btn .mud-icon-root {
+    font-size: 1rem;
+}
+
+::deep .layer-control-btn.delete:hover {
+    color: var(--mud-palette-error) !important;
+}
+
+/* Opacity control - shown below active layer */
+.layer-opacity-control {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px 8px 12px;
+    gap: 8px;
+    background: rgba(var(--mud-palette-primary-rgb), 0.08);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.opacity-label {
+    flex-shrink: 0;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.7rem;
+    min-width: 40px;
+}
+
+::deep .opacity-slider {
+    flex: 1;
+    min-width: 60px;
+}
+
+::deep .opacity-slider .mud-slider {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+::deep .opacity-slider .mud-slider-container {
+    padding: 0 !important;
+}
+
+.opacity-value {
+    flex-shrink: 0;
+    min-width: 32px;
+    text-align: right;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.7rem;
+}
+
+/* Scrollbar styling */
+.layer-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.layer-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.layer-list::-webkit-scrollbar-thumb {
+    background: var(--mud-palette-lines-default);
+    border-radius: 2px;
+}
+
+.layer-list::-webkit-scrollbar-thumb:hover {
+    background: var(--mud-palette-text-disabled);
+}

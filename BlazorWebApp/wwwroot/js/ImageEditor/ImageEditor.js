@@ -1,0 +1,159 @@
+/**
+ * ImageEditor.js - Main entry point
+ * Fabric.js-based image editor module with layer support
+ * 
+ * This module provides:
+ * - Canvas manipulation with zoom/pan
+ * - Drawing tools (brush, eraser, mask)
+ * - Layer management
+ * - History management (undo/redo)
+ * - Image import/export
+ */
+
+import { ensureFabricLoaded } from './ImageEditor.utils.js';
+import { LayerMixin } from './ImageEditor.layers.js';
+import { CanvasMixin } from './ImageEditor.canvas.js';
+import { ToolsMixin } from './ImageEditor.tools.js';
+import { HistoryMixin } from './ImageEditor.history.js';
+import { EventsMixin } from './ImageEditor.events.js';
+import { ExportMixin } from './ImageEditor.export.js';
+import { CallbacksMixin } from './ImageEditor.callbacks.js';
+
+/**
+ * Initialize the ImageEditor
+ * @param {string} canvasId - The ID of the canvas element
+ * @param {object} dotNetRef - .NET reference for callbacks
+ * @param {object} options - Configuration options
+ * @returns {ImageEditor} The editor instance
+ */
+export async function init(canvasId, dotNetRef, options = {}) {
+    await ensureFabricLoaded();
+    
+    const canvasElement = document.getElementById(canvasId);
+    if (!canvasElement) {
+        throw new Error(`Canvas element with id '${canvasId}' not found`);
+    }
+    
+    const parent = canvasElement.parentElement;
+    if (parent && parent.classList.contains('canvas-container')) {
+        throw new Error('Canvas element is already wrapped by Fabric.js. Ensure proper disposal.');
+    }
+    
+    return new ImageEditor(canvasId, dotNetRef, options);
+}
+
+/**
+ * ImageEditor class - Main editor implementation
+ */
+class ImageEditor {
+    constructor(canvasId, dotNetRef, options = {}) {
+        this.canvasId = canvasId;
+        this.dotNetRef = dotNetRef;
+        this.options = {
+            maxCanvasSize: 4096,
+            maxHistorySize: 50,
+            defaultBrushSize: 20,
+            defaultBrushColor: '#FFFFFF',
+            maskColor: '#FF0000',
+            maskOpacity: 0.5,
+            ...options
+        };
+        
+        // State
+        this.isInitialized = false;
+        this.isPanning = false;
+        this.isSpacePressed = false;
+        this.lastPanPoint = null;
+        this.currentTool = 'brush';
+        this.previousTool = 'brush';
+        this.historyLocked = false;
+        this._baseBrushSize = this.options.defaultBrushSize;
+        this._currentBrushColor = this.options.defaultBrushColor;
+        
+        // History state tracking
+        this._stateBeforeActionSaved = false;
+        this._pendingUndoState = null;
+        
+        // Zoom debounce state
+        this._lastZoomNotify = 0;
+        this._zoomNotifyTimeout = null;
+        this._isSettingZoomFromExternal = false;
+        
+        // Layer references
+        this.baseImageObject = null;
+        this.maskObjects = [];
+        
+        // Layer system
+        this.layers = [];
+        this.activeLayerId = null;
+        
+        // Mask settings
+        this.maskVisible = true;
+        this.maskOpacity = this.options.maskOpacity;
+        this.maskColor = this.options.maskColor;
+        
+        // Brush cursor
+        this._brushCursorOuter = null;
+        this._brushCursorInner = null;
+        this._cursorVisible = false;
+        
+        // Bound event handlers for cleanup
+        this._boundKeyDown = this._handleKeyDown.bind(this);
+        this._boundKeyUp = this._handleKeyUp.bind(this);
+        this._boundResize = this._handleResize.bind(this);
+        this._boundPreventMiddleScroll = this._preventMiddleScroll.bind(this);
+        
+        // Initialize
+        this._initCanvas();
+        this._setupEventListeners();
+        this._createBrushCursor();
+        this._setupDragDrop();
+        this._setupPasteHandler();
+        this._initializeDefaultLayers();
+        
+        this.isInitialized = true;
+    }
+    
+    /**
+     * Dispose and cleanup
+     */
+    dispose() {
+        // Use the cleanup method from EventsMixin if available
+        if (typeof this._cleanupEventListeners === 'function') {
+            this._cleanupEventListeners();
+        } else {
+            // Fallback to direct cleanup
+            document.removeEventListener('keydown', this._boundKeyDown);
+            document.removeEventListener('keyup', this._boundKeyUp);
+            window.removeEventListener('resize', this._boundResize);
+        }
+        
+        if (this._boundPasteHandler) {
+            document.removeEventListener('paste', this._boundPasteHandler, true);
+        }
+        
+        const wrapper = document.getElementById(this.canvasId)?.parentElement;
+        if (wrapper) {
+            wrapper.removeEventListener('mousedown', this._boundPreventMiddleScroll);
+        }
+        
+        if (this.canvas) {
+            this.canvas.dispose();
+            this.canvas = null;
+        }
+        
+        this.dotNetRef = null;
+        this.isInitialized = false;
+    }
+}
+
+// Apply all mixins to the ImageEditor prototype
+Object.assign(ImageEditor.prototype, LayerMixin);
+Object.assign(ImageEditor.prototype, CanvasMixin);
+Object.assign(ImageEditor.prototype, ToolsMixin);
+Object.assign(ImageEditor.prototype, HistoryMixin);
+Object.assign(ImageEditor.prototype, EventsMixin);
+Object.assign(ImageEditor.prototype, ExportMixin);
+Object.assign(ImageEditor.prototype, CallbacksMixin);
+
+export default ImageEditor;

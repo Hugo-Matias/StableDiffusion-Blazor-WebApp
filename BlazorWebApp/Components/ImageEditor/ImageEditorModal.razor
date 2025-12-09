@@ -23,13 +23,6 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">Mask</MudChip>
                         }
-                        @* Active Layer indicator *@
-                        @if (_state.ActiveLayer != null)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
-                                @_state.ActiveLayer.Name
-                            </MudChip>
-                        }
                     </MudStack>
                     <MudStack Row Spacing="1">
                         <MudTooltip Text="Fit to View (Ctrl+0)">
@@ -194,17 +187,32 @@
                     </MudStack>
                 </div>
                 
-                @* Canvas Area *@
-                <div class="image-editor-canvas-wrapper" id="canvas-wrapper-@_sessionId">
-                    <canvas @key="_canvasId" id="@_canvasId"></canvas>
-                    
-                    @if (_isLoading)
-                    {
-                        <div class="canvas-loading-overlay">
-                            <MudProgressCircular Indeterminate Color="Color.Primary" Size="Size.Large" />
-                            <MudText Typo="Typo.body1" Class="mt-3">Loading editor...</MudText>
-                        </div>
-                    }
+                @* Canvas Area with Layer Panel *@
+                <div class="image-editor-canvas-area">
+                    <div class="image-editor-canvas-main" id="canvas-wrapper-@_sessionId">
+                        <canvas @key="_canvasId" id="@_canvasId"></canvas>
+                        
+                        @if (_isLoading)
+                        {
+                            <div class="canvas-loading-overlay">
+                                <MudProgressCircular Indeterminate Color="Color.Primary" Size="Size.Large" />
+                                <MudText Typo="Typo.body1" Class="mt-3">Loading editor...</MudText>
+                            </div>
+                        }
+                        
+                        @* Layer Panel *@
+                        <LayerPanel Layers="_state.Layers"
+                                    ActiveLayerId=@(_state.ActiveLayerId)
+                                    MaxLayerCount="@ImageEditorState.MaxLayerCount"
+                                    OnLayerSelected="HandleLayerSelected"
+                                    OnAddLayer="HandleAddLayer"
+                                    OnDeleteLayer="HandleDeleteLayer"
+                                    OnVisibilityChanged="HandleLayerVisibilityChanged"
+                                    OnLockChanged="HandleLayerLockChanged"
+                                    OnOpacityChanged="HandleLayerOpacityChanged"
+                                    OnRename="HandleLayerRename"
+                                    OnReorder="HandleLayerReorder" />
+                    </div>
                 </div>
                 
                 @* Footer / Status Bar *@
@@ -232,10 +240,13 @@
                                 @GetToolDisplayName()
                             </MudChip>
                             
-                            @* Layer count *@
-                            <MudText Typo="Typo.caption" Class="text-muted">
-                                Layers: @_state.Layers.Count / @ImageEditorState.MaxLayerCount
-                            </MudText>
+                            @* Active layer indicator *@
+                            @if (_state.ActiveLayer != null)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                    @_state.ActiveLayer.Name
+                                </MudChip>
+                            }
                         </MudStack>
                         
                         <MudStack Row Spacing="2">
@@ -413,7 +424,7 @@
                 await Task.Delay(200);
             }
             
-            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/ImageEditor.js");
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/ImageEditor/ImageEditor.js");
             
             _editorInstance = await _jsModule.InvokeAsync<IJSObjectReference>(
                 "init", 
@@ -1000,6 +1011,129 @@
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to parse layer state from JS");
+        }
+    }
+    
+    // ==================== Layer Panel Event Handlers ====================
+    
+    private async Task HandleLayerSelected(string layerId)
+    {
+        if (_editorInstance == null) return;
+        
+        var success = await _editorInstance.InvokeAsync<bool>("setActiveLayer", layerId);
+        if (success)
+        {
+            _state.ActiveLayerId = layerId;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleAddLayer()
+    {
+        if (_editorInstance == null) return;
+        
+        var layerName = $"Layer {_state.Layers.Count}";
+        var result = await _editorInstance.InvokeAsync<JsonElement?>("addLayer", layerName, "drawing");
+        
+        if (result.HasValue)
+        {
+            // The OnLayerChanged callback will update the state
+            _state.IsDirty = true;
+        }
+    }
+    
+    private async Task HandleDeleteLayer(string layerId)
+    {
+        if (_editorInstance == null) return;
+        
+        var success = await _editorInstance.InvokeAsync<bool>("removeLayer", layerId);
+        if (success)
+        {
+            _state.IsDirty = true;
+            // The OnLayerChanged callback will update the state
+        }
+    }
+    
+    private async Task HandleLayerVisibilityChanged((string layerId, bool visible) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { visible = args.visible });
+        
+        // Update local state
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.IsVisible = args.visible;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerLockChanged((string layerId, bool locked) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { locked = args.locked });
+        
+        // Update local state
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.IsLocked = args.locked;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerOpacityChanged((string layerId, float opacity) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { opacity = args.opacity });
+        
+        // Update local state
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.Opacity = args.opacity;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerRename((string layerId, string name) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { name = args.name });
+        
+        // Update local state
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.Name = args.name;
+            _state.IsDirty = true;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerReorder((string layerId, int direction) args)
+    {
+        if (_editorInstance == null) 
+        {
+            Logger.LogWarning("Cannot reorder layer - editor instance is null");
+            return;
+        }
+        
+        Logger.LogInformation("Reordering layer {LayerId} in direction {Direction}", args.layerId, args.direction);
+        
+        // Call JS to reorder the layer directly with direction
+        var success = await _editorInstance.InvokeAsync<bool>("reorderLayer", args.layerId, args.direction);
+        
+        Logger.LogInformation("Reorder result: {Success}", success);
+        
+        if (success)
+        {
+            _state.IsDirty = true;
+            // The OnLayerChanged callback from JS will update the layer state
         }
     }
     
