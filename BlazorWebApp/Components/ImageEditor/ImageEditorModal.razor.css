@@ -1,0 +1,169 @@
+/* Image Editor Modal Styles */
+
+/* Overlay - covers entire viewport */
+.image-editor-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* Modal container - 95% of viewport with gap at edges */
+.image-editor-modal {
+    width: 95vw;
+    height: 95vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--mud-palette-background);
+    border-radius: 8px;
+    overflow: visible; /* Allow popovers to overflow */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Title bar */
+.image-editor-titlebar {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    flex-shrink: 0;
+    height: 48px;
+    border-radius: 8px 8px 0 0;
+}
+
+/* Main container */
+.image-editor-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Toolbar */
+.image-editor-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    min-height: 48px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 200;
+}
+
+/* Canvas wrapper - takes remaining space */
+.image-editor-canvas-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+    background: #1a1a1a;
+    background-image: 
+        linear-gradient(45deg, #252525 25%, transparent 25%),
+        linear-gradient(-45deg, #252525 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #252525 75%),
+        linear-gradient(-45deg, transparent 75%, #252525 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    z-index: 1;
+}
+
+/* Canvas container (Fabric.js creates this) - must fill wrapper */
+.image-editor-canvas-wrapper .canvas-container {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Canvas elements */
+.image-editor-canvas-wrapper canvas {
+    display: block;
+}
+
+/* Loading overlay */
+.canvas-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+}
+
+/* Footer */
+.image-editor-footer {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--mud-palette-surface);
+    border-top: 1px solid var(--mud-palette-lines-default);
+    min-height: 48px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 200;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Color picker */
+.color-picker-wrapper {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 2px solid var(--mud-palette-lines-default);
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.color-picker-wrapper:hover {
+    border-color: var(--mud-palette-primary);
+}
+
+.color-picker-input {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    cursor: pointer;
+    border: none;
+    padding: 0;
+}
+
+.color-picker-preview {
+    display: none;
+}
+
+/* Brush size control */
+.brush-size-control {
+    min-width: 180px;
+}
+
+/* Text muted helper */
+.text-muted {
+    opacity: 0.6;
+}
+
+/* Utility */
+.w-100 {
+    width: 100%;
+}
