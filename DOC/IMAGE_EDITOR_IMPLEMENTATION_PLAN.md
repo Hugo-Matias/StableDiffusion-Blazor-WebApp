@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 5.0  
+> **Document Version:** 5.1  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 4 Complete, Planning Phase 5+  
+> **Status:** Phase 4 Complete, Phase 5 Planned  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -24,7 +24,7 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 | **Phase 2** | Drawing & Mask Tools | ✅ Complete | P0 |
 | **Phase 3** | Layer System & Compositing | ✅ Complete | P1 |
 | **Phase 4** | Mask Optimization | ✅ Complete | P0 |
-| **Phase 5** | Selection Tools | 🔴 Not Started | P1 |
+| **Phase 5** | Selection Tools | 📋 Planned | P1 |
 | **Phase 6** | Outpainting Support | 🔴 Not Started | P1 |
 | **Phase 7** | Additional Tools | 🔴 Not Started | P2 |
 | **Phase 8** | Polish & Enhancements | 🔴 Not Started | P3 |
@@ -68,39 +68,131 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 
 ---
 
-## Phase 5: Selection Tools 🔴 NOT STARTED
+## Phase 5: Selection Tools 📋 PLANNED
 
 ### Objectives
-Enable precise area selection for mask creation and editing.
+Enable precise area selection for mask creation with Photoshop-like workflow.
+
+### Implementation Approach
+- Use Fabric.js shapes (Rect, Ellipse, Path) as selection objects
+- Distinct visual style: dashed stroke with semi-transparent fill
+- Marching ants animation for selection border (evaluate performance)
 
 ### Planned Deliverables
 
-#### 5.1 Selection Tools
-| Item | Description | Priority |
-|------|-------------|----------|
-| Rectangular selection | Click-drag rectangle | High |
-| Elliptical selection | Click-drag ellipse | High |
-| Lasso selection | Freeform polygon/path | High |
-| Clear selection | Deselect all (Escape key) | High |
-| Invert selection | Flip selected/unselected | High |
+#### 5.1 Selection Tool Types
+| Item | Description | Icon | Shortcut | Status |
+|------|-------------|------|----------|--------|
+| Rectangle Select | Click-drag rectangle | `CropSquare` | R | 🔴 |
+| Ellipse Select | Click-drag ellipse | `RadioButtonUnchecked` | O | 🔴 |
+| Lasso Select | Freeform polygon/path | `Gesture` | L | 🔴 |
 
-#### 5.2 Selection to Mask
-| Item | Description | Priority |
-|------|-------------|----------|
-| Convert to mask | Fill selection area as mask | Critical |
-| Additive mode | Add to existing mask (not replace) | High |
-| Selection visualization | Marching ants or highlight | Medium |
+**UI Pattern**: Dropdown menu within selection button group
+- Click active tool icon to use current selection type
+- Click dropdown arrow to switch selection type
+- Visual indicator shows current selection type
 
-**Workflow**:
-1. User draws selection (rect/ellipse/lasso)
-2. Click "Selection to Mask" button or keyboard shortcut
-3. Selection area is added to existing mask
-4. User can refine with mask brush/eraser
+#### 5.2 Selection Visualization
+| Item | Description | Status |
+|------|-------------|--------|
+| Dashed stroke | Animated marching ants border | 🔴 |
+| Semi-transparent fill | Light fill to show selected area | 🔴 |
+| Performance evaluation | May fall back to static dashed if animation impacts perf | 🔴 |
 
-#### 5.3 Deferred
-| Item | Status | Notes |
-|------|--------|-------|
-| Magic wand | Deferred | Complex, results may be unsatisfactory |
+#### 5.3 Selection Modifiers (Photoshop-style)
+| Modifier | Behavior | Status |
+|----------|----------|--------|
+| Shift | Constrain to square (rect) or circle (ellipse) | 🔴 |
+| Alt | Draw from center outward | 🔴 |
+| Shift+Alt | Both constraints combined | 🔴 |
+
+#### 5.4 Selection to Mask Actions
+| Item | Description | Location | Shortcut | Status |
+|------|-------------|----------|----------|--------|
+| Add to Mask | Fill selection area into mask (additive) | Toolbar (contextual) | Enter | 🔴 |
+| Subtract from Mask | Remove selection area from mask | Toolbar (contextual) | Shift+Enter | 🔴 |
+| Clear after apply | Selection auto-clears after mask operation | Automatic | - | 🔴 |
+
+**Toolbar Pattern**: Selection action buttons appear contextually when:
+- A selection tool is active, AND
+- An active selection exists on canvas
+
+#### 5.5 Selection Management
+| Item | Description | Location | Shortcut | Status |
+|------|-------------|----------|----------|--------|
+| Clear Selection | Deselect current selection | Toolbar button | Escape | 🔴 |
+| Invert Selection | Flip selected/unselected areas | Toolbar button | Ctrl+Shift+I | 🔴 |
+
+### Technical Implementation Notes
+
+#### New Tool Types (ImageEditorTool enum)
+```csharp
+SelectRect,      // Rectangle selection
+SelectEllipse,   // Ellipse selection  
+SelectLasso      // Freeform lasso selection
+```
+
+#### Selection State
+```csharp
+// In ImageEditorState.cs
+public bool HasSelection { get; set; }
+public string? ActiveSelectionType { get; set; } // "rect", "ellipse", "lasso"
+```
+
+#### JavaScript Module
+Create `ImageEditor.selection.js` with SelectionMixin:
+- `_initSelectionSystem()` - Initialize selection state
+- `startRectSelection(x, y)` - Begin rectangle selection
+- `startEllipseSelection(x, y)` - Begin ellipse selection
+- `startLassoSelection(x, y)` - Begin lasso selection
+- `updateSelection(x, y)` - Update selection during drag
+- `finishSelection()` - Complete selection
+- `clearSelection()` - Remove current selection
+- `invertSelection()` - Invert selection area
+- `selectionToMask(mode)` - Convert selection to mask ('add' or 'subtract')
+- `_renderMarchingAnts()` - Animate selection border
+
+#### Marching Ants Implementation
+```javascript
+// CSS-based animation for performance
+.selection-object {
+    stroke-dasharray: 5, 5;
+    animation: marching-ants 0.5s linear infinite;
+}
+
+@keyframes marching-ants {
+    to { stroke-dashoffset: -10; }
+}
+```
+
+### Toolbar Layout (Updated)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [Drawing Tools] | [Mask Tools] | [Selection Tools▼] | [Color] [Size] | ... │
+│                                  ├─────────────────┤                        │
+│                                  │ ⬜ Rectangle    │                        │
+│                                  │ ⭕ Ellipse      │                        │
+│                                  │ ✏️ Lasso        │                        │
+│                                  └─────────────────┘                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+When selection exists:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ... [Selection Tools▼] | [➕ Add to Mask] [➖ Subtract] [🚫 Clear] [⟲ Invert] │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Workflow Example
+
+1. User clicks Selection dropdown, chooses "Rectangle"
+2. User draws rectangle on canvas (with Shift for square constraint)
+3. Marching ants appear around selection
+4. "Add to Mask" and "Subtract from Mask" buttons appear in toolbar
+5. User clicks "Add to Mask"
+6. Selection area is filled into mask layer
+7. Selection auto-clears
+8. Mask overlay updates to show new masked area
 
 ---
 
@@ -285,15 +377,60 @@ See git history for earlier changelog entries.
 - [x] Sync overlay with viewport (zoom/pan)
 
 ### Phase 5: Selection Tools
-- [ ] Add selection tool to toolbar
-- [ ] Implement rectangular selection
-- [ ] Implement elliptical selection
-- [ ] Implement lasso/freeform selection
-- [ ] Add selection visualization (marching ants or highlight)
-- [ ] Implement "Selection to Mask" action
-- [ ] Implement "Invert Selection" action
-- [ ] Implement "Clear Selection" (Escape key)
-- [ ] Test selection + mask workflow
+#### Infrastructure
+- [ ] Create `ImageEditor.selection.js` with SelectionMixin
+- [ ] Add selection tool types to `ImageEditorTool` enum (SelectRect, SelectEllipse, SelectLasso)
+- [ ] Add selection state to `ImageEditorState.cs` (HasSelection, ActiveSelectionType)
+- [ ] Wire up SelectionMixin in main ImageEditor.js
+
+#### UI Components
+- [ ] Add Selection Tools button group with dropdown menu
+- [ ] Implement dropdown for tool type switching (rect/ellipse/lasso)
+- [ ] Add contextual action buttons (Add to Mask, Subtract, Clear, Invert)
+- [ ] Show/hide action buttons based on selection state
+
+#### Selection Tools
+- [ ] Implement rectangle selection (click-drag)
+- [ ] Implement ellipse selection (click-drag)
+- [ ] Implement lasso/freeform selection (click-drag path)
+- [ ] Add Shift modifier for square/circle constraint
+- [ ] Add Alt modifier for center-out drawing
+- [ ] Add Shift+Alt combined constraint
+
+#### Selection Visualization
+- [ ] Create selection object with dashed stroke
+- [ ] Add semi-transparent fill
+- [ ] Implement marching ants CSS animation
+- [ ] Evaluate animation performance, fallback to static if needed
+
+#### Selection to Mask
+- [ ] Implement "Add to Mask" (fill selection as mask, additive)
+- [ ] Implement "Subtract from Mask" (remove selection area from mask)
+- [ ] Auto-clear selection after mask operation
+- [ ] Update mask overlay after operation
+
+#### Selection Management
+- [ ] Implement "Clear Selection" with toolbar button
+- [ ] Implement Escape key to clear selection
+- [ ] Implement "Invert Selection" with toolbar button
+- [ ] Implement Ctrl+Shift+I shortcut for invert
+
+#### Keyboard Shortcuts
+- [ ] R key for Rectangle Select
+- [ ] O key for Ellipse Select
+- [ ] L key for Lasso Select
+- [ ] Enter for Add to Mask
+- [ ] Shift+Enter for Subtract from Mask
+- [ ] Escape for Clear Selection
+- [ ] Ctrl+Shift+I for Invert Selection
+
+#### Testing
+- [ ] Test selection creation with all three types
+- [ ] Test modifier keys (Shift, Alt)
+- [ ] Test selection to mask workflow (add and subtract)
+- [ ] Test selection persistence during zoom/pan
+- [ ] Test undo/redo with selections
+- [ ] Evaluate marching ants performance
 
 ### Phase 6: Outpainting
 - [ ] Research ComfyUI outpainting workflow
