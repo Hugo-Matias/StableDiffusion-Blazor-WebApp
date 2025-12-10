@@ -255,6 +255,11 @@ export const HistoryMixin = {
         this.historyLocked = false;
         this._notifyMaskChanged(this.maskObjects.length > 0);
         this._notifyLayerChanged();
+        
+        // Refresh mask overlay after state restore
+        if (typeof this.refreshMaskOverlay === 'function') {
+            this.refreshMaskOverlay();
+        }
     },
     
     /**

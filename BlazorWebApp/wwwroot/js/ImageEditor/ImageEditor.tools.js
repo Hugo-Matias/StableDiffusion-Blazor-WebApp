@@ -257,20 +257,30 @@ export const ToolsMixin = {
     setMaskSettings(props) {
         if (props.color !== undefined) {
             this.maskColor = props.color;
+            // Update the mask display color
+            if (typeof this.setMaskDisplayColor === 'function') {
+                this.setMaskDisplayColor(props.color);
+            }
         }
         if (props.opacity !== undefined) {
             this.maskOpacity = props.opacity;
-            this.maskObjects.forEach(obj => {
-                obj.set('opacity', props.opacity);
-            });
-            this.canvas.renderAll();
+            // Update the mask display opacity
+            if (typeof this.setMaskDisplayOpacity === 'function') {
+                this.setMaskDisplayOpacity(props.opacity);
+            }
         }
         if (props.visible !== undefined) {
             this.maskVisible = props.visible;
-            this.maskObjects.forEach(obj => {
-                obj.set('visible', props.visible);
-            });
-            this.canvas.renderAll();
+            // Update mask visibility through the new system
+            if (typeof this.setMaskVisibility === 'function') {
+                this.setMaskVisibility(props.visible);
+            } else {
+                // Fallback to legacy behavior
+                this.maskObjects.forEach(obj => {
+                    obj.set('visible', props.visible);
+                });
+                this.canvas.renderAll();
+            }
         }
         
         if (this.currentTool === 'maskbrush') {

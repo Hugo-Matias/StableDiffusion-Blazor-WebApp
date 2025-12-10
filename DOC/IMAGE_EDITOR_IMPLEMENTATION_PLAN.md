@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 4.0  
+> **Document Version:** 5.0  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 3 Complete, Planning Phase 4+  
+> **Status:** Phase 4 Complete, Planning Phase 5+  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -23,7 +23,7 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 | **Phase 1** | Core Canvas Infrastructure | ✅ Complete | P0 |
 | **Phase 2** | Drawing & Mask Tools | ✅ Complete | P0 |
 | **Phase 3** | Layer System & Compositing | ✅ Complete | P1 |
-| **Phase 4** | Mask Optimization | 🔴 Not Started | P0 |
+| **Phase 4** | Mask Optimization | ✅ Complete | P0 |
 | **Phase 5** | Selection Tools | 🔴 Not Started | P1 |
 | **Phase 6** | Outpainting Support | 🔴 Not Started | P1 |
 | **Phase 7** | Additional Tools | 🔴 Not Started | P2 |
@@ -55,112 +55,16 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 - Copy/paste/duplicate/flip operations
 - State preservation (Save vs Apply workflow)
 
----
+### Phase 4: Mask Optimization ✅
+- **Flat mask rendering**: Offscreen canvas compositing eliminates opacity stacking
+- **Binary mask export**: Pure black/white PNG output for AI workflows
+- **Visual overlay**: Colored mask with subtle diagonal stripe pattern
+- **Context-aware color picker**: Brush color vs mask color based on active tool
+- **Mask brush color sync**: Brush stroke color matches display overlay color
+- **State restoration**: Mask overlay properly refreshes on visibility toggle and session restore
+- **Viewport sync**: Mask overlay follows zoom/pan transformations
 
-## Phase 4: Mask Optimization 🔴 NOT STARTED
-
-### Objectives
-Fix mask UX issues to provide professional inpainting experience.
-
-### Current Issues
-1. **Opacity stacking**: Overlapping mask strokes create darker areas
-2. **No visual distinction**: Mask doesn't clearly indicate "mask mode"
-3. **Export format**: Needs guaranteed binary black/white output
-
-### Planned Deliverables
-
-#### 4.1 Flat Mask Rendering
-| Item | Description | Status |
-|------|-------------|--------|
-| Offscreen mask canvas | Composite all mask strokes to single canvas | 🔴 |
-| Union rendering | Any painted pixel = fully masked (no opacity stacking) | 🔴 |
-| Real-time preview | Update mask overlay after each stroke | 🔴 |
-
-**Technical Approach**:
-```
-┌─────────────────────────────────────┐
-│  Mask Stroke Objects (Fabric.js)   │
-│  - Individual vector paths         │
-│  - Used for undo/redo              │
-│  - Hidden from direct display      │
-└─────────────────────────────────────┘
-                 ↓ (composite on stroke end)
-┌─────────────────────────────────────┐
-│  Offscreen Canvas (mask-buffer)    │
-│  - Renders all strokes as white    │
-│  - Full opacity (no stacking)      │
-│  - globalCompositeOperation: src   │
-└─────────────────────────────────────┘
-                 ↓ (display)
-┌─────────────────────────────────────┐
-│  Mask Display Layer                 │
-│  - User-configurable color         │
-│  - User-configurable opacity       │
-│  - CSS animation overlay           │
-└─────────────────────────────────────┘
-```
-
-#### 4.2 Binary Mask Export
-| Item | Description | Status |
-|------|-------------|--------|
-| Black/white output | Export mask as pure B/W PNG | 🔴 |
-| Same dimensions | Match base image dimensions | 🔴 |
-| No anti-aliasing artifacts | Clean edges for AI processing | 🔴 |
-
-#### 4.3 Animated Mask Overlay
-| Item | Description | Status |
-|------|-------------|--------|
-| CSS stripe animation | Animated diagonal lines over masked areas | 🔴 |
-| CSS mask-image clipping | Pattern only shows over mask pixels | 🔴 |
-| Fallback to glow | If CSS animation too complex, use pulsing border | 🔴 |
-
-**Primary CSS Implementation**:
-```css
-.mask-pattern-overlay {
-    position: absolute;
-    pointer-events: none;
-    mix-blend-mode: overlay;
-    opacity: 0.3;
-    background: repeating-linear-gradient(
-        -45deg,
-        transparent 0px,
-        transparent 4px,
-        rgba(255,255,255,0.5) 4px,
-        rgba(255,255,255,0.5) 8px
-    );
-    animation: stripe-move 1s linear infinite;
-}
-
-@keyframes stripe-move {
-    from { background-position: 0 0; }
-    to { background-position: 11.3px 0; }
-}
-```
-
-**Mask clipping**:
-```javascript
-// Clip pattern to mask shape
-patternOverlay.style.maskImage = `url(${maskCanvas.toDataURL()})`;
-patternOverlay.style.webkitMaskImage = `url(${maskCanvas.toDataURL()})`;
-```
-
-#### 4.4 Mask Color Picker
-| Item | Description | Status |
-|------|-------------|--------|
-| Reuse brush color picker | Same UI, context-aware (brush vs mask) | 🔴 |
-| Separate mask color state | Store in `_state.MaskOverlayColor` | 🔴 |
-| Update display on change | Re-render mask overlay with new color | 🔴 |
-
-#### Already Implemented
-| Item | Status |
-|------|--------|
-| Mask visibility toggle | ✅ Done |
-| Mask opacity slider | ✅ Done |
-
-### Implementation Notes
-- Keep vector strokes for undo/redo capability
-- Only composite to offscreen canvas for display and export
-- Mask eraser should erase from the composited result conceptually, but still work on strokes
+**New File Created**: `wwwroot/js/ImageEditor/ImageEditor.mask.js`
 
 ---
 
@@ -280,9 +184,11 @@ Nice-to-have features for future consideration.
 ### Mask System
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Mask overlay opacity stacking | Fix with offscreen compositing | Better UX, matches user expectations |
-| Mask visual feedback | Animated stripe pattern (CSS) | Clear indication of mask mode, low performance impact |
-| Mask color | Customizable via color picker | Reuses existing UI, flexible for different images |
+| Mask overlay opacity stacking | Fixed with offscreen compositing | Better UX, matches user expectations |
+| Mask visual feedback | Static stripe pattern (baked into image) | Clear indication of mask mode, minimal performance impact |
+| Animated pattern | Rejected | CSS animation caused performance issues |
+| Glow effect | Rejected | Nice visually but GPU resource cost not justified |
+| Mask color | Customizable via context-aware color picker | Reuses existing UI, brush color synced with overlay |
 | Selection to mask mode | Additive | User can clear mask if they want to replace |
 | Mask export format | Binary B/W PNG | Required for AI inpainting workflows |
 
@@ -319,12 +225,32 @@ Nice-to-have features for future consideration.
 | `wwwroot/js/ImageEditor/ImageEditor.events.js` | Event handlers |
 | `wwwroot/js/ImageEditor/ImageEditor.callbacks.js` | .NET interop |
 | `wwwroot/js/ImageEditor/ImageEditor.utils.js` | Utilities |
+| `wwwroot/js/ImageEditor/ImageEditor.mask.js` | Mask compositing & overlay (Phase 4) |
 | `Models/ImageEditorState.cs` | C# state model |
 | `Services/ManagerService.cs` | State storage |
 
 ---
 
 ## Changelog
+
+### Version 5.0 (December 2024) - Phase 4 Complete
+
+#### Phase 4: Mask Optimization ✅ COMPLETE
+- Created `ImageEditor.mask.js` - new mixin for mask system
+- Implemented offscreen canvas compositing for flat mask rendering
+- Individual mask strokes hidden, overlay shows unified mask
+- Binary B/W mask export via `exportMaskBinary()`
+- Context-aware color picker (brush vs mask based on active tool)
+- Mask brush color synced with display overlay color
+- Static diagonal stripe pattern for visual distinction (performance-friendly)
+- Mask overlay syncs with viewport transformations (zoom/pan)
+- State restoration properly refreshes mask overlay
+- Visibility toggle correctly refreshes overlay
+
+#### Design Decisions Updated
+- Rejected CSS animation for performance reasons
+- Rejected glow effect to save GPU resources for generation
+- Chose static baked-in stripe pattern as final solution
 
 ### Version 4.0 (December 2024) - Phase Planning Update
 
@@ -333,32 +259,6 @@ Nice-to-have features for future consideration.
 - Moved completed phases to summary section
 - Added Design Decisions Log
 - Added Open Questions for outpainting
-
-#### Phase 4: Mask Optimization (Planned)
-- Flat mask rendering with offscreen canvas compositing
-- Binary B/W mask export
-- Animated CSS stripe overlay for mask visualization
-- Mask color picker (reusing brush color UI)
-
-#### Phase 5: Selection Tools (Planned)
-- Rectangular, Elliptical, Lasso selection
-- Selection to Mask conversion (additive mode)
-- Invert selection
-- Magic wand deferred
-
-#### Phase 6: Outpainting Support (Planned)
-- Canvas extension with anchor options
-- Auto-mask for extended areas
-- Open questions documented for ComfyUI integration
-
-#### Phase 7: Additional Tools (Planned)
-- Crop tool
-- Flatten layer / rasterization
-- Pixel-level eraser (post-rasterization)
-
-#### Phase 8: Polish (Planned)
-- Blending modes, adjustments, shapes, text
-- Touch support, help modal
 
 ### Version 3.7 (December 2024) - Phase 3 Complete
 - Object management: Copy/Paste/Duplicate/Flip
@@ -372,16 +272,17 @@ See git history for earlier changelog entries.
 
 ## Implementation Checklist
 
-### Phase 4: Mask Optimization
-- [ ] Create offscreen canvas for mask compositing
-- [ ] Render mask strokes as union (no opacity stacking)
-- [ ] Update mask display after each stroke
-- [ ] Implement CSS stripe animation overlay
-- [ ] Add CSS mask-image clipping to pattern
-- [ ] Implement fallback glow effect if needed
-- [ ] Add mask color to color picker (context-aware)
-- [ ] Ensure binary B/W export
-- [ ] Test with various mask stroke patterns
+### Phase 4: Mask Optimization ✅ COMPLETE
+- [x] Create offscreen canvas for mask compositing
+- [x] Render mask strokes as union (no opacity stacking)
+- [x] Update mask display after each stroke
+- [x] Implement static stripe pattern overlay
+- [x] Add mask color to color picker (context-aware)
+- [x] Sync mask brush color with overlay color
+- [x] Ensure binary B/W export
+- [x] Refresh overlay on visibility toggle
+- [x] Refresh overlay on state restoration
+- [x] Sync overlay with viewport (zoom/pan)
 
 ### Phase 5: Selection Tools
 - [ ] Add selection tool to toolbar

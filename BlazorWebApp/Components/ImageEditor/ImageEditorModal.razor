@@ -88,11 +88,16 @@
                         
                         <MudDivider Vertical FlexItem Class="mx-2" />
                         
-                        @* Color Picker - simplified *@
-                        <MudTooltip Text="Brush Color">
-                            <div class="color-picker-wrapper" style="background-color: @_state.BrushColor;">
+                        @* Color Picker - context-aware (brush or mask color) *@
+                        @{
+                            var isMaskTool = _state.CurrentTool == ImageEditorTool.MaskBrush || _state.CurrentTool == ImageEditorTool.MaskEraser;
+                            var currentColor = isMaskTool ? _state.MaskOverlayColor : _state.BrushColor;
+                            var colorTooltip = isMaskTool ? "Mask Overlay Color" : "Brush Color";
+                        }
+                        <MudTooltip Text="@colorTooltip">
+                            <div class="color-picker-wrapper" style="background-color: @currentColor;">
                                 <input type="color" 
-                                       value="@_state.BrushColor" 
+                                       value="@currentColor" 
                                        @onchange="HandleColorChange"
                                        class="color-picker-input" />
                             </div>
@@ -598,12 +603,29 @@
     private async Task HandleColorChange(ChangeEventArgs e)
     {
         var color = e.Value?.ToString() ?? "#FFFFFF";
-        _state.BrushColor = color;
+        var isMaskTool = _state.CurrentTool == ImageEditorTool.MaskBrush || _state.CurrentTool == ImageEditorTool.MaskEraser;
         
-        if (_editorInstance != null)
+        if (isMaskTool)
         {
-            await _editorInstance.InvokeVoidAsync("setBrush", new { color });
+            _state.MaskOverlayColor = color;
+            
+            if (_editorInstance != null)
+            {
+                // Update the mask display color
+                await _editorInstance.InvokeVoidAsync("setMaskDisplayColor", color);
+            }
         }
+        else
+        {
+            _state.BrushColor = color;
+            
+            if (_editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("setBrush", new { color });
+            }
+        }
+        
+        StateHasChanged();
     }
     
     private async Task HandleBrushSizeChange(int size)
@@ -622,8 +644,11 @@
         
         if (_editorInstance != null)
         {
-            await _editorInstance.InvokeVoidAsync("setMaskSettings", new { opacity });
+            // Use the new mask display opacity method
+            await _editorInstance.InvokeVoidAsync("setMaskDisplayOpacity", opacity);
         }
+        
+        StateHasChanged();
     }
     
     private async Task ToggleMaskVisibility()
@@ -632,7 +657,8 @@
         
         if (_editorInstance != null)
         {
-            await _editorInstance.InvokeVoidAsync("setMaskSettings", new { visible = _state.MaskVisible });
+            // Use the new mask visibility method
+            await _editorInstance.InvokeVoidAsync("setMaskVisibility", _state.MaskVisible);
         }
         
         StateHasChanged();

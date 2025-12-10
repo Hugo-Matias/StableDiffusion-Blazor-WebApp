@@ -91,6 +91,11 @@ export const EventsMixin = {
             this.canvas.setViewportTransform(vpt);
             this.canvas.renderAll();
             
+            // Sync mask overlay with new viewport
+            if (typeof this._syncMaskOverlayWithCanvas === 'function') {
+                this._syncMaskOverlayWithCanvas();
+            }
+            
             this._middleMouseLastPoint = { x: e.clientX, y: e.clientY };
         }
     },
@@ -146,6 +151,11 @@ export const EventsMixin = {
         
         this._updateBrushSize();
         this._notifyZoomChangedDebounced(zoom);
+        
+        // Sync mask overlay with new viewport
+        if (typeof this._syncMaskOverlayWithCanvas === 'function') {
+            this._syncMaskOverlayWithCanvas();
+        }
         
         opt.e.preventDefault();
         opt.e.stopPropagation();
@@ -293,14 +303,23 @@ export const EventsMixin = {
                 pathName = 'mask';
                 layerId = LAYER_MASK;
                 layerName = 'Mask';
-                path.set('opacity', this.maskOpacity);
+                // Don't set opacity on individual strokes - we use flat compositing now
+                path.set('visible', false); // Hide individual strokes, overlay handles display
                 this.maskObjects.push(path);
                 this._notifyMaskChanged(true);
+                // Update the flat mask overlay
+                if (typeof this._onMaskStrokeAdded === 'function') {
+                    this._onMaskStrokeAdded();
+                }
                 break;
                 
             case 'maskeraser':
                 this.canvas.remove(path);
                 this._eraseMaskAtPath(path);
+                // Update the flat mask overlay
+                if (typeof this._onMaskStrokeErased === 'function') {
+                    this._onMaskStrokeErased();
+                }
                 this._afterPathCreated();
                 return;
                 

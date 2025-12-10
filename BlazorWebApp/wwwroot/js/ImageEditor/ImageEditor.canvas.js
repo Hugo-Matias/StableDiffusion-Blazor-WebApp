@@ -105,6 +105,11 @@ export const CanvasMixin = {
             this.canvas.add(img);
             this._sendToBack(img);
             
+            // Initialize mask canvas with image dimensions
+            if (typeof this._createMaskCanvas === 'function') {
+                this._createMaskCanvas(img.width, img.height);
+            }
+            
             this.fitToView();
             this._notifyImageLoaded(img.width, img.height);
             
@@ -153,6 +158,11 @@ export const CanvasMixin = {
         this.canvas.add(background);
         this._sendToBack(background);
         
+        // Initialize mask canvas with canvas dimensions
+        if (typeof this._createMaskCanvas === 'function') {
+            this._createMaskCanvas(width, height);
+        }
+        
         this.fitToView();
         this._notifyImageLoaded(width, height);
     },
@@ -187,6 +197,14 @@ export const CanvasMixin = {
      * Clear all mask objects
      */
     clearMask() {
+        // Use the new mask system if available
+        if (typeof this.clearMaskData === 'function') {
+            this.clearMaskData();
+            this._saveHistoryState();
+            return;
+        }
+        
+        // Fallback to legacy behavior
         const objectsToRemove = this.canvas.getObjects().filter(obj => 
             obj.name === 'mask'
         );
@@ -229,6 +247,11 @@ export const CanvasMixin = {
         
         this._updateBrushSize();
         this.canvas.renderAll();
+        
+        // Sync mask overlay with new viewport
+        if (typeof this._syncMaskOverlayWithCanvas === 'function') {
+            this._syncMaskOverlayWithCanvas();
+        }
         
         setTimeout(() => {
             this._isSettingZoomFromExternal = false;
@@ -275,6 +298,11 @@ export const CanvasMixin = {
         this._updateBrushSize();
         this._notifyZoomChangedDebounced(scale);
         
+        // Sync mask overlay with new viewport
+        if (typeof this._syncMaskOverlayWithCanvas === 'function') {
+            this._syncMaskOverlayWithCanvas();
+        }
+        
         setTimeout(() => {
             this._isSettingZoomFromExternal = false;
         }, 50);
@@ -312,6 +340,11 @@ export const CanvasMixin = {
         this._updateBrushSize();
         this._notifyZoomChangedDebounced(1);
         
+        // Sync mask overlay with new viewport
+        if (typeof this._syncMaskOverlayWithCanvas === 'function') {
+            this._syncMaskOverlayWithCanvas();
+        }
+        
         setTimeout(() => {
             this._isSettingZoomFromExternal = false;
         }, 50);
@@ -326,5 +359,10 @@ export const CanvasMixin = {
         vpt[5] += deltaY;
         this.canvas.setViewportTransform(vpt);
         this.canvas.renderAll();
+        
+        // Sync mask overlay with new viewport
+        if (typeof this._syncMaskOverlayWithCanvas === 'function') {
+            this._syncMaskOverlayWithCanvas();
+        }
     }
 };

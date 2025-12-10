@@ -64,8 +64,15 @@ export const ExportMixin = {
     
     /**
      * Export the mask as a black and white image
+     * Uses the new flat compositing system for proper binary output
      */
     exportMask() {
+        // Use the new binary export if available
+        if (typeof this.exportMaskBinary === 'function') {
+            return this.exportMaskBinary();
+        }
+        
+        // Fallback to legacy export
         if (!this.baseImageObject) {
             return null;
         }

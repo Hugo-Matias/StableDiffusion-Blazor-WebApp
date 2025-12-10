@@ -8,6 +8,7 @@
  * - Layer management
  * - History management (undo/redo)
  * - Image import/export
+ * - Flat mask compositing with animated overlay
  */
 
 import { ensureFabricLoaded } from './ImageEditor.utils.js';
@@ -18,6 +19,7 @@ import { HistoryMixin } from './ImageEditor.history.js';
 import { EventsMixin } from './ImageEditor.events.js';
 import { ExportMixin } from './ImageEditor.export.js';
 import { CallbacksMixin } from './ImageEditor.callbacks.js';
+import { MaskMixin } from './ImageEditor.mask.js';
 
 /**
  * Initialize the ImageEditor
@@ -108,6 +110,7 @@ class ImageEditor {
         
         // Initialize
         this._initCanvas();
+        this._initMaskSystem(); // Initialize mask system
         this._setupEventListeners();
         this._createBrushCursor();
         this._setupDragDrop();
@@ -121,6 +124,11 @@ class ImageEditor {
      * Dispose and cleanup
      */
     dispose() {
+        // Cleanup mask system
+        if (typeof this._disposeMaskSystem === 'function') {
+            this._disposeMaskSystem();
+        }
+        
         // Use the cleanup method from EventsMixin if available
         if (typeof this._cleanupEventListeners === 'function') {
             this._cleanupEventListeners();
@@ -158,5 +166,6 @@ Object.assign(ImageEditor.prototype, HistoryMixin);
 Object.assign(ImageEditor.prototype, EventsMixin);
 Object.assign(ImageEditor.prototype, ExportMixin);
 Object.assign(ImageEditor.prototype, CallbacksMixin);
+Object.assign(ImageEditor.prototype, MaskMixin);
 
 export default ImageEditor;
