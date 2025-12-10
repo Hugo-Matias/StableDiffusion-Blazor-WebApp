@@ -623,7 +623,6 @@ See [Conversion Log Template](#conversion-log-template) below.
   // - Any personal/test data
 }
 ```
-```
 
 ### Raw Workflow Cleanup
 
@@ -649,8 +648,8 @@ Before submitting a conversion:
 - [ ] Template metadata complete (Title, Base, Mode)
 - [ ] Assets defined for all user-selectable models
 - [ ] Pipeline fragments use correct scope
-- [ ] All Scriban variables use `| json` filter
-- [ ] Default values provided with `??` operator
+- [ ] All Scriban variables use `| json` filter for JSON output
+- [ ] Default values use `??` operator (NOT `| default:`)
 - [ ] Conditional features use `#meta` conditions
 - [ ] Conversion log created with raw workflow appended
 - [ ] Tested with feature combinations
@@ -798,13 +797,42 @@ Before submitting a conversion:
 { "fragment": "save.sbn", "parameters": {} }
 ```
 
-### Scriban Filters
+### Scriban Filters and Operators
 
-| Filter | Usage | Example |
-|--------|-------|---------|
-| `json` | Escape strings for JSON | `{{ Prompt \| json }}` |
-| `??` | Default value | `{{ Model ?? "default.safetensors" }}` |
+| Filter/Operator | Usage | Example |
+|-----------------|-------|---------|
+| `json` | Escape strings for JSON output | `{{ Prompt \| json }}` |
+| `??` | Default value (null-coalescing) | `{{ Model ?? "default.safetensors" }}` |
 | `math.round` | Round numbers | `{{ Steps \| math.divided_by 4 \| math.round }}` |
+
+#### Default Values Convention
+
+**Always use the `??` operator for default values, NOT the `| default:` filter.**
+
+```scriban
+// ? CORRECT - Use ?? operator
+{{ my_param ?? "default_value" | json }}
+
+// ? WRONG - Do not use | default: filter
+{{ my_param | default: "default_value" | json }}
+```
+
+The `??` operator is the proper Scriban null-coalescing operator and should be applied before the `| json` filter.
+
+**Examples:**
+```scriban
+// String default
+"model": {{ model_name ?? "model.safetensors" | json }}
+
+// Numeric default
+"steps": {{ steps ?? 20 | json }}
+
+// Chained defaults (fallback chain)
+"checkpoint": {{ Detailer.Checkpoint ?? Model ?? "default.safetensors" | json }}
+
+// Empty string default
+"scope": {{ scope ?? "" }}
+```
 
 ---
 
@@ -822,5 +850,5 @@ Before submitting a conversion:
 
 ---
 
-*Document version: 5.2*
-*Last updated: Added planning phase to conversion process, updated log template*
+*Document version: 5.3*
+*Last updated: Added Scriban default value convention (use ?? not | default:)*

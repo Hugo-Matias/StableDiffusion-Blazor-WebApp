@@ -10,47 +10,61 @@
 #end
 
 {
-  "seedvr2_block_swap": {
+  "seedvr2_load_dit": {
     "inputs": {
+      "model": {{ seedvr2_model | json }},
+      "device": "cuda:0",
       "blocks_to_swap": {{ blocks_to_swap | json }},
-      "offload_io_components": true
+      "swap_io_components": false,
+      "offload_device": "cpu",
+      "cache_model": false,
+      "attention_mode": "flash_attn"
     },
-    "class_type": "SeedVR2BlockSwap",
+    "class_type": "SeedVR2LoadDiTModel",
     "_meta": {
-      "title": "SeedVR2 Block Swap"
+      "title": "SeedVR2 (Down)Load DiT Model"
     }
   },
-  "seedvr2_extra_args": {
+  "seedvr2_load_vae": {
     "inputs": {
-        "tiled_vae": true,
-        "vae_tile_size": {{ vae_tile_size | json }},
-        "vae_tile_overlap": {{ vae_tile_overlap | json }},
-        "preserve_vram": true,
-        "cache_model": true,
-        "enable_debug": false,
-        "device": "cuda:0"
+      "model": {{ seedvr2_vae_model ?? "ema_vae_fp16.safetensors" | json }},
+      "device": "cuda:0",
+      "encode_tiled": true,
+      "encode_tile_size": {{ vae_tile_size | json }},
+      "encode_tile_overlap": {{ vae_tile_overlap | json }},
+      "decode_tiled": true,
+      "decode_tile_size": {{ vae_tile_size | json }},
+      "decode_tile_overlap": {{ vae_tile_overlap | json }},
+      "tile_debug": "false",
+      "offload_device": "cpu",
+      "cache_model": false
     },
-    "class_type": "SeedVR2ExtraArgs",
+    "class_type": "SeedVR2LoadVAEModel",
     "_meta": {
-      "title": "SeedVR2 Extra Args"
+      "title": "SeedVR2 (Down)Load VAE Model"
     }
   },
   "seedvr2_upscaler": {
     "inputs": {
-        "images": {{ get_ref "image_output" }},
-        "block_swap_config": ["seedvr2_block_swap", 0],
-        "extra_args": ["seedvr2_extra_args", 0],
-        "model": {{ seedvr2_model | json }},
-        "seed": {{ seedvr2_seed | json }},
-        "new_resolution": {{ seedvr2_resolution | json }},
-        "batch_size": {{ seedvr2_batch_size | json }},
-        "color_correction": "none",
-        "input_noise_scale": {{ seedvr2_input_noise_scale | json }},
-        "latent_noise_scale": {{ seedvr2_latent_noise_scale | json }}
+      "seed": {{ seedvr2_seed | json }},
+      "resolution": {{ seedvr2_resolution | json }},
+      "max_resolution": {{ seedvr2_resolution | json }},
+      "batch_size": {{ seedvr2_batch_size | json }},
+      "uniform_batch_size": false,
+      "color_correction": "lab",
+      "temporal_overlap": 16,
+      "prepend_frames": 0,
+      "input_noise_scale": {{ seedvr2_input_noise_scale | json }},
+      "latent_noise_scale": {{ seedvr2_latent_noise_scale | json }},
+      "offload_device": "cpu",
+      "enable_debug": false,
+      "image": {{ get_ref "image_output" }},
+      "dit": ["seedvr2_load_dit", 0],
+      "vae": ["seedvr2_load_vae", 0]
     },
-    "class_type": "SeedVR2",
+    "class_type": "SeedVR2VideoUpscaler",
     "_meta": {
-      "title": "SeedVR2 Video Upscaler"
+      "title": "SeedVR2 Video Upscaler (v2.5.18)"
     }
   }
 }

@@ -53,6 +53,7 @@
       "fragment": "upscale-seedvr2.sbn",
       "parameters": {
         "seedvr2_model": {{ SeedVR2.Model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
+        "seedvr2_vae_model": {{ SeedVR2.VaeModel ?? "ema_vae_fp16.safetensors" | json }},
         "seedvr2_seed": {{ Seed ?? 42 | json }},
         "seedvr2_resolution": {{ SeedVR2.Resolution ?? 2048 | json }},
         "seedvr2_batch_size": {{ SeedVR2.BatchSize ?? 1 | json }},

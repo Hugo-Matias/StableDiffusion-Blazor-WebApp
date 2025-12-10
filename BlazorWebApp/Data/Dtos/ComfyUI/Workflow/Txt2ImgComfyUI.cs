@@ -54,6 +54,7 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI.Workflow
     {
         public bool? IsActive { get; set; }
         public string? Model { get; set; }
+        public string? VaeModel { get; set; }
         public int? BlocksToSwap { get; set; }
         public int? VaeTileSize { get; set; }
         public int? VaeTileOverlap { get; set; }

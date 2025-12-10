@@ -190,6 +190,7 @@ namespace BlazorWebApp.Models
     {
         public bool Enabled { get; set; } = false;
         public string Model { get; set; } = "seedvr2_ema_7b-Q4_K_M.gguf";
+        public string VaeModel { get; set; } = "ema_vae_fp16.safetensors";
         public IntRange BlocksToSwap { get; set; } = new() { Min = 0, Max = 36, Value = 36, Step = 1 };
         public IntRange VaeTileSize { get; set; } = new() { Min = 128, Max = 2048, Value = 1024, Step = 64 };
         public IntRange VaeTileOverlap { get; set; } = new() { Min = 0, Max = 512, Value = 128, Step = 32 };
