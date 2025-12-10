@@ -176,7 +176,7 @@
       }
     },
     {
-      "fragment": "wan/clean-vram.sbn",
+      "fragment": "clean-vram.sbn",
       "parameters": {
         "node_id": "clean_sampler",
         "input_name": "latent_output",
