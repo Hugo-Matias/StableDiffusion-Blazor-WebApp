@@ -168,6 +168,25 @@ namespace BlazorWebApp.Models
         /// </summary>
         public string MaskOverlayColor { get; set; } = "#FF0000";
         
+        /// <summary>
+        /// Current mask preview mode
+        /// </summary>
+        public MaskPreviewMode MaskPreviewMode { get; set; } = MaskPreviewMode.Overlay;
+        
+        #endregion
+        
+        #region Selection
+        
+        /// <summary>
+        /// Whether an active selection exists on the canvas
+        /// </summary>
+        public bool HasSelection { get; set; }
+        
+        /// <summary>
+        /// The type of the current selection tool (rect, ellipse, lasso)
+        /// </summary>
+        public string ActiveSelectionType { get; set; } = "rect";
+        
         #endregion
         
         #region Layers
@@ -349,6 +368,9 @@ namespace BlazorWebApp.Models
             MaskData = null;
             MaskVisible = true;
             MaskOpacity = 0.5f;
+            MaskPreviewMode = MaskPreviewMode.Overlay;
+            HasSelection = false;
+            ActiveSelectionType = "rect";
             BaseLayerVisible = true;
             DrawingLayerVisible = true;
             DrawingLayerOpacity = 1.0f;
@@ -566,6 +588,52 @@ namespace BlazorWebApp.Models
         /// <summary>
         /// Selection tool for imported objects
         /// </summary>
-        Select
+        Select,
+        
+        /// <summary>
+        /// Rectangle area selection for mask creation
+        /// </summary>
+        SelectRect,
+        
+        /// <summary>
+        /// Ellipse area selection for mask creation
+        /// </summary>
+        SelectEllipse,
+        
+        /// <summary>
+        /// Freeform lasso selection for mask creation
+        /// </summary>
+        SelectLasso
+    }
+    
+    /// <summary>
+    /// Mask preview/display modes
+    /// </summary>
+    public enum MaskPreviewMode
+    {
+        /// <summary>
+        /// Colored overlay with stripe pattern (default)
+        /// </summary>
+        Overlay,
+        
+        /// <summary>
+        /// Binary black/white preview (what gets sent to API)
+        /// </summary>
+        Binary,
+        
+        /// <summary>
+        /// Marching ants outline only, no fill
+        /// </summary>
+        MarchingAnts,
+        
+        /// <summary>
+        /// Black out unmasked areas (shows only what will be inpainted)
+        /// </summary>
+        Blackout,
+        
+        /// <summary>
+        /// White out masked areas (highlights what will be kept)
+        /// </summary>
+        Whiteout
     }
 }

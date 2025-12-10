@@ -32,9 +32,15 @@ export const HistoryMixin = {
     
     /**
      * Save state before an action begins (for proper undo)
+     * @param {boolean} force - Force save even if not in drawing mode (for selection masks)
      */
-    _saveStateBeforeAction() {
-        if (this.historyLocked || this._stateBeforeActionSaved || !this.canvas.isDrawingMode) {
+    _saveStateBeforeAction(force = false) {
+        if (this.historyLocked || this._stateBeforeActionSaved) {
+            return;
+        }
+        
+        // Allow forced save for non-drawing operations like selection masks
+        if (!force && !this.canvas.isDrawingMode) {
             return;
         }
         
@@ -105,6 +111,11 @@ export const HistoryMixin = {
             this.historyLocked = false;
             this._notifyMaskChanged(false);
             this._notifyLayerChanged();
+            
+            // Clear/hide mask overlay when restoring to empty state
+            if (typeof this.refreshMaskOverlay === 'function') {
+                this.refreshMaskOverlay();
+            }
             return;
         }
         
@@ -134,7 +145,8 @@ export const HistoryMixin = {
                         selectable: false,
                         evented: false,
                         hasControls: false,
-                        hasBorders: false
+                        hasBorders: false,
+                        visible: objData.visible !== undefined ? objData.visible : true
                     });
                     
                     path.name = objData.name;
@@ -154,6 +166,82 @@ export const HistoryMixin = {
                     
                     if (objData.name === 'mask') {
                         this.maskObjects.push(path);
+                    }
+                }
+                else if (objType === 'rect') {
+                    // Rectangle - from selection masks
+                    const rect = new fabric.Rect({
+                        left: objData.left || 0,
+                        top: objData.top || 0,
+                        width: objData.width || 0,
+                        height: objData.height || 0,
+                        fill: objData.fill,
+                        stroke: objData.stroke,
+                        strokeWidth: objData.strokeWidth || 0,
+                        opacity: objData.opacity !== undefined ? objData.opacity : 1,
+                        selectable: false,
+                        evented: false,
+                        hasControls: false,
+                        hasBorders: false,
+                        visible: objData.visible !== undefined ? objData.visible : true
+                    });
+                    
+                    rect.name = objData.name;
+                    rect.layerId = objData.layerId || this.activeLayerId;
+                    rect.layer = objData.layer;
+                    
+                    const originalToObject = rect.toObject.bind(rect);
+                    rect.toObject = function(propertiesToInclude) {
+                        const result = originalToObject(propertiesToInclude);
+                        result.name = this.name;
+                        result.layerId = this.layerId;
+                        result.layer = this.layer;
+                        return result;
+                    };
+                    
+                    this.canvas.add(rect);
+                    
+                    if (objData.name === 'mask') {
+                        this.maskObjects.push(rect);
+                    }
+                }
+                else if (objType === 'ellipse') {
+                    // Ellipse - from selection masks
+                    const ellipse = new fabric.Ellipse({
+                        left: objData.left || 0,
+                        top: objData.top || 0,
+                        rx: objData.rx || 0,
+                        ry: objData.ry || 0,
+                        originX: objData.originX || 'center',
+                        originY: objData.originY || 'center',
+                        fill: objData.fill,
+                        stroke: objData.stroke,
+                        strokeWidth: objData.strokeWidth || 0,
+                        opacity: objData.opacity !== undefined ? objData.opacity : 1,
+                        selectable: false,
+                        evented: false,
+                        hasControls: false,
+                        hasBorders: false,
+                        visible: objData.visible !== undefined ? objData.visible : true
+                    });
+                    
+                    ellipse.name = objData.name;
+                    ellipse.layerId = objData.layerId || this.activeLayerId;
+                    ellipse.layer = objData.layer;
+                    
+                    const originalToObject = ellipse.toObject.bind(ellipse);
+                    ellipse.toObject = function(propertiesToInclude) {
+                        const result = originalToObject(propertiesToInclude);
+                        result.name = this.name;
+                        result.layerId = this.layerId;
+                        result.layer = this.layer;
+                        return result;
+                    };
+                    
+                    this.canvas.add(ellipse);
+                    
+                    if (objData.name === 'mask') {
+                        this.maskObjects.push(ellipse);
                     }
                 }
                 else if (objType === 'image' && objData.src) {

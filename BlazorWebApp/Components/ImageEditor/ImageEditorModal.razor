@@ -23,6 +23,10 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">Mask</MudChip>
                         }
+                        @if (_state.HasSelection)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Selection</MudChip>
+                        }
                     </MudStack>
                     <MudStack Row Spacing="1">
                         <MudTooltip Text="Fit to View (Ctrl+0)">
@@ -88,35 +92,128 @@
                         
                         <MudDivider Vertical FlexItem Class="mx-2" />
                         
-                        @* Color Picker - context-aware (brush or mask color) *@
+                        @* Selection Tools *@
                         @{
-                            var isMaskTool = _state.CurrentTool == ImageEditorTool.MaskBrush || _state.CurrentTool == ImageEditorTool.MaskEraser;
-                            var currentColor = isMaskTool ? _state.MaskOverlayColor : _state.BrushColor;
-                            var colorTooltip = isMaskTool ? "Mask Overlay Color" : "Brush Color";
+                            var isSelectionTool = _state.CurrentTool == ImageEditorTool.SelectRect 
+                                || _state.CurrentTool == ImageEditorTool.SelectEllipse 
+                                || _state.CurrentTool == ImageEditorTool.SelectLasso;
+                            var currentSelectionTool = _state.CurrentTool switch
+                            {
+                                ImageEditorTool.SelectEllipse => ImageEditorTool.SelectEllipse,
+                                ImageEditorTool.SelectLasso => ImageEditorTool.SelectLasso,
+                                _ => ImageEditorTool.SelectRect
+                            };
+                            var selectionIcon = _state.ActiveSelectionType switch
+                            {
+                                "ellipse" => Icons.Material.Filled.RadioButtonUnchecked,
+                                "lasso" => Icons.Material.Filled.Gesture,
+                                _ => Icons.Material.Filled.CropSquare
+                            };
+                            var selectionTooltip = _state.ActiveSelectionType switch
+                            {
+                                "ellipse" => "Ellipse Selection (O)",
+                                "lasso" => "Lasso Selection (L)",
+                                _ => "Rectangle Selection (R)"
+                            };
                         }
-                        <MudTooltip Text="@colorTooltip">
-                            <div class="color-picker-wrapper" style="background-color: @currentColor;">
-                                <input type="color" 
-                                       value="@currentColor" 
-                                       @onchange="HandleColorChange"
-                                       class="color-picker-input" />
-                            </div>
-                        </MudTooltip>
+                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                            <MudTooltip Text="@selectionTooltip">
+                                <MudIconButton Icon="@selectionIcon" 
+                                               Color="@(isSelectionTool ? Color.Info : Color.Default)"
+                                               OnClick="CycleOrSetSelectionTool" />
+                            </MudTooltip>
+                            <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" Dense>
+                                <MudMenuItem Icon="@Icons.Material.Filled.CropSquare" 
+                                             OnClick="@(() => SetSelectionTool("rect"))">
+                                    Rectangle (R)
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.RadioButtonUnchecked" 
+                                             OnClick="@(() => SetSelectionTool("ellipse"))">
+                                    Ellipse (O)
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Gesture" 
+                                             OnClick="@(() => SetSelectionTool("lasso"))">
+                                    Lasso (L)
+                                </MudMenuItem>
+                            </MudMenu>
+                        </MudButtonGroup>
                         
-                        @* Brush Size *@
-                        <MudTooltip Text="Brush Size ([ / ])">
-                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="brush-size-control">
-                                <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" />
-                                <MudSlider T="int" 
-                                           Value="_state.BrushSize" 
-                                           ValueChanged="HandleBrushSizeChange"
-                                           Min="1" 
-                                           Max="200" 
-                                           Step="1"
-                                           Style="width: 120px;" />
-                                <MudText Typo="Typo.caption" Style="min-width: 35px;">@(_state.BrushSize)px</MudText>
-                            </MudStack>
-                        </MudTooltip>
+                        @* Selection Actions (when selection exists) *@
+                        @if (_state.HasSelection)
+                        {
+                            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                <MudTooltip Text="Add Selection to Mask (Enter)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                                   Color="Color.Secondary"
+                                                   OnClick="AddSelectionToMask" />
+                                </MudTooltip>
+                                <MudTooltip Text="Subtract Selection from Mask (Shift+Enter)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Remove" 
+                                                   Color="Color.Secondary"
+                                                   OnClick="SubtractSelectionFromMask" />
+                                </MudTooltip>
+                                <MudTooltip Text="Clear Selection (Escape)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                   OnClick="ClearSelection" />
+                                </MudTooltip>
+                                <MudTooltip Text="Invert Selection (Ctrl+Shift+I)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.InvertColors" 
+                                                   OnClick="InvertSelection" />
+                                </MudTooltip>
+                            </MudButtonGroup>
+                        }
+                        
+                        @* Brush Settings - Contextual based on tool *@
+                        @{
+                            var showColorPicker = _state.CurrentTool == ImageEditorTool.Brush 
+                                || _state.CurrentTool == ImageEditorTool.MaskBrush 
+                                || _state.CurrentTool == ImageEditorTool.ColorPicker;
+                            var showBrushSize = _state.CurrentTool == ImageEditorTool.Brush 
+                                || _state.CurrentTool == ImageEditorTool.Eraser
+                                || _state.CurrentTool == ImageEditorTool.MaskBrush 
+                                || _state.CurrentTool == ImageEditorTool.MaskEraser;
+                            var isMaskTool = _state.CurrentTool == ImageEditorTool.MaskBrush || _state.CurrentTool == ImageEditorTool.MaskEraser;
+                            var showBrushSettings = showColorPicker || showBrushSize;
+                        }
+                        
+                        @if (showBrushSettings)
+                        {
+                            <MudDivider Vertical FlexItem Class="mx-2" />
+                            
+                            @* Color Picker - for brush tools and color picker tool *@
+                            @if (showColorPicker)
+                            {
+                                var currentColor = isMaskTool ? _state.MaskOverlayColor : _state.BrushColor;
+                                var colorTooltip = isMaskTool ? "Mask Overlay Color" : "Brush Color";
+                                
+                                <MudTooltip Text="@colorTooltip">
+                                    <div class="color-picker-wrapper" style="background-color: @currentColor;">
+                                        <input type="color" 
+                                               value="@currentColor" 
+                                               @onchange="HandleColorChange"
+                                               class="color-picker-input" />
+                                    </div>
+                                </MudTooltip>
+                            }
+                            
+                            @* Brush Size - for all brush/eraser tools *@
+                            @if (showBrushSize)
+                            {
+                                <MudTooltip Text="Brush Size ([ / ])">
+                                    <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="brush-size-control">
+                                        <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" />
+                                        <MudSlider T="int" 
+                                                   Value="_state.BrushSize" 
+                                                   ValueChanged="HandleBrushSizeChange"
+                                                   Min="1" 
+                                                   Max="200" 
+                                                   Step="1"
+                                                   Style="width: 120px;" />
+                                        <MudText Typo="Typo.caption" Style="min-width: 35px;">@(_state.BrushSize)px</MudText>
+                                    </MudStack>
+                                </MudTooltip>
+                            }
+                        }
                         
                         <MudDivider Vertical FlexItem Class="mx-2" />
                         
@@ -188,6 +285,55 @@
                         <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
                             @if (_state.HasMask)
                             {
+                                var previewIcon = _state.MaskPreviewMode switch
+                                {
+                                    MaskPreviewMode.Binary => Icons.Material.Filled.Gradient,
+                                    MaskPreviewMode.MarchingAnts => Icons.Material.Filled.BorderStyle,
+                                    MaskPreviewMode.Blackout => Icons.Material.Filled.DarkMode,
+                                    MaskPreviewMode.Whiteout => Icons.Material.Filled.LightMode,
+                                    _ => Icons.Material.Filled.Layers
+                                };
+                                var previewTooltip = _state.MaskPreviewMode switch
+                                {
+                                    MaskPreviewMode.Binary => "Binary (B/W API preview)",
+                                    MaskPreviewMode.MarchingAnts => "Dashed (outline)",
+                                    MaskPreviewMode.Blackout => "Blackout (show masked areas)",
+                                    MaskPreviewMode.Whiteout => "Whiteout (highlight changes)",
+                                    _ => "Overlay (colored stripes)"
+                                };
+                                
+                                @* Mask Preview Mode - Dropdown with cycling *@
+                                <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                    <MudTooltip Text="@($"Mask Preview: {previewTooltip} - Click to cycle")">
+                                        <MudIconButton Icon="@previewIcon" 
+                                                       Size="Size.Small"
+                                                       Color="Color.Secondary"
+                                                       OnClick="CycleMaskPreviewMode" />
+                                    </MudTooltip>
+                                    <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" Dense>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Layers" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Overlay))">
+                                            Overlay (colored stripes)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Gradient" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Binary))">
+                                            Binary (B/W API preview)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.BorderStyle" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.MarchingAnts))">
+                                            Dashed (outline)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.DarkMode" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Blackout))">
+                                            Blackout (show masked areas)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.LightMode" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Whiteout))">
+                                            Whiteout (highlight changes)
+                                        </MudMenuItem>
+                                    </MudMenu>
+                                </MudButtonGroup>
+                                
                                 <MudTooltip Text="Toggle Mask Visibility">
                                     <MudIconButton Icon="@(_state.MaskVisible ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)" 
                                                    Size="Size.Small"
@@ -580,6 +726,45 @@
         StateHasChanged();
     }
     
+    private async Task SetSelectionTool(string type)
+    {
+        _state.ActiveSelectionType = type;
+        
+        var tool = type switch
+        {
+            "ellipse" => ImageEditorTool.SelectEllipse,
+            "lasso" => ImageEditorTool.SelectLasso,
+            _ => ImageEditorTool.SelectRect
+        };
+        
+        await SetTool(tool);
+    }
+    
+    private async Task CycleOrSetSelectionTool()
+    {
+        var isSelectionTool = _state.CurrentTool == ImageEditorTool.SelectRect 
+            || _state.CurrentTool == ImageEditorTool.SelectEllipse 
+            || _state.CurrentTool == ImageEditorTool.SelectLasso;
+        
+        if (isSelectionTool)
+        {
+            // Cycle to next selection type
+            var nextType = _state.ActiveSelectionType switch
+            {
+                "rect" => "ellipse",
+                "ellipse" => "lasso",
+                "lasso" => "rect",
+                _ => "rect"
+            };
+            await SetSelectionTool(nextType);
+        }
+        else
+        {
+            // Not currently a selection tool, just set the current type
+            await SetSelectionTool(_state.ActiveSelectionType ?? "rect");
+        }
+    }
+    
     private string GetToolDisplayName() => _state.CurrentTool switch
     {
         ImageEditorTool.Brush => "Brush",
@@ -590,6 +775,9 @@
         ImageEditorTool.MaskEraser => "Mask Eraser",
         ImageEditorTool.Fill => "Fill",
         ImageEditorTool.Select => "Select",
+        ImageEditorTool.SelectRect => "Rect Select",
+        ImageEditorTool.SelectEllipse => "Ellipse Select",
+        ImageEditorTool.SelectLasso => "Lasso Select",
         _ => "Unknown"
     };
     
@@ -597,8 +785,41 @@
     {
         ImageEditorTool.MaskBrush or ImageEditorTool.MaskEraser => Color.Secondary,
         ImageEditorTool.Select => Color.Info,
+        ImageEditorTool.SelectRect or ImageEditorTool.SelectEllipse or ImageEditorTool.SelectLasso => Color.Info,
         _ => Color.Primary
     };
+    
+    private async Task AddSelectionToMask()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("selectionToMask", "add");
+        }
+    }
+    
+    private async Task SubtractSelectionFromMask()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("selectionToMask", "subtract");
+        }
+    }
+    
+    private async Task ClearSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("clearSelection");
+        }
+    }
+    
+    private async Task InvertSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("invertSelection");
+        }
+    }
     
     private async Task HandleColorChange(ChangeEventArgs e)
     {
@@ -662,6 +883,43 @@
         }
         
         StateHasChanged();
+    }
+    
+    private async Task SetMaskPreviewMode(MaskPreviewMode mode)
+    {
+        _state.MaskPreviewMode = mode;
+        
+        if (_editorInstance != null)
+        {
+            var modeString = mode switch
+            {
+                MaskPreviewMode.Binary => "binary",
+                MaskPreviewMode.MarchingAnts => "marchingants",
+                MaskPreviewMode.Blackout => "blackout",
+                MaskPreviewMode.Whiteout => "whiteout",
+                _ => "overlay"
+            };
+            await _editorInstance.InvokeVoidAsync("setMaskPreviewMode", modeString);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task CycleMaskPreviewMode()
+    {
+        if (_editorInstance != null)
+        {
+            var newMode = await _editorInstance.InvokeAsync<string>("cycleMaskPreviewMode");
+            _state.MaskPreviewMode = newMode switch
+            {
+                "binary" => MaskPreviewMode.Binary,
+                "marchingants" => MaskPreviewMode.MarchingAnts,
+                "blackout" => MaskPreviewMode.Blackout,
+                "whiteout" => MaskPreviewMode.Whiteout,
+                _ => MaskPreviewMode.Overlay
+            };
+            StateHasChanged();
+        }
     }
     
     private async Task HandleZoomSliderChange(float zoom)
@@ -1044,6 +1302,34 @@
     }
     
     [JSInvokable]
+    public void OnSelectionChanged(bool hasSelection)
+    {
+        _state.HasSelection = hasSelection;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnSelectionTypeChanged(string selectionType)
+    {
+        _state.ActiveSelectionType = selectionType;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnMaskPreviewModeChanged(string mode)
+    {
+        _state.MaskPreviewMode = mode switch
+        {
+            "binary" => MaskPreviewMode.Binary,
+            "marchingants" => MaskPreviewMode.MarchingAnts,
+            "blackout" => MaskPreviewMode.Blackout,
+            "whiteout" => MaskPreviewMode.Whiteout,
+            _ => MaskPreviewMode.Overlay
+        };
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
     public void OnCanvasModified()
     {
         _state.IsDirty = true;
@@ -1119,7 +1405,6 @@
         
         if (result.HasValue)
         {
-            // The OnLayerChanged callback will update the state
             _state.IsDirty = true;
         }
     }
@@ -1132,7 +1417,6 @@
         if (success)
         {
             _state.IsDirty = true;
-            // The OnLayerChanged callback will update the state
         }
     }
     
@@ -1142,7 +1426,6 @@
         
         await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { visible = args.visible });
         
-        // Update local state
         var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
         if (layer != null)
         {
@@ -1157,7 +1440,6 @@
         
         await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { locked = args.locked });
         
-        // Update local state
         var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
         if (layer != null)
         {
@@ -1172,7 +1454,6 @@
         
         await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { opacity = args.opacity });
         
-        // Update local state
         var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
         if (layer != null)
         {
@@ -1187,7 +1468,6 @@
         
         await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { name = args.name });
         
-        // Update local state
         var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
         if (layer != null)
         {
@@ -1207,7 +1487,6 @@
         
         Logger.LogInformation("Reordering layer {LayerId} in direction {Direction}", args.layerId, args.direction);
         
-        // Call JS to reorder the layer directly with direction
         var success = await _editorInstance.InvokeAsync<bool>("reorderLayer", args.layerId, args.direction);
         
         Logger.LogInformation("Reorder result: {Success}", success);
@@ -1215,7 +1494,6 @@
         if (success)
         {
             _state.IsDirty = true;
-            // The OnLayerChanged callback from JS will update the layer state
         }
     }
     

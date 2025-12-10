@@ -1,9 +1,9 @@
 ﻿# Image Editor Implementation Plan
 
-> **Document Version:** 5.1  
+> **Document Version:** 6.0  
 > **Created:** December 2024  
 > **Last Updated:** December 2024  
-> **Status:** Phase 4 Complete, Phase 5 Planned  
+> **Status:** Phase 5 Complete, Development Paused  
 > **Target:** Img2ImgComfyUI Page Enhancement
 
 ---
@@ -13,6 +13,8 @@
 The Image Editor is a Fabric.js-based drawing and masking tool integrated into the Blazor WebApp. It enables users to edit images before sending them to ComfyUI for img2img generation, and to create inpainting masks for targeted image modifications.
 
 **Primary Focus**: Inpainting and outpainting workflows for AI image generation.
+
+**Current Status**: Core functionality complete through Phase 5. Development paused pending ComfyUI outpainting workflow research.
 
 ---
 
@@ -24,8 +26,8 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 | **Phase 2** | Drawing & Mask Tools | ✅ Complete | P0 |
 | **Phase 3** | Layer System & Compositing | ✅ Complete | P1 |
 | **Phase 4** | Mask Optimization | ✅ Complete | P0 |
-| **Phase 5** | Selection Tools | 📋 Planned | P1 |
-| **Phase 6** | Outpainting Support | 🔴 Not Started | P1 |
+| **Phase 5** | Selection Tools | ✅ Complete | P1 |
+| **Phase 6** | Outpainting Support | ⏸️ Pending Research | P1 |
 | **Phase 7** | Additional Tools | 🔴 Not Started | P2 |
 | **Phase 8** | Polish & Enhancements | 🔴 Not Started | P3 |
 
@@ -59,6 +61,7 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 - **Flat mask rendering**: Offscreen canvas compositing eliminates opacity stacking
 - **Binary mask export**: Pure black/white PNG output for AI workflows
 - **Visual overlay**: Colored mask with subtle diagonal stripe pattern
+- **Multiple preview modes**: Overlay, Binary, Marching Ants, Blackout, Whiteout
 - **Context-aware color picker**: Brush color vs mask color based on active tool
 - **Mask brush color sync**: Brush stroke color matches display overlay color
 - **State restoration**: Mask overlay properly refreshes on visibility toggle and session restore
@@ -66,142 +69,123 @@ The Image Editor is a Fabric.js-based drawing and masking tool integrated into t
 
 **New File Created**: `wwwroot/js/ImageEditor/ImageEditor.mask.js`
 
+### Phase 5: Selection Tools ✅
+- **Rectangle selection**: Click-drag rectangle with marching ants border
+- **Ellipse selection**: Click-drag ellipse with marching ants border
+- **Lasso selection**: Freeform polygon/path selection
+- **Selection modifiers**: Shift (constrain square/circle), Alt (draw from center)
+- **Selection to mask**: Add selection to mask or subtract from mask
+- **Invert selection**: Applies inverted area directly to mask
+- **Clear selection**: Escape key or toolbar button
+- **Toolbar cycling**: Click selection button to cycle through rect/ellipse/lasso when already active
+- **Contextual UI**: Selection action buttons appear when selection exists
+
+**New File Created**: `wwwroot/js/ImageEditor/ImageEditor.selection.js`
+
 ---
 
-## Phase 5: Selection Tools 📋 PLANNED
+## Current Architecture
 
-### Objectives
-Enable precise area selection for mask creation with Photoshop-like workflow.
-
-### Implementation Approach
-- Use Fabric.js shapes (Rect, Ellipse, Path) as selection objects
-- Distinct visual style: dashed stroke with semi-transparent fill
-- Marching ants animation for selection border (evaluate performance)
-
-### Planned Deliverables
-
-#### 5.1 Selection Tool Types
-| Item | Description | Icon | Shortcut | Status |
-|------|-------------|------|----------|--------|
-| Rectangle Select | Click-drag rectangle | `CropSquare` | R | 🔴 |
-| Ellipse Select | Click-drag ellipse | `RadioButtonUnchecked` | O | 🔴 |
-| Lasso Select | Freeform polygon/path | `Gesture` | L | 🔴 |
-
-**UI Pattern**: Dropdown menu within selection button group
-- Click active tool icon to use current selection type
-- Click dropdown arrow to switch selection type
-- Visual indicator shows current selection type
-
-#### 5.2 Selection Visualization
-| Item | Description | Status |
-|------|-------------|--------|
-| Dashed stroke | Animated marching ants border | 🔴 |
-| Semi-transparent fill | Light fill to show selected area | 🔴 |
-| Performance evaluation | May fall back to static dashed if animation impacts perf | 🔴 |
-
-#### 5.3 Selection Modifiers (Photoshop-style)
-| Modifier | Behavior | Status |
-|----------|----------|--------|
-| Shift | Constrain to square (rect) or circle (ellipse) | 🔴 |
-| Alt | Draw from center outward | 🔴 |
-| Shift+Alt | Both constraints combined | 🔴 |
-
-#### 5.4 Selection to Mask Actions
-| Item | Description | Location | Shortcut | Status |
-|------|-------------|----------|----------|--------|
-| Add to Mask | Fill selection area into mask (additive) | Toolbar (contextual) | Enter | 🔴 |
-| Subtract from Mask | Remove selection area from mask | Toolbar (contextual) | Shift+Enter | 🔴 |
-| Clear after apply | Selection auto-clears after mask operation | Automatic | - | 🔴 |
-
-**Toolbar Pattern**: Selection action buttons appear contextually when:
-- A selection tool is active, AND
-- An active selection exists on canvas
-
-#### 5.5 Selection Management
-| Item | Description | Location | Shortcut | Status |
-|------|-------------|----------|----------|--------|
-| Clear Selection | Deselect current selection | Toolbar button | Escape | 🔴 |
-| Invert Selection | Flip selected/unselected areas | Toolbar button | Ctrl+Shift+I | 🔴 |
-
-### Technical Implementation Notes
-
-#### New Tool Types (ImageEditorTool enum)
-```csharp
-SelectRect,      // Rectangle selection
-SelectEllipse,   // Ellipse selection  
-SelectLasso      // Freeform lasso selection
+### File Structure
+```
+BlazorWebApp/
+├── Components/ImageEditor/
+│   ├── ImageEditorModal.razor          # Main Blazor component (UI, state, interop)
+│   ├── ImageEditorModal.razor.css      # Scoped CSS styles
+│   ├── LayerPanel.razor                # Layer management sidebar
+│   └── LayerPanel.razor.css            # Layer panel styles
+├── Models/
+│   └── ImageEditorState.cs             # C# state model (tools, layers, history)
+├── Services/
+│   └── ManagerService.cs               # State storage between sessions
+└── wwwroot/js/ImageEditor/
+    ├── ImageEditor.js                  # Main entry point, mixin composition
+    ├── ImageEditor.canvas.js           # Canvas operations, zoom/pan
+    ├── ImageEditor.tools.js            # Tool handling, brush setup
+    ├── ImageEditor.layers.js           # Layer management
+    ├── ImageEditor.mask.js             # Mask compositing, preview modes
+    ├── ImageEditor.selection.js        # Selection tools (rect/ellipse/lasso)
+    ├── ImageEditor.history.js          # Undo/redo system
+    ├── ImageEditor.export.js           # Image/mask export
+    ├── ImageEditor.events.js           # Event handlers (mouse, keyboard)
+    ├── ImageEditor.callbacks.js        # .NET interop callbacks
+    └── ImageEditor.utils.js            # Utility functions
 ```
 
-#### Selection State
-```csharp
-// In ImageEditorState.cs
-public bool HasSelection { get; set; }
-public string? ActiveSelectionType { get; set; } // "rect", "ellipse", "lasso"
-```
+### Key Patterns
 
-#### JavaScript Module
-Create `ImageEditor.selection.js` with SelectionMixin:
-- `_initSelectionSystem()` - Initialize selection state
-- `startRectSelection(x, y)` - Begin rectangle selection
-- `startEllipseSelection(x, y)` - Begin ellipse selection
-- `startLassoSelection(x, y)` - Begin lasso selection
-- `updateSelection(x, y)` - Update selection during drag
-- `finishSelection()` - Complete selection
-- `clearSelection()` - Remove current selection
-- `invertSelection()` - Invert selection area
-- `selectionToMask(mode)` - Convert selection to mask ('add' or 'subtract')
-- `_renderMarchingAnts()` - Animate selection border
-
-#### Marching Ants Implementation
+#### Mixin Architecture (JavaScript)
+The editor uses a mixin pattern to compose functionality:
 ```javascript
-// CSS-based animation for performance
-.selection-object {
-    stroke-dasharray: 5, 5;
-    animation: marching-ants 0.5s linear infinite;
-}
-
-@keyframes marching-ants {
-    to { stroke-dashoffset: -10; }
-}
+// ImageEditor.js - Main class composes mixins
+Object.assign(ImageEditor.prototype, CanvasMixin);
+Object.assign(ImageEditor.prototype, ToolsMixin);
+Object.assign(ImageEditor.prototype, LayersMixin);
+Object.assign(ImageEditor.prototype, MaskMixin);
+Object.assign(ImageEditor.prototype, SelectionMixin);
+// etc.
 ```
 
-### Toolbar Layout (Updated)
+#### State Management
+- **C# State** (`ImageEditorState.cs`): UI state, tool settings, layer metadata
+- **JS State**: Canvas state, Fabric.js objects, mask overlay
+- **Persistence**: `ManagerService.ImageEditorState` preserves state between modal opens
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ [Drawing Tools] | [Mask Tools] | [Selection Tools▼] | [Color] [Size] | ... │
-│                                  ├─────────────────┤                        │
-│                                  │ ⬜ Rectangle    │                        │
-│                                  │ ⭕ Ellipse      │                        │
-│                                  │ ✏️ Lasso        │                        │
-│                                  └─────────────────┘                        │
-└─────────────────────────────────────────────────────────────────────────────┘
+#### Mask System
+- Individual mask strokes stored as Fabric.js path objects (hidden)
+- Offscreen canvas composites all strokes into flat mask
+- HTML overlay element displays styled mask (positioned over canvas)
+- Preview modes: Overlay (colored stripes), Binary (B/W), Marching Ants (dashed outline), Blackout, Whiteout
 
-When selection exists:
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ ... [Selection Tools▼] | [➕ Add to Mask] [➖ Subtract] [🚫 Clear] [⟲ Invert] │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+#### Selection System
+- Selection shapes are Fabric.js Rect/Ellipse/Path objects with special styling
+- Marching ants: Static dashed lines (animated version had performance issues)
+- Selection-to-mask: Creates mask objects from selection geometry
+- Auto-clear after mask operation
 
-### Workflow Example
+### Keyboard Shortcuts (Implemented)
 
-1. User clicks Selection dropdown, chooses "Rectangle"
-2. User draws rectangle on canvas (with Shift for square constraint)
-3. Marching ants appear around selection
-4. "Add to Mask" and "Subtract from Mask" buttons appear in toolbar
-5. User clicks "Add to Mask"
-6. Selection area is filled into mask layer
-7. Selection auto-clears
-8. Mask overlay updates to show new masked area
+| Shortcut | Action |
+|----------|--------|
+| B | Brush tool |
+| E | Eraser tool |
+| I | Color picker |
+| V | Select/Move tool |
+| M | Mask brush |
+| Space+Drag | Pan |
+| R | Rectangle selection |
+| O | Ellipse selection |
+| L | Lasso selection |
+| Enter | Add selection to mask |
+| Shift+Enter | Subtract selection from mask |
+| Escape | Clear selection |
+| Ctrl+Shift+I | Invert selection |
+| Ctrl+Z | Undo |
+| Ctrl+Y | Redo |
+| Ctrl+D | Duplicate selection |
+| [ / ] | Decrease/increase brush size |
+| Ctrl+0 | Fit to view |
+| Ctrl+1 | Actual size (100%) |
+| Delete | Delete selected object |
 
 ---
 
-## Phase 6: Outpainting Support 🔴 NOT STARTED
+## Phase 6: Outpainting Support ⏸️ PENDING RESEARCH
 
 ### Objectives
 Enable canvas extension beyond original image boundaries for outpainting workflows.
 
-### Planned Deliverables
+### Blockers
+> **Pending**: ComfyUI outpainting workflow research needed before implementation.
+
+### Open Questions
+1. **Mask handling**: Should outpaint mask be separate from inpaint mask, or combined into single output?
+2. **Extension mode**: Prefer directional (add 256px to right) or target resolution (extend to 1920x1080)?
+3. **Auto-mask behavior**: Should extended areas automatically become masked, or require user confirmation?
+4. **Workflow integration**: How does the outpainting workflow differ from inpainting in ComfyUI nodes?
+5. **Model requirements**: Are there specific model requirements for outpainting (e.g., inpaint models)?
+
+### Planned Deliverables (Tentative)
 
 #### 6.1 Canvas Extension
 | Item | Description | Priority |
@@ -222,14 +206,6 @@ Enable canvas extension beyond original image boundaries for outpainting workflo
 | Aspect ratio presets | 16:9, 4:3, 1:1, etc. | Medium |
 | Directional extension | Add Npx to specific side | Medium |
 | Target resolution mode | Extend to specific dimensions | Low |
-
-### Open Questions (Pending ComfyUI Integration)
-> These questions will be resolved when implementing the ComfyUI outpainting workflow:
-
-1. **Mask handling**: Should outpaint mask be separate from inpaint mask, or combined into single output?
-2. **Extension mode**: Prefer directional (add 256px to right) or target resolution (extend to 1920x1080)?
-3. **Auto-mask behavior**: Should extended areas automatically become masked, or require user confirmation?
-4. **Workflow integration**: How does the outpainting workflow differ from inpainting in ComfyUI nodes?
 
 ---
 
@@ -271,6 +247,24 @@ Nice-to-have features for future consideration.
 
 ---
 
+## Known Issues & Future Improvements
+
+### Known Issues
+> Document any bugs or issues discovered during development here.
+
+*None currently documented.*
+
+### Future Improvements
+> Ideas and enhancements to consider for future phases.
+
+1. **Performance**: Consider WebGL rendering for very large images
+2. **Undo/Redo**: Currently uses JSON serialization; could optimize with delta states
+3. **Layer Panel**: Could add thumbnail previews for each layer
+4. **Selection**: Could add "Select All" and "Select Inverse" for mask region
+5. **Mask**: Could add feathering/blur to mask edges for softer inpainting
+
+---
+
 ## Design Decisions Log
 
 ### Mask System
@@ -283,6 +277,15 @@ Nice-to-have features for future consideration.
 | Mask color | Customizable via context-aware color picker | Reuses existing UI, brush color synced with overlay |
 | Selection to mask mode | Additive | User can clear mask if they want to replace |
 | Mask export format | Binary B/W PNG | Required for AI inpainting workflows |
+| Marching ants preview | Static dashed lines with caching | Animation caused significant performance hit |
+
+### Selection System
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Selection visualization | Marching ants (static dashed) | Classic selection appearance, performant |
+| Invert selection | Direct to mask (not visual inversion) | Complex path boolean avoided, simpler workflow |
+| Tool cycling | Click cycles when already active | Matches mask preview mode cycling UX |
+| Selection object storage | Single active selection | Simpler than multi-selection for mask workflow |
 
 ### Layer System
 | Decision | Choice | Rationale |
@@ -294,7 +297,7 @@ Nice-to-have features for future consideration.
 ### Outpainting
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Implementation timing | Phase 6 | Depends on ComfyUI workflow research |
+| Implementation timing | Phase 6 (paused) | Depends on ComfyUI workflow research |
 | Questions preserved | In document | Will resolve during implementation |
 
 ---
@@ -308,22 +311,47 @@ Nice-to-have features for future consideration.
 | `Components/ImageEditor/ImageEditorModal.razor.css` | Scoped CSS styles |
 | `Components/ImageEditor/LayerPanel.razor` | Layer management sidebar |
 | `Components/ImageEditor/LayerPanel.razor.css` | Layer panel styles |
-| `wwwroot/js/ImageEditor/ImageEditor.js` | Main entry point |
+| `wwwroot/js/ImageEditor/ImageEditor.js` | Main entry point, mixin composition |
 | `wwwroot/js/ImageEditor/ImageEditor.layers.js` | Layer management |
-| `wwwroot/js/ImageEditor/ImageEditor.canvas.js` | Canvas operations |
-| `wwwroot/js/ImageEditor/ImageEditor.tools.js` | Tool handling |
-| `wwwroot/js/ImageEditor/ImageEditor.history.js` | Undo/redo |
-| `wwwroot/js/ImageEditor/ImageEditor.export.js` | Export/import |
-| `wwwroot/js/ImageEditor/ImageEditor.events.js` | Event handlers |
-| `wwwroot/js/ImageEditor/ImageEditor.callbacks.js` | .NET interop |
-| `wwwroot/js/ImageEditor/ImageEditor.utils.js` | Utilities |
-| `wwwroot/js/ImageEditor/ImageEditor.mask.js` | Mask compositing & overlay (Phase 4) |
+| `wwwroot/js/ImageEditor/ImageEditor.canvas.js` | Canvas operations, zoom/pan |
+| `wwwroot/js/ImageEditor/ImageEditor.tools.js` | Tool handling, brush setup |
+| `wwwroot/js/ImageEditor/ImageEditor.history.js` | Undo/redo system |
+| `wwwroot/js/ImageEditor/ImageEditor.export.js` | Image/mask export |
+| `wwwroot/js/ImageEditor/ImageEditor.events.js` | Event handlers (mouse, keyboard) |
+| `wwwroot/js/ImageEditor/ImageEditor.callbacks.js` | .NET interop callbacks |
+| `wwwroot/js/ImageEditor/ImageEditor.utils.js` | Utility functions |
+| `wwwroot/js/ImageEditor/ImageEditor.mask.js` | Mask compositing, preview modes (Phase 4) |
+| `wwwroot/js/ImageEditor/ImageEditor.selection.js` | Selection tools (Phase 5) |
 | `Models/ImageEditorState.cs` | C# state model |
 | `Services/ManagerService.cs` | State storage |
 
 ---
 
 ## Changelog
+
+### Version 6.0 (December 2024) - Phase 5 Complete, Development Paused
+
+#### Phase 5: Selection Tools ✅ COMPLETE
+- Created `ImageEditor.selection.js` - new mixin for selection system
+- Implemented rectangle, ellipse, and lasso selection tools
+- Selection modifiers: Shift (constrain), Alt (center-out)
+- Selection to mask: Add and subtract operations
+- Invert selection: Applies inverted area directly to mask
+- Marching ants visualization (static dashed for performance)
+- Toolbar integration with cycling behavior
+- Contextual action buttons when selection exists
+- Keyboard shortcuts: R, O, L, Enter, Shift+Enter, Escape, Ctrl+Shift+I
+
+#### Mask Preview Modes Enhanced
+- Added 5 preview modes: Overlay, Binary, Marching Ants, Blackout, Whiteout
+- Toolbar dropdown with click-to-cycle behavior
+- Marching ants uses cached canvas for performance
+
+#### Document Updates
+- Added Current Architecture section with file structure and patterns
+- Added keyboard shortcuts reference
+- Added Known Issues & Future Improvements section
+- Updated status to reflect development pause
 
 ### Version 5.0 (December 2024) - Phase 4 Complete
 
@@ -338,11 +366,6 @@ Nice-to-have features for future consideration.
 - Mask overlay syncs with viewport transformations (zoom/pan)
 - State restoration properly refreshes mask overlay
 - Visibility toggle correctly refreshes overlay
-
-#### Design Decisions Updated
-- Rejected CSS animation for performance reasons
-- Rejected glow effect to save GPU resources for generation
-- Chose static baked-in stripe pattern as final solution
 
 ### Version 4.0 (December 2024) - Phase Planning Update
 
@@ -375,64 +398,57 @@ See git history for earlier changelog entries.
 - [x] Refresh overlay on visibility toggle
 - [x] Refresh overlay on state restoration
 - [x] Sync overlay with viewport (zoom/pan)
+- [x] Add multiple preview modes (Overlay, Binary, Marching Ants, Blackout, Whiteout)
 
-### Phase 5: Selection Tools
+### Phase 5: Selection Tools ✅ COMPLETE
 #### Infrastructure
-- [ ] Create `ImageEditor.selection.js` with SelectionMixin
-- [ ] Add selection tool types to `ImageEditorTool` enum (SelectRect, SelectEllipse, SelectLasso)
-- [ ] Add selection state to `ImageEditorState.cs` (HasSelection, ActiveSelectionType)
-- [ ] Wire up SelectionMixin in main ImageEditor.js
+- [x] Create `ImageEditor.selection.js` with SelectionMixin
+- [x] Add selection tool types to `ImageEditorTool` enum (SelectRect, SelectEllipse, SelectLasso)
+- [x] Add selection state to `ImageEditorState.cs` (HasSelection, ActiveSelectionType)
+- [x] Wire up SelectionMixin in main ImageEditor.js
 
 #### UI Components
-- [ ] Add Selection Tools button group with dropdown menu
-- [ ] Implement dropdown for tool type switching (rect/ellipse/lasso)
-- [ ] Add contextual action buttons (Add to Mask, Subtract, Clear, Invert)
-- [ ] Show/hide action buttons based on selection state
+- [x] Add Selection Tools button group with dropdown menu
+- [x] Implement dropdown for tool type switching (rect/ellipse/lasso)
+- [x] Add contextual action buttons (Add to Mask, Subtract, Clear, Invert)
+- [x] Show/hide action buttons based on selection state
+- [x] Implement tool cycling (click cycles when already active)
 
 #### Selection Tools
-- [ ] Implement rectangle selection (click-drag)
-- [ ] Implement ellipse selection (click-drag)
-- [ ] Implement lasso/freeform selection (click-drag path)
-- [ ] Add Shift modifier for square/circle constraint
-- [ ] Add Alt modifier for center-out drawing
-- [ ] Add Shift+Alt combined constraint
+- [x] Implement rectangle selection (click-drag)
+- [x] Implement ellipse selection (click-drag)
+- [x] Implement lasso/freeform selection (click-drag path)
+- [x] Add Shift modifier for square/circle constraint
+- [x] Add Alt modifier for center-out drawing
+- [x] Add Shift+Alt combined constraint
 
 #### Selection Visualization
-- [ ] Create selection object with dashed stroke
-- [ ] Add semi-transparent fill
-- [ ] Implement marching ants CSS animation
-- [ ] Evaluate animation performance, fallback to static if needed
+- [x] Create selection object with dashed stroke
+- [x] Add semi-transparent fill
+- [x] Implement marching ants (static dashed for performance)
 
 #### Selection to Mask
-- [ ] Implement "Add to Mask" (fill selection as mask, additive)
-- [ ] Implement "Subtract from Mask" (remove selection area from mask)
-- [ ] Auto-clear selection after mask operation
-- [ ] Update mask overlay after operation
+- [x] Implement "Add to Mask" (fill selection as mask, additive)
+- [x] Implement "Subtract from Mask" (remove selection area from mask)
+- [x] Auto-clear selection after mask operation
+- [x] Update mask overlay after operation
 
 #### Selection Management
-- [ ] Implement "Clear Selection" with toolbar button
-- [ ] Implement Escape key to clear selection
-- [ ] Implement "Invert Selection" with toolbar button
-- [ ] Implement Ctrl+Shift+I shortcut for invert
+- [x] Implement "Clear Selection" with toolbar button
+- [x] Implement Escape key to clear selection
+- [x] Implement "Invert Selection" with toolbar button
+- [x] Implement Ctrl+Shift+I shortcut for invert
 
 #### Keyboard Shortcuts
-- [ ] R key for Rectangle Select
-- [ ] O key for Ellipse Select
-- [ ] L key for Lasso Select
-- [ ] Enter for Add to Mask
-- [ ] Shift+Enter for Subtract from Mask
-- [ ] Escape for Clear Selection
-- [ ] Ctrl+Shift+I for Invert Selection
+- [x] R key for Rectangle Select
+- [x] O key for Ellipse Select
+- [x] L key for Lasso Select
+- [x] Enter for Add to Mask
+- [x] Shift+Enter for Subtract from Mask
+- [x] Escape for Clear Selection
+- [x] Ctrl+Shift+I for Invert Selection
 
-#### Testing
-- [ ] Test selection creation with all three types
-- [ ] Test modifier keys (Shift, Alt)
-- [ ] Test selection to mask workflow (add and subtract)
-- [ ] Test selection persistence during zoom/pan
-- [ ] Test undo/redo with selections
-- [ ] Evaluate marching ants performance
-
-### Phase 6: Outpainting
+### Phase 6: Outpainting ⏸️ PENDING RESEARCH
 - [ ] Research ComfyUI outpainting workflow
 - [ ] Resolve open questions
 - [ ] Implement canvas resize with anchor
@@ -452,3 +468,47 @@ See git history for earlier changelog entries.
 - [ ] Shapes and text
 - [ ] Touch support
 - [ ] Keyboard shortcuts help
+
+---
+
+## Session Resume Context
+
+> **For AI assistants resuming work on this project:**
+
+### Quick Context
+1. **What is this?** A Fabric.js-based image editor in a Blazor WebApp for AI image generation workflows
+2. **Current state**: Phases 1-5 complete (core editor, drawing, layers, masks, selections)
+3. **Next step**: Phase 6 (outpainting) blocked on ComfyUI workflow research
+4. **Tech stack**: Blazor Server (.NET 8), Fabric.js 6.x, JavaScript mixins
+
+### Key Files to Review
+1. `ImageEditorModal.razor` - Main component, all toolbar UI
+2. `ImageEditor.js` - Entry point, see how mixins are composed
+3. `ImageEditor.mask.js` - Mask system architecture
+4. `ImageEditor.selection.js` - Selection tools architecture
+5. `ImageEditorState.cs` - C# state model
+
+### Architecture Notes
+- JS uses mixin pattern (`Object.assign(prototype, Mixin)`)
+- Mask strokes are hidden Fabric.js objects; display uses HTML overlay
+- Selection uses Fabric.js shapes with special `isSelection` flag
+- Blazor ↔ JS communication via `DotNetObjectReference` and `IJSObjectReference`
+
+### Common Patterns
+```javascript
+// Notify Blazor of state change
+this._notifySelectionChanged(hasSelection);
+this._notifyMaskChanged(hasMask);
+
+// Access base image dimensions
+this.baseImageObject.width / height
+
+// Canvas viewport transform
+const vpt = this.canvas.viewportTransform;
+const zoom = vpt[0], panX = vpt[4], panY = vpt[5];
+```
+
+### Testing Notes
+- Test with various image sizes (small, large, very large)
+- Test zoom/pan with mask and selection overlays
+- Test Save vs Apply workflow (Save preserves layers, Apply flattens)

@@ -130,5 +130,27 @@ export const CallbacksMixin = {
         if (this.dotNetRef) {
             this.dotNetRef.invokeMethodAsync('OnImageImported', Math.round(width), Math.round(height));
         }
+    },
+    
+    /**
+     * Notify .NET of selection change
+     */
+    _notifySelectionChanged(hasSelection) {
+        if (this.dotNetRef) {
+            try {
+                this.dotNetRef.invokeMethodAsync('OnSelectionChanged', hasSelection);
+            } catch (e) {
+                console.warn('Failed to notify selection changed:', e);
+            }
+        }
+    },
+    
+    /**
+     * Notify .NET of canvas modification
+     */
+    _notifyCanvasModified() {
+        if (this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnCanvasModified');
+        }
     }
 };

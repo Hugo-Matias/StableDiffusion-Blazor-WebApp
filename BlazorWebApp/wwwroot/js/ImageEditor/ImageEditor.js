@@ -5,6 +5,7 @@
  * This module provides:
  * - Canvas manipulation with zoom/pan
  * - Drawing tools (brush, eraser, mask)
+ * - Selection tools (rect, ellipse, lasso) for mask creation
  * - Layer management
  * - History management (undo/redo)
  * - Image import/export
@@ -20,6 +21,7 @@ import { EventsMixin } from './ImageEditor.events.js';
 import { ExportMixin } from './ImageEditor.export.js';
 import { CallbacksMixin } from './ImageEditor.callbacks.js';
 import { MaskMixin } from './ImageEditor.mask.js';
+import { SelectionMixin } from './ImageEditor.selection.js';
 
 /**
  * Initialize the ImageEditor
@@ -111,6 +113,7 @@ class ImageEditor {
         // Initialize
         this._initCanvas();
         this._initMaskSystem(); // Initialize mask system
+        this._initSelectionSystem(); // Initialize selection system
         this._setupEventListeners();
         this._createBrushCursor();
         this._setupDragDrop();
@@ -124,6 +127,11 @@ class ImageEditor {
      * Dispose and cleanup
      */
     dispose() {
+        // Cleanup selection system
+        if (typeof this._disposeSelectionSystem === 'function') {
+            this._disposeSelectionSystem();
+        }
+        
         // Cleanup mask system
         if (typeof this._disposeMaskSystem === 'function') {
             this._disposeMaskSystem();
@@ -167,5 +175,6 @@ Object.assign(ImageEditor.prototype, EventsMixin);
 Object.assign(ImageEditor.prototype, ExportMixin);
 Object.assign(ImageEditor.prototype, CallbacksMixin);
 Object.assign(ImageEditor.prototype, MaskMixin);
+Object.assign(ImageEditor.prototype, SelectionMixin);
 
 export default ImageEditor;

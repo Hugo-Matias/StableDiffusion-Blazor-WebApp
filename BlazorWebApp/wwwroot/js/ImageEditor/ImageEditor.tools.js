@@ -225,6 +225,19 @@ export const ToolsMixin = {
                 this.canvas.renderAll();
                 break;
                 
+            case 'selectrect':
+            case 'selectellipse':
+            case 'selectlasso':
+                this.canvas.isDrawingMode = false;
+                this.canvas.defaultCursor = 'crosshair';
+                this._hideBrushCursor();
+                // Set the selection type based on tool
+                if (typeof this.setSelectionType === 'function') {
+                    const selType = tool.replace('select', '');
+                    this.setSelectionType(selType);
+                }
+                break;
+                
             default:
                 this.canvas.isDrawingMode = true;
                 this._setupBrush('brush');

@@ -3,9 +3,20 @@
  * 
  * This module provides:
  * - Offscreen canvas for mask compositing (no opacity stacking)
- * - Static stripe pattern overlay for visual feedback (performance-friendly)
+ * - Multiple preview modes (overlay, binary, marching ants, blackout, whiteout)
  * - Binary B/W mask export
  */
+
+/**
+ * Mask preview modes
+ */
+export const MaskPreviewMode = {
+    OVERLAY: 'overlay',         // Colored overlay with stripe pattern (default)
+    BINARY: 'binary',           // Black/white preview (what gets sent to API)
+    MARCHING_ANTS: 'marchingants', // Outline only, no fill
+    BLACKOUT: 'blackout',       // Black out unmasked areas
+    WHITEOUT: 'whiteout'        // White out masked areas
+};
 
 /**
  * Mask mixin for ImageEditor
@@ -27,6 +38,13 @@ export const MaskMixin = {
         // Mask display settings - use options if available
         this._maskDisplayColor = this.options?.maskColor || '#FF0000';
         this._maskDisplayOpacity = this.options?.maskOpacity || 0.5;
+        
+        // Preview mode
+        this._maskPreviewMode = MaskPreviewMode.OVERLAY;
+        
+        // Cached marching ants canvas (static, no animation for performance)
+        this._cachedAntsCanvas = null;
+        this._antsCacheValid = false;
     },
     
     /**
@@ -81,6 +99,8 @@ export const MaskMixin = {
     /**
      * Composite all mask strokes to the offscreen canvas
      * This creates a flat mask with no opacity stacking
+     * Handles both path strokes and filled shapes (from selection tools)
+     * Properly handles add (white) and subtract (erase) operations
      */
     _compositeMaskToCanvas() {
         if (!this._maskCtx || !this._maskCanvas) return;
@@ -88,30 +108,77 @@ export const MaskMixin = {
         // Clear the mask canvas
         this._clearMaskCanvas();
         
-        // Set up for drawing white strokes
-        this._maskCtx.fillStyle = '#FFFFFF';
-        this._maskCtx.strokeStyle = '#FFFFFF';
+        // Set up for drawing
         this._maskCtx.lineCap = 'round';
         this._maskCtx.lineJoin = 'round';
         
-        // Draw all mask objects as solid white
+        // Draw all mask objects in order
         this.maskObjects.forEach(obj => {
-            if (!obj.path || !Array.isArray(obj.path)) return;
+            // Determine if this is an add or subtract operation based on fill color
+            const fillColor = obj.fill || '#FFFFFF';
+            const isSubtract = fillColor === '#000000' || fillColor === 'black';
             
-            this._maskCtx.beginPath();
-            this._maskCtx.lineWidth = obj.strokeWidth || this._baseBrushSize;
+            // Save context state
+            this._maskCtx.save();
             
-            obj.path.forEach((cmd) => {
-                if (cmd[0] === 'M') {
-                    this._maskCtx.moveTo(cmd[1], cmd[2]);
-                } else if (cmd[0] === 'Q') {
-                    this._maskCtx.quadraticCurveTo(cmd[1], cmd[2], cmd[3], cmd[4]);
-                } else if (cmd[0] === 'L') {
-                    this._maskCtx.lineTo(cmd[1], cmd[2]);
+            if (isSubtract) {
+                // Subtract mode: erase from the mask using destination-out
+                this._maskCtx.globalCompositeOperation = 'destination-out';
+                this._maskCtx.fillStyle = '#FFFFFF'; // Color doesn't matter for destination-out
+                this._maskCtx.strokeStyle = '#FFFFFF';
+            } else {
+                // Add mode: draw white on the mask
+                this._maskCtx.globalCompositeOperation = 'source-over';
+                this._maskCtx.fillStyle = '#FFFFFF';
+                this._maskCtx.strokeStyle = '#FFFFFF';
+            }
+            
+            // Handle different object types
+            if (obj.type === 'rect') {
+                // Rectangle from selection
+                this._maskCtx.fillRect(obj.left, obj.top, obj.width, obj.height);
+            } else if (obj.type === 'ellipse') {
+                // Ellipse from selection
+                this._maskCtx.beginPath();
+                this._maskCtx.ellipse(
+                    obj.left, 
+                    obj.top, 
+                    obj.rx, 
+                    obj.ry, 
+                    0, 0, Math.PI * 2
+                );
+                this._maskCtx.fill();
+            } else if (obj.type === 'path' && obj.path && Array.isArray(obj.path)) {
+                // Path - could be brush stroke or lasso selection
+                this._maskCtx.beginPath();
+                
+                // Check if it's a filled path (from lasso or selection) or stroke path (from brush)
+                const isFilled = obj.fill && obj.fill !== 'transparent' && obj.fill !== '';
+                
+                obj.path.forEach((cmd) => {
+                    if (cmd[0] === 'M') {
+                        this._maskCtx.moveTo(cmd[1], cmd[2]);
+                    } else if (cmd[0] === 'Q') {
+                        this._maskCtx.quadraticCurveTo(cmd[1], cmd[2], cmd[3], cmd[4]);
+                    } else if (cmd[0] === 'L') {
+                        this._maskCtx.lineTo(cmd[1], cmd[2]);
+                    } else if (cmd[0] === 'Z' || cmd[0] === 'z') {
+                        this._maskCtx.closePath();
+                    }
+                });
+                
+                if (isFilled) {
+                    // Filled path (lasso selection or filled shape)
+                    this._maskCtx.fill();
+                } else {
+                    // Stroke path (brush)
+                    this._maskCtx.lineWidth = obj.strokeWidth || this._baseBrushSize;
+                    this._maskCtx.stroke();
                 }
-            });
+            }
             
-            this._maskCtx.stroke();
+            // Restore context state
+            this._maskCtx.restore();
         });
     },
     
@@ -191,11 +258,12 @@ export const MaskMixin = {
             }
         }
         
-        // Composite the mask
+        // Composite the mask (invalidates ants cache)
         this._compositeMaskToCanvas();
+        this._antsCacheValid = false;
         
-        // Create the display canvas with color, pattern, and opacity baked in
-        const displayCanvas = this._createStyledMaskCanvas();
+        // Create the display canvas based on preview mode
+        const displayCanvas = this._createPreviewCanvas();
         if (!displayCanvas) return;
         
         // Update the mask image
@@ -210,7 +278,27 @@ export const MaskMixin = {
     },
     
     /**
-     * Create a styled version of the mask for display
+     * Create a preview canvas based on the current preview mode
+     * @returns {HTMLCanvasElement} Canvas with styled mask
+     */
+    _createPreviewCanvas() {
+        switch (this._maskPreviewMode) {
+            case MaskPreviewMode.BINARY:
+                return this._createBinaryPreviewCanvas();
+            case MaskPreviewMode.MARCHING_ANTS:
+                return this._createMarchingAntsPreviewCanvas();
+            case MaskPreviewMode.BLACKOUT:
+                return this._createBlackoutPreviewCanvas();
+            case MaskPreviewMode.WHITEOUT:
+                return this._createWhiteoutPreviewCanvas();
+            case MaskPreviewMode.OVERLAY:
+            default:
+                return this._createStyledMaskCanvas();
+        }
+    },
+    
+    /**
+     * Create a styled version of the mask for display (OVERLAY mode)
      * Includes color, stripe pattern, and opacity - all baked into one image
      * @returns {HTMLCanvasElement} Canvas with styled mask
      */
@@ -254,6 +342,217 @@ export const MaskMixin = {
     },
     
     /**
+     * Create binary B/W preview canvas (BINARY mode)
+     * Shows exactly what will be sent to the API
+     * @returns {HTMLCanvasElement} Canvas with B/W mask
+     */
+    _createBinaryPreviewCanvas() {
+        if (!this._maskCanvas) return null;
+        
+        const width = this._maskCanvas.width;
+        const height = this._maskCanvas.height;
+        
+        const binaryCanvas = document.createElement('canvas');
+        binaryCanvas.width = width;
+        binaryCanvas.height = height;
+        const ctx = binaryCanvas.getContext('2d');
+        
+        // Fill with black background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Draw the mask in white
+        ctx.drawImage(this._maskCanvas, 0, 0);
+        
+        return binaryCanvas;
+    },
+    
+    /**
+     * Create marching ants outline preview (MARCHING_ANTS mode)
+     * Shows only the outline of the mask with static dashed lines
+     * Uses caching for performance - only rebuilds when mask changes
+     * @returns {HTMLCanvasElement} Canvas with outline
+     */
+    _createMarchingAntsPreviewCanvas() {
+        if (!this._maskCanvas) return null;
+        
+        // Return cached version if valid
+        if (this._antsCacheValid && this._cachedAntsCanvas) {
+            return this._cachedAntsCanvas;
+        }
+        
+        const width = this._maskCanvas.width;
+        const height = this._maskCanvas.height;
+        
+        const antsCanvas = document.createElement('canvas');
+        antsCanvas.width = width;
+        antsCanvas.height = height;
+        const ctx = antsCanvas.getContext('2d');
+        
+        // Get image data to find edges
+        const maskData = this._maskCtx.getImageData(0, 0, width, height);
+        const data = maskData.data;
+        
+        // Use typed array for faster access
+        const alphaChannel = new Uint8Array(width * height);
+        for (let i = 0; i < width * height; i++) {
+            alphaChannel[i] = data[i * 4 + 3] > 128 ? 1 : 0;
+        }
+        
+        // Helper to check if pixel is inside mask
+        const isInMask = (x, y) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return false;
+            return alphaChannel[y * width + x] === 1;
+        };
+        
+        // Draw edges directly without building chains
+        // This is faster and works well for static display
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.lineDashOffset = 0;
+        
+        ctx.beginPath();
+        
+        // Scan for horizontal edges (between rows)
+        for (let y = 0; y <= height; y++) {
+            let inEdge = false;
+            let edgeStart = 0;
+            
+            for (let x = 0; x < width; x++) {
+                const current = isInMask(x, y);
+                const above = isInMask(x, y - 1);
+                const isEdge = current !== above;
+                
+                if (isEdge && !inEdge) {
+                    // Start of edge segment
+                    edgeStart = x;
+                    inEdge = true;
+                } else if (!isEdge && inEdge) {
+                    // End of edge segment - draw it
+                    ctx.moveTo(edgeStart, y);
+                    ctx.lineTo(x, y);
+                    inEdge = false;
+                }
+            }
+            // Close any remaining edge
+            if (inEdge) {
+                ctx.moveTo(edgeStart, y);
+                ctx.lineTo(width, y);
+            }
+        }
+        
+        // Scan for vertical edges (between columns)
+        for (let x = 0; x <= width; x++) {
+            let inEdge = false;
+            let edgeStart = 0;
+            
+            for (let y = 0; y < height; y++) {
+                const current = isInMask(x, y);
+                const left = isInMask(x - 1, y);
+                const isEdge = current !== left;
+                
+                if (isEdge && !inEdge) {
+                    // Start of edge segment
+                    edgeStart = y;
+                    inEdge = true;
+                } else if (!isEdge && inEdge) {
+                    // End of edge segment - draw it
+                    ctx.moveTo(x, edgeStart);
+                    ctx.lineTo(x, y);
+                    inEdge = false;
+                }
+            }
+            // Close any remaining edge
+            if (inEdge) {
+                ctx.moveTo(x, edgeStart);
+                ctx.lineTo(x, height);
+            }
+        }
+        
+        ctx.stroke();
+        
+        // Draw white outline offset for contrast
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineDashOffset = 4;
+        ctx.stroke();
+        
+        // Cache the result
+        this._cachedAntsCanvas = antsCanvas;
+        this._antsCacheValid = true;
+        
+        return antsCanvas;
+    },
+    
+    /**
+     * Create blackout preview (BLACKOUT mode)
+     * Shows only the masked areas, blacks out everything else
+     * @returns {HTMLCanvasElement} Canvas with blackout effect
+     */
+    _createBlackoutPreviewCanvas() {
+        if (!this._maskCanvas || !this.baseImageObject) return null;
+        
+        const width = this._maskCanvas.width;
+        const height = this._maskCanvas.height;
+        
+        const blackoutCanvas = document.createElement('canvas');
+        blackoutCanvas.width = width;
+        blackoutCanvas.height = height;
+        const ctx = blackoutCanvas.getContext('2d');
+        
+        // Fill with semi-transparent black
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Cut out the masked areas (show what will be inpainted)
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(this._maskCanvas, 0, 0);
+        
+        return blackoutCanvas;
+    },
+    
+    /**
+     * Create whiteout preview (WHITEOUT mode)
+     * Shows white over masked areas to highlight what will be changed
+     * @returns {HTMLCanvasElement} Canvas with whiteout effect
+     */
+    _createWhiteoutPreviewCanvas() {
+        if (!this._maskCanvas) return null;
+        
+        const width = this._maskCanvas.width;
+        const height = this._maskCanvas.height;
+        
+        const whiteoutCanvas = document.createElement('canvas');
+        whiteoutCanvas.width = width;
+        whiteoutCanvas.height = height;
+        const ctx = whiteoutCanvas.getContext('2d');
+        
+        // Fill with semi-transparent white
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Use mask as alpha
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(this._maskCanvas, 0, 0);
+        
+        return whiteoutCanvas;
+    },
+    
+    /**
+     * Start marching ants animation for preview
+     */
+    _startPreviewMarchingAnts() {
+        // No-op - marching ants are now cached as a static canvas
+    },
+    
+    /**
+     * Stop marching ants animation for preview
+     */
+    _stopPreviewMarchingAnts() {
+        // No-op - marching ants are now cached as a static canvas
+    },
+    
+    /**
      * Sync the mask overlay position with the Fabric.js canvas viewport
      */
     _syncMaskOverlayWithCanvas() {
@@ -279,6 +578,56 @@ export const MaskMixin = {
         this._maskOverlayEl.style.width = `${imgWidth}px`;
         this._maskOverlayEl.style.height = `${imgHeight}px`;
         this._maskOverlayEl.style.transform = 'none';
+    },
+    
+    /**
+     * Set mask preview mode
+     * @param {string} mode - One of MaskPreviewMode values
+     */
+    setMaskPreviewMode(mode) {
+        const validModes = Object.values(MaskPreviewMode);
+        if (!validModes.includes(mode)) {
+            console.warn(`Invalid mask preview mode: ${mode}`);
+            return;
+        }
+        
+        this._maskPreviewMode = mode;
+        
+        // Refresh the overlay
+        if (this.maskVisible && this.maskObjects && this.maskObjects.length > 0) {
+            this._updateMaskOverlay();
+        }
+        
+        // Notify Blazor
+        if (this.dotNetRef) {
+            try {
+                this.dotNetRef.invokeMethodAsync('OnMaskPreviewModeChanged', mode);
+            } catch (e) {
+                // Ignore if method doesn't exist
+            }
+        }
+    },
+    
+    /**
+     * Get current mask preview mode
+     * @returns {string} Current preview mode
+     */
+    getMaskPreviewMode() {
+        return this._maskPreviewMode;
+    },
+    
+    /**
+     * Cycle to next preview mode
+     * @returns {string} New preview mode
+     */
+    cycleMaskPreviewMode() {
+        const modes = Object.values(MaskPreviewMode);
+        const currentIndex = modes.indexOf(this._maskPreviewMode);
+        const nextIndex = (currentIndex + 1) % modes.length;
+        const nextMode = modes[nextIndex];
+        
+        this.setMaskPreviewMode(nextMode);
+        return nextMode;
     },
     
     /**
@@ -325,6 +674,7 @@ export const MaskMixin = {
             this._updateMaskOverlay();
         } else if (this._maskOverlayEl) {
             this._maskOverlayEl.style.display = 'none';
+            this._stopPreviewMarchingAnts();
         }
         
         // Also update the individual mask stroke visibility (for legacy compatibility)
@@ -376,6 +726,7 @@ export const MaskMixin = {
     
     /**
      * Clear all mask data
+     * Alias: clearMask (for backward compatibility with Blazor calls)
      */
     clearMaskData() {
         // Clear mask objects from canvas
@@ -391,10 +742,18 @@ export const MaskMixin = {
         if (this._maskOverlayEl) {
             this._maskOverlayEl.style.display = 'none';
         }
+        this._stopPreviewMarchingAnts();
         
         // Notify
         this._notifyMaskChanged(false);
         this.canvas.renderAll();
+    },
+    
+    /**
+     * Clear mask (alias for clearMaskData)
+     */
+    clearMask() {
+        this.clearMaskData();
     },
     
     /**
@@ -423,19 +782,37 @@ export const MaskMixin = {
     /**
      * Refresh the mask overlay (e.g., after state restore)
      * Call this when mask objects are restored from saved state
+     * Also handles clearing the overlay when no mask objects exist
      */
     refreshMaskOverlay() {
-        if (this.maskObjects && this.maskObjects.length > 0) {
-            // Ensure all mask objects are hidden (we use overlay)
-            this.maskObjects.forEach(obj => {
-                obj.set('visible', false);
-            });
-            this.canvas.renderAll();
+        // If no mask objects, hide the overlay and clear everything
+        if (!this.maskObjects || this.maskObjects.length === 0) {
+            // Clear the offscreen canvas
+            this._clearMaskCanvas();
             
-            // Update the overlay if mask is visible
-            if (this.maskVisible) {
-                this._updateMaskOverlay();
+            // Hide the overlay and clear its image source
+            if (this._maskOverlayEl) {
+                this._maskOverlayEl.style.display = 'none';
+                
+                // Also clear the image source to prevent stale display
+                const maskImg = this._maskOverlayEl.querySelector('.mask-display-image');
+                if (maskImg) {
+                    maskImg.src = '';
+                }
             }
+            this._stopPreviewMarchingAnts();
+            return;
+        }
+        
+        // We have mask objects - ensure they are hidden (we use overlay)
+        this.maskObjects.forEach(obj => {
+            obj.set('visible', false);
+        });
+        this.canvas.renderAll();
+        
+        // Update the overlay if mask is visible
+        if (this.maskVisible) {
+            this._updateMaskOverlay();
         }
     },
     
@@ -446,5 +823,7 @@ export const MaskMixin = {
         this._removeMaskOverlay();
         this._maskCanvas = null;
         this._maskCtx = null;
+        this._cachedAntsCanvas = null;
+        this._antsCacheValid = false;
     }
 };

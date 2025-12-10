@@ -204,6 +204,15 @@ export const EventsMixin = {
             return;
         }
         
+        // Selection tools
+        if (this.isSelectionToolActive && this.isSelectionToolActive() && e.button === 0) {
+            const pointer = this.canvas.getPointer(e);
+            if (typeof this.startSelection === 'function') {
+                this.startSelection(pointer.x, pointer.y);
+            }
+            return;
+        }
+        
         // Save state before drawing starts
         if (this.canvas.isDrawingMode && e.button === 0) {
             this._saveStateBeforeAction();
@@ -230,6 +239,15 @@ export const EventsMixin = {
             return;
         }
         
+        // Handle selection tool dragging
+        if (this.isSelectionToolActive && this.isSelectionToolActive() && this._isDrawingSelection) {
+            const pointer = this.canvas.getPointer(e);
+            if (typeof this.updateSelection === 'function') {
+                this.updateSelection(pointer.x, pointer.y, e.shiftKey, e.altKey);
+            }
+            return;
+        }
+        
         // Update brush cursor position
         if (this.canvas.isDrawingMode && !this.isPanning) {
             const pointer = this.canvas.getPointer(e);
@@ -252,6 +270,14 @@ export const EventsMixin = {
         
         // Skip if middle mouse panning is active (handled by native events)
         if (this._middleMousePanning) {
+            return;
+        }
+        
+        // Handle selection tool finish
+        if (this.isSelectionToolActive && this.isSelectionToolActive() && this._isDrawingSelection) {
+            if (typeof this.finishSelection === 'function') {
+                this.finishSelection();
+            }
             return;
         }
         
@@ -445,6 +471,39 @@ export const EventsMixin = {
             e.preventDefault();
         }
         
+        // Escape - clear selection
+        if (e.code === 'Escape') {
+            if (typeof this.hasSelection === 'function' && this.hasSelection()) {
+                this.clearSelection();
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        // Enter - add selection to mask
+        if (e.code === 'Enter' && !e.ctrlKey) {
+            if (typeof this.hasSelection === 'function' && this.hasSelection()) {
+                if (e.shiftKey) {
+                    // Shift+Enter - subtract from mask
+                    this.selectionToMask('subtract');
+                } else {
+                    // Enter - add to mask
+                    this.selectionToMask('add');
+                }
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        // Ctrl+Shift+I - invert selection
+        if (e.ctrlKey && e.shiftKey && e.code === 'KeyI') {
+            if (typeof this.hasSelection === 'function' && this.hasSelection()) {
+                this.invertSelection();
+                e.preventDefault();
+                return;
+            }
+        }
+        
         // Undo: Ctrl+Z
         if (e.ctrlKey && e.code === 'KeyZ' && !e.shiftKey) {
             this.undo();
@@ -512,6 +571,15 @@ export const EventsMixin = {
                     break;
                 case 'KeyV':
                     this._notifyToolChange('select');
+                    break;
+                case 'KeyR':
+                    this._notifyToolChange('selectrect');
+                    break;
+                case 'KeyO':
+                    this._notifyToolChange('selectellipse');
+                    break;
+                case 'KeyL':
+                    this._notifyToolChange('selectlasso');
                     break;
                 case 'BracketLeft':
                     this._notifyBrushSizeChange(-5);
