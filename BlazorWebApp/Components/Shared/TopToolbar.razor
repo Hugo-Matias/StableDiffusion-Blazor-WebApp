@@ -113,7 +113,7 @@
     {
         var options = new DialogOptions() { CloseButton = true, CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
         var param = new DialogParameters();
-        param.Add("State", state);
+        param.Add("StatePreset", state);
         var dialog = await DialogService.ShowAsync<StateDialog>("", param, options);
         await dialog.Result;
         await InitializeStates();

@@ -1,4 +1,4 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
 @inject DatabaseService DB
 @inject IConfiguration Configuration
 @inject ISnackbar Snackbar
@@ -6,11 +6,11 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">@(State.Id > 0 ? "Edit State Preset" : "Create State Preset")</MudText>
+        <MudText Typo="Typo.h6">@(StatePreset.Id > 0 ? "Edit State Preset" : "Create State Preset")</MudText>
     </TitleContent>
     <DialogContent>
-        <EditForm Model="State">
-            <MudTextField @bind-Value=State.Title Label="Title" Class="mb-4" Clearable=true />
+        <EditForm Model="StatePreset">
+            <MudTextField @bind-Value=StatePreset.Title Label="Title" Class="mb-4" Clearable=true />
             <MudText Typo="Typo.caption">Save:</MudText>
             <MudStack Row=true>
                 <MudCheckBox Label="App State" @bind-Checked=_saveAppstate />
@@ -21,7 +21,7 @@
         </EditForm>
     </DialogContent>
     <DialogActions>
-        @if (State.Id > 0)
+        @if (StatePreset.Id > 0)
         {
             <MudButton ButtonType="ButtonType.Button" OnClick="DeleteState" Color="Color.Error" Variant="Variant.Text">Delete</MudButton>
             <MudButton ButtonType="ButtonType.Button" OnClick="UpdateState" Color="Color.Info" Variant="Variant.Filled">Update</MudButton>
@@ -35,24 +35,24 @@
 
 @code {
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-    [Parameter] public State State { get; set; }
+    [Parameter] public BlazorWebApp.Data.Entities.State StatePreset { get; set; }
 
     private bool _saveAppstate = true, _saveTxt2img, _saveImg2img, _saveUpscale;
 
     private void WriteState()
     {
-        if (_saveAppstate) State.AppState = M.State;
-        if (_saveTxt2img) State.Txt2ImgParameters = M.ParametersTxt2Img;
-        if (_saveImg2img) State.Img2ImgParameters = M.ParametersImg2Img;
-        if (_saveUpscale) State.UpscaleParameters = M.ParametersUpscale;
-        State.CreationDate = DateTime.Now;
-        State.Version = int.Parse(Configuration["StateVersion"]);
+        if (_saveAppstate) StatePreset.AppState = State.State;
+        if (_saveTxt2img) StatePreset.Txt2ImgParameters = State.ParametersTxt2Img;
+        if (_saveImg2img) StatePreset.Img2ImgParameters = State.ParametersImg2Img;
+        if (_saveUpscale) StatePreset.UpscaleParameters = State.ParametersUpscale;
+        StatePreset.CreationDate = DateTime.Now;
+        StatePreset.Version = int.Parse(Configuration["StateVersion"]);
     }
 
     private async Task CreateState()
     {
         WriteState();
-        await DB.CreateState(State);
+        await DB.CreateState(StatePreset);
         Snackbar.Add("State preset created successfully!", Severity.Success);
         MudDialog.Close();
     }
@@ -60,7 +60,7 @@
     private async Task UpdateState()
     {
         WriteState();
-        await DB.UpdateState(State);
+        await DB.UpdateState(StatePreset);
         Snackbar.Add("State preset updated successfully!", Severity.Success);
         MudDialog.Close();
     }
@@ -77,7 +77,7 @@
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            await DB.DeleteState(State.Id);
+            await DB.DeleteState(StatePreset.Id);
             MudDialog.Close();
             Snackbar.Add("State preset deleted successfully!", Severity.Success);
         }

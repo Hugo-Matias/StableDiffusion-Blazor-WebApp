@@ -3,7 +3,7 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 1/70 components migrated (1%)
+**Current Progress:** 2/70 components migrated (3%)
 
 ---
 
@@ -58,7 +58,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | ProgressContainer | Components/Shared | ProgressService only | ? Not Started | No ManagerService - skip |
 | ConfirmationDialog | Components/Shared | - | ? Not Started | No dependencies - skip |
 | LoadingSpinner | Components/Shared | - | ? Not Started | No dependencies - skip |
-| AssetViewer | Components/Shared | State | ? Not Started | |
+| AssetViewer | Components/Shared | State | ? Not Started | Actually complex - move to Group 8 |
 | JsonTreeView | Components/Shared | - | ? Not Started | No dependencies - skip |
 
 ---
@@ -171,13 +171,13 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ---
 
-### Group 8: Complex/Page Components (Multiple services) - 9 components
+### Group 8: Complex/Page Components (Multiple services) - 10 components
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
 | MainLayout | Components/Shared | State, Backend, Models, Gallery, Events | ? Not Started | **CRITICAL** - App initialization |
 | GeneratedImageTabs | Components/Shared/Generation | State, Gallery, Session | ? Not Started | |
-| StateDialog | Components/Shared | State | ? Not Started | |
+| StateDialog | Components/Shared | State | ? Complete | Migrated 2025-01-14 - Simple dialog |
 | Txt2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
 | Img2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session, Gallery | ? Not Started | |
 | Img2VidComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
@@ -198,8 +198,10 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 65 (93%)
-- **Complete:** 1 (1%)
+- **Not Started:** 64 (91%)
+- **Complete:** 2 (3%)
+  - NavBar.razor
+  - StateDialog.razor
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -292,8 +294,8 @@ public void Dispose()
 ## Next Steps
 
 1. ? Create this migration log
-2. ? Start with Group 1 (Simple Components)
-3. ? Continue with Group 2 (Generation Forms)
+2. ? Start with Group 1 (Simple Components) - NavBar ?, StateDialog ?
+3. ? Continue with more simple components
 4. ? Progress through remaining groups
 5. ? Migrate MainLayout last (most complex)
 
@@ -301,13 +303,13 @@ public void Dispose()
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated
+- [ ] All 70 components migrated (2/70 = 3%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)
 - [ ] All components use EventService for subscriptions
-- [ ] All tests passing (125+ tests)
-- [ ] Build passes without errors
+- [ ] All tests passing (128+ tests)
+- [ ] Build passes without errors ?
 - [ ] No compiler warnings
 - [ ] Styles dropdown working
 - [ ] Documentation updated

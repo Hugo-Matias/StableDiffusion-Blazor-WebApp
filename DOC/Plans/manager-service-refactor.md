@@ -993,6 +993,6 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.2     | **Second Component Migrated!** StateDialog.razor migrated from ManagerService to IStateService. Simple dialog component - only needed State service. Build passes. 2/70 components complete (3%). Renamed State parameter to StatePreset to avoid naming conflict with injected IStateService. |
 | 2025-01-14 | 2.0.1     | **First Component Migrated!** NavBar.razor successfully migrated from ManagerService to IStateService, IGalleryService, IBackendService, and IEventService. Established migration patterns for event subscriptions, property access, and service injection. Build passes. 1/70 components complete (1%). |
 | 2025-01-14 | 2.0       | **Phase 8 Started**: Created Component Migration Log tracking 70 components across 8 groups. Migration strategy defined with service injection patterns and event subscription patterns. MainLayout identified as most critical component. Ready to begin Group 1 (Simple Components) migration. |
-| 2025-01-14 | 1.4.1     | **Phase 7 Simplified**: Removed circuit isolation complexity. SessionService now a simple singleton without per-tab isolation. Removed `CircuitHandlerService` and `ConcurrentDictionary` overhead. All 20 tests still passing. Simpler, cleaner architecture suitable for single-user scenarios. |
