@@ -107,6 +107,6 @@
 
     protected async override Task OnInitializedAsync()
     {
-        await M.GetUpscalers();
+        await M.LoadBackendDependentResources();
     }
 }

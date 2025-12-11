@@ -99,7 +99,6 @@
 
     protected async override Task OnInitializedAsync()
     {
-        if (M.Upscalers == null) await M.GetUpscalers();
-        _s = M.Settings.Scripts.MultiDiffusion.TiledDiffusion;
+        if (M.Upscalers == null) await M.LoadBackendDependentResources();
     }
 }

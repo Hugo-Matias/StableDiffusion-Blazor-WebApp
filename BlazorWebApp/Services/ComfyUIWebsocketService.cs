@@ -46,7 +46,6 @@ namespace BlazorWebApp.Services
                         _currentWs = ws;
                     }
 
-                    _m.IsComfyUIUp = true;
                     _logger.LogInformation($"WS connected | ClientID: {_m.ComfyWSClientId}");
                     await ListenLoop(ws, cancellationToken);
                 }

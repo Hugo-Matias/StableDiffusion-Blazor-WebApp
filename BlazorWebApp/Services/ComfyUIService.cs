@@ -255,6 +255,23 @@ namespace BlazorWebApp.Services
         }
 
         #region GET
+        /// <summary>
+        /// Checks if ComfyUI backend is available by querying the system stats endpoint.
+        /// Returns true if the endpoint responds successfully, false otherwise.
+        /// </summary>
+        public async Task<bool> CheckComfyUIState()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("/system_stats");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         private async Task<string> GetClientIdFromHistory()
         {
             var response = await _httpClient.GetAsync($"/history");

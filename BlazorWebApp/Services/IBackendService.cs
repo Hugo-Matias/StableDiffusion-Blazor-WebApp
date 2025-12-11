@@ -11,6 +11,11 @@ namespace BlazorWebApp.Services
         bool IsBackendAvailable { get; }
         Options Options { get; }
         
+        // Temporary - will move to ModelService in Phase 5
+        List<Models.Sampler> Samplers { get; }
+        List<Scheduler> Schedulers { get; }
+        List<Upscaler> Upscalers { get; }
+        
         Task<bool> CheckBackendAvailability();
         Task LoadBackendDependentResources();
         Task GetOptions();

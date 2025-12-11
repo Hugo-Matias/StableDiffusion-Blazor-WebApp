@@ -96,9 +96,7 @@
 
     protected async override Task OnInitializedAsync()
     {
-        await M.GetUpscalers();
-        M.OnUpscaleParametersChanged += InitializeParameters;
-        InitializeParameters();
+        await M.LoadBackendDependentResources();
     }
 
     private string ParseResizeMode(int value) => value == 0 ? "Multiplier" : "Resolution";

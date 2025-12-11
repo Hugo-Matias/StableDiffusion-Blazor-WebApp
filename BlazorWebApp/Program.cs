@@ -41,6 +41,9 @@ builder.Services.AddSingleton<IStateDatabaseService>(sp =>
     new StateDatabaseServiceAdapter(sp.GetRequiredService<DatabaseService>()));
 builder.Services.AddSingleton<IStateService, StateService>();
 
+// Backend orchestration service (ComfyUI)
+builder.Services.AddSingleton<IBackendService, BackendService>();
+
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();

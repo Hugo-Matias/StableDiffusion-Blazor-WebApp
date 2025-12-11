@@ -1,10 +1,8 @@
 ﻿using BlazorWebApp.Data.Dtos;
-using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
-using MudBlazor;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using static BlazorWebApp.Data.Enums;
@@ -25,6 +23,7 @@ namespace BlazorWebApp.Services
         private readonly IStateService _state;
         private readonly IEventService _events;
         private readonly ISettingsService _settings;
+        private readonly IBackendService _backend;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
@@ -79,10 +78,10 @@ namespace BlazorWebApp.Services
         public Img2ImgParameters ParametersImg2Img => _state.ParametersImg2Img;
         public Models.UpscaleParameters ParametersUpscale => _state.ParametersUpscale;
         public Img2VidParameters ParametersImg2Vid => _state.ParametersImg2Vid;
-        
+
         // Temporary facade - delegates to SettingsService (will be removed in Phase 8)
         public AppSettings Settings => _settings.Settings;
-        
+
         public Options Options { get; set; }
 
         public GeneratedImages Images { get; set; }
@@ -96,10 +95,13 @@ namespace BlazorWebApp.Services
         public List<string> ClipModels { get; set; } = new();
         public List<string> ClipVisionModels { get; set; } = new();
         public List<string> SDADetailerModels { get; set; } = new();
-        public List<Models.Sampler> Samplers { get; set; }
-        public List<Scheduler> Schedulers { get; set; }
+
+        // Temporary facade - delegates to BackendService (will move to ModelService in Phase 5)
+        public List<Models.Sampler> Samplers => _backend.Samplers;
+        public List<Scheduler> Schedulers => _backend.Schedulers;
+        public List<Upscaler> Upscalers => _backend.Upscalers;
+
         public List<PromptStyle> Styles { get; set; }
-        public List<Upscaler> Upscalers { get; set; }
         public List<Folder>? Folders { get; set; }
         public List<Project>? Projects { get; set; }
         public List<int> SelectedImageIds { get; set; }
@@ -245,26 +247,18 @@ namespace BlazorWebApp.Services
                 OnConverging?.Invoke();
             }
         }
+
+        // Temporary facade - delegates to BackendService (will be removed in Phase 8)
         public bool IsWebuiUp
         {
-            get => _isWebuiUp;
-            set
-            {
-                _isWebuiUp = value;
-                OnWebuiStateChanged?.Invoke();
-            }
-        }
-        public bool IsComfyUIUp
-        {
-            get => _isComfyUIUp;
-            set
-            {
-                _isComfyUIUp = value;
-                OnComfyUIStateChanged?.Invoke();
-            }
+            get => false; // WebUI no longer supported
+            set { } // No-op for backward compatibility
         }
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings)
+        // Temporary facade - delegates to BackendService (will be removed in Phase 8)
+        public bool IsComfyUIUp => _backend.IsBackendAvailable;
+
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend)
         {
             _sdapi = sdapi;
             _db = db;
@@ -276,15 +270,13 @@ namespace BlazorWebApp.Services
             _state = state;
             _events = events;
             _settings = settings;
-            
+            _backend = backend;
+
             // SettingsService now handles loading settings automatically
             // Note: LoadState() must be called asynchronously after construction
             // The StateService already initializes with defaults in its constructor
 
             // Initialize to empty lists - these will be populated when the backend comes online
-            Upscalers = new();
-            Samplers = new();
-            Schedulers = new();
             Images = new();
             Progress = new();
             Folders = new();
@@ -742,8 +734,8 @@ namespace BlazorWebApp.Services
 
         public async Task GetOptions()
         {
-            if (IsWebuiUp) Options = await _sdapi.GetOptions();
-            if (IsComfyUIUp) Options = await _capi.GenerateOptions();
+            await _backend.GetOptions();
+            Options = _backend.Options;
             OnOptionsChange?.Invoke();
         }
 
@@ -761,13 +753,6 @@ namespace BlazorWebApp.Services
                 var currentStyles = State.Generation.Styles.ToList();
                 State.Generation.Styles = Styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
             }
-        }
-
-        public async Task GetUpscalers()
-        {
-            if (IsWebuiUp) Upscalers = await _sdapi.GetUpscalers();
-            else if (IsComfyUIUp) Upscalers = await _capi.GetUpscalers();
-            else Upscalers = new();
         }
 
         public async Task GetFolders()
@@ -813,31 +798,15 @@ namespace BlazorWebApp.Services
             OnProjectChangeTask?.Invoke();
         }
 
-        public async Task GetSamplers()
-        {
-            if (IsWebuiUp) Samplers = await _sdapi.GetSamplers();
-            else if (IsComfyUIUp) Samplers = await _capi.GetSamplers();
-            else Samplers = new();
-            OnSamplersSchedulersChanged?.Invoke();
-        }
-
-        public async Task GetSchedulers()
-        {
-            if (IsWebuiUp) Schedulers = await _sdapi.GetSchedulers();
-            else if (IsComfyUIUp) Schedulers = await _capi.GetSchedulers();
-            else Schedulers = new();
-            OnSamplersSchedulersChanged?.Invoke();
-        }
-
         /// <summary>
         /// Loads all backend-dependent resources (samplers, schedulers, upscalers).
         /// Call this method when the backend comes online.
+        /// Temporary facade - delegates to BackendService (will be removed in Phase 8)
         /// </summary>
         public async Task LoadBackendDependentResources()
         {
-            await GetSamplers();
-            await GetSchedulers();
-            await GetUpscalers();
+            await _backend.LoadBackendDependentResources();
+            OnSamplersSchedulersChanged?.Invoke();
         }
 
         public string GetDynamicPromptsVersion()
@@ -868,10 +837,10 @@ namespace BlazorWebApp.Services
             {
                 var currentWorkflowBase = State?.Generation?.WorkflowBase;
                 var currentWorkflowId = State?.Generation?.CurrentWorkflowId;
-                
+
                 // Load workflows from disk
                 GetComfyWorkflows();
-                
+
                 // Try to restore the previous workflow selection
                 if (State?.Generation?.Workflows != null && State.Generation.Workflows.Count > 0)
                 {
@@ -886,7 +855,7 @@ namespace BlazorWebApp.Services
                             return;
                         }
                     }
-                    
+
                     // Fallback: try to match by base
                     if (currentWorkflowBase != default)
                     {
@@ -898,7 +867,7 @@ namespace BlazorWebApp.Services
                             return;
                         }
                     }
-                    
+
                     // Last resort: use first available workflow
                     var firstWorkflow = State.Generation.Workflows.FirstOrDefault();
                     if (firstWorkflow != null)
@@ -996,13 +965,13 @@ namespace BlazorWebApp.Services
         {
             var previousBase = State.Generation.WorkflowBase;
             State.Generation.WorkflowBase = workflowBase;
-            
+
             // If base changed, reset workflow assets to use workflow defaults
             if (previousBase != workflowBase)
             {
                 ResetWorkflowAssetsToDefaults();
             }
-            
+
             OnWorkflowBaseChanged?.Invoke();
             SetDefaultBaseModel();
         }
@@ -1015,19 +984,19 @@ namespace BlazorWebApp.Services
         {
             // Get the new workflow for each mode and reset assets to its defaults
             var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
-            
+
             foreach (var mode in modes)
             {
                 var workflows = GetWorkflowsForMode(mode);
                 var workflow = workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-                
+
                 if (workflow?.Assets == null || workflow.Assets.Count == 0)
                     continue;
-                
+
                 // Clear existing assets for this mode and set to workflow defaults
                 var assets = GetOrCreateWorkflowAssetsForMode(mode);
                 assets.Clear();
-                
+
                 foreach (var asset in workflow.Assets)
                 {
                     if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
@@ -1335,8 +1304,9 @@ namespace BlazorWebApp.Services
 
         public async Task<string> PostOptions(Options options)
         {
-            var response = await _sdapi.PostOptions(options);
-            await GetOptions();
+            var response = await _backend.PostOptions(options);
+            Options = _backend.Options;
+            OnOptionsChange?.Invoke();
             return response;
         }
 

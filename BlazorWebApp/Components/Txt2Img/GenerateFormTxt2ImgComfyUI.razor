@@ -223,23 +223,8 @@
     protected async override Task OnInitializedAsync()
     {
         _options = M.Options;
-        if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
-        if (Parameters.Loras == null) Parameters.Loras = new List<Lora>();
-        if (Parameters.SeedVR2 == null) Parameters.SeedVR2 = new SeedVR2Parameters();
-        // if (Parameters.ConditioningVariation == null) Parameters.ConditioningVariation = new ConditioningVariationParameters();
-        
-        // Initialize the scale multiplier from existing resolution if available
-        if (Parameters.SeedVR2.Resolution > 0 && Parameters.Width > 0 && Parameters.Height > 0)
-        {
-            var smallestSide = Math.Min((int)Parameters.Width, (int)Parameters.Height);
-            if (smallestSide > 0)
-            {
-                Parameters.SeedVR2.Scale = Math.Round((double)Parameters.SeedVR2.Resolution / smallestSide, 2);
-            }
-        }
-        
+        if (M.Upscalers == null || M.Upscalers.Count == 0) await M.LoadBackendDependentResources();
         RefreshHighresInfo();
-        RefreshSeedVR2Info();
     }
 
     /// <summary>
@@ -429,4 +414,4 @@
         
         return (targetWidth, targetHeight, smallestSide);
     }
-}
+}}

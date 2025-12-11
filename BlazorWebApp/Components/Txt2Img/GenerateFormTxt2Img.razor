@@ -198,7 +198,7 @@
     protected async override Task OnInitializedAsync()
     {
         _options = M.Options;
-        if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
+        if (M.Upscalers == null || M.Upscalers.Count == 0) await M.LoadBackendDependentResources();
         RefreshHighresInfo();
         InitializeUpscalers();
     }
