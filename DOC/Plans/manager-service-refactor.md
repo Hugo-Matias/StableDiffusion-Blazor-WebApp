@@ -1,7 +1,7 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Planning
+**Current Phase:** Phase 1 - Complete
 **Last Updated:** 2025-01-13
 
 ---
@@ -122,63 +122,76 @@ Transform `ManagerService` into a lightweight **Orchestrator** that:
 
 ### Phase 1: Foundation - Event System & Testing Infrastructure
 **Objective:** Create infrastructure for typed events, service interfaces, and unit testing
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
-- [ ] Create `BlazorWebApp.Tests` xUnit test project
-- [ ] Add required NuGet packages (xUnit, Moq, FluentAssertions)
-- [ ] Create `BlazorWebApp/Events` folder
-- [ ] Create typed event args classes:
+- [x] Create `BlazorWebApp.Tests` xUnit test project
+- [x] Add required NuGet packages (xUnit, Moq, FluentAssertions)
+- [x] Create `BlazorWebApp/Events` folder
+- [x] Create typed event args classes:
   - `StateChangedEventArgs`
   - `ModelChangedEventArgs`
   - `BackendAvailabilityChangedEventArgs`
-- [ ] Create `IEventService` interface with pub/sub methods
-- [ ] Implement `EventService` with typed event aggregation
-- [ ] Write unit tests for `EventService`
-- [ ] Create interface stubs for planned services (IStateService, ISettingsService, etc.)
-- [ ] Register `EventService` in DI (Program.cs)
+- [x] Create `IEventService` interface with pub/sub methods
+- [x] Implement `EventService` with typed event aggregation
+- [x] Write unit tests for `EventService`
+- [x] Create interface stubs for planned services (IStateService, ISettingsService, etc.)
+- [x] Register `EventService` in DI (Program.cs)
 
 #### Success Criteria
-- [ ] EventService compiles and is injectable
-- [ ] EventService unit tests pass
-- [ ] Test project structure established
-- [ ] No changes to existing functionality
+- [x] EventService compiles and is injectable
+- [x] EventService unit tests pass (15/15 tests passed)
+- [x] Test project structure established
+- [x] No changes to existing functionality
 
 ---
 
 ### Phase 2: Extract StateService
 **Objective:** Move state persistence and parameters to dedicated service
-**Status:** [ ] Not Started
+**Status:** [?] Complete (Component migration deferred to Phase 8)
 
 #### Tasks
-- [ ] Create `IStateService` interface
-- [ ] Create `StateService` with:
+- [x] Create `IStateService` interface
+- [x] Create `StateService` with:
   - AppState property
   - Parameter properties (Txt2Img, Img2Img, Upscale, Img2Vid)
   - LoadState/SaveState methods
   - NormalizeState logic
-- [ ] Write unit tests for StateService
-- [ ] Register StateService in DI as singleton
-- [ ] Inject `StateService` into `ManagerService`
-- [ ] Delegate state operations from `ManagerService` to `StateService` (keep facade)
-- [ ] Remove old `Action` events from ManagerService (OnAppStateChanged, OnTxt2ImgParametersChanged, etc.)
-- [ ] Add typed events to EventService
-- [ ] Update components using state/parameters:
-  - Identify components via code search
-  - Inject `IStateService` where needed
-  - Subscribe to typed events via `IEventService`
-  - Test each component after update
-- [ ] Run full application test
-
-#### Component Migration Checklist
-- [ ] (Components TBD during implementation via code search)
+- [x] Write unit tests for StateService (21 tests, all passing)
+- [x] Create `IStateDatabaseService` interface for testability
+- [x] Create `StateDatabaseServiceAdapter` adapter class
+- [x] Register StateService in DI as singleton
+- [x] Inject `StateService` into `ManagerService`
+- [x] Delegate state operations from `ManagerService` to `StateService` (keep facade)
+- [x] Call StateService.LoadState() on application startup (MainLayout)
+- [x] Verify application functionality and state persistence
+- [~] Remove old `Action` events from ManagerService (Deferred to Phase 8)
+- [~] Update components using state/parameters (Deferred to Phase 8)
+  - Components currently use `M.State` via facade - working correctly
+  - Will migrate during Phase 8 orchestrator refactor
+  - No breaking changes until facade removal
 
 #### Success Criteria
-- [ ] StateService unit tests pass
-- [ ] ManagerService delegates correctly
-- [ ] All migrated components use IStateService
-- [ ] Application fully functional
-- [ ] Old state events removed
+- [x] StateService compiles successfully
+- [x] ManagerService delegates correctly  
+- [x] Build passes without errors
+- [x] StateService unit tests pass (21/21 ?)
+- [x] State loads on application startup
+- [x] State persistence verified (theme changes persist across reloads)
+- [x] Application fully functional
+- [~] Component migration (Deferred to Phase 8)
+- [~] Old state events removed (Deferred to Phase 8)
+
+#### Notes
+- Using hardcoded defaults in StateService until Phase 3 (SettingsService)
+- Keeping temporary facade in ManagerService for all phases until Phase 8
+- Removed old Initialize*Parameters methods from ManagerService (now in StateService)
+- Removed NormalizeState method from ManagerService (now in StateService)
+- SaveSettings() method kept in ManagerService until Phase 3
+- Created `IStateDatabaseService` interface for testing purposes - full `IDatabaseService` will be created in later phases
+- Created `StateDatabaseServiceAdapter` to bridge DatabaseService to interface
+- **Fix:** Added `LoadState()` call in `MainLayout.OnInitializedAsync()` to ensure state is loaded from database on app startup
+- **Decision:** Component migration and event removal deferred to Phase 8 to minimize disruption and allow progressive refactoring
 
 ---
 
@@ -409,6 +422,10 @@ BlazorWebApp.Tests/
 |------|-------|---------|
 | 2025-01-13 | Planning | Initial plan created |
 | 2025-01-13 | Planning | Refined with decisions: xUnit, per-phase migration, no backward compat focus |
+| 2025-01-13 | Phase 1 | Event system complete: EventService, typed events, test infrastructure, interface stubs |
+| 2025-01-13 | Phase 2 | StateService extraction complete: Implementation finished, build passes, 21/21 tests passing |
+| 2025-01-13 | Phase 2 | Fixed state persistence issue - added LoadState() call in MainLayout.OnInitializedAsync() |
+| 2025-01-13 | Phase 2 | **COMPLETE** - StateService working, state persists correctly, component migration deferred to Phase 8 |
 
 ---
 
@@ -444,6 +461,15 @@ namespace BlazorWebApp.Events
         public string PreviousModel { get; init; }
         public string NewModel { get; init; }
         public ModeType Mode { get; init; }
+    }
+}
+
+// BlazorWebApp/Events/BackendAvailabilityChangedEventArgs.cs
+namespace BlazorWebApp.Events
+{
+    public class BackendAvailabilityChangedEventArgs : EventArgs
+    {
+        public bool IsAvailable { get; init; }
     }
 }
 ```

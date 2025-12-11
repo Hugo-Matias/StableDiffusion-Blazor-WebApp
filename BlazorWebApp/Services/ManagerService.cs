@@ -23,6 +23,8 @@ namespace BlazorWebApp.Services
         private readonly IConfiguration _configuration;
         private readonly ComfyUIService _capi;
         private readonly WorkflowService _workflow;
+        private readonly IStateService _state;
+        private readonly IEventService _events;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
@@ -71,13 +73,15 @@ namespace BlazorWebApp.Services
         /// </summary>
         public event Func<Workflow?, Task>? OnCurrentWorkflowChangedAsync;
 
-        public AppState State { get; set; }
+        // Temporary facade - delegates to StateService (will be removed in Phase 8)
+        public AppState State => _state.State;
+        public Txt2ImgParameters ParametersTxt2Img => _state.ParametersTxt2Img;
+        public Img2ImgParameters ParametersImg2Img => _state.ParametersImg2Img;
+        public Models.UpscaleParameters ParametersUpscale => _state.ParametersUpscale;
+        public Img2VidParameters ParametersImg2Vid => _state.ParametersImg2Vid;
         public AppSettings Settings { get; set; }
         public Options Options { get; set; }
-        public Txt2ImgParameters ParametersTxt2Img { get; set; }
-        public Img2ImgParameters ParametersImg2Img { get; set; }
-        public Models.UpscaleParameters ParametersUpscale { get; set; }
-        public Img2VidParameters ParametersImg2Vid { get; set; }
+
         public GeneratedImages Images { get; set; }
         public GeneratedImagesInfo ImagesInfo { get; set; }
         public ImagesDto GeneratedImageEntities { get; set; }
@@ -257,7 +261,7 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow)
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events)
         {
             _sdapi = sdapi;
             _db = db;
@@ -266,9 +270,11 @@ namespace BlazorWebApp.Services
             _configuration = configuration;
             _capi = capi;
             _workflow = workflow;
+            _state = state;
+            _events = events;
             LoadSettings();
-            State = new AppState(Settings);
-            LoadState();
+            // Note: LoadState() must be called asynchronously after construction
+            // The StateService already initializes with defaults in its constructor
 
             // Initialize to empty lists - these will be populated when the backend comes online
             Upscalers = new();
@@ -301,182 +307,9 @@ namespace BlazorWebApp.Services
 
         public void InitializeParameters(ModeType[] modes)
         {
-            var defaultParameters = new SharedParameters()
-            {
-                Comfy = new() { Workflow = new() },
-                Loras = new(),
-                Steps = Settings.Generation.Shared.Steps.Value,
-                SamplerIndex = Settings.Generation.Shared.Sampler,
-                Seed = Settings.Generation.Shared.Seed,
-                CfgScale = Settings.Generation.Shared.CfgScale.Value,
-                DistilledCfgScale = Settings.Generation.Shared.CfgScale.Value,
-                Width = Settings.Generation.Shared.Resolution.Width,
-                Height = Settings.Generation.Shared.Resolution.Height,
-                NIter = Settings.Generation.Shared.Batch.Count.Value,
-                BatchSize = Settings.Generation.Shared.Batch.Size.Value,
-                DenoisingStrength = Settings.Generation.Shared.Denoising.Value,
-                RestoreFaces = Settings.Generation.Shared.FaceRestoration,
-                Tiling = Settings.Generation.Shared.Tilling,
-            };
-
-            if (modes.Contains(ModeType.Txt2Img))
-                InitializeTxt2ImgParameters(defaultParameters);
-
-            if (modes.Contains(ModeType.Img2Img))
-                InitializeImg2ImgParameters(defaultParameters);
-
-            if (modes.Contains(ModeType.Extras))
-                InitializeUpscaleParameters(defaultParameters);
-
-            if (modes.Contains(ModeType.Img2Vid))
-                InitializeImg2VidParameters();
+            _state.InitializeParameters(modes);
         }
 
-        private void InitializeTxt2ImgParameters(SharedParameters defaultParameters)
-        {
-            ParametersTxt2Img = new Txt2ImgParameters(defaultParameters)
-            {
-                EnableHR = Settings.Generation.Txt2Img.HighRes.Enabled,
-                FirstphaseWidth = Settings.Generation.Txt2Img.HighRes.FirstPass.Width,
-                FirstphaseHeight = Settings.Generation.Txt2Img.HighRes.FirstPass.Height,
-                HRUpscaler = Settings.Generation.Txt2Img.HighRes.Upscaler,
-                HRScale = Settings.Generation.Txt2Img.HighRes.Scale.Value,
-                HRWidth = Settings.Generation.Txt2Img.HighRes.Resolution.Width,
-                HRHeight = Settings.Generation.Txt2Img.HighRes.Resolution.Height,
-                HRSecondPassSteps = Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Value,
-                SeedVR2 = new SeedVR2Parameters
-                {
-                    IsActive = Settings.Generation.Txt2Img.SeedVR2.Enabled,
-                    Model = Settings.Generation.Txt2Img.SeedVR2.Model,
-                    BlocksToSwap = Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Value,
-                    VaeTileSize = Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Value,
-                    VaeTileOverlap = Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Value,
-                    Resolution = Settings.Generation.Txt2Img.SeedVR2.Resolution.Value,
-                    Scale = Settings.Generation.Txt2Img.SeedVR2.Scale.Value,
-                    BatchSize = Settings.Generation.Txt2Img.SeedVR2.BatchSize.Value,
-                    InputNoiseScale = Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Value,
-                    LatentNoiseScale = Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Value
-                },
-                ConditioningVariation = new ConditioningVariationParameters
-                {
-                    IsActive = Settings.Generation.Txt2Img.ConditioningVariation.Enabled,
-                    SwitchPoint = Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Value,
-                },
-                Scripts = new()
-                {
-                    ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
-                    Cutoff = CreateCutoff(),
-                    DynamicPrompts = CreateDynamicPrompts(),
-                    MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
-                    MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
-                    RegionalPrompter = CreateRegionalPrompter(),
-                    XYZPlot = CreateXYZPlot(),
-                    ADetailer = CreateADetailer(),
-                    Incantations = CreateIncantationsModel(),
-                },
-            };
-        }
-
-        private void InitializeImg2ImgParameters(SharedParameters defaultParameters)
-        {
-            ParametersImg2Img = new Img2ImgParameters(defaultParameters)
-            {
-                MaskBlur = Settings.Generation.Img2Img.MaskBlur.Value,
-                ResizeMode = Settings.Generation.Img2Img.ResizeMode,
-                InpaintingFill = Settings.Generation.Img2Img.Inpainting.Fill,
-                InpaintFullRes = Settings.Generation.Img2Img.Inpainting.FullRes.Value,
-                InpaintFullResPadding = Settings.Generation.Img2Img.Inpainting.FullRes.Padding.Value,
-                InpaintingMaskInvert = Settings.Generation.Img2Img.Inpainting.MaskInvert,
-                Scripts = new()
-                {
-                    ControlNet = new() { CreateControlNet(), CreateControlNet(), CreateControlNet() },
-                    Cutoff = CreateCutoff(),
-                    DynamicPrompts = CreateDynamicPrompts(),
-                    UltimateUpscale = CreateUltimateUpscale(),
-                    MultiDiffusionTiledDiffusion = CreateMultiDiffusionTiledDiffusion(),
-                    MultiDiffusionTiledVae = CreateMultiDiffusionTiledVae(),
-                    RegionalPrompter = CreateRegionalPrompter(),
-                    XYZPlot = CreateXYZPlot(),
-                    ADetailer = CreateADetailer(),
-                    Incantations = CreateIncantationsModel(),
-                }
-            };
-        }
-
-        private void InitializeUpscaleParameters(SharedParameters defaultParameters)
-        {
-            ParametersUpscale = new Models.UpscaleParameters(defaultParameters)
-            {
-                ResizeMode = Settings.Generation.Upscale.ResizeMode,
-                ShowResults = Settings.Generation.Upscale.ShowResults,
-                GfpganVisibility = Settings.Generation.Upscale.FaceRestoration.GfpganVisibility,
-                CodeformerVisibility = Settings.Generation.Upscale.FaceRestoration.CodeformerVisibility,
-                CodeformerWeight = Settings.Generation.Upscale.FaceRestoration.CodeformerWeight,
-                UpscalingMultiplier = Settings.Generation.Upscale.UpscalingMultiplier.DefaultValue,
-                UpscalingWidth = Settings.Generation.Upscale.UpscalingResolution.Width,
-                UpscalingHeight = Settings.Generation.Upscale.UpscalingResolution.Height,
-                UpscalingCrop = Settings.Generation.Upscale.UpscalingResolution.CropToFit,
-                UpscalerPrimary = Settings.Generation.Upscale.UpscalerPrimary,
-                UpscalerSecondary = Settings.Generation.Upscale.UpscalerSecondary.Name,
-                UpscalerSecondaryVisibility = Settings.Generation.Upscale.UpscalerSecondary.DefaultValue,
-                UpscalePriority = Settings.Generation.Upscale.FaceRestoration.UpscaleBeforeRestoration
-            };
-        }
-
-        private void InitializeImg2VidParameters()
-        {
-            var i2vSettings = Settings.Generation?.Img2Vid;
-
-            // Use defaults if settings are null
-            if (i2vSettings == null)
-            {
-                ParametersImg2Vid = new Img2VidParameters();
-                return;
-            }
-
-            ParametersImg2Vid = new Img2VidParameters
-            {
-                // Initialize WorkflowAssets with default model settings
-                WorkflowAssets = new Dictionary<string, string>
-                {
-                    ["HighModel"] = i2vSettings.Models?.HighModel ?? "",
-                    ["LowModel"] = i2vSettings.Models?.LowModel ?? "",
-                    ["Clip"] = i2vSettings.Models?.Clip ?? "",
-                    ["ClipVision"] = i2vSettings.Models?.ClipVision ?? "",
-                    ["Vae"] = i2vSettings.Models?.Vae ?? ""
-                },
-
-                // Video settings
-                Length = i2vSettings.Video?.Length?.Value ?? 81,
-                FrameRate = i2vSettings.Video?.FrameRate?.Value ?? 16,
-                MotionAmplitude = i2vSettings.Video?.MotionAmplitude?.Value ?? 1.1f,
-
-                // Sampling settings
-                Shift = i2vSettings.Sampling?.Shift?.Value ?? 5,
-                Steps = i2vSettings.Sampling?.Steps?.Value ?? 8,
-                CfgScale = i2vSettings.Sampling?.CfgScale?.Value ?? 1.0f,
-                SamplerName = i2vSettings.Sampling?.Sampler ?? "euler",
-                Scheduler = i2vSettings.Sampling?.Scheduler ?? "simple",
-
-                // Resolution (from shared settings)
-                Width = Settings.Generation?.Shared?.Resolution?.Width ?? 768,
-                Height = Settings.Generation?.Shared?.Resolution?.Height ?? 768,
-                Seed = Settings.Generation?.Shared?.Seed ?? -1,
-                BatchSize = 1,
-
-                // Frame interpolation
-                FrameInterpolation = new Data.Dtos.ComfyUI.Workflow.FrameInterpolationParameters
-                {
-                    IsActive = i2vSettings.FrameInterpolation?.Enabled ?? true,
-                    ScaleBy = i2vSettings.FrameInterpolation?.ScaleBy?.Value ?? 2.0,
-                    Multiplier = i2vSettings.FrameInterpolation?.Multiplier?.Value ?? 2,
-                    RifeModel = i2vSettings.FrameInterpolation?.RifeModel ?? "rife49.pth"
-                },
-
-                // Initialize empty collections
-                Loras = new List<Lora>()
-            };
-        }
         #region Script Initializers
         public ScriptParametersControlNet CreateControlNet()
         {
@@ -1591,106 +1424,44 @@ namespace BlazorWebApp.Services
             else { Settings = new(); SaveSettings(); }
         }
 
-        public async Task LoadState(State? state = null)
-        {
-            if (state == null)
-            {
-                state = await _db.GetState(1);
-                State = new(Settings);
-                ModeType[] modes = new ModeType[4] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras, ModeType.Img2Vid };
-                InitializeParameters(modes);
-            }
-
-            if (!Settings.ResetState && state != null)
-            {
-                if (state.AppState != null)
-                {
-                    State = state.AppState;
-                    State.Generation.IsInterrupted = false;
-                    OnAppStateChanged?.Invoke();
-                }
-                if (state.Txt2ImgParameters != null)
-                {
-                    ParametersTxt2Img = state.Txt2ImgParameters;
-                    OnTxt2ImgParametersChanged?.Invoke();
-                }
-                if (state.Img2ImgParameters != null)
-                {
-                    ParametersImg2Img = state.Img2ImgParameters;
-                    OnImg2ImgParametersChanged?.Invoke();
-                }
-                if (state.UpscaleParameters != null)
-                {
-                    ParametersUpscale = state.UpscaleParameters;
-                    OnUpscaleParametersChanged?.Invoke();
-                }
-                if (state.Img2VidParameters != null)
-                {
-                    ParametersImg2Vid = state.Img2VidParameters;
-                    OnImg2VidParametersChanged?.Invoke();
-                }
-
-                NormalizeState();
-
-                // Migrate legacy model settings from AppState to parameter models
-                MigrateLegacyModelSettings();
-                
-                // Always refresh workflows from disk to pick up any template changes
-                // This ensures new deployments with updated workflow files are loaded
-                RefreshWorkflowsFromDisk();
-
-                OnAppStateChanged?.Invoke();
-                OnTxt2ImgParametersChanged?.Invoke();
-                OnImg2ImgParametersChanged?.Invoke();
-                OnUpscaleParametersChanged?.Invoke();
-                OnImg2VidParametersChanged?.Invoke();
-            }
-            else await SaveState();
-        }
-
         public void SaveSettings()
         {
             var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions() { WriteIndented = true });
             _io.SaveText(_settingsFile, json);
         }
 
-        public async Task SaveState(State? state = null)
+        public async Task LoadState(State? state = null)
         {
-            NormalizeState();
+            await _state.LoadState();
 
-            if (state == null)
+            if (state != null)
             {
-                var entity = await _db.GetState(1);
-                if (entity == null)
-                {
-                    entity = new()
-                    {
-                        Title = "AutoSave",
-                        CreationDate = DateTime.Now,
-                        Version = int.Parse(_configuration["StateVersion"])
-                    };
-                }
-                entity.AppState = State;
-                entity.Txt2ImgParameters = ParametersTxt2Img;
-                entity.Img2ImgParameters = ParametersImg2Img;
-                entity.UpscaleParameters = ParametersUpscale;
-                entity.Img2VidParameters = ParametersImg2Vid;
-                await _db.UpdateState(entity);
+                // Handle custom state loading if provided
+                await _state.SaveState();
             }
-            else await _db.UpdateState(state);
+
+            // Keep existing migration and workflow refresh logic
+            MigrateLegacyModelSettings();
+            RefreshWorkflowsFromDisk();
+
+            // Trigger state changed events
+            OnAppStateChanged?.Invoke();
+            OnTxt2ImgParametersChanged?.Invoke();
+            OnImg2ImgParametersChanged?.Invoke();
+            OnUpscaleParametersChanged?.Invoke();
+            OnImg2VidParametersChanged?.Invoke();
         }
 
-        /// <summary>
-        /// Normalizes state and parameters to ensure all properties exist with default values.
-        /// Uses reflection to automatically discover and initialize null properties.
-        /// </summary>
-        private void NormalizeState()
+        public async Task SaveState(State? state = null)
         {
-            StateNormalizer.Normalize(State);
-            StateNormalizer.Normalize(ParametersTxt2Img);
-            StateNormalizer.Normalize(ParametersImg2Img);
-            StateNormalizer.Normalize(ParametersUpscale);
-            StateNormalizer.Normalize(ParametersImg2Vid);
+            if (state == null)
+            {
+                await _state.SaveState();
+            }
+            else
+            {
+                await _db.UpdateState(state);
+            }
         }
 
         /// <summary>
@@ -1788,6 +1559,7 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Gets the assets defined for the current workflow.
+        /// Returns DiffusionModels if workflow uses diffusion, otherwise CheckpointModels.
         /// </summary>
         public List<WorkflowAsset>? GetCurrentWorkflowAssets()
         {

@@ -90,6 +90,9 @@
 
     protected async override Task OnInitializedAsync() 
     { 
+        // Load persisted state from database
+        await M.LoadState();
+        
         M.IsWebuiUp = await SDAPI.CheckWebuiState();
         
         // Load backend-dependent resources if a backend is up

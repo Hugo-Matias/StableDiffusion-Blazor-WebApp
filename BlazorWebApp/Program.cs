@@ -30,6 +30,14 @@ builder.Services.AddSingleton<ComfyUIWebsocketService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ComfyUIWebsocketService>());
 builder.Services.AddSingleton<ComfyUIEventBus>();
 
+// Event aggregation service for typed events
+builder.Services.AddSingleton<IEventService, EventService>();
+
+// State management service
+builder.Services.AddSingleton<IStateDatabaseService>(sp => 
+    new StateDatabaseServiceAdapter(sp.GetRequiredService<DatabaseService>()));
+builder.Services.AddSingleton<IStateService, StateService>();
+
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();
