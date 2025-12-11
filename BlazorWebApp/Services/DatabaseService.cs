@@ -68,8 +68,8 @@ namespace BlazorWebApp.Services
         public async Task<List<Project>> GetProjects(int folderId = 0)
         {
             using var context = await _factory.CreateDbContextAsync();
-            if (folderId <= 0) return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();
-            else return await context.Projects.Where(p => p.FolderId == folderId).OrderBy(p => p.CreationTime).ToListAsync();
+            if (folderId <= 0) return await context.Projects.OrderByDescending(p => p.CreationTime).ToListAsync();
+            else return await context.Projects.Where(p => p.FolderId == folderId).OrderByDescending(p => p.CreationTime).ToListAsync();
         }
 
         public async Task<Project> GetProject(int id)

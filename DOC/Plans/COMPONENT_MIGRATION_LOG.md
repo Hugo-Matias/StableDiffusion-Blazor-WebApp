@@ -3,7 +3,7 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 6/70 components migrated (9%)
+**Current Progress:** 8/70 components migrated (11%)
 
 ---
 
@@ -118,9 +118,9 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | ImageInfoCopyParameterButtons | Components/Shared/Image | State | ? Not Started | |
 | ImageProjectDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
 | ProjectCard | Components/Shared/Project | State | ? Complete | Migrated 2025-01-14 - Project display card |
-| ProjectModal | Components/Shared/Project | State, Gallery | ? Not Started | |
+| ProjectModal | Components/Shared/Project | Database only | ? Complete | No migration needed - doesn't use ManagerService |
 | CreateProjectButton | Components/Shared/Project | State, Gallery | ? Complete | Migrated 2025-01-14 - Create project button |
-| GallerySettings | Components/Gallery | State, Gallery | ? Not Started | |
+| GallerySettings | Components/Gallery | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Gallery settings and filters |
 
 ---
 
@@ -199,14 +199,16 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 60 (86%)
-- **Complete:** 6 (9%)
+- **Not Started:** 58 (83%)
+- **Complete:** 8 (11%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
   - Index.razor
   - ProjectCard.razor
   - CreateProjectButton.razor
+  - ProjectModal.razor (no migration needed)
+  - GallerySettings.razor
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -355,7 +357,7 @@ This ensures both migrated components (using EventService) and unmigrated compon
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (6/70 = 9%)
+- [ ] All 70 components migrated (8/70 = 11%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)
