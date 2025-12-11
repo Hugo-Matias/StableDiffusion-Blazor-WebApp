@@ -3,7 +3,7 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 3/70 components migrated (4%)
+**Current Progress:** 4/70 components migrated (6%)
 
 ---
 
@@ -181,9 +181,10 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | Txt2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
 | Img2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session, Gallery | ? Not Started | |
 | Img2VidComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
-| Index | Pages | State, Gallery | ? Not Started | |
+| Index | Pages | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Gallery page with infinite scroll |
 | Settings | Pages | State, Settings | ? Not Started | |
 | Resources | Pages | State, Models | ? Not Started | |
+| AssetViewer | Components/Shared | State, Session, Models, Gallery | ? Not Started | Complex - many M. references |
 
 ---
 
@@ -198,11 +199,12 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 63 (90%)
-- **Complete:** 3 (4%)
+- **Not Started:** 62 (89%)
+- **Complete:** 4 (6%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
+  - Index.razor
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -217,11 +219,14 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 1. **Styles Dropdown Not Populating** - See manager-service-refactor.md Phase 8 Known Issues
 2. **State Loading Events** - ? FIXED: StateService.LoadState() now publishes StateChangedEventArgs after loading
 3. **Folder Selection "All"** - ? FIXED: GalleryService.SetCurrentFolder() now handles ID=0 case
+4. **Project Card Selection Not Updating Images** - ? FIXED: ManagerService.SetCurrentProject() now delegates to GalleryService to fire ProjectChangedEventArgs
 
 ### Fixed Issues
 1. **StateService Interface Mismatch** - Fixed LoadState to have two separate overloads (parameterless and with int stateId) matching IStateService interface
 2. **State Loading Events** - StateService.LoadState() now publishes all StateChangedEventArgs events after loading state, ensuring UI components refresh properly
 3. **GalleryService Folder ID=0** - Added handling for folder ID=0 ("All folders") case in SetCurrentFolder method
+4. **ManagerService Project Selection** - Modified SetCurrentProject() to delegate to GalleryService.SetCurrentProject() ensuring new EventService-based components receive ProjectChangedEventArgs notifications
+5. **Index Page Event Handlers** - Properly implemented async event handlers to refresh projects list and images when project changes
 
 ### Migration Patterns Discovered
 
@@ -311,6 +316,27 @@ private BlazorWebApp.Data.Entities.State? _selectedState;  // Clear!
 - `State` - Injected service vs Data entity
 - Component parameter names should avoid service names
 
+#### Pattern 7: ManagerService Delegation During Migration
+When a ManagerService method needs to work with both old (Action events) and new (EventService) systems:
+
+```csharp
+// In ManagerService - Delegate to specialized service which fires new events
+public async Task SetCurrentProject(int id)
+{
+    await GetFolders();
+    await GetProjects();
+    
+    // Delegate to GalleryService which updates state and fires ProjectChangedEventArgs
+    await _gallery.SetCurrentProject(id);
+    
+    // Fire old events for backward compatibility (will be removed in Phase 8)
+    OnProjectChange?.Invoke();
+    OnProjectChangeTask?.Invoke();
+}
+```
+
+This ensures both migrated components (using EventService) and unmigrated components (using Action events) continue to work during the migration period.
+
 ### Breaking Changes
 - Parameters named `State` must be renamed or fully qualified due to `IStateService State` injection
 ---
@@ -327,7 +353,7 @@ private BlazorWebApp.Data.Entities.State? _selectedState;  // Clear!
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (3/70 = 4%)
+- [ ] All 70 components migrated (4/70 = 6%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)

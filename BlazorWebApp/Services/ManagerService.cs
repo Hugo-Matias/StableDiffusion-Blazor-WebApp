@@ -750,9 +750,11 @@ namespace BlazorWebApp.Services
         {
             await GetFolders();
             await GetProjects();
-            State.Gallery.ProjectId = id;
-            State.Gallery.ProjectName = Projects.FirstOrDefault(p => p.Id == id)?.Name;
-            SaveState();
+            
+            // Delegate to GalleryService which will update state and fire the new ProjectChangedEventArgs event
+            await _gallery.SetCurrentProject(id);
+            
+            // Fire old events for backward compatibility (will be removed in Phase 8)
             OnProjectChange?.Invoke();
             OnProjectChangeTask?.Invoke();
         }
