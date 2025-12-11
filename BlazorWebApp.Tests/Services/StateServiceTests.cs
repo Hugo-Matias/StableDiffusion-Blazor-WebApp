@@ -18,6 +18,7 @@ namespace BlazorWebApp.Tests.Services
         private readonly Mock<IStateDatabaseService> _mockDb;
         private readonly Mock<IConfiguration> _mockConfig;
         private readonly Mock<IEventService> _mockEvents;
+        private readonly Mock<ISettingsService> _mockSettings;
         private readonly StateService _sut;
         private readonly List<State> _stateStore;
 
@@ -26,12 +27,18 @@ namespace BlazorWebApp.Tests.Services
             _mockDb = new Mock<IStateDatabaseService>();
             _mockConfig = new Mock<IConfiguration>();
             _mockEvents = new Mock<IEventService>();
-            _stateStore = new List<State>();
-
-            // Setup default configuration
+            _mockSettings = new Mock<ISettingsService>();
+            
+            // Setup default settings
+            _mockSettings.Setup(s => s.Settings).Returns(new AppSettings());
+            
+            // Setup configuration
             _mockConfig.Setup(c => c["StateVersion"]).Returns("1");
 
-            _sut = new StateService(_mockDb.Object, _mockConfig.Object, _mockEvents.Object);
+            // Setup database mocks
+            _mockDb.Setup(db => db.GetState(It.IsAny<int>())).ReturnsAsync((State)null);
+            
+            _sut = new StateService(_mockDb.Object, _mockConfig.Object, _mockEvents.Object, _mockSettings.Object);
         }
 
         #region Constructor and Initialization Tests
@@ -50,11 +57,11 @@ namespace BlazorWebApp.Tests.Services
         [Fact]
         public void Constructor_ShouldInitializeParametersWithDefaults()
         {
-            // Assert
-            _sut.ParametersTxt2Img.Steps.Should().Be(20);
-            _sut.ParametersTxt2Img.CfgScale.Should().Be(7.0f);
+            // Assert - These should match AppSettings defaults
+            _sut.ParametersTxt2Img.Steps.Should().Be(30); // AppSettings default
+            _sut.ParametersTxt2Img.CfgScale.Should().Be(7.5f); // AppSettings default
             _sut.ParametersTxt2Img.Width.Should().Be(512);
-            _sut.ParametersTxt2Img.Height.Should().Be(512);
+            _sut.ParametersTxt2Img.Height.Should().Be(768); // AppSettings default height
         }
 
         [Fact]
@@ -311,17 +318,17 @@ namespace BlazorWebApp.Tests.Services
                 (SharedParameters)_sut.ParametersTxt2Img : 
                 (SharedParameters)_sut.ParametersImg2Img;
 
-            // Assert
-            parameters.Steps.Should().Be(20);
+            // Assert - These should match AppSettings.Generation.Shared defaults
+            parameters.Steps.Should().Be(30); // AppSettings default
             parameters.Seed.Should().Be(-1);
-            parameters.CfgScale.Should().Be(7.0f);
+            parameters.CfgScale.Should().Be(7.5f); // AppSettings default
             parameters.Width.Should().Be(512);
-            parameters.Height.Should().Be(512);
-            parameters.NIter.Should().Be(1);
-            parameters.BatchSize.Should().Be(1);
-            parameters.DenoisingStrength.Should().Be(0.7f);
-            parameters.RestoreFaces.Should().BeFalse();
-            parameters.Tiling.Should().BeFalse();
+            parameters.Height.Should().Be(768); // AppSettings default
+            parameters.NIter.Should().Be(1); // Batch.Count.Value
+            parameters.BatchSize.Should().Be(4); // Batch.Size.Value
+            parameters.DenoisingStrength.Should().Be(0.52); // AppSettings Denoising.Value
+            parameters.RestoreFaces.Should().BeFalse(); // AppSettings FaceRestoration
+            parameters.Tiling.Should().BeFalse(); // AppSettings Tilling
         }
 
         [Fact]

@@ -17,6 +17,7 @@ namespace BlazorWebApp.Services
         private readonly IStateDatabaseService _db;
         private readonly IConfiguration _configuration;
         private readonly IEventService _events;
+        private readonly ISettingsService _settings;
 
         public AppState State { get; private set; }
         public Txt2ImgParameters ParametersTxt2Img { get; private set; }
@@ -27,15 +28,16 @@ namespace BlazorWebApp.Services
         public StateService(
             IStateDatabaseService db,
             IConfiguration configuration,
-            IEventService events)
+            IEventService events,
+            ISettingsService settings)
         {
             _db = db;
             _configuration = configuration;
             _events = events;
+            _settings = settings;
 
             // Initialize with defaults - will be replaced by LoadState if needed
-            // TODO: Phase 3 will inject SettingsService for proper defaults
-            State = new AppState(new AppSettings());
+            State = new AppState(_settings.Settings);
             
             ModeType[] modes = new ModeType[4] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Extras, ModeType.Img2Vid };
             InitializeParameters(modes);
@@ -43,8 +45,7 @@ namespace BlazorWebApp.Services
 
         public void InitializeParameters(ModeType[] modes)
         {
-            // Note: Settings dependency will be injected in Phase 3
-            // For now, we use default values
+            // Use settings from SettingsService for proper defaults
             var defaultParameters = CreateDefaultParameters();
 
             if (modes.Contains(ModeType.Txt2Img))
@@ -159,24 +160,24 @@ namespace BlazorWebApp.Services
 
         private SharedParameters CreateDefaultParameters()
         {
-            // TODO: Phase 3 will inject SettingsService here
-            // For now, use hardcoded defaults
+            // Use settings from SettingsService for proper defaults
+            var settings = _settings.Settings;
+            
             return new SharedParameters
             {
                 Comfy = new() { Workflow = new() },
                 Loras = new(),
-                Steps = 20,
-                SamplerIndex = "Euler",
-                Seed = -1,
-                CfgScale = 7.0f,
-                DistilledCfgScale = 7.0f,
-                Width = 512,
-                Height = 512,
-                NIter = 1,
-                BatchSize = 1,
-                DenoisingStrength = 0.7f,
-                RestoreFaces = false,
-                Tiling = false
+                Steps = settings.Generation.Shared.Steps.Value,
+                SamplerIndex = settings.Generation.Shared.Sampler,
+                Seed = settings.Generation.Shared.Seed,
+                CfgScale = settings.Generation.Shared.CfgScale.Value,
+                Width = settings.Generation.Shared.Resolution.Width,
+                Height = settings.Generation.Shared.Resolution.Height,
+                NIter = settings.Generation.Shared.Batch.Count.Value,
+                BatchSize = settings.Generation.Shared.Batch.Size.Value,
+                DenoisingStrength = settings.Generation.Shared.Denoising.Value,
+                RestoreFaces = settings.Generation.Shared.FaceRestoration,
+                Tiling = settings.Generation.Shared.Tilling
             };
         }
 

@@ -33,6 +33,9 @@ builder.Services.AddSingleton<ComfyUIEventBus>();
 // Event aggregation service for typed events
 builder.Services.AddSingleton<IEventService, EventService>();
 
+// Settings management service
+builder.Services.AddSingleton<ISettingsService, SettingsService>();
+
 // State management service
 builder.Services.AddSingleton<IStateDatabaseService>(sp => 
     new StateDatabaseServiceAdapter(sp.GetRequiredService<DatabaseService>()));

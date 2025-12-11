@@ -15,7 +15,6 @@ namespace BlazorWebApp.Services
 
     public class ManagerService
     {
-        private readonly string _settingsFile = "BlazorDiffusion.json";
         private readonly SDAPIService _sdapi;
         private readonly DatabaseService _db;
         private readonly IOService _io;
@@ -25,6 +24,7 @@ namespace BlazorWebApp.Services
         private readonly WorkflowService _workflow;
         private readonly IStateService _state;
         private readonly IEventService _events;
+        private readonly ISettingsService _settings;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
@@ -79,7 +79,10 @@ namespace BlazorWebApp.Services
         public Img2ImgParameters ParametersImg2Img => _state.ParametersImg2Img;
         public Models.UpscaleParameters ParametersUpscale => _state.ParametersUpscale;
         public Img2VidParameters ParametersImg2Vid => _state.ParametersImg2Vid;
-        public AppSettings Settings { get; set; }
+        
+        // Temporary facade - delegates to SettingsService (will be removed in Phase 8)
+        public AppSettings Settings => _settings.Settings;
+        
         public Options Options { get; set; }
 
         public GeneratedImages Images { get; set; }
@@ -261,7 +264,7 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events)
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings)
         {
             _sdapi = sdapi;
             _db = db;
@@ -272,7 +275,9 @@ namespace BlazorWebApp.Services
             _workflow = workflow;
             _state = state;
             _events = events;
-            LoadSettings();
+            _settings = settings;
+            
+            // SettingsService now handles loading settings automatically
             // Note: LoadState() must be called asynchronously after construction
             // The StateService already initializes with defaults in its constructor
 
@@ -1413,21 +1418,12 @@ namespace BlazorWebApp.Services
 
         public void LoadSettings()
         {
-            var json = _io.LoadText(_settingsFile);
-
-            if (json != null)
-            {
-                Settings = new();
-                Settings = JsonSerializer.Deserialize<AppSettings>(json);
-                SaveSettings();
-            }
-            else { Settings = new(); SaveSettings(); }
+            _settings.LoadSettings();
         }
 
         public void SaveSettings()
         {
-            var json = JsonSerializer.Serialize(Settings, new JsonSerializerOptions() { WriteIndented = true });
-            _io.SaveText(_settingsFile, json);
+            _settings.SaveSettings();
         }
 
         public async Task LoadState(State? state = null)
