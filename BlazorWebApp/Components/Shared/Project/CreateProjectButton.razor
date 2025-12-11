@@ -1,4 +1,5 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
+@inject IGalleryService Gallery
 @inject DatabaseService DB
 @inject IDialogService DialogService
 
@@ -30,8 +31,8 @@
         if (string.IsNullOrWhiteSpace(_newProject.Name)) return;
         _newProject.CreationTime = DateTime.Now;
         var projectEntity = await DB.CreateProject(new() { Name = _newProject.Name, Folder = _newProject.Folder, CreationTime = _newProject.CreationTime });
-        await M.GetProjects();
-        await M.SetCurrentProject(projectEntity.Id);
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
+        await Gallery.SetCurrentProject(projectEntity.Id);
         await OnProjectCreated.InvokeAsync();
     }
 }

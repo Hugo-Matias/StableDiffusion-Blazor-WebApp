@@ -3,7 +3,7 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 5/70 components migrated (7%)
+**Current Progress:** 6/70 components migrated (9%)
 
 ---
 
@@ -119,7 +119,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | ImageProjectDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
 | ProjectCard | Components/Shared/Project | State | ? Complete | Migrated 2025-01-14 - Project display card |
 | ProjectModal | Components/Shared/Project | State, Gallery | ? Not Started | |
-| CreateProjectButton | Components/Shared/Project | Gallery | ? Not Started | |
+| CreateProjectButton | Components/Shared/Project | State, Gallery | ? Complete | Migrated 2025-01-14 - Create project button |
 | GallerySettings | Components/Gallery | State, Gallery | ? Not Started | |
 
 ---
@@ -199,13 +199,14 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 61 (87%)
-- **Complete:** 5 (7%)
+- **Not Started:** 60 (86%)
+- **Complete:** 6 (9%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
   - Index.razor
   - ProjectCard.razor
+  - CreateProjectButton.razor
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -354,7 +355,7 @@ This ensures both migrated components (using EventService) and unmigrated compon
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (5/70 = 7%)
+- [ ] All 70 components migrated (6/70 = 9%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)
