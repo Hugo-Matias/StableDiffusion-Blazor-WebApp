@@ -25,6 +25,7 @@ namespace BlazorWebApp.Services
         private readonly ISettingsService _settings;
         private readonly IBackendService _backend;
         private readonly IModelService _models;
+        private readonly IGalleryService _gallery;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
@@ -105,9 +106,12 @@ namespace BlazorWebApp.Services
         public List<Upscaler> Upscalers => _backend.Upscalers;
 
         public List<PromptStyle> Styles { get; set; }
-        public List<Folder>? Folders { get; set; }
-        public List<Project>? Projects { get; set; }
-        public List<int> SelectedImageIds { get; set; }
+        
+        // Temporary facade - delegates to GalleryService (will be removed in Phase 8)
+        public List<Folder>? Folders => _gallery.Folders;
+        public List<Project>? Projects => _gallery.Projects;
+        public List<int> SelectedImageIds => _gallery.SelectedImageIds;
+        
         public int CurrentProgress
         {
             get => _currentProgress; set
@@ -261,7 +265,7 @@ namespace BlazorWebApp.Services
         // Temporary facade - delegates to BackendService (will be removed in Phase 8)
         public bool IsComfyUIUp => _backend.IsBackendAvailable;
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models)
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models, IGalleryService gallery)
         {
             _sdapi = sdapi;
             _db = db;
@@ -275,6 +279,7 @@ namespace BlazorWebApp.Services
             _settings = settings;
             _backend = backend;
             _models = models;
+            _gallery = gallery;
 
             // SettingsService now handles loading settings automatically
             // Note: LoadState() must be called asynchronously after construction
@@ -283,9 +288,6 @@ namespace BlazorWebApp.Services
             // Initialize to empty lists - these will be populated when the backend comes online
             Images = new();
             Progress = new();
-            Folders = new();
-            Projects = new();
-            SelectedImageIds = new();
             _db.PageSize = State.Gallery.PageSize;
             State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
@@ -707,12 +709,13 @@ namespace BlazorWebApp.Services
 
         public async Task GetFolders()
         {
-            Folders = await _db.GetFolders();
+            await _gallery.GetFolders();
+            OnFolderChange?.Invoke();
         }
 
         public async Task GetProjects()
         {
-            Projects = await _db.GetProjects(State.Gallery.FolderId);
+            await _gallery.GetProjects(State.Gallery.FolderId);
             if (State.Gallery.GalleriesOrderDescending) Projects.Reverse();
             OnProjectsChange?.Invoke();
         }
@@ -1271,26 +1274,25 @@ namespace BlazorWebApp.Services
 
         public void ReplaceSelectedImages(List<int> ids)
         {
-            ClearSelectedImages();
-            SelectedImageIds = ids;
+            _gallery.ReplaceSelectedImages(ids);
             OnSelectedImagesChanged?.Invoke();
         }
 
         public void AddSelectedImage(int id)
         {
-            SelectedImageIds.Add(id);
+            _gallery.AddSelectedImage(id);
             OnSelectedImagesChanged?.Invoke();
         }
 
         public void RemoveSelectedImage(int id)
         {
-            SelectedImageIds.Remove(id);
+            _gallery.RemoveSelectedImage(id);
             OnSelectedImagesChanged?.Invoke();
         }
 
         public void ClearSelectedImages()
         {
-            SelectedImageIds.Clear();
+            _gallery.ClearSelectedImages();
             OnSelectedImagesChanged?.Invoke();
         }
 

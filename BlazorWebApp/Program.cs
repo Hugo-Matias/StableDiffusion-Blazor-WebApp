@@ -49,6 +49,9 @@ builder.Services.AddSingleton<IBackendService, BackendService>();
 // Model and asset management service
 builder.Services.AddSingleton<IModelService, ModelService>();
 
+// Gallery management service (folders, projects, image selection)
+builder.Services.AddSingleton<IGalleryService, GalleryService>();
+
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();

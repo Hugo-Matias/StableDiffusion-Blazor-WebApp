@@ -13,7 +13,7 @@ namespace BlazorWebApp.Services
         List<int> SelectedImageIds { get; }
 
         Task GetFolders();
-        Task GetProjects();
+        Task GetProjects(int folderId = 0);
         Task SetCurrentFolder(int id);
         Task SetCurrentProject(int id);
 
