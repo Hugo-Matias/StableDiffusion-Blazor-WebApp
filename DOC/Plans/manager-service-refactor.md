@@ -650,9 +650,11 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 
 ### Phase 8: Orchestrator Refactor & Component Migration
 **Objective:** Convert ManagerService to lightweight orchestrator, migrate ALL components
-**Status:** [ ] Not Started
+**Status:** [??] In Progress - Component Migration Started
 
 ?? **CRITICAL PHASE** - This is the largest and most important phase. Requires careful planning and execution.
+
+**Migration Tracking:** See `DOC/Plans/COMPONENT_MIGRATION_LOG.md` for detailed progress
 
 #### Tasks
 
@@ -991,18 +993,6 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.1     | **First Component Migrated!** NavBar.razor successfully migrated from ManagerService to IStateService, IGalleryService, IBackendService, and IEventService. Established migration patterns for event subscriptions, property access, and service injection. Build passes. 1/70 components complete (1%). |
+| 2025-01-14 | 2.0       | **Phase 8 Started**: Created Component Migration Log tracking 70 components across 8 groups. Migration strategy defined with service injection patterns and event subscription patterns. MainLayout identified as most critical component. Ready to begin Group 1 (Simple Components) migration. |
 | 2025-01-14 | 1.4.1     | **Phase 7 Simplified**: Removed circuit isolation complexity. SessionService now a simple singleton without per-tab isolation. Removed `CircuitHandlerService` and `ConcurrentDictionary` overhead. All 20 tests still passing. Simpler, cleaner architecture suitable for single-user scenarios. |
-| 2025-01-14 | 1.4       | **Phase 7 Complete**: SessionService extracted with 20/20 tests passing. Canvas, image editor, input images, and session videos now in dedicated singleton service with per-circuit isolation. Circuit tracking via `CircuitHandlerService` ensures each browser tab has independent session state. All session operations delegate correctly through ManagerService facade. Application verified stable with proper tab isolation. |
-| 2025-01-13 | 1.3       | **Phase 6 Complete**: GalleryService extracted with 13/13 tests passing. Folders, Projects, and SelectedImageIds management now in dedicated service. All gallery operations delegate correctly through ManagerService facade. Application verified stable. |
-| 2025-01-13 | 1.2       | Added Phases 6-9 documentation, integrated Known Issues into Phase 8 |
-| 2025-01-13 | 1.1       | Phase 5.5 complete: IDatabaseService and IIOService deferred to Phase 9, enhanced StateService tests deferred to integration testing |
-| 2025-01-13 | Phase 5.5 | Created test infrastructure: `BackendTestFixtures.cs` (sample data) and `MockComfyUIServiceBuilder.cs` (fluent mock builder) |
-| 2025-01-13 | Phase 5.5 | Created `BackendServiceTests.cs` with 15 unit tests covering health checks, resource loading, options management, and monitoring |
-| 2025-01-13 | Phase 5.5 | **BackendService Tests Complete** - All 15 tests passing ? (Total: 72/72 tests) |
-| 2025-01-13 | Phase 5.5 | Created test fixtures: `ModelTestFixtures.cs`, mock builders: `MockStateServiceBuilder.cs`, `MockBackendServiceBuilder.cs` |
-| 2025-01-13 | Phase 5.5 | Created `ModelServiceTests.cs` with 23 unit tests covering workflow models, current model/VAE, asset loading, and workflow asset management |
-| 2025-01-13 | Phase 5.5 | **ModelService Tests Complete** - All 23 tests passing ? (Total: 95/95 tests) |
-| 2025-01-13 | Phase 5.5 | Fixed DI registration for dual interface/concrete class support - ComfyUIService works with both IComfyUIService and ComfyUIService injections |
-| 2025-01-13 | Phase 5.5 | Application verified stable with all 95 tests passing in ~0.9 seconds |
-| 2025-01-13 | Phase 5.5 | **COMPLETE** - Core objectives achieved: IComfyUIService interface, BackendService (15 tests), ModelService (23 tests). IDatabaseService, IIOService, and enhanced StateService tests deferred to Phase 9 for integration testing |
-| 2025-01-14 | Phase 7 | **Phase 7 Complete**: SessionService extracted with 20/20 tests passing. Canvas, image editor, input images, and session videos now in dedicated singleton service with per-circuit isolation. Circuit tracking via `CircuitHandlerService` ensures each browser tab has independent session state. All session operations delegate correctly through ManagerService facade. Application verified stable with proper tab isolation. |

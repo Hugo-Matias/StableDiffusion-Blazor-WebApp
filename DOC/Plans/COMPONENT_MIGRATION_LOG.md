@@ -1,0 +1,313 @@
+# Component Migration Log - Phase 8
+
+## Status
+**Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
+**Started:** 2025-01-14  
+**Current Progress:** 1/70 components migrated (1%)
+
+---
+
+## Migration Strategy
+
+### Service Injection Pattern
+Replace `@inject ManagerService M` with specific service injections:
+
+```razor
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IBackendService Backend
+@inject IModelService Models
+@inject IGalleryService Gallery
+@inject ISessionService Session
+@inject IEventService Events
+```
+
+### Property Reference Updates
+- `M.State` ? `State.State`
+- `M.Settings` ? `Settings.Settings`
+- `M.CheckpointModels` ? `Models.CheckpointModels`
+- `M.Folders` ? `Gallery.Folders`
+- `M.CanvasImageData` ? `Session.CanvasImageData`
+
+### Event Subscription Pattern
+Replace Action delegates with EventService:
+```csharp
+// Old
+M.OnAppStateChanged += StateHasChanged;
+
+// New
+Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+
+// Cleanup in Dispose
+Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+```
+
+---
+
+## Component Groups
+
+### Group 1: Simple Components (State/Settings only) - 10 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| ThemeSelector | ? | State, Settings | ? Not Started | |
+| SettingsPanel | ? | State, Settings | ? Not Started | |
+| StatusBar | ? | State, Backend | ? Not Started | |
+| TopToolbar | Components/Shared | State, Gallery | ? Not Started | |
+| NavBar | Components/Shared | State, Backend, Gallery, Events | ? Complete | Migrated 2025-01-14 - First component! |
+| ProgressContainer | Components/Shared | ProgressService only | ? Not Started | No ManagerService - skip |
+| ConfirmationDialog | Components/Shared | - | ? Not Started | No dependencies - skip |
+| LoadingSpinner | Components/Shared | - | ? Not Started | No dependencies - skip |
+| AssetViewer | Components/Shared | State | ? Not Started | |
+| JsonTreeView | Components/Shared | - | ? Not Started | No dependencies - skip |
+
+---
+
+### Group 2: Generation Forms (State + Models + Backend) - 18 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
+| GenerateFormTxt2ImgComfyUI | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
+| GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
+| GenerateFormImg2ImgComfyUI | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
+| GenerateFormImg2VidComfyUI | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Not Started | High priority |
+| PromptFields | Components/Shared/Generation | State, Settings | ? Not Started | Critical - many dependencies |
+| PromptFieldsSimple | Components/Img2Vid | State, Settings | ? Not Started | |
+| GenerateButton | Components/Shared/Generation | State, Backend | ? Not Started | |
+| LoraForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| LoraCard | Components/Shared/Generation | State | ? Not Started | |
+| ControlNetForm | Components/Shared/Generation | State, Settings, Session | ? Not Started | |
+| ControlNetTabs | Components/Shared/Generation | State, Settings | ? Not Started | |
+| ControlNetTabsDynamic | Components/Shared/Generation | State, Settings | ? Not Started | |
+| WorkflowAssetsPanel | Components/Shared/Generation | State, Models | ? Not Started | |
+| WorkflowAssetSelector | Components/Shared/Generation | State, Models | ? Not Started | |
+| TagDrawer | Components/Shared/Generation | State | ? Not Started | |
+| TagAccordion | Components/Shared/Generation | State | ? Not Started | |
+| TextFieldAutocomplete | Components/Shared/Generation | - | ? Not Started | |
+
+---
+
+### Group 3: Script Forms (Settings + State) - 10 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| ADetailerForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| ADetailerModelForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| ADetailerModelFormComfyUI | Components/Shared/Generation | State, Settings | ? Not Started | |
+| CutoffForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| DynamicPromptsForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| IncantationsForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| MultiDiffusionTiledDiffusionForm | Components/Shared/Generation | State, Settings, Backend | ? Not Started | |
+| MultiDiffusionTiledVaeForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| RegionalPrompterForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| XYZPlotForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+
+---
+
+### Group 4: Gallery Components (Gallery + State) - 12 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| ImagesContainer | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ImageCard | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ImageCarousel | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ImageViewer | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ImageViewerDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ImageInfoDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ImageInfoCopyParameterButtons | Components/Shared/Image | State | ? Not Started | |
+| ImageProjectDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ProjectCard | Components/Shared/Project | Gallery | ? Not Started | |
+| ProjectModal | Components/Shared/Project | State, Gallery | ? Not Started | |
+| CreateProjectButton | Components/Shared/Project | Gallery | ? Not Started | |
+| GallerySettings | Components/Gallery | State, Gallery | ? Not Started | |
+
+---
+
+### Group 5: Canvas/Session Components (Session + State) - 8 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| Img2ImgCanvas | Components/Img2Img | State, Session | ? Not Started | |
+| ImageEditorModal | Components/ImageEditor | State, Session | ? Not Started | |
+| LayerPanel | Components/ImageEditor | State, Session | ? Not Started | |
+| ImageInput | Components/Shared/Image | Session | ? Not Started | |
+| ImageUpload | Components/Shared/Image | Session | ? Not Started | |
+| ImageDropzone | Components/Shared/Image | Session | ? Not Started | |
+| VideoViewer | Components/Img2Vid | Session | ? Not Started | |
+| VideoCard | Components/Img2Vid | Session | ? Not Started | |
+
+---
+
+### Group 6: Video Components (Session + State) - 3 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| GeneratedVideoTabs | Components/Img2Vid | State, Session | ? Not Started | |
+| VideoInfoDialog | Components/Img2Vid | State, Session | ? Not Started | |
+| UltimateUpscaleForm | Components/Img2Img | State, Settings, Backend, Session | ? Not Started | |
+
+---
+
+### Group 7: Resource Management (Models + State) - 15 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| ResourcePanel | Components/Resources | State, Models | ? Not Started | |
+| ResourceCard | Components/Resources | State, Models | ? Not Started | |
+| ResourceInfoDialog | Components/Resources | State, Models | ? Not Started | |
+| ResourceVersionsDialog | Components/Resources | State, Models | ? Not Started | |
+| ResourceImageCard | Components/Resources | State | ? Not Started | |
+| ResourceImageDialog | Components/Resources | State | ? Not Started | |
+| LoadResourceDialog | Components/Resources | State, Models | ? Not Started | |
+| ResourceTemplatesBar | Components/Resources | State | ? Not Started | |
+| ResourceTemplateDialog | Components/Resources | State | ? Not Started | |
+| ResourceAuditPanel | Components/Resources | State, Models | ? Not Started | |
+| CivitaiPanel | Components/Resources | State | ? Not Started | |
+| CivitaiModelsPanel | Components/Resources | State, Models | ? Not Started | |
+| CivitaiImagesPanel | Components/Resources | State | ? Not Started | |
+| CivitaiCreatorsPanel | Components/Resources | State | ? Not Started | |
+| CivitaiModelInfoDialog | Components/Resources | State, Models | ? Not Started | |
+
+---
+
+### Group 8: Complex/Page Components (Multiple services) - 9 components
+
+| Component | Location | Services Required | Status | Notes |
+|-----------|----------|-------------------|--------|-------|
+| MainLayout | Components/Shared | State, Backend, Models, Gallery, Events | ? Not Started | **CRITICAL** - App initialization |
+| GeneratedImageTabs | Components/Shared/Generation | State, Gallery, Session | ? Not Started | |
+| StateDialog | Components/Shared | State | ? Not Started | |
+| Txt2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
+| Img2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session, Gallery | ? Not Started | |
+| Img2VidComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
+| Index | Pages | State, Gallery | ? Not Started | |
+| Settings | Pages | State, Settings | ? Not Started | |
+| Resources | Pages | State, Models | ? Not Started | |
+
+---
+
+## Migration Progress
+
+### Status Legend
+- ? Not Started
+- ?? In Progress
+- ? Complete
+- ? Blocked
+- ?? Testing
+
+### Statistics
+- **Total Components:** 70
+- **Not Started:** 65 (93%)
+- **Complete:** 1 (1%)
+- **Skipped (No ManagerService):** 4 (6%)
+  - LoadingSpinner
+  - ConfirmationDialog  
+  - ProgressContainer
+  - JsonTreeView
+
+---
+
+## Notes & Issues
+
+### Known Issues
+1. **Styles Dropdown Not Populating** - See manager-service-refactor.md Phase 8 Known Issues
+2. TBD as we discover them
+
+### Migration Patterns Discovered
+
+#### Pattern 1: Adding Events Namespace
+**All** migrated components need this using directive:
+```razor
+@using BlazorWebApp.Events
+```
+
+#### Pattern 2: Service Injection Replacements
+```razor
+// Old
+@inject ManagerService M
+
+// New
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IBackendService Backend
+@inject IEventService Events
+```
+
+#### Pattern 3: Property Access Patterns
+```csharp
+// Old
+M.Projects
+M.State.Generation.Workflows
+M.IsComfyUIUp
+
+// New
+Gallery.Projects
+State.State.Generation.Workflows
+Backend.IsBackendAvailable
+```
+
+#### Pattern 4: Event Subscription Pattern
+```csharp
+// Old - OnInitialized
+M.OnWebuiStateChanged += Refresh;
+M.OnProjectsChange += Refresh;
+M.OnWorkflowBaseChanged += Refresh;
+
+// New - OnInitialized
+Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+Events.Subscribe<ProjectChangedEventArgs>(OnProjectsChanged);
+Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+
+// Handler methods
+private void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args) => Refresh();
+private void OnProjectsChanged(ProjectChangedEventArgs args) => Refresh();
+private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+```
+
+#### Pattern 5: Dispose Pattern
+```csharp
+// Old
+public void Dispose()
+{
+    M.OnWebuiStateChanged -= Refresh;
+    M.OnProjectsChange -= Refresh;
+    M.OnWorkflowBaseChanged -= Refresh;
+}
+
+// New
+public void Dispose()
+{
+    Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+    Events.Unsubscribe<ProjectChangedEventArgs>(OnProjectsChanged);
+    Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+}
+```
+
+### Breaking Changes
+- None yet
+
+---
+
+## Next Steps
+
+1. ? Create this migration log
+2. ? Start with Group 1 (Simple Components)
+3. ? Continue with Group 2 (Generation Forms)
+4. ? Progress through remaining groups
+5. ? Migrate MainLayout last (most complex)
+
+---
+
+## Completion Checklist
+
+- [ ] All 70 components migrated
+- [ ] All components tested individually
+- [ ] Full application smoke test
+- [ ] No `M.Property` references in components (except orchestration)
+- [ ] All components use EventService for subscriptions
+- [ ] All tests passing (125+ tests)
+- [ ] Build passes without errors
+- [ ] No compiler warnings
+- [ ] Styles dropdown working
+- [ ] Documentation updated
