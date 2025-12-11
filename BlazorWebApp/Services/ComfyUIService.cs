@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
-    public class ComfyUIService
+    public class ComfyUIService : IComfyUIService
     {
         private readonly WorkflowService _workflow;
         private readonly IOService _io;
@@ -293,7 +293,7 @@ namespace BlazorWebApp.Services
 
         public async Task<List<Upscaler>> GetUpscalers() => await GetModels("upscale_models", m => new Upscaler { Name = m });
 
-        public async Task<List<string>> GetVAEs() => await GetModels("vae", m => m);
+        public async Task<List<string>> GetVAEModels() => await GetModels("vae", m => m);
 
         public async Task<List<string>> GetTextEncoders() => await GetModels("text_encoders", m => m);
 

@@ -17,6 +17,8 @@ namespace BlazorWebApp.Services
         List<Upscaler> Upscalers { get; }
         
         Task<bool> CheckBackendAvailability();
+        void StartMonitoring(int intervalSeconds = 30);
+        void StopMonitoring();
         Task LoadBackendDependentResources();
         Task GetOptions();
         Task<string> PostOptions(Options options);

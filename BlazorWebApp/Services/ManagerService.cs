@@ -24,6 +24,7 @@ namespace BlazorWebApp.Services
         private readonly IEventService _events;
         private readonly ISettingsService _settings;
         private readonly IBackendService _backend;
+        private readonly IModelService _models;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
@@ -89,12 +90,14 @@ namespace BlazorWebApp.Services
         public ImagesDto GeneratedImageEntities { get; set; }
         public string? GridImage { get; set; }
         public InferenceProgress Progress { get; set; }
-        public List<SDModel> CheckpointModels { get; set; } = new();
-        public List<SDModel> DiffusionModels { get; set; } = new();
-        public List<string> SDVAEs { get; set; } = new();
-        public List<string> ClipModels { get; set; } = new();
-        public List<string> ClipVisionModels { get; set; } = new();
-        public List<string> SDADetailerModels { get; set; } = new();
+
+        // Temporary facade - delegates to ModelService (will be removed in Phase 8)
+        public List<SDModel> CheckpointModels => _models.CheckpointModels;
+        public List<SDModel> DiffusionModels => _models.DiffusionModels;
+        public List<string> SDVAEs => _models.VAEModels;
+        public List<string> ClipModels => _models.ClipModels;
+        public List<string> ClipVisionModels => _models.ClipVisionModels;
+        public List<string> SDADetailerModels => _models.ADetailerModels;
 
         // Temporary facade - delegates to BackendService (will move to ModelService in Phase 5)
         public List<Models.Sampler> Samplers => _backend.Samplers;
@@ -258,7 +261,7 @@ namespace BlazorWebApp.Services
         // Temporary facade - delegates to BackendService (will be removed in Phase 8)
         public bool IsComfyUIUp => _backend.IsBackendAvailable;
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend)
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models)
         {
             _sdapi = sdapi;
             _db = db;
@@ -271,6 +274,7 @@ namespace BlazorWebApp.Services
             _events = events;
             _settings = settings;
             _backend = backend;
+            _models = models;
 
             // SettingsService now handles loading settings automatically
             // Note: LoadState() must be called asynchronously after construction
@@ -587,62 +591,11 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Loads models based on the current workflow's asset requirements.
-        /// For WebUI (deprecated): loads all models as CheckpointModels.
-        /// For ComfyUI: loads models based on workflow asset types (Checkpoint, Diffusion, VAE, CLIP, etc.)
+        /// Temporary facade - delegates to ModelService (will be removed in Phase 8)
         /// </summary>
         public async Task GetWorkflowModels(bool refresh = false)
         {
-            if (IsWebuiUp)
-            {
-                if (refresh) await _sdapi.PostRefreshModels();
-                // WebUI only supports checkpoint models
-                CheckpointModels = await _sdapi.GetSDModels();
-                CheckpointModels = CheckpointModels?.OrderBy(m => m.Model_name).ToList() ?? new List<SDModel>();
-                OnSDModelsChange?.Invoke();
-                return;
-            }
-
-            if (!IsComfyUIUp)
-                return;
-
-            var currentWorkflow = GetCurrentWorkflow();
-            if (currentWorkflow?.Assets == null || currentWorkflow.Assets.Count == 0)
-            {
-                // No assets defined, load checkpoints as fallback
-                CheckpointModels = await _capi.GetCheckpoints();
-                OnSDModelsChange?.Invoke();
-                return;
-            }
-
-            // Load models based on asset types defined in workflow
-            var assetTypes = currentWorkflow.Assets.Select(a => a.Type).Distinct().ToList();
-
-            foreach (var assetType in assetTypes)
-            {
-                switch (assetType)
-                {
-                    case AssetType.CheckpointModel:
-                        CheckpointModels = await _capi.GetCheckpoints();
-                        break;
-
-                    case AssetType.DiffusionModel:
-                        DiffusionModels = await _capi.GetDiffusionModels();
-                        break;
-
-                    case AssetType.Vae:
-                        SDVAEs = await _capi.GetVAEs();
-                        break;
-
-                    case AssetType.Clip:
-                        ClipModels = await _capi.GetClipModels();
-                        break;
-
-                    case AssetType.ClipVision:
-                        ClipVisionModels = await _capi.GetClipVisionModels();
-                        break;
-                }
-            }
-
+            await _models.GetWorkflowModels(refresh);
             OnSDModelsChange?.Invoke();
         }
 
@@ -693,25 +646,22 @@ namespace BlazorWebApp.Services
             return State.Generation.Workflows.FirstOrDefault();
         }
 
+        /// <summary>
+        /// Loads VAE models from the backend.
+        /// Temporary facade - delegates to ModelService (will be removed in Phase 8)
+        /// </summary>
         public async Task GetSDVAEs()
         {
-            if (IsWebuiUp)
-            {
-                if (CmdFlags == null) await GetCmdFlags();
-                var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(CmdFlags.BaseDir, @"models/VAE") : CmdFlags.VaeDir;
-                SDVAEs = _io.GetFilesRecursive(vaeDir).Select(f => f.Name).ToList();
-            }
-            else if (IsComfyUIUp) SDVAEs = await _capi.GetVAEs();
+            await _models.GetVAEModels();
         }
 
+        /// <summary>
+        /// Loads ADetailer models from the backend.
+        /// Temporary facade - delegates to ModelService (will be removed in Phase 8)
+        /// </summary>
         public async Task GetSDADetailerModels()
         {
-            if (IsWebuiUp)
-            {
-                var modelsDir = Path.Join(CmdFlags.BaseDir, @"models/adetailer");
-                SDADetailerModels = _io.GetFilesRecursive(modelsDir).Select(f => f.Name).ToList();
-            }
-            else if (IsComfyUIUp) SDADetailerModels = await _capi.GetBBoxDetailers();
+            await _models.GetADetailerModels();
         }
 
         /// <summary>
@@ -799,13 +749,14 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Loads all backend-dependent resources (samplers, schedulers, upscalers).
+        /// Loads all backend-dependent resources (samplers, schedulers, upscalers, ADetailer models).
         /// Call this method when the backend comes online.
-        /// Temporary facade - delegates to BackendService (will be removed in Phase 8)
+        /// Temporary facade - delegates to BackendService and ModelService (will be removed in Phase 8)
         /// </summary>
         public async Task LoadBackendDependentResources()
         {
             await _backend.LoadBackendDependentResources();
+            await _models.GetADetailerModels();
             OnSamplersSchedulersChanged?.Invoke();
         }
 
@@ -1398,12 +1349,15 @@ namespace BlazorWebApp.Services
 
         public async Task LoadState(State? state = null)
         {
-            await _state.LoadState();
-
             if (state != null)
             {
-                // Handle custom state loading if provided
-                await _state.SaveState();
+                // Load specific state preset by ID
+                await _state.LoadState(state.Id);
+            }
+            else
+            {
+                // Load autosave state (ID = 1)
+                await _state.LoadState();
             }
 
             // Keep existing migration and workflow refresh logic
@@ -1431,35 +1385,22 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Gets the appropriate model list based on asset type
+        /// Gets the appropriate model list based on asset type.
+        /// Temporary facade - delegates to ModelService (will be removed in Phase 8)
         /// </summary>
         public List<SDModel> GetModelsForAssetType(AssetType assetType)
         {
-            return assetType switch
-            {
-                AssetType.CheckpointModel => CheckpointModels ?? new List<SDModel>(),
-                AssetType.DiffusionModel => DiffusionModels ?? new List<SDModel>(),
-                _ => new List<SDModel>()
-            };
+            return _models.GetModelsForAssetType(assetType);
         }
 
         /// <summary>
         /// Gets available options for any asset type.
-        /// Returns a list of filenames/model names that can be selected for the given asset type.
+        /// Temporary facade - delegates to ModelService (will be removed in Phase 8)
         /// </summary>
         public async Task<List<string>> GetAssetOptions(AssetType assetType)
         {
-            return assetType switch
-            {
-                AssetType.CheckpointModel => (CheckpointModels ?? await _capi.GetCheckpoints())?.Select(m => m.Model_name).ToList() ?? new List<string>(),
-                AssetType.DiffusionModel => (DiffusionModels ?? await _capi.GetDiffusionModels())?.Select(m => m.Model_name).ToList() ?? new List<string>(),
-                AssetType.Vae => SDVAEs ?? await _capi.GetVAEs(),
-                AssetType.Clip => ClipModels ?? await _capi.GetClipModels(),
-                AssetType.ClipVision => ClipVisionModels ?? await _capi.GetClipVisionModels(),
-                _ => new List<string>()
-            };
+            return await _models.GetAssetOptions(assetType);
         }
-
         #region WorkflowAssets Management
 
         /// <summary>
@@ -1536,60 +1477,21 @@ namespace BlazorWebApp.Services
         #endregion
 
         /// <summary>
-        /// Gets the current model name based on mode using WorkflowAssets.
-        /// For Txt2Img/Img2Img: returns "Model" asset
-        /// For Img2Vid: returns "HighModel" asset
+        /// Gets the current model name based on mode.
+        /// Temporary facade - delegates to ModelService (will be removed in Phase 8)
         /// </summary>
         public string GetCurrentModel(ModeType? mode = null)
         {
-            var modelKey = mode == ModeType.Img2Vid ? "HighModel" : "Model";
-            var value = GetWorkflowAsset(modelKey, mode);
-            return !string.IsNullOrWhiteSpace(value) ? value : "Loading...";
+            return _models.GetCurrentModel(mode);
         }
 
         /// <summary>
-        /// Sets the current model name based on mode using WorkflowAssets.
+        /// Sets the current model name based on mode.
+        /// Temporary facade - delegates to ModelService (will be removed in Phase 8)
         /// </summary>
         public async Task SetCurrentModel(string modelTitle, ModeType? mode = null)
         {
-            if (IsWebuiUp)
-            {
-                var progressBar = new BaseProgress() { BarColor = MudBlazor.Color.Info, IsIndeterminate = true };
-                _progress.Add(progressBar);
-                await _sdapi.PostOptions(new() { SDModelCheckpoint = modelTitle });
-                _progress.Remove(progressBar.Id);
-            }
-
-            if (IsComfyUIUp)
-            {
-                var currentWorkflow = GetCurrentWorkflow();
-
-                if (currentWorkflow?.Assets != null && currentWorkflow.Assets.Count > 0)
-                {
-                    var modelAssetTypes = currentWorkflow.Assets
-                        .Where(a => a.Type == AssetType.CheckpointModel || a.Type == AssetType.DiffusionModel)
-                        .Select(a => a.Type)
-                        .Distinct()
-                        .ToList();
-
-                    foreach (var assetType in modelAssetTypes)
-                    {
-                        var models = GetModelsForAssetType(assetType);
-                        var match = models.FirstOrDefault(m => m.Model_name.Contains(modelTitle, StringComparison.OrdinalIgnoreCase));
-
-                        if (match != null)
-                        {
-                            modelTitle = match.Model_name;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Set model using WorkflowAssets
-            var modelKey = mode == ModeType.Img2Vid ? "HighModel" : "Model";
-            SetWorkflowAsset(modelKey, modelTitle, mode);
-
+            await _models.SetCurrentModel(modelTitle, mode);
             OnSDModelsChange?.Invoke();
             await SaveState();
         }

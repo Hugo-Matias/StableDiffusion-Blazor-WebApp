@@ -21,6 +21,8 @@ builder.Services.AddMudServices(opt =>
 
 builder.Services.AddHttpClient<SDAPIService>();
 builder.Services.AddHttpClient<ComfyUIService>();
+// Register the interface to resolve to the same ComfyUIService instance
+builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<ComfyUIService>());
 builder.Services.AddHttpClient<CivitaiService>();
 builder.Services.AddHttpClient<DanbooruService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
@@ -43,6 +45,9 @@ builder.Services.AddSingleton<IStateService, StateService>();
 
 // Backend orchestration service (ComfyUI)
 builder.Services.AddSingleton<IBackendService, BackendService>();
+
+// Model and asset management service
+builder.Services.AddSingleton<IModelService, ModelService>();
 
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();

@@ -907,11 +907,21 @@ namespace BlazorWebApp.Services
         public async Task<State?> GetState(int id)
         {
             using var context = await _factory.CreateDbContextAsync();
-            var state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync(s => s.Id == id);
+            var stateVersion = int.Parse(_configuration["StateVersion"]);
+            
+            var state = await context.States
+                .Where(s => s.Version == stateVersion)
+                .FirstOrDefaultAsync(s => s.Id == id);
+            
+            // Fallback: If ID 1 requested (AutoSave) and not found, get latest AutoSave for current version
             if (state == null && id == 1)
             {
-                state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync();
+                state = await context.States
+                    .Where(s => s.Version == stateVersion && s.Title == "AutoSave")
+                    .OrderByDescending(s => s.CreationDate)
+                    .FirstOrDefaultAsync();
             }
+            
             return state;
         }
 

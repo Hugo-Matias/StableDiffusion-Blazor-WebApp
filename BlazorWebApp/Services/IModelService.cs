@@ -1,4 +1,3 @@
-using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 
@@ -13,20 +12,23 @@ namespace BlazorWebApp.Services
         // Model lists
         List<SDModel> CheckpointModels { get; }
         List<SDModel> DiffusionModels { get; }
-        List<string> SDVAEs { get; }
+        List<string> VAEModels { get; }
         List<string> ClipModels { get; }
         List<string> ClipVisionModels { get; }
-        List<string> SDADetailerModels { get; }
+        List<string> ADetailerModels { get; }
         List<Models.Sampler> Samplers { get; }
         List<Scheduler> Schedulers { get; }
         List<Upscaler> Upscalers { get; }
 
         // Model operations
         Task GetWorkflowModels(bool refresh = false);
+        Task GetVAEModels();
+        Task GetADetailerModels();
         Task SetCurrentModel(string modelTitle, ModeType? mode = null);
         Task SetCurrentVae(string vae, ModeType? mode = null);
         string GetCurrentModel(ModeType? mode = null);
         string? GetCurrentVae(ModeType? mode = null);
+
 
         // Asset operations
         List<SDModel> GetModelsForAssetType(AssetType assetType);

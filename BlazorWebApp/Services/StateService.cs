@@ -63,47 +63,77 @@ namespace BlazorWebApp.Services
 
         public async Task LoadState()
         {
-            var state = await _db.GetState(1);
-
-            if (state != null && state.AppState != null)
+            // Load the latest AutoSave for current StateVersion
+            var stateVersion = int.Parse(_configuration["StateVersion"]);
+            var autoSave = await _db.GetState(1); // This will get AutoSave via DatabaseService fallback logic
+            
+            if (autoSave != null)
             {
-                State = state.AppState;
-                State.Generation.IsInterrupted = false;
-
-                if (state.Txt2ImgParameters != null)
-                    ParametersTxt2Img = state.Txt2ImgParameters;
-
-                if (state.Img2ImgParameters != null)
-                    ParametersImg2Img = state.Img2ImgParameters;
-
-                if (state.UpscaleParameters != null)
-                    ParametersUpscale = state.UpscaleParameters;
-
-                if (state.Img2VidParameters != null)
-                    ParametersImg2Vid = state.Img2VidParameters;
-
-                NormalizeState();
-                PublishStateChangedEvents();
+                await LoadState(autoSave.Id);
             }
             else
             {
-                // Initialize with defaults if no state exists
+                // No AutoSave exists for this version, create one
                 await SaveState();
             }
+        }
+
+        public async Task LoadState(int stateId)
+        {
+            var state = await _db.GetState(stateId);
+
+            // If state doesn't exist, create AutoSave if this is ID 1
+            if (state == null)
+            {
+                if (stateId == 1)
+                {
+                    // Create new AutoSave state with current values
+                    await SaveState();
+                }
+                return;
+            }
+
+            // Load AppState if it exists in the preset
+            if (state.AppState != null)
+            {
+                State = state.AppState;
+                State.Generation.IsInterrupted = false;
+            }
+
+            // Load parameters if they exist in the preset (selective loading)
+            if (state.Txt2ImgParameters != null)
+                ParametersTxt2Img = state.Txt2ImgParameters;
+
+            if (state.Img2ImgParameters != null)
+                ParametersImg2Img = state.Img2ImgParameters;
+
+            if (state.UpscaleParameters != null)
+                ParametersUpscale = state.UpscaleParameters;
+
+            if (state.Img2VidParameters != null)
+                ParametersImg2Vid = state.Img2VidParameters;
+
+            // Normalize and publish events
+            NormalizeState();
+            PublishStateChangedEvents();
         }
 
         public async Task SaveState()
         {
             NormalizeState();
 
-            var entity = await _db.GetState(1);
+            // Get the latest AutoSave for current StateVersion
+            var stateVersion = int.Parse(_configuration["StateVersion"]);
+            var entity = await _db.GetState(1); // DatabaseService.GetState(1) has fallback logic
+            
             if (entity == null)
             {
+                // No AutoSave exists for this version, create new one
                 entity = new State
                 {
                     Title = "AutoSave",
                     CreationDate = DateTime.Now,
-                    Version = int.Parse(_configuration["StateVersion"])
+                    Version = stateVersion
                 };
             }
 

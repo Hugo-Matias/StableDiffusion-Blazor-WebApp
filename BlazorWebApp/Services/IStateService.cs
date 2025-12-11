@@ -18,6 +18,7 @@ namespace BlazorWebApp.Services
 
         // State management
         Task LoadState();
+        Task LoadState(int stateId);
         Task SaveState();
         void InitializeParameters(ModeType[] modes);
     }

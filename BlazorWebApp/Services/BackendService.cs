@@ -9,9 +9,10 @@ namespace BlazorWebApp.Services
     /// </summary>
     public class BackendService : IBackendService
     {
-        private readonly ComfyUIService _comfyUI;
+        private readonly IComfyUIService _comfyUI;
         private readonly IEventService _events;
         private bool _isBackendAvailable;
+        private Timer? _healthCheckTimer;
 
         public bool IsBackendAvailable
         {
@@ -36,7 +37,7 @@ namespace BlazorWebApp.Services
         public List<Scheduler> Schedulers { get; private set; }
         public List<Upscaler> Upscalers { get; private set; }
 
-        public BackendService(ComfyUIService comfyUI, IEventService events)
+        public BackendService(IComfyUIService comfyUI, IEventService events)
         {
             _comfyUI = comfyUI;
             _events = events;
@@ -64,6 +65,30 @@ namespace BlazorWebApp.Services
                 IsBackendAvailable = false;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Starts periodic monitoring of backend availability.
+        /// Checks every 30 seconds if not already checking.
+        /// </summary>
+        public void StartMonitoring(int intervalSeconds = 30)
+        {
+            if (_healthCheckTimer != null)
+                return; // Already monitoring
+
+            _healthCheckTimer = new Timer(async _ =>
+            {
+                await CheckBackendAvailability();
+            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(intervalSeconds));
+        }
+
+        /// <summary>
+        /// Stops periodic monitoring of backend availability.
+        /// </summary>
+        public void StopMonitoring()
+        {
+            _healthCheckTimer?.Dispose();
+            _healthCheckTimer = null;
         }
 
         /// <summary>

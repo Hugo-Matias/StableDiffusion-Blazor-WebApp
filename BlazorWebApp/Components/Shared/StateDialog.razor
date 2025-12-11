@@ -37,7 +37,7 @@
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
     [Parameter] public State State { get; set; }
 
-    private bool _saveAppstate, _saveTxt2img, _saveImg2img, _saveUpscale;
+    private bool _saveAppstate = true, _saveTxt2img, _saveImg2img, _saveUpscale;
 
     private void WriteState()
     {
