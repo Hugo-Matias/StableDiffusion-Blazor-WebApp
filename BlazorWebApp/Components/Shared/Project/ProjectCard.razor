@@ -1,4 +1,4 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
 @inject DatabaseService DB
 @inject IOService IO
 @inject IJSRuntime JS
@@ -45,7 +45,7 @@
         </div>
         
         @* Selected Indicator *@
-        @if (M.State.Gallery.ProjectId == ProjectId)
+        @if (State.State.Gallery.ProjectId == ProjectId)
         {
             <div class="selected-indicator">
                 <i class="fa-solid fa-check"></i>
@@ -85,7 +85,7 @@
     private string GetCardClasses()
     {
         var classes = "project-card";
-        if (M.State.Gallery.ProjectId == ProjectId) classes += " selected";
+        if (State.State.Gallery.ProjectId == ProjectId) classes += " selected";
         if (_isHovered) classes += " hovered";
         return classes;
     }

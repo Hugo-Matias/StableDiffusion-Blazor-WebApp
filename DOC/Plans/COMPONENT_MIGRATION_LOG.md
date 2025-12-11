@@ -3,7 +3,7 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 4/70 components migrated (6%)
+**Current Progress:** 5/70 components migrated (7%)
 
 ---
 
@@ -117,7 +117,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | ImageInfoDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
 | ImageInfoCopyParameterButtons | Components/Shared/Image | State | ? Not Started | |
 | ImageProjectDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
-| ProjectCard | Components/Shared/Project | Gallery | ? Not Started | |
+| ProjectCard | Components/Shared/Project | State | ? Complete | Migrated 2025-01-14 - Project display card |
 | ProjectModal | Components/Shared/Project | State, Gallery | ? Not Started | |
 | CreateProjectButton | Components/Shared/Project | Gallery | ? Not Started | |
 | GallerySettings | Components/Gallery | State, Gallery | ? Not Started | |
@@ -199,12 +199,13 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 62 (89%)
-- **Complete:** 4 (6%)
+- **Not Started:** 61 (87%)
+- **Complete:** 5 (7%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
   - Index.razor
+  - ProjectCard.razor
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -303,7 +304,7 @@ When a component uses the entity `State` and also injects `IStateService State`,
 
 ```csharp
 // Problem: 'State' refers to both IStateService and the entity type
-private State? _selectedState;  // Ambiguous!
+private State? _selectedState;  // Ambiguous familier!
 
 // Solution: Use fully qualified type name for entity
 private BlazorWebApp.Data.Entities.State? _selectedState;  // Clear!
@@ -353,7 +354,7 @@ This ensures both migrated components (using EventService) and unmigrated compon
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (4/70 = 6%)
+- [ ] All 70 components migrated (5/70 = 7%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)

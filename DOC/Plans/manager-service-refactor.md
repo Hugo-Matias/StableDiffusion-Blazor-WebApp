@@ -993,6 +993,7 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.6     | **Fifth Component Migrated!** ProjectCard.razor migrated from ManagerService to IStateService. Simple component that only needed State service for checking selected project ID. Build passes. 5/70 components complete (7%). |
 | 2025-01-14 | 2.0.5     | **ManagerService Fix:** Updated `SetCurrentProject()` to delegate to `GalleryService.SetCurrentProject()` ensuring both old Action events and new EventService-based ProjectChangedEventArgs are fired. This fixes project card selection not updating images in migrated components. Pattern 7 added to migration log. |
 | 2025-01-14 | 2.0.4     | **Fourth Component Migrated!** Index.razor (Gallery page) migrated from ManagerService to IStateService, IGalleryService, and IEventService. Handles gallery display, project loading, infinite scroll, and image filtering. Uses event subscriptions for project changes, state changes, and image selection. Build passes. 4/70 components complete (6%). |
 | 2025-01-14 | 2.0.3     | **Third Component Migrated!** TopToolbar.razor migrated from ManagerService to IStateService, IGalleryService, and IEventService. Handles folder/project/theme/state preset selectors. Uses fully qualified type names for State entity to avoid conflicts with IStateService. Build passes. 3/70 components complete (4%). |
