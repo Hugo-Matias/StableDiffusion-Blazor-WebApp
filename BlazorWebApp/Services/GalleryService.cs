@@ -46,18 +46,34 @@ namespace BlazorWebApp.Services
         /// </summary>
         public async Task SetCurrentFolder(int id)
         {
-            var folder = Folders?.FirstOrDefault(f => f.Id == id);
-            if (folder != null)
+            if (id == 0)
             {
-                _state.State.Gallery.FolderId = folder.Id;
-                _state.State.Gallery.FolderName = folder.Name;
+                // "All" folders selected
+                _state.State.Gallery.FolderId = 0;
+                _state.State.Gallery.FolderName = "All";
                 await _state.SaveState();
 
                 _events.Publish(new FolderChangedEventArgs
                 {
-                    FolderId = folder.Id,
-                    FolderName = folder.Name
+                    FolderId = 0,
+                    FolderName = "All"
                 });
+            }
+            else
+            {
+                var folder = Folders?.FirstOrDefault(f => f.Id == id);
+                if (folder != null)
+                {
+                    _state.State.Gallery.FolderId = folder.Id;
+                    _state.State.Gallery.FolderName = folder.Name;
+                    await _state.SaveState();
+
+                    _events.Publish(new FolderChangedEventArgs
+                    {
+                        FolderId = folder.Id,
+                        FolderName = folder.Name
+                    });
+                }
             }
         }
 

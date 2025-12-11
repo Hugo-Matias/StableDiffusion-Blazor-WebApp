@@ -3,7 +3,7 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 2/70 components migrated (3%)
+**Current Progress:** 3/70 components migrated (4%)
 
 ---
 
@@ -53,7 +53,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | ThemeSelector | ? | State, Settings | ? Not Started | |
 | SettingsPanel | ? | State, Settings | ? Not Started | |
 | StatusBar | ? | State, Backend | ? Not Started | |
-| TopToolbar | Components/Shared | State, Gallery | ? Not Started | |
+| TopToolbar | Components/Shared | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Folder/Project/Theme/State selectors |
 | NavBar | Components/Shared | State, Backend, Gallery, Events | ? Complete | Migrated 2025-01-14 - First component! |
 | ProgressContainer | Components/Shared | ProgressService only | ? Not Started | No ManagerService - skip |
 | ConfirmationDialog | Components/Shared | - | ? Not Started | No dependencies - skip |
@@ -198,10 +198,11 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 64 (91%)
-- **Complete:** 2 (3%)
+- **Not Started:** 63 (90%)
+- **Complete:** 3 (4%)
   - NavBar.razor
   - StateDialog.razor
+  - TopToolbar.razor
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -214,7 +215,13 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Known Issues
 1. **Styles Dropdown Not Populating** - See manager-service-refactor.md Phase 8 Known Issues
-2. TBD as we discover them
+2. **State Loading Events** - ? FIXED: StateService.LoadState() now publishes StateChangedEventArgs after loading
+3. **Folder Selection "All"** - ? FIXED: GalleryService.SetCurrentFolder() now handles ID=0 case
+
+### Fixed Issues
+1. **StateService Interface Mismatch** - Fixed LoadState to have two separate overloads (parameterless and with int stateId) matching IStateService interface
+2. **State Loading Events** - StateService.LoadState() now publishes all StateChangedEventArgs events after loading state, ensuring UI components refresh properly
+3. **GalleryService Folder ID=0** - Added handling for folder ID=0 ("All folders") case in SetCurrentFolder method
 
 ### Migration Patterns Discovered
 
@@ -286,16 +293,33 @@ public void Dispose()
 }
 ```
 
-### Breaking Changes
-- None yet
+#### Pattern 6: Type Name Conflicts
+When a component uses the entity `State` and also injects `IStateService State`, use fully qualified names:
 
+```csharp
+// Problem: 'State' refers to both IStateService and the entity type
+private State? _selectedState;  // Ambiguous!
+
+// Solution: Use fully qualified type name for entity
+private BlazorWebApp.Data.Entities.State? _selectedState;  // Clear!
+
+// OR rename the parameter/variable
+[Parameter] public BlazorWebApp.Data.Entities.State StatePreset { get; set; }
+```
+
+**Common Conflicts:**
+- `State` - Injected service vs Data entity
+- Component parameter names should avoid service names
+
+### Breaking Changes
+- Parameters named `State` must be renamed or fully qualified due to `IStateService State` injection
 ---
 
 ## Next Steps
 
 1. ? Create this migration log
-2. ? Start with Group 1 (Simple Components) - NavBar ?, StateDialog ?
-3. ? Continue with more simple components
+2. ? Start with Group 1 (Simple Components) - NavBar ?, StateDialog ?, TopToolbar ?
+3. ?? Continue with more simple components (in progress)
 4. ? Progress through remaining groups
 5. ? Migrate MainLayout last (most complex)
 
@@ -303,7 +327,7 @@ public void Dispose()
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (2/70 = 3%)
+- [ ] All 70 components migrated (3/70 = 4%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)
@@ -312,4 +336,4 @@ public void Dispose()
 - [ ] Build passes without errors ?
 - [ ] No compiler warnings
 - [ ] Styles dropdown working
-- [ ] Documentation updated
+- [ ] Documentation updated ?

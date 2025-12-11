@@ -993,6 +993,6 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.3     | **Third Component Migrated!** TopToolbar.razor migrated from ManagerService to IStateService, IGalleryService, and IEventService. Handles folder/project/theme/state preset selectors. Uses fully qualified type names for State entity to avoid conflicts with IStateService. Build passes. 3/70 components complete (4%). |
 | 2025-01-14 | 2.0.2     | **Second Component Migrated!** StateDialog.razor migrated from ManagerService to IStateService. Simple dialog component - only needed State service. Build passes. 2/70 components complete (3%). Renamed State parameter to StatePreset to avoid naming conflict with injected IStateService. |
 | 2025-01-14 | 2.0.1     | **First Component Migrated!** NavBar.razor successfully migrated from ManagerService to IStateService, IGalleryService, IBackendService, and IEventService. Established migration patterns for event subscriptions, property access, and service injection. Build passes. 1/70 components complete (1%). |
-| 2025-01-14 | 2.0       | **Phase 8 Started**: Created Component Migration Log tracking 70 components across 8 groups. Migration strategy defined with service injection patterns and event subscription patterns. MainLayout identified as most critical component. Ready to begin Group 1 (Simple Components) migration. |

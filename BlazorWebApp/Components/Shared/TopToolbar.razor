@@ -1,5 +1,8 @@
-﻿@using static BlazorWebApp.Data.Enums
-@inject ManagerService M
+﻿@using BlazorWebApp.Events
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IEventService Events
 @inject DatabaseService DB
 @inject ThemeService ThemeService
 @inject IDialogService DialogService
@@ -10,11 +13,11 @@
     <MudGrid Justify="Justify.FlexEnd">
         @* Row 1: Folder, Project, and Theme selectors *@
         <MudItem xs="5">
-            <MudSelect T=string Value=M.State.Gallery.FolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect T=string Value=State.State.Gallery.FolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 <MudSelectItem Value=@("")>All</MudSelectItem>
-                @if (M.Folders != null)
+                @if (Gallery.Folders != null)
                 {
-                    @foreach (var folder in M.Folders)
+                    @foreach (var folder in Gallery.Folders)
                     {
                         <MudSelectItem Value="@folder.Name">@folder.Name</MudSelectItem>
                     }
@@ -22,10 +25,10 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="5">
-            <MudSelect T=string Value=M.State.Gallery.ProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                @if (M.Projects != null)
+            <MudSelect T=string Value=State.State.Gallery.ProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                @if (Gallery.Projects != null)
                 {
-                    @foreach (var project in M.Projects)
+                    @foreach (var project in Gallery.Projects)
                     {
                         <MudSelectItem Value="@project.Name">@project.Name</MudSelectItem>
                     }
@@ -33,7 +36,7 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="2">
-            <MudSelect T="string" Value="@(M.State.CurrentTheme ?? "Default")" ValueChanged="HandleThemeSelected" Label="Theme" AdornmentIcon="@Icons.Material.Filled.Palette" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect T="string" Value="@(State.State.CurrentTheme ?? "Default")" ValueChanged="HandleThemeSelected" Label="Theme" AdornmentIcon="@Icons.Material.Filled.Palette" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 @foreach (var themeName in ThemeService.ThemeNames)
                 {
                     <MudSelectItem Value="@themeName">@themeName</MudSelectItem>
@@ -43,7 +46,7 @@
 
         @* Row 2: State Presets and action buttons *@
         <MudItem xs="10">
-            <MudSelect @bind-Value=_selectedState T="State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect @bind-Value=_selectedState T="BlazorWebApp.Data.Entities.State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 @if (_states != null)
                 {
                     @foreach (var state in _states)
@@ -57,7 +60,7 @@
             <MudButtonGroup Class="w-100" OverrideStyles=false>
                 <MudIconButton Style="flex:1;" Icon="fa-solid fa-plus" Color=Color.Primary OnClick=@(() => ShowStateDialog(new())) Title="Create new state" />
                 <MudIconButton Style="flex:1;" Icon="fa-solid fa-pen" Color=Color.Info OnClick=@(() => ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) Title="Edit state" />
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() => M.LoadState(_selectedState)) Disabled=@(_selectedState == null) Title="Load state" />
+                <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() => LoadStatePreset(_selectedState)) Disabled=@(_selectedState == null) Title="Load state" />
             </MudButtonGroup>
         </MudItem>
     </MudGrid>
@@ -66,36 +69,36 @@
 @code {
     [CascadingParameter] public Action? OnThemeChanged { get; set; }
     
-    private State? _selectedState;
-    private List<State> _states = new();
+    private BlazorWebApp.Data.Entities.State? _selectedState;
+    private List<BlazorWebApp.Data.Entities.State> _states = new();
 
     protected async override Task OnInitializedAsync()
     {
-        M.OnFolderChange += Refresh;
-        M.OnProjectsChange += Refresh;
+        Events.Subscribe<FolderChangedEventArgs>(OnFolderChanged);
+        Events.Subscribe<ProjectChangedEventArgs>(OnProjectsChanged);
         
         await InitializeStates();
-        await M.GetFolders();
-        await M.GetProjects();
+        await Gallery.GetFolders();
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
         
-        if (M.Projects != null && M.Projects.Count > 0)
+        if (Gallery.Projects != null && Gallery.Projects.Count > 0)
         {
-            if (M.State.Gallery.ProjectId == 0)
+            if (State.State.Gallery.ProjectId == 0)
             {
                 var latestProject = await DB.GetLatestProject();
                 if (latestProject != null)
                 {
-                    await M.SetCurrentProject(latestProject.Id);
+                    await Gallery.SetCurrentProject(latestProject.Id);
                 }
             }
             else
             {
-                await M.SetCurrentProject(M.State.Gallery.ProjectId);
+                await Gallery.SetCurrentProject(State.State.Gallery.ProjectId);
             }
         }
         else
         {
-            M.State.Gallery.ProjectName = "Create New Project...";
+            State.State.Gallery.ProjectName = "Create New Project...";
         }
     }
 
@@ -109,7 +112,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task ShowStateDialog(State state)
+    private async Task ShowStateDialog(BlazorWebApp.Data.Entities.State state)
     {
         var options = new DialogOptions() { CloseButton = true, CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
         var param = new DialogParameters();
@@ -119,10 +122,18 @@
         await InitializeStates();
     }
 
+    private async Task LoadStatePreset(BlazorWebApp.Data.Entities.State? statePreset)
+    {
+        if (statePreset != null)
+        {
+            await State.LoadState(statePreset.Id);
+        }
+    }
+
     private async Task HandleThemeSelected(string selected)
     {
-        M.State.CurrentTheme = selected;
-        await M.SaveState();
+        State.State.CurrentTheme = selected;
+        await State.SaveState();
         OnThemeChanged?.Invoke();
     }
 
@@ -131,29 +142,45 @@
         var project = await DB.GetProject(selected);
         if (project != null)
         {
-            await M.SetCurrentProject(project.Id);
-            Refresh();
+            await Gallery.SetCurrentProject(project.Id);
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     private async Task HandleFolderSelected(string selected)
     {
-        if (string.IsNullOrWhiteSpace(selected)) await M.SetCurrentFolder(0);
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            await Gallery.SetCurrentFolder(0);
+        }
         else 
         {
             var folder = await DB.GetFolder(selected);
             if (folder != null)
             {
-                await M.SetCurrentFolder(folder.Id);
+                await Gallery.SetCurrentFolder(folder.Id);
             }
         }
+        
+        // Refresh projects for the new folder
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFolderChanged(FolderChangedEventArgs args)
+    {
+        Refresh();
+    }
+
+    private void OnProjectsChanged(ProjectChangedEventArgs args)
+    {
         Refresh();
     }
 
     public void Dispose()
     {
-        M.OnFolderChange -= Refresh;
-        M.OnProjectsChange -= Refresh;
+        Events.Unsubscribe<FolderChangedEventArgs>(OnFolderChanged);
+        Events.Unsubscribe<ProjectChangedEventArgs>(OnProjectsChanged);
     }
 
     private async void Refresh()

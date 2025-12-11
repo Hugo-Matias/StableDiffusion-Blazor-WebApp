@@ -64,58 +64,56 @@ namespace BlazorWebApp.Services
         public async Task LoadState()
         {
             // Load the latest AutoSave for current StateVersion
-            var stateVersion = int.Parse(_configuration["StateVersion"]);
-            var autoSave = await _db.GetState(1); // This will get AutoSave via DatabaseService fallback logic
-            
-            if (autoSave != null)
-            {
-                await LoadState(autoSave.Id);
-            }
-            else
-            {
-                // No AutoSave exists for this version, create one
-                await SaveState();
-            }
+            await LoadStateInternal(1); // ID 1 = AutoSave
         }
 
         public async Task LoadState(int stateId)
         {
-            var state = await _db.GetState(stateId);
+            await LoadStateInternal(stateId);
+        }
 
-            // If state doesn't exist, create AutoSave if this is ID 1
-            if (state == null)
+        /// <summary>
+        /// Internal method that actually loads application state from the database.
+        /// </summary>
+        private async Task LoadStateInternal(int stateId)
+        {
+            var dbState = await _db.GetState(stateId);
+            
+            if (dbState != null)
             {
-                if (stateId == 1)
+                // Load AppState if present
+                if (dbState.AppState != null)
                 {
-                    // Create new AutoSave state with current values
-                    await SaveState();
+                    State = dbState.AppState;
                 }
-                return;
+
+                // Load parameters if present
+                if (dbState.Txt2ImgParameters != null)
+                {
+                    ParametersTxt2Img = dbState.Txt2ImgParameters;
+                }
+
+                if (dbState.Img2ImgParameters != null)
+                {
+                    ParametersImg2Img = dbState.Img2ImgParameters;
+                }
+
+                if (dbState.UpscaleParameters != null)
+                {
+                    ParametersUpscale = dbState.UpscaleParameters;
+                }
+
+                if (dbState.Img2VidParameters != null)
+                {
+                    ParametersImg2Vid = dbState.Img2VidParameters;
+                }
+
+                // Normalize state after loading
+                NormalizeState();
+
+                // Publish events to notify components that state has changed
+                PublishStateChangedEvents();
             }
-
-            // Load AppState if it exists in the preset
-            if (state.AppState != null)
-            {
-                State = state.AppState;
-                State.Generation.IsInterrupted = false;
-            }
-
-            // Load parameters if they exist in the preset (selective loading)
-            if (state.Txt2ImgParameters != null)
-                ParametersTxt2Img = state.Txt2ImgParameters;
-
-            if (state.Img2ImgParameters != null)
-                ParametersImg2Img = state.Img2ImgParameters;
-
-            if (state.UpscaleParameters != null)
-                ParametersUpscale = state.UpscaleParameters;
-
-            if (state.Img2VidParameters != null)
-                ParametersImg2Vid = state.Img2VidParameters;
-
-            // Normalize and publish events
-            NormalizeState();
-            PublishStateChangedEvents();
         }
 
         public async Task SaveState()
