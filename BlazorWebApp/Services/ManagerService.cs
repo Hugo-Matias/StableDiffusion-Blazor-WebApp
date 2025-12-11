@@ -26,14 +26,11 @@ namespace BlazorWebApp.Services
         private readonly IBackendService _backend;
         private readonly IModelService _models;
         private readonly IGalleryService _gallery;
+        private readonly ISessionService _session;
         private int _currentProgress;
         private bool _isConverging;
         private bool _isWebuiUp;
-        private string _canvasImageData;
-        private string _img2VidInputImage;
-        private string _img2ImgInputImage;
         private bool _isComfyUIUp;
-        private ImageEditorState _imageEditorState = new();
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -120,27 +117,41 @@ namespace BlazorWebApp.Services
                 OnProgressChanged?.Invoke();
             }
         }
-        public List<string> CanvasStates { get; set; } = new();
+        
+        // Temporary facade - delegates to SessionService (will be removed in Phase 8)
+        public List<string> CanvasStates => _session.CanvasStates;
+        
         public string CanvasImageData
         {
-            get => _canvasImageData; set
+            get => _session.CanvasImageData; 
+            set
             {
-                _canvasImageData = value;
+                _session.CanvasImageData = value;
                 OnCanvasImageDataChanged?.Invoke();
             }
         }
-        public string CanvasMaskData { get; set; }
-        public string UpscaleImageData { get; set; }
+        
+        public string CanvasMaskData 
+        { 
+            get => _session.CanvasMaskData; 
+            set => _session.CanvasMaskData = value; 
+        }
+        
+        public string UpscaleImageData 
+        { 
+            get => _session.UpscaleImageData; 
+            set => _session.UpscaleImageData = value; 
+        }
 
         /// <summary>
         /// Input image data for Img2Vid generation (stored separately from parameters due to size)
         /// </summary>
         public string Img2VidInputImage
         {
-            get => _img2VidInputImage;
+            get => _session.Img2VidInputImage;
             set
             {
-                _img2VidInputImage = value;
+                _session.Img2VidInputImage = value;
                 OnImg2VidInputImageChanged?.Invoke();
             }
         }
@@ -150,10 +161,10 @@ namespace BlazorWebApp.Services
         /// </summary>
         public string Img2ImgInputImage
         {
-            get => _img2ImgInputImage;
+            get => _session.Img2ImgInputImage;
             set
             {
-                _img2ImgInputImage = value;
+                _session.Img2ImgInputImage = value;
                 OnImg2ImgInputImageChanged?.Invoke();
             }
         }
@@ -164,20 +175,21 @@ namespace BlazorWebApp.Services
         /// </summary>
         public ImageEditorState ImageEditorState
         {
-            get => _imageEditorState; set
+            get => _session.ImageEditorState; 
+            set
             {
-                _imageEditorState = value;
+                _session.ImageEditorState = value;
                 OnImageEditorStateChanged?.Invoke();
             }
         }
 
         /// <summary>
         /// Resets the image editor state, clearing all edits and layers.
-        /// Call this when the user manually changes the input image (not when editor outputs a result).
+        /// Call this when the user manually changes the input image (not from editor output).
         /// </summary>
         public void ResetImageEditorState()
         {
-            _imageEditorState = new ImageEditorState();
+            _session.ResetImageEditorState();
             OnImageEditorStateChanged?.Invoke();
         }
 
@@ -188,39 +200,32 @@ namespace BlazorWebApp.Services
         /// </summary>
         public void SetImg2ImgInputImage(string imageData, bool resetEditorState)
         {
-            if (resetEditorState && _img2ImgInputImage != imageData)
-            {
-                _imageEditorState = new ImageEditorState();
-            }
-            _img2ImgInputImage = imageData;
+            _session.SetImg2ImgInputImage(imageData, resetEditorState);
             OnImg2ImgInputImageChanged?.Invoke();
         }
 
         /// <summary>
         /// Session-persisted generated videos for Img2Vid
         /// </summary>
-        public GeneratedVideos SessionGeneratedVideos { get; set; } = new();
+        public GeneratedVideos SessionGeneratedVideos => _session.SessionGeneratedVideos;
 
         public event Action OnSessionVideosChanged;
 
         public void AddSessionVideo(GeneratedVideo video)
         {
-            SessionGeneratedVideos.Videos.Insert(0, video);
+            _session.AddSessionVideo(video);
             OnSessionVideosChanged?.Invoke();
         }
 
         public void AddSessionVideos(IEnumerable<GeneratedVideo> videos)
         {
-            foreach (var video in videos)
-            {
-                SessionGeneratedVideos.Videos.Insert(0, video);
-            }
+            _session.AddSessionVideos(videos);
             OnSessionVideosChanged?.Invoke();
         }
 
         public void ClearSessionVideos()
         {
-            SessionGeneratedVideos.Videos.Clear();
+            _session.ClearSessionVideos();
             OnSessionVideosChanged?.Invoke();
         }
 
@@ -231,7 +236,7 @@ namespace BlazorWebApp.Services
 
         public void RemoveSessionVideo(GeneratedVideo video)
         {
-            SessionGeneratedVideos.Videos.Remove(video);
+            _session.RemoveSessionVideo(video);
             OnSessionVideosChanged?.Invoke();
         }
 
@@ -265,7 +270,7 @@ namespace BlazorWebApp.Services
         // Temporary facade - delegates to BackendService (will be removed in Phase 8)
         public bool IsComfyUIUp => _backend.IsBackendAvailable;
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models, IGalleryService gallery)
+        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models, IGalleryService gallery, ISessionService session)
         {
             _sdapi = sdapi;
             _db = db;
@@ -280,6 +285,7 @@ namespace BlazorWebApp.Services
             _backend = backend;
             _models = models;
             _gallery = gallery;
+            _session = session;
 
             // SettingsService now handles loading settings automatically
             // Note: LoadState() must be called asynchronously after construction

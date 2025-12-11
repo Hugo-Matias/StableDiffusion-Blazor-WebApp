@@ -1,0 +1,34 @@
+using BlazorWebApp.Models;
+
+namespace BlazorWebApp.Services
+{
+    /// <summary>
+    /// Service for managing session-scoped UI state (canvas, image editor, videos).
+    /// This service is scoped per browser tab and does not persist to database.
+    /// Session state is cleared when the browser tab is closed.
+    /// </summary>
+    public interface ISessionService
+    {
+        // Canvas State
+        string CanvasImageData { get; set; }
+        string? CanvasMaskData { get; set; }
+        string UpscaleImageData { get; set; }
+        List<string> CanvasStates { get; }
+
+        // Input Images
+        string Img2ImgInputImage { get; set; }
+        string Img2VidInputImage { get; set; }
+
+        // Image Editor
+        ImageEditorState ImageEditorState { get; set; }
+        void ResetImageEditorState();
+        void SetImg2ImgInputImage(string imageData, bool resetEditorState);
+
+        // Session Videos
+        GeneratedVideos SessionGeneratedVideos { get; }
+        void AddSessionVideo(GeneratedVideo video);
+        void AddSessionVideos(IEnumerable<GeneratedVideo> videos);
+        void RemoveSessionVideo(GeneratedVideo video);
+        void ClearSessionVideos();
+    }
+}

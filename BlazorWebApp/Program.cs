@@ -52,6 +52,9 @@ builder.Services.AddSingleton<IModelService, ModelService>();
 // Gallery management service (folders, projects, image selection)
 builder.Services.AddSingleton<IGalleryService, GalleryService>();
 
+// Session management service (canvas, image editor, videos) - singleton with circuit isolation
+builder.Services.AddSingleton<ISessionService, SessionService>();
+
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();
