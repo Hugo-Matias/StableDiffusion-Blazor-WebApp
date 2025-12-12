@@ -1,10 +1,10 @@
 # WebUI Deprecation & ComfyUI Simplification Plan
 
 ## Status
-**Phase:** Phase 3 - Remove WebUI Components ? COMPLETE
+**Phase:** Phase 4 - Evaluate & Clean WebUI DTOs ? COMPLETE (with expected errors)
 **Started:** 2025-01-14  
-**Current Step:** Phase 4 - Evaluate & Clean WebUI DTOs
-**Next Step:** Phase 4 - Evaluate & Clean WebUI DTOs
+**Current Step:** Phase 5 - Remove SDAPIService (or proceed to Phase 6.5 for script cleanup)
+**Next Step:** Phase 6.5 - Remove WebUI-Only Scripts (to fix compilation errors)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Date | Phase | Description |
 |------|-------|-------------|
+| 2025-01-14 | Phase 4 | ? **WebUI DTOs Removed!** Successfully removed entire Data/Dtos/WebUI folder containing 13 files (4 WebUI API DTOs + 9 Script parameter DTOs). **Expected:** 92 compilation errors from script forms, model classes, and ManagerService factory methods - these will be fixed in Phase 6.5 (script cleanup). Decision: Proceed to Phase 6.5 next to fix compilation errors before Phase 5. Ready for Phase 6.5. |
 | 2025-01-14 | Phase 3 | ? **WebUI Components Removed!** Successfully removed all 4 WebUI component files (GenerateFormTxt2Img.razor + CSS, GenerateFormImg2Img.razor + CSS). Build passes without errors. Note: UltimateUpscaleForm and ADetailerModelForm will be removed in Phase 6.5 (Script cleanup). Ready for Phase 4. |
 | 2025-01-14 | Phase 2 | ? **WebUI Pages Removed!** Successfully removed all 4 WebUI page files (Txt2ImgWebUI.razor, Img2ImgWebUI.razor, UpscaleWebUI.razor, UpscaleWebUI.razor.css). Removed empty Pages/WebUI folder. Build passes without errors. No navigation references to update (NavBar only shows ComfyUI workflows). Ready for Phase 3. |
 | 2025-01-14 | Phase 1.7 | ? **Updated Decision - Remove ALL Scripts!** After review, decided to remove ControlNet and ADetailer as well. Both have partial/incomplete ComfyUI implementations not actively used in generation pages. Better to start fresh with clean ComfyUI workflow-based design. **Impact:** Now removing ALL 9 scripts (0 kept), 14 forms, 9 DTOs, ~450 lines from ManagerService, ~800 lines from AppSettings.cs. Total: ~1500+ lines removed. Maintains current Settings ? State ? DTO architecture. Future scripts will be ComfyUI-native. Restored Phases 7 & 8, file/folder matrix. Updated estimate: ~16 hours (up from 14). |
