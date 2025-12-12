@@ -13,7 +13,6 @@ namespace BlazorWebApp.Models
         public bool InpaintFullRes { get; set; }
         public int InpaintFullResPadding { get; set; }
         public int InpaintingMaskInvert { get; set; }
-        public Img2ImgScriptParameters Scripts { get; set; }
 
         // ComfyUI-specific properties
         public string? Image { get; set; }
@@ -94,19 +93,5 @@ namespace BlazorWebApp.Models
                 Loras = Loras?.Where(l => l.IsEnabled && !l.IsNegative).ToList()
             };
         }
-    }
-
-    public class Img2ImgScriptParameters
-    {
-        public List<ScriptParametersControlNet> ControlNet { get; set; }
-        public ScriptParametersCutoff Cutoff { get; set; }
-        public ScriptParametersDynamicPrompts DynamicPrompts { get; set; }
-        public ScriptParametersUltimateUpscale UltimateUpscale { get; set; }
-        public ScriptParametersMultiDiffusionTiledDiffusion MultiDiffusionTiledDiffusion { get; set; }
-        public ScriptParametersMultiDiffusionTiledVae MultiDiffusionTiledVae { get; set; }
-        public ScriptParametersRegionalPrompter RegionalPrompter { get; set; }
-        public ScriptParametersXYZPlot XYZPlot { get; set; }
-        public ScriptParametersADetailer ADetailer { get; set; }
-        public ScriptParametersIncantations Incantations { get; set; }
     }
 }
