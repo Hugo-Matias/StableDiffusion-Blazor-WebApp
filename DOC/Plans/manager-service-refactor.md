@@ -993,6 +993,7 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.11    | **Tenth Component Migrated!** ImageCard.razor migrated from ManagerService to IStateService, IGalleryService, ISessionService, IBackendService, and IEventService. Complex component with image display, selection, favoriting, workflow integration, and "Send To" features. Removed WebUI-specific code. Build passes. 10/70 components complete (14%). |
 | 2025-01-14 | 2.0.10    | **Ninth Component Migrated!** ImagesContainer.razor migrated from ManagerService to IStateService, IGalleryService, and IEventService. Core gallery component displaying image/video grid with selection, pagination, and CRUD operations. Build passes. 9/70 components complete (13%). |
 | 2025-01-14 | 2.0.9     | **Eighth Component Migrated!** GallerySettings.razor migrated from ManagerService to IStateService, IGalleryService, and IEventService. Complex component managing gallery settings, filters, folder/project navigation, and CRUD operations. Build passes. 8/70 components complete (11%). |
 | 2025-01-14 | 2.0.8     | **Seventh Component Complete!** ProjectModal.razor verified - no migration needed as it doesn't use ManagerService. Simple modal dialog that only uses DatabaseService directly. 7/70 components complete (10%). |

@@ -1,6 +1,7 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.Json;
@@ -934,7 +935,12 @@ namespace BlazorWebApp.Services
                 ResetWorkflowAssetsToDefaults();
             }
 
+            // Fire legacy Action event for components that haven't been migrated yet
             OnWorkflowBaseChanged?.Invoke();
+            
+            // Publish StateChangedEventArgs for migrated components using EventService
+            _events.Publish(new StateChangedEventArgs());
+            
             SetDefaultBaseModel();
         }
 
