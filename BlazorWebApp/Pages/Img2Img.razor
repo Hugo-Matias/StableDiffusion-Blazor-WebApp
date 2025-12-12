@@ -7,10 +7,10 @@
 @inject WorkflowService WorkflowService
 @inject ImageService ImageService
 @inject NavigationManager NavManager
-@inject ILogger<Img2ImgComfyUI> Logger
+@inject ILogger<Img2Img> Logger
 @implements IDisposable
 
-@page "/comfyui/img2img/{id}"
+@page "/img2img/{id}"
 
 <WorkflowAssetsPanel Mode="ModeType.Img2Img" 
                      Workflow="@GetCurrentWorkflow()"
@@ -35,7 +35,7 @@
                         OnImageLoaded="HandleImageLoaded"
                         OnEditClicked="OpenImageEditor"
                         OnBlankCanvasClicked="OpenBlankCanvasEditor" />
-            <GenerateFormImg2ImgComfyUI />
+            <GenerateFormImg2Img />
         </MudStack>
     </MudItem>
     <MudItem xs="6">

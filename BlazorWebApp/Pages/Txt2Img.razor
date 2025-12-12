@@ -1,4 +1,4 @@
-﻿@page "/comfyui/txt2img/{id}"
+﻿@page "/txt2img/{id}"
 @using BlazorWebApp.Components.Shared.Generation
 @using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
@@ -18,7 +18,7 @@
 
 <MudGrid>
     <MudItem xs="6">
-        <GenerateFormTxt2ImgComfyUI @bind-Parameters="@Parameters" />
+        <GenerateFormTxt2Img @bind-Parameters="@Parameters" />
     </MudItem>
     <MudItem xs="6">
         <GeneratedImageTabs />

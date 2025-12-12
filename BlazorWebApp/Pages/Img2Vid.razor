@@ -8,7 +8,7 @@
 @inject NavigationManager NavManager
 @implements IDisposable
 
-@page "/comfyui/img2vid/{id}"
+@page "/img2vid/{id}"
 
 @* Workflow Assets Panel - Full width before prompts *@
 <WorkflowAssetsPanel Mode="ModeType.Img2Vid" 
@@ -32,7 +32,7 @@
                         ImageDataChanged="HandleImageDataChanged"
                         Title="Input Image"
                         OnImageLoaded="HandleImageLoaded" />
-            <GenerateFormImg2VidComfyUI />
+            <GenerateFormImg2Vid />
         </MudStack>
     </MudItem>
     <MudItem xs="6">

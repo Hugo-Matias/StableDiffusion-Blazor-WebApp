@@ -1,7 +1,7 @@
 # WebUI Deprecation & ComfyUI Simplification Plan
 
 ## Status
-**Phase:** Phase 5 - Remove SDAPIService ? COMPLETE (with expected errors)
+**Phase:** Phase 6 - Rename ComfyUI Components & Pages ? COMPLETE
 **Started:** 2025-01-14  
 **Current Step:** Phase 6.5 - Remove WebUI-Only Scripts (to fix compilation errors)
 **Next Step:** Phase 6.5 - Remove WebUI-Only Scripts
@@ -12,6 +12,7 @@
 
 | Date | Phase | Description |
 |------|-------|-------------|
+| 2025-01-14 | Phase 6 | ? **ComfyUI Files Renamed!** Successfully renamed 7 files (3 pages + 4 components) removing "ComfyUI" suffix. Updated @page directives from `/comfyui/*` to `/*`. Updated NavBar routes. Removed empty Pages/ComfyUI folder. ADetailerModelFormComfyUI.razor skipped (will be removed in Phase 6.5). **Still 103 compilation errors** from script system - will be fixed in Phase 6.5. Ready for Phase 6.5. |
 | 2025-01-14 | Phase 5 | ? **SDAPIService Removed!** Successfully removed SDAPIService.cs file and DI registration from Program.cs. **Expected:** 103 compilation errors (up from 92) - added errors from ManagerService, RouterService, ImageService, WildcardsPanel, and Resources page. All will be fixed in Phase 6.5 (script cleanup). Ready for Phase 6.5. |
 | 2025-01-14 | Phase 4 | ? **WebUI DTOs Removed!** Successfully removed entire Data/Dtos/WebUI folder containing 13 files (4 WebUI API DTOs + 9 Script parameter DTOs). **Expected:** 92 compilation errors from script forms, model classes, and ManagerService factory methods - these will be fixed in Phase 6.5 (script cleanup). Decision: Proceed to Phase 6.5 next to fix compilation errors before Phase 5. Ready for Phase 6.5. |
 | 2025-01-14 | Phase 3 | ? **WebUI Components Removed!** Successfully removed all 4 WebUI component files (GenerateFormTxt2Img.razor + CSS, GenerateFormImg2Img.razor + CSS). Build passes without errors. Note: UltimateUpscaleForm and ADetailerModelForm will be removed in Phase 6.5 (Script cleanup). Ready for Phase 4. |
@@ -777,7 +778,7 @@ After removing all scripts, also clean up:
   - 3 ComfyUI pages
   - 4 ComfyUI components (+ CSS)
 - **Update References:** ~10-15 files (components using moved pages, updated routing)
-- **Clean Folders:** 3 folders (WebUI, ComfyUI, Dtos/WebUI)
+- **Clean Folders:** 3 folders (WebUI, ComfyUI, Dtos/WebUI/)
 
 ### Complexity Breakdown (Updated)
 - **Low Complexity (55%):** Simple file deletions, obvious renames
