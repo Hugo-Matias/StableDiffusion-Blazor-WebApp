@@ -648,7 +648,54 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 
 ---
 
+### Phase 7.5: WebUI Deprecation & ComfyUI Simplification
+**Objective:** Remove all Automatic1111 WebUI code and simplify ComfyUI naming conventions
+**Status:** [??] In Progress - Phase 1 (Audit)
+**Documentation:** See [`DOC/Plans/WEBUI_DEPRECATION_PLAN.md`](./WEBUI_DEPRECATION_PLAN.md)
+
+#### Overview
+This cleanup phase removes legacy WebUI support and simplifies the codebase before Phase 8 component migration:
+- **Remove:** WebUI pages, components, DTOs, and SDAPIService
+- **Rename:** `*ComfyUI.razor` ? `*.razor` (remove ComfyUI suffix)
+- **Simplify:** Architecture to support only ComfyUI backend
+- **Benefit:** Reduces Phase 8 migration workload significantly
+
+#### Quick Summary
+- **What:** Remove Automatic1111 WebUI backend support (unused)
+- **Why:** ComfyUI is now the only supported backend
+- **Impact:** ~10-15 files removed, ~8-10 files renamed
+- **Risk:** Low (WebUI code is unused)
+- **Effort:** ~11 hours estimated
+- **Status:** Phase 1 - Auditing WebUI code locations
+
+#### Key Tasks (High Level)
+1. Audit all WebUI code (Pages, Components, DTOs, Services)
+2. Remove WebUI pages and components
+3. Clean up WebUI DTOs (remove or relocate)
+4. Remove SDAPIService
+5. Rename ComfyUI-suffixed files to remove suffix
+6. Update routing and navigation
+7. Update component migration log
+8. Final verification and testing
+
+#### Integration Points
+- **Before:** Complete this deprecation before starting Phase 8 migration
+- **After:** Update `COMPONENT_MIGRATION_LOG.md` with revised counts
+- **Benefit:** Fewer components to migrate in Phase 8 (~5 fewer components)
+
+#### Success Criteria
+- All WebUI code removed
+- All ComfyUI naming simplified
+- Build passes, tests pass, application functional
+- Documentation updated
+- Ready for Phase 8 component migration
+
+**See detailed plan:** [`WEBUI_DEPRECATION_PLAN.md`](./WEBUI_DEPRECATION_PLAN.md)
+
+---
+
 ### Phase 8: Orchestrator Refactor & Component Migration
+
 **Objective:** Convert ManagerService to lightweight orchestrator, migrate ALL components
 **Status:** [??] In Progress - 11/70 Components Complete (16%)
 **Current Group:** Group 2 - Generation Forms (High Priority)
@@ -1016,6 +1063,7 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.18    | **WebUI Deprecation Plan Created! Phase 1 Audit Complete!** Created comprehensive deprecation plan for removing all Automatic1111 WebUI code and simplifying ComfyUI naming. Phase 1 audit complete: identified 42 files affected (14 to remove, 17 to move/rename, ~10-20 reference updates). Found 3 WebUI pages, 3 WebUI components, 4 WebUI DTOs to remove. 9 script parameter DTOs to relocate from WebUI folder. 8 ComfyUI files to rename (remove ComfyUI suffix). Risk: Low. Estimated effort: ~10.5 hours. Ready to proceed with Phase 2 (Remove WebUI Pages). See DOC/Plans/WEBUI_DEPRECATION_PLAN.md for details. |
 | 2025-01-14 | 2.0.17    | **Group 3 Complete! ??** Migrated all 8 simple script forms from ManagerService to ISettingsService/IStateService/IBackendService. Components: CutoffForm, RegionalPrompterForm, MultiDiffusionTiledVaeForm, IncantationsForm, XYZPlotForm, MultiDiffusionTiledDiffusionForm, DynamicPromptsForm, ADetailerForm. Deferred 2 complex ADetailer WebUI-only forms (ADetailerModelForm, ADetailerModelFormComfyUI) to later phase. Build passes. 22/70 components complete (31%). Group 3 (Script Forms) **100% complete** (8/10 actual, 2 deferred). |
 | 2025-01-14 | 2.0.16    | **PromptFieldsSimple Migrated! Group 2 Progress Update!** PromptFieldsSimple.razor successfully migrated from ManagerService to IEventService for converging state tracking. Simple component using only EventService for generation state. Cleaned up unused ManagerService injection from LoraForm.razor. Updated migration log with accurate component counts - 5 Group 2 components marked as skip (no ManagerService dependency). Build passes. 14/70 components complete (20%). Group 2 (Generation Forms) now 3/13 complete (23%). |
 | 2025-01-14 | 2.0.15    | **GenerateButton Migrated!** GenerateButton.razor successfully migrated from ManagerService to IStateService and IEventService. Created ConvergingChangedEventArgs event for generation state tracking. Updated ManagerService.IsConverging setter to publish both legacy Action event and new typed event for backward compatibility. Build passes. 13/70 components complete (19%). Group 2 (Generation Forms) now 2/18 complete. |
