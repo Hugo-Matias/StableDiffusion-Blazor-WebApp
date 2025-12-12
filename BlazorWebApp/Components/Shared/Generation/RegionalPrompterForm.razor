@@ -1,11 +1,11 @@
 ﻿@using BlazorWebApp.Data.Dtos.WebUI
-@inject ManagerService M
+@inject ISettingsService Settings
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Regional Prompter</MudText>
 <MudGrid>
     <MudItem xs="6">
         <MudSelect @bind-Value=Parameters.MatrixMode Label="Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var mode in M.Settings.Scripts.RegionalPrompter.MatrixModes)
+            @foreach (var mode in Settings.Settings.Scripts.RegionalPrompter.MatrixModes)
             {
                 <MudSelectItem Value="mode" />
             }
@@ -13,7 +13,7 @@
     </MudItem>
     <MudItem xs="6">
         <MudSelect @bind-Value=Parameters.GenerationMode Label="Generation Mode" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var mode in M.Settings.Scripts.RegionalPrompter.GenerationModes)
+            @foreach (var mode in Settings.Settings.Scripts.RegionalPrompter.GenerationModes)
             {
                 <MudSelectItem Value="mode" />
             }

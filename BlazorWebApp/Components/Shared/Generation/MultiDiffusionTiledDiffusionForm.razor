@@ -1,5 +1,6 @@
 ﻿@using BlazorWebApp.Data.Dtos.WebUI
-@inject ManagerService M
+@inject ISettingsService Settings
+@inject IBackendService Backend
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">MultiDiffusion: Tiled Diffusion</MudText>
 <MudGrid>
@@ -47,11 +48,11 @@
     </MudItem>
     @if (IsImg2Img)
     {
-        if (M.Upscalers != null)
+        if (Backend.Upscalers != null)
         {
             <MudItem xs="6">
                 <MudSelect @bind-Value=Parameters.UpscalerIndex Label="Upscaler" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @foreach (var upscaler in M.Upscalers)
+                    @foreach (var upscaler in Backend.Upscalers)
                     {
                         <MudSelectItem Value="upscaler.Name" />
                     }
@@ -99,6 +100,7 @@
 
     protected async override Task OnInitializedAsync()
     {
-        if (M.Upscalers == null) await M.LoadBackendDependentResources();
+        _s = Settings.Settings.Scripts.MultiDiffusion.TiledDiffusion;
+        if (Backend.Upscalers == null) await Backend.LoadBackendDependentResources();
     }
 }

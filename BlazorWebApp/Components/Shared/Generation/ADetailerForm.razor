@@ -1,28 +1,13 @@
 ﻿@using BlazorWebApp.Data.Dtos.WebUI
-@inject ManagerService M
+@using static BlazorWebApp.Data.Enums
+@inject IBackendService Backend
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">ADetailer</MudText>
-@if (M.IsWebuiUp)
+@if (!Backend.IsBackendAvailable)
 {
-    <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" MinimumTabWidth="100px" Rounded Centered>
-        <MudTabPanel Text="Model 1">
-            <ADetailerModelForm Parameters="Parameters.Model1"/>
-        </MudTabPanel>
-        <MudTabPanel Text="Model 2">
-            <ADetailerModelForm Parameters="Parameters.Model2"/>
-        </MudTabPanel>
-        <MudTabPanel Text="Model 3">
-            <ADetailerModelForm Parameters="Parameters.Model3"/>
-        </MudTabPanel>
-        <MudTabPanel Text="Model 4">
-            <ADetailerModelForm Parameters="Parameters.Model4"/>
-        </MudTabPanel>
-        <MudTabPanel Text="Model 5">
-            <ADetailerModelForm Parameters="Parameters.Model5"/>
-        </MudTabPanel>
-    </MudTabs>
+    <MudText>Backend not available</MudText>
 }
-@if (M.IsComfyUIUp)
+else
 {
     <ADetailerModelFormComfyUI Parameters="Parameters.Model1" Mode="Mode"/>
 }

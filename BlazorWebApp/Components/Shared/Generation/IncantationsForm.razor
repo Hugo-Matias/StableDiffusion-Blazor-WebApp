@@ -1,5 +1,5 @@
 ﻿@using BlazorWebApp.Data.Dtos.WebUI
-@inject ManagerService M
+@inject ISettingsService Settings
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Incantations</MudText>
 <MudGrid>
@@ -7,7 +7,7 @@
         <MudCheckBox @bind-Checked=Parameters.IsPAGEnabled Label="Perturbed Attention Guidance" />
     </MudItem>
     <MudItem xs="6">
-        <MudSlider @bind-Value=Parameters.PAGScale Min=M.Settings.Scripts.Incantations.PAG.Min Max=M.Settings.Scripts.Incantations.PAG.Max Step=M.Settings.Scripts.Incantations.PAG.Step ValueLabel=true><small>Scale: </small> @Parameters.PAGScale</MudSlider>
+        <MudSlider @bind-Value=Parameters.PAGScale Min=Settings.Settings.Scripts.Incantations.PAG.Min Max=Settings.Settings.Scripts.Incantations.PAG.Max Step=Settings.Settings.Scripts.Incantations.PAG.Step ValueLabel=true><small>Scale: </small> @Parameters.PAGScale</MudSlider>
     </MudItem>
 </MudGrid>
 

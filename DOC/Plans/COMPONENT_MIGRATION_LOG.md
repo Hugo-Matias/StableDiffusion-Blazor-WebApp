@@ -3,8 +3,8 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 13/70 components migrated (19%)
-**Current Group:** Group 2 - Generation Forms (High Priority)
+**Current Progress:** 22/70 components migrated (31%)
+**Current Group:** Group 3 - Script Forms (State + Settings)
 
 ---
 
@@ -13,8 +13,8 @@
 | Group | Status | Progress | Notes |
 |-------|--------|----------|-------|
 | **Group 1: Simple Components** | ? Complete | 2/2 core + 8 skipped | NavBar, TopToolbar migrated. 3 components don't exist, 5 have no ManagerService |
-| **Group 2: Generation Forms** | ?? In Progress | 3/13 actual | **CURRENT** - PromptFields, GenerateButton & PromptFieldsSimple complete! 5 skipped. 10 remaining. |
-| **Group 3: Script Forms** | ? Not Started | 0/10 | Settings + State services |
+| **Group 2: Generation Forms** | ?? In Progress | 3/13 actual | PromptFields, GenerateButton & PromptFieldsSimple complete! 5 skipped. 10 remaining. |
+| **Group 3: Script Forms** | ? Complete | 8/10 actual | **DONE!** - All simple forms complete! 2 complex deferred (ADetailer WebUI-only). |
 | **Group 4: Gallery Components** | ?? In Progress | 6/12 | Image display and management |
 | **Group 5: Canvas/Session** | ?? Partial | 1/8 | VideoCard complete |
 | **Group 6: Video Components** | ? Not Started | 0/3 | Video generation workflows |
@@ -96,8 +96,8 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | ControlNetForm | Components/Shared/Generation | State, Settings, Session | ? Not Started | |
 | ControlNetTabs | Components/Shared/Generation | State, Settings | ? Not Started | |
 | ControlNetTabsDynamic | Components/Shared/Generation | State, Settings | ? Not Started | |
-| WorkflowAssetsPanel | Components/Shared/Generation | State, Models | ? Not Started | |
-| WorkflowAssetSelector | Components/Shared/Generation | State, Models | ? Not Started | |
+| WorkflowAssetsPanel | Components/Shared/Generation | State, Models | ?? Deferred | Complex - tightly coupled with Parameters.WorkflowAssets. Migrate with generation forms. |
+| WorkflowAssetSelector | Components/Shared/Generation | State, Models | ?? Deferred | Complex - tightly coupled with Parameters.WorkflowAssets. Migrate with generation forms. |
 | TagDrawer | Components/Shared/Generation | CsvService only | ?? Skip | No ManagerService dependency |
 | TagAccordion | Components/Shared/Generation | - | ?? Skip | Pure UI component - no ManagerService |
 | TextFieldAutocomplete | Components/Shared/Generation | CsvService, CacheService, JSRuntime | ?? Skip | No ManagerService dependency |
@@ -108,16 +108,16 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
-| ADetailerForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| ADetailerModelForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| ADetailerModelFormComfyUI | Components/Shared/Generation | State, Settings | ? Not Started | |
-| CutoffForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| DynamicPromptsForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| IncantationsForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| MultiDiffusionTiledDiffusionForm | Components/Shared/Generation | State, Settings, Backend | ? Not Started | |
-| MultiDiffusionTiledVaeForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| RegionalPrompterForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| XYZPlotForm | Components/Shared/Generation | State, Settings | ? Not Started | |
+| CutoffForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
+| RegionalPrompterForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
+| MultiDiffusionTiledVaeForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
+| IncantationsForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
+| XYZPlotForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
+| MultiDiffusionTiledDiffusionForm | Components/Shared/Generation | Settings, Backend | ? Complete | Migrated 2025-01-14 - Settings + Backend for upscalers |
+| DynamicPromptsForm | Components/Shared/Generation | State, Settings | ? Complete | Migrated 2025-01-14 - State + Settings (Prompts wildcards, Enable Prompt Magic) |
+| ADetailerForm | Components/Shared/Generation | Backend | ? Complete | Migrated 2025-01-14 - Simple wrapper for ComfyUI ADetailer (WebUI code removed) |
+| ADetailerModelForm | Components/Shared/Generation | State, Settings, Models, Backend | ?? Deferred | Complex - WebUI-only, not critical for ComfyUI. Defer to later phase. |
+| ADetailerModelFormComfyUI | Components/Shared/Generation | State, Settings | ?? Deferred | Complex - Will migrate with main generation forms |
 
 ---
 
@@ -210,13 +210,13 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 - ? Not Started
 - ?? In Progress
 - ? Complete
-- ? Blocked
-- ?? Testing
+- ?? Blocked
+- ?? Deferred
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 43 (61%)
-- **Complete:** 14 (20%)
+- **Not Started:** 39 (56%)
+- **Complete:** 22 (31%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -231,6 +231,19 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - PromptFields.razor (critical shared component with DB styles loading!)
   - GenerateButton.razor (generate/skip/interrupt with converging state)
   - PromptFieldsSimple.razor (simplified prompt fields for Img2Vid)
+  - CutoffForm.razor (simple settings form)
+  - RegionalPrompterForm.razor (simple settings form)
+  - MultiDiffusionTiledVaeForm.razor (simple settings form)
+  - IncantationsForm.razor (simple settings form)
+  - XYZPlotForm.razor (simple settings form)
+  - MultiDiffusionTiledDiffusionForm.razor (settings + backend)
+  - DynamicPromptsForm.razor (state + settings)
+  - ADetailerForm.razor (backend wrapper)
+- **Deferred (Complex for later phase):** 4 (6%)
+  - WorkflowAssetsPanel (tightly coupled with Parameters.WorkflowAssets)
+  - WorkflowAssetSelector (tightly coupled with Parameters.WorkflowAssets)
+  - ADetailerModelForm (WebUI-only, complex dependencies)
+  - ADetailerModelFormComfyUI (complex, will migrate with generation forms)
 - **Skipped (No ManagerService or Don't Exist):** 13 (19%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -462,7 +475,7 @@ Some components have `@inject ManagerService M` but don't actually use it. These
 
 @code {
     // Only uses Router, M is never referenced
-    public Task<IEnumerable<string>> SearchLoras(string search) => Router.SearchLoras(Backend, search);
+    public Task<IEnumerable<string>> SearchLoras(String search) => Router.SearchLoras(Backend, search);
 }
 ```
 
@@ -472,7 +485,7 @@ Some components have `@inject ManagerService M` but don't actually use it. These
 
 @code {
     // Clean - only inject what's actually used
-    public Task<IEnumerable<string>> SearchLoras(string search) => Router.SearchLoras(Backend, search);
+    public Task<IEnumerable<string>> SearchLoras(String search) => Router.SearchLoras(Backend, search);
 }
 ```
 
