@@ -103,14 +103,10 @@
             </MudItem>
             <MudItem xs="12">
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>
-                    <MudChip Text="ADetailer" Default="Parameters.Scripts.ADetailer.IsEnabled" Variant="Variant.Text" Color="Color.Primary">ADetailer</MudChip>
                     <MudChip Text="Upscale" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Upscale</MudChip>
                     <MudChip Text="SeedVR2" Default="Parameters.SeedVR2?.IsActive" Variant="Variant.Text" Color="Color.Primary">SeedVR2 Upscale</MudChip>
                     <MudChip Text="Conditioning Variation" Default="Parameters.ConditioningVariation.IsActive" Variant="Variant.Text" Color="Color.Primary">Conditioning Variation</MudChip>
                 </MudChipSet>
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.ADetailer.IsEnabled ? "show" : "")}")">
-                    <ADetailerForm Parameters=Parameters.Scripts.ADetailer Mode="ModeType.Txt2Img" />
             </MudItem>
             <MudItem xs="12">
                 <MudGrid Class=@($"collapse {(Parameters.EnableHR == true ? "show" : "")}")>
@@ -299,7 +295,7 @@
 
     private void HandleParameterChecked(MudChip[] checkboxes)
     {
-        Parameters.Scripts.ADetailer.IsEnabled = false;
+        // Scripts system removed - only handle non-script parameters
         Parameters.EnableHR = false;
         if (Parameters.SeedVR2 != null) Parameters.SeedVR2.IsActive = false;
         if (Parameters.ConditioningVariation != null) Parameters.ConditioningVariation.IsActive = false;
@@ -310,9 +306,6 @@
         {
             switch (check.Text)
             {
-                case "ADetailer":
-                    Parameters.Scripts.ADetailer.IsEnabled = true;
-                    break;
                 case "Upscale":
                     Parameters.EnableHR = true;
                     break;
@@ -414,4 +407,4 @@
         
         return (targetWidth, targetHeight, smallestSide);
     }
-}}
+}

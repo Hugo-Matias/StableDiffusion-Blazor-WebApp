@@ -237,18 +237,6 @@ namespace BlazorWebApp.Services
                 {
                     IsActive = false,
                     SwitchPoint = 0.5f
-                },
-                Scripts = new()
-                {
-                    ControlNet = new() { new(), new(), new() },
-                    Cutoff = new(),
-                    DynamicPrompts = new(),
-                    MultiDiffusionTiledDiffusion = new(),
-                    MultiDiffusionTiledVae = new(),
-                    RegionalPrompter = new(),
-                    XYZPlot = new(),
-                    ADetailer = new(),
-                    Incantations = new()
                 }
             };
         }
@@ -262,20 +250,8 @@ namespace BlazorWebApp.Services
                 InpaintingFill = 1,
                 InpaintFullRes = true,
                 InpaintFullResPadding = 32,
-                InpaintingMaskInvert = 0,
-                Scripts = new()
-                {
-                    ControlNet = new() { new(), new(), new() },
-                    Cutoff = new(),
-                    DynamicPrompts = new(),
-                    UltimateUpscale = new(),
-                    MultiDiffusionTiledDiffusion = new(),
-                    MultiDiffusionTiledVae = new(),
-                    RegionalPrompter = new(),
-                    XYZPlot = new(),
-                    ADetailer = new(),
-                    Incantations = new()
-                }
+                InpaintingMaskInvert = 0
+                // Scripts system removed - no longer supported
             };
         }
 
