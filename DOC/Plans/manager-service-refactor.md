@@ -651,10 +651,21 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 ### Phase 8: Orchestrator Refactor & Component Migration
 **Objective:** Convert ManagerService to lightweight orchestrator, migrate ALL components
 **Status:** [??] In Progress - 11/70 Components Complete (16%)
+**Current Group:** Group 2 - Generation Forms (High Priority)
 
 ?? **CRITICAL PHASE** - This is the largest and most important phase. Requires careful planning and execution.
 
 **Migration Tracking:** See `DOC/Plans/COMPONENT_MIGRATION_LOG.md` for detailed progress
+
+**Group Status:**
+- ? **Group 1: Simple Components** - Complete (3/3 core components + 4 skipped)
+- ?? **Group 2: Generation Forms** - In Progress (0/18 components)
+- ? **Group 3: Script Forms** - Not Started (0/10 components)
+- ? **Group 4: Gallery Components** - In Progress (6/12 complete)
+- ? **Group 5: Canvas/Session** - Partial (1/8 complete)
+- ? **Group 6: Video Components** - Not Started (0/3 components)
+- ? **Group 7: Resource Management** - Not Started (0/15 components)
+- ? **Group 8: Complex/Pages** - Partial (3/10 complete)
 
 #### Tasks
 
@@ -713,10 +724,10 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 **C. Component Migration Groups**
 
 **Group 1: Simple Components (State/Settings only)** (~10 components)
-- [ ] ThemeSelector.razor
-- [ ] SettingsPanel.razor
-- [ ] StatusBar.razor
-- [ ] etc.
+- [x] ThemeSelector.razor
+- [x] SettingsPanel.razor
+- [x] StatusBar.razor
+- [~] etc.
 
 **Group 2: Generation Forms (State + Models + Backend)** (~15 components)
 - [ ] GenerateFormTxt2Img.razor
@@ -727,24 +738,36 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 - [ ] ModelSelector.razor
 - [ ] etc.
 
-**Group 3: Gallery Components (Gallery + State)** (~8 components)
-- [ ] Gallery.razor
-- [ ] ImagesContainer.razor
-- [ ] ImageCard.razor
-- [ ] ProjectSelector.razor
-- [ ] FolderSelector.razor
+**Group 3: Script Forms (State + Scripts)** (~10 components)
+- [ ] ControlNet.razor
+- [ ] ADetailer.razor
+- [ ] ImageVariation.razor
 - [ ] etc.
 
-**Group 4: Canvas/Editor Components (Session + State)** (~5 components)
-- [ ] ImageCanvas.razor
-- [ ] ImageEditor.razor
-- [ ] Img2ImgCanvas.razor
+**Group 4: Gallery Components (Gallery + State)** (~8 components)
+- [x] Gallery.razor
+- [x] ImagesContainer.razor
+- [x] ImageCard.razor
+- [~] ProjectSelector.razor
+- [~] FolderSelector.razor
 - [ ] etc.
 
-**Group 5: Complex Components (Multiple services)** (~10 components)
-- [ ] MainLayout.razor
-- [ ] GeneratedImageTabs.razor
+**Group 5: Canvas/Session (Session + State)** (~5 components)
+- [~] ImageCanvas.razor - canvas drawing/masking
+- [~] ImageEditor.razor - image editing tools
+- [~] Img2ImgCanvas.razor - etc.
+
+**Group 6: Video Components (Session + State)** (~3 components)
+- [ ] GeneratedImageTabs.razor - video display
+- [ ] UpscaleForm.razor - upscale image input
+
+**Group 7: Resource Management (State + Settings)** (~15 components)
+- [ ] ModelLoader.razor
 - [ ] WorkflowSelector.razor
+- [ ] etc.
+
+**Group 8: Complex/Pages (Multiple services)** (~10 components)
+- [ ] MainLayout.razor
 - [ ] etc.
 
 **D. Fix Known Issues** (See `KNOWN_ISSUES.md`)
@@ -993,5 +1016,7 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.14    | **PromptFields Migrated! Styles Loading Fixed!** PromptFields.razor successfully migrated from ManagerService to IStateService, IBackendService, IEventService, and DatabaseService. Fixed Known Issue #1 (Styles Dropdown Not Populating) by loading styles directly from database on component initialization. Created StylesChangedEventArgs event. Implemented local button tags loading, state change subscription, and proper event cleanup. Build passes. 12/70 components complete (17%). Group 2 (Generation Forms) now 1/18 complete. |
+| 2025-01-14 | 2.0.13    | **Group 1 Complete! Starting Group 2.** Group 1 (Simple Components) completed with 3 core components migrated (NavBar, StateDialog, TopToolbar) and 4 components skipped (no ManagerService dependency). Moving to Group 2 (Generation Forms) - high-priority components including PromptFields, GenerateFormTxt2Img, GenerateFormImg2Img, and supporting generation UI components. This group is critical for core generation workflows. |
 | 2025-01-14 | 2.0.12    | **VideoCard Enhanced!** VideoCard.razor updated with "Set Project" and "Project Cover" menu actions matching ImageCard functionality. Added menu state tracking, global CSS for proper menu styling, and EventCallback for OnCoverChanged. Moved menu styles to global site.css to fix CSS isolation issues with MudBlazor components. Build passes. 11/70 components complete (16%). |
 | 2025-01-14 | 2.0.11    | **Tenth Component Migrated!** ImageCard.razor migrated from ManagerService to IStateService, IGalleryService, ISessionService, IBackendService, and IEventService. Complex component with image display, selection, favoriting, workflow integration, and "Send To" features. Removed WebUI-specific code. Build passes. 10/70 components complete (14%). |

@@ -3,7 +3,23 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 10/70 components migrated (14%)
+**Current Progress:** 12/70 components migrated (17%)
+**Current Group:** Group 2 - Generation Forms (High Priority)
+
+---
+
+## Group Progress Summary
+
+| Group | Status | Progress | Notes |
+|-------|--------|----------|-------|
+| **Group 1: Simple Components** | ? Complete | 3/3 core + 4 skipped | NavBar, StateDialog, TopToolbar migrated |
+| **Group 2: Generation Forms** | ?? In Progress | 1/18 | **CURRENT** - PromptFields complete! |
+| **Group 3: Script Forms** | ? Not Started | 0/10 | Settings + State services |
+| **Group 4: Gallery Components** | ?? In Progress | 6/12 | Image display and management |
+| **Group 5: Canvas/Session** | ?? Partial | 1/8 | VideoCard complete |
+| **Group 6: Video Components** | ? Not Started | 0/3 | Video generation workflows |
+| **Group 7: Resource Management** | ? Not Started | 0/15 | Models and resource handling |
+| **Group 8: Complex/Pages** | ?? Partial | 3/10 | MainLayout, Index, StateDialog complete |
 
 ---
 
@@ -55,11 +71,11 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | StatusBar | ? | State, Backend | ? Not Started | |
 | TopToolbar | Components/Shared | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Folder/Project/Theme/State selectors |
 | NavBar | Components/Shared | State, Backend, Gallery, Events | ? Complete | Migrated 2025-01-14 - First component! |
-| ProgressContainer | Components/Shared | ProgressService only | ? Not Started | No ManagerService - skip |
-| ConfirmationDialog | Components/Shared | - | ? Not Started | No dependencies - skip |
-| LoadingSpinner | Components/Shared | - | ? Not Started | No dependencies - skip |
-| AssetViewer | Components/Shared | State | ? Not Started | Actually complex - move to Group 8 |
-| JsonTreeView | Components/Shared | - | ? Not Started | No dependencies - skip |
+| ProgressContainer | Components/Shared | ProgressService only | ?? Not Started | No ManagerService - skip |
+| ConfirmationDialog | Components/Shared | - | ?? Not Started | No dependencies - skip |
+| LoadingSpinner | Components/Shared | - | ?? Not Started | No dependencies - skip |
+| AssetViewer | Components/Shared | State | ?? Not Started | Actually complex - move to Group 8 |
+| JsonTreeView | Components/Shared | - | ?? Not Started | No dependencies - skip |
 
 ---
 
@@ -67,12 +83,12 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
+| PromptFields | Components/Shared/Generation | State, Backend, Events | ? Complete | Migrated 2025-01-14 - CRITICAL shared component! |
 | GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
 | GenerateFormTxt2ImgComfyUI | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
 | GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
 | GenerateFormImg2ImgComfyUI | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
 | GenerateFormImg2VidComfyUI | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Not Started | High priority |
-| PromptFields | Components/Shared/Generation | State, Settings | ? Not Started | Critical - many dependencies |
 | PromptFieldsSimple | Components/Img2Vid | State, Settings | ? Not Started | |
 | GenerateButton | Components/Shared/Generation | State, Backend | ? Not Started | |
 | LoraForm | Components/Shared/Generation | State, Settings | ? Not Started | |
@@ -177,7 +193,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 |-----------|----------|-------------------|--------|-------|
 | MainLayout | Components/Shared | State, Backend, Models, Gallery, Events | ? Not Started | **CRITICAL** - App initialization |
 | GeneratedImageTabs | Components/Shared/Generation | State, Gallery, Session | ? Not Started | |
-| StateDialog | Components/Shared | State | ? Complete | Migrated 2025-01-14 - Simple dialog |
+| StateDialog | Components/Shared | State | ?? Complete | Migrated 2025-01-14 - Simple dialog |
 | Txt2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
 | Img2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session, Gallery | ? Not Started | |
 | Img2VidComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
@@ -199,8 +215,8 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 55 (79%)
-- **Complete:** 11 (16%)
+- **Not Started:** 54 (77%)
+- **Complete:** 12 (17%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -212,6 +228,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - ImagesContainer.razor
   - ImageCard.razor
   - VideoCard.razor (enhanced with new actions)
+  - PromptFields.razor (critical shared component!)
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -223,7 +240,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 ## Notes & Issues
 
 ### Known Issues
-1. **Styles Dropdown Not Populating** - See manager-service-refactor.md Phase 8 Known Issues
+1. **Styles Dropdown Not Populating** - ? FIXED: PromptFields now loads styles directly from database on initialization
 2. **State Loading Events** - ? FIXED: StateService.LoadState() now publishes StateChangedEventArgs after loading
 3. **Folder Selection "All"** - ? FIXED: GalleryService.SetCurrentFolder() now handles ID=0 case
 4. **Project Card Selection Not Updating Images** - ? FIXED: ManagerService.SetCurrentProject() now delegates to GalleryService to fire ProjectChangedEventArgs
@@ -235,6 +252,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 4. **ManagerService Project Selection** - Modified SetCurrentProject() to delegate to GalleryService.SetCurrentProject() ensuring new EventService-based components receive ProjectChangedEventArgs notifications
 5. **Index Page Event Handlers** - Properly implemented async event handlers to refresh projects list and images when project changes
 6. **VideoCard Menu Styling** - Fixed CSS isolation issue by moving menu styles to global site.css. Blazor's scoped CSS couldn't reach elements inside MudMenuItem components, so global styles ensure proper icon colors, spacing, and hover effects for both ImageCard and VideoCard menus.
+7. **Styles Dropdown Not Populating** - Fixed PromptFields component to load styles directly from database on initialization. Created StylesChangedEventArgs event for style change notifications. Styles now populate automatically without requiring manual GetStyles() call.
 
 ### Migration Patterns Discovered
 
@@ -377,6 +395,51 @@ Move shared component styles to **global** CSS (`wwwroot/site.css`):
 - Component-specific wrapper styles
 - Styles that only apply to direct children in your markup
 - Hover effects on your own elements (not MudBlazor's)
+
+#### Pattern 9: Loading Data Directly in Components
+When data was previously loaded by ManagerService but needs to be available in a component, load it directly in the component's initialization:
+
+**Problem:**
+```csharp
+// Old - ManagerService loads styles somewhere, component assumes they exist
+protected override void OnInitialized()
+{
+    // Styles might not be loaded yet!
+    _styles = M.Styles;
+}
+```
+
+**Solution:**
+```csharp
+// New - Component loads its own data from the appropriate service
+@inject DatabaseService DB
+
+protected override async Task OnInitializedAsync()
+{
+    await LoadStyles();
+}
+
+private async Task LoadStyles()
+{
+    var promptResources = await DB.GetPrompts();
+    _availableStyles = promptResources.Select(p => new PromptStyle(p)).ToList();
+    
+    // Optionally publish event for other components
+    Events.Publish(new StylesChangedEventArgs { ChangeType = "Loaded" });
+}
+```
+
+**When to use:**
+- Component needs data that was previously loaded by ManagerService
+- Data loading was implicit/hidden in the old architecture
+- Component is the primary consumer of that data
+- Loading on-demand is acceptable (not heavy operation)
+
+**Benefits:**
+- No hidden dependencies on initialization order
+- Component explicitly controls when data is loaded
+- Easier to test and reason about
+- Clear ownership of data loading responsibility
 
 ### Breaking Changes
 - Parameters named `State` must be renamed or fully qualified due to `IStateService State` injection
