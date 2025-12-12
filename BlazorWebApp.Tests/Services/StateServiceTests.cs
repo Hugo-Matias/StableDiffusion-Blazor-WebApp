@@ -5,8 +5,6 @@ using BlazorWebApp.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Moq;
-using Xunit;
-using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Tests.Services
 {
@@ -28,16 +26,16 @@ namespace BlazorWebApp.Tests.Services
             _mockConfig = new Mock<IConfiguration>();
             _mockEvents = new Mock<IEventService>();
             _mockSettings = new Mock<ISettingsService>();
-            
+
             // Setup default settings
             _mockSettings.Setup(s => s.Settings).Returns(new AppSettings());
-            
+
             // Setup configuration
             _mockConfig.Setup(c => c["StateVersion"]).Returns("1");
 
             // Setup database mocks
             _mockDb.Setup(db => db.GetState(It.IsAny<int>())).ReturnsAsync((State)null);
-            
+
             _sut = new StateService(_mockDb.Object, _mockConfig.Object, _mockEvents.Object, _mockSettings.Object);
         }
 
@@ -262,27 +260,6 @@ namespace BlazorWebApp.Tests.Services
         }
 
         [Fact]
-        public void ParametersTxt2Img_ShouldHaveScriptsInitialized()
-        {
-            // Assert
-            _sut.ParametersTxt2Img.Scripts.Should().NotBeNull();
-            _sut.ParametersTxt2Img.Scripts.ControlNet.Should().NotBeNull();
-            _sut.ParametersTxt2Img.Scripts.ControlNet.Should().HaveCount(3);
-            _sut.ParametersTxt2Img.Scripts.Cutoff.Should().NotBeNull();
-            _sut.ParametersTxt2Img.Scripts.DynamicPrompts.Should().NotBeNull();
-            _sut.ParametersTxt2Img.Scripts.ADetailer.Should().NotBeNull();
-        }
-
-        [Fact]
-        public void ParametersImg2Img_ShouldHaveScriptsInitialized()
-        {
-            // Assert
-            _sut.ParametersImg2Img.Scripts.Should().NotBeNull();
-            _sut.ParametersImg2Img.Scripts.UltimateUpscale.Should().NotBeNull();
-            _sut.ParametersImg2Img.Scripts.ControlNet.Should().HaveCount(3);
-        }
-
-        [Fact]
         public void ParametersImg2Vid_ShouldHaveWorkflowAssetsInitialized()
         {
             // Assert
@@ -314,8 +291,8 @@ namespace BlazorWebApp.Tests.Services
         public void Parameters_ShouldHaveCorrectDefaultSharedValues(ModeType mode)
         {
             // Arrange
-            var parameters = mode == ModeType.Txt2Img ? 
-                (SharedParameters)_sut.ParametersTxt2Img : 
+            var parameters = mode == ModeType.Txt2Img ?
+                (SharedParameters)_sut.ParametersTxt2Img :
                 (SharedParameters)_sut.ParametersImg2Img;
 
             // Assert - These should match AppSettings.Generation.Shared defaults

@@ -194,52 +194,12 @@ namespace BlazorWebApp.Tests.Services
             _sut.Settings.Generation.Shared.Steps.Should().NotBeNull();
         }
 
-        [Fact]
-        public void Settings_ShouldHaveScriptDefaults()
-        {
-            // Assert
-            _sut.Settings.Scripts.Should().NotBeNull();
-            _sut.Settings.Scripts.ControlNet.Should().NotBeNull();
-            _sut.Settings.Scripts.ADetailer.Should().NotBeNull();
-        }
+        // NOTE: Script-related Settings test removed during WebUI deprecation (Phase 6.5)
+        // Scripts system no longer supported
 
         #endregion
 
         #region Real-World Usage Tests
-
-        [Fact]
-        public void Settings_ShouldProvideControlNetDefaults()
-        {
-            // Assert - Verify ControlNet settings can be used for script initialization
-            _sut.Settings.Scripts.ControlNet.Preprocessor.Should().Be(Data.Dtos.WebUI.ControlNetPreprocessor.none);
-            _sut.Settings.Scripts.ControlNet.Model.Should().NotBeNullOrEmpty();
-            _sut.Settings.Scripts.ControlNet.Weight.Value.Should().BeGreaterThan(0);
-            _sut.Settings.Scripts.ControlNet.Guidance.Start.Should().BeGreaterThanOrEqualTo(0);
-            _sut.Settings.Scripts.ControlNet.Guidance.End.Should().BeGreaterThan(0);
-            _sut.Settings.Scripts.ControlNet.ResizeModes.Should().NotBeEmpty();
-            _sut.Settings.Scripts.ControlNet.ControlModes.Should().NotBeEmpty();
-        }
-
-        [Fact]
-        public void Settings_ShouldProvideDynamicPromptsDefaults()
-        {
-            // Assert - Verify DynamicPrompts settings match expectations
-            _sut.Settings.Scripts.DynamicPrompts.IsEnabled.Should().BeFalse(); // Default disabled
-            _sut.Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Value.Should().BeGreaterThan(0);
-            _sut.Settings.Scripts.DynamicPrompts.PromptMagic.Length.Value.Should().BeGreaterThan(0);
-            _sut.Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList.Should().NotBeEmpty();
-        }
-
-        [Fact]
-        public void Settings_ShouldProvideADetailerDefaults()
-        {
-            // Assert - Verify ADetailer settings are complete
-            _sut.Settings.Scripts.ADetailer.Models.Should().NotBeEmpty();
-            _sut.Settings.Scripts.ADetailer.Model.Should().NotBeNullOrEmpty();
-            _sut.Settings.Scripts.ADetailer.Confidence.Value.Should().BeGreaterThan(0);
-            _sut.Settings.Scripts.ADetailer.DenoisingStrength.Value.Should().BeGreaterThan(0);
-            _sut.Settings.Scripts.ADetailer.MaskBlur.Value.Should().BeGreaterThanOrEqualTo(0);
-        }
 
         [Fact]
         public void Settings_ShouldProvideSharedGenerationDefaults()
@@ -261,15 +221,6 @@ namespace BlazorWebApp.Tests.Services
             _sut.Settings.Prompts.Wildcards.Generation.Value.Should().BeGreaterThan(0);
             _sut.Settings.Prompts.Wildcards.Generation.Min.Should().BeGreaterThan(0);
             _sut.Settings.Prompts.Wildcards.Generation.Max.Should().BeGreaterThan(0);
-        }
-
-        [Fact]
-        public void Settings_ControlNetPreprocessorSettings_ShouldHaveCompleteEntries()
-        {
-            // Assert - Verify that preprocessor settings dictionary is properly initialized
-            _sut.Settings.Scripts.ControlNet.PreprocessorSettings.Should().NotBeEmpty();
-            _sut.Settings.Scripts.ControlNet.PreprocessorSettings.Should().ContainKey(Data.Dtos.WebUI.ControlNetPreprocessor.none);
-            _sut.Settings.Scripts.ControlNet.PreprocessorSettings.Should().ContainKey(Data.Dtos.WebUI.ControlNetPreprocessor.canny);
         }
 
         [Fact]
@@ -307,29 +258,6 @@ namespace BlazorWebApp.Tests.Services
             // Assert - Verify loaded settings match saved settings
             service2.Settings.IsDarkMode.Should().BeTrue();
             service2.Settings.Generation.Shared.Steps.Value.Should().Be(50);
-        }
-
-        [Fact]
-        public void RoundTrip_ScriptSettings_ShouldPersist()
-        {
-            // Arrange - Modify script settings
-            _sut.Settings.Scripts.ControlNet.IsEnabled = true;
-            _sut.Settings.Scripts.ControlNet.Weight.Value = 1.5f;
-            _sut.Settings.Scripts.DynamicPrompts.IsEnabled = true;
-            _sut.Settings.Scripts.DynamicPrompts.Combinatorial.IsEnabled = true;
-
-            // Act
-            _sut.SaveSettings();
-
-            var mockConfig2 = new Mock<IConfiguration>();
-            var io2 = new IOService(mockConfig2.Object);
-            var service2 = new SettingsService(io2);
-
-            // Assert
-            service2.Settings.Scripts.ControlNet.IsEnabled.Should().BeTrue();
-            service2.Settings.Scripts.ControlNet.Weight.Value.Should().Be(1.5f);
-            service2.Settings.Scripts.DynamicPrompts.IsEnabled.Should().BeTrue();
-            service2.Settings.Scripts.DynamicPrompts.Combinatorial.IsEnabled.Should().BeTrue();
         }
 
         #endregion

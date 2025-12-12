@@ -58,7 +58,6 @@ namespace BlazorWebApp.Tests.Services
         {
             return new ModelService(
                 _mockComfyUI.Object,
-                null!,  // SDAPIService - not needed for our tests
                 _mockBackend.Object,
                 _mockState.Object,
                 _mockEvents.Object,

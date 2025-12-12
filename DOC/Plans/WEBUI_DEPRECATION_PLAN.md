@@ -1,10 +1,11 @@
 # WebUI Deprecation & ComfyUI Simplification Plan
 
 ## Status
-**Phase:** Phase 6 - Rename ComfyUI Components & Pages ? COMPLETE
+**Phase:** Phase 6.5 - Remove WebUI-Only Scripts ? **COMPLETE!**
 **Started:** 2025-01-14  
-**Current Step:** Phase 6.5 - Remove WebUI-Only Scripts (to fix compilation errors)
-**Next Step:** Phase 6.5 - Remove WebUI-Only Scripts
+**Completed:** 2025-01-14 (100% Complete - Main App + Tests passing)
+**Build Status:** ? 0 compilation errors, ? All tests passing
+**Next Step:** Phase 7 - Update Migration Log
 
 ---
 
@@ -12,6 +13,7 @@
 
 | Date | Phase | Description |
 |------|-------|-------------|
+| 2025-01-14 | Phase 6.5 | ? **PHASE 6.5 COMPLETE! ALL TESTS PASSING!** Successfully fixed test project - removed Script-related test methods from ModelServiceTests (fixed constructor), SettingsServiceTests (removed 6 test methods), and StateServiceTests (removed Script assertions). **Build: 0 errors. Tests: All passing.** Main application + test project fully functional. Ready for Phase 7! |
 | 2025-01-14 | Phase 6.5 | ? **MAIN APPLICATION COMPLETE!** Parts 1-6 finished! Part 1: Removed 13 script forms. Part 2: Removed SDAPIService from 5 services. Part 3: Removed IParameterFactory, cleaned 9 files, fixed 3 components. Part 4: Removed Scripts properties + script parameter classes. Part 5: Fixed Parser syntax, removed WebUI mappers, removed UltimateUpscaleForm. **Part 6: Removed ~800 lines of Script settings from AppSettings.cs, fixed GenerateFormTxt2Img (removed ADetailer UI), fixed AppDbContext, ParameterMapper, and StateService**. **Main application builds successfully! Only 41 test errors remain (test project only)**. Progress: 98% complete! |
 | 2025-01-14 | Phase 6 | ? **ComfyUI Files Renamed!** Successfully renamed 7 files (3 pages + 4 components) removing "ComfyUI" suffix. Updated @page directives from `/comfyui/*` to `/*`. Updated NavBar routes. Removed empty Pages/ComfyUI folder. ADetailerModelFormComfyUI.razor skipped (will be removed in Phase 6.5). **Still 103 compilation errors** from script system - will be fixed in Phase 6.5. Ready for Phase 6.5. |
 | 2025-01-14 | Phase 5 | ? **SDAPIService Removed!** Successfully removed SDAPIService.cs file and DI registration from Program.cs. **Expected:** 103 compilation errors (up from 92) - added errors from ManagerService, RouterService, ImageService, WildcardsPanel, and Resources page. All will be fixed in Phase 6.5 (script cleanup). Ready for Phase 6.5. |
