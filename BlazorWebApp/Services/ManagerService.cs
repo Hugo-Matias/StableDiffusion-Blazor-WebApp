@@ -28,8 +28,6 @@ namespace BlazorWebApp.Services
         private readonly ISessionService _session;
         private int _currentProgress;
         private bool _isConverging;
-        private bool _isWebuiUp;
-        private bool _isComfyUIUp;
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
@@ -42,7 +40,6 @@ namespace BlazorWebApp.Services
         public event Action OnStateHasChanged;
         public event Action OnProgressChanged;
         public event Action OnDownloadCompleted;
-        public event Action OnWebuiStateChanged;
         public event Action OnComfyUIStateChanged;
         public event Action OnAppStateChanged;
         public event Action OnTxt2ImgParametersChanged;
@@ -262,13 +259,6 @@ namespace BlazorWebApp.Services
                 // Publish typed event for migrated components using EventService
                 _events.Publish(new ConvergingChangedEventArgs(_isConverging));
             }
-        }
-
-        // Temporary facade - delegates to BackendService (will be removed in Phase 8)
-        public bool IsWebuiUp
-        {
-            get => false; // WebUI no longer supported
-            set { } // No-op for backward compatibility
         }
 
         // Temporary facade - delegates to BackendService (will be removed in Phase 8)
@@ -866,14 +856,9 @@ namespace BlazorWebApp.Services
                 case "[model_hash]":
                     return GetModelHash(Options.SDModelCheckpoint);
                 case "[model_name]":
-                    if (IsWebuiUp)
-                        return GetModelName(Options.SDModelCheckpoint);
-                    else
-                    {
-                        // Transforms this "Base/v1-5-pruned-emaonly.safetensors" into "Base\\v1-5-pruned-emaonly"
-                        var modelAsPath = GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
-                        return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
-                    }
+                    // Transforms this "Base/v1-5-pruned-emaonly.safetensors" into "Base\\v1-5-pruned-emaonly"
+                    var modelAsPath = GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
+                    return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
                 default:
                     break;
             }
@@ -968,8 +953,7 @@ namespace BlazorWebApp.Services
 
         public void SerializeInfo()
         {
-            // ComfyUI only
-            if (IsComfyUIUp) ImagesInfo = new() { InfoTexts = new[] { Images.Info } };
+            ImagesInfo = new() { InfoTexts = new[] { Images.Info } };
         }
 
         public void ReplaceSelectedImages(List<int> ids)

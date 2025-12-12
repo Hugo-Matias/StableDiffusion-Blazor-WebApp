@@ -83,7 +83,6 @@
         M.OnSDModelsChange += Refresh;
         M.OnWorkflowBaseChanged += Refresh;
         M.OnComfyUIStateChanged += OnBackendStateChanged;
-        M.OnWebuiStateChanged += OnBackendStateChanged;
         LoadTheme();
     }
 
@@ -208,6 +207,5 @@
         M.OnSDModelsChange -= Refresh;
         M.OnWorkflowBaseChanged -= Refresh;
         M.OnComfyUIStateChanged -= OnBackendStateChanged;
-        M.OnWebuiStateChanged -= OnBackendStateChanged;
     }
 }

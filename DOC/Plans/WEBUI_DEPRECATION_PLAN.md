@@ -1,11 +1,11 @@
 # WebUI Deprecation & ComfyUI Simplification Plan
 
 ## Status
-**Phase:** Phase 7 - Update Migration Log ? **COMPLETE!**
+**Phase:** Phase 8 - Final Cleanup & Verification ? **COMPLETE!**
 **Started:** 2025-01-14  
-**Completed:** 2025-01-14 (100% Complete - Documentation Updated)
-**Build Status:** ? 0 compilation errors, ? All tests passing
-**Next Step:** Phase 8 - Final Cleanup & Verification
+**Completed:** 2025-01-14 (WebUI Deprecation 100% Complete!)
+**Build Status:** ? 0 compilation errors, ? All tests passing  
+**Next Step:** Commit and tag release (`v2.1.0-webui-removed`)
 
 ---
 
@@ -13,6 +13,7 @@
 
 | Date | Phase | Description |
 |------|-------|-------------|
+| 2025-01-14 | Phase 8 | ? **PHASE 8 COMPLETE! WEBUI DEPRECATION FINISHED!** Cleaned up remaining WebUI references - removed `OnWebuiStateChanged` event subscriptions from MainLayout. All WebUI code removed. **Build: 0 errors. Tests: All passing.** Application is now ComfyUI-only. **Ready for release commit and tag (v2.1.0-webui-removed)**! |
 | 2025-01-14 | Phase 7 | ? **PHASE 7 COMPLETE!** Updated Component Migration Log to reflect WebUI deprecation. Revised component count from 70 to 56 (14 removed). Updated group progress, statistics, and completion checklist. Added WebUI deprecation impact section to migration patterns. **Ready for Phase 8 (Final Cleanup & Verification)!** |
 | 2025-01-14 | Phase 6.5 | ? **PHASE 6.5 COMPLETE! ALL TESTS PASSING!** Successfully fixed test project - removed Script-related test methods from ModelServiceTests (fixed constructor), SettingsServiceTests (removed 6 test methods), and StateServiceTests (removed Script assertions). **Build: 0 errors. Tests: All passing.** Main application + test project fully functional. Ready for Phase 7! |
 | 2025-01-14 | Phase 6.5 | ? **MAIN APPLICATION COMPLETE!** Parts 1-6 finished! Part 1: Removed 13 script forms. Part 2: Removed SDAPIService from 5 services. Part 3: Removed IParameterFactory, cleaned 9 files, fixed 3 components. Part 4: Removed Scripts properties + script parameter classes. Part 5: Fixed Parser syntax, removed WebUI mappers, removed UltimateUpscaleForm. **Part 6: Removed ~800 lines of Script settings from AppSettings.cs, fixed GenerateFormTxt2Img (removed ADetailer UI), fixed AppDbContext, ParameterMapper, and StateService**. **Main application builds successfully! Only 41 test errors remain (test project only)**. Progress: 98% complete! |
@@ -843,6 +844,7 @@ Expected After Parts 5-11: 0 errors
 [x] RegionalPrompterSettingsModel + nested classes (~50 lines)
 [x] XYZPlotSettingsModel + nested classes (~70 lines)
 [x] IncantationsSettingsModel + nested classes (~80 lines)
+[x] ScriptsSettingsModel` property from main AppSettings class
 ```
 **Estimated:** ~800 lines from AppSettings.cs
 
@@ -940,5 +942,8 @@ Expected After Parts 5-11: 0 errors
 | Phase 7 (Migration Log) | 30 min | Update tracking |
 | Phase 8 (Verification) | 2.5 hours | Full app testing without scripts |
 | **Total** | **~16 hours** | Complete WebUI + Script system removal |
+
+
+
 
 
