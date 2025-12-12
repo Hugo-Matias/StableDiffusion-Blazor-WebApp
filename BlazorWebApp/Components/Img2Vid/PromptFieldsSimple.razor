@@ -1,5 +1,7 @@
 @using static BlazorWebApp.Data.Enums
-@inject ManagerService M
+@using BlazorWebApp.Events
+@inject IEventService Events
+@implements IDisposable
 
 <MudPaper Class="pa-6 mb-5">
     <MudGrid>
@@ -29,11 +31,11 @@
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Success"
                            Size="Size.Large"
-                           Disabled="@(M.IsConverging || IsGenerateDisabled)"
+                           Disabled="@(_isConverging || IsGenerateDisabled)"
                            OnClick="HandleGenerate"
                            FullWidth
                            Class="generate-btn">
-                    @if (M.IsConverging)
+                    @if (_isConverging)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" />
                         <span>Generating...</span>
@@ -49,7 +51,7 @@
                         <MudButton Variant="Variant.Text"
                                    Color="Color.Warning"
                                    Size="Size.Small"
-                                   Disabled="@(!M.IsConverging)"
+                                   Disabled="@(!_isConverging)"
                                    OnClick="HandleSkip">
                             Skip
                         </MudButton>
@@ -58,7 +60,7 @@
                         <MudButton Variant="Variant.Text"
                                    Color="Color.Error"
                                    Size="Size.Small"
-                                   Disabled="@(!M.IsConverging)"
+                                   Disabled="@(!_isConverging)"
                                    OnClick="HandleInterrupt">
                             Cancel
                         </MudButton>
@@ -80,6 +82,19 @@
     [Parameter] public bool IsGenerateDisabled { get; set; }
     [Parameter] public bool DisableNegativePrompt { get; set; }
 
+    private bool _isConverging = false;
+
+    protected override void OnInitialized()
+    {
+        Events.Subscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+    }
+
+    private void OnConvergingChanged(ConvergingChangedEventArgs args)
+    {
+        _isConverging = args.IsConverging;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private async Task HandlePromptChanged(string value)
     {
         Prompt = value;
@@ -95,4 +110,9 @@
     private async Task HandleGenerate() => await OnGenerate.InvokeAsync();
     private async Task HandleSkip() => await OnSkip.InvokeAsync();
     private async Task HandleInterrupt() => await OnInterrupt.InvokeAsync();
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+    }
 }

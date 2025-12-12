@@ -12,8 +12,8 @@
 
 | Group | Status | Progress | Notes |
 |-------|--------|----------|-------|
-| **Group 1: Simple Components** | ? Complete | 3/3 core + 4 skipped | NavBar, StateDialog, TopToolbar migrated |
-| **Group 2: Generation Forms** | ?? In Progress | 2/18 | **CURRENT** - PromptFields & GenerateButton complete! |
+| **Group 1: Simple Components** | ? Complete | 2/2 core + 8 skipped | NavBar, TopToolbar migrated. 3 components don't exist, 5 have no ManagerService |
+| **Group 2: Generation Forms** | ?? In Progress | 3/13 actual | **CURRENT** - PromptFields, GenerateButton & PromptFieldsSimple complete! 5 skipped. 10 remaining. |
 | **Group 3: Script Forms** | ? Not Started | 0/10 | Settings + State services |
 | **Group 4: Gallery Components** | ?? In Progress | 6/12 | Image display and management |
 | **Group 5: Canvas/Session** | ?? Partial | 1/8 | VideoCard complete |
@@ -66,16 +66,16 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
-| ThemeSelector | ? | State, Settings | ? Not Started | |
-| SettingsPanel | ? | State, Settings | ? Not Started | |
-| StatusBar | ? | State, Backend | ? Not Started | |
+| ThemeSelector | ? | State, Settings | ?? Skip | Component doesn't exist |
+| SettingsPanel | ? | State, Settings | ?? Skip | Component doesn't exist |
+| StatusBar | ? | State, Backend | ?? Skip | Component doesn't exist |
 | TopToolbar | Components/Shared | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Folder/Project/Theme/State selectors |
 | NavBar | Components/Shared | State, Backend, Gallery, Events | ? Complete | Migrated 2025-01-14 - First component! |
-| ProgressContainer | Components/Shared | ProgressService only | ?? Not Started | No ManagerService - skip |
-| ConfirmationDialog | Components/Shared | - | ?? Not Started | No dependencies - skip |
-| LoadingSpinner | Components/Shared | - | ?? Not Started | No dependencies - skip |
+| ProgressContainer | Components/Shared | ProgressService only | ?? Skip | No ManagerService - skip |
+| ConfirmationDialog | Components/Shared | - | ?? Skip | No dependencies - skip |
+| LoadingSpinner | Components/Shared | - | ?? Skip | No dependencies - skip |
 | AssetViewer | Components/Shared | State | ?? Not Started | Actually complex - move to Group 8 |
-| JsonTreeView | Components/Shared | - | ?? Not Started | No dependencies - skip |
+| JsonTreeView | Components/Shared | - | ?? Skip | No dependencies - skip |
 
 ---
 
@@ -85,22 +85,22 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 |-----------|----------|-------------------|--------|-------|
 | PromptFields | Components/Shared/Generation | State, Backend, Events, DatabaseService | ? Complete | Migrated 2025-01-14 - CRITICAL shared component! Loads styles from DB. |
 | GenerateButton | Components/Shared/Generation | State, Events | ? Complete | Migrated 2025-01-14 - Generate/Skip/Interrupt button with converging state |
-| GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
-| GenerateFormTxt2ImgComfyUI | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
-| GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
-| GenerateFormImg2ImgComfyUI | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
-| GenerateFormImg2VidComfyUI | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Not Started | High priority |
-| PromptFieldsSimple | Components/Img2Vid | State, Settings | ? Not Started | |
-| LoraForm | Components/Shared/Generation | State, Settings | ? Not Started | |
-| LoraCard | Components/Shared/Generation | State | ? Not Started | |
+| PromptFieldsSimple | Components/Img2Vid | Events | ? Complete | Migrated 2025-01-14 - Simplified prompt fields for Img2Vid with converging state |
+| GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority - complex form |
+| GenerateFormTxt2ImgComfyUI | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority - complex form |
+| GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
+| GenerateFormImg2ImgComfyUI | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
+| GenerateFormImg2VidComfyUI | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
+| LoraForm | Components/Shared/Generation | RouterService only | ?? Skip | Unused @inject ManagerService M - removed ? |
+| LoraCard | Components/Shared/Generation | - | ?? Skip | No ManagerService dependency |
 | ControlNetForm | Components/Shared/Generation | State, Settings, Session | ? Not Started | |
 | ControlNetTabs | Components/Shared/Generation | State, Settings | ? Not Started | |
 | ControlNetTabsDynamic | Components/Shared/Generation | State, Settings | ? Not Started | |
 | WorkflowAssetsPanel | Components/Shared/Generation | State, Models | ? Not Started | |
 | WorkflowAssetSelector | Components/Shared/Generation | State, Models | ? Not Started | |
-| TagDrawer | Components/Shared/Generation | State | ? Not Started | |
-| TagAccordion | Components/Shared/Generation | State | ? Not Started | |
-| TextFieldAutocomplete | Components/Shared/Generation | - | ? Not Started | |
+| TagDrawer | Components/Shared/Generation | CsvService only | ?? Skip | No ManagerService dependency |
+| TagAccordion | Components/Shared/Generation | - | ?? Skip | Pure UI component - no ManagerService |
+| TextFieldAutocomplete | Components/Shared/Generation | CsvService, CacheService, JSRuntime | ?? Skip | No ManagerService dependency |
 
 ---
 
@@ -215,8 +215,8 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 53 (76%)
-- **Complete:** 13 (19%)
+- **Not Started:** 43 (61%)
+- **Complete:** 14 (20%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -230,11 +230,21 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - VideoCard.razor (enhanced with new actions)
   - PromptFields.razor (critical shared component with DB styles loading!)
   - GenerateButton.razor (generate/skip/interrupt with converging state)
-- **Skipped (No ManagerService):** 4 (6%)
+  - PromptFieldsSimple.razor (simplified prompt fields for Img2Vid)
+- **Skipped (No ManagerService or Don't Exist):** 13 (19%)
   - LoadingSpinner
   - ConfirmationDialog  
   - ProgressContainer
   - JsonTreeView
+  - ThemeSelector (doesn't exist)
+  - SettingsPanel (doesn't exist)
+  - StatusBar (doesn't exist)
+  - TagDrawer (CsvService only)
+  - TagAccordion (pure UI)
+  - TextFieldAutocomplete (CsvService, CacheService only)
+  - LoraForm (unused injection - cleaned up ?)
+  - LoraCard (no dependencies)
+  - AssetViewer (will be migrated in Group 8 - complex)
 
 ---
 
@@ -442,6 +452,46 @@ private async Task LoadStyles()
 - Easier to test and reason about
 - Clear ownership of data loading responsibility
 
+#### Pattern 10: Cleaning Up Unused ManagerService Injections
+Some components have `@inject ManagerService M` but don't actually use it. These injections should be removed:
+
+**Problem:**
+```razor
+@inject ManagerService M
+@inject RouterService Router
+
+@code {
+    // Only uses Router, M is never referenced
+    public Task<IEnumerable<string>> SearchLoras(string search) => Router.SearchLoras(Backend, search);
+}
+```
+
+**Solution:**
+```razor
+@inject RouterService Router
+
+@code {
+    // Clean - only inject what's actually used
+    public Task<IEnumerable<string>> SearchLoras(string search) => Router.SearchLoras(Backend, search);
+}
+```
+
+**How to identify:**
+1. Search the component's @code block for `M.` references
+2. If no references exist, the injection is unused
+3. Remove the `@inject ManagerService M` line
+4. Verify build still passes
+
+**Examples found:**
+- `LoraForm.razor` - Has `@inject ManagerService M` but never uses it
+- Components that were updated but old injection wasn't removed
+
+**Benefits:**
+- Cleaner dependency graph
+- Easier to understand component dependencies
+- No confusion about what services are actually used
+- Faster build times (marginally)
+
 ### Breaking Changes
 - Parameters named `State` must be renamed or fully qualified due to `IStateService State` injection
 ---
@@ -458,13 +508,14 @@ private async Task LoadStyles()
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (13/70 = 19%)
+- [ ] All 70 components migrated (14/70 = 20% complete, 13/70 = 19% skipped, 43/70 = 61% remaining)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)
 - [ ] All components use EventService for subscriptions
 - [ ] All tests passing (128+ tests)
-- [ ] Build passes without errors ?
+- [x] Build passes without errors ?
 - [ ] No compiler warnings
 - [x] Styles dropdown working ?
-- [ ] Documentation updated ?
+- [x] Unused ManagerService injections cleaned up (LoraForm.razor fixed) ?
+- [ ] Documentation updated
