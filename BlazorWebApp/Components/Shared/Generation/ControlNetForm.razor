@@ -1,5 +1,5 @@
 ﻿@using BlazorWebApp.Data.Dtos.WebUI
-@inject ManagerService M
+@inject ISettingsService Settings
 @inject SDAPIService API
 
 <MudGrid>
@@ -27,17 +27,17 @@
         </MudSelect>
     </MudItem>
     <MudItem xs=12>
-        <MudSlider @bind-Value=Parameters.Weight Min=M.Settings.Scripts.ControlNet.Weight.Min Max=M.Settings.Scripts.ControlNet.Weight.Max Step=M.Settings.Scripts.ControlNet.Weight.Step ValueLabel><small>Weight:</small> @Parameters.Weight</MudSlider>
+        <MudSlider @bind-Value=Parameters.Weight Min=Settings.Settings.Scripts.ControlNet.Weight.Min Max=Settings.Settings.Scripts.ControlNet.Weight.Max Step=Settings.Settings.Scripts.ControlNet.Weight.Step ValueLabel><small>Weight:</small> @Parameters.Weight</MudSlider>
         </MudItem>
         <MudItem xs=12>
             <MudText Typo="Typo.caption">Guidance</MudText>
             <MudStack Row>
-            <!-- <MudSlider @bind-Value=Parameters.Guidance Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Strength:</small> @Parameters.Guidance</MudSlider> -->
-            <MudSlider @bind-Value=Parameters.GuidanceStart Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Start:</small> @Parameters.GuidanceStart</MudSlider>
-                <MudSlider @bind-Value=Parameters.GuidanceEnd Min=M.Settings.Scripts.ControlNet.Guidance.Min Max=M.Settings.Scripts.ControlNet.Guidance.Max Step=M.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>End:</small> @Parameters.GuidanceEnd</MudSlider>
+            <!-- <MudSlider @bind-Value=Parameters.Guidance Min=Settings.Settings.Scripts.ControlNet.Guidance.Min Max=Settings.Settings.Scripts.ControlNet.Guidance.Max Step=Settings.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Strength:</small> @Parameters.Guidance</MudSlider> -->
+            <MudSlider @bind-Value=Parameters.GuidanceStart Min=Settings.Settings.Scripts.ControlNet.Guidance.Min Max=Settings.Settings.Scripts.ControlNet.Guidance.Max Step=Settings.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>Start:</small> @Parameters.GuidanceStart</MudSlider>
+                <MudSlider @bind-Value=Parameters.GuidanceEnd Min=Settings.Settings.Scripts.ControlNet.Guidance.Min Max=Settings.Settings.Scripts.ControlNet.Guidance.Max Step=Settings.Settings.Scripts.ControlNet.Guidance.Step ValueLabel><small>End:</small> @Parameters.GuidanceEnd</MudSlider>
             </MudStack>
         </MudItem>
-        @if (Parameters.Preprocessor != ControlNetPreprocessor.none && M.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor] != null)
+        @if (Parameters.Preprocessor != ControlNetPreprocessor.none && Settings.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor] != null)
     {
         <MudItem xs=12>
             <MudStack>
@@ -71,13 +71,13 @@
     <MudItem xs=12>
         <MudStack Row=true>
             <MudSelect @bind-Value=Parameters.ResizeMode Label="Resize Mode" TransformOrigin="Origin.TopLeft" AnchorOrigin="Origin.BottomLeft">
-                @foreach (var mode in M.Settings.Scripts.ControlNet.ResizeModes)
+                @foreach (var mode in Settings.Settings.Scripts.ControlNet.ResizeModes)
                 {
                     <MudSelectItem Value="@mode">@mode</MudSelectItem>
                 }
             </MudSelect>
             <MudSelect @bind-Checked=Parameters.ControlMode Label="Control Mode" T="string">
-                @foreach (var mode in M.Settings.Scripts.ControlNet.ControlModes)
+                @foreach (var mode in Settings.Settings.Scripts.ControlNet.ControlModes)
                 {
                     <MudSelectItem Value="@mode">@mode</MudSelectItem>
                 }
@@ -99,7 +99,7 @@
 
     protected override void OnParametersSet()
     {
-        _processor = M.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor]!;
+        _processor = Settings.Settings.Scripts.ControlNet.PreprocessorSettings[Parameters.Preprocessor]!;
         if (!string.IsNullOrWhiteSpace(Parameters.InputImage) && !Parameters.InputImage.StartsWith("data:")) Parameters.InputImage = $"data:image/png;base64,{Parameters.InputImage}";
     }
 
@@ -111,7 +111,7 @@
     private async Task HandlePreprocessorChanged(ControlNetPreprocessor value)
     {
         Parameters.Preprocessor = value;
-        _processor = M.Settings.Scripts.ControlNet.PreprocessorSettings[value]!;
+        _processor = Settings.Settings.Scripts.ControlNet.PreprocessorSettings[value]!;
         if (_processor != null)
         {
             if (_processor.Resolution != null) Parameters.ProcessorResolution = _processor.Resolution.Value;

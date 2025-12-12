@@ -45,6 +45,8 @@
     public async Task AddTab(Guid id)
     {
         _unitCount++;
+        // NOTE: Using ManagerService.CreateControlNet() factory method for now
+        // This will be migrated to a dedicated ParameterFactory service in future phases
         var parameters = M.CreateControlNet();
         Units.Add(parameters);
         _cnUnits.Add(new ControlNetUnit { Id = id, Label = $"Unit {_unitCount}", Parameters = parameters });
@@ -65,6 +67,4 @@
 
     private async Task AddTabCallback() => await AddTab(Guid.NewGuid());
     private async Task CloseTabCallback(MudTabPanel panel) => await RemoveTab((Guid)panel.ID);
-
-
 }

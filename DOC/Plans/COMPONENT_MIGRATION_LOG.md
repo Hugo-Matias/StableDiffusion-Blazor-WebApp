@@ -13,8 +13,8 @@
 | Group | Status | Progress | Notes |
 |-------|--------|----------|-------|
 | **Group 1: Simple Components** | ? Complete | 2/2 core + 8 skipped | NavBar, TopToolbar migrated. 3 components don't exist, 5 have no ManagerService |
-| **Group 2: Generation Forms** | ?? In Progress | 3/13 actual | PromptFields, GenerateButton & PromptFieldsSimple complete! 5 skipped. 10 remaining. |
-| **Group 3: Script Forms** | ? Complete | 8/10 actual | **DONE!** - All simple forms complete! 2 complex deferred (ADetailer WebUI-only). |
+| **Group 2: Generation Forms** | ?? In Progress | 6/13 actual | **CURRENT** - PromptFields, GenerateButton, PromptFieldsSimple, ControlNet forms complete! 5 skipped. 7 remaining. |
+| **Group 3: Script Forms** | ? Complete | 8/10 actual | All simple forms complete! 2 complex deferred (ADetailer WebUI-only). |
 | **Group 4: Gallery Components** | ?? In Progress | 6/12 | Image display and management |
 | **Group 5: Canvas/Session** | ?? Partial | 1/8 | VideoCard complete |
 | **Group 6: Video Components** | ? Not Started | 0/3 | Video generation workflows |
@@ -86,6 +86,9 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | PromptFields | Components/Shared/Generation | State, Backend, Events, DatabaseService | ? Complete | Migrated 2025-01-14 - CRITICAL shared component! Loads styles from DB. |
 | GenerateButton | Components/Shared/Generation | State, Events | ? Complete | Migrated 2025-01-14 - Generate/Skip/Interrupt button with converging state |
 | PromptFieldsSimple | Components/Img2Vid | Events | ? Complete | Migrated 2025-01-14 - Simplified prompt fields for Img2Vid with converging state |
+| ControlNetForm | Components/Shared/Generation | Settings, SDAPIService | ? Complete | Migrated 2025-01-14 - ControlNet unit configuration with preprocessor settings |
+| ControlNetTabs | Components/Shared/Generation | - | ? Complete | Migrated 2025-01-14 - Unused ManagerService injection removed |
+| ControlNetTabsDynamic | Components/Shared/Generation | ManagerService (factory) | ? Complete | Migrated 2025-01-14 - Uses M.CreateControlNet() factory (deferred to ParameterFactory) |
 | GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority - complex form |
 | GenerateFormTxt2ImgComfyUI | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority - complex form |
 | GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
@@ -93,9 +96,6 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | GenerateFormImg2VidComfyUI | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
 | LoraForm | Components/Shared/Generation | RouterService only | ?? Skip | Unused @inject ManagerService M - removed ? |
 | LoraCard | Components/Shared/Generation | - | ?? Skip | No ManagerService dependency |
-| ControlNetForm | Components/Shared/Generation | State, Settings, Session | ? Not Started | |
-| ControlNetTabs | Components/Shared/Generation | State, Settings | ? Not Started | |
-| ControlNetTabsDynamic | Components/Shared/Generation | State, Settings | ? Not Started | |
 | WorkflowAssetsPanel | Components/Shared/Generation | State, Models | ?? Deferred | Complex - tightly coupled with Parameters.WorkflowAssets. Migrate with generation forms. |
 | WorkflowAssetSelector | Components/Shared/Generation | State, Models | ?? Deferred | Complex - tightly coupled with Parameters.WorkflowAssets. Migrate with generation forms. |
 | TagDrawer | Components/Shared/Generation | CsvService only | ?? Skip | No ManagerService dependency |
@@ -215,8 +215,8 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 39 (56%)
-- **Complete:** 22 (31%)
+- **Not Started:** 36 (51%)
+- **Complete:** 25 (36%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -231,6 +231,9 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - PromptFields.razor (critical shared component with DB styles loading!)
   - GenerateButton.razor (generate/skip/interrupt with converging state)
   - PromptFieldsSimple.razor (simplified prompt fields for Img2Vid)
+  - ControlNetForm.razor (ControlNet unit configuration)
+  - ControlNetTabs.razor (unused injection cleaned)
+  - ControlNetTabsDynamic.razor (uses factory method)
   - CutoffForm.razor (simple settings form)
   - RegionalPrompterForm.razor (simple settings form)
   - MultiDiffusionTiledVaeForm.razor (simple settings form)
