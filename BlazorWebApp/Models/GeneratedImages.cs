@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using BlazorWebApp.Data.Dtos.WebUI;
+using System.Text.Json.Serialization;
 
 namespace BlazorWebApp.Models
 {

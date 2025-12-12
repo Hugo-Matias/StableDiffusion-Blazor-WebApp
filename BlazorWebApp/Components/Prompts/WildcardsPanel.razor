@@ -1,10 +1,9 @@
-﻿@using BlazorWebApp.Data.Dtos.WebUI
-@inject ManagerService M
+﻿@inject ManagerService M
 @inject IOService IO
-@inject SDAPIService SD
 @inject DatabaseService DB
-@inject IConfiguration Configuration
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IConfiguration Configuration
 
 <div>
     <MudGrid>
@@ -83,14 +82,10 @@
     private DirectoryInfo? _dir;
     private FileInfo? _file;
     private string _wildcardText;
-    private ScriptParametersDynamicPrompts _scriptParameters;
 
     protected async override Task OnInitializedAsync()
     {
-        if (M.CmdFlags == null) await M.GetCmdFlags();
-        _wildcardsPath = Path.Combine(M.CmdFlags.BaseDir, Configuration["WildcardsPath"]);
-        _files = IO.GetFilesRecursive(_wildcardsPath, extensionsWhitelist: new() { ".txt" }).ToList();
-        _scriptParameters = new ScriptParametersDynamicPrompts() { IsEnabled = true, IsAlwaysOn = true, NoImageGeneration = true, DisableNegativePrompt = true };
+        _files = IO.GetFilesRecursive(Configuration["WildcardsPath"], extensionsWhitelist: new() { ".txt" }).ToList();
     }
 
     private async Task HandleDirectorySelected(DirectoryInfo dir)
@@ -146,7 +141,10 @@
 
     private async Task GeneratePrompts()
     {
-        M.State.Prompts.Wildcards.GeneratedPrompts = await SD.GeneratePrompts(M.GetDynamicPromptsVersion(), GetPrompt(), M.State.Prompts.Wildcards.GenerationAmount, _scriptParameters);
+        // TODO: Reimplement prompt generation for ComfyUI workflows
+        // The old WebUI-based dynamic prompts script has been removed
+        Snackbar.Add("Prompt generation temporarily unavailable - will be reimplemented for ComfyUI", Severity.Info);
+        M.State.Prompts.Wildcards.GeneratedPrompts = new List<string>();
     }
 
     private string GetPrompt()

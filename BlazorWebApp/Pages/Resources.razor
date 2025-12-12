@@ -1,6 +1,5 @@
 ﻿@page "/resources"
 @inject ManagerService M
-@inject SDAPIService SD
 @inject IOService IO
 @inject DatabaseService DB
 @inject ResourcesService ResourcesService
@@ -62,8 +61,8 @@
     {
         if (resource.Type.Name.Equals("vae", StringComparison.InvariantCultureIgnoreCase))
         {
-            if (!M.IsWebuiUp) return;
-            await M.PostOptions(new() { SDVae = resource.Title });
+            // VAE loading no longer supported through Resources page
+            Snackbar.Add("VAE selection is done through generation page workflow assets", Severity.Info);
             return;
         }
 
@@ -72,8 +71,6 @@
 
         if (file == null)
         {
-            // Snackbar.Add($"Couldn't get file info!\nFile: {resourceFile.Filename} | Type: {resource.Type.Name} | SubType: {subtype}", Severity.Error);
-            // return;
             await ShowNotFoundDeleteDialog(resourceFile);
             return;
         }

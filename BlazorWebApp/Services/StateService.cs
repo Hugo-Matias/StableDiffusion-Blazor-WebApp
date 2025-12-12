@@ -1,5 +1,4 @@
 using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
-using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;

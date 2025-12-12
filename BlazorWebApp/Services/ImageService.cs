@@ -1,5 +1,4 @@
-﻿using BlazorWebApp.Data.Dtos;
-using BlazorWebApp.Data.Dtos.WebUI;
+using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;

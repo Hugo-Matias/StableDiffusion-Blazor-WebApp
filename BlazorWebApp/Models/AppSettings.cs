@@ -1,4 +1,3 @@
-﻿using BlazorWebApp.Data.Dtos.WebUI;
 
 namespace BlazorWebApp.Models
 {

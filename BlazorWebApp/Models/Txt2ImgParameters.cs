@@ -1,5 +1,4 @@
-﻿using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
-using BlazorWebApp.Data.Dtos.WebUI;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 
 namespace BlazorWebApp.Models
 {
