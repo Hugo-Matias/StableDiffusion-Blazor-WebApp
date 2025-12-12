@@ -650,7 +650,7 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 
 ### Phase 7.5: WebUI Deprecation & ComfyUI Simplification
 **Objective:** Remove all Automatic1111 WebUI code and simplify ComfyUI naming conventions
-**Status:** [??] In Progress - Phase 1 (Audit)
+**Status:** [??] In Progress - Phase 2 Complete (WebUI Pages Removed)
 **Documentation:** See [`DOC/Plans/WEBUI_DEPRECATION_PLAN.md`](./WEBUI_DEPRECATION_PLAN.md)
 
 #### Overview

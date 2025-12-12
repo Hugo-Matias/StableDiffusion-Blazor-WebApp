@@ -1,10 +1,10 @@
 # WebUI Deprecation & ComfyUI Simplification Plan
 
 ## Status
-**Phase:** Pre-Migration Cleanup  
+**Phase:** Phase 2 - Remove WebUI Pages ? COMPLETE
 **Started:** 2025-01-14  
-**Current Step:** Phase 1 - Audit & Impact Analysis ? COMPLETE
-**Next Step:** Phase 2 - Remove WebUI Pages
+**Current Step:** Phase 3 - Remove WebUI Components
+**Next Step:** Phase 3 - Remove WebUI Components
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Date | Phase | Description |
 |------|-------|-------------|
+| 2025-01-14 | Phase 2 | ? **WebUI Pages Removed!** Successfully removed all 4 WebUI page files (Txt2ImgWebUI.razor, Img2ImgWebUI.razor, UpscaleWebUI.razor, UpscaleWebUI.razor.css). Removed empty Pages/WebUI folder. Build passes without errors. No navigation references to update (NavBar only shows ComfyUI workflows). Ready for Phase 3. |
 | 2025-01-14 | Phase 1.7 | ? **Updated Decision - Remove ALL Scripts!** After review, decided to remove ControlNet and ADetailer as well. Both have partial/incomplete ComfyUI implementations not actively used in generation pages. Better to start fresh with clean ComfyUI workflow-based design. **Impact:** Now removing ALL 9 scripts (0 kept), 14 forms, 9 DTOs, ~450 lines from ManagerService, ~800 lines from AppSettings.cs. Total: ~1500+ lines removed. Maintains current Settings ? State ? DTO architecture. Future scripts will be ComfyUI-native. Restored Phases 7 & 8, file/folder matrix. Updated estimate: ~16 hours (up from 14). |
 | 2025-01-14 | Phase 1.7 | ? **Script Parameters Deep Audit Complete!** Analyzed all 9 ScriptParameters DTOs. Discovered only 2 scripts (ControlNet, ADetailer) have partial ComfyUI implementation. 7 scripts are WebUI-only extensions with no ComfyUI equivalent. Identified ~1000+ lines of initialization boilerplate that can be removed. Created Phase 6.5 for script cleanup. Updated impact assessment: now 60 files affected (up from 42), ~14 hours estimated (up from 10.5). |
 | 2025-01-14 | Phase 1 | ? **COMPLETE** - Audit complete! Found 14 files to remove, 17 to move/rename, ~42 total files affected. Risk: Low. Estimated effort: ~10.5 hours. Ready to proceed with Phase 2. |
@@ -288,24 +289,32 @@ After removing all scripts, also clean up:
 
 ---
 
-### Phase 2: Remove WebUI Pages
+### Phase 2: Remove WebUI Pages ? COMPLETE
 **Objective:** Remove all WebUI-specific pages
 
 #### Tasks
-- [ ] Remove `Pages/WebUI/` folder entirely
-- [ ] Update `_Imports.razor` if it references WebUI namespace
-- [ ] Remove any routing to WebUI pages
-- [ ] Remove NavMenu/NavBar links to WebUI pages
-- [ ] Remove any page-specific CSS files
-- [ ] Verify build passes
-- [ ] Update documentation
+- [x] Remove `Pages/WebUI/` folder entirely
+- [x] Update `_Imports.razor` if it references WebUI namespace
+- [x] Remove any routing to WebUI pages
+- [x] Remove NavMenu/NavBar links to WebUI pages
+- [x] Remove any page-specific CSS files
+- [x] Verify build passes
+- [x] Update documentation
 
 #### Success Criteria
-- `Pages/WebUI/` folder deleted
-- No routing to WebUI pages
-- No navigation links to WebUI pages
-- Build successful
-- No runtime errors
+- [x] `Pages/WebUI/` folder deleted
+- [x] No routing to WebUI pages
+- [x] No navigation links to WebUI pages
+- [x] Build successful
+- [x] No runtime errors
+
+#### Notes
+- All 4 files removed successfully (3 pages + 1 CSS)
+- WebUI folder deleted (was empty)
+- No NavMenu/NavBar links to update (NavBar only shows ComfyUI workflows)
+- No routing configuration needed (Blazor pages use @page directive)
+- Build passes without errors
+- ? **Phase 2 Complete - Ready for Phase 3**
 
 ---
 
@@ -601,21 +610,21 @@ After removing all scripts, also clean up:
 
 ## File Inventory (Phase 1 Audit Complete ?)
 
-### Pages to Remove (WebUI)
+### Pages to Remove (WebUI) ? COMPLETE
 ```
-[x] BlazorWebApp/Pages/WebUI/Txt2ImgWebUI.razor
-[x] BlazorWebApp/Pages/WebUI/Img2ImgWebUI.razor
-[x] BlazorWebApp/Pages/WebUI/UpscaleWebUI.razor
-[x] BlazorWebApp/Pages/WebUI/UpscaleWebUI.razor.css
+[?] BlazorWebApp/Pages/WebUI/Txt2ImgWebUI.razor - REMOVED Phase 2
+[?] BlazorWebApp/Pages/WebUI/Img2ImgWebUI.razor - REMOVED Phase 2
+[?] BlazorWebApp/Pages/WebUI/UpscaleWebUI.razor - REMOVED Phase 2
+[?] BlazorWebApp/Pages/WebUI/UpscaleWebUI.razor.css - REMOVED Phase 2
 ```
-**Total:** 4 files (3 pages + 1 CSS)
+**Total:** 4 files (3 pages + 1 CSS) ? ALL REMOVED
 
 ### Components to Remove (WebUI)
 ```
 [x] BlazorWebApp/Components/Txt2Img/GenerateFormTxt2Img.razor
-[x] BlazorWebApp/Components/Txt2Img/GenerateFormTxt2Img.razor.css
 [x] BlazorWebApp/Components/Img2Img/GenerateFormImg2Img.razor
-[x] BlazorWebApp/Components/Img2Img/GenerateFormImg2Img.razor.css
+[x] BlazorWebApp/Components/Shared/Generation/UltimateUpscaleForm.razor` (WebUI-specific)
+[x] BlazorWebApp/Components/Shared/Generation/ADetailerModelForm.razor` (WebUI-specific)
 ```
 **Total:** 4 files (2 components + 2 CSS)
 **Note:** ADetailerModelForm removed in script cleanup phase
@@ -723,11 +732,11 @@ After removing all scripts, also clean up:
 
 ### Folder Cleanup
 ```
-[x] BlazorWebApp/Pages/WebUI/ - Delete entire folder after removing files
+[?] BlazorWebApp/Pages/WebUI/ - Delete entire folder after removing files - REMOVED Phase 2
 [x] BlazorWebApp/Pages/ComfyUI/ - Delete entire folder after moving files
 [x] BlazorWebApp/Data/Dtos/WebUI/ - Delete entire folder after removing all DTOs
 ```
-**Total:** 3 folders to clean up
+**Total:** 3 folders to clean up (1 complete, 2 pending)
 
 ---
 
