@@ -257,7 +257,12 @@ namespace BlazorWebApp.Services
             set
             {
                 _isConverging = value;
+                
+                // Fire old Action event for backward compatibility (will be removed in Phase 8)
                 OnConverging?.Invoke();
+                
+                // Publish typed event for migrated components using EventService
+                _events.Publish(new ConvergingChangedEventArgs(_isConverging));
             }
         }
 

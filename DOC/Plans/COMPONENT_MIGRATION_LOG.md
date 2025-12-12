@@ -3,7 +3,7 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 12/70 components migrated (17%)
+**Current Progress:** 13/70 components migrated (19%)
 **Current Group:** Group 2 - Generation Forms (High Priority)
 
 ---
@@ -13,7 +13,7 @@
 | Group | Status | Progress | Notes |
 |-------|--------|----------|-------|
 | **Group 1: Simple Components** | ? Complete | 3/3 core + 4 skipped | NavBar, StateDialog, TopToolbar migrated |
-| **Group 2: Generation Forms** | ?? In Progress | 1/18 | **CURRENT** - PromptFields complete! |
+| **Group 2: Generation Forms** | ?? In Progress | 2/18 | **CURRENT** - PromptFields & GenerateButton complete! |
 | **Group 3: Script Forms** | ? Not Started | 0/10 | Settings + State services |
 | **Group 4: Gallery Components** | ?? In Progress | 6/12 | Image display and management |
 | **Group 5: Canvas/Session** | ?? Partial | 1/8 | VideoCard complete |
@@ -83,14 +83,14 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
-| PromptFields | Components/Shared/Generation | State, Backend, Events | ? Complete | Migrated 2025-01-14 - CRITICAL shared component! |
+| PromptFields | Components/Shared/Generation | State, Backend, Events, DatabaseService | ? Complete | Migrated 2025-01-14 - CRITICAL shared component! Loads styles from DB. |
+| GenerateButton | Components/Shared/Generation | State, Events | ? Complete | Migrated 2025-01-14 - Generate/Skip/Interrupt button with converging state |
 | GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
 | GenerateFormTxt2ImgComfyUI | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority |
 | GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
 | GenerateFormImg2ImgComfyUI | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority |
 | GenerateFormImg2VidComfyUI | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Not Started | High priority |
 | PromptFieldsSimple | Components/Img2Vid | State, Settings | ? Not Started | |
-| GenerateButton | Components/Shared/Generation | State, Backend | ? Not Started | |
 | LoraForm | Components/Shared/Generation | State, Settings | ? Not Started | |
 | LoraCard | Components/Shared/Generation | State | ? Not Started | |
 | ControlNetForm | Components/Shared/Generation | State, Settings, Session | ? Not Started | |
@@ -215,8 +215,8 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 54 (77%)
-- **Complete:** 12 (17%)
+- **Not Started:** 53 (76%)
+- **Complete:** 13 (19%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -228,7 +228,8 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - ImagesContainer.razor
   - ImageCard.razor
   - VideoCard.razor (enhanced with new actions)
-  - PromptFields.razor (critical shared component!)
+  - PromptFields.razor (critical shared component with DB styles loading!)
+  - GenerateButton.razor (generate/skip/interrupt with converging state)
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -457,7 +458,7 @@ private async Task LoadStyles()
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (11/70 = 16%)
+- [ ] All 70 components migrated (13/70 = 19%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)
@@ -465,5 +466,5 @@ private async Task LoadStyles()
 - [ ] All tests passing (128+ tests)
 - [ ] Build passes without errors ?
 - [ ] No compiler warnings
-- [ ] Styles dropdown working
+- [x] Styles dropdown working ?
 - [ ] Documentation updated ?
