@@ -19,7 +19,6 @@ builder.Services.AddMudServices(opt =>
     opt.SnackbarConfiguration.PreventDuplicates = false;
 });
 
-builder.Services.AddHttpClient<SDAPIService>();
 builder.Services.AddHttpClient<ComfyUIService>();
 // Register the interface to resolve to the same ComfyUIService instance
 builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<ComfyUIService>());

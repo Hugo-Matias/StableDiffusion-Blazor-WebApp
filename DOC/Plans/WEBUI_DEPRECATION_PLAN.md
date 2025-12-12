@@ -1,10 +1,10 @@
 # WebUI Deprecation & ComfyUI Simplification Plan
 
 ## Status
-**Phase:** Phase 4 - Evaluate & Clean WebUI DTOs ? COMPLETE (with expected errors)
+**Phase:** Phase 5 - Remove SDAPIService ? COMPLETE (with expected errors)
 **Started:** 2025-01-14  
-**Current Step:** Phase 5 - Remove SDAPIService (or proceed to Phase 6.5 for script cleanup)
-**Next Step:** Phase 6.5 - Remove WebUI-Only Scripts (to fix compilation errors)
+**Current Step:** Phase 6.5 - Remove WebUI-Only Scripts (to fix compilation errors)
+**Next Step:** Phase 6.5 - Remove WebUI-Only Scripts
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Date | Phase | Description |
 |------|-------|-------------|
+| 2025-01-14 | Phase 5 | ? **SDAPIService Removed!** Successfully removed SDAPIService.cs file and DI registration from Program.cs. **Expected:** 103 compilation errors (up from 92) - added errors from ManagerService, RouterService, ImageService, WildcardsPanel, and Resources page. All will be fixed in Phase 6.5 (script cleanup). Ready for Phase 6.5. |
 | 2025-01-14 | Phase 4 | ? **WebUI DTOs Removed!** Successfully removed entire Data/Dtos/WebUI folder containing 13 files (4 WebUI API DTOs + 9 Script parameter DTOs). **Expected:** 92 compilation errors from script forms, model classes, and ManagerService factory methods - these will be fixed in Phase 6.5 (script cleanup). Decision: Proceed to Phase 6.5 next to fix compilation errors before Phase 5. Ready for Phase 6.5. |
 | 2025-01-14 | Phase 3 | ? **WebUI Components Removed!** Successfully removed all 4 WebUI component files (GenerateFormTxt2Img.razor + CSS, GenerateFormImg2Img.razor + CSS). Build passes without errors. Note: UltimateUpscaleForm and ADetailerModelForm will be removed in Phase 6.5 (Script cleanup). Ready for Phase 4. |
 | 2025-01-14 | Phase 2 | ? **WebUI Pages Removed!** Successfully removed all 4 WebUI page files (Txt2ImgWebUI.razor, Img2ImgWebUI.razor, UpscaleWebUI.razor, UpscaleWebUI.razor.css). Removed empty Pages/WebUI folder. Build passes without errors. No navigation references to update (NavBar only shows ComfyUI workflows). Ready for Phase 3. |
