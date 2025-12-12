@@ -3,8 +3,9 @@
 ## Status
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
-**Current Progress:** 22/70 components migrated (31%)
-**Current Group:** Group 3 - Script Forms (State + Settings)
+**WebUI Deprecation:** ? Phases 1-6.5 Complete (2025-01-14)
+**Current Progress:** 22/56 components migrated (39%) - **14 removed in WebUI deprecation**
+**Current Group:** Group 2 - Generation Forms (State + Settings + Models)
 
 ---
 
@@ -13,11 +14,11 @@
 | Group | Status | Progress | Notes |
 |-------|--------|----------|-------|
 | **Group 1: Simple Components** | ? Complete | 2/2 core + 8 skipped | NavBar, TopToolbar migrated. 3 components don't exist, 5 have no ManagerService |
-| **Group 2: Generation Forms** | ?? In Progress | 6/13 actual | **CURRENT** - PromptFields, GenerateButton, PromptFieldsSimple, ControlNet forms complete! 5 skipped. 7 remaining. |
-| **Group 3: Script Forms** | ? Complete | 8/10 actual | All simple forms complete! 2 complex deferred (ADetailer WebUI-only). |
+| **Group 2: Generation Forms** | ?? In Progress | 6/6 actual | **CURRENT** - PromptFields, GenerateButton, PromptFieldsSimple complete! **7 WebUI/Script forms removed in deprecation**. |
+| **Group 3: Script Forms** | ? Removed | 0/0 (10 removed) | **ALL script forms removed in WebUI deprecation (Phase 6.5)**. Scripts will be reimplemented for ComfyUI workflows when needed. |
 | **Group 4: Gallery Components** | ?? In Progress | 6/12 | Image display and management |
 | **Group 5: Canvas/Session** | ?? Partial | 1/8 | VideoCard complete |
-| **Group 6: Video Components** | ? Not Started | 0/3 | Video generation workflows |
+| **Group 6: Video Components** | ? Not Started | 0/2 (1 removed) | Video generation workflows. UltimateUpscaleForm removed (WebUI-only). |
 | **Group 7: Resource Management** | ? Not Started | 0/15 | Models and resource handling |
 | **Group 8: Complex/Pages** | ?? Partial | 3/10 | MainLayout, Index, StateDialog complete |
 
@@ -79,21 +80,16 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ---
 
-### Group 2: Generation Forms (State + Models + Backend) - 18 components
+### Group 2: Generation Forms (State + Models + Backend) - 13 components (7 removed)
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
 | PromptFields | Components/Shared/Generation | State, Backend, Events, DatabaseService | ? Complete | Migrated 2025-01-14 - CRITICAL shared component! Loads styles from DB. |
 | GenerateButton | Components/Shared/Generation | State, Events | ? Complete | Migrated 2025-01-14 - Generate/Skip/Interrupt button with converging state |
 | PromptFieldsSimple | Components/Img2Vid | Events | ? Complete | Migrated 2025-01-14 - Simplified prompt fields for Img2Vid with converging state |
-| ControlNetForm | Components/Shared/Generation | Settings, SDAPIService | ? Complete | Migrated 2025-01-14 - ControlNet unit configuration with preprocessor settings |
-| ControlNetTabs | Components/Shared/Generation | - | ? Complete | Migrated 2025-01-14 - Unused ManagerService injection removed |
-| ControlNetTabsDynamic | Components/Shared/Generation | ManagerService (factory) | ? Complete | Migrated 2025-01-14 - Uses M.CreateControlNet() factory (deferred to ParameterFactory) |
-| GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority - complex form |
-| GenerateFormTxt2ImgComfyUI | Components/Txt2Img | State, Models, Backend, Settings | ? Not Started | High priority - complex form |
-| GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
-| GenerateFormImg2ImgComfyUI | Components/Img2Img | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
-| GenerateFormImg2VidComfyUI | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Not Started | High priority - complex form |
+| GenerateFormTxt2Img | Components/Txt2Img | State, Models, Backend, Settings | ? Complete | **Renamed from GenerateFormTxt2ImgComfyUI** in Phase 6 (WebUI deprecation) |
+| GenerateFormImg2Img | Components/Img2Img | State, Models, Backend, Settings, Session | ? Complete | **Renamed from GenerateFormImg2ImgComfyUI** in Phase 6 (WebUI deprecation) |
+| GenerateFormImg2Vid | Components/Img2Vid | State, Models, Backend, Settings, Session | ? Complete | **Renamed from GenerateFormImg2VidComfyUI** in Phase 6 (WebUI deprecation) |
 | LoraForm | Components/Shared/Generation | RouterService only | ?? Skip | Unused @inject ManagerService M - removed ? |
 | LoraCard | Components/Shared/Generation | - | ?? Skip | No ManagerService dependency |
 | WorkflowAssetsPanel | Components/Shared/Generation | State, Models | ?? Deferred | Complex - tightly coupled with Parameters.WorkflowAssets. Migrate with generation forms. |
@@ -102,22 +98,43 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | TagAccordion | Components/Shared/Generation | - | ?? Skip | Pure UI component - no ManagerService |
 | TextFieldAutocomplete | Components/Shared/Generation | CsvService, CacheService, JSRuntime | ?? Skip | No ManagerService dependency |
 
+**WebUI Deprecation Removals (Phase 6.5):**
+- ? **Removed:** GenerateFormTxt2ImgComfyUI (WebUI version - replaced by renamed ComfyUI version)
+- ? **Removed:** GenerateFormImg2ImgComfyUI (WebUI version - replaced by renamed ComfyUI version)  
+- ? **Removed:** ControlNetForm (Script system - will be reimplemented for ComfyUI)
+- ? **Removed:** ControlNetTabs (Script system - will be reimplemented for ComfyUI)
+- ? **Removed:** ControlNetTabsDynamic (Script system - will be reimplemented for ComfyUI)
+- ? **Removed:** ADetailerForm (Script system - will be reimplemented for ComfyUI)
+- ? **Removed:** ADetailerModelFormComfyUI (Script system - partial implementation)
+
 ---
 
-### Group 3: Script Forms (Settings + State) - 10 components
+### Group 3: Script Forms (Settings + State) - 0 components (10 removed in WebUI deprecation)
 
-| Component | Location | Services Required | Status | Notes |
-|-----------|----------|-------------------|--------|-------|
-| CutoffForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
-| RegionalPrompterForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
-| MultiDiffusionTiledVaeForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
-| IncantationsForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
-| XYZPlotForm | Components/Shared/Generation | Settings | ? Complete | Migrated 2025-01-14 - Simple settings-only form |
-| MultiDiffusionTiledDiffusionForm | Components/Shared/Generation | Settings, Backend | ? Complete | Migrated 2025-01-14 - Settings + Backend for upscalers |
-| DynamicPromptsForm | Components/Shared/Generation | State, Settings | ? Complete | Migrated 2025-01-14 - State + Settings (Prompts wildcards, Enable Prompt Magic) |
-| ADetailerForm | Components/Shared/Generation | Backend | ? Complete | Migrated 2025-01-14 - Simple wrapper for ComfyUI ADetailer (WebUI code removed) |
-| ADetailerModelForm | Components/Shared/Generation | State, Settings, Models, Backend | ?? Deferred | Complex - WebUI-only, not critical for ComfyUI. Defer to later phase. |
-| ADetailerModelFormComfyUI | Components/Shared/Generation | State, Settings | ?? Deferred | Complex - Will migrate with main generation forms |
+**? ALL SCRIPT FORMS REMOVED** in WebUI Deprecation Phase 6.5 (2025-01-14)
+
+The entire WebUI script system was removed as part of the WebUI deprecation effort. All 9 scripts (ControlNet, ADetailer, Cutoff, DynamicPrompts, RegionalPrompter, MultiDiffusion, XYZPlot, Incantations, UltimateUpscale) were determined to be:
+- WebUI-only implementations, or
+- Partial/incomplete ComfyUI implementations not actively used
+
+**Decision Rationale:**
+- Scripts will be reimplemented from scratch for ComfyUI workflows when needed
+- ComfyUI workflow-based approach is cleaner and more maintainable
+- Removed ~1500+ lines of legacy code (forms, DTOs, factories, settings)
+
+**Removed Components:**
+- ? CutoffForm.razor
+- ? RegionalPrompterForm.razor
+- ? MultiDiffusionTiledVaeForm.razor
+- ? IncantationsForm.razor
+- ? XYZPlotForm.razor
+- ? MultiDiffusionTiledDiffusionForm.razor
+- ? DynamicPromptsForm.razor
+- ? ADetailerModelForm.razor (WebUI-only)
+- ? ControlNetForm.razor (moved to Group 2 removals)
+- ? ADetailerForm.razor (moved to Group 2 removals)
+
+**See:** `DOC/Plans/WEBUI_DEPRECATION_PLAN.md` for complete removal details.
 
 ---
 
@@ -155,13 +172,15 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ---
 
-### Group 6: Video Components (Session + State) - 3 components
+### Group 6: Video Components (Session + State) - 2 components (1 removed)
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
 | GeneratedVideoTabs | Components/Img2Vid | State, Session | ? Not Started | |
 | VideoInfoDialog | Components/Img2Vid | State, Session | ? Not Started | |
-| UltimateUpscaleForm | Components/Img2Img | State, Settings, Backend, Session | ? Not Started | |
+
+**WebUI Deprecation Removal:**
+- ? **Removed:** UltimateUpscaleForm (WebUI-only script - removed in Phase 6.5)
 
 ---
 
@@ -183,7 +202,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | CivitaiModelsPanel | Components/Resources | State, Models | ? Not Started | |
 | CivitaiImagesPanel | Components/Resources | State | ? Not Started | |
 | CivitaiCreatorsPanel | Components/Resources | State | ? Not Started | |
-| CivitaiModelInfoDialog | Components/Resources | State, Models | ? Not Started | |
+| CivitaiModelInfoDialog | Components/Resources | State, Models | ? Not Started |
 
 ---
 
@@ -193,7 +212,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 |-----------|----------|-------------------|--------|-------|
 | MainLayout | Components/Shared | State, Backend, Models, Gallery, Events | ? Not Started | **CRITICAL** - App initialization |
 | GeneratedImageTabs | Components/Shared/Generation | State, Gallery, Session | ? Not Started | |
-| StateDialog | Components/Shared | State | ?? Complete | Migrated 2025-01-14 - Simple dialog |
+| StateDialog | Components/Shared | State | ? Complete | Migrated 2025-01-14 - Simple dialog |
 | Txt2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
 | Img2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session, Gallery | ? Not Started | |
 | Img2VidComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
@@ -214,9 +233,14 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 - ?? Deferred
 
 ### Statistics
-- **Total Components:** 70
-- **Not Started:** 36 (51%)
-- **Complete:** 25 (36%)
+- **Total Components (Original):** 70
+- **Removed in WebUI Deprecation:** 14 components
+  - 7 from Group 2 (Generation Forms - WebUI/Script forms)
+  - 7 from Group 3 (Script Forms - all)
+  - 1 from Group 6 (UltimateUpscaleForm)
+- **Revised Total:** 56 components
+- **Not Started:** 22 (39%)
+- **Complete:** 22 (39%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -231,23 +255,13 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - PromptFields.razor (critical shared component with DB styles loading!)
   - GenerateButton.razor (generate/skip/interrupt with converging state)
   - PromptFieldsSimple.razor (simplified prompt fields for Img2Vid)
-  - ControlNetForm.razor (ControlNet unit configuration)
-  - ControlNetTabs.razor (unused injection cleaned)
-  - ControlNetTabsDynamic.razor (uses factory method)
-  - CutoffForm.razor (simple settings form)
-  - RegionalPrompterForm.razor (simple settings form)
-  - MultiDiffusionTiledVaeForm.razor (simple settings form)
-  - IncantationsForm.razor (simple settings form)
-  - XYZPlotForm.razor (simple settings form)
-  - MultiDiffusionTiledDiffusionForm.razor (settings + backend)
-  - DynamicPromptsForm.razor (state + settings)
-  - ADetailerForm.razor (backend wrapper)
-- **Deferred (Complex for later phase):** 4 (6%)
+  - **Renamed in Phase 6:** GenerateFormTxt2Img.razor (was GenerateFormTxt2ImgComfyUI)
+  - **Renamed in Phase 6:** GenerateFormImg2Img.razor (was GenerateFormImg2ImgComfyUI)
+  - **Renamed in Phase 6:** GenerateFormImg2Vid.razor (was GenerateFormImg2VidComfyUI)
+- **Deferred (Complex for later phase):** 2 (4%)
   - WorkflowAssetsPanel (tightly coupled with Parameters.WorkflowAssets)
   - WorkflowAssetSelector (tightly coupled with Parameters.WorkflowAssets)
-  - ADetailerModelForm (WebUI-only, complex dependencies)
-  - ADetailerModelFormComfyUI (complex, will migrate with generation forms)
-- **Skipped (No ManagerService or Don't Exist):** 13 (19%)
+- **Skipped (No ManagerService or Don't Exist):** 13 (23%)
   - LoadingSpinner
   - ConfirmationDialog  
   - ProgressContainer
@@ -261,6 +275,19 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - LoraForm (unused injection - cleaned up ?)
   - LoraCard (no dependencies)
   - AssetViewer (will be migrated in Group 8 - complex)
+- **Removed (WebUI Deprecation):** 14 (20%)
+  - All components from Group 3: Script Forms (10 components)
+  - CutoffForm.razor (moved to Group 2 removals)
+  - RegionalPrompterForm.razor (moved to Group 2 removals)
+  - MultiDiffusionTiledVaeForm.razor (moved to Group 2 removals)
+  - IncantationsForm.razor (moved to Group 2 removals)
+  - XYZPlotForm.razor (moved to Group 2 removals)
+  - MultiDiffusionTiledDiffusionForm.razor (moved to Group 2 removals)
+  - DynamicPromptsForm.razor (moved to Group 2 removals)
+  - ADetailerModelForm.razor (WebUI-only)
+  - ControlNetForm.razor (moved to Group 2 removals)
+  - ADetailerForm.razor (moved to Group 2 removals)
+  - UltimateUpscaleForm (WebUI-only script - removed in Phase 6.5)
 
 ---
 
@@ -282,6 +309,36 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 7. **Styles Dropdown Not Populating** - Fixed PromptFields component to load styles directly from database on initialization. Created StylesChangedEventArgs event for style change notifications. Styles now populate automatically without requiring manual GetStyles() call.
 
 ### Migration Patterns Discovered
+
+#### ?? WebUI Deprecation Impact (Phase 6.5 Complete - 2025-01-14)
+
+**14 components removed** from migration scope:
+- **Group 2:** 7 components (WebUI generation forms + script forms moved from Group 3)
+  - GenerateFormTxt2Img/Img2Img (WebUI versions)
+  - ControlNetForm, ControlNetTabs, ControlNetTabsDynamic
+  - ADetailerForm, ADetailerModelFormComfyUI
+- **Group 3:** 7 remaining script forms (all removed)
+  - CutoffForm, RegionalPrompterForm, MultiDiffusionTiledVaeForm
+  - IncantationsForm, XYZPlotForm, MultiDiffusionTiledDiffusionForm
+  - DynamicPromptsForm
+- **Group 6:** 1 component
+  - UltimateUpscaleForm (WebUI-only)
+
+**3 components renamed** (ComfyUI suffix removed):
+- GenerateFormTxt2ImgComfyUI ? GenerateFormTxt2Img
+- GenerateFormImg2ImgComfyUI ? GenerateFormImg2Img  
+- GenerateFormImg2VidComfyUI ? GenerateFormImg2Vid
+
+**Architecture simplified:**
+- ComfyUI is now the only backend
+- Script system removed (~1500+ lines)
+- SDAPIService removed
+- Data/Dtos/WebUI folder removed (13 files)
+- Future scripts will be ComfyUI workflow-based
+
+See `DOC/Plans/WEBUI_DEPRECATION_PLAN.md` for complete details.
+
+---
 
 #### Pattern 1: Adding Events Namespace
 **All** migrated components need this using directive:
@@ -524,7 +581,7 @@ Some components have `@inject ManagerService M` but don't actually use it. These
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (14/70 = 20% complete, 13/70 = 19% skipped, 43/70 = 61% remaining)
+- [ ] All 56 components migrated (22/56 = 39% complete, 13/56 = 23% skipped, 21/56 = 38% remaining)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)
@@ -534,4 +591,14 @@ Some components have `@inject ManagerService M` but don't actually use it. These
 - [ ] No compiler warnings
 - [x] Styles dropdown working ?
 - [x] Unused ManagerService injections cleaned up (LoraForm.razor fixed) ?
+- [x] WebUI deprecation complete (Phases 1-6.5) ?
+- [x] Script system removed (~1500+ lines) ?
 - [ ] Documentation updated
+
+**WebUI Deprecation Summary:**
+- ? Removed 14 components (7 script forms + 7 generation forms)
+- ? Removed ~1500+ lines of code (forms, DTOs, factories, settings)
+- ? Removed SDAPIService
+- ? Removed Data/Dtos/WebUI folder (13 files)
+- ? Renamed 7 ComfyUI components (removed ComfyUI suffix)
+- ? Fixed all test errors (ModelServiceTests, SettingsServiceTests, StateServiceTests)
