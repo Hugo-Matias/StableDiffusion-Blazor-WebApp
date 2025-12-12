@@ -1,10 +1,10 @@
 # WebUI Deprecation & ComfyUI Simplification Plan
 
 ## Status
-**Phase:** Phase 2 - Remove WebUI Pages ? COMPLETE
+**Phase:** Phase 3 - Remove WebUI Components ? COMPLETE
 **Started:** 2025-01-14  
-**Current Step:** Phase 3 - Remove WebUI Components
-**Next Step:** Phase 3 - Remove WebUI Components
+**Current Step:** Phase 4 - Evaluate & Clean WebUI DTOs
+**Next Step:** Phase 4 - Evaluate & Clean WebUI DTOs
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Date | Phase | Description |
 |------|-------|-------------|
+| 2025-01-14 | Phase 3 | ? **WebUI Components Removed!** Successfully removed all 4 WebUI component files (GenerateFormTxt2Img.razor + CSS, GenerateFormImg2Img.razor + CSS). Build passes without errors. Note: UltimateUpscaleForm and ADetailerModelForm will be removed in Phase 6.5 (Script cleanup). Ready for Phase 4. |
 | 2025-01-14 | Phase 2 | ? **WebUI Pages Removed!** Successfully removed all 4 WebUI page files (Txt2ImgWebUI.razor, Img2ImgWebUI.razor, UpscaleWebUI.razor, UpscaleWebUI.razor.css). Removed empty Pages/WebUI folder. Build passes without errors. No navigation references to update (NavBar only shows ComfyUI workflows). Ready for Phase 3. |
 | 2025-01-14 | Phase 1.7 | ? **Updated Decision - Remove ALL Scripts!** After review, decided to remove ControlNet and ADetailer as well. Both have partial/incomplete ComfyUI implementations not actively used in generation pages. Better to start fresh with clean ComfyUI workflow-based design. **Impact:** Now removing ALL 9 scripts (0 kept), 14 forms, 9 DTOs, ~450 lines from ManagerService, ~800 lines from AppSettings.cs. Total: ~1500+ lines removed. Maintains current Settings ? State ? DTO architecture. Future scripts will be ComfyUI-native. Restored Phases 7 & 8, file/folder matrix. Updated estimate: ~16 hours (up from 14). |
 | 2025-01-14 | Phase 1.7 | ? **Script Parameters Deep Audit Complete!** Analyzed all 9 ScriptParameters DTOs. Discovered only 2 scripts (ControlNet, ADetailer) have partial ComfyUI implementation. 7 scripts are WebUI-only extensions with no ComfyUI equivalent. Identified ~1000+ lines of initialization boilerplate that can be removed. Created Phase 6.5 for script cleanup. Updated impact assessment: now 60 files affected (up from 42), ~14 hours estimated (up from 10.5). |
