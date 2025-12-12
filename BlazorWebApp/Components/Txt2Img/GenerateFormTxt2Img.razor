@@ -2,19 +2,22 @@
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 @using BlazorWebApp.Components.Shared
 @using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IBackendService Backend
 @inject ManagerService M
 
 <div style="margin-bottom:15rem;">
     <EditForm Model="@Parameters">
         <MudGrid Class="pa-5">
             <MudItem xs="12">
-                <LoraForm Loras="Parameters.Loras" Backend="Backend.ComfyUI"/>
+                <LoraForm Loras="Parameters.Loras" Backend="@BlazorWebApp.Data.Enums.Backend.ComfyUI"/>
             </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerName AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (M.Samplers != null)
+                    @if (Backend.Samplers != null)
                     {
-                        @foreach (var sampler in M.Samplers)
+                        @foreach (var sampler in Backend.Samplers)
                         {
                             <MudSelectItem Value=@sampler.Name />
                         }
@@ -23,9 +26,9 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Scheduler" @bind-Value=Parameters.Scheduler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (M.Schedulers != null)
+                    @if (Backend.Schedulers != null)
                     {
-                        @foreach (var scheduler in M.Schedulers)
+                        @foreach (var scheduler in Backend.Schedulers)
                         {
                             <MudSelectItem Value=@scheduler.Name />
                         }
@@ -33,7 +36,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Generation.Shared.Steps.Min Max=M.Settings.Generation.Shared.Steps.Max Step=M.Settings.Generation.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
+                <MudSlider @bind-Value=Parameters.Steps Min=Settings.Settings.Generation.Shared.Steps.Min Max=Settings.Settings.Generation.Shared.Steps.Max Step=Settings.Settings.Generation.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
             </MudItem>
             <MudItem xs="5">
                 <MudNumericField @bind-Value=Parameters.Seed Label="Seed" Min="-1" Max="long.MaxValue" />
@@ -44,25 +47,25 @@
                     <MudIconButton OnClick=RestoreSeed Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" />
                 </MudButtonGroup>
             </MudItem>
-            @if (_guidanceBases.Contains(M.State.Generation.WorkflowBase))
+            @if (_guidanceBases.Contains(State.State.Generation.WorkflowBase))
             {
                 <MudItem xs="6">
-                    <MudSlider @bind-Value=Parameters.DistilledCfgScale Min=M.Settings.Generation.Shared.DistilledCfg.Min Max=M.Settings.Generation.Shared.DistilledCfg.Max Step=M.Settings.Generation.Shared.DistilledCfg.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Guidance:</small> @Parameters.DistilledCfgScale</MudSlider>
+                    <MudSlider @bind-Value=Parameters.DistilledCfgScale Min=Settings.Settings.Generation.Shared.DistilledCfg.Min Max=Settings.Settings.Generation.Shared.DistilledCfg.Max Step=Settings.Settings.Generation.Shared.DistilledCfg.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Guidance:</small> @Parameters.DistilledCfgScale</MudSlider>
                 </MudItem>
             }
             else
             {
                 <MudItem xs="6">
-                    <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
+                    <MudSlider @bind-Value=Parameters.CfgScale Min=Settings.Settings.Generation.Shared.CfgScale.Min Max=Settings.Settings.Generation.Shared.CfgScale.Max Step=Settings.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
                 </MudItem>
             }
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
+                <MudSlider @bind-Value=Parameters.BatchSize Min=Settings.Settings.Generation.Shared.Batch.Size.Min Max=Settings.Settings.Generation.Shared.Batch.Size.Max Step=Settings.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
             </MudItem>
             <MudItem xs="12">
                 <MudText Typo="Typo.caption" Class="mb-4">Quick Resolution:</MudText>
                 <MudGrid Spacing="2" Justify="Justify.Center">
-                    @foreach (var res in M.Settings.Generation.Shared.QuickResolutions)
+                    @foreach (var res in Settings.Settings.Generation.Shared.QuickResolutions)
                     {
                         <MudItem xs="6" sm="4" md="3" lg="2">
                             <MudButton OnClick="@(() => SetResolution(res.Width, res.Height))"
@@ -96,10 +99,10 @@
                 </div>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=Settings.Settings.Generation.Shared.Resolution.Min Max=Settings.Settings.Generation.Shared.Resolution.Max Step=Settings.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=Settings.Settings.Generation.Shared.Resolution.Min Max=Settings.Settings.Generation.Shared.Resolution.Max Step=Settings.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
             </MudItem>
             <MudItem xs="12">
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>
@@ -116,9 +119,9 @@
                     </MudItem>
                     <MudItem xs="4">
                         <MudSelect T="string" Label="Upscaler" @bind-Value=Parameters.HRUpscaler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                            @if (M.Upscalers != null && M.Upscalers.Count > 0)
+                            @if (Backend.Upscalers != null && Backend.Upscalers.Count > 0)
                             {
-                                @foreach (var upscaler in M.Upscalers)
+                                @foreach (var upscaler in Backend.Upscalers)
                                 {
                                     <MudSelectItem Value=@(upscaler.Name) />
                                 }
@@ -126,19 +129,19 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider @bind-Value=Parameters.HRSecondPassSteps Min=M.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Min Max=M.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Max Step=M.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @($"{(Parameters.HRSecondPassSteps > 0 ? Parameters.HRSecondPassSteps : $"Original ({Parameters.Steps})")}")</MudSlider>
+                        <MudSlider @bind-Value=Parameters.HRSecondPassSteps Min=Settings.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @($"{(Parameters.HRSecondPassSteps > 0 ? Parameters.HRSecondPassSteps : $"Original ({Parameters.Steps})")}")</MudSlider>
                         </MudItem>
                         <MudItem xs="4">
-                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Generation.Shared.Denoising.Min Max=M.Settings.Generation.Shared.Denoising.Max Step=M.Settings.Generation.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
+                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=Settings.Settings.Generation.Shared.Denoising.Min Max=Settings.Settings.Generation.Shared.Denoising.Max Step=Settings.Settings.Generation.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=M.Settings.Generation.Txt2Img.HighRes.Scale.Min Max=M.Settings.Generation.Txt2Img.HighRes.Scale.Max Step=M.Settings.Generation.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
+                        <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=Settings.Settings.Generation.Txt2Img.HighRes.Scale.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.Scale.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=M.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=M.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=M.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=M.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=M.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=M.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
                     </MudItem>
                 </MudGrid>
             </MudItem>
@@ -157,44 +160,44 @@
                     <MudItem xs="2">
                         <MudNumericField @bind-Value=Parameters.SeedVR2.BatchSize 
                            Label="Batch Size" 
-                           Min=M.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Min 
-                           Max=M.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Max 
-                           Step=M.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Step />
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Step />
                     </MudItem>
                     <MudItem xs="4">
                         <MudNumericField @bind-Value=Parameters.SeedVR2.BlocksToSwap 
                            Label="Blocks to Swap" 
-                           Min=M.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Min 
-                           Max=M.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Max 
-                           Step=M.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Step />
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Step />
                     </MudItem>
                     <MudItem xs="4">
                         <MudNumericField @bind-Value=Parameters.SeedVR2.VaeTileSize 
                            Label="VAE Tile Size" 
-                           Min=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Min 
-                           Max=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Max 
-                           Step=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Step />
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Step />
                     </MudItem>
                     <MudItem xs="4">
                         <MudNumericField @bind-Value=Parameters.SeedVR2.VaeTileOverlap 
                            Label="VAE Tile Overlap" 
-                           Min=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Min 
-                           Max=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Max 
-                           Step=M.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Step />
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Step />
                     </MudItem>
                     <MudItem xs="6">
                         <MudSlider @bind-Value=Parameters.SeedVR2.InputNoiseScale 
-                     Min=M.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Min 
-                     Max=M.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Max 
-                     Step=M.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Step 
+                     Min=Settings.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Min 
+                     Max=Settings.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Max 
+                     Step=Settings.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Step 
                      Variant="Variant.Filled" 
                      ValueLabel><small>Input Noise Scale:</small> @(Parameters.SeedVR2.InputNoiseScale?.ToString("F2") ?? "0.00")</MudSlider>
                     </MudItem>
                     <MudItem xs="6">
                         <MudSlider @bind-Value=Parameters.SeedVR2.LatentNoiseScale 
-                     Min=M.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Min 
-                     Max=M.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Max 
-                     Step=M.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Step 
+                     Min=Settings.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Min 
+                     Max=Settings.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Max 
+                     Step=Settings.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Step 
                      Variant="Variant.Filled" 
                      ValueLabel><small>Latent Noise Scale:</small> @(Parameters.SeedVR2.LatentNoiseScale?.ToString("F2") ?? "0.00")</MudSlider>
                     </MudItem>
@@ -218,8 +221,9 @@
 
     protected async override Task OnInitializedAsync()
     {
-        _options = M.Options;
-        if (M.Upscalers == null || M.Upscalers.Count == 0) await M.LoadBackendDependentResources();
+        _options = Backend.Options;
+        if (Backend.Upscalers == null || Backend.Upscalers.Count == 0) 
+            await Backend.LoadBackendDependentResources();
         RefreshHighresInfo();
     }
 
@@ -234,17 +238,17 @@
             return null;
 
         // If a specific workflow is selected, use that
-        if (M.State?.Generation?.CurrentWorkflowId.HasValue == true)
+        if (State.State?.Generation?.CurrentWorkflowId.HasValue == true)
         {
-            var selected = workflows.FirstOrDefault(w => w.Id == M.State.Generation.CurrentWorkflowId.Value);
+            var selected = workflows.FirstOrDefault(w => w.Id == State.State.Generation.CurrentWorkflowId.Value);
             if (selected != null)
                 return selected;
         }
 
         // Try to match by WorkflowBase
-        if (M.State?.Generation?.WorkflowBase != default)
+        if (State.State?.Generation?.WorkflowBase != default)
         {
-            var byBase = workflows.FirstOrDefault(w => w.Base == M.State.Generation.WorkflowBase);
+            var byBase = workflows.FirstOrDefault(w => w.Base == State.State.Generation.WorkflowBase);
             if (byBase != null)
                 return byBase;
         }
@@ -257,7 +261,8 @@
 
     private void RestoreSeed()
     {
-        if (M.IsComfyUIUp)
+        // ComfyUI-only now (WebUI removed)
+        if (Backend.IsBackendAvailable)
         {
             var info = M.ImagesInfo.InfoTexts[0];
             try
@@ -285,11 +290,6 @@
             {
                 // If parsing fails, do nothing
             }
-        }
-        else if (M.IsWebuiUp)
-        {
-            if (M.ImagesInfo != null && M.ImagesInfo.Seed != null)
-                Parameters.Seed = M.ImagesInfo.Seed;
         }
     }
 
@@ -360,15 +360,15 @@
     {
         var currentWidth = Parameters.Width ?? 512;
         var currentHeight = Parameters.Height ?? 512;
-        var step = M.Settings.Generation.Shared.Resolution.Step;
+        var step = Settings.Settings.Generation.Shared.Resolution.Step;
         
         // Scale and round to nearest step
         var newWidth = (int)(Math.Round(currentWidth * scale / step) * step);
         var newHeight = (int)(Math.Round(currentHeight * scale / step) * step);
         
         // Clamp to min/max
-        var min = M.Settings.Generation.Shared.Resolution.Min;
-        var max = M.Settings.Generation.Shared.Resolution.Max;
+        var min = Settings.Settings.Generation.Shared.Resolution.Min;
+        var max = Settings.Settings.Generation.Shared.Resolution.Max;
         newWidth = Math.Clamp(newWidth, min, max);
         newHeight = Math.Clamp(newHeight, min, max);
         
