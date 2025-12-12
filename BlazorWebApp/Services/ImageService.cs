@@ -2,7 +2,6 @@ using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
-using HtmlAgilityPack;
 using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
@@ -13,7 +12,6 @@ namespace BlazorWebApp.Services
     /// </summary>
     public class ImageService
     {
-        private readonly SDAPIService _api;
         private readonly IOService _io;
         private readonly ManagerService _m;
         private readonly MagickService _magick;
@@ -39,9 +37,8 @@ namespace BlazorWebApp.Services
         /// </summary>
         public GeneratedVideos GeneratedVideos { get; private set; }
 
-        public ImageService(SDAPIService api, IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router, ILogger<ImageService> logger)
+        public ImageService(IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router, ILogger<ImageService> logger)
         {
-            _api = api;
             _io = io;
             _m = m;
             _magick = magick;
@@ -80,16 +77,8 @@ namespace BlazorWebApp.Services
                     case ModeType.Extras:
                         _logger.LogDebug("Processing upscale request");
                         _parsingParams = _m.ParametersUpscale;
-                        _m.GeneratedUpscaleImage = await _api.PostExtraSingle(_m.ParametersUpscale);
-                        if (_m.GeneratedUpscaleImage != null && !string.IsNullOrWhiteSpace(_m.GeneratedUpscaleImage.Image))
-                        {
-                            var upscaledResolution = _magick.GetImageSize(_m.GeneratedUpscaleImage.Image);
-                            _parsingParams.Width = upscaledResolution.Item1;
-                            _parsingParams.Height = upscaledResolution.Item2;
-                            var html = new HtmlDocument();
-                            html.LoadHtml(_m.GeneratedUpscaleImage.Info);
-                            _m.GeneratedUpscaleImage.Info = html.DocumentNode.InnerText;
-                        }
+                        // Upscale functionality will be reimplemented for ComfyUI
+                        throw new NotImplementedException("Upscale functionality not yet implemented for ComfyUI");
                         break;
 
                     default:
@@ -334,15 +323,7 @@ namespace BlazorWebApp.Services
         private void BuildTxt2ImgParameters(ref string scriptName)
         {
             _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersTxt2Img), _m.State.Generation.Styles);
-            CreateControlNetUnits(ref _parsingParams, _m.ParametersTxt2Img.Scripts.ControlNet);
-            Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Cutoff);
-            Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersTxt2Img.Scripts.DynamicPrompts);
-            Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion);
-            Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
-            Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersTxt2Img.Scripts.RegionalPrompter);
-            Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersTxt2Img.Scripts.ADetailer);
-            Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Incantations, ignoreBaseParam: true);
-            scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersTxt2Img.Scripts.XYZPlot);
+            // Script system removed - will be reimplemented for ComfyUI workflows
             _txt2imgParams = new Txt2ImgParameters(_parsingParams);
             _txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
             if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
@@ -356,7 +337,6 @@ namespace BlazorWebApp.Services
                 _txt2imgParams.HRSecondPassSteps = _m.ParametersTxt2Img.HRSecondPassSteps;
                 _txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
             }
-            _txt2imgParams.Scripts = _m.ParametersTxt2Img.Scripts;
             _txt2imgParams.SeedVR2 = _m.ParametersTxt2Img.SeedVR2;
             _txt2imgParams.ConditioningVariation = _m.ParametersTxt2Img.ConditioningVariation;
         }
@@ -364,16 +344,7 @@ namespace BlazorWebApp.Services
         private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)
         {
             _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersImg2Img), _m.State.Generation.Styles);
-            CreateControlNetUnits(ref _parsingParams, _m.ParametersImg2Img.Scripts.ControlNet);
-            Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersImg2Img.Scripts.Cutoff);
-            Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersImg2Img.Scripts.DynamicPrompts);
-            Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion);
-            Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledVae);
-            Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersImg2Img.Scripts.RegionalPrompter);
-            Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersImg2Img.Scripts.ADetailer);
-            Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersImg2Img.Scripts.Incantations, ignoreBaseParam: true);
-            scriptName = Parser.CreateScriptParameters("Ultimate SD upscale", ref _parsingParams, _m.ParametersImg2Img.Scripts.UltimateUpscale);
-            scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersImg2Img.Scripts.XYZPlot);
+            // Script system removed - will be reimplemented for ComfyUI workflows
             var img2imgParams = new Img2ImgParameters(_parsingParams);
             img2imgParams.InitImages = _m.ParametersImg2Img.InitImages;
             img2imgParams.Mask = _m.ParametersImg2Img.Mask;
@@ -385,24 +356,6 @@ namespace BlazorWebApp.Services
             img2imgParams.InpaintingMaskInvert = _m.ParametersImg2Img.InpaintingMaskInvert;
             SetSourceImageSize();
             return img2imgParams;
-        }
-
-        private void CreateControlNetUnits(ref SharedParameters parameters, List<ScriptParametersControlNet> units)
-        {
-            if (_m.ControlNetEnabled && units != null && units.Count > 0)
-            {
-                var nulledUnits = new List<ScriptParametersControlNet?>();
-                foreach (var unit in units)
-                {
-                    if (unit.Model.Equals("None", StringComparison.InvariantCultureIgnoreCase) && unit.Preprocessor == ControlNetPreprocessor.none) nulledUnits.Add(null);
-                    else
-                    {
-                        unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
-                        nulledUnits.Add(unit);
-                    }
-                }
-                parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ScriptParametersControlNet>>() { { "args", nulledUnits } } } };
-            }
         }
 
         public async Task<ImagesDto> SaveImages(Outdir outdirSamples, Outdir? outdirGrid, string scriptName)
@@ -423,19 +376,9 @@ namespace BlazorWebApp.Services
                 // Under certain conditions, SD returns images without info data, creating a mismatch between Images and Info list size.
                 // To prevent crashing later in the method when info is parsed and saved, we must preemptively break the execution and save the extra images to disk.
                 // These images aren't added to the database.
-                if (_m.IsWebuiUp && i >= _m.ImagesInfo.InfoTexts.Length)
+                // Note: Script system removed - this check may no longer be necessary for ComfyUI-only workflow
+                if (i >= _m.ImagesInfo.InfoTexts.Length)
                 {
-                    if ((outdirSamples == Outdir.Txt2ImgSamples && _txt2imgParams.AlwaysOnScripts != null && _txt2imgParams.AlwaysOnScripts.ContainsKey("controlnet") && _txt2imgParams.AlwaysOnScripts["controlnet"] != null) ||
-                        (outdirSamples == Outdir.Img2ImgSamples && _m.ParametersImg2Img.AlwaysOnScripts != null && _m.ParametersImg2Img.AlwaysOnScripts.ContainsKey("controlnet") && _m.ParametersImg2Img.AlwaysOnScripts["controlnet"] != null))
-                    {
-                        var cnImagePath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-ControlNet Annotator {i - _m.ImagesInfo.InfoTexts.Length + 1}.{extension}";
-                        await _io.SaveFileToDisk(cnImagePath, Convert.FromBase64String(_m.Images.Images[i]));
-                    }
-                    else if (outdirSamples == Outdir.Img2ImgSamples && scriptName == "Ultimate SD upscale")
-                    {
-                        var seamfixPath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-SeamFix.{extension}";
-                        await _io.SaveFileToDisk(seamfixPath, Convert.FromBase64String(_m.Images.Images[i]));
-                    }
                     continue;
                 }
 
@@ -443,11 +386,22 @@ namespace BlazorWebApp.Services
                 var info = Parser.ParseInfoStrings(_m.ImagesInfo.InfoTexts[_m.IsComfyUIUp ? 0 : i], mode, _m.IsComfyUIUp);
 
                 // Uses Seed value from the response when -1 is sent (random).
-                if (_m.IsWebuiUp)
+                // WebUI no longer supported
+                if (info != null && info.ContainsKey("param"))
                 {
-                    Dictionary<string, string>? param = null;
-                    if (info != null) param = Parser.ParseWebUIInfoParameters(info["param"]);
-                    _m.State.Generation.Seed = param != null && !string.IsNullOrEmpty(param["Seed"]) ? long.Parse(param["Seed"]) : (long)_parsingParams.Seed;
+                    var param = Parser.ParseWebUIInfoParameters(info["param"]);
+                    if (param != null && param.ContainsKey("Seed") && !string.IsNullOrEmpty(param["Seed"]))
+                    {
+                        _m.State.Generation.Seed = long.Parse(param["Seed"]);
+                    }
+                    else
+                    {
+                        _m.State.Generation.Seed = (long)_parsingParams.Seed;
+                    }
+                }
+                else
+                {
+                    _m.State.Generation.Seed = (long)_parsingParams.Seed;
                 }
 
                 var fullpath = GetImagePath(saveDir.FullName, fileIndex, mode);
@@ -473,19 +427,8 @@ namespace BlazorWebApp.Services
 
         public async Task<ImagesDto?> SaveUpscaleImage()
         {
-            DirectoryInfo saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(Outdir.Extras));
-            ImagesDto savedImage = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
-
-            var fileIndex = _io.GetFileIndex(saveDir.FullName, Outdir.Extras) + 1;
-            var fullpath = Path.Combine(saveDir.FullName, fileIndex.ToString().PadLeft(5, '0'));
-            var extension = _m.Options.SamplesFormat.ToLowerInvariant();
-            var imagePath = $"{fullpath}.{extension}";
-            await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_m.GeneratedUpscaleImage.Image));
-
-            var info = Parser.ParseInfoStrings(_m.GeneratedUpscaleImage.Info, ModeType.Extras, _m.IsComfyUIUp);
-            savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, info));
-
-            return savedImage;
+            // Upscale functionality will be reimplemented for ComfyUI
+            throw new NotImplementedException("Upscale functionality not yet implemented for ComfyUI");
         }
 
         private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info)
@@ -603,14 +546,15 @@ namespace BlazorWebApp.Services
 
         private async void StartProgressChecker(BaseProgress progress)
         {
+            // Progress checking temporarily disabled - will be reimplemented for ComfyUI
             _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
             _progress.Add(progress);
 
             while (await _timer.WaitForNextTickAsync())
             {
-                var current = await _api.GetProgress();
-                _m.Progress = current;
-                _progress.Update(progress.Id, current.Value * 100);
+                // ComfyUI progress checking to be implemented
+                _m.Progress = new InferenceProgress();
+                _progress.Update(progress.Id, 0);
                 NotifyStateChanged();
             }
         }
