@@ -650,7 +650,7 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 
 ### Phase 8: Orchestrator Refactor & Component Migration
 **Objective:** Convert ManagerService to lightweight orchestrator, migrate ALL components
-**Status:** [??] In Progress - Component Migration Started
+**Status:** [??] In Progress - 11/70 Components Complete (16%)
 
 ?? **CRITICAL PHASE** - This is the largest and most important phase. Requires careful planning and execution.
 
@@ -993,14 +993,5 @@ The Styles dropdown in the prompt fields is not populating with available styles
 ## Changelog
 | Date       | Version   | Description |
 |------------|-----------|-------------|
+| 2025-01-14 | 2.0.12    | **VideoCard Enhanced!** VideoCard.razor updated with "Set Project" and "Project Cover" menu actions matching ImageCard functionality. Added menu state tracking, global CSS for proper menu styling, and EventCallback for OnCoverChanged. Moved menu styles to global site.css to fix CSS isolation issues with MudBlazor components. Build passes. 11/70 components complete (16%). |
 | 2025-01-14 | 2.0.11    | **Tenth Component Migrated!** ImageCard.razor migrated from ManagerService to IStateService, IGalleryService, ISessionService, IBackendService, and IEventService. Complex component with image display, selection, favoriting, workflow integration, and "Send To" features. Removed WebUI-specific code. Build passes. 10/70 components complete (14%). |
-| 2025-01-14 | 2.0.10    | **Ninth Component Migrated!** ImagesContainer.razor migrated from ManagerService to IStateService, IGalleryService, and IEventService. Core gallery component displaying image/video grid with selection, pagination, and CRUD operations. Build passes. 9/70 components complete (13%). |
-| 2025-01-14 | 2.0.9     | **Eighth Component Migrated!** GallerySettings.razor migrated from ManagerService to IStateService, IGalleryService, and IEventService. Complex component managing gallery settings, filters, folder/project navigation, and CRUD operations. Build passes. 8/70 components complete (11%). |
-| 2025-01-14 | 2.0.8     | **Seventh Component Complete!** ProjectModal.razor verified - no migration needed as it doesn't use ManagerService. Simple modal dialog that only uses DatabaseService directly. 7/70 components complete (10%). |
-| 2025-01-14 | 2.0.7     | **Sixth Component Migrated!** CreateProjectButton.razor migrated from ManagerService to IStateService and IGalleryService. Component creates new projects and sets them as current. Build passes. 6/70 components complete (9%). |
-| 2025-01-14 | 2.0.6     | **Fifth Component Migrated!** ProjectCard.razor migrated from ManagerService to IStateService. Simple component that only needed State service for checking selected project ID. Build passes. 5/70 components complete (7%). |
-| 2025-01-14 | 2.0.5     | **ManagerService Fix:** Updated `SetCurrentProject()` to delegate to `GalleryService.SetCurrentProject()` ensuring both old Action events and new EventService-based ProjectChangedEventArgs are fired. This fixes project card selection not updating images in migrated components. Pattern 7 added to migration log. |
-| 2025-01-14 | 2.0.4     | **Fourth Component Migrated!** Index.razor (Gallery page) migrated from ManagerService to IStateService, IGalleryService, and IEventService. Handles gallery display, project loading, infinite scroll, and image filtering. Uses event subscriptions for project changes, state changes, and image selection. Build passes. 4/70 components complete (6%). |
-| 2025-01-14 | 2.0.3     | **Third Component Migrated!** TopToolbar.razor migrated from ManagerService to IStateService, IGalleryService, and IEventService. Handles folder/project/theme/state preset selectors. Uses fully qualified type names for State entity to avoid conflicts with IStateService. Build passes. 3/70 components complete (4%). |
-| 2025-01-14 | 2.0.2     | **Second Component Migrated!** StateDialog.razor migrated from ManagerService to IStateService. Simple dialog component - only needed State service. Build passes. 2/70 components complete (3%). Renamed State parameter to StatePreset to avoid naming conflict with injected IStateService. |
-| 2025-01-14 | 2.0.1     | **First Component Migrated!** NavBar.razor successfully migrated from ManagerService to IStateService, IGalleryService, IBackendService, and IEventService. Established migration patterns for event subscriptions, property access, and service injection. Build passes. 1/70 components complete (1%). |

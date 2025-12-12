@@ -135,7 +135,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 | ImageUpload | Components/Shared/Image | Session | ? Not Started | |
 | ImageDropzone | Components/Shared/Image | Session | ? Not Started | |
 | VideoViewer | Components/Img2Vid | Session | ? Not Started | |
-| VideoCard | Components/Img2Vid | Session | ? Not Started | |
+| VideoCard | Components/Img2Vid | State, Gallery, Events | ? Complete | Enhanced 2025-01-14 - Added Set Project & Project Cover actions |
 
 ---
 
@@ -199,8 +199,8 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 
 ### Statistics
 - **Total Components:** 70
-- **Not Started:** 56 (80%)
-- **Complete:** 10 (14%)
+- **Not Started:** 55 (79%)
+- **Complete:** 11 (16%)
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -211,6 +211,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
   - GallerySettings.razor
   - ImagesContainer.razor
   - ImageCard.razor
+  - VideoCard.razor (enhanced with new actions)
 - **Skipped (No ManagerService):** 4 (6%)
   - LoadingSpinner
   - ConfirmationDialog  
@@ -233,6 +234,7 @@ Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
 3. **GalleryService Folder ID=0** - Added handling for folder ID=0 ("All folders") case in SetCurrentFolder method
 4. **ManagerService Project Selection** - Modified SetCurrentProject() to delegate to GalleryService.SetCurrentProject() ensuring new EventService-based components receive ProjectChangedEventArgs notifications
 5. **Index Page Event Handlers** - Properly implemented async event handlers to refresh projects list and images when project changes
+6. **VideoCard Menu Styling** - Fixed CSS isolation issue by moving menu styles to global site.css. Blazor's scoped CSS couldn't reach elements inside MudMenuItem components, so global styles ensure proper icon colors, spacing, and hover effects for both ImageCard and VideoCard menus.
 
 ### Migration Patterns Discovered
 
@@ -343,6 +345,39 @@ public async Task SetCurrentProject(int id)
 
 This ensures both migrated components (using EventService) and unmigrated components (using Action events) continue to work during the migration period.
 
+#### Pattern 8: CSS Isolation with MudBlazor Components
+When styling elements inside MudBlazor components (like `MudMenuItem`), scoped CSS isolation fails because MudBlazor renders its own DOM structure:
+
+**Problem:**
+```css
+/* In VideoCard.razor.css - WON'T WORK */
+.menu-icon.primary {
+    color: var(--mud-palette-primary);
+}
+```
+
+The CSS gets scoped with an attribute like `[b-xyz123]`, but elements rendered by `MudMenuItem` don't have this attribute.
+
+**Solution:**
+Move shared component styles to **global** CSS (`wwwroot/site.css`):
+
+```css
+/* In wwwroot/site.css - WORKS */
+.menu-icon.primary {
+    color: var(--mud-palette-primary);
+}
+```
+
+**When to use:**
+- Styling elements inside MudBlazor components (`MudMenuItem`, `MudListItem`, etc.)
+- Styles that need to work across multiple card components (ImageCard, VideoCard, etc.)
+- Complex menu structures with icons and custom content
+
+**Keep in scoped CSS:**
+- Component-specific wrapper styles
+- Styles that only apply to direct children in your markup
+- Hover effects on your own elements (not MudBlazor's)
+
 ### Breaking Changes
 - Parameters named `State` must be renamed or fully qualified due to `IStateService State` injection
 ---
@@ -359,7 +394,7 @@ This ensures both migrated components (using EventService) and unmigrated compon
 
 ## Completion Checklist
 
-- [ ] All 70 components migrated (8/70 = 11%)
+- [ ] All 70 components migrated (11/70 = 16%)
 - [ ] All components tested individually
 - [ ] Full application smoke test
 - [ ] No `M.Property` references in components (except orchestration)

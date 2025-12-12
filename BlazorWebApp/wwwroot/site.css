@@ -81,3 +81,96 @@ body:has(.image-editor-overlay) .mud-menu-popover {
     color: var(--mud-palette-primary) !important;
     font-weight: 600 !important;
 }
+
+/* ===========================================
+   Card Action Menu Styles (Global)
+   Used by ImageCard and VideoCard components
+   Must be global because MudMenuItem renders
+   content in a way that scoped CSS can't reach
+   =========================================== */
+
+/* Action Menu Container */
+.action-menu {
+    padding: 6px 0;
+    min-width: 180px;
+}
+
+.menu-section {
+    padding: 4px 0;
+}
+
+.menu-section-title {
+    padding: 6px 16px 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 12px;
+}
+
+/* Menu Items */
+.action-menu .mud-menu-item {
+    padding: 0 !important;
+    min-height: unset !important;
+}
+
+.menu-item-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+    transition: all 0.15s ease;
+    width: 100%;
+}
+
+.action-menu .mud-menu-item:hover .menu-item-content {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-item.danger .menu-item-content {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.action-menu .mud-list-item.menu-item.danger:hover .menu-item-content {
+    background: rgba(244, 67, 54, 0.15);
+    color: var(--mud-palette-error);
+}
+
+/* Menu Icons */
+.menu-icon {
+    font-size: 0.9rem;
+    width: 18px;
+    text-align: center;
+}
+
+.menu-icon.primary {
+    color: var(--mud-palette-primary);
+}
+
+.menu-icon.secondary {
+    color: var(--mud-palette-secondary);
+}
+
+.menu-icon.tertiary {
+    color: var(--mud-palette-tertiary);
+}
+
+.menu-icon.warning {
+    color: var(--mud-palette-warning);
+}
+
+.menu-icon.info {
+    color: var(--mud-palette-info);
+}
+
+.menu-icon.error {
+    color: var(--mud-palette-error);
+}
