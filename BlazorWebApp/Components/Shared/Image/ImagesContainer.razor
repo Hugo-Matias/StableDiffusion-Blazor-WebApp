@@ -1,4 +1,7 @@
-﻿@inject ManagerService M
+﻿@using BlazorWebApp.Events
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IEventService Events
 @inject DatabaseService DB
 @inject IOService IO
 @inject IDialogService DialogService
@@ -12,11 +15,11 @@
             <div class="toolbar-buttons" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; width: 100%;">
                 <MudButton OnClick="() => OpenViewer(0)" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary" Size="Size.Small">Fullscreen</MudButton>
                 <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary" Size="Size.Small">Selections</MudButton>
-                @if (CanSelect && M.SelectedImageIds.Count > 0)
+                @if (CanSelect && Gallery.SelectedImageIds.Count > 0)
                 {
                     <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary" Size="Size.Small">Set Project</MudButton>
                     <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error" Size="Size.Small">Delete</MudButton>
-                    <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning" Size="Size.Small">Clear (@M.SelectedImageIds.Count)</MudButton>
+                    <MudButton OnClick="Gallery.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning" Size="Size.Small">Clear (@Gallery.SelectedImageIds.Count)</MudButton>
                     <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info" Size="Size.Small">Select All</MudButton>
                 }
                 @if (Images.PageCount > 1)
@@ -101,7 +104,12 @@
 
     protected override void OnInitialized()
     {
-        M.OnSelectedImagesChanged += Refresh;
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
+    }
+
+    private void OnImageSelectionChanged(ImageSelectionChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private bool IsVideoFile(string path)
@@ -188,7 +196,7 @@
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Item", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled) await DeleteImage(image, true);
-        Refresh();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task ShowDeleteImageDialogFromVideo(GeneratedVideo video)
@@ -207,18 +215,18 @@
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
         parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected items?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
             foreach (var image in selectedImages)
             {
                 await DeleteImage(image, false);
             }
             Snackbar.Add("All selected items deleted successfully.", Severity.Success);
-            M.ClearSelectedImages();
-            Refresh();
+            Gallery.ClearSelectedImages();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -227,7 +235,7 @@
         var ids = Images.Images.Select(i => i.Id).ToList();
         foreach (var id in ids)
         {
-            M.AddSelectedImage(id);
+            Gallery.AddSelectedImage(id);
         }
     }
 
@@ -241,7 +249,7 @@
     private async Task ShowSwitchProjectDialog()
     {
         var param = new DialogParameters();
-        var selectedImages = await DB.GetImages(M.SelectedImageIds);
+        var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
         param.Add("Images", selectedImages);
         var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
@@ -251,15 +259,13 @@
             var updatedImages = (List<Image>)result.Data;
             await DB.UpdateImages(updatedImages);
             Snackbar.Add("Items projects were changed.", Severity.Success);
-            M.ClearSelectedImages();
-            Refresh();
+            Gallery.ClearSelectedImages();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
-
     public void Dispose()
     {
-        M.OnSelectedImagesChanged -= Refresh;
+        Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
     }
 }
