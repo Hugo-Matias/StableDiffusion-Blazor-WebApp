@@ -1,5 +1,4 @@
 ﻿using BlazorWebApp.Data.Dtos;
-using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
@@ -14,7 +13,6 @@ namespace BlazorWebApp.Services
 
     public class ManagerService
     {
-        private readonly SDAPIService _sdapi;
         private readonly DatabaseService _db;
         private readonly IOService _io;
         private readonly ProgressService _progress;
@@ -104,12 +102,12 @@ namespace BlazorWebApp.Services
         public List<Upscaler> Upscalers => _backend.Upscalers;
 
         public List<PromptStyle> Styles { get; set; }
-        
+
         // Temporary facade - delegates to GalleryService (will be removed in Phase 8)
         public List<Folder>? Folders => _gallery.Folders;
         public List<Project>? Projects => _gallery.Projects;
         public List<int> SelectedImageIds => _gallery.SelectedImageIds;
-        
+
         public int CurrentProgress
         {
             get => _currentProgress; set
@@ -118,30 +116,30 @@ namespace BlazorWebApp.Services
                 OnProgressChanged?.Invoke();
             }
         }
-        
+
         // Temporary facade - delegates to SessionService (will be removed in Phase 8)
         public List<string> CanvasStates => _session.CanvasStates;
-        
+
         public string CanvasImageData
         {
-            get => _session.CanvasImageData; 
+            get => _session.CanvasImageData;
             set
             {
                 _session.CanvasImageData = value;
                 OnCanvasImageDataChanged?.Invoke();
             }
         }
-        
-        public string CanvasMaskData 
-        { 
-            get => _session.CanvasMaskData; 
-            set => _session.CanvasMaskData = value; 
+
+        public string CanvasMaskData
+        {
+            get => _session.CanvasMaskData;
+            set => _session.CanvasMaskData = value;
         }
-        
-        public string UpscaleImageData 
-        { 
-            get => _session.UpscaleImageData; 
-            set => _session.UpscaleImageData = value; 
+
+        public string UpscaleImageData
+        {
+            get => _session.UpscaleImageData;
+            set => _session.UpscaleImageData = value;
         }
 
         /// <summary>
@@ -176,7 +174,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         public ImageEditorState ImageEditorState
         {
-            get => _session.ImageEditorState; 
+            get => _session.ImageEditorState;
             set
             {
                 _session.ImageEditorState = value;
@@ -257,10 +255,10 @@ namespace BlazorWebApp.Services
             set
             {
                 _isConverging = value;
-                
+
                 // Fire old Action event for backward compatibility (will be removed in Phase 8)
                 OnConverging?.Invoke();
-                
+
                 // Publish typed event for migrated components using EventService
                 _events.Publish(new ConvergingChangedEventArgs(_isConverging));
             }
@@ -276,9 +274,8 @@ namespace BlazorWebApp.Services
         // Temporary facade - delegates to BackendService (will be removed in Phase 8)
         public bool IsComfyUIUp => _backend.IsBackendAvailable;
 
-        public ManagerService(SDAPIService sdapi, DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models, IGalleryService gallery, ISessionService session)
+        public ManagerService(DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models, IGalleryService gallery, ISessionService session)
         {
-            _sdapi = sdapi;
             _db = db;
             _io = io;
             _progress = progress;
@@ -324,284 +321,6 @@ namespace BlazorWebApp.Services
         {
             _state.InitializeParameters(modes);
         }
-
-        #region Script Initializers
-        public ScriptParametersControlNet CreateControlNet()
-        {
-            return new ScriptParametersControlNet()
-            {
-                Preprocessor = Settings.Scripts.ControlNet.Preprocessor,
-                Model = Settings.Scripts.ControlNet.Model,
-                ResizeMode = Settings.Scripts.ControlNet.ResizeModes[1],
-                Weight = Settings.Scripts.ControlNet.Weight.Value,
-                //Guidance = Settings.Scripts.ControlNet.Guidance.Strenght,
-                GuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
-                GuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
-                IsLowVRam = Settings.Scripts.ControlNet.IsLowVRam,
-                ControlMode = Settings.Scripts.ControlNet.ControlModes[0],
-            };
-        }
-
-        public ScriptParametersCutoff CreateCutoff()
-        {
-            return new ScriptParametersCutoff()
-            {
-                IsAlwaysOn = true,
-                IsEnabled = Settings.Scripts.Cutoff.IsEnabled,
-                Targets = Settings.Scripts.Cutoff.Targets,
-                Weight = Settings.Scripts.Cutoff.Weight.Value,
-                DisableNegative = Settings.Scripts.Cutoff.DisableNegative,
-                Strong = Settings.Scripts.Cutoff.Strong,
-                Padding = Settings.Scripts.Cutoff.Padding,
-                Interpolation = Settings.Scripts.Cutoff.Interpolation,
-                Debug = Settings.Scripts.Cutoff.Debug,
-            };
-        }
-
-        public ScriptParametersDynamicPrompts CreateDynamicPrompts()
-        {
-            return new ScriptParametersDynamicPrompts()
-            {
-                IsAlwaysOn = true,
-                IsEnabled = Settings.Scripts.DynamicPrompts.IsEnabled,
-                IsCombinatorial = Settings.Scripts.DynamicPrompts.Combinatorial.IsEnabled,
-                CombinatorialBatches = Settings.Scripts.DynamicPrompts.Combinatorial.Batches.Value,
-                IsMagicPrompt = Settings.Scripts.DynamicPrompts.PromptMagic.IsEnabled,
-                IsFeelingLucky = Settings.Scripts.DynamicPrompts.PromptMagic.IsFeelingLucky,
-                IsAttentionGrabber = Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.IsEnabled,
-                MinAttention = Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.ValueMin,
-                MaxAttention = Settings.Scripts.DynamicPrompts.PromptMagic.AttentionGrabber.ValueMax,
-                MagicPromptLength = Settings.Scripts.DynamicPrompts.PromptMagic.Length.Value,
-                MagicPromptCreativity = Settings.Scripts.DynamicPrompts.PromptMagic.Creativity.Value,
-                UseFixedSeed = Settings.Scripts.DynamicPrompts.UseFixedSeed,
-                UnlinkSeedFromPrompt = Settings.Scripts.DynamicPrompts.UnlinkSeedFromPrompt,
-                DisableNegativePrompt = Settings.Scripts.DynamicPrompts.DisableNegativePrompt,
-                EnableJinjaTemplates = Settings.Scripts.DynamicPrompts.EnableJinjaTemplates,
-                NoImageGeneration = Settings.Scripts.DynamicPrompts.NoImageGeneration,
-                MaxGenerations = Settings.Scripts.DynamicPrompts.Combinatorial.MaxGenerations.Value,
-                MagicModel = Settings.Scripts.DynamicPrompts.PromptMagic.MagicModelList[0],
-                MagicBlocklistRegex = Settings.Scripts.DynamicPrompts.PromptMagic.MagicBlocklistRegex,
-            };
-        }
-
-        public ScriptParametersUltimateUpscale CreateUltimateUpscale()
-        {
-            return new ScriptParametersUltimateUpscale()
-            {
-                IsAlwaysOn = false,
-                TileWidth = Settings.Scripts.UltimateUpscale.TileResolution.Width,
-                TileHeight = Settings.Scripts.UltimateUpscale.TileResolution.Heigth,
-                MaskBlur = Settings.Scripts.UltimateUpscale.MaskBlur.Value,
-                Padding = Settings.Scripts.UltimateUpscale.Padding.Value,
-                SeamFixType = Settings.Scripts.UltimateUpscale.SeamFixType,
-                SeamFixWidth = Settings.Scripts.UltimateUpscale.SeamFix.Width.Value,
-                SeamFixDenoise = Settings.Scripts.UltimateUpscale.SeamFix.Denoise.Value,
-                SeamFixPadding = Settings.Scripts.UltimateUpscale.SeamFix.Padding.Value,
-                SeamFixMaskBlur = Settings.Scripts.UltimateUpscale.SeamFix.MaskBlur.Value,
-                SaveSeamFixImage = Settings.Scripts.UltimateUpscale.SaveSeamFixImage,
-                SaveUpscaledImage = Settings.Scripts.UltimateUpscale.SaveUpscaledImage,
-                UpscalerIndex = Settings.Scripts.UltimateUpscale.UpscalerIndex,
-                RedrawMode = Settings.Scripts.UltimateUpscale.RedrawMode,
-                TargetSizeType = Settings.Scripts.UltimateUpscale.TargetSizeType,
-                CustomWidth = Settings.Scripts.UltimateUpscale.TileResolution.Width,
-                CustomHeight = Settings.Scripts.UltimateUpscale.TileResolution.Heigth,
-                CustomScale = Settings.Scripts.UltimateUpscale.TargetScale.Value
-            };
-        }
-
-        public ScriptParametersMultiDiffusionTiledDiffusion CreateMultiDiffusionTiledDiffusion()
-        {
-            var bboxControls = new List<ScriptParametersMultiDiffusionBBoxControl>();
-            for (int i = 0; i < 8; i++)
-            {
-                bboxControls.Add(new() { BlendMode = "Background" });
-            }
-            return new ScriptParametersMultiDiffusionTiledDiffusion()
-            {
-                IsAlwaysOn = true,
-                IsEnabled = Settings.Scripts.MultiDiffusion.TiledDiffusion.IsEnabled,
-                Method = Settings.Scripts.MultiDiffusion.TiledDiffusion.Methods[0],
-                IsNoiseInverse = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.IsEnabled,
-                NoiseInverseSteps = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Steps.Value,
-                NoiseInverseRetouch = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Retouch.Value,
-                NoiseInverseRenoiseStrength = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Renoise.Strength.Value,
-                NoiseInverseRenoiseKernel = Settings.Scripts.MultiDiffusion.TiledDiffusion.NoiseInverse.Renoise.Kernel.Value,
-                OverwriteImageSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.OverwriteImageSize,
-                KeepInputSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.KeepInputSize,
-                ImageWidth = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Width,
-                ImageHeight = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Resolution.Height,
-                TileWidth = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Width,
-                TileHeight = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Resolution.Height,
-                Overlap = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Overlap.Value,
-                TileBatchSize = Settings.Scripts.MultiDiffusion.TiledDiffusion.LatentTile.Batch.Value,
-                UpscalerIndex = Settings.Scripts.MultiDiffusion.TiledDiffusion.UpscalerIndex,
-                ScaleFactor = Settings.Scripts.MultiDiffusion.TiledDiffusion.Image.Scale.Value,
-                ControlTensorCpu = Settings.Scripts.MultiDiffusion.TiledDiffusion.ControlTensorCpu,
-                EnableBBoxControl = Settings.Scripts.MultiDiffusion.TiledDiffusion.EnableBBoxControl,
-                DrawBackground = Settings.Scripts.MultiDiffusion.TiledDiffusion.DrawBackground,
-                CasualLayers = Settings.Scripts.MultiDiffusion.TiledDiffusion.CasualLayers,
-                // TODO: Implement BBox Regions
-                BBoxControlStates = bboxControls
-            };
-        }
-
-        public ScriptParametersMultiDiffusionTiledVae CreateMultiDiffusionTiledVae()
-        {
-            return new ScriptParametersMultiDiffusionTiledVae()
-            {
-                IsAlwaysOn = true,
-                IsEnabled = Settings.Scripts.MultiDiffusion.TiledVae.IsEnabled,
-                VaeToGpu = Settings.Scripts.MultiDiffusion.TiledVae.VaeToGpu,
-                FastDecoder = Settings.Scripts.MultiDiffusion.TiledVae.FastDecoder,
-                FastEncoder = Settings.Scripts.MultiDiffusion.TiledVae.FastEncoder,
-                ColorFix = Settings.Scripts.MultiDiffusion.TiledVae.ColorFix,
-                EncoderTileSize = Settings.Scripts.MultiDiffusion.TiledVae.Encoder.Value,
-                DecoderTileSize = Settings.Scripts.MultiDiffusion.TiledVae.Decoder.Value
-            };
-        }
-
-        public ScriptParametersRegionalPrompter CreateRegionalPrompter()
-        {
-            return new ScriptParametersRegionalPrompter()
-            {
-                IsAlwaysOn = true,
-                IsEnabled = Settings.Scripts.RegionalPrompter.IsEnabled,
-                IsDebug = Settings.Scripts.RegionalPrompter.IsDebug,
-                //SelectedTab = "Matrix",  // Must be initialized on the model, otherwise the arg is passed empty
-                MatrixMode = Settings.Scripts.RegionalPrompter.MatrixModes[0],
-                MaskMode = string.Empty,
-                PromptMode = string.Empty,
-                DivideRatio = Settings.Scripts.RegionalPrompter.DivideRatio,
-                BaseRatio = Settings.Scripts.RegionalPrompter.BaseRatio,
-                UseBasePrompt = Settings.Scripts.RegionalPrompter.UseBasePrompt,
-                UseCommonPrompt = Settings.Scripts.RegionalPrompter.UseCommonPrompt,
-                UseNegativeCommonPrompt = Settings.Scripts.RegionalPrompter.UseNegativeCommonPrompt,
-                GenerationMode = Settings.Scripts.RegionalPrompter.GenerationModes[0],
-                DisableConvertAND = Settings.Scripts.RegionalPrompter.DisableConvertAND,
-                LoraNegTeRatios = string.Empty,
-                LoraNegURatios = string.Empty,
-                PromptThreshold = 0,
-                Polymask = string.Empty,
-            };
-        }
-
-        public ScriptParametersXYZPlot CreateXYZPlot()
-        {
-            return new ScriptParametersXYZPlot()
-            {
-                IsAlwaysOn = false,
-                XTypeIndex = 0,
-                XValues = string.Empty,
-                YTypeIndex = 0,
-                YValues = string.Empty,
-                ZTypeIndex = 0,
-                ZValues = string.Empty,
-                DrawLegend = Settings.Scripts.XYZPlot.DrawLegend,
-                IncludeSubImages = Settings.Scripts.XYZPlot.IncludeSubImages,
-                IncludeSubGrids = Settings.Scripts.XYZPlot.IncludeSubGrids,
-                RandomSeed = Settings.Scripts.XYZPlot.RandomSeed,
-                Margin = Settings.Scripts.XYZPlot.Margin.Value,
-            };
-        }
-
-        public ScriptParametersADetailer CreateADetailer()
-        {
-            return new ScriptParametersADetailer()
-            {
-                IsEnabled = Settings.Scripts.ADetailer.IsEnabled,
-                IsAlwaysOn = true,
-                SkipImg2Img = false,
-                Model1 = CreateADetailerModel(Settings.Scripts.ADetailer.Models[0]),
-                Model2 = CreateADetailerModel(Settings.Scripts.ADetailer.Model),
-                Model3 = CreateADetailerModel(Settings.Scripts.ADetailer.Model),
-                Model4 = CreateADetailerModel(Settings.Scripts.ADetailer.Model),
-                Model5 = CreateADetailerModel(Settings.Scripts.ADetailer.Model)
-            };
-        }
-
-        public ScriptParametersADetailerModel CreateADetailerModel(string model)
-        {
-            return new ScriptParametersADetailerModel()
-            {
-                Model = model,
-                Prompt = Settings.Scripts.ADetailer.Prompt,
-                NegativePrompt = Settings.Scripts.ADetailer.NegativePrompt,
-                Confidence = Settings.Scripts.ADetailer.Confidence.Value,
-                MaskKLargest = Settings.Scripts.ADetailer.MaskKLargest.Value,
-                MaskMinRatio = Settings.Scripts.ADetailer.MaskRatio.ValueMin,
-                MaskMaxRatio = Settings.Scripts.ADetailer.MaskRatio.ValueMax,
-                DilateErode = Settings.Scripts.ADetailer.MaskErosionDilation.Value,
-                XOffset = Settings.Scripts.ADetailer.MaskOffset.ValueX,
-                YOffset = Settings.Scripts.ADetailer.MaskOffset.ValueY,
-                MaskMergeInvert = Settings.Scripts.ADetailer.MaskMergeModes[0],
-                MaskBlur = Settings.Scripts.ADetailer.MaskBlur.Value,
-                DenoisingStrength = Settings.Scripts.ADetailer.DenoisingStrength.Value,
-                InpaintOnlyMasked = Settings.Scripts.ADetailer.InpaintOnlyMasked,
-                InpaintOnlyMaskedPadding = Settings.Scripts.ADetailer.InpaintMaskedPadding.Value,
-                UseInpaintWidthHeight = Settings.Scripts.ADetailer.UseInpaintWidthHeight,
-                InpaintWidth = Settings.Generation.Shared.Resolution.Width,
-                InpaintHeight = Settings.Generation.Shared.Resolution.Height,
-                UseSteps = Settings.Scripts.ADetailer.UseSteps,
-                Steps = Settings.Generation.Shared.Steps.Value,
-                UseCFGScale = Settings.Scripts.ADetailer.UseCFGScale,
-                CFGScale = Settings.Generation.Shared.CfgScale.Value,
-                UseCheckpoint = Settings.Scripts.ADetailer.UseCheckpoint,
-                Checkpoint = Settings.Scripts.ADetailer.Checkpoint,
-                UseVAE = Settings.Scripts.ADetailer.UseVAE,
-                VAE = Settings.Scripts.ADetailer.VAE,
-                UseSampler = Settings.Scripts.ADetailer.UseSampler,
-                Sampler = Settings.Scripts.ADetailer.Sampler,
-                UseNoiseMultiplier = Settings.Scripts.ADetailer.UseNoiseMultiplier,
-                NoiseMultiplier = Settings.Scripts.ADetailer.NoiseMultiplier.Value,
-                UseClipSkip = Settings.Scripts.ADetailer.UseClipSkip,
-                ClipSkip = Settings.Webui.ClipSkip.Value,
-                RestoreFace = Settings.Scripts.ADetailer.RestoreFace,
-                ControlNetModel = Settings.Scripts.ADetailer.ControlNetModel,
-                ControlNetModule = Settings.Scripts.ADetailer.ControlNetModule,
-                ControlNetWeight = Settings.Scripts.ADetailer.ControlNetWeight,
-                ControlNetGuidanceStart = Settings.Scripts.ControlNet.Guidance.Start,
-                ControlNetGuidanceEnd = Settings.Scripts.ControlNet.Guidance.End,
-                // TODO: create Settings
-                Seed = Settings.Generation.Shared.Seed,
-                Loras = [],
-                UseScheduler = false,
-                Scheduler = "simple",
-                DropSize = 50,
-                GuideSize = 1024,
-                MaxSize = 2048,
-                BBoxDilation = 100,
-                BBoxCropFactor = 3.5,
-                Cycle = 1,
-            };
-        }
-
-        public ScriptParametersIncantations CreateIncantationsModel()
-        {
-            return new ScriptParametersIncantations()
-            {
-                IsAlwaysOn = true,
-                IsEnabled = Settings.Scripts.Incantations.IsEnabled,
-                IsPAGEnabled = Settings.Scripts.Incantations.PAG.IsPAGEnabled,
-                PAGScale = Settings.Scripts.Incantations.PAG.Value,
-                IsMultiConceptEnabled = Settings.Scripts.Incantations.MultiConcept.IsMultiConceptEnabled,
-                UNK1 = Settings.Scripts.Incantations.MultiConcept.UNK1,
-                CorrectionSize = Settings.Scripts.Incantations.MultiConcept.CorrectionSize.Value,
-                SuppresionAlpha = Settings.Scripts.Incantations.MultiConcept.SuppresionAlpha.Value,
-                CbSScoreThreshold = Settings.Scripts.Incantations.MultiConcept.CbSScoreThreshold.Value,
-                CbSCorrectionStrength = Settings.Scripts.Incantations.MultiConcept.CbSCorrectionStrength.Value,
-                UNK2 = Settings.Scripts.Incantations.MultiConcept.UNK2,
-                EMAFactor = Settings.Scripts.Incantations.MultiConcept.EMAFactor.Value,
-                StepEnd = Settings.Scripts.Incantations.MultiConcept.StepEnd.Value,
-                IsSeekEnabled = Settings.Scripts.Incantations.Seek.IsSeekEnabled,
-                AppendGenCaption = Settings.Scripts.Incantations.Seek.AppendGenCaption,
-                DeepbooruInterrogate = Settings.Scripts.Incantations.Seek.DeepbooruInterrogate,
-                Delimiter = Settings.Scripts.Incantations.Seek.Delimiter,
-                WordReplacement = Settings.Scripts.Incantations.Seek.WordReplacement,
-                Gamma = Settings.Scripts.Incantations.Seek.Gamma.Value,
-                UNK3 = Settings.Scripts.Incantations.Seek.UNK3
-            };
-        }
-        #endregion
 
         /// <summary>
         /// Loads models based on the current workflow's asset requirements.
@@ -705,7 +424,7 @@ namespace BlazorWebApp.Services
 
         public async Task GetStyles()
         {
-            Styles = IsWebuiUp ? await _sdapi.GetStyles() : new();
+            Styles = new(); // No longer fetching from WebUI
             var promptResources = await _db.GetPrompts();
             foreach (var prompt in promptResources)
             {
@@ -756,10 +475,10 @@ namespace BlazorWebApp.Services
         {
             await GetFolders();
             await GetProjects();
-            
+
             // Delegate to GalleryService which will update state and fire the new ProjectChangedEventArgs event
             await _gallery.SetCurrentProject(id);
-            
+
             // Fire old events for backward compatibility (will be removed in Phase 8)
             OnProjectChange?.Invoke();
             OnProjectChangeTask?.Invoke();
@@ -775,21 +494,6 @@ namespace BlazorWebApp.Services
             await _backend.LoadBackendDependentResources();
             await _models.GetADetailerModels();
             OnSamplersSchedulersChanged?.Invoke();
-        }
-
-        public string GetDynamicPromptsVersion()
-        {
-            if (!IsWebuiUp) return string.Empty;
-            var scriptFile = Path.Combine(CmdFlags.BaseDir, "extensions", "sd-dynamic-prompts", "sd_dynamic_prompts", "__init__.py");
-            foreach (var line in _io.LoadTextLines(scriptFile))
-            {
-                if (line.StartsWith("__version__ = "))
-                {
-                    var version = line.Split(" = ", 2)[1].Replace("\"", "").Trim();
-                    return $"Dynamic Prompts v{version}";
-                }
-            }
-            return string.Empty;
         }
 
         public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
@@ -942,10 +646,10 @@ namespace BlazorWebApp.Services
 
             // Fire legacy Action event for components that haven't been migrated yet
             OnWorkflowBaseChanged?.Invoke();
-            
+
             // Publish StateChangedEventArgs for migrated components using EventService
             _events.Publish(new StateChangedEventArgs());
-            
+
             SetDefaultBaseModel();
         }
 
@@ -1241,38 +945,17 @@ namespace BlazorWebApp.Services
 
         public async Task GetResourceTypeDirectories()
         {
-            if (IsWebuiUp)
+            // ComfyUI only - use configured resources path
+            var baseDir = _configuration["ResourcesPath"];
+            ResourceTypeDirectories = new()
             {
-                if (CmdFlags == null) await GetCmdFlags();
-                var baseDir = CmdFlags.BaseDir;
-                var checkpointDir = string.IsNullOrWhiteSpace(CmdFlags.CkptDir) ? Path.Join(baseDir, @"models/Stable-diffusion") : CmdFlags.CkptDir;
-                var embeddingDir = string.IsNullOrWhiteSpace(CmdFlags.EmbeddingDir) ? Path.Join(baseDir, "embeddings") : CmdFlags.EmbeddingDir;
-                var hypernetDir = string.IsNullOrWhiteSpace(CmdFlags.HypernetworkDir) ? Path.Join(baseDir, @"models/hypernetworks") : CmdFlags.HypernetworkDir;
-                var loraDir = string.IsNullOrWhiteSpace(CmdFlags.LoraDir) ? Path.Join(baseDir, @"models/Lora") : CmdFlags.LoraDir;
-                var vaeDir = string.IsNullOrWhiteSpace(CmdFlags.VaeDir) ? Path.Join(baseDir, @"models/VAE") : CmdFlags.VaeDir;
-                ResourceTypeDirectories = new()
-                {
-                    {"Checkpoint", checkpointDir},
-                    {"TextualInversion", embeddingDir},
-                    {"Hypernetwork", hypernetDir},
-                    {"LORA", loraDir},
-                    {"LoCon", loraDir},
-                    {"VAE", vaeDir}
-                };
-            }
-            else
-            {
-                var baseDir = _configuration["ResourcesPath"];
-                ResourceTypeDirectories = new()
-                {
-                    {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
-                    {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
-                    {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
-                    {"LORA", Path.Combine(baseDir, "LORA")},
-                    {"LoCon", Path.Combine(baseDir, "LORA")},
-                    {"VAE", Path.Combine(baseDir, "VAE")}
-                };
-            }
+                {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
+                {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
+                {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
+                {"LORA", Path.Combine(baseDir, "LORA")},
+                {"LoCon", Path.Combine(baseDir, "LORA")},
+                {"VAE", Path.Combine(baseDir, "VAE")}
+            };
         }
 
         public async Task<string> PostOptions(Options options)
@@ -1285,11 +968,9 @@ namespace BlazorWebApp.Services
 
         public void SerializeInfo()
         {
-            if (IsWebuiUp) ImagesInfo = JsonSerializer.Deserialize<GeneratedImagesInfo>(Images.Info);
+            // ComfyUI only
             if (IsComfyUIUp) ImagesInfo = new() { InfoTexts = new[] { Images.Info } };
         }
-
-        public async Task GetCmdFlags() => CmdFlags = await _sdapi.GetCmdFlags();
 
         public void ReplaceSelectedImages(List<int> ids)
         {
@@ -1530,11 +1211,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         public async Task SetCurrentVae(string vae, ModeType? mode = null)
         {
-            if (IsWebuiUp)
-            {
-                await _sdapi.PostOptions(new() { SDVae = vae });
-            }
-
+            // No WebUI support - ComfyUI only
             SetWorkflowAsset("Vae", vae, mode);
             await SaveState();
         }

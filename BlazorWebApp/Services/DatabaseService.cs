@@ -10,17 +10,15 @@ namespace BlazorWebApp.Services
     public class DatabaseService
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
-        private readonly SDAPIService _api;
         private readonly ComfyUIService _capi;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DatabaseService> _logger;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, ComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, ComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
         {
             _factory = factory;
-            _api = api;
             _capi = capi;
             _configuration = configuration;
             _logger = logger;
@@ -577,20 +575,19 @@ namespace BlazorWebApp.Services
             var samplers = new List<Sampler>();
             try
             {
-                samplers = await _api.GetSamplers();
-            }
-            catch (Exception) { }
-
-            try
-            {
                 samplers = await _capi.GetSamplers();
             }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not retrieve samplers from ComfyUI backend.");
+            }
 
             if (samplers.Count == 0)
             {
-                _logger.LogError("Could not retrieve samplers, no backend available.");
+                _logger.LogWarning("No samplers retrieved, backend may not be available.");
+                return;
             }
+
             using var context = await _factory.CreateDbContextAsync();
             foreach (var sampler in samplers)
             {

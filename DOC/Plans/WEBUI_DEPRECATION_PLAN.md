@@ -440,7 +440,7 @@ After removing all scripts, also clean up:
 
 ### Phase 6.5: Remove WebUI-Only Scripts
 **Objective:** Remove all WebUI-only script forms, DTOs, factories, and settings
-**Status:** [ ] Not Started
+**Status:** ?? In Progress (Parts 1-2 Complete)
 
 **Background:** Deep audit revealed that **all 9 scripts are WebUI-only** or have incomplete/partial ComfyUI implementations not used in generation workflows. Decision: Remove all scripts and start fresh with cleaner parameter initialization when ComfyUI scripts are implemented.
 
@@ -450,25 +450,36 @@ After removing all scripts, also clean up:
 - Better to start fresh with proper ComfyUI workflow-based approach
 
 #### Tasks
-- [ ] **6.5.1 Remove ALL Script Forms** (10 files)
-  - [ ] Remove `ControlNetForm.razor`
-  - [ ] Remove `ControlNetTabs.razor`
-  - [ ] Remove `ControlNetTabsDynamic.razor`
-  - [ ] Remove `ADetailerForm.razor`
-  - [ ] Remove `ADetailerModelForm.razor` (WebUI)
-  - [ ] Remove `ADetailerModelFormComfyUI.razor` (partial ComfyUI)
-  - [ ] Remove `CutoffForm.razor`
-  - [ ] Remove `DynamicPromptsForm.razor`
-  - [ ] Remove `IncantationsForm.razor`
-  - [ ] Remove `MultiDiffusionTiledDiffusionForm.razor`
-  - [ ] Remove `MultiDiffusionTiledVaeForm.razor`
-  - [ ] Remove `RegionalPrompterForm.razor`
-  - [ ] Remove `UltimateUpscaleForm.razor`
-  - [ ] Remove `XYZPlotForm.razor`
+- [x] **6.5.1 Remove ALL Script Forms** (14 files) ? COMPLETE
+  - [x] Remove `ControlNetForm.razor`
+  - [x] Remove `ControlNetTabs.razor`
+  - [x] Remove `ControlNetTabsDynamic.razor`
+  - [x] Remove `ADetailerForm.razor`
+  - [x] Remove `ADetailerModelForm.razor` (WebUI)
+  - [x] Remove `ADetailerModelFormComfyUI.razor` (partial ComfyUI)
+  - [x] Remove `CutoffForm.razor`
+  - [x] Remove `DynamicPromptsForm.razor`
+  - [x] Remove `IncantationsForm.razor`
+  - [x] Remove `MultiDiffusionTiledDiffusionForm.razor`
+  - [x] Remove `MultiDiffusionTiledVaeForm.razor`
+  - [x] Remove `RegionalPrompterForm.razor`
+  - [x] Remove `UltimateUpscaleForm.razor` (already removed in Phase 3)
+  - [x] Remove `XYZPlotForm.razor`
   
-- [ ] **6.5.2 Remove ALL Script Factory Methods from ManagerService** (~450 lines)
+- [x] **6.5.2 Remove SDAPIService References from Services** ? COMPLETE
+  - [x] Remove SDAPIService from ManagerService constructor and field
+  - [x] Remove SDAPIService from RouterService constructor and field
+  - [x] Remove SDAPIService from DatabaseService constructor and field
+  - [x] Remove SDAPIService from ModelService constructor and field
+  - [x] Update ManagerService methods: GetStyles(), SerializeInfo(), GetResourceTypeDirectories(), SetCurrentVae()
+  - [x] Update RouterService to ComfyUI-only
+  - [x] Update DatabaseService PopulateSamplers() to ComfyUI-only
+  - [ ] Remove SDAPIService injection from WildcardsPanel component (if needed)
+  - [ ] Remove SDAPIService injection from Resources page (if needed)
+  
+- [ ] **6.5.3 Remove ALL Script Factory Methods from ManagerService** (~450 lines)
   - [ ] Remove `CreateControlNet()`
-  - [ ] Remove `CreateADetailer() + `CreateADetailerModel()`
+  - [ ] Remove `CreateADetailer()` + `CreateADetailerModel()`
   - [ ] Remove `CreateCutoff()`
   - [ ] Remove `CreateDynamicPrompts()`
   - [ ] Remove `CreateUltimateUpscale()`
@@ -477,8 +488,20 @@ After removing all scripts, also clean up:
   - [ ] Remove `CreateRegionalPrompter()`
   - [ ] Remove `CreateXYZPlot()`
   - [ ] Remove `CreateIncantationsModel()`
+  - [ ] Remove `#region Script Initializers` section
   
-- [ ] **6.5.3 Remove ALL Script Settings from AppSettings.cs** (~800 lines)
+- [ ] **6.5.4 Remove Script Parameters from Models**
+  - [ ] Remove `Scripts` property from `Txt2ImgParameters`
+  - [ ] Remove `Scripts` property from `Img2ImgParameters`
+  - [ ] Find and remove `Txt2ImgScriptParameters` class file
+  - [ ] Find and remove `Img2ImgScriptParameters` class file
+  
+- [ ] **6.5.5 Remove Script-Related Methods from Parser.cs**
+  - [ ] Remove `CreateScriptParameters()` method
+  - [ ] Remove `ParseDetailerModelLoras()` method
+  - [ ] Remove any script-specific parsing logic
+  
+- [ ] **6.5.6 Remove Script Settings from AppSettings.cs** (~800 lines)
   - [ ] Remove `ControlNetSettingsModel` + nested classes
   - [ ] Remove `ADetailerSettingsModel` + nested classes
   - [ ] Remove `CutoffSettingsModel` + nested classes
@@ -488,52 +511,33 @@ After removing all scripts, also clean up:
   - [ ] Remove `RegionalPrompterSettingsModel` + nested classes
   - [ ] Remove `XYZPlotSettingsModel` + nested classes
   - [ ] Remove `IncantationsSettingsModel` + nested classes
+  - [ ] Remove `ScriptsSettingsModel` property from main AppSettings class
   
-- [ ] **6.5.4 Remove ALL Script DTOs** (9 files from Data/Dtos/WebUI/)
-  - [ ] Remove `ScriptParametersControlNet.cs`
-  - [ ] Remove `ScriptParametersADetailer.cs`
-  - [ ] Remove `ScriptParametersCutoff.cs`
-  - [ ] Remove `ScriptParametersDynamicPrompts.cs`
-  - [ ] Remove `ScriptParametersIncantations.cs`
-  - [ ] Remove `ScriptParametersMultiDiffusion.cs`
-  - [ ] Remove `ScriptParametersRegionalPrompter.cs`
-  - [ ] Remove `ScriptParametersUltimateUpscale.cs`
-  - [ ] Remove `ScriptParametersXYZPlot.cs`
-  
-- [ ] **6.5.5 Remove Script Parameters from Models**
-  - [ ] Remove `Scripts` property from `Txt2ImgParameters`
-  - [ ] Remove `Scripts` property from `Img2ImgParameters`
-  - [ ] Remove `Txt2ImgScriptParameters` class
-  - [ ] Remove `Img2ImgScriptParameters` class
-  
-- [ ] **6.5.6 Update StateService Parameter Initialization**
-  - [ ] Remove ALL script initialization calls
-  - [ ] Remove script factory method calls from `InitializeParameters()`
-  - [ ] Simplify parameter initialization logic
-  
-- [ ] **6.5.7 Update BlazorDiffusion.json**
-  - [ ] Remove ALL script settings from default settings file
-  - [ ] Remove entire `Scripts` section from AppSettings
-  - [ ] Verify file is valid JSON after cleanup
-  
-- [ ] **6.5.8 Remove Script Enums**
-  - [ ] Remove `ControlNetPreprocessor` enum from `Data/Enums.cs`
+- [ ] **6.5.7 Remove Script Enums from Data/Enums.cs**
+  - [ ] Remove `ControlNetPreprocessor` enum
   - [ ] Remove any other script-specific enums
   
-- [ ] **6.5.9 Verify Build**
+- [ ] **6.5.8 Update IParameterFactory Interface**
+  - [ ] Remove all script factory method declarations
+  - [ ] Or remove interface entirely if only used for scripts
+  
+- [ ] **6.5.9 Remove using Statements**
+  - [ ] Remove `using BlazorWebApp.Data.Dtos.WebUI;` from all remaining files
+  - [ ] Clean up any other script-related imports
+  
+- [ ] **6.5.10 Verify Build**
   - [ ] Run build to catch any missed references
-  - [ ] Fix any compilation errors
-  - [ ] Run existing tests
+  - [ ] Fix any remaining compilation errors
+  - [ ] Verify error count goes from 103 to 0
 
 #### Success Criteria
-- ALL script forms removed (14 files)
+- ALL script forms removed (13/14 files - UltimateUpscale was in Phase 3) ?
+- ALL SDAPIService references removed from services ?
 - ALL script factory methods removed (~450 lines from ManagerService)
 - ALL script settings removed (~800 lines from AppSettings.cs)
-- ALL script DTOs removed (9 files)
 - Script parameters removed from Models
-- Build passes without errors
+- Build passes without errors (0 compilation errors)
 - No references to any scripts in codebase
-- BlazorDiffusion.json cleaned and validated
 - Ready for fresh ComfyUI script implementation when needed
 
 #### Notes

@@ -11,7 +11,6 @@ namespace BlazorWebApp.Services
     public class ModelService : IModelService
     {
         private readonly IComfyUIService _comfyUI;
-        private readonly SDAPIService _sdapi;
         private readonly IBackendService _backend;
         private readonly IStateService _state;
         private readonly IEventService _events;
@@ -33,7 +32,6 @@ namespace BlazorWebApp.Services
 
         public ModelService(
             IComfyUIService comfyUI,
-            SDAPIService sdapi,
             IBackendService backend,
             IStateService state,
             IEventService events,
@@ -42,7 +40,6 @@ namespace BlazorWebApp.Services
             IConfiguration configuration)
         {
             _comfyUI = comfyUI;
-            _sdapi = sdapi;
             _backend = backend;
             _state = state;
             _events = events;
