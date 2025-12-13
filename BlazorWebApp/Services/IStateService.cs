@@ -1,5 +1,6 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
@@ -21,5 +22,13 @@ namespace BlazorWebApp.Services
         Task LoadState(int stateId);
         Task SaveState();
         void InitializeParameters(ModeType[] modes);
+
+        // Parameter loading from images
+        Task LoadParametersFromImage(Image image, ModeType mode);
+        void SetParameterFromImage(Image image, string parameter, ModeType mode);
+
+        // Workflow management
+        void SetWorkflowBase(ModelBase workflowBase);
+        void MigrateLegacySettings();
     }
 }

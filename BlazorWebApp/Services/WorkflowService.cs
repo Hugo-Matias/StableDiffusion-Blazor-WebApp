@@ -37,6 +37,75 @@ namespace BlazorWebApp.Services
             return workflows;
         }
 
+        /// <summary>
+        /// Refreshes workflows from disk template files and attempts to preserve the current selection.
+        /// This ensures that any changes to workflow templates are picked up.
+        /// </summary>
+        /// <param name="currentWorkflowBase">The currently selected workflow base (to preserve selection)</param>
+        /// <param name="currentWorkflowId">The currently selected workflow ID (to preserve selection)</param>
+        /// <returns>A tuple containing: (workflows list, suggested workflow base, suggested workflow ID)</returns>
+        public (List<Workflow> workflows, ModelBase? suggestedBase, Guid? suggestedId) RefreshWorkflows(
+            ModelBase? currentWorkflowBase = null,
+            Guid? currentWorkflowId = null)
+        {
+            try
+            {
+                // Load workflows from disk
+                var workflows = GetWorkflows();
+
+                if (workflows == null || workflows.Count == 0)
+                {
+                    _logger.LogWarning("No workflows found on disk");
+                    return (new List<Workflow>(), null, null);
+                }
+
+                ModelBase? suggestedBase = null;
+                Guid? suggestedId = null;
+
+                // Priority 1: Try to restore by ID (most specific)
+                if (currentWorkflowId.HasValue)
+                {
+                    var matchById = workflows.FirstOrDefault(w => w.Id == currentWorkflowId.Value);
+                    if (matchById != null)
+                    {
+                        suggestedId = matchById.Id;
+                        suggestedBase = matchById.Base;
+                        _logger.LogDebug("Preserved workflow selection by ID: {WorkflowId}", suggestedId);
+                        return (workflows, suggestedBase, suggestedId);
+                    }
+                }
+
+                // Priority 2: Fallback to matching by base
+                if (currentWorkflowBase.HasValue && currentWorkflowBase.Value != default)
+                {
+                    var matchByBase = workflows.FirstOrDefault(w => w.Base == currentWorkflowBase.Value);
+                    if (matchByBase != null)
+                    {
+                        suggestedId = matchByBase.Id;
+                        suggestedBase = matchByBase.Base;
+                        _logger.LogDebug("Preserved workflow selection by base: {WorkflowBase}", suggestedBase);
+                        return (workflows, suggestedBase, suggestedId);
+                    }
+                }
+
+                // Priority 3: Use first available workflow
+                var firstWorkflow = workflows.FirstOrDefault();
+                if (firstWorkflow != null)
+                {
+                    suggestedId = firstWorkflow.Id;
+                    suggestedBase = firstWorkflow.Base;
+                    _logger.LogDebug("Using first available workflow: {WorkflowTitle}", firstWorkflow.Title);
+                }
+
+                return (workflows, suggestedBase, suggestedId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing workflows from disk");
+                return (new List<Workflow>(), null, null);
+            }
+        }
+
         private Workflow ParseWorkflowTemplate(string templateText)
         {
             var wf = new Workflow

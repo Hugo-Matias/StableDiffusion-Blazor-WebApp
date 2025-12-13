@@ -50,6 +50,11 @@ namespace BlazorWebApp.Events
         /// <summary>
         /// Image-to-Video parameters changed
         /// </summary>
-        Img2VidParameters
+        Img2VidParameters,
+
+        /// <summary>
+        /// Workflow base model changed
+        /// </summary>
+        WorkflowBase
     }
 }

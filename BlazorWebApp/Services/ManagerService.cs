@@ -487,58 +487,14 @@ namespace BlazorWebApp.Services
         /// Refreshes workflows from disk template files.
         /// This ensures that any changes to workflow templates are picked up on application restart.
         /// Preserves the current WorkflowBase and CurrentWorkflowId selection if the workflow still exists.
+        /// DEPRECATED: Now handled by WorkflowService.RefreshWorkflows() and called from LoadState()
         /// </summary>
+        [Obsolete("Use WorkflowService.RefreshWorkflows() instead. This is now called automatically in LoadState().")]
         private void RefreshWorkflowsFromDisk()
         {
-            try
-            {
-                var currentWorkflowBase = State?.Generation?.WorkflowBase;
-                var currentWorkflowId = State?.Generation?.CurrentWorkflowId;
-
-                // Load workflows from disk
-                GetComfyWorkflows();
-
-                // Try to restore the previous workflow selection
-                if (State?.Generation?.Workflows != null && State.Generation.Workflows.Count > 0)
-                {
-                    // First, try to find workflow by ID (most specific)
-                    if (currentWorkflowId.HasValue)
-                    {
-                        var matchById = State.Generation.Workflows.FirstOrDefault(w => w.Id == currentWorkflowId.Value);
-                        if (matchById != null)
-                        {
-                            State.Generation.CurrentWorkflowId = matchById.Id;
-                            State.Generation.WorkflowBase = matchById.Base;
-                            return;
-                        }
-                    }
-
-                    // Fallback: try to match by base
-                    if (currentWorkflowBase != default)
-                    {
-                        var matchByBase = State.Generation.Workflows.FirstOrDefault(w => w.Base == currentWorkflowBase);
-                        if (matchByBase != null)
-                        {
-                            State.Generation.CurrentWorkflowId = matchByBase.Id;
-                            State.Generation.WorkflowBase = matchByBase.Base;
-                            return;
-                        }
-                    }
-
-                    // Last resort: use first available workflow
-                    var firstWorkflow = State.Generation.Workflows.FirstOrDefault();
-                    if (firstWorkflow != null)
-                    {
-                        State.Generation.CurrentWorkflowId = firstWorkflow.Id;
-                        State.Generation.WorkflowBase = firstWorkflow.Base;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log but don't fail - workflows will be empty but app should still work
-                Console.WriteLine($"Error refreshing workflows from disk: {ex.Message}");
-            }
+            // This method is now handled by WorkflowService.RefreshWorkflows()
+            // which is called from LoadState()
+            // Keeping for backward compatibility but marking as obsolete
         }
 
         public Workflow GetWorkflowById(Guid id) => State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
@@ -630,20 +586,11 @@ namespace BlazorWebApp.Services
 
         public void SetWorkflowBase(ModelBase workflowBase)
         {
-            var previousBase = State.Generation.WorkflowBase;
-            State.Generation.WorkflowBase = workflowBase;
-
-            // If base changed, reset workflow assets to use workflow defaults
-            if (previousBase != workflowBase)
-            {
-                ResetWorkflowAssetsToDefaults();
-            }
+            // Delegate to StateService for workflow base management
+            _state.SetWorkflowBase(workflowBase);
 
             // Fire legacy Action event for components that haven't been migrated yet
             OnWorkflowBaseChanged?.Invoke();
-
-            // Publish StateChangedEventArgs for migrated components using EventService
-            _events.Publish(new StateChangedEventArgs());
 
             SetDefaultBaseModel();
         }
@@ -651,32 +598,13 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Resets all workflow assets for all modes to use the workflow template defaults.
         /// This is called when WorkflowBase changes to ensure the correct models are loaded.
+        /// DEPRECATED: Now handled by StateService.SetWorkflowBase()
         /// </summary>
+        [Obsolete("This method is now handled internally by StateService.SetWorkflowBase()")]
         private void ResetWorkflowAssetsToDefaults()
         {
-            // Get the new workflow for each mode and reset assets to its defaults
-            var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
-
-            foreach (var mode in modes)
-            {
-                var workflows = GetWorkflowsForMode(mode);
-                var workflow = workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-
-                if (workflow?.Assets == null || workflow.Assets.Count == 0)
-                    continue;
-
-                // Clear existing assets for this mode and set to workflow defaults
-                var assets = GetOrCreateWorkflowAssetsForMode(mode);
-                assets.Clear();
-
-                foreach (var asset in workflow.Assets)
-                {
-                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
-                    {
-                        assets[asset.Parameter] = asset.DefaultValue;
-                    }
-                }
-            }
+            // This method is now handled by StateService.SetWorkflowBase()
+            // Keeping for backward compatibility but marking as obsolete
         }
 
         /// <summary>
@@ -1055,9 +983,24 @@ namespace BlazorWebApp.Services
                 await _state.LoadState();
             }
 
-            // Keep existing migration and workflow refresh logic
-            MigrateLegacyModelSettings();
-            RefreshWorkflowsFromDisk();
+            // Delegate to StateService for legacy migration
+            _state.MigrateLegacySettings();
+            
+            // Delegate to WorkflowService for workflow refresh, preserving selection
+            var (workflows, suggestedBase, suggestedId) = _workflow.RefreshWorkflows(
+                State?.Generation?.WorkflowBase,
+                State?.Generation?.CurrentWorkflowId
+            );
+            
+            // Update state with refreshed workflows
+            if (State?.Generation != null)
+            {
+                State.Generation.Workflows = workflows;
+                if (suggestedBase.HasValue)
+                    State.Generation.WorkflowBase = suggestedBase.Value;
+                if (suggestedId.HasValue)
+                    State.Generation.CurrentWorkflowId = suggestedId.Value;
+            }
 
             // Trigger state changed events (handled by EventService)
             OnTxt2ImgParametersChanged?.Invoke();
@@ -1211,42 +1154,14 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Migrates legacy SDModel and Vae from AppState to WorkflowAssets.
         /// Call this after loading state to ensure backward compatibility.
+        /// DEPRECATED: Now handled by StateService.MigrateLegacySettings() and called from LoadState()
         /// </summary>
+        [Obsolete("Use StateService.MigrateLegacySettings() instead. This is now called automatically in LoadState().")]
         private void MigrateLegacyModelSettings()
         {
-#pragma warning disable CS0618 // Suppress obsolete warnings for migration
-
-            // Migrate legacy SDModel from AppState
-            if (!string.IsNullOrWhiteSpace(State?.Generation?.SDModel) && State.Generation.SDModel != "Loading...")
-            {
-                var currentTxt2ImgModel = GetWorkflowAsset("Model", ModeType.Txt2Img);
-                if (string.IsNullOrWhiteSpace(currentTxt2ImgModel))
-                    SetWorkflowAsset("Model", State.Generation.SDModel, ModeType.Txt2Img);
-
-                var currentImg2ImgModel = GetWorkflowAsset("Model", ModeType.Img2Img);
-                if (string.IsNullOrWhiteSpace(currentImg2ImgModel))
-                    SetWorkflowAsset("Model", State.Generation.SDModel, ModeType.Img2Img);
-
-                // Clear legacy property after migration
-                State.Generation.SDModel = null;
-            }
-
-            // Migrate legacy Vae from AppState
-            if (!string.IsNullOrWhiteSpace(State?.Generation?.Vae))
-            {
-                var currentTxt2ImgVae = GetWorkflowAsset("Vae", ModeType.Txt2Img);
-                if (string.IsNullOrWhiteSpace(currentTxt2ImgVae))
-                    SetWorkflowAsset("Vae", State.Generation.Vae, ModeType.Txt2Img);
-
-                var currentImg2ImgVae = GetWorkflowAsset("Vae", ModeType.Img2Img);
-                if (string.IsNullOrWhiteSpace(currentImg2ImgVae))
-                    SetWorkflowAsset("Vae", State.Generation.Vae, ModeType.Img2Img);
-
-                // Clear legacy property after migration
-                State.Generation.Vae = null;
-            }
-
-#pragma warning restore CS0618
+            // This method is now handled by StateService.MigrateLegacySettings()
+            // which is called from LoadState()
+            // Keeping for backward compatibility but marking as obsolete
         }
     }
 }

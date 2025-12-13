@@ -309,5 +309,276 @@ namespace BlazorWebApp.Services
                 Loras = new List<Lora>()
             };
         }
+
+        #region Parameter Loading from Images
+
+        /// <summary>
+        /// Loads all parameters from an image entity into the appropriate parameter set.
+        /// This is used when loading an existing image's settings to replicate generation.
+        /// Note: This method relies on ManagerService.ParseAndCleanCopiedPrompt() for prompt cleaning.
+        /// </summary>
+        public async Task LoadParametersFromImage(Image image, ModeType mode)
+        {
+            bool isImg2Img = mode == ModeType.Img2Img;
+
+            if (isImg2Img)
+            {
+                // Note: Prompt cleaning is handled by caller using ManagerService.ParseAndCleanCopiedPrompt
+                // We can't call it directly here to avoid circular dependency
+                ParametersImg2Img.Prompt = image.Prompt ?? string.Empty;
+                ParametersImg2Img.NegativePrompt = image.NegativePrompt ?? string.Empty;
+                ParametersImg2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
+                ParametersImg2Img.Steps = image.Steps;
+                ParametersImg2Img.Seed = image.Seed;
+                ParametersImg2Img.CfgScale = image.CfgScale;
+                ParametersImg2Img.Width = image.Width;
+                ParametersImg2Img.Height = image.Height;
+                ParametersImg2Img.DenoisingStrength = image.DenoisingStrength;
+            }
+            else
+            {
+                ParametersTxt2Img.Prompt = image.Prompt ?? string.Empty;
+                ParametersTxt2Img.NegativePrompt = image.NegativePrompt ?? string.Empty;
+                ParametersTxt2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
+                ParametersTxt2Img.Steps = image.Steps;
+                ParametersTxt2Img.Seed = image.Seed;
+                ParametersTxt2Img.CfgScale = image.CfgScale;
+                ParametersTxt2Img.Width = image.Width;
+                ParametersTxt2Img.Height = image.Height;
+                ParametersTxt2Img.DenoisingStrength = image.DenoisingStrength;
+            }
+
+            // Publish parameter changed event
+            _events.Publish(new ParametersChangedEventArgs 
+            { 
+                ParametersType = isImg2Img ? "Img2Img" : "Txt2Img",
+                Message = "LoadedFromImage"
+            });
+        }
+
+        /// <summary>
+        /// Sets a single parameter from an image entity.
+        /// Used for copying individual parameters from images (e.g., just seed, just CFG).
+        /// Note: This method relies on ManagerService.ParseAndCleanCopiedPrompt() for prompt cleaning.
+        /// </summary>
+        public void SetParameterFromImage(Image image, string parameter, ModeType mode)
+        {
+            string GetSampler() => _db.GetSampler(image.SamplerId).Result;
+
+            bool isImg2Img = mode == ModeType.Img2Img;
+            SharedParameters param = isImg2Img ? ParametersImg2Img : ParametersTxt2Img;
+            
+            switch (parameter)
+            {
+                case nameof(SharedParameters.Prompt):
+                    // Note: Caller should handle prompt cleaning via ManagerService.ParseAndCleanCopiedPrompt
+                    param.Prompt = image.Prompt;
+                    break;
+                case nameof(SharedParameters.NegativePrompt):
+                    param.NegativePrompt = image.NegativePrompt;
+                    break;
+                case nameof(SharedParameters.SamplerIndex):
+                    param.SamplerIndex = GetSampler();
+                    break;
+                case nameof(SharedParameters.Scheduler):
+                    param.Scheduler = image.Scheduler;
+                    break;
+                case nameof(SharedParameters.Seed):
+                    param.Seed = image.Seed;
+                    break;
+                case nameof(SharedParameters.Steps):
+                    param.Steps = image.Steps;
+                    break;
+                case nameof(SharedParameters.CfgScale):
+                    param.CfgScale = image.CfgScale;
+                    break;
+                case nameof(SharedParameters.Width):
+                    param.Width = image.Width;
+                    break;
+                case nameof(SharedParameters.Height):
+                    param.Height = image.Height;
+                    break;
+                case nameof(SharedParameters.DenoisingStrength):
+                    param.DenoisingStrength = image.DenoisingStrength;
+                    break;
+            }
+
+            // Publish parameter changed event
+            _events.Publish(new ParametersChangedEventArgs 
+            { 
+                ParametersType = isImg2Img ? "Img2Img" : "Txt2Img",
+                Message = $"SetParameter:{parameter}"
+            });
+        }
+
+        #endregion
+
+        #region Workflow Management
+
+        /// <summary>
+        /// Sets the workflow base and resets workflow assets to defaults if the base changes.
+        /// Publishes StateChangedEventArgs to notify components.
+        /// </summary>
+        /// <param name="workflowBase">The new workflow base to set</param>
+        public void SetWorkflowBase(ModelBase workflowBase)
+        {
+            var previousBase = State.Generation.WorkflowBase;
+            State.Generation.WorkflowBase = workflowBase;
+
+            // If base changed, reset workflow assets to use workflow defaults
+            if (previousBase != workflowBase)
+            {
+                ResetWorkflowAssetsToDefaults();
+            }
+
+            // Publish StateChangedEventArgs for components using EventService
+            _events.Publish(new StateChangedEventArgs
+            {
+                ChangeType = StateChangeType.WorkflowBase,
+                NewValue = workflowBase
+            });
+        }
+
+        /// <summary>
+        /// Resets all workflow assets for all modes to use the workflow template defaults.
+        /// This is called when WorkflowBase changes to ensure the correct models are loaded.
+        /// </summary>
+        private void ResetWorkflowAssetsToDefaults()
+        {
+            // Get the new workflow for each mode and reset assets to its defaults
+            var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
+
+            foreach (var mode in modes)
+            {
+                var workflows = GetWorkflowsForMode(mode);
+                var workflow = workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+
+                if (workflow?.Assets == null || workflow.Assets.Count == 0)
+                    continue;
+
+                // Clear existing assets for this mode and set to workflow defaults
+                var assets = GetOrCreateWorkflowAssetsForMode(mode);
+                assets.Clear();
+
+                foreach (var asset in workflow.Assets)
+                {
+                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                    {
+                        assets[asset.Parameter] = asset.DefaultValue;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Migrates legacy SDModel and Vae from AppState to WorkflowAssets.
+        /// Call this after loading state to ensure backward compatibility with old save files.
+        /// </summary>
+        public void MigrateLegacySettings()
+        {
+#pragma warning disable CS0618 // Suppress obsolete warnings for migration
+
+            // Migrate legacy SDModel from AppState
+            if (!string.IsNullOrWhiteSpace(State?.Generation?.SDModel) && State.Generation.SDModel != "Loading...")
+            {
+                var currentTxt2ImgModel = GetWorkflowAsset("Model", ModeType.Txt2Img);
+                if (string.IsNullOrWhiteSpace(currentTxt2ImgModel))
+                    SetWorkflowAsset("Model", State.Generation.SDModel, ModeType.Txt2Img);
+
+                var currentImg2ImgModel = GetWorkflowAsset("Model", ModeType.Img2Img);
+                if (string.IsNullOrWhiteSpace(currentImg2ImgModel))
+                    SetWorkflowAsset("Model", State.Generation.SDModel, ModeType.Img2Img);
+
+                // Clear legacy property after migration
+                State.Generation.SDModel = null;
+            }
+
+            // Migrate legacy Vae from AppState
+            if (!string.IsNullOrWhiteSpace(State?.Generation?.Vae))
+            {
+                var currentTxt2ImgVae = GetWorkflowAsset("Vae", ModeType.Txt2Img);
+                if (string.IsNullOrWhiteSpace(currentTxt2ImgVae))
+                    SetWorkflowAsset("Vae", State.Generation.Vae, ModeType.Txt2Img);
+
+                var currentImg2ImgVae = GetWorkflowAsset("Vae", ModeType.Img2Img);
+                if (string.IsNullOrWhiteSpace(currentImg2ImgVae))
+                    SetWorkflowAsset("Vae", State.Generation.Vae, ModeType.Img2Img);
+
+                // Clear legacy property after migration
+                State.Generation.Vae = null;
+            }
+
+#pragma warning restore CS0618
+        }
+
+        /// <summary>
+        /// Gets workflows filtered by mode from the current workflows list.
+        /// </summary>
+        private List<Workflow> GetWorkflowsForMode(ModeType mode)
+        {
+            if (State?.Generation?.Workflows == null)
+                return new List<Workflow>();
+
+            return State.Generation.Workflows
+                .Where(w => w.Mode == mode)
+                .OrderBy(w => w.Title)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Gets a workflow asset value for the specified mode.
+        /// </summary>
+        private string? GetWorkflowAsset(string parameter, ModeType? mode = null)
+        {
+            var assets = GetWorkflowAssetsForMode(mode);
+            return assets?.GetValueOrDefault(parameter);
+        }
+
+        /// <summary>
+        /// Sets a workflow asset value for the specified mode.
+        /// </summary>
+        private void SetWorkflowAsset(string parameter, string value, ModeType? mode = null)
+        {
+            var assets = GetOrCreateWorkflowAssetsForMode(mode);
+            assets[parameter] = value;
+        }
+
+        /// <summary>
+        /// Gets the WorkflowAssets dictionary for the specified mode.
+        /// </summary>
+        private Dictionary<string, string>? GetWorkflowAssetsForMode(ModeType? mode)
+        {
+            return mode switch
+            {
+                ModeType.Img2Img => ParametersImg2Img?.WorkflowAssets,
+                ModeType.Img2Vid => ParametersImg2Vid?.WorkflowAssets,
+                ModeType.Extras => ParametersUpscale?.WorkflowAssets,
+                _ => ParametersTxt2Img?.WorkflowAssets
+            };
+        }
+
+        /// <summary>
+        /// Gets or creates the WorkflowAssets dictionary for the specified mode.
+        /// </summary>
+        private Dictionary<string, string> GetOrCreateWorkflowAssetsForMode(ModeType? mode)
+        {
+            switch (mode)
+            {
+                case ModeType.Img2Img:
+                    ParametersImg2Img.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersImg2Img.WorkflowAssets;
+                case ModeType.Img2Vid:
+                    ParametersImg2Vid.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersImg2Vid.WorkflowAssets;
+                case ModeType.Extras:
+                    ParametersUpscale.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersUpscale.WorkflowAssets;
+                default:
+                    ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
+                    return ParametersTxt2Img.WorkflowAssets;
+            }
+        }
+
+        #endregion
     }
 }
