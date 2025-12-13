@@ -19,9 +19,9 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 
 | Metric | Count |
 |--------|-------|
-| Components with `@inject ManagerService M` | 31 ? 15 |
+| Components with `@inject ManagerService M` | 31 ? 14 |
 | Components with direct interface injections | 65+ |
-| Total facade property usages in components | ~305 ? ~80 |
+| Total facade property usages in components | ~305 ? ~70 |
 
 ### Top Facade Usages (Priority Order)
 
@@ -35,6 +35,7 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 | `M.Canvas*` | 15 | `Session.Canvas*` (via ISessionService) |
 | `M.CivitaiModels` | 11 | Keep on ManagerService (Civitai orchestration) |
 | `M.SelectedImageIds` | 9 | `Gallery.SelectedImageIds` (via IGalleryService) |
+| `M.IsGalleryFiltered` | 2 | `Gallery.IsGalleryFiltered` (moved to IGalleryService) |
 | `M.Samplers` | 2 | `Backend.Samplers` (via IBackendService) |
 | `M.Schedulers` | 2 | `Backend.Schedulers` |
 
@@ -96,17 +97,19 @@ Components with minimal facade usages, straightforward replacements.
 
 ---
 
-### Batch 4: Pages
+### Batch 4: Pages ?
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 27 | `Pages/Index.razor` | ? | Main layout |
-| 28 | `Pages/Txt2Img.razor` | ? | Already uses State |
-| 29 | `Pages/Img2Img.razor` | ? | |
-| 30 | `Pages/Img2Vid.razor` | ? | |
-| 31 | `Components/Shared/MainLayout.razor` | ? | App shell |
+| 27 | `Pages/Index.razor` | ? | M.IsGalleryFiltered ? Gallery.IsGalleryFiltered, removed M |
+| 28 | `Pages/Txt2Img.razor` | ?? | Only uses M for orchestration methods |
+| 29 | `Pages/Img2Img.razor` | ?? | Only uses M for orchestration methods |
+| 30 | `Pages/Img2Vid.razor` | ?? | Only uses M for orchestration methods |
+| 31 | `Components/Shared/MainLayout.razor` | ?? | Only uses M for orchestration methods |
 
-**Batch 4 Total:** 5 components
+**Batch 4 Complete:** 1 updated, 4 skipped (orchestration only)
+
+**New API:** Added `IsGalleryFiltered` property to `IGalleryService`/`GalleryService`
 
 ---
 
@@ -274,7 +277,7 @@ These properties/methods should remain as they are true orchestration concerns:
 | Batch 1 | 12 simple | ? Complete (7 updated, 4 skipped, 1 N/A) |
 | Batch 2 | 10 medium | ? Complete (5 updated, 5 skipped) |
 | Batch 3 | 4 complex | ? Complete (3 updated, 1 skipped) |
-| Batch 4 | 5 pages | ? Not Started |
+| Batch 4 | 5 pages | ? Complete (1 updated, 4 skipped) |
 | Batch 5 | 4 services | ? Not Started |
 | Task A | Facade removal | ? Not Started |
 | Task B | WebUI cleanup | ? Not Started |
@@ -289,7 +292,7 @@ These properties/methods should remain as they are true orchestration concerns:
 - [x] After Batch 1 complete
 - [x] After Batch 2 complete
 - [x] After Batch 3 complete
-- [ ] After Batch 4 complete
+- [x] After Batch 4 complete
 - [ ] After Batch 5 complete
 - [ ] After Task A (facades removed)
 - [ ] After Tasks B-E (cleanup complete)

@@ -1,7 +1,6 @@
 ﻿@page "/"
 @using BlazorWebApp.Events
 @inject DatabaseService DB
-@inject ManagerService M
 @inject IStateService State
 @inject IGalleryService Gallery
 @inject IEventService Events
@@ -107,7 +106,7 @@ else
 
     private async Task<ImagesDto> FetchImagesPage(int page)
     {
-        if (M.IsGalleryFiltered)
+        if (Gallery.IsGalleryFiltered)
         {
             if (State.State.Gallery.IsSelectedOnly)
                 return await DB.GetPagedImages(page, Gallery.SelectedImageIds);
@@ -127,7 +126,7 @@ else
 
     private async Task FilterImages(bool resetFilter)
     {
-        M.IsGalleryFiltered = !resetFilter;
+        Gallery.IsGalleryFiltered = !resetFilter;
         await State.SaveState();
 
         currentImgPage = 1;

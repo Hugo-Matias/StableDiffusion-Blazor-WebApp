@@ -16,6 +16,11 @@ namespace BlazorWebApp.Services
         public List<Folder>? Folders { get; private set; }
         public List<Project>? Projects { get; private set; }
         public List<int> SelectedImageIds { get; private set; } = new();
+        
+        /// <summary>
+        /// Indicates whether gallery filters are currently applied.
+        /// </summary>
+        public bool IsGalleryFiltered { get; set; }
 
         public GalleryService(IDatabaseService db, IStateService state, IEventService events)
         {

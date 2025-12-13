@@ -11,6 +11,11 @@ namespace BlazorWebApp.Services
         List<Folder>? Folders { get; }
         List<Project>? Projects { get; }
         List<int> SelectedImageIds { get; }
+        
+        /// <summary>
+        /// Indicates whether gallery filters are currently applied.
+        /// </summary>
+        bool IsGalleryFiltered { get; set; }
 
         Task GetFolders();
         Task GetProjects(int folderId = 0);
