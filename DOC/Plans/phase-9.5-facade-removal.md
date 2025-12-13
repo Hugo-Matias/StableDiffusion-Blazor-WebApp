@@ -19,25 +19,45 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 
 | Metric | Count |
 |--------|-------|
-| Components with `@inject ManagerService M` | 31 ? 14 |
+| Components with `@inject ManagerService M` | 31 ? 19 |
 | Components with direct interface injections | 65+ |
-| Total facade property usages in components | ~305 ? ~50 |
+| Total facade property usages in components | ~305 ? 0 ? |
 
-### Top Facade Usages (Priority Order)
+### Facade Removal Summary
 
-| Facade | Count | Replace With |
-|--------|-------|--------------|
-| `M.State` | 67 | `State.State` (via IStateService) |
-| `M.ParametersImg2Vid` | 66 | `State.ParametersImg2Vid` |
-| `M.ParametersTxt2Img` | 48 | `State.ParametersTxt2Img` |
-| `M.Settings` | 47 | `Settings.Settings` (via ISettingsService) |
-| `M.ParametersImg2Img` | 38 | `State.ParametersImg2Img` |
-| `M.Canvas*` | 15 | `Session.Canvas*` (via ISessionService) |
-| `M.CivitaiModels` | 11 | Keep on ManagerService (Civitai orchestration) |
-| `M.SelectedImageIds` | 9 | `Gallery.SelectedImageIds` (via IGalleryService) |
-| `M.IsGalleryFiltered` | 2 | `Gallery.IsGalleryFiltered` (moved to IGalleryService) |
-| `M.Samplers` | 2 | `Backend.Samplers` (via IBackendService) |
-| `M.Schedulers` | 2 | `Backend.Schedulers` |
+All facade properties have been removed from ManagerService:
+- ? `State` ? Use `IStateService.State`
+- ? `ParametersTxt2Img` ? Use `IStateService.ParametersTxt2Img`
+- ? `ParametersImg2Img` ? Use `IStateService.ParametersImg2Img`
+- ? `ParametersImg2Vid` ? Use `IStateService.ParametersImg2Vid`
+- ? `ParametersUpscale` ? Use `IStateService.ParametersUpscale`
+- ? `Settings` ? Use `ISettingsService.Settings`
+- ? `CheckpointModels` ? Use `IModelService.CheckpointModels`
+- ? `DiffusionModels` ? Use `IModelService.DiffusionModels`
+- ? `SDVAEs` ? Use `IModelService.VAEModels`
+- ? `ClipModels` ? Use `IModelService.ClipModels`
+- ? `ClipVisionModels` ? Use `IModelService.ClipVisionModels`
+- ? `SDADetailerModels` ? Use `IModelService.ADetailerModels`
+- ? `Samplers` ? Use `IBackendService.Samplers`
+- ? `Schedulers` ? Use `IBackendService.Schedulers`
+- ? `Upscalers` ? Use `IBackendService.Upscalers`
+- ? `IsComfyUIUp` ? Use `IBackendService.IsBackendAvailable`
+- ? `Folders` ? Use `IGalleryService.Folders`
+- ? `Projects` ? Use `IGalleryService.Projects`
+- ? `SelectedImageIds` ? Use `IGalleryService.SelectedImageIds`
+- ? `CanvasStates` ? Use `ISessionService.CanvasStates`
+- ? `CanvasImageData` ? Use `ISessionService.CanvasImageData`
+- ? `CanvasMaskData` ? Use `ISessionService.CanvasMaskData`
+- ? `UpscaleImageData` ? Use `ISessionService.UpscaleImageData`
+- ? `Img2VidInputImage` ? Use `ISessionService.Img2VidInputImage`
+- ? `Img2ImgInputImage` ? Use `ISessionService.Img2ImgInputImage`
+- ? `ImageEditorState` ? Use `ISessionService.ImageEditorState`
+- ? `SessionGeneratedVideos` ? Use `ISessionService.SessionGeneratedVideos`
+
+### Removed WebUI Remnants
+- ? `IsGalleryFiltered` ? Moved to `IGalleryService.IsGalleryFiltered`
+- ? `ControlNetEnabled` ? Removed (WebUI remnant)
+- ? `CmdFlags` ? Removed (WebUI remnant)
 
 ---
 
@@ -128,17 +148,19 @@ Components with minimal facade usages, straightforward replacements.
 
 ## Post-Batch Tasks
 
-### Task A: Remove Facades from ManagerService
-After all batches complete:
-- [ ] Remove `#region Service Facades` block
-- [ ] Verify no compilation errors
-- [ ] Run full test suite
+### Task A: Remove Facades from ManagerService ?
+- [x] Remove `#region Service Facades` block (27 facade properties removed)
+- [x] Update internal references to use injected services directly
+- [x] Remove WebUI remnants: `ControlNetEnabled`, `CmdFlags`, `IsGalleryFiltered`
+- [x] Verify no compilation errors
+- [x] Run full test suite (150/150 ?)
 
-### Task B: WebUI Cleanup
-- [ ] Remove `CmdFlags` property
-- [ ] Remove `ControlNetEnabled` property
-- [ ] Evaluate `Options.SDModelCheckpoint` usage
-- [ ] Review `ParseWebUIInfoParameters()` - mark as legacy import helper
+### Task B: WebUI Cleanup ?
+- [x] Remove `CmdFlags` property
+- [x] Remove `ControlNetEnabled` property
+- [x] `IsGalleryFiltered` moved to `IGalleryService`
+- [ ] Evaluate `Options.SDModelCheckpoint` usage (kept for path pattern conversion)
+- [ ] Review `ParseWebUIInfoParameters()` - mark as legacy import helper (N/A - not found)
 
 ### Task C: DI Cleanup in Program.cs
 - [ ] Convert dual registrations to interface-only
@@ -160,114 +182,25 @@ Evaluate moving from ManagerService:
 
 ---
 
-## Replacement Patterns
+## Remaining Orchestration Properties on ManagerService
 
-### Pattern 1: State Access
-```razor
-// Before
-@inject ManagerService M
-M.State.Gallery.ProjectId
-M.ParametersTxt2Img.Prompt
+These properties remain as true orchestration concerns:
 
-// After
-@inject IStateService State
-State.State.Gallery.ProjectId
-State.ParametersTxt2Img.Prompt
-```
-
-### Pattern 2: Settings Access
-```razor
-// Before
-@inject ManagerService M
-M.Settings.Generation.Shared.Steps.Max
-
-// After
-@inject ISettingsService Settings
-Settings.Settings.Generation.Shared.Steps.Max
-```
-
-### Pattern 3: Backend Access
-```razor
-// Before
-@inject ManagerService M
-M.Samplers
-M.Schedulers
-M.Upscalers
-
-// After
-@inject IBackendService Backend
-Backend.Samplers
-Backend.Schedulers
-Backend.Upscalers
-```
-
-### Pattern 4: Session Access
-```razor
-// Before
-@inject ManagerService M
-M.CanvasImageData
-M.Img2VidInputImage
-
-// After
-@inject ISessionService Session
-Session.CanvasImageData
-Session.Img2VidInputImage
-```
-
-### Pattern 5: Gallery Access
-```razor
-// Before
-@inject ManagerService M
-M.SelectedImageIds
-M.Folders
-M.Projects
-
-// After
-@inject IGalleryService Gallery
-Gallery.SelectedImageIds
-Gallery.Folders
-Gallery.Projects
-```
-
-### Pattern 6: Model Access
-```razor
-// Before
-@inject ManagerService M
-M.CheckpointModels
-M.DiffusionModels
-M.SDVAEs
-
-// After
-@inject IModelService Models
-Models.CheckpointModels
-Models.DiffusionModels
-Models.VAEModels
-```
-
----
-
-## Keep on ManagerService (Do NOT Remove)
-
-These properties/methods should remain as they are true orchestration concerns:
-
-| Property/Method | Reason |
-|-----------------|--------|
-| `Options` | Output path configuration (evaluate later) |
-| `Images`, `ImagesInfo` | Generation result storage |
+| Property | Purpose |
+|----------|---------|
+| `Options` | Output path configuration (from ComfyUI backend) |
+| `Images`, `ImagesInfo` | Current generation result storage |
+| `GeneratedImageEntities` | Generated image DTOs for gallery |
 | `GridImage` | Grid generation result |
 | `Progress` | Inference progress tracking |
-| `IsConverging`, `CurrentProgress` | Generation state |
-| `Styles` | Prompt style orchestration |
+| `Styles` | Available prompt styles |
+| `GeneratedUpscaleImage` | Upscale result storage |
+| `ButtonTags` | UI button tags configuration |
 | `CivitaiModels/Images/Creators` | Civitai browsing state |
 | `ComfyWSClientId` | WebSocket session ID |
 | `ResourceTypeDirectories` | Resource path configuration |
-| `GetCurrentSaveFolder()` | Path resolution logic |
-| `ConvertPathPattern()` | Path pattern conversion |
-| `ParseAndCleanCopiedPrompt()` | Prompt parsing logic |
-| `SetLoras()` | Lora management |
-| `LoadImageInfoParameters()` | Parameter loading |
-| `SetGenerationParameter()` | Parameter setting |
-| Workflow methods | Workflow orchestration |
+| `CurrentProgress` | Progress with event publishing |
+| `IsConverging` | Convergence state with event publishing |
 
 ---
 
@@ -280,8 +213,8 @@ These properties/methods should remain as they are true orchestration concerns:
 | Batch 3 | 4 complex | ? Complete (3 updated, 1 skipped) |
 | Batch 4 | 5 pages | ? Complete (1 updated, 4 skipped) |
 | Batch 5 | 4 services | ? Complete (3 updated, 1 skipped) |
-| Task A | Facade removal | ? Not Started |
-| Task B | WebUI cleanup | ? Not Started |
+| Task A | Facade removal | ? Complete (27 facades removed) |
+| Task B | WebUI cleanup | ? Complete (3 properties removed) |
 | Task C | DI cleanup | ? Not Started |
 | Task D | Prop relocation | ? Not Started |
 | Task E | Options eval | ? Not Started |
@@ -295,7 +228,7 @@ These properties/methods should remain as they are true orchestration concerns:
 - [x] After Batch 3 complete
 - [x] After Batch 4 complete
 - [x] After Batch 5 complete
-- [ ] After Task A (facades removed)
+- [x] After Task A (facades removed)
 - [ ] After Tasks B-E (cleanup complete)
 - [ ] Final verification
 

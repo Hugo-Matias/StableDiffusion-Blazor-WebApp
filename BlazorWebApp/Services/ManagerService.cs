@@ -33,68 +33,6 @@ namespace BlazorWebApp.Services
         private int _currentProgress;
         private bool _isConverging;
 
-        #region Service Facades
-        
-        public AppState State => _state.State;
-        public Txt2ImgParameters ParametersTxt2Img => _state.ParametersTxt2Img;
-        public Img2ImgParameters ParametersImg2Img => _state.ParametersImg2Img;
-        public Models.UpscaleParameters ParametersUpscale => _state.ParametersUpscale;
-        public Img2VidParameters ParametersImg2Vid => _state.ParametersImg2Vid;
-        public AppSettings Settings => _settings.Settings;
-        public List<SDModel> CheckpointModels => _models.CheckpointModels;
-        public List<SDModel> DiffusionModels => _models.DiffusionModels;
-        public List<string> SDVAEs => _models.VAEModels;
-        public List<string> ClipModels => _models.ClipModels;
-        public List<string> ClipVisionModels => _models.ClipVisionModels;
-        public List<string> SDADetailerModels => _models.ADetailerModels;
-        public List<Models.Sampler> Samplers => _backend.Samplers;
-        public List<Scheduler> Schedulers => _backend.Schedulers;
-        public List<Upscaler> Upscalers => _backend.Upscalers;
-        public bool IsComfyUIUp => _backend.IsBackendAvailable;
-        public List<Folder>? Folders => _gallery.Folders;
-        public List<Project>? Projects => _gallery.Projects;
-        public List<int> SelectedImageIds => _gallery.SelectedImageIds;
-        public List<string> CanvasStates => _session.CanvasStates;
-        public GeneratedVideos SessionGeneratedVideos => _session.SessionGeneratedVideos;
-        
-        public string CanvasImageData
-        {
-            get => _session.CanvasImageData;
-            set => _session.CanvasImageData = value;
-        }
-        
-        public string CanvasMaskData
-        {
-            get => _session.CanvasMaskData;
-            set => _session.CanvasMaskData = value;
-        }
-        
-        public string UpscaleImageData
-        {
-            get => _session.UpscaleImageData;
-            set => _session.UpscaleImageData = value;
-        }
-        
-        public string Img2VidInputImage
-        {
-            get => _session.Img2VidInputImage;
-            set => _session.Img2VidInputImage = value;
-        }
-        
-        public string Img2ImgInputImage
-        {
-            get => _session.Img2ImgInputImage;
-            set => _session.Img2ImgInputImage = value;
-        }
-        
-        public ImageEditorState ImageEditorState
-        {
-            get => _session.ImageEditorState;
-            set => _session.ImageEditorState = value;
-        }
-        
-        #endregion
-
         #region Orchestration Properties
         
         public Options Options { get; set; }
@@ -104,11 +42,8 @@ namespace BlazorWebApp.Services
         public string? GridImage { get; set; }
         public InferenceProgress Progress { get; set; }
         public List<PromptStyle> Styles { get; set; }
-        public bool ControlNetEnabled { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
-        public bool IsGalleryFiltered { get; set; }
         public PromptButton ButtonTags { get; set; }
-        public CmdFlags CmdFlags { get; set; }
         public CivitaiModelsDto CivitaiModels { get; set; }
         public CivitaiImagesDto CivitaiImages { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
@@ -168,8 +103,8 @@ namespace BlazorWebApp.Services
 
             Images = new();
             Progress = new();
-            _db.PageSize = State.Gallery.PageSize;
-            State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
+            _db.PageSize = _state.State.Gallery.PageSize;
+            _state.State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
 
             GetButtonTags();
         }
@@ -196,8 +131,8 @@ namespace BlazorWebApp.Services
         {
             var workflow = GetCurrentWorkflow();
             if (workflow?.Assets != null && workflow.Assets.Any(a => a.Type == AssetType.DiffusionModel))
-                return DiffusionModels ?? new List<SDModel>();
-            return CheckpointModels ?? new List<SDModel>();
+                return _models.DiffusionModels ?? new List<SDModel>();
+            return _models.CheckpointModels ?? new List<SDModel>();
         }
         
         public async Task GetSDVAEs() => await _models.GetVAEModels();
@@ -227,40 +162,40 @@ namespace BlazorWebApp.Services
         
         public Workflow? GetCurrentWorkflow()
         {
-            if (State?.Generation?.Workflows == null || State.Generation.Workflows.Count == 0)
+            if (_state.State?.Generation?.Workflows == null || _state.State.Generation.Workflows.Count == 0)
                 return null;
 
-            if (State.Generation.CurrentWorkflowId.HasValue)
+            if (_state.State.Generation.CurrentWorkflowId.HasValue)
             {
-                var workflow = State.Generation.Workflows.FirstOrDefault(w => w.Id == State.Generation.CurrentWorkflowId.Value);
+                var workflow = _state.State.Generation.Workflows.FirstOrDefault(w => w.Id == _state.State.Generation.CurrentWorkflowId.Value);
                 if (workflow != null) return workflow;
             }
 
-            if (State.Generation.WorkflowBase != default)
-                return State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+            if (_state.State.Generation.WorkflowBase != default)
+                return _state.State.Generation.Workflows.FirstOrDefault(w => w.Base == _state.State.Generation.WorkflowBase);
 
-            return State.Generation.Workflows.FirstOrDefault();
+            return _state.State.Generation.Workflows.FirstOrDefault();
         }
         
-        public Workflow GetWorkflowById(Guid id) => State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
+        public Workflow GetWorkflowById(Guid id) => _state.State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
         
         public List<Workflow> GetWorkflowsForMode(ModeType mode)
         {
-            if (State?.Generation?.Workflows == null)
+            if (_state.State?.Generation?.Workflows == null)
                 return new List<Workflow>();
 
-            return State.Generation.Workflows.Where(w => w.Mode == mode).OrderBy(w => w.Title).ToList();
+            return _state.State.Generation.Workflows.Where(w => w.Mode == mode).OrderBy(w => w.Title).ToList();
         }
         
-        public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
+        public void GetComfyWorkflows() => _state.State.Generation.Workflows = _workflow.GetWorkflows();
         
         public void SetCurrentWorkflow(Guid workflowId, ModeType? mode = null)
         {
             var workflow = GetWorkflowById(workflowId);
             if (workflow == null) return;
 
-            State.Generation.CurrentWorkflowId = workflowId;
-            State.Generation.WorkflowBase = workflow.Base;
+            _state.State.Generation.CurrentWorkflowId = workflowId;
+            _state.State.Generation.WorkflowBase = workflow.Base;
 
             _events.Publish(new StateChangedEventArgs());
             _events.Publish(new WorkflowChangedEventArgs(workflowId, "Set"));
@@ -271,8 +206,8 @@ namespace BlazorWebApp.Services
             var workflow = GetWorkflowById(workflowId);
             if (workflow == null) return false;
 
-            State.Generation.CurrentWorkflowId = workflowId;
-            State.Generation.WorkflowBase = workflow.Base;
+            _state.State.Generation.CurrentWorkflowId = workflowId;
+            _state.State.Generation.WorkflowBase = workflow.Base;
 
             bool assetsInitialized = true;
             if (workflow.Assets != null && workflow.Assets.Count > 0)
@@ -297,8 +232,8 @@ namespace BlazorWebApp.Services
         
         public void ResetCurrentWorkflow()
         {
-            State.Generation.CurrentWorkflowId = null;
-            State.Generation.WorkflowBase = default;
+            _state.State.Generation.CurrentWorkflowId = null;
+            _state.State.Generation.WorkflowBase = default;
 
             foreach (var mode in new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras })
                 GetOrCreateWorkflowAssetsForMode(mode).Clear();
@@ -309,7 +244,7 @@ namespace BlazorWebApp.Services
         public void SetDefaultBaseModel()
         {
             var modelKeys = new[] { "ckpt_name", "unet_name" };
-            var workflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
+            var workflow = _state.State.Generation.Workflows?.FirstOrDefault(w => w.Base == _state.State.Generation.WorkflowBase);
             if (workflow?.Pipeline == null) return;
             
             var defaultModel = workflow.Pipeline
@@ -319,10 +254,10 @@ namespace BlazorWebApp.Services
                 .FirstOrDefault()?
                 .GetDefaultModelFromWorkflow();
 
-            if (!string.IsNullOrWhiteSpace(defaultModel) && ParametersTxt2Img != null)
+            if (!string.IsNullOrWhiteSpace(defaultModel) && _state.ParametersTxt2Img != null)
             {
-                ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
-                ParametersTxt2Img.WorkflowAssets["Model"] = defaultModel;
+                _state.ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
+                _state.ParametersTxt2Img.WorkflowAssets["Model"] = defaultModel;
                 _events.Publish(new ModelsChangedEventArgs());
             }
         }
@@ -339,10 +274,10 @@ namespace BlazorWebApp.Services
         {
             return mode switch
             {
-                ModeType.Img2Img => ParametersImg2Img?.WorkflowAssets,
-                ModeType.Img2Vid => ParametersImg2Vid?.WorkflowAssets,
-                ModeType.Extras => ParametersUpscale?.WorkflowAssets,
-                _ => ParametersTxt2Img?.WorkflowAssets
+                ModeType.Img2Img => _state.ParametersImg2Img?.WorkflowAssets,
+                ModeType.Img2Vid => _state.ParametersImg2Vid?.WorkflowAssets,
+                ModeType.Extras => _state.ParametersUpscale?.WorkflowAssets,
+                _ => _state.ParametersTxt2Img?.WorkflowAssets
             };
         }
         
@@ -350,10 +285,10 @@ namespace BlazorWebApp.Services
         {
             return mode switch
             {
-                ModeType.Img2Img => ParametersImg2Img.WorkflowAssets ??= new(),
-                ModeType.Img2Vid => ParametersImg2Vid.WorkflowAssets ??= new(),
-                ModeType.Extras => ParametersUpscale.WorkflowAssets ??= new(),
-                _ => ParametersTxt2Img.WorkflowAssets ??= new()
+                ModeType.Img2Img => _state.ParametersImg2Img.WorkflowAssets ??= new(),
+                ModeType.Img2Vid => _state.ParametersImg2Vid.WorkflowAssets ??= new(),
+                ModeType.Extras => _state.ParametersUpscale.WorkflowAssets ??= new(),
+                _ => _state.ParametersTxt2Img.WorkflowAssets ??= new()
             };
         }
         
@@ -407,8 +342,8 @@ namespace BlazorWebApp.Services
         
         public async Task GetProjects()
         {
-            await _gallery.GetProjects(State.Gallery.FolderId);
-            if (State.Gallery.GalleriesOrderDescending) Projects.Reverse();
+            await _gallery.GetProjects(_state.State.Gallery.FolderId);
+            if (_state.State.Gallery.GalleriesOrderDescending) _gallery.Projects.Reverse();
         }
         
         public async Task SetCurrentFolder(int id)
@@ -416,13 +351,13 @@ namespace BlazorWebApp.Services
             if (id > 0)
             {
                 await GetFolders();
-                State.Gallery.FolderId = id;
-                State.Gallery.FolderName = Folders.FirstOrDefault(f => f.Id == id)!.Name;
+                _state.State.Gallery.FolderId = id;
+                _state.State.Gallery.FolderName = _gallery.Folders.FirstOrDefault(f => f.Id == id)!.Name;
             }
             else
             {
-                State.Gallery.FolderId = 0;
-                State.Gallery.FolderName = "All";
+                _state.State.Gallery.FolderId = 0;
+                _state.State.Gallery.FolderName = "All";
             }
             SaveState();
             await GetProjects();
@@ -462,12 +397,12 @@ namespace BlazorWebApp.Services
             foreach (var prompt in promptResources)
                 Styles.Add(new(prompt));
             
-            if (State.Generation.Styles == null) 
-                State.Generation.Styles = new List<PromptStyle>();
+            if (_state.State.Generation.Styles == null) 
+                _state.State.Generation.Styles = new List<PromptStyle>();
             else
             {
-                var currentStyles = State.Generation.Styles.ToList();
-                State.Generation.Styles = Styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
+                var currentStyles = _state.State.Generation.Styles.ToList();
+                _state.State.Generation.Styles = Styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
             }
             _events.Publish(new StylesChangedEventArgs { ChangeType = "Loaded" });
         }
@@ -478,9 +413,9 @@ namespace BlazorWebApp.Services
         
         public void SetLoras(IEnumerable<Lora> loras, bool isImg2Img)
         {
-            if (loras == null || State?.Generation == null) return;
+            if (loras == null || _state.State?.Generation == null) return;
 
-            var parametersLoras = isImg2Img ? ParametersImg2Img.Loras : ParametersTxt2Img.Loras;
+            var parametersLoras = isImg2Img ? _state.ParametersImg2Img.Loras : _state.ParametersTxt2Img.Loras;
             parametersLoras ??= [];
 
             foreach (var l in loras)
@@ -497,9 +432,9 @@ namespace BlazorWebApp.Services
             SetLoras(loras, isImg2Img);
 
             var cleanedFromStyles = cleanedFromLoras;
-            if (State?.Generation?.Styles != null)
+            if (_state.State?.Generation?.Styles != null)
             {
-                foreach (var style in State.Generation.Styles)
+                foreach (var style in _state.State.Generation.Styles)
                 {
                     var styleText = isNegative ? style.NegativePrompt : style.Prompt;
                     if (!string.IsNullOrWhiteSpace(styleText))
@@ -525,7 +460,7 @@ namespace BlazorWebApp.Services
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {
             bool isImg2Img = mode == ModeType.Img2Img;
-            var param = isImg2Img ? (SharedParameters)ParametersImg2Img : ParametersTxt2Img;
+            var param = isImg2Img ? (SharedParameters)_state.ParametersImg2Img : _state.ParametersTxt2Img;
             
             param.Prompt = ParseAndCleanCopiedPrompt(image.Prompt ?? string.Empty, false, isImg2Img);
             param.NegativePrompt = ParseAndCleanCopiedPrompt(image.NegativePrompt ?? string.Empty, true, isImg2Img);
@@ -540,7 +475,7 @@ namespace BlazorWebApp.Services
         
         public void SetGenerationParameter(Image source, string parameter, bool isImg2Img)
         {
-            SharedParameters param = isImg2Img ? ParametersImg2Img : ParametersTxt2Img;
+            SharedParameters param = isImg2Img ? _state.ParametersImg2Img : _state.ParametersTxt2Img;
             
             switch (parameter)
             {
@@ -622,24 +557,24 @@ namespace BlazorWebApp.Services
             {
                 "[sampler]" => mode switch
                 {
-                    ModeType.Txt2Img => ParametersTxt2Img?.SamplerName ?? "euler",
-                    ModeType.Img2Img => ParametersImg2Img?.SamplerIndex ?? "euler",
-                    ModeType.Img2Vid => ParametersImg2Vid?.SamplerName ?? "euler",
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.SamplerName ?? "euler",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.SamplerIndex ?? "euler",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.SamplerName ?? "euler",
                     _ => "euler"
                 },
-                "[seed]" => State.Generation.Seed.ToString(),
+                "[seed]" => _state.State.Generation.Seed.ToString(),
                 "[steps]" => mode switch
                 {
-                    ModeType.Txt2Img => ParametersTxt2Img?.Steps?.ToString() ?? "20",
-                    ModeType.Img2Img => ParametersImg2Img?.Steps?.ToString() ?? "20",
-                    ModeType.Img2Vid => ParametersImg2Vid?.Steps?.ToString() ?? "8",
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.Steps?.ToString() ?? "8",
                     _ => "20"
                 },
                 "[cfg]" => mode switch
                 {
-                    ModeType.Txt2Img => ParametersTxt2Img?.CfgScale?.ToString() ?? "7",
-                    ModeType.Img2Img => ParametersImg2Img?.CfgScale?.ToString() ?? "7",
-                    ModeType.Img2Vid => ParametersImg2Vid?.CfgScale?.ToString() ?? "1",
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.CfgScale?.ToString() ?? "1",
                     _ => "7"
                 },
                 _ => string.Empty
@@ -648,8 +583,8 @@ namespace BlazorWebApp.Services
         
         private string GetModelHash(string modelName)
         {
-            var model = CheckpointModels?.FirstOrDefault(m => m.Title.Contains(modelName))
-                     ?? DiffusionModels?.FirstOrDefault(m => m.Title.Contains(modelName));
+            var model = _models.CheckpointModels?.FirstOrDefault(m => m.Title.Contains(modelName))
+                     ?? _models.DiffusionModels?.FirstOrDefault(m => m.Title.Contains(modelName));
             return model?.Hash;
         }
         
@@ -670,15 +605,15 @@ namespace BlazorWebApp.Services
             _state.MigrateLegacySettings();
             
             var (workflows, suggestedBase, suggestedId) = _workflow.RefreshWorkflows(
-                State?.Generation?.WorkflowBase,
-                State?.Generation?.CurrentWorkflowId
+                _state.State?.Generation?.WorkflowBase,
+                _state.State?.Generation?.CurrentWorkflowId
             );
             
-            if (State?.Generation != null)
+            if (_state.State?.Generation != null)
             {
-                State.Generation.Workflows = workflows;
-                if (suggestedBase.HasValue) State.Generation.WorkflowBase = suggestedBase.Value;
-                if (suggestedId.HasValue) State.Generation.CurrentWorkflowId = suggestedId.Value;
+                _state.State.Generation.Workflows = workflows;
+                if (suggestedBase.HasValue) _state.State.Generation.WorkflowBase = suggestedBase.Value;
+                if (suggestedId.HasValue) _state.State.Generation.CurrentWorkflowId = suggestedId.Value;
             }
 
             _events.Publish(new ParametersChangedEventArgs("Txt2Img"));
