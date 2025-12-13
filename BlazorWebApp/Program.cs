@@ -53,7 +53,7 @@ builder.Services.AddSingleton<IGalleryService, GalleryService>();
 builder.Services.AddSingleton<ISessionService, SessionService>();
 
 // Core application services
-builder.Services.AddSingleton<ManagerService>();
+builder.Services.AddSingleton<OrchestratorService>();
 
 // Image service - dual registration for concrete access by ComfyUIWebsocketService
 builder.Services.AddSingleton<ImageService>();

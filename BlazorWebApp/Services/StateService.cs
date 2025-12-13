@@ -315,7 +315,7 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Loads all parameters from an image entity into the appropriate parameter set.
         /// This is used when loading an existing image's settings to replicate generation.
-        /// Note: This method relies on ManagerService.ParseAndCleanCopiedPrompt() for prompt cleaning.
+        /// Note: This method relies on OrchestratorService.ParseAndCleanCopiedPrompt() for prompt cleaning.
         /// </summary>
         public async Task LoadParametersFromImage(Image image, ModeType mode)
         {
@@ -323,7 +323,7 @@ namespace BlazorWebApp.Services
 
             if (isImg2Img)
             {
-                // Note: Prompt cleaning is handled by caller using ManagerService.ParseAndCleanCopiedPrompt
+                // Note: Prompt cleaning is handled by caller using OrchestratorService.ParseAndCleanCopiedPrompt
                 // We can't call it directly here to avoid circular dependency
                 ParametersImg2Img.Prompt = image.Prompt ?? string.Empty;
                 ParametersImg2Img.NegativePrompt = image.NegativePrompt ?? string.Empty;
@@ -359,7 +359,7 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Sets a single parameter from an image entity.
         /// Used for copying individual parameters from images (e.g., just seed, just CFG).
-        /// Note: This method relies on ManagerService.ParseAndCleanCopiedPrompt() for prompt cleaning.
+        /// Note: This method relies on OrchestratorService.ParseAndCleanCopiedPrompt() for prompt cleaning.
         /// </summary>
         public void SetParameterFromImage(Image image, string parameter, ModeType mode)
         {
@@ -371,7 +371,7 @@ namespace BlazorWebApp.Services
             switch (parameter)
             {
                 case nameof(SharedParameters.Prompt):
-                    // Note: Caller should handle prompt cleaning via ManagerService.ParseAndCleanCopiedPrompt
+                    // Note: Caller should handle prompt cleaning via OrchestratorService.ParseAndCleanCopiedPrompt
                     param.Prompt = image.Prompt;
                     break;
                 case nameof(SharedParameters.NegativePrompt):

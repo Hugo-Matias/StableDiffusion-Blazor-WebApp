@@ -1,5 +1,5 @@
-﻿@using System.Text.Json
-@inject ManagerService M
+@using System.Text.Json
+@inject OrchestratorService M
 @inject IStateService State
 @inject DatabaseService DB
 @inject IOService IO
@@ -266,7 +266,7 @@
         // Use StateService for parameter loading
         await State.LoadParametersFromImage(Image, mode);
         
-        // Clean prompts using ManagerService
+        // Clean prompts using OrchestratorService
         bool isImg2Img = mode == ModeType.Img2Img;
         if (isImg2Img)
         {
@@ -290,7 +290,7 @@
         // Use StateService for parameter setting
         State.SetParameterFromImage(Image, parameter, mode);
         
-        // Clean prompts if needed using ManagerService
+        // Clean prompts if needed using OrchestratorService
         if (parameter == nameof(SharedParameters.Prompt))
         {
             if (isImg2Img)

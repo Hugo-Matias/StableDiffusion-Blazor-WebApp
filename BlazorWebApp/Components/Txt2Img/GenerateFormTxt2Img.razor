@@ -1,4 +1,4 @@
-﻿@using System.Text.Json
+@using System.Text.Json
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 @using BlazorWebApp.Components.Shared
 @using static BlazorWebApp.Data.Enums
@@ -6,7 +6,7 @@
 @inject ISettingsService Settings
 @inject IBackendService Backend
 @inject IImageService ImageService
-@inject ManagerService M
+@inject OrchestratorService M
 
 <div style="margin-bottom:15rem;">
     <EditForm Model="@Parameters">

@@ -1,4 +1,4 @@
-﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
@@ -14,7 +14,7 @@ namespace BlazorWebApp.Services
     /// Orchestrates generation workflows, coordinates between specialized services,
     /// and manages complex multi-service operations.
     /// </summary>
-    public class ManagerService
+    public class OrchestratorService
     {
         private readonly IDatabaseService _db;
         private readonly IIOService _io;
@@ -30,7 +30,7 @@ namespace BlazorWebApp.Services
         private readonly IGalleryService _gallery;
         private readonly ISessionService _session;
 
-        public ManagerService(
+        public OrchestratorService(
             IDatabaseService db,
             IIOService io,
             IProgressService progress,

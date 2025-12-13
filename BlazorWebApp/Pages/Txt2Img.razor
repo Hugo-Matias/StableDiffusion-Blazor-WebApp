@@ -1,9 +1,9 @@
-﻿@page "/txt2img/{id}"
+@page "/txt2img/{id}"
 @using BlazorWebApp.Events
 @using BlazorWebApp.Components.Shared.Generation
 @using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
-@inject ManagerService M
+@inject OrchestratorService M
 @inject IStateService State
 @inject IEventService Events
 @inject WorkflowService WorkflowService
