@@ -8,18 +8,18 @@ namespace BlazorWebApp.Services
     public class ComfyUIWebsocketService : IHostedService
     {
         private readonly ILogger<ComfyUIWebsocketService> _logger;
-        private readonly ManagerService _m;
+        private readonly IBackendService _backend;
         private readonly ImageService _imageService;
-        private readonly ProgressService _progressService;
+        private readonly IProgressService _progressService;
         private readonly ComfyUIEventBus _bus;
         private ClientWebSocket? _currentWs;
         private readonly object _lock = new();
         private Guid _promptId;
 
-        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, ManagerService m, ImageService imageService, ProgressService progressService, ComfyUIEventBus bus)
+        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, IBackendService backend, ImageService imageService, IProgressService progressService, ComfyUIEventBus bus)
         {
             _logger = logger;
-            _m = m;
+            _backend = backend;
             _imageService = imageService;
             _progressService = progressService;
             _bus = bus;
@@ -38,9 +38,9 @@ namespace BlazorWebApp.Services
                 using var ws = new ClientWebSocket();
                 try
                 {
-                    _m.ComfyWSClientId = Guid.NewGuid().ToString();
+                    _backend.ComfyWSClientId = Guid.NewGuid().ToString();
                     await ws.ConnectAsync(
-                        new Uri($"ws://localhost:8188/ws?clientId={_m.ComfyWSClientId}"),
+                        new Uri($"ws://localhost:8188/ws?clientId={_backend.ComfyWSClientId}"),
                         cancellationToken);
 
                     lock (_lock)
@@ -48,7 +48,7 @@ namespace BlazorWebApp.Services
                         _currentWs = ws;
                     }
 
-                    _logger.LogInformation($"WS connected | ClientID: {_m.ComfyWSClientId}");
+                    _logger.LogInformation($"WS connected | ClientID: {_backend.ComfyWSClientId}");
                     await ListenLoop(ws, cancellationToken);
                 }
                 catch (Exception ex)
@@ -97,7 +97,7 @@ namespace BlazorWebApp.Services
                         if (type == "execution_start")
                         {
                             _imageService.Progress = new() { State = new() { Job = "Execution Started" } };
-                            _m.InvokeProgressChanged();
+                            _progressService.NotifyProgressChanged();
                         }
 
                         if (type == "progress")
@@ -126,7 +126,7 @@ namespace BlazorWebApp.Services
                             _imageService.Progress.Value = (float)value / max;
                             _imageService.Progress.State.Job = $"Running node: {node}";
                             _progressService.Update(id, value);
-                            _m.InvokeProgressChanged();
+                            _progressService.NotifyProgressChanged();
                         }
 
                         if (type == "execution_success" || type == "execution_error" || type == "execution_interrupted")
@@ -152,7 +152,7 @@ namespace BlazorWebApp.Services
                             }
                             _progressService.Remove(_promptId);
                             _imageService.Progress = new();
-                            _m.InvokeProgressChanged();
+                            _progressService.NotifyProgressChanged();
                         }
                     }
                     catch (Exception ex)

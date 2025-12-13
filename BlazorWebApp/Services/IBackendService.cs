@@ -15,6 +15,12 @@ namespace BlazorWebApp.Services
         /// </summary>
         OutputPathsOptions OutputPaths { get; }
         
+        /// <summary>
+        /// WebSocket client ID for ComfyUI connection.
+        /// Generated on each connection attempt.
+        /// </summary>
+        string ComfyWSClientId { get; set; }
+        
         // Backend resources
         List<Models.Sampler> Samplers { get; }
         List<Scheduler> Schedulers { get; }

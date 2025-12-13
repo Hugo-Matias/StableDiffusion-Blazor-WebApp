@@ -1,14 +1,14 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 13 - Complete Interface Migration ? **COMPLETE**
+**Current Phase:** Phase 14 - Orchestration Property Relocation ? **COMPLETE**
 **Last Updated:** 2025-01-15
 
 ---
 
 ## Problem Statement
 
-The `ManagerService` was originally a "God Object" (~1600+ lines) handling too many responsibilities. Through systematic refactoring, it has been reduced to a **~280-line orchestrator** that coordinates between specialized services with **only 3 properties** remaining.
+The `ManagerService` was originally a "God Object" (~1600+ lines) handling too many responsibilities. Through systematic refactoring, it has been reduced to a **~240-line orchestrator** that coordinates between specialized services with **zero orchestration properties** remaining.
 
 ### Current Architecture
 
@@ -17,7 +17,7 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?                    ManagerService (Orchestrator)                     ?
 ?  - Coordinates between specialized services                         ?
 ?  - Workflow management and asset coordination                       ?
-?  - Only 3 properties: ComfyWSClientId, CurrentProgress, IsConverging?
+?  - NO state properties (moved to specialized services)              ?
 ????????????????????????????????????????????????????????????????????????
                                     ?
         ?????????????????????????????????????????????????????????
@@ -35,8 +35,8 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ? SettingsService ?   ? BackendService  ?   ? GalleryService  ?
 ?  - App settings ?   ?  - ComfyUI API  ?   ?  - Folders      ?
 ?  - JSON persist ?   ?  - Health check ?   ?  - Projects     ?
-?  - Validation   ?   ?  - Samplers     ?   ?  - Selection    ?
-?                 ?   ?  - OutputPaths ??   ?                 ?
+?  - Validation   ?   ?  - OutputPaths  ?   ?  - Selection    ?
+?                 ?   ?  - WSClientId ??   ?                 ?
 ???????????????????   ???????????????????   ???????????????????
         ?                           ?                           ?
         ?                           ?                           ?
@@ -44,16 +44,16 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?  EventService   ?   ?  ImageService   ?   ? SessionService  ?
 ?  - Pub/sub      ?   ?  - Generation   ?   ?  - Canvas state ?
 ?  - Typed events ?   ?  - Saving       ?   ?  - Editor state ?
-?  - Mediator     ?   ?  - Progress     ?   ?  - Videos       ?
+?  - Mediator     ?   ?  - PathPatterns??   ?  - Videos       ?
 ???????????????????   ???????????????????   ???????????????????
-        ?
-        ?
-???????????????????
-? CivitaiService  ?
-?  - API client   ?
-?  - Downloads    ?
-?  - No M deps    ?
-???????????????????
+        ?                           ?
+        ?                           ?
+???????????????????   ???????????????????
+? CivitaiService  ?   ? ProgressService ?
+?  - API client   ?   ?  - IsConverging??
+?  - Downloads    ?   ?  - Progress ?  ?
+?  - No M deps    ?   ?  - Notify       ?
+???????????????????   ???????????????????
 ```
 
 ---
@@ -87,44 +87,124 @@ Removed CivitaiModels/Images/Creators from ManagerService, decoupled CivitaiServ
 Removed duplicate `Options` facade and `ResourceTypeDirectories` property from ManagerService.
 
 ### ? Phase 12.5: Options to Configuration Migration (Complete)
-**Completed:** 2025-01-15
-
 Removed the legacy `Options` class and migrated to `IConfiguration` for output paths.
 
 ### ? Phase 13: Complete Interface Migration (Complete)
+Migrated all components from concrete service injection to interface injection.
+
+### ? Phase 14: Orchestration Property Relocation (Complete)
 **Completed:** 2025-01-15
 
-Migrated all components from concrete service injection to interface injection.
+#### Objective
+Move remaining orchestration properties out of ManagerService to their appropriate specialized services.
+
+#### Analysis
+
+| Property | Original Location | New Location | Reason |
+|----------|-------------------|--------------|--------|
+| `ComfyWSClientId` | ManagerService | IBackendService | WebSocket is backend-specific |
+| `CurrentProgress` | ManagerService | IProgressService | Progress state belongs in progress service |
+| `IsConverging` | ManagerService | IProgressService | Generation state is progress-related |
+| `InvokeProgressChanged()` | ManagerService | IProgressService.NotifyProgressChanged() | Event publishing for progress |
+
+#### Changes Made
+
+**1. Updated `IBackendService`** ?
+- Added `ComfyWSClientId` property
+
+**2. Updated `BackendService`** ?
+- Implemented `ComfyWSClientId` property
+
+**3. Updated `IProgressService`** ?
+- Added `CurrentProgress` property
+- Added `IsConverging` property
+- Added `NotifyProgressChanged()` method
+
+**4. Updated `ProgressService`** ?
+- Implemented `CurrentProgress` with event publishing
+- Implemented `IsConverging` with event publishing
+- Implemented `NotifyProgressChanged()` method
+- Added `IEventService` dependency
+
+**5. Updated `ComfyUIWebsocketService`** ?
+- Replaced `ManagerService` with `IBackendService` and `IProgressService`
+- Uses `_backend.ComfyWSClientId` instead of `_m.ComfyWSClientId`
+- Uses `_progressService.NotifyProgressChanged()` instead of `_m.InvokeProgressChanged()`
+
+**6. Updated `ImageService`** ?
+- Removed `ManagerService` dependency
+- Uses `IBackendService` for backend operations
+- Uses `IProgressService.IsConverging` for generation state
+- Moved `GetCurrentSaveFolder()` and `ConvertPathPattern()` methods into ImageService
+- Uses `IModelService` for `GetCurrentModel()`
+
+**7. Updated `RouterService`** ?
+- Replaced `ManagerService` with `IBackendService` and `IModelService`
+- Uses `_backend.ComfyWSClientId` for WebSocket client ID
+- Uses `_models.GetCurrentModel()` and `_models.GetCurrentVae()` directly
+
+**8. Updated Components** ?
+- `GeneratedImageTabs.razor`: Uses `IProgressService.IsConverging`
+- `GeneratedVideoTabs.razor`: Uses `IProgressService.IsConverging`
+
+**9. Updated `ManagerService`** ?
+- Removed `ComfyWSClientId` property
+- Removed `CurrentProgress` property
+- Removed `IsConverging` property
+- Removed `InvokeProgressChanged()` method
+- Reduced to ~240 lines
+
+#### Phase 14 Metrics
+
+| Metric | Before Phase 14 | After Phase 14 | Change |
+|--------|-----------------|----------------|--------|
+| ManagerService lines | ~280 | ~240 | -14% |
+| ManagerService properties | 3 | 0 | -100% ? |
+| Services depending on ManagerService | 4 | 2 | -50% |
+| Build | ? | ? | - |
+| Tests | 150 | 150 | - |
+
+#### Breaking Changes
+- `ComfyWSClientId` moved from `ManagerService` to `IBackendService`
+- `CurrentProgress` moved from `ManagerService` to `IProgressService`
+- `IsConverging` moved from `ManagerService` to `IProgressService`
+- `InvokeProgressChanged()` replaced with `IProgressService.NotifyProgressChanged()`
 
 ---
 
 ## Future Phases
 
-### Phase 14: ManagerService Role Evaluation (Proposed)
+### Phase 15: ManagerService Final Evaluation (Proposed)
 
-**Objective:** Evaluate whether ManagerService is still needed or can be eliminated.
+**Objective:** Determine if ManagerService is still needed or can be fully eliminated.
 
-#### Analysis Questions
-1. Can `ComfyWSClientId` move to a websocket service?
-2. Can `CurrentProgress` and `IsConverging` move to `IProgressService`?
-3. Are orchestration methods still needed or can components use services directly?
+#### Current ManagerService Responsibilities
+1. **Workflow Management** - `GetCurrentWorkflow()`, `SetCurrentWorkflow()`, etc.
+2. **Workflow Assets** - `GetWorkflowAsset()`, `SetWorkflowAsset()`, etc.
+3. **Model Management** - Delegating to IModelService with state save
+4. **Gallery Management** - Delegating to IGalleryService with state coordination
+5. **Session Management** - Delegating to ISessionService
+6. **State/Settings** - `LoadState()`, `SaveState()`, `LoadSettings()`
+7. **Parameter Loading** - `LoadImageInfoParameters()`, `SetGenerationParameter()`
+8. **Prompt Parsing** - `ParseAndCleanCopiedPrompt()`, `SetLoras()`
 
-#### Current ManagerService Methods (to evaluate)
-- **Still Needed:** Workflow management, parameter loading, path pattern conversion
-- **Consider Moving:** `CurrentProgress` ? IProgressService, `IsConverging` ? IProgressService
+#### Options
+1. **Keep as Thin Orchestrator** - Legitimate pattern for coordinating multi-service operations
+2. **Extract Workflow Coordination** - Move to new `IWorkflowCoordinatorService`
+3. **Move Methods to Existing Services** - Distribute to IStateService, IWorkflowService, etc.
 
 ---
 
 ## Key Metrics Summary
 
-| Metric | Phase 1 Start | Phase 9.5 End | Phase 11 End | Phase 12 End | Phase 12.5 End | Phase 13 End |
-|--------|---------------|---------------|--------------|--------------|----------------|--------------|
-| ManagerService lines | ~1600 | ~450 | ~350 | ~320 | ~280 | ~280 |
-| Facade properties | 27 | 0 | 0 | 0 | 0 | 0 |
-| Orchestration properties | - | 14 | 5 | 3 | 3 | 3 |
+| Metric | Phase 1 Start | Phase 9.5 End | Phase 11 End | Phase 12 End | Phase 13 End | Phase 14 End |
+|--------|---------------|---------------|--------------|--------------|--------------|--------------|
+| ManagerService lines | ~1600 | ~450 | ~350 | ~320 | ~280 | ~240 |
+| Facade properties | 27 | 0 | 0 | 0 | 0 | 0 ? |
+| Orchestration properties | - | 14 | 5 | 3 | 3 | 0 ? |
 | Services extracted | 0 | 11 | 11 | 11 | 11 | 11 |
 | Services with interfaces | 0 | 11 | 11 | 11 | 11 | 11 |
-| Interface-only DI | - | 9 | 9 | 9 | 9 | 11 |
+| Interface-only DI | - | 9 | 9 | 9 | 11 | 11 |
 | Unit tests | 0 | 150 | 150 | 150 | 150 | 150 |
 
 ---
@@ -162,8 +242,8 @@ builder.Services.AddSingleton<IGalleryService, GalleryService>();
 builder.Services.AddSingleton<ISessionService, SessionService>();
 builder.Services.AddSingleton<IRouterService, RouterService>();
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
-builder.Services.AddSingleton<IDatabaseService, DatabaseService>();      // NEW in Phase 13
-builder.Services.AddSingleton<IProgressService, ProgressService>();      // NEW in Phase 13
+builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
+builder.Services.AddSingleton<IProgressService, ProgressService>();
 builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 ```
 
@@ -192,6 +272,7 @@ builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<Comfy
 | Phase 12 | Options/ResourceTypeDirectories removed | 150 |
 | Phase 12.5 | Options migrated to IConfiguration | 150 |
 | Phase 13 | Complete interface migration | 150 |
+| Phase 14 | Orchestration properties relocated | 150 |
 
 ---
 

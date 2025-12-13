@@ -13,6 +13,16 @@ namespace BlazorWebApp.Services
         List<BaseProgress> Progresses { get; set; }
 
         /// <summary>
+        /// Current generation progress percentage (0-100).
+        /// </summary>
+        int CurrentProgress { get; set; }
+        
+        /// <summary>
+        /// Indicates whether generation is currently in progress (converging).
+        /// </summary>
+        bool IsConverging { get; set; }
+
+        /// <summary>
         /// Event fired when progress is updated, added, or removed.
         /// </summary>
         event Action OnUpdate;
@@ -35,5 +45,10 @@ namespace BlazorWebApp.Services
         /// </summary>
         /// <param name="id">The unique identifier of the progress tracker to remove.</param>
         void Remove(Guid id);
+        
+        /// <summary>
+        /// Notifies subscribers that progress has changed.
+        /// </summary>
+        void NotifyProgressChanged();
     }
 }

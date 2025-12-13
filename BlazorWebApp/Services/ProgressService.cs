@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Events;
+using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
 {
@@ -8,6 +9,9 @@ namespace BlazorWebApp.Services
     public class ProgressService : IProgressService
     {
         private readonly ILogger<ProgressService> _logger;
+        private readonly IEventService _events;
+        private int _currentProgress;
+        private bool _isConverging;
 
         /// <summary>
         /// Collection of active progress trackers.
@@ -15,13 +19,40 @@ namespace BlazorWebApp.Services
         public List<BaseProgress> Progresses { get; set; } = new();
 
         /// <summary>
+        /// Current generation progress percentage (0-100).
+        /// </summary>
+        public int CurrentProgress
+        {
+            get => _currentProgress;
+            set
+            {
+                _currentProgress = value;
+                _events.Publish(new ProgressChangedEventArgs(value));
+            }
+        }
+
+        /// <summary>
+        /// Indicates whether generation is currently in progress (converging).
+        /// </summary>
+        public bool IsConverging
+        {
+            get => _isConverging;
+            set
+            {
+                _isConverging = value;
+                _events.Publish(new ConvergingChangedEventArgs(_isConverging));
+            }
+        }
+
+        /// <summary>
         /// Event fired when progress is updated, added, or removed.
         /// </summary>
         public event Action OnUpdate;
 
-        public ProgressService(ILogger<ProgressService> logger)
+        public ProgressService(ILogger<ProgressService> logger, IEventService events)
         {
             _logger = logger;
+            _events = events;
         }
 
         /// <summary>
@@ -74,6 +105,11 @@ namespace BlazorWebApp.Services
             }
             Refresh();
         }
+
+        /// <summary>
+        /// Notifies subscribers that progress has changed.
+        /// </summary>
+        public void NotifyProgressChanged() => _events.Publish(new ProgressChangedEventArgs(_currentProgress));
 
         /// <summary>
         /// Notifies subscribers that progress has been updated.

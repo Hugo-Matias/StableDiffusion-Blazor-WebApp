@@ -5,7 +5,8 @@
 @inject IGalleryService Gallery
 @inject IEventService Events
 @inject IImageService ImageService
-@inject DatabaseService DB
+@inject IProgressService Progress
+@inject IDatabaseService DB
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @implements IDisposable
@@ -38,7 +39,7 @@
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-spinner">
         <div class="queue-panel">
-            @if (M.IsConverging)
+            @if (Progress.IsConverging)
             {
                 <MudStack AlignItems="AlignItems.Center" Class="pa-4" Style="width: 100%;">
                     @* Preview Image from KSampler *@

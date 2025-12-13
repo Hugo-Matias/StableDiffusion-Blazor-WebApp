@@ -7,6 +7,7 @@
 @inject IEventService Events
 @inject ManagerService M
 @inject IImageService ImageService
+@inject IProgressService Progress
 @inject IDatabaseService DB
 @inject IOService IO
 @inject IDialogService DialogService
@@ -114,7 +115,7 @@
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-spinner">
         <div class="queue-panel">
-            @if (M.IsConverging)
+            @if (Progress.IsConverging)
             {
                 <MudStack AlignItems="AlignItems.Center" Class="pa-4" Style="width: 100%;">
                     @* Preview Image from KSampler *@

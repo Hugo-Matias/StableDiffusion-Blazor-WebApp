@@ -11,17 +11,17 @@ namespace BlazorWebApp.Services
     public class RouterService : IRouterService
     {
         private readonly IComfyUIService _capi;
-        private readonly ManagerService _m;
         private readonly IBackendService _backend;
         private readonly IStateService _state;
+        private readonly IModelService _models;
         private readonly ILogger<RouterService> _logger;
 
-        public RouterService(IComfyUIService capi, ManagerService m, IBackendService backend, IStateService state, ILogger<RouterService> logger)
+        public RouterService(IComfyUIService capi, IBackendService backend, IStateService state, IModelService models, ILogger<RouterService> logger)
         {
             _capi = capi;
-            _m = m;
             _backend = backend;
             _state = state;
+            _models = models;
             _logger = logger;
         }
 
@@ -52,11 +52,11 @@ namespace BlazorWebApp.Services
             }
 
             _logger.LogInformation("Routing Txt2Img request to ComfyUI backend");
-            var model = _m.GetCurrentModel(ModeType.Txt2Img);
-            var vae = _m.GetCurrentVae(ModeType.Txt2Img);
+            var model = _models.GetCurrentModel(ModeType.Txt2Img);
+            var vae = _models.GetCurrentVae(ModeType.Txt2Img);
             var workflow = parameters.Comfy.Workflow ?? _state.ParametersTxt2Img.Comfy.Workflow;
             _logger.LogDebug("Using model: {Model}, VAE: {Vae}, Workflow: {WorkflowId}", model, vae, workflow?.Id);
-            return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _m.ComfyWSClientId, workflow);
+            return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _backend.ComfyWSClientId, workflow);
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace BlazorWebApp.Services
             }
 
             _logger.LogDebug("Using workflow: {WorkflowId}", workflow.Id);
-            return await _capi.PostImg2Img(parameters.ToComfyUI(), _m.ComfyWSClientId, workflow);
+            return await _capi.PostImg2Img(parameters.ToComfyUI(), _backend.ComfyWSClientId, workflow);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace BlazorWebApp.Services
             }
 
             _logger.LogDebug("Using workflow: {WorkflowId}", workflow.Id);
-            return await _capi.PostImg2Vid(parameters.ToComfyUI(), _m.ComfyWSClientId, workflow);
+            return await _capi.PostImg2Vid(parameters.ToComfyUI(), _backend.ComfyWSClientId, workflow);
         }
     }
 }

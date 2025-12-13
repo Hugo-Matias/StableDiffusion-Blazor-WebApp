@@ -12,7 +12,7 @@ namespace BlazorWebApp.Services
 
     /// <summary>
     /// Orchestrates generation workflows, coordinates between specialized services,
-    /// and manages shared generation state.
+    /// and manages complex multi-service operations.
     /// </summary>
     public class ManagerService
     {
@@ -29,34 +29,6 @@ namespace BlazorWebApp.Services
         private readonly IModelService _models;
         private readonly IGalleryService _gallery;
         private readonly ISessionService _session;
-        private int _currentProgress;
-        private bool _isConverging;
-
-        #region Orchestration Properties
-        
-        public string ComfyWSClientId { get; set; }
-        
-        public int CurrentProgress
-        {
-            get => _currentProgress;
-            set
-            {
-                _currentProgress = value;
-                _events.Publish(new ProgressChangedEventArgs(value));
-            }
-        }
-        
-        public bool IsConverging
-        {
-            get => _isConverging;
-            set
-            {
-                _isConverging = value;
-                _events.Publish(new ConvergingChangedEventArgs(_isConverging));
-            }
-        }
-        
-        #endregion
 
         public ManagerService(
             IDatabaseService db,
@@ -93,7 +65,6 @@ namespace BlazorWebApp.Services
 
         #region Event Publishing
         
-        public void InvokeProgressChanged() => _events.Publish(new ProgressChangedEventArgs(_currentProgress));
         public void InvokeParametersChanged(bool isImg2Img) => _events.Publish(new ParametersChangedEventArgs(isImg2Img ? "Img2Img" : "Txt2Img"));
         public void InvokeSessionVideosChanged() => _events.Publish(new SessionVideosChangedEventArgs());
         
@@ -444,73 +415,6 @@ namespace BlazorWebApp.Services
             }
 
             _events.Publish(new ParametersChangedEventArgs(isImg2Img ? "Img2Img" : "Txt2Img"));
-        }
-        
-        #endregion
-
-        #region Path Management
-        
-        public string GetCurrentSaveFolder(Outdir? outdir)
-        {
-            if (outdir == null) return string.Empty;
-            
-            var basePath = _backend.GetOutputPath(outdir.Value);
-            if (string.IsNullOrEmpty(basePath)) return string.Empty;
-            
-            // For Extras, don't add directory pattern
-            if (outdir == Outdir.Extras) return basePath;
-
-            var dirPattern = _backend.OutputPaths.DirectoryPattern;
-            if (!string.IsNullOrWhiteSpace(dirPattern))
-            {
-                var subPath = ConvertPathPattern(dirPattern, Parser.ModeTypeFromOutdir(outdir.Value));
-                basePath = Path.Combine(basePath, subPath).Replace('/', Path.DirectorySeparatorChar);
-            }
-
-            return basePath;
-        }
-        
-        public string ConvertPathPattern(string pattern, ModeType mode)
-        {
-            if (string.IsNullOrWhiteSpace(pattern)) return string.Empty;
-            var rg = new Regex(@"(\[.+?\])");
-            return rg.Replace(pattern, t => ConvertPathTag(t.Value, mode));
-        }
-        
-        private string ConvertPathTag(string tag, ModeType mode)
-        {
-            if (tag == "[model_name]")
-            {
-                var modelAsPath = GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
-                return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
-            }
-
-            return tag switch
-            {
-                "[sampler]" => mode switch
-                {
-                    ModeType.Txt2Img => _state.ParametersTxt2Img?.SamplerName ?? "euler",
-                    ModeType.Img2Img => _state.ParametersImg2Img?.SamplerIndex ?? "euler",
-                    ModeType.Img2Vid => _state.ParametersImg2Vid?.SamplerName ?? "euler",
-                    _ => "euler"
-                },
-                "[seed]" => _state.State.Generation.Seed.ToString(),
-                "[steps]" => mode switch
-                {
-                    ModeType.Txt2Img => _state.ParametersTxt2Img?.Steps?.ToString() ?? "20",
-                    ModeType.Img2Img => _state.ParametersImg2Img?.Steps?.ToString() ?? "20",
-                    ModeType.Img2Vid => _state.ParametersImg2Vid?.Steps?.ToString() ?? "8",
-                    _ => "20"
-                },
-                "[cfg]" => mode switch
-                {
-                    ModeType.Txt2Img => _state.ParametersTxt2Img?.CfgScale?.ToString() ?? "7",
-                    ModeType.Img2Img => _state.ParametersImg2Img?.CfgScale?.ToString() ?? "7",
-                    ModeType.Img2Vid => _state.ParametersImg2Vid?.CfgScale?.ToString() ?? "1",
-                    _ => "7"
-                },
-                _ => string.Empty
-            };
         }
         
         #endregion

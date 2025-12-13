@@ -14,14 +14,13 @@ namespace BlazorWebApp.Services
     public class ImageService : IImageService
     {
         private readonly IIOService _io;
-        private readonly ManagerService _m;
+        private readonly IBackendService _backend;
         private readonly MagickService _magick;
         private readonly IDatabaseService _db;
         private readonly IProgressService _progress;
         private readonly IRouterService _router;
         private readonly ILogger<ImageService> _logger;
         private readonly IStateService _state;
-        private readonly IBackendService _backend;
         private readonly ISessionService _session;
         private readonly IModelService _models;
         private PeriodicTimer? _timer;
@@ -64,26 +63,24 @@ namespace BlazorWebApp.Services
 
         public ImageService(
             IIOService io, 
-            ManagerService m, 
+            IBackendService backend, 
             MagickService magick, 
             IDatabaseService db, 
             IProgressService progress, 
             IRouterService router, 
             ILogger<ImageService> logger, 
             IStateService state, 
-            IBackendService backend, 
             ISessionService session, 
             IModelService models)
         {
             _io = io;
-            _m = m;
+            _backend = backend;
             _magick = magick;
             _db = db;
             _progress = progress;
             _router = router;
             _logger = logger;
             _state = state;
-            _backend = backend;
             _session = session;
             _models = models;
         }
@@ -97,7 +94,7 @@ namespace BlazorWebApp.Services
         public async Task<ImagesDto> GetImages(ModeType mode)
         {
             _logger.LogInformation("Starting image generation for mode: {Mode}", mode);
-            _m.IsConverging = true;
+            _progress.IsConverging = true;
 
             ImagesDto images = new();
             string scriptName = string.Empty;
@@ -146,7 +143,7 @@ namespace BlazorWebApp.Services
                 _logger.LogError(e, "Error occurred during image generation for mode: {Mode}", mode);
             }
 
-            _m.IsConverging = false;
+            _progress.IsConverging = false;
             _state.State.Generation.IsInterrupted = false;
 
             NotifyStateChanged();
@@ -158,7 +155,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         public async Task<GeneratedVideos> GetVideo()
         {
-            _m.IsConverging = true;
+            _progress.IsConverging = true;
             GeneratedVideos = null;
             _currentModel = _models.GetCurrentModel(ModeType.Img2Vid);
 
@@ -192,7 +189,7 @@ namespace BlazorWebApp.Services
                 await Console.Out.WriteLineAsync($"Video generation error: {e}");
             }
 
-            _m.IsConverging = false;
+            _progress.IsConverging = false;
             _state.State.Generation.IsInterrupted = false;
 
             NotifyStateChanged();
@@ -283,7 +280,7 @@ namespace BlazorWebApp.Services
             var dirPattern = _backend.OutputPaths.DirectoryPattern;
             if (!string.IsNullOrWhiteSpace(dirPattern))
             {
-                var subPath = _m.ConvertPathPattern(dirPattern, ModeType.Img2Vid);
+                var subPath = ConvertPathPattern(dirPattern, ModeType.Img2Vid);
                 basePath = Path.Combine(basePath, subPath).Replace('/', Path.DirectorySeparatorChar);
             }
 
@@ -376,7 +373,7 @@ namespace BlazorWebApp.Services
 
         public async Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName)
         {
-            DirectoryInfo saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(outdirSamples));
+            DirectoryInfo saveDir = _io.CreateDirectory(GetCurrentSaveFolder(outdirSamples));
             ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
 
             var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
@@ -402,6 +399,75 @@ namespace BlazorWebApp.Services
             }
 
             return savedImages;
+        }
+
+        /// <summary>
+        /// Gets the save folder for the specified output type.
+        /// </summary>
+        public string GetCurrentSaveFolder(Outdir? outdir)
+        {
+            if (outdir == null) return string.Empty;
+            
+            var basePath = _backend.GetOutputPath(outdir.Value);
+            if (string.IsNullOrEmpty(basePath)) return string.Empty;
+            
+            // For Extras, don't add directory pattern
+            if (outdir == Outdir.Extras) return basePath;
+
+            var dirPattern = _backend.OutputPaths.DirectoryPattern;
+            if (!string.IsNullOrWhiteSpace(dirPattern))
+            {
+                var subPath = ConvertPathPattern(dirPattern, Parser.ModeTypeFromOutdir(outdir.Value));
+                basePath = Path.Combine(basePath, subPath).Replace('/', Path.DirectorySeparatorChar);
+            }
+
+            return basePath;
+        }
+
+        /// <summary>
+        /// Converts a path pattern with placeholders to actual values.
+        /// </summary>
+        public string ConvertPathPattern(string pattern, ModeType mode)
+        {
+            if (string.IsNullOrWhiteSpace(pattern)) return string.Empty;
+            var rg = new Regex(@"(\[.+?\])");
+            return rg.Replace(pattern, t => ConvertPathTag(t.Value, mode));
+        }
+
+        private string ConvertPathTag(string tag, ModeType mode)
+        {
+            if (tag == "[model_name]")
+            {
+                var modelAsPath = _models.GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
+                return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
+            }
+
+            return tag switch
+            {
+                "[sampler]" => mode switch
+                {
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.SamplerName ?? "euler",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.SamplerIndex ?? "euler",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.SamplerName ?? "euler",
+                    _ => "euler"
+                },
+                "[seed]" => _state.State.Generation.Seed.ToString(),
+                "[steps]" => mode switch
+                {
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.Steps?.ToString() ?? "8",
+                    _ => "20"
+                },
+                "[cfg]" => mode switch
+                {
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.CfgScale?.ToString() ?? "1",
+                    _ => "7"
+                },
+                _ => string.Empty
+            };
         }
 
         private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info)
@@ -460,7 +526,7 @@ namespace BlazorWebApp.Services
 
         private string GetImagePath(string path, int fileIndex, ModeType mode)
         {
-            string infoname = _m.ConvertPathPattern(_backend.OutputPaths.FilenamePattern, mode);
+            string infoname = ConvertPathPattern(_backend.OutputPaths.FilenamePattern, mode);
             string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
             return Path.Combine(path, filename);
         }
