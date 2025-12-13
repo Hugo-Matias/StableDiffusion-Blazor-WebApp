@@ -15,14 +15,14 @@ namespace BlazorWebApp.Tests.Services
     /// </summary>
     public class GalleryServiceTests
     {
-        private readonly Mock<DatabaseService> _mockDb;
+        private readonly Mock<IDatabaseService> _mockDb;
         private readonly Mock<IStateService> _mockState;
         private readonly Mock<IEventService> _mockEvents;
         private readonly GalleryService _service;
 
         public GalleryServiceTests()
         {
-            _mockDb = new Mock<DatabaseService>(null, null, null, null, null);
+            _mockDb = new Mock<IDatabaseService>();
             _mockState = new Mock<IStateService>();
             _mockEvents = new Mock<IEventService>();
 
