@@ -1,4 +1,10 @@
 @using BlazorWebApp.Models
+@using BlazorWebApp.Events
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IGalleryService Gallery
+@inject ISessionService Session
+@inject IEventService Events
 @inject ManagerService M
 @inject DatabaseService DB
 @inject IOService IO
@@ -48,7 +54,7 @@
     <MudTabPanel Icon="fa-solid fa-film">
         <div class="video-gallery-container">
             @* Toolbar *@
-            @if (M.SessionGeneratedVideos.Videos.Count > 0)
+            @if (Session.SessionGeneratedVideos.Videos.Count > 0)
             {
                 <div class="gallery-toolbar">
                     <MudButton OnClick="() => OpenSessionViewer(0)" 
@@ -57,9 +63,9 @@
                                Size="Size.Small">
                         Fullscreen
                     </MudButton>
-                    @if (M.SelectedImageIds.Count > 0)
+                    @if (Gallery.SelectedImageIds.Count > 0)
                     {
-                        <MudButton OnClick="M.ClearSelectedImages" 
+                        <MudButton OnClick="Gallery.ClearSelectedImages" 
                                    StartIcon="fa-regular fa-square" 
                                    Color="Color.Warning"
                                    Size="Size.Small">Clear</MudButton>
@@ -68,20 +74,20 @@
                                StartIcon="fa-solid fa-trash-can" 
                                Color="Color.Error"
                                Size="Size.Small">
-                        Clear All (@M.SessionGeneratedVideos.Videos.Count)
+                        Clear All (@Session.SessionGeneratedVideos.Videos.Count)
                     </MudButton>
                 </div>
             }
             
             @* Video Grid *@
             <div class="video-gallery">
-                @if (M.SessionGeneratedVideos.Videos.Count > 0)
+                @if (Session.SessionGeneratedVideos.Videos.Count > 0)
                 {
                     <MudGrid Spacing="2" Justify="Justify.Center">
-                        @for (int i = 0; i < M.SessionGeneratedVideos.Videos.Count; i++)
+                        @for (int i = 0; i < Session.SessionGeneratedVideos.Videos.Count; i++)
                         {
                             var index = i;
-                            var video = M.SessionGeneratedVideos.Videos[i];
+                            var video = Session.SessionGeneratedVideos.Videos[i];
                             <MudItem xs="12" sm="6" md="4" lg="3">
                                 <VideoCard Video="@video"
                                            Index="@index"
@@ -182,9 +188,9 @@
                                StartIcon="fa-solid fa-trash-can" 
                                Color="Color.Error"
                                Size="Size.Small">
-                        Delete (@M.SelectedImageIds.Count)
+                        Delete (@Gallery.SelectedImageIds.Count)
                     </MudButton>
-                    <MudButton OnClick="M.ClearSelectedImages" 
+                    <MudButton OnClick="Gallery.ClearSelectedImages" 
                                StartIcon="fa-regular fa-square" 
                                Color="Color.Warning"
                                Size="Size.Small">
@@ -248,17 +254,17 @@
     <MudTabPanel Icon="fa-solid fa-shuffle">
         <MudStack>
             <MudText Typo="Typo.caption">Source:</MudText>
-            <MudRadioGroup T="string" @bind-Value="M.State.Generation.RandomImagesSource">
+            <MudRadioGroup T="string" @bind-Value="State.State.Generation.RandomImagesSource">
                 <MudRadio T="string" Value="@("generated")" Color="Color.Primary">Generated</MudRadio>
                 <MudRadio T="string" Value="@("resource")" Color="Color.Secondary">Resource</MudRadio>
             </MudRadioGroup>
             <MudStack Row=true>
-                <MudSlider @bind-Value="M.State.Generation.RandomImagesAmount" 
-                           Min="M.Settings.Generation.RandomImages.Min" 
-                           Max="M.Settings.Generation.RandomImages.Max" 
-                           Step="M.Settings.Generation.RandomImages.Step" 
+                <MudSlider @bind-Value="State.State.Generation.RandomImagesAmount" 
+                           Min="Settings.Settings.Generation.RandomImages.Min" 
+                           Max="Settings.Settings.Generation.RandomImages.Max" 
+                           Step="Settings.Settings.Generation.RandomImages.Step" 
                            ValueLabel=true>
-                    <small>Amount: </small>@M.State.Generation.RandomImagesAmount
+                    <small>Amount: </small>@State.State.Generation.RandomImagesAmount
                 </MudSlider>
                 <MudButton OnClick="LoadRandomImages" Color="Color.Success">Random</MudButton>
             </MudStack>
@@ -325,7 +331,7 @@
 
 @* Session Video Viewer - uses VideoViewer for session-only videos (not in database) *@
 <VideoViewer @bind-IsVisible="_showSessionViewer"
-             Videos="M.SessionGeneratedVideos.Videos"
+             Videos="Session.SessionGeneratedVideos.Videos"
              StartIndex="_sessionViewerIndex"
              OnVideoChanged="HandleVideoChanged"
              OnClosed="StateHasChanged" />
@@ -336,7 +342,7 @@
              StartIndex="_selectedViewerIndex"
              CurrentPage="_selectedPage"
              PageCount="@(_selectedImages?.PageCount ?? 1)"
-             TotalCount="@(M.SelectedImageIds.Count)"
+             TotalCount="@(Gallery.SelectedImageIds.Count)"
              OnPageChange="HandleSelectedViewerPageChange"
              OnAssetChanged="HandleAssetChanged"
              OnClosed="StateHasChanged" />
@@ -377,14 +383,15 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Events.Subscribe<ConvergingChangedEventArgs>(OnProgressChanged);
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnSelectedImagesChanged);
         M.OnProgressChanged += HandleProgressChanged;
         M.OnSessionVideosChanged += HandleSessionVideosChanged;
-        M.OnSelectedImagesChanged += HandleSelectedImagesChanged;
         
         // Set current video from session if available
-        if (M.SessionGeneratedVideos.Videos.Count > 0)
+        if (Session.SessionGeneratedVideos.Videos.Count > 0)
         {
-            _currentVideo = M.SessionGeneratedVideos.Videos.First();
+            _currentVideo = Session.SessionGeneratedVideos.Videos.First();
         }
         
         // Load selected items
@@ -399,9 +406,9 @@
             foreach (var video in GeneratedVideos.Videos)
             {
                 // Check if video is already in session (avoid duplicates)
-                if (!M.SessionGeneratedVideos.Videos.Any(v => v.FilePath == video.FilePath))
+                if (!Session.SessionGeneratedVideos.Videos.Any(v => v.FilePath == video.FilePath))
                 {
-                    M.SessionGeneratedVideos.Videos.Insert(0, video);
+                    Session.SessionGeneratedVideos.Videos.Insert(0, video);
                 }
             }
             
@@ -411,37 +418,39 @@
         }
         
         // If current video is null but session has videos, select the first
-        if (_currentVideo == null && M.SessionGeneratedVideos.Videos.Count > 0)
+        if (_currentVideo == null && Session.SessionGeneratedVideos.Videos.Count > 0)
         {
-            _currentVideo = M.SessionGeneratedVideos.Videos.First();
+            _currentVideo = Session.SessionGeneratedVideos.Videos.First();
         }
     }
 
-    private void HandleProgressChanged()
-    {
-        InvokeAsync(StateHasChanged);
-    }
+    private void OnProgressChanged(ConvergingChangedEventArgs args) => InvokeAsync(StateHasChanged);
+
+    private void HandleProgressChanged() => InvokeAsync(StateHasChanged);
 
     private void HandleSessionVideosChanged()
     {
         // Ensure current video is still valid
-        if (_currentVideo == null && M.SessionGeneratedVideos.Videos.Count > 0)
+        if (_currentVideo == null && Session.SessionGeneratedVideos.Videos.Count > 0)
         {
-            _currentVideo = M.SessionGeneratedVideos.Videos.First();
+            _currentVideo = Session.SessionGeneratedVideos.Videos.First();
         }
         InvokeAsync(StateHasChanged);
     }
 
-    private async void HandleSelectedImagesChanged()
+    private void OnSelectedImagesChanged(ImageSelectionChangedEventArgs args)
     {
-        await LoadSelectedPage(_selectedPage);
-        await InvokeAsync(StateHasChanged);
+        InvokeAsync(async () =>
+        {
+            await LoadSelectedPage(_selectedPage);
+            StateHasChanged();
+        });
     }
 
     private void HandleVideoChanged(GeneratedVideo video)
     {
         // Sync the video in session list
-        var sessionVideo = M.SessionGeneratedVideos.Videos.FirstOrDefault(v => v.FilePath == video.FilePath);
+        var sessionVideo = Session.SessionGeneratedVideos.Videos.FirstOrDefault(v => v.FilePath == video.FilePath);
         if (sessionVideo != null)
         {
             sessionVideo.Favorite = video.Favorite;
@@ -492,24 +501,24 @@
     private async Task LoadSelectedPage(int page)
     {
         _selectedPage = page;
-        _selectedImages = await DB.GetPagedImages(page, M.SelectedImageIds);
+        _selectedImages = await DB.GetPagedImages(page, Gallery.SelectedImageIds);
     }
 
     private async Task LoadRandomImages()
     {
         _randomPage = 1;
-        switch (M.State.Generation.RandomImagesSource)
+        switch (State.State.Generation.RandomImagesSource)
         {
             case "generated":
-                _randomImages = await DB.GetRandomImages(M.State.Generation.RandomImagesAmount);
+                _randomImages = await DB.GetRandomImages(State.State.Generation.RandomImagesAmount);
                 break;
             case "resource":
-                _randomImages = await DB.GetRandomResourceImages(M.State.Generation.RandomImagesAmount);
+                _randomImages = await DB.GetRandomResourceImages(State.State.Generation.RandomImagesAmount);
                 break;
             default:
                 break;
         }
-        await M.SaveState();
+        await State.SaveState();
         StateHasChanged();
     }
 
@@ -551,12 +560,12 @@
 
     private void RemoveVideo(GeneratedVideo video)
     {
-        M.RemoveSessionVideo(video);
+        Session.RemoveSessionVideo(video);
         
         // Update current video if it was removed
         if (_currentVideo == video)
         {
-            _currentVideo = M.SessionGeneratedVideos.Videos.FirstOrDefault();
+            _currentVideo = Session.SessionGeneratedVideos.Videos.FirstOrDefault();
         }
         
         Snackbar.Add("Video removed from session", Severity.Info);
@@ -566,7 +575,7 @@
     {
         if (video.Id > 0)
         {
-            M.RemoveSelectedImage(video.Id);
+            Gallery.RemoveSelectedImage(video.Id);
         }
     }
 
@@ -582,7 +591,7 @@
         if (!result.Canceled)
         {
             await DB.DeleteImage(image);
-            M.RemoveSelectedImage(image.Id);
+            Gallery.RemoveSelectedImage(image.Id);
             Snackbar.Add("Item deleted successfully.", Severity.Success);
         }
     }
@@ -600,7 +609,7 @@
         
         if (!result.Canceled)
         {
-            M.ClearSessionVideos();
+            Session.ClearSessionVideos();
             _currentVideo = null;
             Snackbar.Add("Session gallery cleared", Severity.Success);
         }
@@ -680,31 +689,32 @@
 
     private async Task ShowDeleteSelectedDialog()
     {
-        if (M.SelectedImageIds.Count == 0) return;
+        if (Gallery.SelectedImageIds.Count == 0) return;
         
         var parameters = new DialogParameters();
         parameters.Add("OkButtonText", "Yes");
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
-        parameters.Add("Content", new MarkupString($@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> {M.SelectedImageIds.Count} selected items?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> {Gallery.SelectedImageIds.Count} selected items?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
             foreach (var image in selectedImages)
             {
                 await DB.DeleteImage(image);
             }
             Snackbar.Add("All selected items deleted successfully.", Severity.Success);
-            M.ClearSelectedImages();
+            Gallery.ClearSelectedImages();
         }
     }
 
     public void Dispose()
     {
+        Events.Unsubscribe<ConvergingChangedEventArgs>(OnProgressChanged);
+        Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnSelectedImagesChanged);
         M.OnProgressChanged -= HandleProgressChanged;
         M.OnSessionVideosChanged -= HandleSessionVideosChanged;
-        M.OnSelectedImagesChanged -= HandleSelectedImagesChanged;
     }
 }
