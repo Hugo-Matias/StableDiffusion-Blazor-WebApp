@@ -914,7 +914,19 @@ The Styles dropdown in the prompt fields is not populating with available styles
 
 ### Phase 9: Testing & Cleanup
 **Objective:** Comprehensive testing, interface completion, final cleanup, documentation
-**Status:** [??] In Progress - Phase 9A Complete! ?
+**Status:** [??] Paused - Detoured to Service Interface Extraction Initiative
+
+**Detour:** This phase has been expanded into a comprehensive service interface extraction and testing initiative. See **[SERVICE_INTERFACE_EXTRACTION_PLAN.md](./SERVICE_INTERFACE_EXTRACTION_PLAN.md)** for the detailed 4-week plan covering:
+- **Phase A:** Critical Service Interfaces (ImageService, WorkflowService, ResourcesService)
+- **Phase B:** External API Interfaces (CivitaiService, DanbooruService, OllamaService)
+- **Phase C:** Utility Service Interfaces (CacheService, ProgressService, etc.)
+- **Phase D:** Integration Testing (DatabaseService, Cross-Service Workflows)
+
+**Rationale:** Before proceeding with Phase 8 (Component Migration), we're establishing a bulletproof service architecture with comprehensive interfaces and tests. This ensures:
+1. All services are fully testable and mockable
+2. Clear API contracts through interfaces
+3. Comprehensive test coverage (target: 420+ tests)
+4. Confidence in service stability for component migration
 
 #### Tasks
 
@@ -941,5 +953,27 @@ The Styles dropdown in the prompt fields is not populating with available styles
   - Image handling and metadata operations
   - Path normalization and resource management
   - Same singleton pattern as IDatabaseService
-- **Build Status:** ? All 105 tests still passing, 0 compilation errors
-- **Next:** Integration tests and enhanced unit tests (Phase 9B)
+- **Build Status:** ? All 166 tests still passing, 0 compilation errors
+- **Next:** Service Interface Extraction Initiative (4 weeks)
+
+**B. Service Interface Extraction Initiative** ? **IN PROGRESS**
+
+See **[SERVICE_INTERFACE_EXTRACTION_PLAN.md](./SERVICE_INTERFACE_EXTRACTION_PLAN.md)** for comprehensive 4-week plan.
+
+**Current Status:**
+- Services with Interfaces: 10/27 (37%)
+- Total Tests: 166/166 passing ?
+- Target Tests: 420+ tests
+- Estimated Duration: 4 weeks
+
+**Weekly Breakdown:**
+- **Week 1:** Phase A - Critical Services (ImageService, WorkflowService, ResourcesService) + 70 tests
+- **Week 2:** Phase B - External APIs (CivitaiService, DanbooruService, OllamaService) + 40 tests
+- **Week 3:** Phase C - Utility Services (CacheService, ProgressService, etc.) + 75 tests
+- **Week 4:** Phase D - Integration Tests (DatabaseService, Cross-Service Workflows) + 70 tests
+
+**After Completion:**
+- Return to Phase 9 with bulletproof service architecture
+- Resume Phase 8 (Component Migration) with confidence
+- Total tests: 420+ passing
+- All services interfaced and fully tested
