@@ -135,7 +135,6 @@ else
 
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
-        M.InvokeRefreshImagesContainer();
 
         if (State.State.Gallery.UseInfiniteScroll)
         {
@@ -153,7 +152,6 @@ else
 
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
-        M.InvokeRefreshImagesContainer();
 
         if (!append && State.State.Gallery.UseInfiniteScroll)
         {
@@ -228,7 +226,6 @@ else
         images = await FetchImagesPage(page);
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
-        M.InvokeRefreshImagesContainer();
     }
 
     private async Task HandleNavigationModeChanged()

@@ -31,7 +31,6 @@ namespace BlazorWebApp.Services
 
         public event Action OnSDModelsChange;
         public event Action OnOptionsChange;
-        public event Action OnStyleChange;
         public event Action OnConverging;
         public event Action OnFolderChange;
         public event Action OnProjectsChange;
@@ -39,22 +38,28 @@ namespace BlazorWebApp.Services
         public event Func<Task> OnProjectChangeTask;
         public event Action OnStateHasChanged;
         public event Action OnProgressChanged;
-        public event Action OnDownloadCompleted;
         public event Action OnComfyUIStateChanged;
-        public event Action OnAppStateChanged;
         public event Action OnTxt2ImgParametersChanged;
         public event Action OnImg2ImgParametersChanged;
         public event Action OnUpscaleParametersChanged;
         public event Action OnImg2VidParametersChanged;
         public event Action OnSelectedImagesChanged;
-        public event Action OnRefreshImagesContainer;
         public event Action OnCanvasImageDataChanged;
-        public event Action OnImg2VidInputImageChanged;
-        public event Action OnImg2ImgInputImageChanged;
-        public event Action OnResourcesStateChanged;
         public event Action OnWorkflowBaseChanged;
-        public event Action? OnImageEditorStateChanged;
         public event Action? OnSamplersSchedulersChanged;
+
+        // Removed unused events (no subscribers found in codebase):
+        // - OnStyleChange
+        // - OnDownloadCompleted
+        // - OnAppStateChanged
+        // - OnRefreshImagesContainer
+        // - OnImg2VidInputImageChanged
+        // - OnImg2ImgInputImageChanged
+        // - OnResourcesStateChanged
+        // - OnImageEditorStateChanged
+        // - OnCurrentWorkflowChanged
+        // - OnCurrentWorkflowChangedAsync
+        // - OnSessionVideosChanged
 
         /// <summary>
         /// Fired when the current workflow changes (via SetCurrentWorkflow).
@@ -66,6 +71,12 @@ namespace BlazorWebApp.Services
         /// Fired when the current workflow changes. Async version for components that need to await.
         /// </summary>
         public event Func<Workflow?, Task>? OnCurrentWorkflowChangedAsync;
+        
+        /// <summary>
+        /// Fired when session videos are added, removed, or cleared.
+        /// Used by GeneratedVideoTabs component.
+        /// </summary>
+        public event Action OnSessionVideosChanged;
 
         // Temporary facade - delegates to StateService (will be removed in Phase 8)
         public AppState State => _state.State;
@@ -145,11 +156,7 @@ namespace BlazorWebApp.Services
         public string Img2VidInputImage
         {
             get => _session.Img2VidInputImage;
-            set
-            {
-                _session.Img2VidInputImage = value;
-                OnImg2VidInputImageChanged?.Invoke();
-            }
+            set => _session.Img2VidInputImage = value;
         }
 
         /// <summary>
@@ -158,11 +165,7 @@ namespace BlazorWebApp.Services
         public string Img2ImgInputImage
         {
             get => _session.Img2ImgInputImage;
-            set
-            {
-                _session.Img2ImgInputImage = value;
-                OnImg2ImgInputImageChanged?.Invoke();
-            }
+            set => _session.Img2ImgInputImage = value;
         }
 
         /// <summary>
@@ -172,11 +175,7 @@ namespace BlazorWebApp.Services
         public ImageEditorState ImageEditorState
         {
             get => _session.ImageEditorState;
-            set
-            {
-                _session.ImageEditorState = value;
-                OnImageEditorStateChanged?.Invoke();
-            }
+            set => _session.ImageEditorState = value;
         }
 
         /// <summary>
@@ -186,7 +185,6 @@ namespace BlazorWebApp.Services
         public void ResetImageEditorState()
         {
             _session.ResetImageEditorState();
-            OnImageEditorStateChanged?.Invoke();
         }
 
         /// <summary>
@@ -197,7 +195,6 @@ namespace BlazorWebApp.Services
         public void SetImg2ImgInputImage(string imageData, bool resetEditorState)
         {
             _session.SetImg2ImgInputImage(imageData, resetEditorState);
-            OnImg2ImgInputImageChanged?.Invoke();
         }
 
         /// <summary>
@@ -205,35 +202,24 @@ namespace BlazorWebApp.Services
         /// </summary>
         public GeneratedVideos SessionGeneratedVideos => _session.SessionGeneratedVideos;
 
-        public event Action OnSessionVideosChanged;
-
         public void AddSessionVideo(GeneratedVideo video)
         {
             _session.AddSessionVideo(video);
-            OnSessionVideosChanged?.Invoke();
         }
 
         public void AddSessionVideos(IEnumerable<GeneratedVideo> videos)
         {
             _session.AddSessionVideos(videos);
-            OnSessionVideosChanged?.Invoke();
         }
 
         public void ClearSessionVideos()
         {
             _session.ClearSessionVideos();
-            OnSessionVideosChanged?.Invoke();
-        }
-
-        public void InvokeSessionVideosChanged()
-        {
-            OnSessionVideosChanged?.Invoke();
         }
 
         public void RemoveSessionVideo(GeneratedVideo video)
         {
             _session.RemoveSessionVideo(video);
-            OnSessionVideosChanged?.Invoke();
         }
 
         public bool ControlNetEnabled { get; set; }
@@ -293,12 +279,6 @@ namespace BlazorWebApp.Services
             GetButtonTags();
         }
 
-        public void InvokeDownloadComplete() => OnDownloadCompleted?.Invoke();
-
-        public void InvokeRefreshImagesContainer() => OnRefreshImagesContainer?.Invoke();
-
-        public void InvokeResourcesStateChanged() => OnResourcesStateChanged?.Invoke();
-
         public void InvokeProgressChanged() => OnProgressChanged?.Invoke();
 
         public void InvokeParametersChanged(bool isImg2Img)
@@ -306,6 +286,8 @@ namespace BlazorWebApp.Services
             if (isImg2Img) OnImg2ImgParametersChanged?.Invoke();
             else OnTxt2ImgParametersChanged?.Invoke();
         }
+        
+        public void InvokeSessionVideosChanged() => OnSessionVideosChanged?.Invoke();
 
         public void InitializeParameters(ModeType[] modes)
         {
@@ -409,7 +391,12 @@ namespace BlazorWebApp.Services
         {
             await _backend.GetOptions();
             Options = _backend.Options;
+            
+            // Fire legacy Action event for backward compatibility (will be removed in Phase 8)
             OnOptionsChange?.Invoke();
+            
+            // Publish typed event for EventService
+            _events.Publish(new OptionsChangedEventArgs());
         }
 
         public async Task GetStyles()
@@ -426,6 +413,9 @@ namespace BlazorWebApp.Services
                 var currentStyles = State.Generation.Styles.ToList();
                 State.Generation.Styles = Styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
             }
+            
+            // Publish typed event for EventService
+            _events.Publish(new StylesChangedEventArgs { ChangeType = "Loaded" });
         }
 
         public async Task GetFolders()
@@ -483,7 +473,12 @@ namespace BlazorWebApp.Services
         {
             await _backend.LoadBackendDependentResources();
             await _models.GetADetailerModels();
+            
+            // Fire legacy Action event for backward compatibility (will be removed in Phase 8)
             OnSamplersSchedulersChanged?.Invoke();
+            
+            // Publish typed event for EventService
+            _events.Publish(new SamplersSchedulersChangedEventArgs());
         }
 
         public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
@@ -562,8 +557,13 @@ namespace BlazorWebApp.Services
             State.Generation.CurrentWorkflowId = workflowId;
             State.Generation.WorkflowBase = workflow.Base;
 
+            // Fire legacy Action events for backward compatibility (will be removed in Phase 8)
             OnWorkflowBaseChanged?.Invoke();
             OnCurrentWorkflowChanged?.Invoke();
+            
+            // Publish typed events for EventService
+            _events.Publish(new StateChangedEventArgs());
+            _events.Publish(new WorkflowChangedEventArgs(workflowId, "Set"));
         }
 
         /// <summary>
@@ -593,14 +593,19 @@ namespace BlazorWebApp.Services
             // Load models for this workflow
             await GetWorkflowModels();
 
+            // Fire legacy Action events for backward compatibility (will be removed in Phase 8)
             OnWorkflowBaseChanged?.Invoke();
             OnCurrentWorkflowChanged?.Invoke();
 
-            // Fire async event
+            // Fire async event (keep for backward compatibility)
             if (OnCurrentWorkflowChangedAsync != null)
             {
                 await OnCurrentWorkflowChangedAsync.Invoke(workflow);
             }
+            
+            // Publish typed events for EventService
+            _events.Publish(new StateChangedEventArgs());
+            _events.Publish(new WorkflowChangedEventArgs(workflowId, "SetAsync"));
 
             await SaveState();
             return assetsInitialized;
@@ -743,8 +748,6 @@ namespace BlazorWebApp.Services
                 if (!exists)
                     parametersLoras.Add(new Lora(l));
             }
-
-            OnAppStateChanged?.Invoke();
         }
 
         /// <summary>
@@ -947,7 +950,13 @@ namespace BlazorWebApp.Services
         {
             var response = await _backend.PostOptions(options);
             Options = _backend.Options;
+            
+            // Fire legacy Action event for backward compatibility (will be removed in Phase 8)
             OnOptionsChange?.Invoke();
+            
+            // Publish typed event for EventService
+            _events.Publish(new OptionsChangedEventArgs());
+            
             return response;
         }
 
@@ -1050,8 +1059,7 @@ namespace BlazorWebApp.Services
             MigrateLegacyModelSettings();
             RefreshWorkflowsFromDisk();
 
-            // Trigger state changed events
-            OnAppStateChanged?.Invoke();
+            // Trigger state changed events (handled by EventService)
             OnTxt2ImgParametersChanged?.Invoke();
             OnImg2ImgParametersChanged?.Invoke();
             OnUpscaleParametersChanged?.Invoke();

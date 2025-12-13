@@ -101,7 +101,6 @@
         }
         await SaveImage(version.Images[0], version.Id, isPreview: true, showSnackbar: false);
         await SaveAllImages(version, false);
-        M.InvokeDownloadComplete();
     }
 
     private async Task SaveAllImages(CivitaiModelVersionDto version, bool showProgress)
