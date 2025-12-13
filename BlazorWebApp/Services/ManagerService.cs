@@ -3,7 +3,6 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using static BlazorWebApp.Data.Enums;
 
@@ -41,9 +40,7 @@ namespace BlazorWebApp.Services
         public ImagesDto GeneratedImageEntities { get; set; }
         public string? GridImage { get; set; }
         public InferenceProgress Progress { get; set; }
-        public List<PromptStyle> Styles { get; set; }
         public UpscaledImageDto GeneratedUpscaleImage { get; set; }
-        public PromptButton ButtonTags { get; set; }
         public CivitaiModelsDto CivitaiModels { get; set; }
         public CivitaiImagesDto CivitaiImages { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
@@ -105,8 +102,6 @@ namespace BlazorWebApp.Services
             Progress = new();
             _db.PageSize = _state.State.Gallery.PageSize;
             _state.State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
-
-            GetButtonTags();
         }
 
         #region Event Publishing
@@ -389,27 +384,6 @@ namespace BlazorWebApp.Services
         #endregion
 
         #region Styles & Prompts
-        
-        public async Task GetStyles()
-        {
-            Styles = new();
-            var promptResources = await _db.GetPrompts();
-            foreach (var prompt in promptResources)
-                Styles.Add(new(prompt));
-            
-            if (_state.State.Generation.Styles == null) 
-                _state.State.Generation.Styles = new List<PromptStyle>();
-            else
-            {
-                var currentStyles = _state.State.Generation.Styles.ToList();
-                _state.State.Generation.Styles = Styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
-            }
-            _events.Publish(new StylesChangedEventArgs { ChangeType = "Loaded" });
-        }
-        
-        public void GetButtonTags() => ButtonTags = JsonSerializer.Deserialize<PromptButton>(
-            _io.GetJsonAsString("Data/example.json"),
-            new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
         
         public void SetLoras(IEnumerable<Lora> loras, bool isImg2Img)
         {

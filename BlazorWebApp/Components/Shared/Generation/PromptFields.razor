@@ -101,8 +101,8 @@
     </EditForm>
 </div>
 
-<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags=_buttonTags OnPromptReplaced=@(p => HandleLLMPromptApplied(p, false)) IsNegativePrompt=false />
-<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags=_buttonTags OnPromptReplaced=@(p => HandleLLMPromptApplied(p, true)) IsNegativePrompt=true />
+<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true" />
 
 @code {
     [Parameter]
@@ -151,7 +151,8 @@
         _dotNetRef = DotNetObjectReference.Create(this);
         
         // Subscribe to state changes to update styles when they're loaded
-        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Subscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Subscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
     }
 
     private async Task LoadStyles()
@@ -209,9 +210,16 @@
         }
     }
 
-    private async void OnStateChanged(StateChangedEventArgs args)
+    private async void HandleStateChanged(StateChangedEventArgs args)
     {
         // Reload styles from database when state changes (in case new prompts were added)
+        await LoadStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleStylesChangedEvent(StylesChangedEventArgs args)
+    {
+        // Reload styles from database when prompts are added/updated/deleted
         await LoadStyles();
         await InvokeAsync(StateHasChanged);
     }
@@ -280,7 +288,8 @@
 
     public void Dispose()
     {
-        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Unsubscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
     }
 
     public async ValueTask DisposeAsync()

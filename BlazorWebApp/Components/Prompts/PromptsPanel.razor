@@ -1,6 +1,7 @@
 ﻿@using static BlazorWebApp.Data.Enums
+@using BlazorWebApp.Events
 @inject IStateService State
-@inject ManagerService M
+@inject IEventService Events
 @inject DatabaseService DB
 @inject IDialogService DialogService
 
@@ -79,7 +80,8 @@
             }
         }
         await GetPrompts();
-        await M.GetStyles();
+        // Notify PromptFields to reload styles from DB
+        Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptsUpdated" });
         await InvokeAsync(StateHasChanged);
     }
 }

@@ -1,6 +1,7 @@
-﻿@inject IStateService State
+﻿@using BlazorWebApp.Events
+@inject IStateService State
 @inject ISettingsService Settings
-@inject ManagerService M
+@inject IEventService Events
 @inject IOService IO
 @inject DatabaseService DB
 @inject IDialogService DialogService
@@ -87,7 +88,8 @@
 
     protected async override Task OnInitializedAsync()
     {
-        _files = IO.GetFilesRecursive(Configuration["WildcardsPath"], extensionsWhitelist: new() { ".txt" }).ToList();
+        _wildcardsPath = Configuration["WildcardsPath"];
+        _files = IO.GetFilesRecursive(_wildcardsPath, extensionsWhitelist: new() { ".txt" }).ToList();
     }
 
     private async Task HandleDirectorySelected(DirectoryInfo dir)
@@ -205,6 +207,6 @@
                     break;
             }
         }
-        await M.GetStyles();
+        Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptCreated" });
     }
 }
