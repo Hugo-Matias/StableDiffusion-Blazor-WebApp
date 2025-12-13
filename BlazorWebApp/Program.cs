@@ -30,15 +30,13 @@ builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data 
 builder.Services.AddSingleton<ComfyUIWebsocketService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ComfyUIWebsocketService>());
 builder.Services.AddSingleton<ComfyUIEventBus>();
-
-// Event aggregation service for typed events
 builder.Services.AddSingleton<IEventService, EventService>();
-
-// Settings management service
 builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
-// Core data services - interface-only registration
-builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
+// Core data services
+// DatabaseService needs dual registration: components use concrete type, services use interface
+builder.Services.AddSingleton<DatabaseService>();
+builder.Services.AddSingleton<IDatabaseService>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddSingleton<IIOService, IOService>();
 
 // State management service
@@ -58,25 +56,36 @@ builder.Services.AddSingleton<ISessionService, SessionService>();
 
 // Core application services
 builder.Services.AddSingleton<ManagerService>();
+
+// Image service - dual registration for concrete and interface access
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageService>());
+
 builder.Services.AddSingleton<CsvService>();
+
+// Progress service - dual registration: ProgressContainer uses concrete for OnUpdate event
 builder.Services.AddSingleton<ProgressService>();
 builder.Services.AddSingleton<IProgressService>(sp => sp.GetRequiredService<ProgressService>());
+
 builder.Services.AddSingleton<ResourcesService>();
-builder.Services.AddSingleton<RouterService>();
-builder.Services.AddSingleton<IRouterService>(sp => sp.GetRequiredService<RouterService>());
-builder.Services.AddSingleton<WorkflowService>();
-builder.Services.AddSingleton<IWorkflowService>(sp => sp.GetRequiredService<WorkflowService>());
+
+// Router service - interface-only (no concrete type injection needed)
+builder.Services.AddSingleton<IRouterService, RouterService>();
+
+// Workflow service - interface-only (no concrete type injection needed)
+builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
+
 builder.Services.AddSingleton<DynamicPromptsService>();
 builder.Services.AddSingleton<CacheService>();
 builder.Services.AddSingleton<ThemeService>();
+
 // Asset resolution service for workflow models
 builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddScoped<OllamaService>();
 
+// MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 
 builder.Logging.ClearProviders();
