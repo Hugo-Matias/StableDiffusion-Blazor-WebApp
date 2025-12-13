@@ -1,4 +1,6 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
+@inject ISettingsService Settings
+@inject ManagerService M
 @inject CivitaiService Api
 @inject DatabaseService DB
 @inject IDialogService DialogService
@@ -18,7 +20,7 @@
                 <MudSelect @bind-Value=Request.BaseModels Label="Base Model" AnchorOrigin="Origin.BottomLeft"
                     TransformOrigin="Origin.TopLeft" MaxHeight="400">
                     <MudSelectItem Value=@("All") />
-                    @foreach (string model in M.Settings.Resources.Civitai.BaseModels)
+                    @foreach (string model in Settings.Settings.Resources.Civitai.BaseModels)
                     {
                         <MudSelectItem Value="@model">@model</MudSelectItem>
                     }
@@ -34,8 +36,8 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="2">
-                <MudSlider @bind-Value=Request.Limit Min="M.Settings.Resources.Civitai.Limit.Min"
-                    Max="M.Settings.Resources.Civitai.Limit.Max" Step="M.Settings.Resources.Civitai.Limit.Step">
+                <MudSlider @bind-Value=Request.Limit Min="Settings.Settings.Resources.Civitai.Limit.Min"
+                    Max="Settings.Settings.Resources.Civitai.Limit.Max" Step="Settings.Settings.Resources.Civitai.Limit.Step">
                     <small>Quantity:</small> @Request.Limit
                 </MudSlider>
             </MudItem>
@@ -214,7 +216,7 @@ else if (M.CivitaiModels != null)
             // If the first (usually latest) version exists in the database we consider it to be updated and reflect that by
             // lowering the resource button opacity
             var versionExists = await DB.CheckResourceExistsByModelVersionId(model.ModelVersions[0].Id);
-            return versionExists ? M.Settings.Resources.Civitai.ExistsButtonOpacity : 1f;
+            return versionExists ? Settings.Settings.Resources.Civitai.ExistsButtonOpacity : 1f;
         }
     }
 
@@ -228,10 +230,10 @@ else if (M.CivitaiModels != null)
             var versionImageCount = model.ModelVersions[0].Images.Count;
             var dbImageCount = await DB.ResourceImageByModelVersionIdCount(versionId);
 
-            if (dbImageCount == 0) return M.Settings.Resources.Civitai.ImageNoneFilter;
-            else if (versionImageCount > dbImageCount) return M.Settings.Resources.Civitai.ImageMissingFilter;
-            else if (versionImageCount < dbImageCount) return M.Settings.Resources.Civitai.ImageExtraFilter;
-            else return M.Settings.Resources.Civitai.ImageOkFilter;
+            if (dbImageCount == 0) return Settings.Settings.Resources.Civitai.ImageNoneFilter;
+            else if (versionImageCount > dbImageCount) return Settings.Settings.Resources.Civitai.ImageMissingFilter;
+            else if (versionImageCount < dbImageCount) return Settings.Settings.Resources.Civitai.ImageExtraFilter;
+            else return Settings.Settings.Resources.Civitai.ImageOkFilter;
         }
         return string.Empty;
     }
@@ -239,37 +241,37 @@ else if (M.CivitaiModels != null)
     private void LoadState()
     {
         Request = new();
-        Request.Query = M.State.Civitai.Models.Shared.Query;
-        Request.Limit = M.State.Civitai.Models.Shared.Limit;
-        Request.Page = M.State.Civitai.Models.Shared.Page;
-        Request.Username = M.State.Civitai.Models.Username;
-        Request.Tag = M.State.Civitai.Models.Tag;
-        Request.Type = M.State.Civitai.Models.Type;
-        Request.Sort = M.State.Civitai.Models.Sort;
-        Request.BaseModels = M.State.Civitai.Models.BaseModels;
-        Request.Period = M.State.Civitai.Models.Period;
-        Request.Rating = M.State.Civitai.Models.Rating;
-        Request.Favorites = M.State.Civitai.Models.Favorites;
-        Request.Hidden = M.State.Civitai.Models.Hidden;
-        Request.IsPrimaryFileOnly = M.State.Civitai.Models.IsPrimaryFileOnly;
-        Request.Hash = M.State.Civitai.Models.Hash;
+        Request.Query = State.State.Civitai.Models.Shared.Query;
+        Request.Limit = State.State.Civitai.Models.Shared.Limit;
+        Request.Page = State.State.Civitai.Models.Shared.Page;
+        Request.Username = State.State.Civitai.Models.Username;
+        Request.Tag = State.State.Civitai.Models.Tag;
+        Request.Type = State.State.Civitai.Models.Type;
+        Request.Sort = State.State.Civitai.Models.Sort;
+        Request.BaseModels = State.State.Civitai.Models.BaseModels;
+        Request.Period = State.State.Civitai.Models.Period;
+        Request.Rating = State.State.Civitai.Models.Rating;
+        Request.Favorites = State.State.Civitai.Models.Favorites;
+        Request.Hidden = State.State.Civitai.Models.Hidden;
+        Request.IsPrimaryFileOnly = State.State.Civitai.Models.IsPrimaryFileOnly;
+        Request.Hash = State.State.Civitai.Models.Hash;
     }
 
     private void SetState()
     {
-        M.State.Civitai.Models.Shared.Query = Request.Query;
-        M.State.Civitai.Models.Shared.Limit = (int)Request.Limit;
-        M.State.Civitai.Models.Shared.Page = (int)Request.Page;
-        M.State.Civitai.Models.Username = Request.Username;
-        M.State.Civitai.Models.Tag = Request.Tag;
-        M.State.Civitai.Models.Type = Request.Type;
-        M.State.Civitai.Models.Sort = (CivitaiSort)Request.Sort;
-        M.State.Civitai.Models.BaseModels = Request.BaseModels;
-        M.State.Civitai.Models.Period = (CivitaiPeriod)Request.Period;
-        M.State.Civitai.Models.Rating = (int)Request.Rating;
-        M.State.Civitai.Models.Favorites = (bool)Request.Favorites;
-        M.State.Civitai.Models.Hidden = (bool)Request.Hidden;
-        M.State.Civitai.Models.IsPrimaryFileOnly = (bool)Request.IsPrimaryFileOnly;
-        M.State.Civitai.Models.Hash = Request.Hash;
+        State.State.Civitai.Models.Shared.Query = Request.Query;
+        State.State.Civitai.Models.Shared.Limit = (int)Request.Limit;
+        State.State.Civitai.Models.Shared.Page = (int)Request.Page;
+        State.State.Civitai.Models.Username = Request.Username;
+        State.State.Civitai.Models.Tag = Request.Tag;
+        State.State.Civitai.Models.Type = Request.Type;
+        State.State.Civitai.Models.Sort = (CivitaiSort)Request.Sort;
+        State.State.Civitai.Models.BaseModels = Request.BaseModels;
+        State.State.Civitai.Models.Period = (CivitaiPeriod)Request.Period;
+        State.State.Civitai.Models.Rating = (int)Request.Rating;
+        State.State.Civitai.Models.Favorites = (bool)Request.Favorites;
+        State.State.Civitai.Models.Hidden = (bool)Request.Hidden;
+        State.State.Civitai.Models.IsPrimaryFileOnly = (bool)Request.IsPrimaryFileOnly;
+        State.State.Civitai.Models.Hash = Request.Hash;
     }
 }

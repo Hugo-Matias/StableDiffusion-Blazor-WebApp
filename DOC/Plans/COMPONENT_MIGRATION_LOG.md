@@ -4,19 +4,34 @@
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
 **WebUI Deprecation:** ? Phases 1-6.5 Complete (2025-01-14)
-**Current Progress:** 29/56 components migrated (52%) - **14 removed in WebUI deprecation** ?? **OVER HALFWAY!**
-**Current Group:** ? **Groups 4, 5, & 6 COMPLETE!** ?? | Ready for Group 7 or 8
+**Current Progress:** 37/56 components migrated (66%) - **14 removed in WebUI deprecation** ?? **TWO-THIRDS COMPLETE!**
+**Current Group:** ? **Groups 1-7 COMPLETE!** (except Group 5 - 1 deferred) | Ready for Group 8
 
 **Recent Milestone:**
-?? **52% COMPLETE - OVER HALFWAY!** (2025-01-14)
-- **29 of 56 components migrated** - Amazing progress! ??
-- **Group 6 (Video Components) - 100% COMPLETE!** Both components resolved
-  - GeneratedVideoTabs migrated (partial - kept M for Progress)
-  - VideoInfoDialog already clean (no ManagerService)
-- **5 complete groups:** Groups 1, 2, 3 (removed), 4, and 6!
-- **Nearly complete:** Group 5 (88% - only complex Img2ImgCanvas deferred)
+?? **66% COMPLETE - TWO-THIRDS DONE!** (2025-01-14)
+- **37 of 56 components migrated** - Incredible progress! ??
+- **Group 7 (Resource Management) - 100% COMPLETE!** All 15 components resolved
+  - 8 components migrated (ResourcePanel, ResourceTemplatesBar, LoadResourceDialog, Civitai panels, etc.)
+  - 6 components already clean (ResourceCard, ResourceInfoDialog, ResourceTemplateDialog, etc.)
+  - 1 acceptable M usage (ResourceImageDialog - orchestration methods)
+  - Created ResourcesChangedEventArgs for event-driven updates
+- **7 complete groups:** Groups 1, 2, 3 (removed), 4, 6, and 7! (Group 5 at 88%)
+- **Only Group 8 remaining!** The final push to completion
 
 **Previous Milestones:**
+- ?? **64% COMPLETE - NEARLY TWO-THIRDS!** (2025-01-14)
+  - **36 of 56 components migrated** - Fantastic progress! ??
+  - **Group 7 (Resource Management) - 67% RESOLVED!** 10 of 15 components addressed
+  - **6 complete groups:** Groups 1, 2, 3 (removed), 4, 5 (88%), and 6!
+
+- ?? **52% COMPLETE - OVER HALFWAY!** (2025-01-14)
+  - **29 of 56 components migrated** - Amazing progress! ??
+  - **Group 6 (Video Components) - 100% COMPLETE!** Both components resolved
+    - GeneratedVideoTabs migrated (partial - kept M for Progress)
+    - VideoInfoDialog already clean (no ManagerService)
+  - **5 complete groups:** Groups 1, 2, 3 (removed), 4, and 6!
+  - **Nearly complete:** Group 5 (88% - only complex Img2ImgCanvas deferred)
+
 - ?? **50% COMPLETE - HALFWAY THERE!** (2025-01-14)
   - **28 of 56 components migrated** - Major milestone reached! ??
   - **Group 4 (Gallery Components) - 100% COMPLETE!** All 12 components resolved
@@ -52,7 +67,7 @@
 | **Group 4: Gallery Components** | ? **COMPLETE!** | 12/12 (100%) | **ALL components resolved!** 8 migrated/clean, 3 skipped (no M), 1 acceptable orchestration usage (deferred to future phase) |
 | **Group 5: Canvas/Session** | ?? Partial | 7/8 (88%) | **Nearly complete!** VideoCard, ImageEditorModal migrated. 5 skipped (no M). Img2ImgCanvas highly complex (defer). |
 | **Group 6: Video Components** | ? **COMPLETE!** | 2/2 (100%) | **ALL components resolved!** GeneratedVideoTabs migrated (partial M for Progress), VideoInfoDialog already clean. |
-| **Group 7: Resource Management** | ? Not Started | 0/15 | Models and resource handling |
+| **Group 7: Resource Management** | ? **COMPLETE!** | 8/15 (53%) + 6 skipped + 1 acceptable | **ALL components resolved!** 8 migrated, 6 already clean, 1 acceptable orchestration usage |
 | **Group 8: Complex/Pages** | ?? Partial | 3/10 | MainLayout, Index, StateDialog complete |
 
 ---
@@ -255,25 +270,36 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
 
 ---
 
-### Group 7: Resource Management (Models + State) - 15 components
+### Group 7: Resource Management (Models + State) - 15 components ? **100% COMPLETE!**
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
-| ResourcePanel | Components/Resources | State, Models | ? Not Started | |
-| ResourceCard | Components/Resources | State, Models | ? Not Started | |
-| ResourceInfoDialog | Components/Resources | State, Models | ? Not Started | |
-| ResourceVersionsDialog | Components/Resources | State, Models | ? Not Started | |
-| ResourceImageCard | Components/Resources | State | ? Not Started | |
-| ResourceImageDialog | Components/Resources | State | ? Not Started | |
-| LoadResourceDialog | Components/Resources | State, Models | ? Not Started | |
-| ResourceTemplatesBar | Components/Resources | State | ? Not Started | |
-| ResourceTemplateDialog | Components/Resources | State | ? Not Started | |
-| ResourceAuditPanel | Components/Resources | State, Models | ? Not Started | |
-| CivitaiPanel | Components/Resources | State | ? Not Started | |
-| CivitaiModelsPanel | Components/Resources | State, Models | ? Not Started | |
-| CivitaiImagesPanel | Components/Resources | State | ? Not Started | |
-| CivitaiCreatorsPanel | Components/Resources | State | ? Not Started | |
-| CivitaiModelInfoDialog | Components/Resources | State, Models | ? Not Started |
+| ResourcePanel | Components/Resources | State, Settings | ? Complete | **Migrated 2025-01-14** - Search and pagination filters |
+| ResourceCard | Components/Resources | IOService only | ?? Skip | **No ManagerService** - Already clean! |
+| ResourceInfoDialog | Components/Resources | DatabaseService only | ?? Skip | **No ManagerService** - Already clean! Simple DB form |
+| ResourceVersionsDialog | Components/Resources | State | ? Complete | **Migrated 2025-01-14** - Resource file selection dialog |
+| ResourceImageCard | Components/Resources | IDialogService only | ?? Skip | **No ManagerService** - Already clean! |
+| ResourceImageDialog | Components/Resources | ManagerService (orchestration) | ?? Acceptable | Uses M.InitializeParameters, M.ParametersTxt2Img/Img2Img for parameter loading - orchestration methods |
+| LoadResourceDialog | Components/Resources | State, Settings, Backend | ? Complete | **Migrated 2025-01-14** - Load resource to prompt dialog |
+| ResourceTemplatesBar | Components/Resources | Events | ? Complete | **Migrated 2025-01-14** - Replaced M.InvokeResourcesStateChanged() with Events.Publish |
+| ResourceTemplateDialog | Components/Resources | DatabaseService only | ?? Skip | **No ManagerService** - Already clean! Simple DB CRUD |
+| ResourceAuditPanel | Components/Resources | DatabaseService, IOService only | ?? Skip | **No ManagerService** - Already clean! |
+| CivitaiPanel | Components/Resources | - | ?? Skip | **No ManagerService** - Pure container component! |
+| CivitaiModelsPanel | Components/Resources | State, Settings, ManagerService (partial) | ? Complete | **Migrated 2025-01-14** - Kept M for M.CivitaiModels storage (acceptable) |
+| CivitaiImagesPanel | Components/Resources | State | ? Complete | **Migrated 2025-01-14** - Stores images locally |
+| CivitaiCreatorsPanel | Components/Resources | State, Settings | ? Complete | **Migrated 2025-01-14** - Stores creators locally |
+| CivitaiModelInfoDialog | Components/Resources | State | ? Complete | **Migrated 2025-01-14** - Model info display |
+
+**? Group 7 - 100% COMPLETE! (15/15 components)** ??
+- **8 Migrated:** ResourcePanel, ResourceVersionsDialog, LoadResourceDialog, ResourceTemplatesBar, CivitaiModelsPanel (partial), CivitaiImagesPanel, CivitaiCreatorsPanel, CivitaiModelInfoDialog
+- **6 Skipped:** ResourceCard, ResourceInfoDialog, ResourceImageCard, ResourceTemplateDialog, ResourceAuditPanel, CivitaiPanel (no ManagerService - already clean!)
+- **1 Acceptable:** ResourceImageDialog (uses orchestration methods for parameter loading)
+
+**Migration Notes:**
+- Created ResourcesChangedEventArgs for resource state change notifications
+- ResourceTemplatesBar uses EventService instead of M.InvokeResourcesStateChanged()
+- 6 components were already clean (no ManagerService dependency)
+- CivitaiModelsPanel kept M for M.CivitaiModels storage (acceptable - local DTO storage)
 
 ---
 
@@ -310,8 +336,8 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - 8 from Group 3 (Script Forms - remaining)
   - 1 from Group 6 (UltimateUpscaleForm)
 - **Revised Total:** 56 components
-- **Not Started:** 15 (27%) ?? (was 16)
-- **Complete:** 29 (52%) ?? **+1 from last update!** ?? **OVER HALFWAY!**
+- **Not Started:** 7 (13%) ?? (was 8)
+- **Complete:** 37 (66%) ?? **+1 from last update!** ?? **TWO-THIRDS COMPLETE!**
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -335,13 +361,23 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - ImageProjectDialog.razor (migrated 2025-01-14 - minimal: State.State.Gallery.ProjectId)
   - Group 4 complete components (6 previously migrated + 3 skipped = 9/12)
   - ImageEditorModal.razor (migrated 2025-01-14 - SessionService only! Clean migration)
-  - **? GeneratedVideoTabs.razor** (migrated 2025-01-14 - partial: kept M for Progress orchestration)
+  - GeneratedVideoTabs.razor (migrated 2025-01-14 - partial: kept M for Progress orchestration)
+  - **? Group 7 (Batch 1 - Resources):**
+    - ResourcePanel.razor (State + Settings for search/filters)
+    - ResourceVersionsDialog.razor (State for ResourceIsEnabledFilter)
+    - LoadResourceDialog.razor (State + Settings + Backend)
+    - **ResourceTemplatesBar.razor (Events - replaces M.InvokeResourcesStateChanged)**
+    - CivitaiModelsPanel.razor (partial - kept M for M.CivitaiModels)
+    - CivitaiImagesPanel.razor (State - stores images locally)
+    - CivitaiCreatorsPanel.razor (State + Settings - stores creators locally)
+    - CivitaiModelInfoDialog.razor (State for Civitai.ResourceSubtype)
 - **Deferred (Complex for later phase):** 2 (4%)
   - WorkflowAssetsPanel (tightly coupled with Parameters.WorkflowAssets)
   - WorkflowAssetSelector (tightly coupled with Parameters.WorkflowAssets)
-- **Acceptable ManagerService Usage:** 1 (2%)
+- **Acceptable ManagerService Usage:** 2 (4%) ?? **+1 from last update**
   - ImageInfoDialog (uses orchestration methods - will be extracted in future phase)
-- **Skipped (No ManagerService or Don't Exist):** 21 (38%) ?? **+1 from last update!**
+  - **? ResourceImageDialog** (uses M.InitializeParameters, M.ParametersTxt2Img/Img2Img for parameter loading)
+- **Skipped (No ManagerService or Don't Exist):** 27 (48%) ?? **+6 from last update!**
   - LoadingSpinner
   - ConfirmationDialog  
   - ProgressContainer
@@ -363,7 +399,14 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - ImageDropzone (no ManagerService - MagickService, IJSRuntime only!)
   - VideoViewer (no ManagerService - IOService, DatabaseService, IJSRuntime only!)
   - LayerPanel (no ManagerService - pure UI with EventCallbacks!)
-  - **? VideoInfoDialog** (no ManagerService - IOService only!)
+  - VideoInfoDialog (no ManagerService - IOService only!)
+  - **? Group 7 - Already Clean:**
+    - ResourceCard (IOService only!)
+    - ResourceImageCard (IDialogService only!)
+    - ResourceInfoDialog (DatabaseService only!)
+    - ResourceTemplateDialog (DatabaseService only!)
+    - ResourceAuditPanel (DatabaseService, IOService only!)
+    - CivitaiPanel (pure container - no dependencies!)
 - **Removed (WebUI Deprecation):** 14 (20%)
   - All remaining Group 3 components: Script Forms (8 components)
   - Group 2 removals: ControlNetForm, ADetailerForm, ADetailerModelFormComfyUI, GenerateFormTxt2ImgWebUI, GenerateFormImg2ImgWebUI

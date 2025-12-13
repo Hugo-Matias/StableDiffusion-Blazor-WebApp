@@ -1,4 +1,5 @@
-﻿@inject ManagerService M
+﻿@using BlazorWebApp.Events
+@inject IEventService Events
 @inject DatabaseService DB
 @inject ResourcesService ResourcesService
 @inject ProgressService ProgressService
@@ -67,7 +68,7 @@
             ProgressService.Update(progress.Id, index);
         }
         Snackbar.Add("All resources managed.", Severity.Success);
-        M.InvokeResourcesStateChanged();
+        Events.Publish(new ResourcesChangedEventArgs());
     }
 
     private async Task ShowTemplateDialog(ResourceTemplate template)

@@ -1,4 +1,4 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
 @inject DatabaseService DB
 
 <div>
@@ -76,6 +76,6 @@
     protected async override Task OnInitializedAsync()
     {
         var entity = await DB.GetResourceByCivitaiModelId(Model.Id);
-        if (entity != null) M.State.Civitai.ResourceSubtype = entity.SubType != null ? entity.SubType.Name : "";
+        if (entity != null) State.State.Civitai.ResourceSubtype = entity.SubType != null ? entity.SubType.Name : "";
     }
 }

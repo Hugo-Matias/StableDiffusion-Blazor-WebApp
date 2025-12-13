@@ -1,4 +1,5 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
+@inject ISettingsService Settings
 @inject IOService IO
 @inject DatabaseService DB
 @inject ResourcesService ResourcesService
@@ -47,7 +48,7 @@
                 @if (File.TriggerWords != null && File.TriggerWords.Count >= 1)
                 {
                     <MudStack Row=true>
-                        <MudCheckBox Checked="M.State.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
+                        <MudCheckBox Checked="State.State.Resources.LoadTriggerWords" CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
                         <MudChipSet ReadOnly=true>
                             @foreach (var word in File.TriggerWords)
                             {
@@ -62,7 +63,7 @@
                 }
                 else
                 {
-                    <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=M.State.Resources.Weight Min="M.Settings.Resources.Weight.Min" Max="M.Settings.Resources.Weight.Max" Step="M.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @M.State.Resources.Weight</MudSlider>
+                    <MudSlider T="float" ValueChanged=@((value) => HandleResourceWeightChanged(value)) Value=State.State.Resources.Weight Min="Settings.Settings.Resources.Weight.Min" Max="Settings.Settings.Resources.Weight.Max" Step="Settings.Settings.Resources.Weight.Step" ValueLabel><small>Resource Weight: </small> @State.State.Resources.Weight</MudSlider>
                 }
                 @if (!(Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase) && (File.TriggerWords == null || File.TriggerWords.Count == 0)))
                 {
@@ -111,14 +112,14 @@
 
     private void HandleResourceWeightChanged(float value)
     {
-        M.State.Resources.Weight = value;
-        M.SaveSettings();
+        State.State.Resources.Weight = value;
+        Settings.SaveSettings();
     }
 
     private void HandleLoadTriggerWordsChanged(bool value)
     {
-        M.State.Resources.LoadTriggerWords = value;
-        M.SaveSettings();
+        State.State.Resources.LoadTriggerWords = value;
+        Settings.SaveSettings();
     }
 
     private async Task ToggleFile()
