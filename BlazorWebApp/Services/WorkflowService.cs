@@ -10,7 +10,7 @@ using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
-    public class WorkflowService
+    public class WorkflowService : IWorkflowService
     {
         private readonly string _workflowPath = Path.Combine(AppContext.BaseDirectory, "Workflows");
         private readonly IOService _io;

@@ -19,10 +19,10 @@ namespace BlazorWebApp.Services
     {
         private readonly IDatabaseService _db;
         private readonly IIOService _io;
-        private readonly ProgressService _progress;
+        private readonly IProgressService _progress;
         private readonly IConfiguration _configuration;
-        private readonly ComfyUIService _capi;
-        private readonly WorkflowService _workflow;
+        private readonly IComfyUIService _capi;
+        private readonly IWorkflowService _workflow;
         private readonly IStateService _state;
         private readonly IEventService _events;
         private readonly ISettingsService _settings;
@@ -33,32 +33,7 @@ namespace BlazorWebApp.Services
         private int _currentProgress;
         private bool _isConverging;
 
-        #region Events
-        
-        public event Action OnSDModelsChange;
-        public event Action OnOptionsChange;
-        public event Action OnConverging;
-        public event Action OnFolderChange;
-        public event Action OnProjectsChange;
-        public event Action OnProjectChange;
-        public event Func<Task> OnProjectChangeTask;
-        public event Action OnStateHasChanged;
-        public event Action OnProgressChanged;
-        public event Action OnComfyUIStateChanged;
-        public event Action OnTxt2ImgParametersChanged;
-        public event Action OnImg2ImgParametersChanged;
-        public event Action OnUpscaleParametersChanged;
-        public event Action OnImg2VidParametersChanged;
-        public event Action OnSelectedImagesChanged;
-        public event Action OnCanvasImageDataChanged;
-        public event Action OnWorkflowBaseChanged;
-        public event Action? OnSamplersSchedulersChanged;
-        public event Action OnCurrentWorkflowChanged;
-        public event Action OnSessionVideosChanged;
-        
-        #endregion
-
-        #region State Facades
+        #region Service Facades
         
         public AppState State => _state.State;
         public Txt2ImgParameters ParametersTxt2Img => _state.ParametersTxt2Img;
@@ -66,93 +41,26 @@ namespace BlazorWebApp.Services
         public Models.UpscaleParameters ParametersUpscale => _state.ParametersUpscale;
         public Img2VidParameters ParametersImg2Vid => _state.ParametersImg2Vid;
         public AppSettings Settings => _settings.Settings;
-        
-        #endregion
-
-        #region Orchestration Properties
-        
-        public Options Options { get; set; }
-        public GeneratedImages Images { get; set; }
-        public GeneratedImagesInfo ImagesInfo { get; set; }
-        public ImagesDto GeneratedImageEntities { get; set; }
-        public string? GridImage { get; set; }
-        public InferenceProgress Progress { get; set; }
-        public List<PromptStyle> Styles { get; set; }
-        public bool ControlNetEnabled { get; set; }
-        public UpscaledImageDto GeneratedUpscaleImage { get; set; }
-        public bool IsGalleryFiltered { get; set; }
-        public PromptButton ButtonTags { get; set; }
-        public CmdFlags CmdFlags { get; set; }
-        public CivitaiModelsDto CivitaiModels { get; set; }
-        public CivitaiImagesDto CivitaiImages { get; set; }
-        public CivitaiCreatorsDto CivitaiCreators { get; set; }
-        public string ComfyWSClientId { get; set; }
-        public Dictionary<string, string> ResourceTypeDirectories { get; set; }
-        
-        public int CurrentProgress
-        {
-            get => _currentProgress;
-            set
-            {
-                _currentProgress = value;
-                OnProgressChanged?.Invoke();
-            }
-        }
-        
-        public bool IsConverging
-        {
-            get => _isConverging;
-            set
-            {
-                _isConverging = value;
-                OnConverging?.Invoke();
-                _events.Publish(new ConvergingChangedEventArgs(_isConverging));
-            }
-        }
-        
-        #endregion
-
-        #region Model Service Facades
-        
         public List<SDModel> CheckpointModels => _models.CheckpointModels;
         public List<SDModel> DiffusionModels => _models.DiffusionModels;
         public List<string> SDVAEs => _models.VAEModels;
         public List<string> ClipModels => _models.ClipModels;
         public List<string> ClipVisionModels => _models.ClipVisionModels;
         public List<string> SDADetailerModels => _models.ADetailerModels;
-        
-        #endregion
-
-        #region Backend Service Facades
-        
         public List<Models.Sampler> Samplers => _backend.Samplers;
         public List<Scheduler> Schedulers => _backend.Schedulers;
         public List<Upscaler> Upscalers => _backend.Upscalers;
         public bool IsComfyUIUp => _backend.IsBackendAvailable;
-        
-        #endregion
-
-        #region Gallery Service Facades
-        
         public List<Folder>? Folders => _gallery.Folders;
         public List<Project>? Projects => _gallery.Projects;
         public List<int> SelectedImageIds => _gallery.SelectedImageIds;
-        
-        #endregion
-
-        #region Session Service Facades
-        
         public List<string> CanvasStates => _session.CanvasStates;
         public GeneratedVideos SessionGeneratedVideos => _session.SessionGeneratedVideos;
         
         public string CanvasImageData
         {
             get => _session.CanvasImageData;
-            set
-            {
-                _session.CanvasImageData = value;
-                OnCanvasImageDataChanged?.Invoke();
-            }
+            set => _session.CanvasImageData = value;
         }
         
         public string CanvasMaskData
@@ -187,13 +95,55 @@ namespace BlazorWebApp.Services
         
         #endregion
 
+        #region Orchestration Properties
+        
+        public Options Options { get; set; }
+        public GeneratedImages Images { get; set; }
+        public GeneratedImagesInfo ImagesInfo { get; set; }
+        public ImagesDto GeneratedImageEntities { get; set; }
+        public string? GridImage { get; set; }
+        public InferenceProgress Progress { get; set; }
+        public List<PromptStyle> Styles { get; set; }
+        public bool ControlNetEnabled { get; set; }
+        public UpscaledImageDto GeneratedUpscaleImage { get; set; }
+        public bool IsGalleryFiltered { get; set; }
+        public PromptButton ButtonTags { get; set; }
+        public CmdFlags CmdFlags { get; set; }
+        public CivitaiModelsDto CivitaiModels { get; set; }
+        public CivitaiImagesDto CivitaiImages { get; set; }
+        public CivitaiCreatorsDto CivitaiCreators { get; set; }
+        public string ComfyWSClientId { get; set; }
+        public Dictionary<string, string> ResourceTypeDirectories { get; set; }
+        
+        public int CurrentProgress
+        {
+            get => _currentProgress;
+            set
+            {
+                _currentProgress = value;
+                _events.Publish(new ProgressChangedEventArgs(value));
+            }
+        }
+        
+        public bool IsConverging
+        {
+            get => _isConverging;
+            set
+            {
+                _isConverging = value;
+                _events.Publish(new ConvergingChangedEventArgs(_isConverging));
+            }
+        }
+        
+        #endregion
+
         public ManagerService(
             IDatabaseService db,
             IIOService io,
-            ProgressService progress,
+            IProgressService progress,
             IConfiguration configuration,
-            ComfyUIService capi,
-            WorkflowService workflow,
+            IComfyUIService capi,
+            IWorkflowService workflow,
             IStateService state,
             IEventService events,
             ISettingsService settings,
@@ -224,88 +174,46 @@ namespace BlazorWebApp.Services
             GetButtonTags();
         }
 
-        #region Event Helpers
+        #region Event Publishing
         
-        public void InvokeProgressChanged() => OnProgressChanged?.Invoke();
-        
-        public void InvokeParametersChanged(bool isImg2Img)
-        {
-            if (isImg2Img) OnImg2ImgParametersChanged?.Invoke();
-            else OnTxt2ImgParametersChanged?.Invoke();
-        }
-        
-        public void InvokeSessionVideosChanged() => OnSessionVideosChanged?.Invoke();
+        public void InvokeProgressChanged() => _events.Publish(new ProgressChangedEventArgs(_currentProgress));
+        public void InvokeParametersChanged(bool isImg2Img) => _events.Publish(new ParametersChangedEventArgs(isImg2Img ? "Img2Img" : "Txt2Img"));
+        public void InvokeSessionVideosChanged() => _events.Publish(new SessionVideosChangedEventArgs());
         
         #endregion
 
         #region Parameter Initialization
         
-        public void InitializeParameters(ModeType[] modes)
-        {
-            _state.InitializeParameters(modes);
-        }
+        public void InitializeParameters(ModeType[] modes) => _state.InitializeParameters(modes);
         
         #endregion
 
         #region Model Management
         
-        public async Task GetWorkflowModels(bool refresh = false)
-        {
-            await _models.GetWorkflowModels(refresh);
-            OnSDModelsChange?.Invoke();
-        }
+        public async Task GetWorkflowModels(bool refresh = false) => await _models.GetWorkflowModels(refresh);
         
         public List<SDModel> GetCurrentWorkflowModels()
         {
             var workflow = GetCurrentWorkflow();
             if (workflow?.Assets != null && workflow.Assets.Any(a => a.Type == AssetType.DiffusionModel))
-            {
                 return DiffusionModels ?? new List<SDModel>();
-            }
             return CheckpointModels ?? new List<SDModel>();
         }
         
-        public async Task GetSDVAEs()
-        {
-            await _models.GetVAEModels();
-        }
-        
-        public async Task GetSDADetailerModels()
-        {
-            await _models.GetADetailerModels();
-        }
-        
-        public List<SDModel> GetModelsForAssetType(AssetType assetType)
-        {
-            return _models.GetModelsForAssetType(assetType);
-        }
-        
-        public async Task<List<string>> GetAssetOptions(AssetType assetType)
-        {
-            return await _models.GetAssetOptions(assetType);
-        }
-        
-        public string GetCurrentModel(ModeType? mode = null)
-        {
-            return _models.GetCurrentModel(mode);
-        }
+        public async Task GetSDVAEs() => await _models.GetVAEModels();
+        public async Task GetSDADetailerModels() => await _models.GetADetailerModels();
+        public List<SDModel> GetModelsForAssetType(AssetType assetType) => _models.GetModelsForAssetType(assetType);
+        public async Task<List<string>> GetAssetOptions(AssetType assetType) => await _models.GetAssetOptions(assetType);
+        public string GetCurrentModel(ModeType? mode = null) => _models.GetCurrentModel(mode);
         
         public async Task SetCurrentModel(string modelTitle, ModeType? mode = null)
         {
             await _models.SetCurrentModel(modelTitle, mode);
-            OnSDModelsChange?.Invoke();
             await SaveState();
         }
         
-        public async Task SetSDModel(string modelTitle)
-        {
-            await SetCurrentModel(modelTitle);
-        }
-        
-        public string? GetCurrentVae(ModeType? mode = null)
-        {
-            return GetWorkflowAsset("Vae", mode);
-        }
+        public async Task SetSDModel(string modelTitle) => await SetCurrentModel(modelTitle);
+        public string? GetCurrentVae(ModeType? mode = null) => GetWorkflowAsset("Vae", mode);
         
         public async Task SetCurrentVae(string vae, ModeType? mode = null)
         {
@@ -325,14 +233,11 @@ namespace BlazorWebApp.Services
             if (State.Generation.CurrentWorkflowId.HasValue)
             {
                 var workflow = State.Generation.Workflows.FirstOrDefault(w => w.Id == State.Generation.CurrentWorkflowId.Value);
-                if (workflow != null)
-                    return workflow;
+                if (workflow != null) return workflow;
             }
 
             if (State.Generation.WorkflowBase != default)
-            {
                 return State.Generation.Workflows.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-            }
 
             return State.Generation.Workflows.FirstOrDefault();
         }
@@ -344,10 +249,7 @@ namespace BlazorWebApp.Services
             if (State?.Generation?.Workflows == null)
                 return new List<Workflow>();
 
-            return State.Generation.Workflows
-                .Where(w => w.Mode == mode)
-                .OrderBy(w => w.Title)
-                .ToList();
+            return State.Generation.Workflows.Where(w => w.Mode == mode).OrderBy(w => w.Title).ToList();
         }
         
         public void GetComfyWorkflows() => State.Generation.Workflows = _workflow.GetWorkflows();
@@ -360,8 +262,6 @@ namespace BlazorWebApp.Services
             State.Generation.CurrentWorkflowId = workflowId;
             State.Generation.WorkflowBase = workflow.Base;
 
-            OnWorkflowBaseChanged?.Invoke();
-            OnCurrentWorkflowChanged?.Invoke();
             _events.Publish(new StateChangedEventArgs());
             _events.Publish(new WorkflowChangedEventArgs(workflowId, "Set"));
         }
@@ -382,12 +282,8 @@ namespace BlazorWebApp.Services
             }
 
             await GetWorkflowModels();
-
-            OnWorkflowBaseChanged?.Invoke();
-            OnCurrentWorkflowChanged?.Invoke();
             _events.Publish(new StateChangedEventArgs());
             _events.Publish(new WorkflowChangedEventArgs(workflowId, "SetAsync"));
-
             await SaveState();
             return assetsInitialized;
         }
@@ -395,7 +291,7 @@ namespace BlazorWebApp.Services
         public void SetWorkflowBase(ModelBase workflowBase)
         {
             _state.SetWorkflowBase(workflowBase);
-            OnWorkflowBaseChanged?.Invoke();
+            _events.Publish(new StateChangedEventArgs());
             SetDefaultBaseModel();
         }
         
@@ -404,59 +300,40 @@ namespace BlazorWebApp.Services
             State.Generation.CurrentWorkflowId = null;
             State.Generation.WorkflowBase = default;
 
-            var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
-            foreach (var mode in modes)
-            {
-                var assets = GetOrCreateWorkflowAssetsForMode(mode);
-                assets.Clear();
-            }
+            foreach (var mode in new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras })
+                GetOrCreateWorkflowAssetsForMode(mode).Clear();
             
-            OnCurrentWorkflowChanged?.Invoke();
+            _events.Publish(new WorkflowChangedEventArgs(Guid.Empty, "Reset"));
         }
         
         public void SetDefaultBaseModel()
         {
             var modelKeys = new[] { "ckpt_name", "unet_name" };
             var workflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-            if (workflow?.Pipeline != null)
-            {
-                var defaultModel = workflow.Pipeline
-                    .Select(s => modelKeys
-                        .FirstOrDefault(k => s.Parameters?.ContainsKey(k) == true))
-                    .Where(k => k != null)
-                    .Select(k => workflow.Pipeline
-                        .FirstOrDefault(s => s.Parameters?.ContainsKey(k) == true)?
-                        .Parameters[k]?.ToString())
-                    .FirstOrDefault()?
-                    .GetDefaultModelFromWorkflow();
+            if (workflow?.Pipeline == null) return;
+            
+            var defaultModel = workflow.Pipeline
+                .Select(s => modelKeys.FirstOrDefault(k => s.Parameters?.ContainsKey(k) == true))
+                .Where(k => k != null)
+                .Select(k => workflow.Pipeline.FirstOrDefault(s => s.Parameters?.ContainsKey(k) == true)?.Parameters[k]?.ToString())
+                .FirstOrDefault()?
+                .GetDefaultModelFromWorkflow();
 
-                if (!string.IsNullOrWhiteSpace(defaultModel))
-                {
-                    if (ParametersTxt2Img != null)
-                    {
-                        ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
-                        ParametersTxt2Img.WorkflowAssets["Model"] = defaultModel;
-                    }
-                    OnSDModelsChange?.Invoke();
-                }
+            if (!string.IsNullOrWhiteSpace(defaultModel) && ParametersTxt2Img != null)
+            {
+                ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
+                ParametersTxt2Img.WorkflowAssets["Model"] = defaultModel;
+                _events.Publish(new ModelsChangedEventArgs());
             }
         }
         
         #endregion
 
-        #region Workflow Assets Management
+        #region Workflow Assets
         
-        public string? GetWorkflowAsset(string parameter, ModeType? mode = null)
-        {
-            var assets = GetWorkflowAssetsForMode(mode);
-            return assets?.GetValueOrDefault(parameter);
-        }
+        public string? GetWorkflowAsset(string parameter, ModeType? mode = null) => GetWorkflowAssetsForMode(mode)?.GetValueOrDefault(parameter);
         
-        public void SetWorkflowAsset(string parameter, string value, ModeType? mode = null)
-        {
-            var assets = GetOrCreateWorkflowAssetsForMode(mode);
-            assets[parameter] = value;
-        }
+        public void SetWorkflowAsset(string parameter, string value, ModeType? mode = null) => GetOrCreateWorkflowAssetsForMode(mode)[parameter] = value;
         
         public Dictionary<string, string>? GetWorkflowAssetsForMode(ModeType? mode)
         {
@@ -471,38 +348,25 @@ namespace BlazorWebApp.Services
         
         private Dictionary<string, string> GetOrCreateWorkflowAssetsForMode(ModeType? mode)
         {
-            switch (mode)
+            return mode switch
             {
-                case ModeType.Img2Img:
-                    ParametersImg2Img.WorkflowAssets ??= new Dictionary<string, string>();
-                    return ParametersImg2Img.WorkflowAssets;
-                case ModeType.Img2Vid:
-                    ParametersImg2Vid.WorkflowAssets ??= new Dictionary<string, string>();
-                    return ParametersImg2Vid.WorkflowAssets;
-                case ModeType.Extras:
-                    ParametersUpscale.WorkflowAssets ??= new Dictionary<string, string>();
-                    return ParametersUpscale.WorkflowAssets;
-                default:
-                    ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
-                    return ParametersTxt2Img.WorkflowAssets;
-            }
+                ModeType.Img2Img => ParametersImg2Img.WorkflowAssets ??= new(),
+                ModeType.Img2Vid => ParametersImg2Vid.WorkflowAssets ??= new(),
+                ModeType.Extras => ParametersUpscale.WorkflowAssets ??= new(),
+                _ => ParametersTxt2Img.WorkflowAssets ??= new()
+            };
         }
         
-        public List<WorkflowAsset>? GetCurrentWorkflowAssets()
-        {
-            var workflow = GetCurrentWorkflow();
-            return workflow?.Assets?.OrderBy(a => a.Order).ToList();
-        }
+        public List<WorkflowAsset>? GetCurrentWorkflowAssets() => GetCurrentWorkflow()?.Assets?.OrderBy(a => a.Order).ToList();
         
         #endregion
 
-        #region Backend & Options Management
+        #region Backend & Options
         
         public async Task GetOptions()
         {
             await _backend.GetOptions();
             Options = _backend.Options;
-            OnOptionsChange?.Invoke();
             _events.Publish(new OptionsChangedEventArgs());
         }
         
@@ -510,7 +374,6 @@ namespace BlazorWebApp.Services
         {
             var response = await _backend.PostOptions(options);
             Options = _backend.Options;
-            OnOptionsChange?.Invoke();
             _events.Publish(new OptionsChangedEventArgs());
             return response;
         }
@@ -519,7 +382,6 @@ namespace BlazorWebApp.Services
         {
             await _backend.LoadBackendDependentResources();
             await _models.GetADetailerModels();
-            OnSamplersSchedulersChanged?.Invoke();
             _events.Publish(new SamplersSchedulersChangedEventArgs());
         }
         
@@ -539,19 +401,14 @@ namespace BlazorWebApp.Services
         
         #endregion
 
-        #region Gallery Management
+        #region Gallery
         
-        public async Task GetFolders()
-        {
-            await _gallery.GetFolders();
-            OnFolderChange?.Invoke();
-        }
+        public async Task GetFolders() => await _gallery.GetFolders();
         
         public async Task GetProjects()
         {
             await _gallery.GetProjects(State.Gallery.FolderId);
             if (State.Gallery.GalleriesOrderDescending) Projects.Reverse();
-            OnProjectsChange?.Invoke();
         }
         
         public async Task SetCurrentFolder(int id)
@@ -569,7 +426,6 @@ namespace BlazorWebApp.Services
             }
             SaveState();
             await GetProjects();
-            OnFolderChange?.Invoke();
         }
         
         public async Task SetCurrentProject(int id)
@@ -577,67 +433,23 @@ namespace BlazorWebApp.Services
             await GetFolders();
             await GetProjects();
             await _gallery.SetCurrentProject(id);
-            OnProjectChange?.Invoke();
-            OnProjectChangeTask?.Invoke();
         }
         
-        public void ReplaceSelectedImages(List<int> ids)
-        {
-            _gallery.ReplaceSelectedImages(ids);
-            OnSelectedImagesChanged?.Invoke();
-        }
-        
-        public void AddSelectedImage(int id)
-        {
-            _gallery.AddSelectedImage(id);
-            OnSelectedImagesChanged?.Invoke();
-        }
-        
-        public void RemoveSelectedImage(int id)
-        {
-            _gallery.RemoveSelectedImage(id);
-            OnSelectedImagesChanged?.Invoke();
-        }
-        
-        public void ClearSelectedImages()
-        {
-            _gallery.ClearSelectedImages();
-            OnSelectedImagesChanged?.Invoke();
-        }
+        public void ReplaceSelectedImages(List<int> ids) => _gallery.ReplaceSelectedImages(ids);
+        public void AddSelectedImage(int id) => _gallery.AddSelectedImage(id);
+        public void RemoveSelectedImage(int id) => _gallery.RemoveSelectedImage(id);
+        public void ClearSelectedImages() => _gallery.ClearSelectedImages();
         
         #endregion
 
-        #region Session Management
+        #region Session
         
-        public void ResetImageEditorState()
-        {
-            _session.ResetImageEditorState();
-        }
-        
-        public void SetImg2ImgInputImage(string imageData, bool resetEditorState)
-        {
-            _session.SetImg2ImgInputImage(imageData, resetEditorState);
-        }
-        
-        public void AddSessionVideo(GeneratedVideo video)
-        {
-            _session.AddSessionVideo(video);
-        }
-        
-        public void AddSessionVideos(IEnumerable<GeneratedVideo> videos)
-        {
-            _session.AddSessionVideos(videos);
-        }
-        
-        public void ClearSessionVideos()
-        {
-            _session.ClearSessionVideos();
-        }
-        
-        public void RemoveSessionVideo(GeneratedVideo video)
-        {
-            _session.RemoveSessionVideo(video);
-        }
+        public void ResetImageEditorState() => _session.ResetImageEditorState();
+        public void SetImg2ImgInputImage(string imageData, bool resetEditorState) => _session.SetImg2ImgInputImage(imageData, resetEditorState);
+        public void AddSessionVideo(GeneratedVideo video) => _session.AddSessionVideo(video);
+        public void AddSessionVideos(IEnumerable<GeneratedVideo> videos) => _session.AddSessionVideos(videos);
+        public void ClearSessionVideos() => _session.ClearSessionVideos();
+        public void RemoveSessionVideo(GeneratedVideo video) => _session.RemoveSessionVideo(video);
         
         #endregion
 
@@ -648,10 +460,10 @@ namespace BlazorWebApp.Services
             Styles = new();
             var promptResources = await _db.GetPrompts();
             foreach (var prompt in promptResources)
-            {
                 Styles.Add(new(prompt));
-            }
-            if (State.Generation.Styles == null) State.Generation.Styles = new List<PromptStyle>();
+            
+            if (State.Generation.Styles == null) 
+                State.Generation.Styles = new List<PromptStyle>();
             else
             {
                 var currentStyles = State.Generation.Styles.ToList();
@@ -666,8 +478,7 @@ namespace BlazorWebApp.Services
         
         public void SetLoras(IEnumerable<Lora> loras, bool isImg2Img)
         {
-            if (loras == null) return;
-            if (State == null || State.Generation == null) return;
+            if (loras == null || State?.Generation == null) return;
 
             var parametersLoras = isImg2Img ? ParametersImg2Img.Loras : ParametersTxt2Img.Loras;
             parametersLoras ??= [];
@@ -675,8 +486,7 @@ namespace BlazorWebApp.Services
             foreach (var l in loras)
             {
                 if (string.IsNullOrWhiteSpace(l.Name)) continue;
-                var exists = parametersLoras.Any(x => string.Equals(x.Name, l.Name, StringComparison.InvariantCultureIgnoreCase));
-                if (!exists)
+                if (!parametersLoras.Any(x => string.Equals(x.Name, l.Name, StringComparison.InvariantCultureIgnoreCase)))
                     parametersLoras.Add(new Lora(l));
             }
         }
@@ -696,11 +506,7 @@ namespace BlazorWebApp.Services
                     {
                         var actualStyleText = styleText.Replace("{prompt}", "");
                         if (!string.IsNullOrWhiteSpace(actualStyleText))
-                        {
-                            cleanedFromStyles = Regex.Replace(cleanedFromStyles,
-                                $@"{Regex.Escape(actualStyleText)},?\s*",
-                                "", RegexOptions.IgnoreCase);
-                        }
+                            cleanedFromStyles = Regex.Replace(cleanedFromStyles, $@"{Regex.Escape(actualStyleText)},?\s*", "", RegexOptions.IgnoreCase);
                     }
                 }
 
@@ -714,43 +520,28 @@ namespace BlazorWebApp.Services
         
         #endregion
 
-        #region Parameter Management
+        #region Parameter Loading
         
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {
             bool isImg2Img = mode == ModeType.Img2Img;
-
-            if (isImg2Img)
-            {
-                ParametersImg2Img.Prompt = ParseAndCleanCopiedPrompt(image.Prompt ?? string.Empty, false, isImg2Img);
-                ParametersImg2Img.NegativePrompt = ParseAndCleanCopiedPrompt(image.NegativePrompt ?? string.Empty, true, isImg2Img);
-                ParametersImg2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
-                ParametersImg2Img.Steps = image.Steps;
-                ParametersImg2Img.Seed = image.Seed;
-                ParametersImg2Img.CfgScale = image.CfgScale;
-                ParametersImg2Img.Width = image.Width;
-                ParametersImg2Img.Height = image.Height;
-                ParametersImg2Img.DenoisingStrength = image.DenoisingStrength;
-            }
-            else
-            {
-                ParametersTxt2Img.Prompt = ParseAndCleanCopiedPrompt(image.Prompt ?? string.Empty, false, isImg2Img);
-                ParametersTxt2Img.NegativePrompt = ParseAndCleanCopiedPrompt(image.NegativePrompt ?? string.Empty, true, isImg2Img);
-                ParametersTxt2Img.SamplerIndex = await _db.GetSampler(image.SamplerId);
-                ParametersTxt2Img.Steps = image.Steps;
-                ParametersTxt2Img.Seed = image.Seed;
-                ParametersTxt2Img.CfgScale = image.CfgScale;
-                ParametersTxt2Img.Width = image.Width;
-                ParametersTxt2Img.Height = image.Height;
-                ParametersTxt2Img.DenoisingStrength = image.DenoisingStrength;
-            }
+            var param = isImg2Img ? (SharedParameters)ParametersImg2Img : ParametersTxt2Img;
+            
+            param.Prompt = ParseAndCleanCopiedPrompt(image.Prompt ?? string.Empty, false, isImg2Img);
+            param.NegativePrompt = ParseAndCleanCopiedPrompt(image.NegativePrompt ?? string.Empty, true, isImg2Img);
+            param.SamplerIndex = await _db.GetSampler(image.SamplerId);
+            param.Steps = image.Steps;
+            param.Seed = image.Seed;
+            param.CfgScale = image.CfgScale;
+            param.Width = image.Width;
+            param.Height = image.Height;
+            param.DenoisingStrength = image.DenoisingStrength;
         }
         
         public void SetGenerationParameter(Image source, string parameter, bool isImg2Img)
         {
-            string GetSampler() => _db.GetSampler(source.SamplerId).Result;
-
             SharedParameters param = isImg2Img ? ParametersImg2Img : ParametersTxt2Img;
+            
             switch (parameter)
             {
                 case nameof(SharedParameters.Prompt):
@@ -760,7 +551,7 @@ namespace BlazorWebApp.Services
                     param.NegativePrompt = ParseAndCleanCopiedPrompt(source.NegativePrompt, true, isImg2Img);
                     break;
                 case nameof(SharedParameters.SamplerIndex):
-                    param.SamplerIndex = GetSampler();
+                    param.SamplerIndex = _db.GetSampler(source.SamplerId).Result;
                     break;
                 case nameof(SharedParameters.Scheduler):
                     param.Scheduler = source.Scheduler;
@@ -785,42 +576,28 @@ namespace BlazorWebApp.Services
                     break;
             }
 
-            if (isImg2Img) OnImg2ImgParametersChanged?.Invoke();
-            else OnTxt2ImgParametersChanged?.Invoke();
+            _events.Publish(new ParametersChangedEventArgs(isImg2Img ? "Img2Img" : "Txt2Img"));
         }
         
         #endregion
 
-        #region Image Info & Path Management
+        #region Path Management
         
-        public void SerializeInfo()
-        {
-            ImagesInfo = new() { InfoTexts = new[] { Images.Info } };
-        }
+        public void SerializeInfo() => ImagesInfo = new() { InfoTexts = new[] { Images.Info } };
         
         public string GetCurrentSaveFolder(Outdir? outdir)
         {
-            string path;
-
-            switch (outdir)
+            string path = outdir switch
             {
-                case Outdir.Txt2ImgSamples:
-                    path = Options.OutdirSamplesTxt2Img;
-                    break;
-                case Outdir.Txt2ImgGrid:
-                    path = Options.OutdirGridTxt2Img;
-                    break;
-                case Outdir.Img2ImgSamples:
-                    path = Options.OutdirSamplesImg2Img;
-                    break;
-                case Outdir.Img2ImgGrid:
-                    path = Options.OutdirGridImg2Img;
-                    break;
-                case Outdir.Extras:
-                    return Options.OutdirSamplesExtras;
-                default:
-                    return string.Empty;
-            }
+                Outdir.Txt2ImgSamples => Options.OutdirSamplesTxt2Img,
+                Outdir.Txt2ImgGrid => Options.OutdirGridTxt2Img,
+                Outdir.Img2ImgSamples => Options.OutdirSamplesImg2Img,
+                Outdir.Img2ImgGrid => Options.OutdirGridImg2Img,
+                Outdir.Extras => Options.OutdirSamplesExtras,
+                _ => string.Empty
+            };
+
+            if (outdir == Outdir.Extras || string.IsNullOrEmpty(path)) return path;
 
             return Path.Combine(path, ConvertPathPattern(Options.FilenamePatternDir, Parser.ModeTypeFromOutdir((Outdir)outdir)))
                 .Replace('/', Path.DirectorySeparatorChar);
@@ -829,69 +606,44 @@ namespace BlazorWebApp.Services
         public string ConvertPathPattern(string pattern, ModeType mode)
         {
             var rg = new Regex(@"(\[.+?\])");
-            return rg.Replace(pattern, (t) => ConvertPathTag(t.Value, mode));
+            return rg.Replace(pattern, t => ConvertPathTag(t.Value, mode));
         }
         
         private string ConvertPathTag(string tag, ModeType mode)
         {
-            switch (tag)
+            if (tag == "[model_hash]") return GetModelHash(Options.SDModelCheckpoint);
+            if (tag == "[model_name]")
             {
-                case "[model_hash]":
-                    return GetModelHash(Options.SDModelCheckpoint);
-                case "[model_name]":
-                    var modelAsPath = GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
-                    return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
-                default:
-                    break;
+                var modelAsPath = GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
+                return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
             }
 
-            if (mode == ModeType.Txt2Img)
+            return tag switch
             {
-                switch (tag)
+                "[sampler]" => mode switch
                 {
-                    case "[sampler]":
-                        return ParametersTxt2Img.SamplerName;
-                    case "[seed]":
-                        return State.Generation.Seed.ToString();
-                    case "[steps]":
-                        return ParametersTxt2Img.Steps.ToString();
-                    case "[cfg]":
-                        return ParametersTxt2Img.CfgScale.ToString();
-                    default: break;
-                }
-            }
-            else if (mode == ModeType.Img2Img)
-            {
-                switch (tag)
+                    ModeType.Txt2Img => ParametersTxt2Img?.SamplerName ?? "euler",
+                    ModeType.Img2Img => ParametersImg2Img?.SamplerIndex ?? "euler",
+                    ModeType.Img2Vid => ParametersImg2Vid?.SamplerName ?? "euler",
+                    _ => "euler"
+                },
+                "[seed]" => State.Generation.Seed.ToString(),
+                "[steps]" => mode switch
                 {
-                    case "[sampler]":
-                        return ParametersImg2Img.SamplerIndex;
-                    case "[seed]":
-                        return State.Generation.Seed.ToString();
-                    case "[steps]":
-                        return ParametersImg2Img.Steps.ToString();
-                    case "[cfg]":
-                        return ParametersImg2Img.CfgScale.ToString();
-                    default: break;
-                }
-            }
-            else if (mode == ModeType.Img2Vid)
-            {
-                switch (tag)
+                    ModeType.Txt2Img => ParametersTxt2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Img => ParametersImg2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Vid => ParametersImg2Vid?.Steps?.ToString() ?? "8",
+                    _ => "20"
+                },
+                "[cfg]" => mode switch
                 {
-                    case "[sampler]":
-                        return ParametersImg2Vid?.SamplerName ?? "euler";
-                    case "[seed]":
-                        return State.Generation.Seed.ToString();
-                    case "[steps]":
-                        return ParametersImg2Vid?.Steps?.ToString() ?? "8";
-                    case "[cfg]":
-                        return ParametersImg2Vid?.CfgScale?.ToString() ?? "1";
-                    default: break;
-                }
-            }
-
-            return string.Empty;
+                    ModeType.Txt2Img => ParametersTxt2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Img => ParametersImg2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Vid => ParametersImg2Vid?.CfgScale?.ToString() ?? "1",
+                    _ => "7"
+                },
+                _ => string.Empty
+            };
         }
         
         private string GetModelHash(string modelName)
@@ -903,28 +655,17 @@ namespace BlazorWebApp.Services
         
         #endregion
 
-        #region Settings & State Management
+        #region State & Settings
         
-        public void LoadSettings()
-        {
-            _settings.LoadSettings();
-        }
-        
-        public void SaveSettings()
-        {
-            _settings.SaveSettings();
-        }
+        public void LoadSettings() => _settings.LoadSettings();
+        public void SaveSettings() => _settings.SaveSettings();
         
         public async Task LoadState(State? state = null)
         {
             if (state != null)
-            {
                 await _state.LoadState(state.Id);
-            }
             else
-            {
                 await _state.LoadState();
-            }
 
             _state.MigrateLegacySettings();
             
@@ -936,28 +677,21 @@ namespace BlazorWebApp.Services
             if (State?.Generation != null)
             {
                 State.Generation.Workflows = workflows;
-                if (suggestedBase.HasValue)
-                    State.Generation.WorkflowBase = suggestedBase.Value;
-                if (suggestedId.HasValue)
-                    State.Generation.CurrentWorkflowId = suggestedId.Value;
+                if (suggestedBase.HasValue) State.Generation.WorkflowBase = suggestedBase.Value;
+                if (suggestedId.HasValue) State.Generation.CurrentWorkflowId = suggestedId.Value;
             }
 
-            OnTxt2ImgParametersChanged?.Invoke();
-            OnImg2ImgParametersChanged?.Invoke();
-            OnUpscaleParametersChanged?.Invoke();
-            OnImg2VidParametersChanged?.Invoke();
+            _events.Publish(new ParametersChangedEventArgs("Txt2Img"));
+            _events.Publish(new ParametersChangedEventArgs("Img2Img"));
+            _events.Publish(new StateChangedEventArgs());
         }
         
         public async Task SaveState(State? state = null)
         {
             if (state == null)
-            {
                 await _state.SaveState();
-            }
             else
-            {
                 await _db.UpdateState(state);
-            }
         }
         
         #endregion

@@ -383,10 +383,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Events.Subscribe<ConvergingChangedEventArgs>(OnProgressChanged);
+        Events.Subscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+        Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
         Events.Subscribe<ImageSelectionChangedEventArgs>(OnSelectedImagesChanged);
-        M.OnProgressChanged += HandleProgressChanged;
-        M.OnSessionVideosChanged += HandleSessionVideosChanged;
+        Events.Subscribe<SessionVideosChangedEventArgs>(OnSessionVideosChanged);
         
         // Set current video from session if available
         if (Session.SessionGeneratedVideos.Videos.Count > 0)
@@ -397,7 +397,7 @@
         // Load selected items
         await LoadSelectedPage(1);
     }
-
+    
     protected override void OnParametersSet()
     {
         // When new videos are generated, add them to session and select the first
@@ -424,11 +424,11 @@
         }
     }
 
-    private void OnProgressChanged(ConvergingChangedEventArgs args) => InvokeAsync(StateHasChanged);
+    private void OnConvergingChanged(ConvergingChangedEventArgs args) => InvokeAsync(StateHasChanged);
 
-    private void HandleProgressChanged() => InvokeAsync(StateHasChanged);
+    private void OnProgressChanged(ProgressChangedEventArgs args) => InvokeAsync(StateHasChanged);
 
-    private void HandleSessionVideosChanged()
+    private void OnSessionVideosChanged(SessionVideosChangedEventArgs args)
     {
         // Ensure current video is still valid
         if (_currentVideo == null && Session.SessionGeneratedVideos.Videos.Count > 0)
@@ -602,7 +602,7 @@
         parameters.Add("OkButtonText", "Yes");
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
-        parameters.Add("Content", new MarkupString(@"<span>Are you sure you want to clear all videos from the session gallery?</span><br/><small>This only removes them from the gallery view, not from disk.</small>"));
+        parameters.Add("Content", new MarkupString(@"<span>Are you sure you want to clear all videos from the session gallery?</span><br/><small>This only removes them from gallery view, not from disk.</small>"));
         
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Clear Gallery", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
@@ -712,9 +712,9 @@
 
     public void Dispose()
     {
-        Events.Unsubscribe<ConvergingChangedEventArgs>(OnProgressChanged);
+        Events.Unsubscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+        Events.Unsubscribe<ProgressChangedEventArgs>(OnProgressChanged);
         Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnSelectedImagesChanged);
-        M.OnProgressChanged -= HandleProgressChanged;
-        M.OnSessionVideosChanged -= HandleSessionVideosChanged;
+        Events.Unsubscribe<SessionVideosChangedEventArgs>(OnSessionVideosChanged);
     }
 }

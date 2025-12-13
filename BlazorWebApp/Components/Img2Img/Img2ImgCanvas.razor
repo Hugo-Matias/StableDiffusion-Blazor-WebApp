@@ -1,4 +1,6 @@
-﻿@inject ManagerService M
+﻿@using BlazorWebApp.Events
+@inject ManagerService M
+@inject IEventService Events
 @inject MagickService Magick
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -76,10 +78,15 @@
 
             M.State.Generation.Img2Img.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
             M.State.Generation.Img2Img.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-            M.OnCanvasImageDataChanged += Refresh;
+            Events.Subscribe<CanvasImageDataChangedEventArgs>(OnCanvasImageDataChanged);
 
             if (!string.IsNullOrEmpty(M.CanvasImageData)) { await LoadImage(); }
         }
+    }
+    
+    private void OnCanvasImageDataChanged(CanvasImageDataChangedEventArgs args)
+    {
+        Refresh();
     }
 
     private async Task OnMouseDown(MouseEventArgs e)
@@ -253,7 +260,7 @@
     {
         M.State.Generation.Img2Img.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
         M.State.Generation.Img2Img.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-        M.OnCanvasImageDataChanged -= Refresh;
+        Events.Unsubscribe<CanvasImageDataChangedEventArgs>(OnCanvasImageDataChanged);
 
         if (_canvasInstance != null)
         {

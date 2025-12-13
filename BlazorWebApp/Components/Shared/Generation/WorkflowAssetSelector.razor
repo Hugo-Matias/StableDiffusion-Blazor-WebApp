@@ -1,6 +1,8 @@
 @using BlazorWebApp.Models
+@using BlazorWebApp.Events
 @using static BlazorWebApp.Data.Enums
 @inject ManagerService M
+@inject IEventService Events
 @inject IAssetResolverService AssetResolver
 @implements IDisposable
 
@@ -114,9 +116,9 @@ else if (ShowEmptyMessage)
 
     protected override async Task OnInitializedAsync()
     {
-        M.OnCurrentWorkflowChanged += HandleWorkflowChanged;
-        M.OnSDModelsChange += HandleModelsChanged;
-        M.OnWorkflowBaseChanged += HandleWorkflowBaseChanged;
+        Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Subscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
         
         await LoadAssetsAsync();
     }
@@ -199,7 +201,7 @@ else if (ShowEmptyMessage)
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void HandleWorkflowChanged()
+    private async void OnWorkflowChanged(WorkflowChangedEventArgs args)
     {
         await InvokeAsync(async () =>
         {
@@ -207,7 +209,7 @@ else if (ShowEmptyMessage)
         });
     }
 
-    private async void HandleWorkflowBaseChanged()
+    private async void OnWorkflowBaseChanged(StateChangedEventArgs args)
     {
         await InvokeAsync(async () =>
         {
@@ -217,7 +219,7 @@ else if (ShowEmptyMessage)
         });
     }
 
-    private async void HandleModelsChanged()
+    private async void OnModelsChanged(ModelsChangedEventArgs args)
     {
         await InvokeAsync(async () =>
         {
@@ -271,8 +273,8 @@ else if (ShowEmptyMessage)
 
     public void Dispose()
     {
-        M.OnCurrentWorkflowChanged -= HandleWorkflowChanged;
-        M.OnSDModelsChange -= HandleModelsChanged;
-        M.OnWorkflowBaseChanged -= HandleWorkflowBaseChanged;
+        Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Unsubscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
     }
 }

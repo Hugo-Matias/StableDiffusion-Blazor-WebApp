@@ -1,6 +1,8 @@
 @using BlazorWebApp.Models
+@using BlazorWebApp.Events
 @using static BlazorWebApp.Data.Enums
 @inject ManagerService M
+@inject IEventService Events
 @inject WorkflowService WorkflowService
 @inject ISnackbar Snackbar
 @implements IDisposable
@@ -96,9 +98,9 @@
 
     protected override void OnInitialized()
     {
-        M.OnCurrentWorkflowChanged += HandleWorkflowChanged;
-        M.OnSDModelsChange += HandleModelsChanged;
-        M.OnWorkflowBaseChanged += HandleWorkflowBaseChanged;
+        Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Subscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
         UpdateAssetCount();
     }
 
@@ -201,27 +203,27 @@
         }
     }
 
-    private async void HandleWorkflowChanged()
+    private async void OnWorkflowChanged(WorkflowChangedEventArgs args)
     {
         UpdateAssetCount();
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void HandleWorkflowBaseChanged()
+    private async void OnWorkflowBaseChanged(StateChangedEventArgs args)
     {
         UpdateAssetCount();
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void HandleModelsChanged()
+    private async void OnModelsChanged(ModelsChangedEventArgs args)
     {
         await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        M.OnCurrentWorkflowChanged -= HandleWorkflowChanged;
-        M.OnSDModelsChange -= HandleModelsChanged;
-        M.OnWorkflowBaseChanged -= HandleWorkflowBaseChanged;
+        Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Unsubscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
     }
 }

@@ -5,7 +5,7 @@ namespace BlazorWebApp.Services
     /// <summary>
     /// Service for managing and tracking progress of long-running operations such as downloads and generations.
     /// </summary>
-    public class ProgressService
+    public class ProgressService : IProgressService
     {
         private readonly ILogger<ProgressService> _logger;
 
