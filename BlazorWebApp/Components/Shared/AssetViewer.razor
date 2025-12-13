@@ -1,7 +1,7 @@
 @using BlazorWebApp.Extensions
 @using ImageEntity = BlazorWebApp.Data.Entities.Image
 @using static BlazorWebApp.Data.Enums;
-@inject DatabaseService DB
+@inject IDatabaseService DB
 @inject IOService IO
 @inject IJSRuntime JS
 @inject ManagerService M
@@ -102,7 +102,7 @@
                             <span class="counter-current">@(_currentIndex + 1)</span>
                             <span class="counter-sep">/</span>
                             <span class="counter-total">@Assets.Count</span>
-                            <span class="counter-dot">•</span>
+                            <span class="counter-dot">ï¿½</span>
                             <span class="counter-total-label">@TotalCount</span>
                         </div>
                         @if (PageCount > 1)
@@ -256,7 +256,7 @@
                                     <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")" 
                                          @onclick="@(() => ToggleParam("Width"))" title="Resolution">
                                         <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
-                                        <span>@CurrentAsset.Width × @CurrentAsset.Height</span>
+                                        <span>@CurrentAsset.Width ï¿½ @CurrentAsset.Height</span>
                                     </div>
                                 }
                                 @if (CurrentAsset.Seed > 0)

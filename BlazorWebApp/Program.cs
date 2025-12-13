@@ -33,10 +33,8 @@ builder.Services.AddSingleton<ComfyUIEventBus>();
 builder.Services.AddSingleton<IEventService, EventService>();
 builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
-// Core data services
-// DatabaseService needs dual registration: components use concrete type, services use interface
-builder.Services.AddSingleton<DatabaseService>();
-builder.Services.AddSingleton<IDatabaseService>(sp => sp.GetRequiredService<DatabaseService>());
+// Core data services - interface-only after Phase 13
+builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddSingleton<IIOService, IOService>();
 
 // State management service
@@ -57,15 +55,14 @@ builder.Services.AddSingleton<ISessionService, SessionService>();
 // Core application services
 builder.Services.AddSingleton<ManagerService>();
 
-// Image service - dual registration for concrete and interface access
+// Image service - dual registration for concrete access by ComfyUIWebsocketService
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageService>());
 
 builder.Services.AddSingleton<CsvService>();
 
-// Progress service - dual registration: ProgressContainer uses concrete for OnUpdate event
-builder.Services.AddSingleton<ProgressService>();
-builder.Services.AddSingleton<IProgressService>(sp => sp.GetRequiredService<ProgressService>());
+// Progress service - interface-only after Phase 13 (OnUpdate event on IProgressService)
+builder.Services.AddSingleton<IProgressService, ProgressService>();
 
 builder.Services.AddSingleton<ResourcesService>();
 

@@ -7,7 +7,7 @@
 @inject IEventService Events
 @inject ManagerService M
 @inject IImageService ImageService
-@inject DatabaseService DB
+@inject IDatabaseService DB
 @inject IOService IO
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -661,7 +661,7 @@
         var parts = new List<string>();
         
         if (video.Width > 0 && video.Height > 0)
-            parts.Add($"{video.Width}×{video.Height}");
+            parts.Add($"{video.Width}ï¿½{video.Height}");
         if (video.FrameCount > 0)
             parts.Add($"{video.FrameCount} frames");
         if (video.FrameRate > 0)

@@ -3,7 +3,7 @@
 @inject IStateService State
 @inject IGalleryService Gallery
 @inject IEventService Events
-@inject DatabaseService DB
+@inject IDatabaseService DB
 @inject IOService IO
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -70,7 +70,7 @@
                         {
                             <span class="info-item">
                                 <i class="fa-solid fa-expand"></i>
-                                @Video.Width×@Video.Height
+                                @Video.Widthï¿½@Video.Height
                             </span>
                         }
                         @if (Video.FrameCount > 0)
