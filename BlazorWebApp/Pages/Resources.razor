@@ -1,5 +1,7 @@
 ﻿@page "/resources"
-@inject ManagerService M
+@using BlazorWebApp.Events
+@inject IStateService State
+@inject IEventService Events
 @inject IOService IO
 @inject DatabaseService DB
 @inject ResourcesService ResourcesService
@@ -9,7 +11,7 @@
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<MudTabs @bind-ActivePanelIndex=M.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
+<MudTabs @bind-ActivePanelIndex=State.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
     <MudTabPanel Text="CivitAI">
         <CivitaiPanel />
     </MudTabPanel>
@@ -27,14 +29,30 @@
 @code {
     private Dictionary<ResourceType, List<LocalResource>> _resources;
     private List<string> _resourceFormats = new() { ".safetensors", ".ckpt", ".pt" };
+    private Dictionary<string, string> _resourceTypeDirectories;
 
     protected async override Task OnInitializedAsync()
     {
-        M.OnComfyUIStateChanged += Refresh;
-        M.OnDownloadCompleted += Refresh;
-        M.OnResourcesStateChanged += Refresh;
-        if (M.ResourceTypeDirectories == null) await M.GetResourceTypeDirectories();
+        Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        Events.Subscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
+        Events.Subscribe<ResourcesChangedEventArgs>(OnResourcesStateChanged);
+        
+        await GetResourceTypeDirectories();
         await InitializeResourceDictionary();
+    }
+
+    private async Task GetResourceTypeDirectories()
+    {
+        var baseDir = Configuration["ResourcesPath"];
+        _resourceTypeDirectories = new()
+        {
+            {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
+            {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
+            {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
+            {"LORA", Path.Combine(baseDir, "LORA")},
+            {"LoCon", Path.Combine(baseDir, "LORA")},
+            {"VAE", Path.Combine(baseDir, "VAE")}
+        };
     }
 
     private async Task InitializeResourceDictionary()
@@ -100,16 +118,9 @@
                     Refresh();
                 }
                 else if (command == "Toggle") Refresh();
-                // else if (!M.IsWebuiUp) return;
-                // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
                 else if (command.Equals("Load", comp) && resource.Type.Name.Equals("Checkpoint", comp))
                 {
                     // TODO: Checkpoint loading from Resources page is disabled pending model type refactoring
-                    // await M.GetWorkflowModels(refresh: true);
-                    // var filename = file.File.Name.Replace(file.File.Extension, "");
-                    // var model = M.CheckpointModels?.FirstOrDefault(m => m.Model_name.Contains(filename, comp))?.Title;
-                    // if (model != null) await M.SetSDModel(model);
-                    // await DB.UpdateResourceLoadedDate(file.ResourceId);
                 }
                 else
                 {
@@ -171,7 +182,6 @@
         }
     }
 
-
     private async Task ShowNotFoundDeleteDialog(LocalResourceFile file)
     {
         var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
@@ -190,17 +200,22 @@
             Snackbar.Add("Resource deleted successfully!", Severity.Success);
         }
     }
+
+    private void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args) => Refresh();
+    private void OnDownloadCompleted(DownloadCompletedEventArgs args) => Refresh();
+    private void OnResourcesStateChanged(ResourcesChangedEventArgs args) => Refresh();
+
     private async void Refresh()
     {
         await InitializeResourceDictionary();
-        await M.GetResourceTypeDirectories();
+        await GetResourceTypeDirectories();
         await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        M.OnComfyUIStateChanged -= Refresh;
-        M.OnDownloadCompleted -= Refresh;
-        M.OnResourcesStateChanged -= Refresh;
+        Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        Events.Unsubscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
+        Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesStateChanged);
     }
 }

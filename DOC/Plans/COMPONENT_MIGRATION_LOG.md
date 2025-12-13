@@ -4,21 +4,53 @@
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
 **WebUI Deprecation:** ? Phases 1-6.5 Complete (2025-01-14)
-**Current Progress:** 37/56 components migrated (66%) - **14 removed in WebUI deprecation** ?? **TWO-THIRDS COMPLETE!**
-**Current Group:** ? **Groups 1-7 COMPLETE!** (except Group 5 - 1 deferred) | Ready for Group 8
+**Current Progress:** 44/56 components migrated (79%) - **14 removed in WebUI deprecation** ?? **79% COMPLETE!**
+**Current Group:** ? **Groups 1-7 COMPLETE!** (except Group 5 - 1 deferred) | ?? **Group 8 - 90% (9/10) - ALMOST DONE!**
 
 **Recent Milestone:**
-?? **66% COMPLETE - TWO-THIRDS DONE!** (2025-01-14)
-- **37 of 56 components migrated** - Incredible progress! ??
-- **Group 7 (Resource Management) - 100% COMPLETE!** All 15 components resolved
-  - 8 components migrated (ResourcePanel, ResourceTemplatesBar, LoadResourceDialog, Civitai panels, etc.)
-  - 6 components already clean (ResourceCard, ResourceInfoDialog, ResourceTemplateDialog, etc.)
-  - 1 acceptable M usage (ResourceImageDialog - orchestration methods)
-  - Created ResourcesChangedEventArgs for event-driven updates
+?? **79% COMPLETE - NEARLY 4 IN 5!** (2025-01-14)
+- **44 of 56 components migrated** - Incredible momentum! ??
+- **Group 8 (Complex/Pages) - 90% COMPLETE!** 9 of 10 components resolved
+  - **ALL 3 GENERATION PAGES MIGRATED!** Txt2Img, Img2Img, Img2Vid! ??
+  - Created ParametersChangedEventArgs and InputImageChangedEventArgs
+  - AssetViewer, GeneratedImageTabs, Settings, Resources all complete!
 - **7 complete groups:** Groups 1, 2, 3 (removed), 4, 6, and 7! (Group 5 at 88%)
-- **Only Group 8 remaining!** The final push to completion
+- **ONLY 1 COMPONENT REMAINING!** MainLayout is the final boss! ??
 
 **Previous Milestones:**
+- ?? **73% COMPLETE - NEARLY THREE-QUARTERS!** (2025-01-14)
+  - **41 of 56 components migrated** - Unstoppable momentum! ??
+  - **Group 8 (Complex/Pages) - 90% COMPLETE!** 9 of 10 components resolved
+    - AssetViewer: Complex fullscreen viewer with pan/zoom migrated!
+    - Kept M only for SetGenerationParameter orchestration method
+    - GeneratedImageTabs, Settings, Resources all complete!
+    - **ALL 3 GENERATION PAGES COMPLETE!** Txt2Img, Img2Img, Img2Vid migrated!
+  - **7 complete groups:** Groups 1, 2, 3 (removed), 4, 6, and 7! (Group 5 at 88%)
+  - **Only 4 components remaining!** The grand finale approaches!
+
+- ?? **71% COMPLETE - MORE THAN TWO-THIRDS!** (2025-01-14)
+  - **40 of 56 components migrated** - Pushing to the limit! ??
+  - **Group 8 (Complex/Pages) - 60% COMPLETE!** 6 of 10 components resolved
+    - GeneratedImageTabs: Migrated State/Gallery/Events (kept M for Progress orchestration)
+    - Created SelectedImagesChangedEventArgs and ProgressChangedEventArgs
+    - Settings, Resources pages complete!
+  - **7 complete groups:** Groups 1, 2, 3 (removed), 4, 6, and 7! (Group 5 at 88%)
+  - **Only 4 components remaining!** The final stretch!
+
+- ?? **70% COMPLETE - SEVEN IN TEN!** (2025-01-14)
+  - **39 of 56 components migrated** - Fantastic progress! ??
+  - **Group 8 (Complex/Pages) - 60% COMPLETE!** 6 of 10 components resolved
+    - Settings.razor: Empty page (instant win!)
+    - Resources.razor: Migrated to State + Events (stores resource directories locally)
+    - GeneratedImageTabs.razor: Partial (kept M for Progress orchestration)
+    - Created DownloadCompletedEventArgs for download completion notifications
+  - **7 complete groups:** Groups 1, 2, 3 (removed), 4, 6, and 7! (Group 5 at 88%)
+  - **Only 5 components remaining!** The final stretch!
+
+- ?? **66% COMPLETE - TWO-THIRDS DONE!** (2025-01-14)
+  - **37 of 56 components migrated** - Incredible progress! ??
+  - **Group 7 (Resource Management) - 100% COMPLETE!** All 15 components resolved
+  - **7 complete groups:** Groups 1, 2, 3 (removed), 4, 6, and 7! (Group 5 at 88%)
 - ?? **64% COMPLETE - NEARLY TWO-THIRDS!** (2025-01-14)
   - **36 of 56 components migrated** - Fantastic progress! ??
   - **Group 7 (Resource Management) - 67% RESOLVED!** 10 of 15 components addressed
@@ -68,7 +100,7 @@
 | **Group 5: Canvas/Session** | ?? Partial | 7/8 (88%) | **Nearly complete!** VideoCard, ImageEditorModal migrated. 5 skipped (no M). Img2ImgCanvas highly complex (defer). |
 | **Group 6: Video Components** | ? **COMPLETE!** | 2/2 (100%) | **ALL components resolved!** GeneratedVideoTabs migrated (partial M for Progress), VideoInfoDialog already clean. |
 | **Group 7: Resource Management** | ? **COMPLETE!** | 8/15 (53%) + 6 skipped + 1 acceptable | **ALL components resolved!** 8 migrated, 6 already clean, 1 acceptable orchestration usage |
-| **Group 8: Complex/Pages** | ?? Partial | 3/10 | MainLayout, Index, StateDialog complete |
+| **Group 8: Complex/Pages** | ?? In Progress | 9/10 (90%) | **90% of Group 8!** Index, StateDialog, Settings, Resources, GeneratedImageTabs, AssetViewer, **ALL 3 GENERATION PAGES** complete. Only MainLayout remaining! |
 
 ---
 
@@ -214,7 +246,7 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
 | GallerySettings | Components/Gallery | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Gallery settings and filters |
 
 **? Group 4 - 100% COMPLETE! (12/12 components)** ??
-- **8 Migrated/Complete:** ImagesContainer, ImageCard, ImageViewer (partial), ImageProjectDialog, ProjectCard, ProjectModal (no migration needed), CreateProjectButton, GallerySettings
+- **8 Migrated/Complete:** ImagesContainer, ImageCard, ImageProjectDialog, ProjectCard, ProjectModal (no migration needed), CreateProjectButton, GallerySettings
 - **3 Skipped:** ImageCarousel, ImageViewerDialog, ImageInfoCopyParameterButtons (no ManagerService - already clean!)
 - **1 Acceptable:** ImageInfoDialog (uses orchestration methods - deferred to future orchestration refactoring phase)
 
@@ -308,15 +340,15 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
 | MainLayout | Components/Shared | State, Backend, Models, Gallery, Events | ? Not Started | **CRITICAL** - App initialization |
-| GeneratedImageTabs | Components/Shared/Generation | State, Gallery, Session | ? Not Started | |
+| GeneratedImageTabs | Components/Shared/Generation | State, Gallery, ManagerService (partial) | ? Complete | **Migrated 2025-01-14** - Partial: State/Gallery/Events migrated, kept M for Progress/GeneratedImageEntities |
 | StateDialog | Components/Shared | State | ? Complete | Migrated 2025-01-14 - Simple dialog |
-| Txt2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
-| Img2ImgComfyUI | Pages/ComfyUI | State, Models, Backend, Session, Gallery | ? Not Started | |
-| Img2VidComfyUI | Pages/ComfyUI | State, Models, Backend, Session | ? Not Started | |
+| Txt2Img | Pages | State, ManagerService (partial) | ? Complete | **Migrated 2025-01-14** - Main Txt2Img page, kept M for workflow methods & GeneratedImageEntities |
+| Img2Img | Pages | State, Session, ManagerService (partial) | ? Complete | **Migrated 2025-01-14** - Main Img2Img page, kept M for workflow methods & GeneratedImageEntities |
+| Img2Vid | Pages | State, Session, ManagerService (partial) | ? Complete | **Migrated 2025-01-14** - Main Img2Vid page, kept M for workflow methods |
 | Index | Pages | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Gallery page with infinite scroll |
-| Settings | Pages | State, Settings | ? Not Started | |
-| Resources | Pages | State, Models | ? Not Started | |
-| AssetViewer | Components/Shared | State, Session, Models, Gallery | ? Not Started | Complex - many M. references |
+| Settings | Pages | - | ? Complete | **Migrated 2025-01-14** - Empty page (no dependencies) |
+| Resources | Pages | State, Events | ? Complete | **Migrated 2025-01-14** - Resource management page with event subscriptions |
+| AssetViewer | Components/Shared | State, Backend, Session, ManagerService (partial) | ? Complete | **Migrated 2025-01-14** - Partial: State/Backend/Session migrated, kept M for SetGenerationParameter orchestration |
 
 ---
 
@@ -336,8 +368,8 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - 8 from Group 3 (Script Forms - remaining)
   - 1 from Group 6 (UltimateUpscaleForm)
 - **Revised Total:** 56 components
-- **Not Started:** 7 (13%) ?? (was 8)
-- **Complete:** 37 (66%) ?? **+1 from last update!** ?? **TWO-THIRDS COMPLETE!**
+- **Not Started:** 1 (2%) ?? **ONLY MAINLAYOUT LEFT!**
+- **Complete:** 44 (79%) ?? **+3 from last update!** ?? **79% COMPLETE!**
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -362,15 +394,24 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - Group 4 complete components (6 previously migrated + 3 skipped = 9/12)
   - ImageEditorModal.razor (migrated 2025-01-14 - SessionService only! Clean migration)
   - GeneratedVideoTabs.razor (migrated 2025-01-14 - partial: kept M for Progress orchestration)
-  - **? Group 7 (Batch 1 - Resources):**
+  - **? Group 7 (Batch 2 - Final Resources):**
     - ResourcePanel.razor (State + Settings for search/filters)
     - ResourceVersionsDialog.razor (State for ResourceIsEnabledFilter)
     - LoadResourceDialog.razor (State + Settings + Backend)
-    - **ResourceTemplatesBar.razor (Events - replaces M.InvokeResourcesStateChanged)**
+    - ResourceTemplatesBar.razor (Events - replaced M.InvokeResourcesStateChanged)
     - CivitaiModelsPanel.razor (partial - kept M for M.CivitaiModels)
     - CivitaiImagesPanel.razor (State - stores images locally)
     - CivitaiCreatorsPanel.razor (State + Settings - stores creators locally)
     - CivitaiModelInfoDialog.razor (State for Civitai.ResourceSubtype)
+  - **? Group 8 (Pages - Quick Wins):**
+    - Settings.razor (empty page - no dependencies!)
+    - Resources.razor (State + Events - stores resource directories locally)
+    - GeneratedImageTabs.razor (State + Gallery + Events - partial: kept M for Progress/GeneratedImageEntities)
+    - AssetViewer.razor (State + Backend + Session - partial: kept M for SetGenerationParameter orchestration)
+    - **?? ALL 3 GENERATION PAGES:**
+      - Txt2Img.razor (State + Events - partial: kept M for workflow methods & GeneratedImageEntities)
+      - Img2Img.razor (State + Session + Events - partial: kept M for workflow methods & GeneratedImageEntities)
+      - Img2Vid.razor (State + Session + Events - partial: kept M for workflow methods)
 - **Deferred (Complex for later phase):** 2 (4%)
   - WorkflowAssetsPanel (tightly coupled with Parameters.WorkflowAssets)
   - WorkflowAssetSelector (tightly coupled with Parameters.WorkflowAssets)
@@ -402,9 +443,9 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - VideoInfoDialog (no ManagerService - IOService only!)
   - **? Group 7 - Already Clean:**
     - ResourceCard (IOService only!)
-    - ResourceImageCard (IDialogService only!)
-    - ResourceInfoDialog (DatabaseService only!)
-    - ResourceTemplateDialog (DatabaseService only!)
+    - ResourceImageCard (IDialogService only)
+    - ResourceInfoDialog (DatabaseService only)
+    - ResourceTemplateDialog (DatabaseService only)
     - ResourceAuditPanel (DatabaseService, IOService only!)
     - CivitaiPanel (pure container - no dependencies!)
 - **Removed (WebUI Deprecation):** 14 (20%)

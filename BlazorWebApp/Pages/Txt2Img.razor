@@ -1,8 +1,11 @@
 ﻿@page "/txt2img/{id}"
+@using BlazorWebApp.Events
 @using BlazorWebApp.Components.Shared.Generation
 @using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
 @inject ManagerService M
+@inject IStateService State
+@inject IEventService Events
 @inject WorkflowService WorkflowService
 @inject ImageService ImageService
 @inject NavigationManager NavManager
@@ -33,8 +36,8 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        M.OnWorkflowBaseChanged += Refresh;
-        M.OnTxt2ImgParametersChanged += InitializeParameters;
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<ParametersChangedEventArgs>(OnTxt2ImgParametersChanged);
         InitializeParameters();
     }
 
@@ -49,7 +52,7 @@
 
     private async void Generate()
     {
-        M.ParametersTxt2Img.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
+        State.ParametersTxt2Img.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
         var generated = await ImageService.GetImages(ModeType.Txt2Img);
         if (generated != null && generated.Images != null && generated.Images.Count > 0) M.GeneratedImageEntities = generated;
     }
@@ -58,7 +61,7 @@
 
     private async void Interrupt()
     {
-        M.State.Generation.IsInterrupted = true;
+        State.State.Generation.IsInterrupted = true;
         await API.PostInterrupt();
     }
 
@@ -78,21 +81,24 @@
 
     private async void InitializeParameters()
     {
-        Parameters = M.ParametersTxt2Img;
+        Parameters = State.ParametersTxt2Img;
         await InvokeAsync(StateHasChanged);
     }
+
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+    private void OnTxt2ImgParametersChanged(ParametersChangedEventArgs args) => InitializeParameters();
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        M.OnWorkflowBaseChanged -= Refresh;
-        M.OnTxt2ImgParametersChanged -= InitializeParameters;
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<ParametersChangedEventArgs>(OnTxt2ImgParametersChanged);
     }
     
     private void HandleStylesChanged()
     {
-        foreach (var style in M.State.Generation.Styles)
+        foreach (var style in State.State.Generation.Styles)
         {
             foreach (var lora in style.Loras)
             {

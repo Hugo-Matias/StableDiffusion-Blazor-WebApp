@@ -5,6 +5,9 @@
 @inject IOService IO
 @inject IJSRuntime JS
 @inject ManagerService M
+@inject IStateService State
+@inject IBackendService Backend
+@inject ISessionService Session
 @inject ISnackbar Snackbar
 @inject NavigationManager NavManager
 @implements IDisposable
@@ -435,10 +438,10 @@
     private bool HasWorkflowForMode(ModeType mode)
     {
         // ComfyUI only - check if there's a workflow for the current model base and requested mode
-        if (M.IsComfyUIUp && M.State.Generation.Workflows != null)
+        if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null)
         {
-            var currentBase = M.State.Generation.WorkflowBase;
-            return M.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
+            var currentBase = State.State.Generation.WorkflowBase;
+            return State.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
         }
         
         return false;
@@ -446,10 +449,10 @@
 
     private Workflow? GetWorkflowForMode(ModeType mode)
     {
-        if (M.State.Generation.Workflows == null) return null;
+        if (State.State.Generation.Workflows == null) return null;
         
-        var currentBase = M.State.Generation.WorkflowBase;
-        return M.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
+        var currentBase = State.State.Generation.WorkflowBase;
+        return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
     }
 
     private void SendImageTo(bool img2img)
@@ -457,8 +460,8 @@
         if (CurrentAsset == null) return;
 
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(CurrentAsset.Path)}";
-        if (img2img) M.CanvasImageData = data;
-        else M.UpscaleImageData = data;
+        if (img2img) Session.CanvasImageData = data;
+        else Session.UpscaleImageData = data;
 
         var target = img2img ? "Img2Img" : "Upscale";
         Snackbar.Add($"Image sent to {target}", Severity.Success);
@@ -469,7 +472,7 @@
         if (CurrentAsset == null) return;
 
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(CurrentAsset.Path)}";
-        M.Img2VidInputImage = data;
+        Session.Img2VidInputImage = data;
         
         // Find the Img2Vid workflow for the current model base
         var workflow = GetWorkflowForMode(ModeType.Img2Vid);

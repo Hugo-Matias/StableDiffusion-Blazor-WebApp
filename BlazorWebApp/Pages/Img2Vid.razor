@@ -1,8 +1,12 @@
+@using BlazorWebApp.Events
 @using BlazorWebApp.Components.Shared.Generation
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 @using static BlazorWebApp.Data.Enums
 @inject ComfyUIService API
 @inject ManagerService M
+@inject IStateService State
+@inject ISessionService Session
+@inject IEventService Events
 @inject WorkflowService WorkflowService
 @inject ImageService ImageService
 @inject NavigationManager NavManager
@@ -16,19 +20,19 @@
                      Columns="4"
                      IsInitiallyExpanded="false" />
 
-<PromptFieldsSimple Prompt="@M.ParametersImg2Vid?.Prompt"
+<PromptFieldsSimple Prompt="@State.ParametersImg2Vid?.Prompt"
                     PromptChanged="HandlePromptChanged"
-                    NegativePrompt="@M.ParametersImg2Vid?.NegativePrompt"
+                    NegativePrompt="@State.ParametersImg2Vid?.NegativePrompt"
                     NegativePromptChanged="HandleNegativePromptChanged"
                     OnGenerate="Generate"
                     OnSkip="Skip"
                     OnInterrupt="Interrupt"
-                    IsGenerateDisabled="@(string.IsNullOrWhiteSpace(M.Img2VidInputImage))" />
+                    IsGenerateDisabled="@(string.IsNullOrWhiteSpace(Session.Img2VidInputImage))" />
 
 <MudGrid>
     <MudItem xs="6">
         <MudStack Spacing="3">
-            <ImageInput ImageData="@M.Img2VidInputImage" 
+            <ImageInput ImageData="@Session.Img2VidInputImage" 
                         ImageDataChanged="HandleImageDataChanged"
                         Title="Input Image"
                         OnImageLoaded="HandleImageLoaded" />
@@ -47,9 +51,9 @@
 
     protected override void OnInitialized()
     {
-        M.OnWorkflowBaseChanged += Refresh;
-        M.OnImg2VidParametersChanged += Refresh;
-        M.OnImg2VidInputImageChanged += Refresh;
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<ParametersChangedEventArgs>(OnImg2VidParametersChanged);
+        Events.Subscribe<InputImageChangedEventArgs>(OnImg2VidInputImageChanged);
     }
 
     private Workflow? GetCurrentWorkflow()
@@ -63,45 +67,45 @@
 
     private void HandlePromptChanged(string value)
     {
-        if (M.ParametersImg2Vid != null)
+        if (State.ParametersImg2Vid != null)
         {
-            M.ParametersImg2Vid.Prompt = value;
+            State.ParametersImg2Vid.Prompt = value;
         }
     }
     
     private void HandleNegativePromptChanged(string value)
     {
-        if (M.ParametersImg2Vid != null)
+        if (State.ParametersImg2Vid != null)
         {
-            M.ParametersImg2Vid.NegativePrompt = value;
+            State.ParametersImg2Vid.NegativePrompt = value;
         }
     }
     
     private void HandleImageDataChanged(string value)
     {
-        M.Img2VidInputImage = value;
+        Session.Img2VidInputImage = value;
         StateHasChanged();
     }
 
     private async void Generate()
     {
-        if (string.IsNullOrWhiteSpace(M.Img2VidInputImage) || M.ParametersImg2Vid == null)
+        if (string.IsNullOrWhiteSpace(Session.Img2VidInputImage) || State.ParametersImg2Vid == null)
         {
             return;
         }
 
         // Update parameters with current values and input image
-        M.ParametersImg2Vid.Image = M.Img2VidInputImage;
-        M.ParametersImg2Vid.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
+        State.ParametersImg2Vid.Image = Session.Img2VidInputImage;
+        State.ParametersImg2Vid.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
         
         // Save state before generation
-        await M.SaveState();
+        await State.SaveState();
         
         // Generate video
         _generatedVideos = await ImageService.GetVideo();
         
         // Save state after generation (includes seed, etc.)
-        await M.SaveState();
+        await State.SaveState();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -109,13 +113,13 @@
 
     private async void Interrupt()
     {
-        M.State.Generation.IsInterrupted = true;
+        State.State.Generation.IsInterrupted = true;
         await API.PostInterrupt();
     }
 
     private void HandleImageLoaded((int width, int height) dimensions)
     {
-        if (M.ParametersImg2Vid == null) return;
+        if (State.ParametersImg2Vid == null) return;
         
         // Auto-set resolution based on input image while maintaining aspect ratio
         if (dimensions.width > 0 && dimensions.height > 0)
@@ -125,27 +129,31 @@
             
             if (scale < 1)
             {
-                M.ParametersImg2Vid.Width = (int)(dimensions.width * scale / 8) * 8; // Round to nearest 8
-                M.ParametersImg2Vid.Height = (int)(dimensions.height * scale / 8) * 8;
+                State.ParametersImg2Vid.Width = (int)(dimensions.width * scale / 8) * 8; // Round to nearest 8
+                State.ParametersImg2Vid.Height = (int)(dimensions.height * scale / 8) * 8;
             }
             else
             {
-                M.ParametersImg2Vid.Width = (dimensions.width / 8) * 8;
-                M.ParametersImg2Vid.Height = (dimensions.height / 8) * 8;
+                State.ParametersImg2Vid.Width = (dimensions.width / 8) * 8;
+                State.ParametersImg2Vid.Height = (dimensions.height / 8) * 8;
             }
             StateHasChanged();
         }
     }
 
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+    private void OnImg2VidParametersChanged(ParametersChangedEventArgs args) => Refresh();
+    private void OnImg2VidInputImageChanged(InputImageChangedEventArgs args) => Refresh();
+
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        M.OnWorkflowBaseChanged -= Refresh;
-        M.OnImg2VidParametersChanged -= Refresh;
-        M.OnImg2VidInputImageChanged -= Refresh;
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<ParametersChangedEventArgs>(OnImg2VidParametersChanged);
+        Events.Unsubscribe<InputImageChangedEventArgs>(OnImg2VidInputImageChanged);
         
         // Save state on dispose
-        _ = M.SaveState();
+        _ = State.SaveState();
     }
 }
