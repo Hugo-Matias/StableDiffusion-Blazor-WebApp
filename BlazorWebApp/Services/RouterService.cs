@@ -8,13 +8,13 @@ namespace BlazorWebApp.Services
     /// <summary>
     /// Service responsible for routing generation requests to ComfyUI backend.
     /// </summary>
-    public class RouterService
+    public class RouterService : IRouterService
     {
-        private readonly ComfyUIService _capi;
+        private readonly IComfyUIService _capi;
         private readonly ManagerService _m;
         private readonly ILogger<RouterService> _logger;
 
-        public RouterService(ComfyUIService capi, ManagerService m, ILogger<RouterService> logger)
+        public RouterService(IComfyUIService capi, ManagerService m, ILogger<RouterService> logger)
         {
             _capi = capi;
             _m = m;

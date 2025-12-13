@@ -3,6 +3,7 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.RegularExpressions;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
@@ -10,14 +11,14 @@ namespace BlazorWebApp.Services
     /// Service responsible for orchestrating image and video generation workflows.
     /// Coordinates between API services, file I/O, database operations, and progress tracking.
     /// </summary>
-    public class ImageService
+    public class ImageService : IImageService
     {
         private readonly IIOService _io;
         private readonly ManagerService _m;
         private readonly MagickService _magick;
         private readonly IDatabaseService _db;
-        private readonly ProgressService _progress;
-        private readonly RouterService _router;
+        private readonly IProgressService _progress;
+        private readonly IRouterService _router;
         private readonly ILogger<ImageService> _logger;
         private readonly IStateService _state;
         private readonly IBackendService _backend;
@@ -41,7 +42,18 @@ namespace BlazorWebApp.Services
         /// </summary>
         public GeneratedVideos GeneratedVideos { get; private set; }
 
-        public ImageService(IIOService io, ManagerService m, MagickService magick, IDatabaseService db, ProgressService progress, RouterService router, ILogger<ImageService> logger, IStateService state, IBackendService backend, ISessionService session, IModelService models)
+        public ImageService(
+            IIOService io, 
+            ManagerService m, 
+            MagickService magick, 
+            IDatabaseService db, 
+            IProgressService progress, 
+            IRouterService router, 
+            ILogger<ImageService> logger, 
+            IStateService state, 
+            IBackendService backend, 
+            ISessionService session, 
+            IModelService models)
         {
             _io = io;
             _m = m;

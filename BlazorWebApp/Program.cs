@@ -59,11 +59,13 @@ builder.Services.AddSingleton<ISessionService, SessionService>();
 // Core application services
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
+builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageService>());
 builder.Services.AddSingleton<CsvService>();
 builder.Services.AddSingleton<ProgressService>();
 builder.Services.AddSingleton<IProgressService>(sp => sp.GetRequiredService<ProgressService>());
 builder.Services.AddSingleton<ResourcesService>();
 builder.Services.AddSingleton<RouterService>();
+builder.Services.AddSingleton<IRouterService>(sp => sp.GetRequiredService<RouterService>());
 builder.Services.AddSingleton<WorkflowService>();
 builder.Services.AddSingleton<IWorkflowService>(sp => sp.GetRequiredService<WorkflowService>());
 builder.Services.AddSingleton<DynamicPromptsService>();
