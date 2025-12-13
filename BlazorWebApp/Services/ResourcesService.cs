@@ -6,13 +6,15 @@ namespace BlazorWebApp.Services
     public class ResourcesService
     {
         private readonly ManagerService _m;
+        private readonly IStateService _state;
         private readonly IIOService _io;
         private readonly IDatabaseService _db;
         private readonly IConfiguration _configuration;
 
-        public ResourcesService(ManagerService manager, IIOService io, IDatabaseService db, IConfiguration configuration)
+        public ResourcesService(ManagerService manager, IStateService state, IIOService io, IDatabaseService db, IConfiguration configuration)
         {
             _m = manager;
+            _state = state;
             _io = io;
             _db = db;
             _configuration = configuration;
@@ -84,7 +86,7 @@ namespace BlazorWebApp.Services
         public async Task<LocalResourceFile?> GetResourceFileInfo(string resourceType, string? resourceSubtype, LocalResourceFile file)
         {
             var comp = StringComparison.InvariantCultureIgnoreCase;
-            var fileDir = _m.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resourceType, comp)).Value;
+            var fileDir = _m.ResourceTypeDirectories?.FirstOrDefault(f => f.Key.Equals(resourceType, comp)).Value;
             if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(_configuration["ResourcesPath"], resourceType);
             if (!string.IsNullOrWhiteSpace(resourceSubtype)) fileDir = Path.Combine(fileDir, resourceSubtype);
             if (File.Exists(Path.Combine(fileDir, file.Filename)))
@@ -117,7 +119,7 @@ namespace BlazorWebApp.Services
             var filename = file.File.Name.Replace(file.File.Extension, "");
             var keyword = string.Empty;
             var triggerWords = string.Empty;
-            var weight = _m.State.Resources.Weight;
+            var weight = _state.State.Resources.Weight;
 
             if (resourceType.Equals("TextualInversion", comp)) keyword = weight != 1 ? $", ({filename}:{weight})" : filename;
             else if (resourceType.Equals("Hypernetwork", comp)) keyword = $", <hypernet:{filename}:{weight}>";
@@ -133,15 +135,15 @@ namespace BlazorWebApp.Services
 
                 if (target.Item1 == ModeType.Txt2Img)
                 {
-                    _m.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _state.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
                 else if (target.Item1 == ModeType.Img2Img)
                 {
-                    _m.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _state.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
             }
 
-            if (_m.State.Resources.LoadTriggerWords && file.TriggerWords != null)
+            if (_state.State.Resources.LoadTriggerWords && file.TriggerWords != null)
             {
                 triggerWords = ", ";
                 triggerWords += string.Join(", ", file.TriggerWords);
@@ -149,13 +151,13 @@ namespace BlazorWebApp.Services
 
             if (target.Item1 == ModeType.Txt2Img)
             {
-                if (target.Item2 == true) _m.ParametersTxt2Img.Prompt += $"{triggerWords}{keyword}";
-                else _m.ParametersTxt2Img.NegativePrompt += $"{triggerWords}{keyword}";
+                if (target.Item2 == true) _state.ParametersTxt2Img.Prompt += $"{triggerWords}{keyword}";
+                else _state.ParametersTxt2Img.NegativePrompt += $"{triggerWords}{keyword}";
             }
             else if (target.Item1 == ModeType.Img2Img)
             {
-                if (target.Item2 == true) _m.ParametersImg2Img.Prompt += $"{triggerWords}{keyword}";
-                else _m.ParametersImg2Img.NegativePrompt += $"{triggerWords}{keyword}";
+                if (target.Item2 == true) _state.ParametersImg2Img.Prompt += $"{triggerWords}{keyword}";
+                else _state.ParametersImg2Img.NegativePrompt += $"{triggerWords}{keyword}";
             }
         }
 

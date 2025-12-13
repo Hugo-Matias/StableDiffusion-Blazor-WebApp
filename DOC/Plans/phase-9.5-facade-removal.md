@@ -21,7 +21,7 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 |--------|-------|
 | Components with `@inject ManagerService M` | 31 ? 14 |
 | Components with direct interface injections | 65+ |
-| Total facade property usages in components | ~305 ? ~70 |
+| Total facade property usages in components | ~305 ? ~50 |
 
 ### Top Facade Usages (Priority Order)
 
@@ -113,16 +113,16 @@ Components with minimal facade usages, straightforward replacements.
 
 ---
 
-### Batch 5: Service Files
+### Batch 5: Service Files ?
 
 | # | Service | Status | Notes |
 |---|---------|--------|-------|
-| 32 | `Services/ResourcesService.cs` | ? | |
-| 33 | `Services/RouterService.cs` | ? | |
-| 34 | `Services/MagickService.cs` | ? | |
-| 35 | `Services/CivitaiService.cs` | ? | Check for M.* usage |
+| 32 | `Services/ResourcesService.cs` | ? | Added IStateService, replaced facade usages |
+| 33 | `Services/RouterService.cs` | ? | Added IBackendService + IStateService |
+| 34 | `Services/MagickService.cs` | ? | Replaced M with ISettingsService completely |
+| 35 | `Services/CivitaiService.cs` | ?? | Only uses M.CurrentProgress (orchestration) |
 
-**Batch 5 Total:** 4 service files
+**Batch 5 Complete:** 3 updated, 1 skipped (orchestration only)
 
 ---
 
@@ -260,6 +260,7 @@ These properties/methods should remain as they are true orchestration concerns:
 | `Styles` | Prompt style orchestration |
 | `CivitaiModels/Images/Creators` | Civitai browsing state |
 | `ComfyWSClientId` | WebSocket session ID |
+| `ResourceTypeDirectories` | Resource path configuration |
 | `GetCurrentSaveFolder()` | Path resolution logic |
 | `ConvertPathPattern()` | Path pattern conversion |
 | `ParseAndCleanCopiedPrompt()` | Prompt parsing logic |
@@ -278,7 +279,7 @@ These properties/methods should remain as they are true orchestration concerns:
 | Batch 2 | 10 medium | ? Complete (5 updated, 5 skipped) |
 | Batch 3 | 4 complex | ? Complete (3 updated, 1 skipped) |
 | Batch 4 | 5 pages | ? Complete (1 updated, 4 skipped) |
-| Batch 5 | 4 services | ? Not Started |
+| Batch 5 | 4 services | ? Complete (3 updated, 1 skipped) |
 | Task A | Facade removal | ? Not Started |
 | Task B | WebUI cleanup | ? Not Started |
 | Task C | DI cleanup | ? Not Started |
@@ -293,7 +294,7 @@ These properties/methods should remain as they are true orchestration concerns:
 - [x] After Batch 2 complete
 - [x] After Batch 3 complete
 - [x] After Batch 4 complete
-- [ ] After Batch 5 complete
+- [x] After Batch 5 complete
 - [ ] After Task A (facades removed)
 - [ ] After Tasks B-E (cleanup complete)
 - [ ] Final verification

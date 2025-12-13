@@ -12,12 +12,16 @@ namespace BlazorWebApp.Services
     {
         private readonly IComfyUIService _capi;
         private readonly ManagerService _m;
+        private readonly IBackendService _backend;
+        private readonly IStateService _state;
         private readonly ILogger<RouterService> _logger;
 
-        public RouterService(IComfyUIService capi, ManagerService m, ILogger<RouterService> logger)
+        public RouterService(IComfyUIService capi, ManagerService m, IBackendService backend, IStateService state, ILogger<RouterService> logger)
         {
             _capi = capi;
             _m = m;
+            _backend = backend;
+            _state = state;
             _logger = logger;
         }
 
@@ -41,7 +45,7 @@ namespace BlazorWebApp.Services
         /// <exception cref="InvalidOperationException">Thrown when ComfyUI is not available.</exception>
         public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters)
         {
-            if (!_m.IsComfyUIUp)
+            if (!_backend.IsBackendAvailable)
             {
                 _logger.LogError("ComfyUI backend not available for Txt2Img generation");
                 throw new InvalidOperationException("ComfyUI backend not available");
@@ -50,7 +54,7 @@ namespace BlazorWebApp.Services
             _logger.LogInformation("Routing Txt2Img request to ComfyUI backend");
             var model = _m.GetCurrentModel(ModeType.Txt2Img);
             var vae = _m.GetCurrentVae(ModeType.Txt2Img);
-            var workflow = parameters.Comfy.Workflow ?? _m.ParametersTxt2Img.Comfy.Workflow;
+            var workflow = parameters.Comfy.Workflow ?? _state.ParametersTxt2Img.Comfy.Workflow;
             _logger.LogDebug("Using model: {Model}, VAE: {Vae}, Workflow: {WorkflowId}", model, vae, workflow?.Id);
             return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _m.ComfyWSClientId, workflow);
         }
@@ -63,14 +67,14 @@ namespace BlazorWebApp.Services
         /// <exception cref="InvalidOperationException">Thrown when ComfyUI is not available or no workflow is configured.</exception>
         public async Task<GeneratedImages> PostImg2Img(Img2ImgParameters parameters)
         {
-            if (!_m.IsComfyUIUp)
+            if (!_backend.IsBackendAvailable)
             {
                 _logger.LogError("ComfyUI backend not available for Img2Img generation");
                 throw new InvalidOperationException("ComfyUI backend not available");
             }
 
             _logger.LogInformation("Routing Img2Img request to ComfyUI backend");
-            var workflow = parameters.Comfy.Workflow ?? _m.ParametersImg2Img.Comfy.Workflow;
+            var workflow = parameters.Comfy.Workflow ?? _state.ParametersImg2Img.Comfy.Workflow;
             if (workflow == null)
             {
                 _logger.LogError("No workflow configured for Img2Img generation on ComfyUI");
@@ -89,14 +93,14 @@ namespace BlazorWebApp.Services
         /// <exception cref="InvalidOperationException">Thrown when ComfyUI is not available or no workflow is configured.</exception>
         public async Task<GeneratedVideos> PostImg2Vid(Img2VidParameters parameters)
         {
-            if (!_m.IsComfyUIUp)
+            if (!_backend.IsBackendAvailable)
             {
                 _logger.LogError("ComfyUI backend not available for Img2Vid generation");
                 throw new InvalidOperationException("ComfyUI backend not available");
             }
 
             _logger.LogInformation("Routing Img2Vid request to ComfyUI backend");
-            var workflow = parameters.Comfy.Workflow ?? _m.ParametersImg2Vid.Comfy.Workflow;
+            var workflow = parameters.Comfy.Workflow ?? _state.ParametersImg2Vid.Comfy.Workflow;
             if (workflow == null)
             {
                 _logger.LogError("No workflow configured for Img2Vid generation on ComfyUI");
