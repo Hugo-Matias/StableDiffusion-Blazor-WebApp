@@ -16,15 +16,15 @@ namespace BlazorWebApp.Services
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly ImageService _img;
-        private readonly IOService _io;
+        private readonly IIOService _io;
         private readonly ManagerService _m;
-        private readonly DatabaseService _db;
+        private readonly IDatabaseService _db;
         private readonly ProgressService _progress;
         private readonly ILogger<CivitaiService> _logger;
         private readonly List<string> _ignoreFileType = new() { "config" };
         private readonly List<CivitaiModelType> _ignoreModelTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
 
-        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, ManagerService m, DatabaseService db, ProgressService progress, ILogger<CivitaiService> logger)
+        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IIOService io, ManagerService m, IDatabaseService db, ProgressService progress, ILogger<CivitaiService> logger)
         {
             _configuration = configuration;
             _img = img;

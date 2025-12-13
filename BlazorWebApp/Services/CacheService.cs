@@ -6,7 +6,7 @@ namespace BlazorWebApp.Services
 {
     public class CacheService
     {
-        private readonly DatabaseService _db;
+        private readonly IDatabaseService _db;
         private readonly ILogger<CacheService> _logger;
         private readonly IWebHostEnvironment _env;
 
@@ -20,7 +20,7 @@ namespace BlazorWebApp.Services
         private readonly string _dictionariesPath;
         private bool _dictionariesLoaded = false;
 
-        public CacheService(DatabaseService db, ILogger<CacheService> logger, IWebHostEnvironment env)
+        public CacheService(IDatabaseService db, ILogger<CacheService> logger, IWebHostEnvironment env)
         {
             _db = db;
             _logger = logger;

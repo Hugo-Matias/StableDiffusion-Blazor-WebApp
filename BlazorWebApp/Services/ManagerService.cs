@@ -13,8 +13,8 @@ namespace BlazorWebApp.Services
 
     public class ManagerService
     {
-        private readonly DatabaseService _db;
-        private readonly IOService _io;
+        private readonly IDatabaseService _db;
+        private readonly IIOService _io;
         private readonly ProgressService _progress;
         private readonly IConfiguration _configuration;
         private readonly ComfyUIService _capi;
@@ -264,7 +264,7 @@ namespace BlazorWebApp.Services
         // Temporary facade - delegates to BackendService (will be removed in Phase 8)
         public bool IsComfyUIUp => _backend.IsBackendAvailable;
 
-        public ManagerService(DatabaseService db, IOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models, IGalleryService gallery, ISessionService session)
+        public ManagerService(IDatabaseService db, IIOService io, ProgressService progress, IConfiguration configuration, ComfyUIService capi, WorkflowService workflow, IStateService state, IEventService events, ISettingsService settings, IBackendService backend, IModelService models, IGalleryService gallery, ISessionService session)
         {
             _db = db;
             _io = io;

@@ -37,9 +37,11 @@ builder.Services.AddSingleton<IEventService, EventService>();
 // Settings management service
 builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
+// Core data services - interface-only registration
+builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
+builder.Services.AddSingleton<IIOService, IOService>();
+
 // State management service
-builder.Services.AddSingleton<IStateDatabaseService>(sp => 
-    new StateDatabaseServiceAdapter(sp.GetRequiredService<DatabaseService>()));
 builder.Services.AddSingleton<IStateService, StateService>();
 
 // Backend orchestration service (ComfyUI)
@@ -54,14 +56,9 @@ builder.Services.AddSingleton<IGalleryService, GalleryService>();
 // Session management service (canvas, image editor, videos) - singleton with circuit isolation
 builder.Services.AddSingleton<ISessionService, SessionService>();
 
+// Core application services
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
-builder.Services.AddSingleton<DatabaseService>();
-// Register DatabaseService interface - resolves to same singleton instance
-builder.Services.AddSingleton<IDatabaseService>(sp => sp.GetRequiredService<DatabaseService>());
-builder.Services.AddSingleton<IOService>();
-// Register IOService interface - resolves to same singleton instance
-builder.Services.AddSingleton<IIOService>(sp => sp.GetRequiredService<IOService>());
 builder.Services.AddSingleton<CsvService>();
 builder.Services.AddSingleton<ProgressService>();
 builder.Services.AddSingleton<ResourcesService>();

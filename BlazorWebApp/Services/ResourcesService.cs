@@ -6,11 +6,11 @@ namespace BlazorWebApp.Services
     public class ResourcesService
     {
         private readonly ManagerService _m;
-        private readonly IOService _io;
-        private readonly DatabaseService _db;
+        private readonly IIOService _io;
+        private readonly IDatabaseService _db;
         private readonly IConfiguration _configuration;
 
-        public ResourcesService(ManagerService manager, IOService io, DatabaseService db, IConfiguration configuration)
+        public ResourcesService(ManagerService manager, IIOService io, IDatabaseService db, IConfiguration configuration)
         {
             _m = manager;
             _io = io;

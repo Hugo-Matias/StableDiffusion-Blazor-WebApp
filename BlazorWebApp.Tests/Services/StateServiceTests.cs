@@ -13,16 +13,15 @@ namespace BlazorWebApp.Tests.Services
     /// </summary>
     public class StateServiceTests
     {
-        private readonly Mock<IStateDatabaseService> _mockDb;
+        private readonly Mock<IDatabaseService> _mockDb;
         private readonly Mock<IConfiguration> _mockConfig;
         private readonly Mock<IEventService> _mockEvents;
         private readonly Mock<ISettingsService> _mockSettings;
         private readonly StateService _sut;
-        private readonly List<State> _stateStore;
 
         public StateServiceTests()
         {
-            _mockDb = new Mock<IStateDatabaseService>();
+            _mockDb = new Mock<IDatabaseService>();
             _mockConfig = new Mock<IConfiguration>();
             _mockEvents = new Mock<IEventService>();
             _mockSettings = new Mock<ISettingsService>();

@@ -12,10 +12,10 @@ namespace BlazorWebApp.Services
     /// </summary>
     public class ImageService
     {
-        private readonly IOService _io;
+        private readonly IIOService _io;
         private readonly ManagerService _m;
         private readonly MagickService _magick;
-        private readonly DatabaseService _db;
+        private readonly IDatabaseService _db;
         private readonly ProgressService _progress;
         private readonly RouterService _router;
         private readonly ILogger<ImageService> _logger;
@@ -37,7 +37,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         public GeneratedVideos GeneratedVideos { get; private set; }
 
-        public ImageService(IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router, ILogger<ImageService> logger)
+        public ImageService(IIOService io, ManagerService m, MagickService magick, IDatabaseService db, ProgressService progress, RouterService router, ILogger<ImageService> logger)
         {
             _io = io;
             _m = m;

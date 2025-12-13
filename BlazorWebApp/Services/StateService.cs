@@ -13,7 +13,7 @@ namespace BlazorWebApp.Services
     /// </summary>
     public class StateService : IStateService
     {
-        private readonly IStateDatabaseService _db;
+        private readonly IDatabaseService _db;
         private readonly IConfiguration _configuration;
         private readonly IEventService _events;
         private readonly ISettingsService _settings;
@@ -25,7 +25,7 @@ namespace BlazorWebApp.Services
         public Img2VidParameters ParametersImg2Vid { get; private set; }
 
         public StateService(
-            IStateDatabaseService db,
+            IDatabaseService db,
             IConfiguration configuration,
             IEventService events,
             ISettingsService settings)

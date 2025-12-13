@@ -9,7 +9,7 @@ namespace BlazorWebApp.Services
     /// </summary>
     public class GalleryService : IGalleryService
     {
-        private readonly DatabaseService _db;
+        private readonly IDatabaseService _db;
         private readonly IStateService _state;
         private readonly IEventService _events;
 
@@ -17,7 +17,7 @@ namespace BlazorWebApp.Services
         public List<Project>? Projects { get; private set; }
         public List<int> SelectedImageIds { get; private set; } = new();
 
-        public GalleryService(DatabaseService db, IStateService state, IEventService events)
+        public GalleryService(IDatabaseService db, IStateService state, IEventService events)
         {
             _db = db;
             _state = state;
