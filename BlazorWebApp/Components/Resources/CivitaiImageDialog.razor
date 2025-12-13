@@ -1,4 +1,5 @@
 ﻿@using System.Diagnostics;
+@inject IStateService State
 @inject ManagerService M
 @inject ISnackbar Snackbar
 @inject IConfiguration Configuration
@@ -119,38 +120,38 @@
         if (mode == ModeType.Txt2Img)
         {
             M.InitializeParameters(new ModeType[1] { ModeType.Txt2Img });
-            M.ParametersTxt2Img.Prompt = Image.Meta.Prompt;
-            M.ParametersTxt2Img.NegativePrompt = Image.Meta.NegativePrompt;
-            M.ParametersTxt2Img.Seed = Image.Meta.Seed;
-            M.ParametersTxt2Img.SamplerIndex = Image.Meta.Sampler;
-            M.ParametersTxt2Img.Steps = Image.Meta.Steps;
-            M.ParametersTxt2Img.CfgScale = Image.Meta.CfgScale;
-            M.ParametersTxt2Img.Width = Image.Width;
-            M.ParametersTxt2Img.Height = Image.Height;
+            State.ParametersTxt2Img.Prompt = Image.Meta.Prompt;
+            State.ParametersTxt2Img.NegativePrompt = Image.Meta.NegativePrompt;
+            State.ParametersTxt2Img.Seed = Image.Meta.Seed;
+            State.ParametersTxt2Img.SamplerIndex = Image.Meta.Sampler;
+            State.ParametersTxt2Img.Steps = Image.Meta.Steps;
+            State.ParametersTxt2Img.CfgScale = Image.Meta.CfgScale;
+            State.ParametersTxt2Img.Width = Image.Width;
+            State.ParametersTxt2Img.Height = Image.Height;
             // if (Image.HiresUpscale != null)
             // {
-            //     M.ParametersTxt2Img.EnableHR = true;
-            //     M.ParametersTxt2Img.HRUpscaler = Image.HiresUpscaler;
-            //     M.ParametersTxt2Img.HRScale = double.Parse(Image.HiresUpscale);
+            //     State.ParametersTxt2Img.EnableHR = true;
+            //     State.ParametersTxt2Img.HRUpscaler = Image.HiresUpscaler;
+            //     State.ParametersTxt2Img.HRScale = double.Parse(Image.HiresUpscale);
             //     if (Image.HiresSteps != null)
-            //         M.ParametersTxt2Img.HRSecondPassSteps = int.Parse(Image.HiresSteps);
+            //         State.ParametersTxt2Img.HRSecondPassSteps = int.Parse(Image.HiresSteps);
             //     else
-            //         M.ParametersTxt2Img.HRSecondPassSteps = 0;
-            //     M.ParametersTxt2Img.DenoisingStrength = double.Parse(Image.DenoisingStrength);
+            //         State.ParametersTxt2Img.HRSecondPassSteps = 0;
+            //     State.ParametersTxt2Img.DenoisingStrength = double.Parse(Image.DenoisingStrength);
             // }
         }
         else if (mode == ModeType.Img2Img)
         {
             M.InitializeParameters(new ModeType[1] { ModeType.Img2Img });
-            M.ParametersImg2Img.Prompt = Image.Meta.Prompt;
-            M.ParametersImg2Img.NegativePrompt = Image.Meta.NegativePrompt;
-            M.ParametersImg2Img.Seed = Image.Meta.Seed;
-            M.ParametersImg2Img.SamplerIndex = Image.Meta.Sampler;
-            M.ParametersImg2Img.Steps = Image.Meta.Steps;
-            M.ParametersImg2Img.CfgScale = Image.Meta.CfgScale;
-            M.ParametersImg2Img.DenoisingStrength = double.Parse(Image.Meta.DenoisingStrength);
-            M.ParametersImg2Img.Width = Image.Width;
-            M.ParametersImg2Img.Height = Image.Height;
+            State.ParametersImg2Img.Prompt = Image.Meta.Prompt;
+            State.ParametersImg2Img.NegativePrompt = Image.Meta.NegativePrompt;
+            State.ParametersImg2Img.Seed = Image.Meta.Seed;
+            State.ParametersImg2Img.SamplerIndex = Image.Meta.Sampler;
+            State.ParametersImg2Img.Steps = Image.Meta.Steps;
+            State.ParametersImg2Img.CfgScale = Image.Meta.CfgScale;
+            State.ParametersImg2Img.DenoisingStrength = double.Parse(Image.Meta.DenoisingStrength);
+            State.ParametersImg2Img.Width = Image.Width;
+            State.ParametersImg2Img.Height = Image.Height;
         }
         Snackbar.Add($"Settings copied to {mode}", Severity.Success);
     }

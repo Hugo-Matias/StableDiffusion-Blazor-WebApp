@@ -1,6 +1,8 @@
 ﻿@page "/danbooru"
 @using System.Text.RegularExpressions
 @inject DanbooruService Api
+@inject IStateService State
+@inject ISettingsService Settings
 @inject ManagerService M
 @inject IJSRuntime JS
 @inject IDialogService DialogService
@@ -8,13 +10,13 @@
 
 <MudGrid Class="mb-3 px-4" Justify="Justify.Center">
     <MudItem xs="10">
-        <MudTextField Label="Search" @bind-Value="M.State.Danbooru.SearchString" OnAdornmentClick=@(() => SearchDrawer.Visible = true) T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable />
+        <MudTextField Label="Search" @bind-Value="State.State.Danbooru.SearchString" OnAdornmentClick=@(() => SearchDrawer.Visible = true) T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable />
     </MudItem>
     <MudItem xs="2">
         <MudButton Class="w-100 h-100" OnClick=Search ButtonType="ButtonType.Button" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
     </MudItem>
     <MudItem xs="12">
-        <MudTextField Label="Black List Tags" ValueChanged=HandleBlacklistTagsChanged Value=M.Settings.Resources.Danbooru.BlacklistTags T="string" Lines="2" />
+        <MudTextField Label="Black List Tags" ValueChanged=HandleBlacklistTagsChanged Value=Settings.Settings.Resources.Danbooru.BlacklistTags T="string" Lines="2" />
     </MudItem>
 </MudGrid>
 
@@ -108,9 +110,9 @@ else if (!_initialLoading && (Posts == null || Posts.Count == 0))
 
     private async Task LoadInitialData()
     {
-        _searchedString = M.State.Danbooru.SearchString;
+        _searchedString = State.State.Danbooru.SearchString;
         CurrentPage = 1;
-        Posts = await Api.GetPosts(M.State.Danbooru.SearchString, CurrentPage) ?? new();
+        Posts = await Api.GetPosts(State.State.Danbooru.SearchString, CurrentPage) ?? new();
         _hasMore = Posts.Count >= 20;
         await M.SaveState();
     }
@@ -140,9 +142,9 @@ else if (!_initialLoading && (Posts == null || Posts.Count == 0))
         _hasMore = true;
         StateHasChanged();
         
-        _searchedString = M.State.Danbooru.SearchString;
+        _searchedString = State.State.Danbooru.SearchString;
         CurrentPage = 1;
-        Posts = await Api.GetPosts(M.State.Danbooru.SearchString, CurrentPage) ?? new();
+        Posts = await Api.GetPosts(State.State.Danbooru.SearchString, CurrentPage) ?? new();
         _hasMore = Posts.Count >= 20;
         await M.SaveState();
         
@@ -210,17 +212,17 @@ else if (!_initialLoading && (Posts == null || Posts.Count == 0))
         await InvokeAsync(StateHasChanged);
     }
 
-    private void WriteSavedSearch(string value) => M.State.Danbooru.SearchString = value;
+    private void WriteSavedSearch(string value) => State.State.Danbooru.SearchString = value;
 
     private void AddCurrentSearchToSaved()
     {
-        M.Settings.Resources.Danbooru.SavedSearches.Add(M.State.Danbooru.SearchString);
-        M.SaveSettings();
+        Settings.Settings.Resources.Danbooru.SavedSearches.Add(State.State.Danbooru.SearchString);
+        Settings.SaveSettings();
     }
 
     private void WriteDanbooruTags(DanbooruPost post, bool isImg2Img)
     {
-        var blacklistTags = M.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
+        var blacklistTags = Settings.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
         var tags = post.TagsArtist;
         tags.AddRange(post.TagsCharacter);
         tags.AddRange(post.TagsGeneral);
@@ -228,13 +230,13 @@ else if (!_initialLoading && (Posts == null || Posts.Count == 0))
         var extractedLoras = string.Empty;
         if (isImg2Img)
         {
-            extractedLoras = string.Join(" ", Regex.Matches(M.ParametersImg2Img.Prompt!, _loraRegex));
-            M.ParametersImg2Img.Prompt = extractedLoras + " " + tagsString;
+            extractedLoras = string.Join(" ", Regex.Matches(State.ParametersImg2Img.Prompt!, _loraRegex));
+            State.ParametersImg2Img.Prompt = extractedLoras + " " + tagsString;
         }
         else
         {
-            extractedLoras = string.Join(" ", Regex.Matches(M.ParametersTxt2Img.Prompt!, _loraRegex));
-            M.ParametersTxt2Img.Prompt = extractedLoras + " " + tagsString;
+            extractedLoras = string.Join(" ", Regex.Matches(State.ParametersTxt2Img.Prompt!, _loraRegex));
+            State.ParametersTxt2Img.Prompt = extractedLoras + " " + tagsString;
         }
     }
 
@@ -247,8 +249,8 @@ else if (!_initialLoading && (Posts == null || Posts.Count == 0))
 
     private void HandleBlacklistTagsChanged(string value)
     {
-        M.Settings.Resources.Danbooru.BlacklistTags = value;
-        M.SaveSettings();
+        Settings.Settings.Resources.Danbooru.BlacklistTags = value;
+        Settings.SaveSettings();
     }
 
     public async ValueTask DisposeAsync()

@@ -19,9 +19,9 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 
 | Metric | Count |
 |--------|-------|
-| Components with `@inject ManagerService M` | 31 ? 24 |
+| Components with `@inject ManagerService M` | 31 ? 19 |
 | Components with direct interface injections | 65+ |
-| Total facade property usages in components | ~305 |
+| Total facade property usages in components | ~305 ? ~150 |
 
 ### Top Facade Usages (Priority Order)
 
@@ -42,7 +42,7 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 
 ## Execution Checklist
 
-### Batch 1: Simple Components (1-5 usages)
+### Batch 1: Simple Components (1-5 usages) ?
 Components with minimal facade usages, straightforward replacements.
 
 | # | Component | Status | Notes |
@@ -64,22 +64,22 @@ Components with minimal facade usages, straightforward replacements.
 
 ---
 
-### Batch 2: Medium Components (5-25 usages)
+### Batch 2: Medium Components (5-25 usages) ?
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 13 | `Components/Img2Img/Img2ImgCanvas.razor` | ? | Canvas + Session |
-| 14 | `Components/Resources/CivitaiImageDialog.razor` | ? | State + Settings |
-| 15 | `Components/Resources/ResourceImageDialog.razor` | ? | State + Settings |
-| 16 | `Components/Resources/CivitaiModelsPanel.razor` | ? | Keep M.CivitaiModels |
-| 17 | `Pages/Danbooru.razor` | ? | State + Settings |
-| 18 | `Components/Gallery/InfiniteScrollMasonry.razor` | ? | Gallery |
-| 19 | `Components/Shared/Image/ImageInfoDialog.razor` | ? | State |
-| 20 | `Components/Shared/Image/ImageViewer.razor` | ? | Session |
-| 21 | `Components/Shared/Generation/GeneratedImageTabs.razor` | ? | |
-| 22 | `Components/Img2Vid/GeneratedVideoTabs.razor` | ? | Session |
+| 13 | `Components/Img2Img/Img2ImgCanvas.razor` | ? | M.State/Canvas ? State.State/Session.Canvas |
+| 14 | `Components/Resources/CivitaiImageDialog.razor` | ? | Added IStateService for parameters |
+| 15 | `Components/Resources/ResourceImageDialog.razor` | ? | Added IStateService for parameters |
+| 16 | `Components/Resources/CivitaiModelsPanel.razor` | ?? | Already uses interfaces, M for CivitaiModels |
+| 17 | `Pages/Danbooru.razor` | ? | Added IStateService/ISettingsService |
+| 18 | `Components/Gallery/InfiniteScrollMasonry.razor` | ? | M.SelectedImageIds ? Gallery.SelectedImageIds |
+| 19 | `Components/Shared/Image/ImageInfoDialog.razor` | ?? | Already uses IStateService, M for orchestration |
+| 20 | `Components/Shared/Image/ImageViewer.razor` | ?? | Already uses IStateService, M for orchestration |
+| 21 | `Components/Shared/Generation/GeneratedImageTabs.razor` | ?? | Already uses interfaces, M for orchestration |
+| 22 | `Components/Img2Vid/GeneratedVideoTabs.razor` | ?? | Already uses interfaces, M for orchestration |
 
-**Batch 2 Total:** 10 components
+**Batch 2 Complete:** 5 updated, 5 skipped (already proper/orchestration only)
 
 ---
 
@@ -272,7 +272,7 @@ These properties/methods should remain as they are true orchestration concerns:
 | Phase | Components | Status |
 |-------|------------|--------|
 | Batch 1 | 12 simple | ? Complete (7 updated, 4 skipped, 1 N/A) |
-| Batch 2 | 10 medium | ? Not Started |
+| Batch 2 | 10 medium | ? Complete (5 updated, 5 skipped) |
 | Batch 3 | 4 complex | ? Not Started |
 | Batch 4 | 5 pages | ? Not Started |
 | Batch 5 | 4 services | ? Not Started |
@@ -287,7 +287,7 @@ These properties/methods should remain as they are true orchestration concerns:
 ## Commit Checkpoints
 
 - [x] After Batch 1 complete
-- [ ] After Batch 2 complete
+- [x] After Batch 2 complete
 - [ ] After Batch 3 complete
 - [ ] After Batch 4 complete
 - [ ] After Batch 5 complete
