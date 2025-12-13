@@ -35,9 +35,6 @@ namespace BlazorWebApp.Services
         #region Orchestration Properties
         
         public Options Options { get; set; }
-        public CivitaiModelsDto CivitaiModels { get; set; }
-        public CivitaiImagesDto CivitaiImages { get; set; }
-        public CivitaiCreatorsDto CivitaiCreators { get; set; }
         public string ComfyWSClientId { get; set; }
         public Dictionary<string, string> ResourceTypeDirectories { get; set; }
         

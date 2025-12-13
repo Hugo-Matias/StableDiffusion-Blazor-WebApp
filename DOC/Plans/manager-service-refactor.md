@@ -1,14 +1,14 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 10 - Orchestration Property Relocation ? **COMPLETE**
+**Current Phase:** Phase 11 - Civitai Service Decoupling ? **COMPLETE**
 **Last Updated:** 2025-01-15
 
 ---
 
 ## Problem Statement
 
-The `ManagerService` was originally a "God Object" (~1600+ lines) handling too many responsibilities. Through systematic refactoring, it has been reduced to a **~400-line orchestrator** that coordinates between specialized services with **zero facade properties**.
+The `ManagerService` was originally a "God Object" (~1600+ lines) handling too many responsibilities. Through systematic refactoring, it has been reduced to a **~350-line orchestrator** that coordinates between specialized services with **zero facade properties** and **no Civitai state**.
 
 ### Current Architecture
 
@@ -19,6 +19,7 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?  - Workflow management and asset coordination                       ?
 ?  - NO facade properties (all removed in Phase 9.5)                  ?
 ?  - NO generation state (moved to IImageService in Phase 10)         ?
+?  - NO Civitai state (components use local state in Phase 11)        ?
 ????????????????????????????????????????????????????????????????????????
                                     ?
         ?????????????????????????????????????????????????????????
@@ -46,6 +47,14 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?  - Typed events ?   ?  - Saving       ?   ?  - Editor state ?
 ?  - Mediator     ?   ?  - Progress     ?   ?  - Videos       ?
 ???????????????????   ???????????????????   ???????????????????
+        ?
+        ?
+???????????????????
+? CivitaiService  ?
+?  - API client   ?
+?  - Downloads    ?
+?  - No M deps    ?
+???????????????????
 ```
 
 ---
@@ -69,117 +78,81 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ### ? Phase 9.5: Facade Removal & Cleanup (Complete)
 **Completed:** 2025-01-15
 
-#### Summary
 Removed all backward compatibility facades from ManagerService, eliminated WebUI remnants, and cleaned up DI registrations.
-
-#### Phase 9.5 Metrics
-
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Facade properties | 27 | 0 | -100% |
-| Facade usages in components | ~305 | 0 | -100% |
-| Components with ManagerService | 31 | 19 | -39% |
-| WebUI remnants removed | - | 3 | - |
-| Interface-only DI registrations | 9 | 11 | +2 |
-| ManagerService lines | 658 | ~450 | -32% |
 
 ---
 
 ### ? Phase 10: Orchestration Property Relocation (Complete)
 **Completed:** 2025-01-15
 
-#### Objective
-Move remaining orchestration properties from ManagerService to appropriate specialized services, and remove WebUI-era code no longer applicable to ComfyUI.
-
-#### Task A: Move Generation Results to IImageService ?
-**Scope:** Moved `Images`, `GeneratedImageEntities`, `Progress` to `IImageService`
-
-**Changes Made:**
-
-1. **IImageService interface** - Simplified to only include:
-   - `GeneratedImages Images { get; }` - Raw generated images + workflow JSON info
-   - `ImagesDto GeneratedImageEntities { get; set; }` - Database entities
-   - `GeneratedVideos GeneratedVideos { get; }` - Video results
-   - `InferenceProgress Progress { get; set; }` - Real-time progress
-
-2. **ImageService** - Now owns all generation state, simplified `SaveImages()` method
-
-3. **ManagerService** - Removed 6 properties:
-   - `Images`, `ImagesInfo`, `GridImage`, `GeneratedImageEntities`, `Progress`, `GeneratedUpscaleImage`
-
-4. **Components updated:**
-   - `GeneratedImageTabs.razor` - Uses `IImageService.Images.Info` instead of `ImagesInfo.InfoTexts[0]`
-   - `GeneratedVideoTabs.razor` - Uses `IImageService.Progress`
-   - `GenerateFormTxt2Img.razor` - Uses `IImageService.Images.Info` for RestoreSeed()
-   - `Txt2Img.razor` / `Img2Img.razor` - Uses `ImageService.GeneratedImageEntities`
-
-5. **ComfyUIWebsocketService** - Uses `ImageService.Progress` directly
-
-#### Task B: Remove Duplicate Styles Property ?
-- Removed `Styles` property and `GetStyles()` method from ManagerService
-- Components use `IEventService` to publish `StylesChangedEventArgs`
-
-#### Task C: Remove Duplicate ButtonTags Property ?
-- Removed `ButtonTags` property and `GetButtonTags()` method from ManagerService
-
-#### Task D: WebUI Cleanup ?
-**Removed as no longer applicable:**
-
-| Item | Reason |
-|------|--------|
-| `GeneratedImagesInfo` class | WebUI-specific response format; ComfyUI uses `Images.Info` JSON |
-| `UpscaledImageDto` class | WebUI upscale endpoint; not used in ComfyUI |
-| `GeneratedUpscaleImage` property | Never populated for ComfyUI |
-| `GridImage` property | WebUI grid feature; ComfyUI doesn't use grids |
-| `ImagesInfo` property | Wrapper for `Images.Info`; now use directly |
-| `SerializeInfo()` method | No longer needed |
-| `outdirGrid` parameter | Grid directories no longer used |
-| `SaveUpscaleImage()` method | Threw NotImplementedException |
+Moved remaining orchestration properties from ManagerService to appropriate specialized services, and removed WebUI-era code.
 
 #### Files Removed
 - `BlazorWebApp/Models/GeneratedImagesInfo.cs`
 - `BlazorWebApp/Data/Dtos/UpscaledImageDto.cs`
 
-#### Phase 10 Metrics
+---
 
-| Metric | Before Phase 10 | After Phase 10 | Change |
+### ? Phase 11: Civitai Service Decoupling (Complete)
+**Completed:** 2025-01-15
+
+#### Objective
+Remove Civitai state from ManagerService and decouple CivitaiService from ManagerService dependency.
+
+#### Analysis Results
+
+Before Phase 11, the following Civitai-related properties existed in ManagerService:
+
+| Property | Status | Finding |
+|----------|--------|---------|
+| `CivitaiModels` | **Removed** | Only used by `CivitaiModelsPanel` - moved to component local state |
+| `CivitaiImages` | **Already unused** | `CivitaiImagesPanel` already used local `_images` variable |
+| `CivitaiCreators` | **Already unused** | `CivitaiCreatorsPanel` already used local `_creators` variable |
+
+#### Changes Made
+
+**1. CivitaiModelsPanel.razor** ?
+- Removed `@inject ManagerService M`
+- Added local `_models` state (matching pattern of other Civitai panels)
+- Updated all references from `M.CivitaiModels` to `_models`
+- Component now fully independent of ManagerService
+
+**2. CivitaiService.cs** ?
+- Removed `ManagerService` dependency from constructor
+- Changed `ImageService _img` ? `IImageService _img` (interface-based)
+- Added `IEventService _events` for progress notifications
+- Development methods (`UpdateResourceDescriptions`, `UpdateResourceBaseModels`) now:
+  - Accept optional `Action<int> onProgress` callback
+  - Publish `ProgressChangedEventArgs` via EventService
+  - No longer depend on `_m.CurrentProgress`
+
+**3. ManagerService.cs** ?
+- Removed `CivitaiModels` property
+- Removed `CivitaiImages` property  
+- Removed `CivitaiCreators` property
+- ManagerService now has only 3 orchestration properties remaining
+
+#### Phase 11 Metrics
+
+| Metric | Before Phase 11 | After Phase 11 | Change |
 |--------|-----------------|----------------|--------|
-| ManagerService properties | 14 | 6 | -57% |
-| IImageService properties | 2 | 4 | +2 (focused) |
-| Files removed | 0 | 2 | Legacy cleanup |
-| Components updated | 0 | 5 | - |
+| ManagerService properties | 6 | 3 | -50% |
+| CivitaiService dependencies | 3 services | 2 interfaces + 1 service | -1 concrete |
+| Components with ManagerService | 19 | 18 | -1 |
 | Build | ? | ? | - |
 | Tests | 150 | 150 | - |
 
 #### Remaining ManagerService Properties
-After Phase 10:
+After Phase 11 (only 3):
 - `Options` - Backend options (consider moving to IBackendService in future)
-- `CivitaiModels/Images/Creators` - Civitai API results (Phase 11)
 - `ComfyWSClientId` - WebSocket client ID
-- `ResourceTypeDirectories` - Resource paths
+- `ResourceTypeDirectories` - Resource paths (consider moving to IConfiguration)
 - `CurrentProgress` - Int progress value with event
 - `IsConverging` - Generation running flag
 
 ---
 
 ## Future Phases
-
-### Phase 11: ICivitaiService Extraction (Proposed)
-
-**Objective:** Create a dedicated service for Civitai API interactions and state management.
-
-#### Scope
-- Extract `CivitaiModels`, `CivitaiImages`, `CivitaiCreators` from ManagerService
-- Create `ICivitaiService` interface
-- Move Civitai browsing/download logic from components to service
-- Add caching layer for API responses
-
-#### Benefits
-- Better separation of concerns
-- Easier testing of Civitai functionality
-- Potential for background download management
-
----
 
 ### Phase 12: Options Property Evaluation (Proposed)
 
@@ -207,7 +180,6 @@ After Phase 10:
 |---------|---------|---------------|
 | `DatabaseService` | ~15 components | Create `@inject IDatabaseService DB` |
 | `ProgressService` | 3 components | Requires OnUpdate event on interface |
-| `ImageService` | CivitaiService | Update CivitaiService to use IImageService |
 
 #### Considerations
 - `DatabaseService` concrete usage is widespread - large refactor
@@ -218,15 +190,15 @@ After Phase 10:
 
 ## Key Metrics Summary
 
-| Metric | Phase 1 Start | Phase 9.5 End | Phase 10 End |
-|--------|---------------|---------------|--------------|
-| ManagerService lines | ~1600 | ~450 | ~400 |
-| Facade properties | 27 | 0 | 0 ? |
-| Orchestration properties | - | 14 | 6 |
-| Services extracted | 0 | 11 | 11 |
-| Services with interfaces | 0 | 11 | 11 |
-| Unit tests | 0 | 150 | 150 |
-| Files removed (cleanup) | - | - | 2 |
+| Metric | Phase 1 Start | Phase 9.5 End | Phase 10 End | Phase 11 End |
+|--------|---------------|---------------|--------------|--------------|
+| ManagerService lines | ~1600 | ~450 | ~400 | ~350 |
+| Facade properties | 27 | 0 | 0 | 0 ? |
+| Orchestration properties | - | 14 | 6 | 3 |
+| Services extracted | 0 | 11 | 11 | 11 |
+| Services with interfaces | 0 | 11 | 11 | 11 |
+| Unit tests | 0 | 150 | 150 | 150 |
+| Components freed from M | - | 12 | 17 | 18 |
 
 ---
 
@@ -274,6 +246,7 @@ builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageSe
 | Phase 10 Task B+C | Styles/ButtonTags removed | 150 |
 | Phase 10 Task A | Generation state to IImageService | 150 |
 | Phase 10 Task D | WebUI cleanup, files removed | 150 |
+| Phase 11 | Civitai decoupling complete | 150 |
 
 ---
 

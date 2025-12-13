@@ -1,6 +1,5 @@
 ﻿@inject IStateService State
 @inject ISettingsService Settings
-@inject ManagerService M
 @inject CivitaiService Api
 @inject DatabaseService DB
 @inject IDialogService DialogService
@@ -94,18 +93,18 @@
     <LoadingSpinner />
 
 }
-else if (M.CivitaiModels != null)
+else if (_models != null)
 {
-    @if (M.CivitaiModels.Metadata.TotalPages > 1)
+    @if (_models.Metadata.TotalPages > 1)
     {
         <div class="d-flex flex-column align-center pa-3">
             <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5"
-                Count="M.CivitaiModels.Metadata.TotalPages" />
+                Count="_models.Metadata.TotalPages" />
         </div>
     }
 
     <MudGrid Spacing="1" Justify="Justify.Center">
-        @foreach (var model in M.CivitaiModels.Models)
+        @foreach (var model in _models.Models)
         {
             <CivitaiResourceCard 
                 Title="@model.Name"
@@ -128,18 +127,18 @@ else if (M.CivitaiModels != null)
         }
     </MudGrid>
 
-    @if (M.CivitaiModels.Metadata.TotalPages > 1)
+    @if (_models.Metadata.TotalPages > 1)
     {
         <div class="d-flex flex-column align-center pa-3">
             <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5"
-                Count="M.CivitaiModels.Metadata.TotalPages" />
+                Count="_models.Metadata.TotalPages" />
         </div>
     }
 
     <div class="d-flex flex-column align-center pa-5">
-        @if (!string.IsNullOrWhiteSpace(M.CivitaiModels.Metadata.NextPage))
+        @if (!string.IsNullOrWhiteSpace(_models.Metadata.NextPage))
         {
-            <MudButton Class="w-50" OnClick=@(() => LoadMore(M.CivitaiModels.Metadata.NextPage)) ButtonType="ButtonType.Button"
+            <MudButton Class="w-50" OnClick=@(() => LoadMore(_models.Metadata.NextPage)) ButtonType="ButtonType.Button"
                 Color="Color.Primary" Variant="Variant.Outlined">Load More</MudButton>
         }
     </div>
@@ -148,6 +147,7 @@ else if (M.CivitaiModels != null)
 @code {
     public CivitaiModelsRequest Request { get; set; }
     private bool _isSearching;
+    private CivitaiModelsDto _models;
 
     protected override void OnInitialized()
     {
@@ -158,8 +158,8 @@ else if (M.CivitaiModels != null)
     {
         _isSearching = true;
         SetState();
-        M.CivitaiModels = await Api.GetModels(Request);
-        await M.SaveState();
+        _models = await Api.GetModels(Request);
+        await State.SaveState();
         _isSearching = false;
     }
 
@@ -177,14 +177,6 @@ else if (M.CivitaiModels != null)
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
         var dialogParam = new DialogParameters();
         var model = await Api.GetModel(modelsModel.Id);
-        // Model version file object doesn't have a Primary property, we must use the one from Models list.
-        // for (int i = 0; i < model.ModelVersions.Count; i++)
-        // {
-        //     for (int j = 0; j < model.ModelVersions[i].Files.Count; j++)
-        //     {
-        //         model.ModelVersions[i].Files[j].Primary = modelsModel.ModelVersions[i].Files[j].Primary;
-        //     }
-        // }
         dialogParam.Add("Model", model);
         var dialog = await DialogService.ShowAsync<CivitaiModelInfoDialog>("Model", dialogParam, options);
         var result = await dialog.Result;
@@ -203,8 +195,8 @@ else if (M.CivitaiModels != null)
     private async Task LoadMore(string url)
     {
         var content = await Api.GetModelsFromUrl(url);
-        M.CivitaiModels.Metadata = content.Metadata;
-        M.CivitaiModels.Models.AddRange(content.Models);
+        _models.Metadata = content.Metadata;
+        _models.Models.AddRange(content.Models);
     }
 
     private async Task<float> CheckModelExists(CivitaiModelsModelDto model)
