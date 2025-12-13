@@ -9,7 +9,7 @@
 @inject ISessionService Session
 @inject IEventService Events
 @inject WorkflowService WorkflowService
-@inject ImageService ImageService
+@inject IImageService ImageService
 @inject NavigationManager NavManager
 @inject ILogger<Img2Img> Logger
 @implements IDisposable
@@ -161,7 +161,7 @@
             var generated = await ImageService.GetImages(ModeType.Img2Img);
             if (generated != null && generated.Images != null && generated.Images.Count > 0)
             {
-                M.GeneratedImageEntities = generated;
+                ImageService.GeneratedImageEntities = generated;
             }
             
             // Save state after generation (includes seed, etc.)

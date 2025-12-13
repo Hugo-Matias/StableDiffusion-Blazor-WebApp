@@ -6,6 +6,7 @@
 @inject ISessionService Session
 @inject IEventService Events
 @inject ManagerService M
+@inject IImageService ImageService
 @inject DatabaseService DB
 @inject IOService IO
 @inject IDialogService DialogService
@@ -118,7 +119,7 @@
                 <MudStack AlignItems="AlignItems.Center" Class="pa-4" Style="width: 100%;">
                     @* Preview Image from KSampler *@
                     <div class="preview-image-container">
-                        @if (!string.IsNullOrWhiteSpace(M.Progress?.CurrentImage))
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.CurrentImage))
                         {
                             <MudImage Src="@GetPreviewImageUrl()" 
                                       Alt="Generation Preview" 
@@ -135,24 +136,24 @@
                     
                     @* Progress Information *@
                     <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="mt-3" Style="width: 100%; max-width: 400px;">
-                        @if (!string.IsNullOrWhiteSpace(M.Progress?.State?.Job))
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.State?.Job))
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                @M.Progress.State.Job
+                                @ImageService.Progress.State.Job
                             </MudText>
                         }
                         
                         @* Progress Bar *@
-                        @if (M.Progress?.Value > 0)
+                        @if (ImageService.Progress?.Value > 0)
                         {
                             <MudProgressLinear Color="Color.Primary" 
-                                               Value="@(M.Progress.Value * 100)" 
+                                               Value="@(ImageService.Progress.Value * 100)" 
                                                Class="mt-2" 
                                                Style="width: 100%;"
                                                Rounded
                                                Size="Size.Medium" />
                             <MudText Typo="Typo.caption">
-                                @($"{M.Progress.Value * 100:F0}%")
+                                @($"{ImageService.Progress.Value * 100:F0}%")
                             </MudText>
                         }
                         else
@@ -673,10 +674,10 @@
 
     private string GetPreviewImageUrl()
     {
-        if (string.IsNullOrWhiteSpace(M.Progress?.CurrentImage))
+        if (string.IsNullOrWhiteSpace(ImageService.Progress?.CurrentImage))
             return string.Empty;
 
-        return $"data:image/png;base64,{M.Progress.CurrentImage}";
+        return $"data:image/png;base64,{ImageService.Progress.CurrentImage}";
     }
 
     private void OpenCurrentInExplorer()

@@ -35,12 +35,6 @@ namespace BlazorWebApp.Services
         #region Orchestration Properties
         
         public Options Options { get; set; }
-        public GeneratedImages Images { get; set; }
-        public GeneratedImagesInfo ImagesInfo { get; set; }
-        public ImagesDto GeneratedImageEntities { get; set; }
-        public string? GridImage { get; set; }
-        public InferenceProgress Progress { get; set; }
-        public UpscaledImageDto GeneratedUpscaleImage { get; set; }
         public CivitaiModelsDto CivitaiModels { get; set; }
         public CivitaiImagesDto CivitaiImages { get; set; }
         public CivitaiCreatorsDto CivitaiCreators { get; set; }
@@ -98,8 +92,6 @@ namespace BlazorWebApp.Services
             _gallery = gallery;
             _session = session;
 
-            Images = new();
-            Progress = new();
             _db.PageSize = _state.State.Gallery.PageSize;
             _state.State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
         }
@@ -491,8 +483,6 @@ namespace BlazorWebApp.Services
         #endregion
 
         #region Path Management
-        
-        public void SerializeInfo() => ImagesInfo = new() { InfoTexts = new[] { Images.Info } };
         
         public string GetCurrentSaveFolder(Outdir? outdir)
         {

@@ -37,10 +37,30 @@ namespace BlazorWebApp.Services
         /// </summary>
         public event Action OnChange;
 
+        #region Generation Results
+
+        /// <summary>
+        /// Raw generated images from the backend (base64 encoded).
+        /// Contains Images list and Info (workflow JSON from ComfyUI).
+        /// </summary>
+        public GeneratedImages Images { get; private set; } = new();
+
+        /// <summary>
+        /// Generated image entities saved to database.
+        /// </summary>
+        public ImagesDto GeneratedImageEntities { get; set; }
+
         /// <summary>
         /// Last generated video result.
         /// </summary>
         public GeneratedVideos GeneratedVideos { get; private set; }
+
+        /// <summary>
+        /// Current inference progress. Can be set by websocket service.
+        /// </summary>
+        public InferenceProgress Progress { get; set; } = new();
+
+        #endregion
 
         public ImageService(
             IIOService io, 
@@ -69,7 +89,7 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Generates images based on the specified mode (Txt2Img, Img2Img, or Extras/Upscale).
+        /// Generates images based on the specified mode (Txt2Img, Img2Img).
         /// Handles the full generation workflow including API calls, file saving, and database persistence.
         /// </summary>
         /// <param name="mode">The generation mode to use.</param>
@@ -90,22 +110,13 @@ namespace BlazorWebApp.Services
                     case ModeType.Img2Img:
                         _logger.LogDebug("Building Img2Img parameters");
                         var img2imgParams = BuildImg2ImgParameters(ref scriptName);
-                        _m.Images = await _router.PostImg2Img(img2imgParams);
-                        _m.SerializeInfo();
-                        break;
-
-                    case ModeType.Extras:
-                        _logger.LogDebug("Processing upscale request");
-                        _parsingParams = _state.ParametersUpscale;
-                        // Upscale functionality will be reimplemented for ComfyUI
-                        throw new NotImplementedException("Upscale functionality not yet implemented for ComfyUI");
+                        Images = await _router.PostImg2Img(img2imgParams);
                         break;
 
                     default:
                         _logger.LogDebug("Building Txt2Img parameters");
                         BuildTxt2ImgParameters(ref scriptName);
-                        _m.Images = await _router.PostTxt2Img(_txt2imgParams);
-                        _m.SerializeInfo();
+                        Images = await _router.PostTxt2Img(_txt2imgParams);
                         break;
                 }
 
@@ -122,13 +133,10 @@ namespace BlazorWebApp.Services
                     switch (mode)
                     {
                         case ModeType.Img2Img:
-                            images = await SaveImages(Outdir.Img2ImgSamples, _backend.IsBackendAvailable ? null : Outdir.Img2ImgGrid, scriptName);
-                            break;
-                        case ModeType.Extras:
-                            images = await SaveUpscaleImage();
+                            images = await SaveImages(Outdir.Img2ImgSamples, scriptName);
                             break;
                         default:
-                            images = await SaveImages(Outdir.Txt2ImgSamples, _backend.IsBackendAvailable ? null : Outdir.Txt2ImgGrid, scriptName);
+                            images = await SaveImages(Outdir.Txt2ImgSamples, scriptName);
                             break;
                     }
                 }
@@ -343,7 +351,6 @@ namespace BlazorWebApp.Services
         private void BuildTxt2ImgParameters(ref string scriptName)
         {
             _parsingParams = Parser.ParseParameters(new SharedParameters(_state.ParametersTxt2Img), _state.State.Generation.Styles);
-            // Script system removed - will be reimplemented for ComfyUI workflows
             _txt2imgParams = new Txt2ImgParameters(_parsingParams);
             _txt2imgParams.EnableHR = _state.ParametersTxt2Img.EnableHR;
             if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
@@ -364,7 +371,6 @@ namespace BlazorWebApp.Services
         private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)
         {
             _parsingParams = Parser.ParseParameters(new SharedParameters(_state.ParametersImg2Img), _state.State.Generation.Styles);
-            // Script system removed - will be reimplemented for ComfyUI workflows
             var img2imgParams = new Img2ImgParameters(_parsingParams);
             img2imgParams.InitImages = _state.ParametersImg2Img.InitImages;
             img2imgParams.Mask = _state.ParametersImg2Img.Mask;
@@ -378,7 +384,7 @@ namespace BlazorWebApp.Services
             return img2imgParams;
         }
 
-        public async Task<ImagesDto> SaveImages(Outdir outdirSamples, Outdir? outdirGrid, string scriptName)
+        public async Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName)
         {
             await _backend.GetOptions();
             DirectoryInfo saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(outdirSamples));
@@ -387,68 +393,26 @@ namespace BlazorWebApp.Services
             var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
             var mode = Parser.ModeTypeFromOutdir(outdirSamples);
 
-            for (int i = 0; i < _m.Images.Images.Count; i++)
+            // Parse info from the workflow JSON (Images.Info contains ComfyUI workflow data)
+            var info = Parser.ParseInfoStrings(Images.Info, mode, _backend.IsBackendAvailable);
+
+            for (int i = 0; i < Images.Images.Count; i++)
             {
                 fileIndex++;
                 var extension = _backend.Options.SamplesFormat.ToLowerInvariant();
 
-
-                // Under certain conditions, SD returns images without info data, creating a mismatch between Images and Info list size.
-                // To prevent crashing later in the method when info is parsed and saved, we must preemptively break the execution and save the extra images to disk.
-                // These images aren't added to the database.
-                // Note: Script system removed - this check may no longer be necessary for ComfyUI-only workflow
-                if (i >= _m.ImagesInfo.InfoTexts.Length)
-                {
-                    continue;
-                }
-
-                // ComfyUI sends a single info text
-                var info = Parser.ParseInfoStrings(_m.ImagesInfo.InfoTexts[_backend.IsBackendAvailable ? 0 : i], mode, _backend.IsBackendAvailable);
-
-                // Uses Seed value from the response when -1 is sent (random).
-                // WebUI no longer supported
-                if (info != null && info.ContainsKey("param"))
-                {
-                    var param = Parser.ParseWebUIInfoParameters(info["param"]);
-                    if (param != null && param.ContainsKey("Seed") && !string.IsNullOrEmpty(param["Seed"]))
-                    {
-                        _state.State.Generation.Seed = long.Parse(param["Seed"]);
-                    }
-                    else
-                    {
-                        _state.State.Generation.Seed = (long)_parsingParams.Seed;
-                    }
-                }
-                else
-                {
-                    _state.State.Generation.Seed = (long)_parsingParams.Seed;
-                }
+                // Use seed from parameters (already set during generation)
+                _state.State.Generation.Seed = (long)_parsingParams.Seed;
 
                 var fullpath = GetImagePath(saveDir.FullName, fileIndex, mode);
                 var imagePath = $"{fullpath}.{extension}";
 
-                await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_m.Images.Images[i]));
+                await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(Images.Images[i]));
 
                 savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info));
             }
 
-            if (outdirGrid != null && (bool)_backend.Options.GridSave && (_m.Images.Images.Count > 1 && (bool)_backend.Options.GridOnlyIfMultiple))
-            {
-                saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(outdirGrid));
-                fileIndex = _io.GetFileIndex(saveDir.FullName, (Outdir)outdirGrid) + 1;
-                string fullpath = Path.Combine(saveDir.FullName, $"grid-{fileIndex.ToString().PadLeft(4, '0')}");
-                string extension = _backend.Options.GridFormat.ToLowerInvariant();
-                string gridPath = $"{fullpath}.{extension}";
-
-                _m.GridImage = await _magick.SaveGrid(_m.Images.Images, gridPath);
-            }
             return savedImages;
-        }
-
-        public async Task<ImagesDto?> SaveUpscaleImage()
-        {
-            // Upscale functionality will be reimplemented for ComfyUI
-            throw new NotImplementedException("Upscale functionality not yet implemented for ComfyUI");
         }
 
         private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info)
@@ -457,6 +421,7 @@ namespace BlazorWebApp.Services
 
             image.Path = path;
             image.ProjectId = _state.State.Gallery.ProjectId;
+            
             if (outdir == Outdir.Txt2ImgSamples && _txt2imgParams.EnableHR == true)
             {
                 var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _txt2imgParams.HRWidth, _txt2imgParams.HRHeight, _txt2imgParams.HRScale);
@@ -465,66 +430,24 @@ namespace BlazorWebApp.Services
             }
             else if (outdir == Outdir.Img2ImgSamples)
             {
-
-                if (info == null || string.IsNullOrWhiteSpace(info["param"]))
-                {
-                    image.Width = _canvasSourceWidth;
-                    image.Height = _canvasSourceHeight;
-                }
-                else
-                {
-                    var param = Parser.ParseWebUIInfoParameters(info["param"]);
-                    // Handles upscaling scripts (Ultimate Upscale) edge cases where the input image has lower resolution than the output info
-                    if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
-                    {
-                        var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);
-                        var sizeW = int.Parse(size[0].Trim());
-                        var sizeH = int.Parse(size[1].Trim());
-                        image.Width = sizeW > _canvasSourceWidth ? sizeW : _canvasSourceWidth;
-                        image.Height = sizeH > _canvasSourceHeight ? sizeH : _canvasSourceHeight;
-                    }
-                    else
-                    {
-                        image.Width = _canvasSourceWidth;
-                        image.Height = _canvasSourceHeight;
-                    }
-                }
+                image.Width = _canvasSourceWidth;
+                image.Height = _canvasSourceHeight;
             }
             else
             {
-                Dictionary<string, string> param = new();
-                // WebUI removed - ComfyUI only
-                // param = Parser.ParseWebUIInfoParameters(info["param"]);
-
-                // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
-                // Script system removed - keeping dimension logic for now
-                if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
-                {
-                    var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);
-                    var sizeW = int.Parse(size[0].Trim());
-                    var sizeH = int.Parse(size[1].Trim());
-                    image.Width = sizeW > _parsingParams.Width ? sizeW : (int)_parsingParams.Width;
-                    image.Height = sizeH > _parsingParams.Height ? sizeH : (int)_parsingParams.Height;
-                }
-                else
-                {
-                    image.Width = (int)_parsingParams.Width;
-                    image.Height = (int)_parsingParams.Height;
-                }
-            }
-            if (outdir != Outdir.Extras)
-            {
-                image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
-                image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
-                image.SamplerId = await _db.GetSamplerIdByName(_parsingParams.SamplerName);
-                image.Scheduler = _parsingParams.Scheduler;
-                image.Steps = (int)_parsingParams.Steps;
-                image.Seed = (long)_parsingParams.Seed;
-                image.CfgScale = (float)_parsingParams.CfgScale;
-                image.DenoisingStrength = _parsingParams.DenoisingStrength;
-                image.Model = await _db.GetResourceByFilename(_currentModel);
+                image.Width = (int)_parsingParams.Width;
+                image.Height = (int)_parsingParams.Height;
             }
 
+            image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
+            image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
+            image.SamplerId = await _db.GetSamplerIdByName(_parsingParams.SamplerName);
+            image.Scheduler = _parsingParams.Scheduler;
+            image.Steps = (int)_parsingParams.Steps;
+            image.Seed = (long)_parsingParams.Seed;
+            image.CfgScale = (float)_parsingParams.CfgScale;
+            image.DenoisingStrength = _parsingParams.DenoisingStrength;
+            image.Model = await _db.GetResourceByFilename(_currentModel);
             image.ModeId = await _db.GetMode(Parser.ModeTypeFromOutdir(outdir));
 
             return await _db.AddImage(image);
@@ -574,7 +497,7 @@ namespace BlazorWebApp.Services
             while (await _timer.WaitForNextTickAsync())
             {
                 // ComfyUI progress checking to be implemented
-                _m.Progress = new InferenceProgress();
+                Progress = new InferenceProgress();
                 _progress.Update(progress.Id, 0);
                 NotifyStateChanged();
             }
@@ -584,7 +507,7 @@ namespace BlazorWebApp.Services
         {
             _timer?.Dispose();
             _progress.Remove(id);
-            _m.Progress = new();
+            Progress = new();
         }
 
         private void NotifyStateChanged() => OnChange?.Invoke();

@@ -1,14 +1,14 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 10 - Orchestration Property Relocation  
+**Current Phase:** Phase 10 - Orchestration Property Relocation ? **COMPLETE**
 **Last Updated:** 2025-01-15
 
 ---
 
 ## Problem Statement
 
-The `ManagerService` was originally a "God Object" (~1600+ lines) handling too many responsibilities. Through systematic refactoring, it has been reduced to a **~450-line orchestrator** that coordinates between specialized services with **zero facade properties**.
+The `ManagerService` was originally a "God Object" (~1600+ lines) handling too many responsibilities. Through systematic refactoring, it has been reduced to a **~400-line orchestrator** that coordinates between specialized services with **zero facade properties**.
 
 ### Current Architecture
 
@@ -16,9 +16,9 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ????????????????????????????????????????????????????????????????????????
 ?                    ManagerService (Orchestrator)                     ?
 ?  - Coordinates between specialized services                         ?
-?  - Manages generation state (Images, Progress, Options)             ?
 ?  - Workflow management and asset coordination                       ?
 ?  - NO facade properties (all removed in Phase 9.5)                  ?
+?  - NO generation state (moved to IImageService in Phase 10)         ?
 ????????????????????????????????????????????????????????????????????????
                                     ?
         ?????????????????????????????????????????????????????????
@@ -44,7 +44,7 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?  EventService   ?   ?  ImageService   ?   ? SessionService  ?
 ?  - Pub/sub      ?   ?  - Generation   ?   ?  - Canvas state ?
 ?  - Typed events ?   ?  - Saving       ?   ?  - Editor state ?
-?  - Mediator     ?   ?  - Video gen    ?   ?  - Videos       ?
+?  - Mediator     ?   ?  - Progress     ?   ?  - Videos       ?
 ???????????????????   ???????????????????   ???????????????????
 ```
 
@@ -72,80 +72,6 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 #### Summary
 Removed all backward compatibility facades from ManagerService, eliminated WebUI remnants, and cleaned up DI registrations.
 
-#### Detailed Execution Log
-
-**Batch 1: Simple Components (12 components)**
-| Component | Action | Notes |
-|-----------|--------|-------|
-| `CivitaiFileButton.razor` | ? Updated | M.State ? State.State |
-| `CivitaiModelVersionInfoPanel.razor` | ? Updated | M.State ? State.State |
-| `DanbooruSearchesDrawer.razor` | ? Updated | M.Settings ? Settings.Settings |
-| `CivitaiImageCard.razor` | ? Updated | Removed unused M injection |
-| `Prompts.razor` | ? Updated | M.State ? State.State |
-| `PromptsPanel.razor` | ? Updated | Added IStateService, kept M for orchestration |
-| `PromptDialog.razor` | ?? Skipped | Only uses M.GetStyles() (orchestration) |
-| `WorkflowAssetsPanel.razor` | ? Updated | Added IStateService |
-| `WorkflowAssetSelector.razor` | ?? Skipped | Only uses orchestration methods |
-| `ConditioningVariationForm.razor` | ? Updated | M.Settings ? Settings.Settings |
-| `AssetViewer.razor` | ?? Skipped | Already uses interfaces |
-| `SelectionsDialog.razor` | ? Updated | M.SelectedImageIds ? Gallery.SelectedImageIds |
-
-**Batch 2: Medium Components (10 components)**
-| Component | Action | Notes |
-|-----------|--------|-------|
-| `Img2ImgCanvas.razor` | ? Updated | M.State/Canvas ? State.State/Session.Canvas |
-| `CivitaiImageDialog.razor` | ? Updated | Added IStateService for parameters |
-| `ResourceImageDialog.razor` | ? Updated | Added IStateService for parameters |
-| `CivitaiModelsPanel.razor` | ?? Skipped | M for CivitaiModels (orchestration) |
-| `Danbooru.razor` | ? Updated | Added IStateService/ISettingsService |
-| `InfiniteScrollMasonry.razor` | ? Updated | M.SelectedImageIds ? Gallery.SelectedImageIds |
-| `ImageInfoDialog.razor` | ?? Skipped | Already uses IStateService |
-| `ImageViewer.razor` | ?? Skipped | Already uses IStateService |
-| `GeneratedImageTabs.razor` | ?? Skipped | Already uses interfaces |
-| `GeneratedVideoTabs.razor` | ?? Skipped | Already uses interfaces |
-
-**Batch 3: Complex Components (4 components)**
-| Component | Action | Notes |
-|-----------|--------|-------|
-| `WildcardsPanel.razor` | ? Updated | Full refactor - IStateService + ISettingsService |
-| `LLMPromptEnhancerForm.razor` | ? Updated | **Removed M completely** |
-| `GenerateFormImg2Vid.razor` | ? Updated | **Removed M completely** |
-| `GenerateFormTxt2Img.razor` | ?? Skipped | Already uses interfaces |
-
-**Batch 4: Pages (5 pages)**
-| Page | Action | Notes |
-|------|--------|-------|
-| `Index.razor` | ? Updated | M.IsGalleryFiltered ? Gallery.IsGalleryFiltered, **removed M** |
-| `Txt2Img.razor` | ?? Skipped | Only uses M for orchestration |
-| `Img2Img.razor` | ?? Skipped | Only uses M for orchestration |
-| `Img2Vid.razor` | ?? Skipped | Only uses M for orchestration |
-| `MainLayout.razor` | ?? Skipped | Only uses M for orchestration |
-
-**Batch 5: Services (4 services)**
-| Service | Action | Notes |
-|---------|--------|-------|
-| `ResourcesService.cs` | ? Updated | Added IStateService, replaced facade usages |
-| `RouterService.cs` | ? Updated | Added IBackendService + IStateService |
-| `MagickService.cs` | ? Updated | **Replaced M with ISettingsService completely** |
-| `CivitaiService.cs` | ?? Skipped | Only uses M.CurrentProgress (orchestration) |
-
-**Task A: Remove Facades from ManagerService**
-- ? Removed entire `#region Service Facades` block (27 properties)
-- ? Updated all internal references to use `_state`, `_models`, `_gallery`, etc.
-- ? Build passing, 150 tests passing
-
-**Task B: WebUI Cleanup**
-- ? Removed `ControlNetEnabled` property
-- ? Removed `CmdFlags` property
-- ? Moved `IsGalleryFiltered` to `IGalleryService`
-- ?? `Options.SDModelCheckpoint` kept for path pattern conversion (legacy compat)
-
-**Task C: DI Cleanup in Program.cs**
-- ? `RouterService` ? Interface-only (`IRouterService`)
-- ? `WorkflowService` ? Interface-only (`IWorkflowService`)
-- ? Added comments explaining dual registrations
-- ? Build passing, 150 tests passing
-
 #### Phase 9.5 Metrics
 
 | Metric | Before | After | Change |
@@ -157,134 +83,82 @@ Removed all backward compatibility facades from ManagerService, eliminated WebUI
 | Interface-only DI registrations | 9 | 11 | +2 |
 | ManagerService lines | 658 | ~450 | -32% |
 
-#### New APIs Added
-- `IGalleryService.IsGalleryFiltered` - moved from ManagerService
-
-#### Files Completely Freed from ManagerService
-- `LLMPromptEnhancerForm.razor`
-- `GenerateFormImg2Vid.razor`
-- `Index.razor`
-- `MagickService.cs`
-
 ---
 
-## Current Phase: Phase 10 - Orchestration Property Relocation
-
-**Objective:** Move remaining orchestration properties from ManagerService to appropriate specialized services.
-
-**Started:** 2025-01-15
-
-### Pre-Phase Analysis
-
-#### Current ManagerService Orchestration Properties
-
-| Property | Type | Current Usages | Target Location |
-|----------|------|----------------|-----------------|
-| `Images` | `GeneratedImages` | `ImageService` (stores results) | `IImageService` |
-| `ImagesInfo` | `GeneratedImagesInfo` | `ImageService` (stores metadata) | `IImageService` |
-| `GridImage` | `string?` | `ImageService` (stores grid) | `IImageService` |
-| `GeneratedImageEntities` | `ImagesDto` | Pages (display results) | `IImageService` |
-| `GeneratedUpscaleImage` | `UpscaledImageDto` | Unused currently | `IImageService` |
-| `Progress` | `InferenceProgress` | `ImageService` | `IImageService` or remove |
-| ~~`Styles`~~ | ~~`List<PromptStyle>`~~ | ~~`PromptFields` loads directly~~ | ~~Removed~~ ? |
-| ~~`ButtonTags`~~ | ~~`PromptButton`~~ | ~~`PromptFields` loads directly~~ | ~~Removed~~ ? |
-| `CivitaiModels/Images/Creators` | DTOs | `CivitaiModelsPanel` | Defer to Phase 11 |
-| `ResourceTypeDirectories` | `Dictionary<string,string>` | Config | Move to `IConfiguration` |
-
-### Task A: Move Generation Results to IImageService ?
-
-**Scope:** Move `Images`, `ImagesInfo`, `GridImage`, `GeneratedImageEntities`, `GeneratedUpscaleImage` to `IImageService`
-
-**Why:** These properties represent generation output and belong with the generation logic in `ImageService`.
-
-**Changes Required:**
-
-1. **IImageService interface** - Add properties:
-   ```csharp
-   GeneratedImages Images { get; }
-   GeneratedImagesInfo ImagesInfo { get; }
-   string? GridImage { get; }
-   ImagesDto GeneratedImageEntities { get; set; }
-   UpscaledImageDto GeneratedUpscaleImage { get; set; }
-   ```
-
-2. **ImageService** - Add backing fields and properties, update internal `_m.Images` to `Images`
-
-3. **ManagerService** - Remove properties, update `SerializeInfo()` to call `IImageService`
-
-4. **Components using `M.GeneratedImageEntities`** - Update to use `IImageService`
-
-**Files Affected:**
-- `Services/IImageService.cs`
-- `Services/ImageService.cs`
-- `Services/ManagerService.cs`
-- `Pages/Txt2Img.razor`
-- `Pages/Img2Img.razor`
-- `Pages/Img2Vid.razor`
-
-### Task B: Remove Duplicate Styles Property ?
+### ? Phase 10: Orchestration Property Relocation (Complete)
 **Completed:** 2025-01-15
 
-**Changes Made:**
-- Removed `Styles` property from ManagerService
-- Removed `GetStyles()` method from ManagerService
-- Updated `PromptsPanel.razor` to publish `StylesChangedEventArgs` instead of calling `M.GetStyles()`
-- Updated `PromptDialog.razor` to publish `StylesChangedEventArgs` instead of calling `M.GetStyles()`
-- Updated `WildcardsPanel.razor` to publish `StylesChangedEventArgs` instead of calling `M.GetStyles()`
-- Updated `PromptFields.razor` to subscribe to `StylesChangedEventArgs`
+#### Objective
+Move remaining orchestration properties from ManagerService to appropriate specialized services, and remove WebUI-era code no longer applicable to ComfyUI.
 
-**Files Updated:**
-- `Services/ManagerService.cs` - Removed property and method
-- `Components/Prompts/PromptsPanel.razor` - Removed M injection, uses Events
-- `Components/Prompts/PromptDialog.razor` - Removed M injection, uses Events
-- `Components/Prompts/WildcardsPanel.razor` - Removed M injection, uses Events
-- `Components/Shared/Generation/PromptFields.razor` - Added StylesChangedEventArgs subscription
-
-### Task C: Remove Duplicate ButtonTags Property ?
-**Completed:** 2025-01-15
+#### Task A: Move Generation Results to IImageService ?
+**Scope:** Moved `Images`, `GeneratedImageEntities`, `Progress` to `IImageService`
 
 **Changes Made:**
-- Removed `ButtonTags` property from ManagerService
-- Removed `GetButtonTags()` method from ManagerService
-- Removed `System.Text.Json` using directive (no longer needed)
 
-**Note:** `PromptFields.razor` already loads button tags directly from `IOService.GetJsonAsString()`, so no component changes were needed.
+1. **IImageService interface** - Simplified to only include:
+   - `GeneratedImages Images { get; }` - Raw generated images + workflow JSON info
+   - `ImagesDto GeneratedImageEntities { get; set; }` - Database entities
+   - `GeneratedVideos GeneratedVideos { get; }` - Video results
+   - `InferenceProgress Progress { get; set; }` - Real-time progress
 
-### Task D: Move Progress Property ?
+2. **ImageService** - Now owns all generation state, simplified `SaveImages()` method
 
-**Scope:** `M.Progress` (InferenceProgress) is used during generation
+3. **ManagerService** - Removed 6 properties:
+   - `Images`, `ImagesInfo`, `GridImage`, `GeneratedImageEntities`, `Progress`, `GeneratedUpscaleImage`
 
-**Analysis Needed:**
-- Is this still used? `ImageService.StartProgressChecker()` sets `_m.Progress`
-- WebSocket progress may have replaced this
+4. **Components updated:**
+   - `GeneratedImageTabs.razor` - Uses `IImageService.Images.Info` instead of `ImagesInfo.InfoTexts[0]`
+   - `GeneratedVideoTabs.razor` - Uses `IImageService.Progress`
+   - `GenerateFormTxt2Img.razor` - Uses `IImageService.Images.Info` for RestoreSeed()
+   - `Txt2Img.razor` / `Img2Img.razor` - Uses `ImageService.GeneratedImageEntities`
 
-**Decision:** Evaluate during Task A
+5. **ComfyUIWebsocketService** - Uses `ImageService.Progress` directly
 
-### Execution Order
+#### Task B: Remove Duplicate Styles Property ?
+- Removed `Styles` property and `GetStyles()` method from ManagerService
+- Components use `IEventService` to publish `StylesChangedEventArgs`
 
-1. ~~Task C: Remove ButtonTags (trivial)~~ ?
-2. ~~Task B: Remove Styles~~ ?
-3. Task A: Move generation results (highest impact, unlocks other tasks) ?
-4. Task D: Evaluate Progress during Task A ?
+#### Task C: Remove Duplicate ButtonTags Property ?
+- Removed `ButtonTags` property and `GetButtonTags()` method from ManagerService
 
-### Current Metrics
+#### Task D: WebUI Cleanup ?
+**Removed as no longer applicable:**
 
-| Metric | Before Phase 10 | After Tasks B+C | Change |
-|--------|-----------------|-----------------|--------|
-| Orchestration properties | 14 | 12 | -2 |
-| Methods removed | 0 | 2 | +2 |
-| Components freed from M | 0 | 3 | +3 |
+| Item | Reason |
+|------|--------|
+| `GeneratedImagesInfo` class | WebUI-specific response format; ComfyUI uses `Images.Info` JSON |
+| `UpscaledImageDto` class | WebUI upscale endpoint; not used in ComfyUI |
+| `GeneratedUpscaleImage` property | Never populated for ComfyUI |
+| `GridImage` property | WebUI grid feature; ComfyUI doesn't use grids |
+| `ImagesInfo` property | Wrapper for `Images.Info`; now use directly |
+| `SerializeInfo()` method | No longer needed |
+| `outdirGrid` parameter | Grid directories no longer used |
+| `SaveUpscaleImage()` method | Threw NotImplementedException |
+
+#### Files Removed
+- `BlazorWebApp/Models/GeneratedImagesInfo.cs`
+- `BlazorWebApp/Data/Dtos/UpscaledImageDto.cs`
+
+#### Phase 10 Metrics
+
+| Metric | Before Phase 10 | After Phase 10 | Change |
+|--------|-----------------|----------------|--------|
+| ManagerService properties | 14 | 6 | -57% |
+| IImageService properties | 2 | 4 | +2 (focused) |
+| Files removed | 0 | 2 | Legacy cleanup |
+| Components updated | 0 | 5 | - |
 | Build | ? | ? | - |
 | Tests | 150 | 150 | - |
 
-### Acceptance Criteria
-
-- [x] ButtonTags property removed
-- [x] Styles property and GetStyles() removed
-- [ ] `IImageService` owns all generation result properties
-- [ ] ManagerService reduced by ~50 lines
-- [ ] Build passing
-- [ ] 150+ tests passing
+#### Remaining ManagerService Properties
+After Phase 10:
+- `Options` - Backend options (consider moving to IBackendService in future)
+- `CivitaiModels/Images/Creators` - Civitai API results (Phase 11)
+- `ComfyWSClientId` - WebSocket client ID
+- `ResourceTypeDirectories` - Resource paths
+- `CurrentProgress` - Int progress value with event
+- `IsConverging` - Generation running flag
 
 ---
 
@@ -344,14 +218,15 @@ Removed all backward compatibility facades from ManagerService, eliminated WebUI
 
 ## Key Metrics Summary
 
-| Metric | Phase 1 Start | Phase 9.5 End | Phase 10 Target |
-|--------|---------------|---------------|-----------------|
-| ManagerService lines | ~1600 | ~450 | <350 |
+| Metric | Phase 1 Start | Phase 9.5 End | Phase 10 End |
+|--------|---------------|---------------|--------------|
+| ManagerService lines | ~1600 | ~450 | ~400 |
 | Facade properties | 27 | 0 | 0 ? |
+| Orchestration properties | - | 14 | 6 |
 | Services extracted | 0 | 11 | 11 |
 | Services with interfaces | 0 | 11 | 11 |
-| Unit tests | 0 | 150 | 150+ |
-| Duplicate data loading | - | 2 | 0 |
+| Unit tests | 0 | 150 | 150 |
+| Files removed (cleanup) | - | - | 2 |
 
 ---
 
@@ -382,7 +257,7 @@ builder.Services.AddSingleton<IDatabaseService>(sp => sp.GetRequiredService<Data
 builder.Services.AddSingleton<ProgressService>();
 builder.Services.AddSingleton<IProgressService>(sp => sp.GetRequiredService<ProgressService>());
 
-// CivitaiService uses concrete ImageService
+// ComfyUIWebsocketService sets Progress directly
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageService>());
 ```
@@ -395,13 +270,10 @@ builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageSe
 |------------|-------------|-------|
 | Phase 8.5 | Legacy events removed | 138 |
 | Phase 9 | Service interfaces created | 150 |
-| Phase 9.5 Batch 1 | Simple components updated | 150 |
-| Phase 9.5 Batch 2 | Medium components updated | 150 |
-| Phase 9.5 Batch 3 | Complex components updated | 150 |
-| Phase 9.5 Batch 4 | Pages updated | 150 |
-| Phase 9.5 Batch 5 | Services updated | 150 |
-| Phase 9.5 Task A | Facades removed | 150 |
-| Phase 9.5 Task C | DI cleanup | 150 |
+| Phase 9.5 | Facades removed, DI cleanup | 150 |
+| Phase 10 Task B+C | Styles/ButtonTags removed | 150 |
+| Phase 10 Task A | Generation state to IImageService | 150 |
+| Phase 10 Task D | WebUI cleanup, files removed | 150 |
 
 ---
 

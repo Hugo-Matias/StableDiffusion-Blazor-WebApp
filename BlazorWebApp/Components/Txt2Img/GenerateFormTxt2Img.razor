@@ -5,6 +5,7 @@
 @inject IStateService State
 @inject ISettingsService Settings
 @inject IBackendService Backend
+@inject IImageService ImageService
 @inject ManagerService M
 
 <div style="margin-bottom:15rem;">
@@ -262,9 +263,9 @@
     private void RestoreSeed()
     {
         // ComfyUI-only now (WebUI removed)
-        if (Backend.IsBackendAvailable)
+        if (Backend.IsBackendAvailable && !string.IsNullOrWhiteSpace(ImageService.Images?.Info))
         {
-            var info = M.ImagesInfo.InfoTexts[0];
+            var info = ImageService.Images.Info;
             try
             {
                 using var doc = System.Text.Json.JsonDocument.Parse(info);

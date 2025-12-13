@@ -54,7 +54,10 @@
     {
         State.ParametersTxt2Img.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
         var generated = await ImageService.GetImages(ModeType.Txt2Img);
-        if (generated != null && generated.Images != null && generated.Images.Count > 0) M.GeneratedImageEntities = generated;
+        if (generated != null && generated.Images != null && generated.Images.Count > 0) 
+        {
+            ImageService.GeneratedImageEntities = generated;
+        }
     }
 
     private async void Skip() => await API.PostClearQueue();

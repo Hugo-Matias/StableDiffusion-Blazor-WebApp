@@ -9,16 +9,18 @@ namespace BlazorWebApp.Services
     {
         private readonly ILogger<ComfyUIWebsocketService> _logger;
         private readonly ManagerService _m;
+        private readonly ImageService _imageService;
         private readonly ProgressService _progressService;
         private readonly ComfyUIEventBus _bus;
         private ClientWebSocket? _currentWs;
         private readonly object _lock = new();
         private Guid _promptId;
 
-        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, ManagerService m, ProgressService progressService, ComfyUIEventBus bus)
+        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, ManagerService m, ImageService imageService, ProgressService progressService, ComfyUIEventBus bus)
         {
             _logger = logger;
             _m = m;
+            _imageService = imageService;
             _progressService = progressService;
             _bus = bus;
         }
@@ -94,7 +96,7 @@ namespace BlazorWebApp.Services
 
                         if (type == "execution_start")
                         {
-                            _m.Progress = new() { State = new() { Job = "Execution Started" } };
+                            _imageService.Progress = new() { State = new() { Job = "Execution Started" } };
                             _m.InvokeProgressChanged();
                         }
 
@@ -121,8 +123,8 @@ namespace BlazorWebApp.Services
                                 _progressService.Progresses.Add(progress);
                             }
 
-                            _m.Progress.Value = (float)value / max;
-                            _m.Progress.State.Job = $"Running node: {node}";
+                            _imageService.Progress.Value = (float)value / max;
+                            _imageService.Progress.State.Job = $"Running node: {node}";
                             _progressService.Update(id, value);
                             _m.InvokeProgressChanged();
                         }
@@ -149,7 +151,7 @@ namespace BlazorWebApp.Services
                                 _bus.PublishExecutionFailed(_promptId, $"{errorType} | Node: {nodeId} - {nodeType}: {error}");
                             }
                             _progressService.Remove(_promptId);
-                            _m.Progress = new();
+                            _imageService.Progress = new();
                             _m.InvokeProgressChanged();
                         }
                     }
@@ -168,7 +170,7 @@ namespace BlazorWebApp.Services
                     var imageBytes = fullBytes.Skip(8).ToArray();
 
                     var base64 = Convert.ToBase64String(imageBytes);
-                    _m.Progress.CurrentImage = base64;
+                    _imageService.Progress.CurrentImage = base64;
                 }
             }
         }

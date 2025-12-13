@@ -4,7 +4,7 @@
 @inject ISettingsService Settings
 @inject IGalleryService Gallery
 @inject IEventService Events
-@inject ImageService ImageService
+@inject IImageService ImageService
 @inject DatabaseService DB
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -12,17 +12,13 @@
 
 <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" MinimumTabWidth="100px" Rounded Centered>
     <MudTabPanel Icon="fa-solid fa-play">
-        @if (M.GeneratedImageEntities != null && M.GeneratedImageEntities.Images != null)
+        @if (ImageService.GeneratedImageEntities != null && ImageService.GeneratedImageEntities.Images != null)
         {
-            <ImageCarousel Images="M.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
+            <ImageCarousel Images="ImageService.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
             <br />
-            @if (M.ImagesInfo != null)
+            @if (!string.IsNullOrWhiteSpace(ImageService.Images?.Info))
             {
-                <span class="generation-info-text"><small>@M.ImagesInfo.InfoTexts[0]</small></span>
-            }
-            else if (M.GeneratedUpscaleImage.Info != null)
-            {
-                <span class="generation-info-text"><small>@M.GeneratedUpscaleImage.Info</small></span>
+                <span class="generation-info-text"><small>@ImageService.Images.Info</small></span>
             }
         }
         else
@@ -31,9 +27,9 @@
         }
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-image">
-        @if (M.GeneratedImageEntities != null)
+        @if (ImageService.GeneratedImageEntities != null)
         {
-            <ImagesContainer Images="M.GeneratedImageEntities" CanSelect=true />
+            <ImagesContainer Images="ImageService.GeneratedImageEntities" CanSelect=true />
         }
         else
         {
@@ -47,9 +43,9 @@
                 <MudStack AlignItems="AlignItems.Center" Class="pa-4" Style="width: 100%;">
                     @* Preview Image from KSampler *@
                     <div class="preview-image-container">
-                        @if (!string.IsNullOrWhiteSpace(M.Progress?.CurrentImage))
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.CurrentImage))
                         {
-                            <MudImage Src="@($"data:image/png;base64,{M.Progress.CurrentImage}")" 
+                            <MudImage Src="@($"data:image/png;base64,{ImageService.Progress.CurrentImage}")" 
                                       Alt="Generation Preview" 
                                       Class="preview-image"
                                       ObjectFit="ObjectFit.Contain" />
@@ -64,24 +60,24 @@
                     
                     @* Progress Information *@
                     <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="mt-3" Style="width: 100%; max-width: 400px;">
-                        @if (!string.IsNullOrWhiteSpace(M.Progress?.State?.Job))
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.State?.Job))
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                @M.Progress.State.Job
+                                @ImageService.Progress.State.Job
                             </MudText>
                         }
                         
                         @* Progress Bar *@
-                        @if (M.Progress?.Value > 0)
+                        @if (ImageService.Progress?.Value > 0)
                         {
                             <MudProgressLinear Color="Color.Primary" 
-                                               Value="@(M.Progress.Value * 100)" 
+                                               Value="@(ImageService.Progress.Value * 100)" 
                                                Class="mt-2" 
                                                Style="width: 100%;"
                                                Rounded
                                                Size="Size.Medium" />
                             <MudText Typo="Typo.caption">
-                                @($"{M.Progress.Value * 100:F0}%")
+                                @($"{ImageService.Progress.Value * 100:F0}%")
                             </MudText>
                         }
                         else
