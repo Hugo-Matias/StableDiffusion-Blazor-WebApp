@@ -1,16 +1,18 @@
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
+using Microsoft.Extensions.Options;
 
 namespace BlazorWebApp.Services
 {
     /// <summary>
     /// Service for managing backend (ComfyUI) availability and operations.
-    /// Consolidates backend health checks, options management, and resource loading.
+    /// Consolidates backend health checks, output path configuration, and resource loading.
     /// </summary>
     public class BackendService : IBackendService
     {
         private readonly IComfyUIService _comfyUI;
         private readonly IEventService _events;
+        private readonly IConfiguration _configuration;
         private bool _isBackendAvailable;
         private Timer? _healthCheckTimer;
 
@@ -30,18 +32,25 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public Options Options { get; private set; }
+        /// <summary>
+        /// Output path configuration loaded from appsettings.json
+        /// </summary>
+        public OutputPathsOptions OutputPaths { get; }
 
-        // These will move to ModelService in Phase 5
         public List<Models.Sampler> Samplers { get; private set; }
         public List<Scheduler> Schedulers { get; private set; }
         public List<Upscaler> Upscalers { get; private set; }
 
-        public BackendService(IComfyUIService comfyUI, IEventService events)
+        public BackendService(IComfyUIService comfyUI, IEventService events, IConfiguration configuration)
         {
             _comfyUI = comfyUI;
             _events = events;
-            Options = new Options();
+            _configuration = configuration;
+            
+            // Load output paths from configuration
+            OutputPaths = new OutputPathsOptions();
+            configuration.GetSection(OutputPathsOptions.SectionName).Bind(OutputPaths);
+            
             Samplers = new List<Models.Sampler>();
             Schedulers = new List<Scheduler>();
             Upscalers = new List<Upscaler>();
@@ -55,7 +64,6 @@ namespace BlazorWebApp.Services
         {
             try
             {
-                // ComfyUIService has a health check method we can use
                 var isAvailable = await _comfyUI.CheckComfyUIState();
                 IsBackendAvailable = isAvailable;
                 return isAvailable;
@@ -101,39 +109,28 @@ namespace BlazorWebApp.Services
             if (!IsBackendAvailable)
                 return;
 
-            // Load samplers, schedulers, and upscalers directly from ComfyUI
-            // These will move to ModelService in Phase 5
             Samplers = await _comfyUI.GetSamplers() ?? new List<Models.Sampler>();
             Schedulers = await _comfyUI.GetSchedulers() ?? new List<Scheduler>();
             Upscalers = await _comfyUI.GetUpscalers() ?? new List<Upscaler>();
         }
 
         /// <summary>
-        /// Loads backend options/configuration from ComfyUI.
+        /// Gets the full output path for a specific output type
         /// </summary>
-        public async Task GetOptions()
+        public string GetOutputPath(Outdir outdir)
         {
-            if (!IsBackendAvailable)
+            var baseDir = _configuration["OutputDir"] ?? "";
+            
+            return outdir switch
             {
-                Options = new Options();
-                return;
-            }
-
-            Options = await _comfyUI.GenerateOptions();
-        }
-
-        /// <summary>
-        /// Posts updated options to the backend and reloads current options.
-        /// </summary>
-        public async Task<string> PostOptions(Options options)
-        {
-            if (!IsBackendAvailable)
-                return "Backend not available";
-
-            // ComfyUI doesn't support posting options like WebUI did
-            // This is a no-op for ComfyUI but kept for interface compatibility
-            await GetOptions();
-            return "Options updated (ComfyUI only)";
+                Outdir.Txt2ImgSamples => Path.Combine(baseDir, OutputPaths.Txt2ImgSamples),
+                Outdir.Txt2ImgGrid => Path.Combine(baseDir, OutputPaths.Txt2ImgSamples), // Grids go to same folder
+                Outdir.Img2ImgSamples => Path.Combine(baseDir, OutputPaths.Img2ImgSamples),
+                Outdir.Img2ImgGrid => Path.Combine(baseDir, OutputPaths.Img2ImgSamples),
+                Outdir.Extras => Path.Combine(baseDir, OutputPaths.Extras),
+                Outdir.Img2VidSamples => Path.Combine(baseDir, OutputPaths.Img2VidSamples),
+                _ => baseDir
+            };
         }
     }
 }

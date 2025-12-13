@@ -9,8 +9,7 @@ namespace BlazorWebApp.Services
     /// </summary>
     public interface IComfyUIService
     {
-        // Configuration & Health
-        Task<Options> GenerateOptions();
+        // Health Check
         Task<bool> CheckComfyUIState();
 
         // Model Retrieval
@@ -44,7 +43,5 @@ namespace BlazorWebApp.Services
         // Queue Operations
         Task<string> PostInterrupt();
         Task<HttpResponseMessage> PostClearQueue();
-        
-        // Note: LLM methods (GeneratePromptWithLLM) excluded temporarily until LLMRequest/LLMResponse types are defined
     }
 }

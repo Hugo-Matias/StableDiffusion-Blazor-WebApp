@@ -126,9 +126,7 @@ namespace BlazorWebApp.Services
                     throw new Exception("Generation Canceled!");
                 }
 
-                await _backend.GetOptions();
-
-                if (_backend.Options?.SamplesSave == true)
+                if (_backend.OutputPaths.SaveSamples)
                 {
                     switch (mode)
                     {
@@ -184,9 +182,7 @@ namespace BlazorWebApp.Services
                 // Store the seed used for this generation
                 _state.State.Generation.Seed = (long)_img2vidParams.Seed;
 
-                await _backend.GetOptions();
-
-                if (_backend.Options?.SamplesSave == true && GeneratedVideos?.Videos?.Count > 0)
+                if (_backend.OutputPaths.SaveSamples && GeneratedVideos?.Videos?.Count > 0)
                 {
                     await SaveVideos(GeneratedVideos);
                 }
@@ -208,8 +204,6 @@ namespace BlazorWebApp.Services
         /// </summary>
         private async Task SaveVideos(GeneratedVideos videos)
         {
-            await _backend.GetOptions();
-
             var saveDir = _io.CreateDirectory(GetVideoSaveFolder());
             var fileIndex = GetVideoFileIndex(saveDir.FullName);
 
@@ -283,14 +277,10 @@ namespace BlazorWebApp.Services
         /// </summary>
         private string GetVideoSaveFolder()
         {
-            var basePath = _backend.Options.OutdirSamplesImg2Vid;
-            if (string.IsNullOrWhiteSpace(basePath))
-            {
-                basePath = Path.Combine(_backend.Options.OutdirSamplesTxt2Img.Replace("Text-2-Image", "Image-2-Video"));
-            }
+            var basePath = _backend.GetOutputPath(Outdir.Img2VidSamples);
 
             // Apply directory pattern if configured
-            var dirPattern = _backend.Options.FilenamePatternDir;
+            var dirPattern = _backend.OutputPaths.DirectoryPattern;
             if (!string.IsNullOrWhiteSpace(dirPattern))
             {
                 var subPath = _m.ConvertPathPattern(dirPattern, ModeType.Img2Vid);
@@ -333,7 +323,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         private string GenerateVideoFilename(int fileIndex)
         {
-            var pattern = _backend.Options.FilenamePatternSamples;
+            var pattern = _backend.OutputPaths.FilenamePattern;
             var filename = $"{fileIndex.ToString().PadLeft(5, '0')}";
 
             if (!string.IsNullOrWhiteSpace(pattern))
@@ -386,7 +376,6 @@ namespace BlazorWebApp.Services
 
         public async Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName)
         {
-            await _backend.GetOptions();
             DirectoryInfo saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(outdirSamples));
             ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
 
@@ -399,7 +388,7 @@ namespace BlazorWebApp.Services
             for (int i = 0; i < Images.Images.Count; i++)
             {
                 fileIndex++;
-                var extension = _backend.Options.SamplesFormat.ToLowerInvariant();
+                var extension = _backend.OutputPaths.SamplesFormat.ToLowerInvariant();
 
                 // Use seed from parameters (already set during generation)
                 _state.State.Generation.Seed = (long)_parsingParams.Seed;
@@ -471,7 +460,7 @@ namespace BlazorWebApp.Services
 
         private string GetImagePath(string path, int fileIndex, ModeType mode)
         {
-            string infoname = _m.ConvertPathPattern(_backend.Options.FilenamePatternSamples, mode);
+            string infoname = _m.ConvertPathPattern(_backend.OutputPaths.FilenamePattern, mode);
             string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
             return Path.Combine(path, filename);
         }

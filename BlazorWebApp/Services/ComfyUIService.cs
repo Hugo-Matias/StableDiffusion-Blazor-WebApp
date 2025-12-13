@@ -233,27 +233,6 @@ namespace BlazorWebApp.Services
             }
         }
 
-        // TODO: Load from AppSettings
-        public async Task<Options> GenerateOptions()
-        {
-            Options options = new Options()
-            {
-                ClipSkip = 1,
-                SaveTxt = false,
-                GridSave = false,
-                SamplesSave = true,
-                SamplesFormat = "png",
-                FilenamePatternDir = "[model_name]/[sampler]",
-                FilenamePatternSamples = "[seed]_[steps]_[cfg]",
-                OutdirSamplesImg2Img = Path.Combine(_configuration["OutputDir"], "Image-2-Image\\_samples"),
-                OutdirSamplesTxt2Img = Path.Combine(_configuration["OutputDir"], "Text-2-Image\\_samples"),
-                OutdirSamplesExtras = Path.Combine(_configuration["OutputDir"], "Extras"),
-                OutdirSamplesImg2Vid = Path.Combine(_configuration["OutputDir"], "Image-2-Video\\_samples")
-            };
-
-            return options;
-        }
-
         #region GET
         /// <summary>
         /// Checks if ComfyUI backend is available by querying the system stats endpoint.

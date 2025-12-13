@@ -14,7 +14,6 @@ namespace BlazorWebApp.Tests.MockBuilders
         private List<Models.Sampler>? _samplers;
         private List<Scheduler>? _schedulers;
         private List<Upscaler>? _upscalers;
-        private Options? _options;
 
         public MockComfyUIServiceBuilder()
         {
@@ -58,15 +57,6 @@ namespace BlazorWebApp.Tests.MockBuilders
         }
 
         /// <summary>
-        /// Sets the options that will be returned
-        /// </summary>
-        public MockComfyUIServiceBuilder WithOptions(Options options)
-        {
-            _options = options;
-            return this;
-        }
-
-        /// <summary>
         /// Builds the mock with all configured behaviors
         /// </summary>
         public Mock<IComfyUIService> Build()
@@ -86,10 +76,6 @@ namespace BlazorWebApp.Tests.MockBuilders
             // Setup upscalers
             _mock.Setup(x => x.GetUpscalers())
                 .ReturnsAsync(_upscalers ?? new List<Upscaler>());
-
-            // Setup options
-            _mock.Setup(x => x.GenerateOptions())
-                .ReturnsAsync(_options ?? new Options());
 
             return _mock;
         }

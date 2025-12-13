@@ -34,9 +34,7 @@ namespace BlazorWebApp.Services
 
         #region Orchestration Properties
         
-        public Options Options { get; set; }
         public string ComfyWSClientId { get; set; }
-        public Dictionary<string, string> ResourceTypeDirectories { get; set; }
         
         public int CurrentProgress
         {
@@ -280,42 +278,13 @@ namespace BlazorWebApp.Services
         
         #endregion
 
-        #region Backend & Options
-        
-        public async Task GetOptions()
-        {
-            await _backend.GetOptions();
-            Options = _backend.Options;
-            _events.Publish(new OptionsChangedEventArgs());
-        }
-        
-        public async Task<string> PostOptions(Options options)
-        {
-            var response = await _backend.PostOptions(options);
-            Options = _backend.Options;
-            _events.Publish(new OptionsChangedEventArgs());
-            return response;
-        }
+        #region Backend
         
         public async Task LoadBackendDependentResources()
         {
             await _backend.LoadBackendDependentResources();
             await _models.GetADetailerModels();
             _events.Publish(new SamplersSchedulersChangedEventArgs());
-        }
-        
-        public async Task GetResourceTypeDirectories()
-        {
-            var baseDir = _configuration["ResourcesPath"];
-            ResourceTypeDirectories = new()
-            {
-                {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
-                {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
-                {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
-                {"LORA", Path.Combine(baseDir, "LORA")},
-                {"LoCon", Path.Combine(baseDir, "LORA")},
-                {"VAE", Path.Combine(baseDir, "VAE")}
-            };
         }
         
         #endregion
@@ -483,31 +452,33 @@ namespace BlazorWebApp.Services
         
         public string GetCurrentSaveFolder(Outdir? outdir)
         {
-            string path = outdir switch
+            if (outdir == null) return string.Empty;
+            
+            var basePath = _backend.GetOutputPath(outdir.Value);
+            if (string.IsNullOrEmpty(basePath)) return string.Empty;
+            
+            // For Extras, don't add directory pattern
+            if (outdir == Outdir.Extras) return basePath;
+
+            var dirPattern = _backend.OutputPaths.DirectoryPattern;
+            if (!string.IsNullOrWhiteSpace(dirPattern))
             {
-                Outdir.Txt2ImgSamples => Options.OutdirSamplesTxt2Img,
-                Outdir.Txt2ImgGrid => Options.OutdirGridTxt2Img,
-                Outdir.Img2ImgSamples => Options.OutdirSamplesImg2Img,
-                Outdir.Img2ImgGrid => Options.OutdirGridImg2Img,
-                Outdir.Extras => Options.OutdirSamplesExtras,
-                _ => string.Empty
-            };
+                var subPath = ConvertPathPattern(dirPattern, Parser.ModeTypeFromOutdir(outdir.Value));
+                basePath = Path.Combine(basePath, subPath).Replace('/', Path.DirectorySeparatorChar);
+            }
 
-            if (outdir == Outdir.Extras || string.IsNullOrEmpty(path)) return path;
-
-            return Path.Combine(path, ConvertPathPattern(Options.FilenamePatternDir, Parser.ModeTypeFromOutdir((Outdir)outdir)))
-                .Replace('/', Path.DirectorySeparatorChar);
+            return basePath;
         }
         
         public string ConvertPathPattern(string pattern, ModeType mode)
         {
+            if (string.IsNullOrWhiteSpace(pattern)) return string.Empty;
             var rg = new Regex(@"(\[.+?\])");
             return rg.Replace(pattern, t => ConvertPathTag(t.Value, mode));
         }
         
         private string ConvertPathTag(string tag, ModeType mode)
         {
-            if (tag == "[model_hash]") return GetModelHash(Options.SDModelCheckpoint);
             if (tag == "[model_name]")
             {
                 var modelAsPath = GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
@@ -540,13 +511,6 @@ namespace BlazorWebApp.Services
                 },
                 _ => string.Empty
             };
-        }
-        
-        private string GetModelHash(string modelName)
-        {
-            var model = _models.CheckpointModels?.FirstOrDefault(m => m.Title.Contains(modelName))
-                     ?? _models.DiffusionModels?.FirstOrDefault(m => m.Title.Contains(modelName));
-            return model?.Hash;
         }
         
         #endregion

@@ -4,6 +4,7 @@ using BlazorWebApp.Services;
 using BlazorWebApp.Tests.MockBuilders;
 using BlazorWebApp.Tests.TestFixtures;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
 
@@ -11,6 +12,27 @@ namespace BlazorWebApp.Tests.Services
 {
     public class BackendServiceTests
     {
+        private static Mock<IConfiguration> CreateMockConfiguration(string outputDir = "C:\\Output")
+        {
+            var mockConfig = new Mock<IConfiguration>();
+            mockConfig.Setup(c => c["OutputDir"]).Returns(outputDir);
+            
+            // Setup OutputPaths section
+            var mockSection = new Mock<IConfigurationSection>();
+            mockSection.Setup(s => s["Txt2ImgSamples"]).Returns("Text-2-Image\\_samples");
+            mockSection.Setup(s => s["Img2ImgSamples"]).Returns("Image-2-Image\\_samples");
+            mockSection.Setup(s => s["Img2VidSamples"]).Returns("Image-2-Video\\_samples");
+            mockSection.Setup(s => s["Extras"]).Returns("Extras");
+            mockSection.Setup(s => s["DirectoryPattern"]).Returns("[model_name]/[sampler]");
+            mockSection.Setup(s => s["FilenamePattern"]).Returns("[seed]_[steps]_[cfg]");
+            mockSection.Setup(s => s["SamplesFormat"]).Returns("png");
+            mockSection.Setup(s => s["SaveSamples"]).Returns("true");
+            
+            mockConfig.Setup(c => c.GetSection("OutputPaths")).Returns(mockSection.Object);
+            
+            return mockConfig;
+        }
+
         #region Health Check Tests
 
         [Fact]
@@ -22,7 +44,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
             var result = await service.CheckBackendAvailability();
@@ -42,7 +65,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
             var result = await service.CheckBackendAvailability();
@@ -61,7 +85,8 @@ namespace BlazorWebApp.Tests.Services
                 .ThrowsAsync(new Exception("Connection failed"));
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
             var result = await service.CheckBackendAvailability();
@@ -85,7 +110,8 @@ namespace BlazorWebApp.Tests.Services
             mockEvents.Setup(x => x.Publish(It.IsAny<BackendAvailabilityChangedEventArgs>()))
                 .Callback<BackendAvailabilityChangedEventArgs>(e => capturedEvent = e);
 
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
             await service.CheckBackendAvailability(); // true (changed from false)
@@ -106,7 +132,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
             await service.CheckBackendAvailability(); // true (first time, publishes)
@@ -131,7 +158,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
             await service.CheckBackendAvailability(); // Set backend as available
 
             // Act
@@ -154,7 +182,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
             await service.CheckBackendAvailability();
 
             // Act
@@ -177,7 +206,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
             await service.CheckBackendAvailability();
 
             // Act
@@ -198,7 +228,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
             await service.CheckBackendAvailability(); // Backend unavailable
 
             // Act
@@ -229,7 +260,8 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
             await service.CheckBackendAvailability();
 
             // Act
@@ -246,73 +278,55 @@ namespace BlazorWebApp.Tests.Services
 
         #endregion
 
-        #region Options Management Tests
+        #region Output Paths Tests
 
         [Fact]
-        public async Task GetOptions_WhenBackendAvailable_ReturnsOptions()
+        public void OutputPaths_IsInitializedWithDefaults()
         {
             // Arrange
-            var expectedOptions = BackendTestFixtures.GetSampleOptions();
-            var mockComfyUI = new MockComfyUIServiceBuilder()
-                .WithBackendAvailable(true)
-                .WithOptions(expectedOptions)
-                .Build();
-
+            var mockComfyUI = new MockComfyUIServiceBuilder().Build();
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
-            await service.CheckBackendAvailability();
-
-            // Act
-            await service.GetOptions();
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Assert
-            service.Options.Should().NotBeNull();
-            service.Options.ClipSkip.Should().Be(2);
-            service.Options.SaveTxt.Should().BeTrue();
-            mockComfyUI.Verify(x => x.GenerateOptions(), Times.Once);
+            service.OutputPaths.Should().NotBeNull();
+            service.OutputPaths.SamplesFormat.Should().Be("png");
+            service.OutputPaths.SaveSamples.Should().BeTrue();
         }
 
         [Fact]
-        public async Task GetOptions_WhenBackendUnavailable_ReturnsEmptyOptions()
+        public void GetOutputPath_ReturnsCorrectPath_ForTxt2ImgSamples()
         {
             // Arrange
-            var mockComfyUI = new MockComfyUIServiceBuilder()
-                .WithBackendAvailable(false)
-                .Build();
-
+            var mockComfyUI = new MockComfyUIServiceBuilder().Build();
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
-            await service.CheckBackendAvailability(); // Backend unavailable
+            var mockConfig = CreateMockConfiguration("C:\\Output");
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
-            await service.GetOptions();
+            var path = service.GetOutputPath(Outdir.Txt2ImgSamples);
 
             // Assert
-            service.Options.Should().NotBeNull();
-            service.Options.Should().BeEquivalentTo(new Options());
-            mockComfyUI.Verify(x => x.GenerateOptions(), Times.Never);
+            path.Should().Contain("Output");
+            path.Should().Contain("Text-2-Image");
         }
 
         [Fact]
-        public async Task PostOptions_WhenBackendUnavailable_ReturnsErrorMessage()
+        public void GetOutputPath_ReturnsCorrectPath_ForImg2ImgSamples()
         {
             // Arrange
-            var mockComfyUI = new MockComfyUIServiceBuilder()
-                .WithBackendAvailable(false)
-                .Build();
-
+            var mockComfyUI = new MockComfyUIServiceBuilder().Build();
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
-            await service.CheckBackendAvailability(); // Backend unavailable
-
-            var options = new Options();
+            var mockConfig = CreateMockConfiguration("C:\\Output");
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
-            var result = await service.PostOptions(options);
+            var path = service.GetOutputPath(Outdir.Img2ImgSamples);
 
             // Assert
-            result.Should().Be("Backend not available");
-            mockComfyUI.Verify(x => x.GenerateOptions(), Times.Never);
+            path.Should().Contain("Output");
+            path.Should().Contain("Image-2-Image");
         }
 
         #endregion
@@ -328,14 +342,13 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
 
             // Act
             service.StartMonitoring(intervalSeconds: 1);
 
             // Assert - monitoring is started (timer is internal, just verify no exceptions)
-            // In a real scenario, we'd verify health checks are called periodically
-            // For now, we verify the method doesn't throw
             service.StopMonitoring();
         }
 
@@ -348,14 +361,14 @@ namespace BlazorWebApp.Tests.Services
                 .Build();
 
             var mockEvents = new Mock<IEventService>();
-            var service = new BackendService(mockComfyUI.Object, mockEvents.Object);
+            var mockConfig = CreateMockConfiguration();
+            var service = new BackendService(mockComfyUI.Object, mockEvents.Object, mockConfig.Object);
             service.StartMonitoring(intervalSeconds: 1);
 
             // Act
             service.StopMonitoring();
 
             // Assert - monitoring is stopped (timer disposed, verify no exceptions)
-            // Multiple stops should not throw
             service.StopMonitoring();
         }
 

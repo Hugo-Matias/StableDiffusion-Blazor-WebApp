@@ -5,19 +5,30 @@ namespace BlazorWebApp.Services
 {
     public class ResourcesService
     {
-        private readonly ManagerService _m;
         private readonly IStateService _state;
         private readonly IIOService _io;
         private readonly IDatabaseService _db;
         private readonly IConfiguration _configuration;
+        private readonly Dictionary<string, string> _resourceTypeDirectories;
 
-        public ResourcesService(ManagerService manager, IStateService state, IIOService io, IDatabaseService db, IConfiguration configuration)
+        public ResourcesService(IStateService state, IIOService io, IDatabaseService db, IConfiguration configuration)
         {
-            _m = manager;
             _state = state;
             _io = io;
             _db = db;
             _configuration = configuration;
+            
+            // Build resource type directories from configuration
+            var baseDir = _configuration["ResourcesPath"];
+            _resourceTypeDirectories = new()
+            {
+                {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
+                {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
+                {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
+                {"LORA", Path.Combine(baseDir, "LORA")},
+                {"LoCon", Path.Combine(baseDir, "LORA")},
+                {"VAE", Path.Combine(baseDir, "VAE")}
+            };
         }
 
         public async Task<List<LocalResource>> CreateLocalResourcesByType(int typeId)
@@ -86,7 +97,7 @@ namespace BlazorWebApp.Services
         public async Task<LocalResourceFile?> GetResourceFileInfo(string resourceType, string? resourceSubtype, LocalResourceFile file)
         {
             var comp = StringComparison.InvariantCultureIgnoreCase;
-            var fileDir = _m.ResourceTypeDirectories?.FirstOrDefault(f => f.Key.Equals(resourceType, comp)).Value;
+            var fileDir = _resourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resourceType, comp)).Value;
             if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(_configuration["ResourcesPath"], resourceType);
             if (!string.IsNullOrWhiteSpace(resourceSubtype)) fileDir = Path.Combine(fileDir, resourceSubtype);
             if (File.Exists(Path.Combine(fileDir, file.Filename)))
@@ -164,7 +175,7 @@ namespace BlazorWebApp.Services
         public async Task UpdateResource(Resource resource, string directory, string filename, int resourceId, bool isEnabled)
         {
             var fileInfos = _io.GetFilesByName(directory, filename);
-            var baseDestPath = isEnabled ? _m.ResourceTypeDirectories[resource.Type.Name] : Path.Combine(_configuration["ResourcesPath"], "_storage", resource.Type.Name);
+            var baseDestPath = isEnabled ? _resourceTypeDirectories[resource.Type.Name] : Path.Combine(_configuration["ResourcesPath"], "_storage", resource.Type.Name);
             if (resource.SubType != null) baseDestPath = Path.Combine(baseDestPath, resource.SubType.Name);
             // Update other files linked to the model that must share the same name, ie. yaml configs or txt info
             foreach (var fileInfo in fileInfos)
@@ -214,10 +225,9 @@ namespace BlazorWebApp.Services
 
         public async Task ToggleResource(LocalResource resource, LocalResourceFile file)
         {
-            if (_m.ResourceTypeDirectories == null) await _m.GetResourceTypeDirectories();
             string destPath = string.Empty;
             if (file.IsEnabled) destPath = Path.Combine(_configuration["ResourcesPath"], "_storage", resource.Type.Name);
-            else destPath = _m.ResourceTypeDirectories.FirstOrDefault(p => p.Key.Equals(resource.Type.Name, StringComparison.InvariantCultureIgnoreCase)).Value;
+            else destPath = _resourceTypeDirectories.FirstOrDefault(p => p.Key.Equals(resource.Type.Name, StringComparison.InvariantCultureIgnoreCase)).Value;
             if (resource.SubType != null) destPath = Path.Combine(destPath, resource.SubType.Name);
             destPath = Path.Combine(destPath, file.Filename);
             _io.MoveFile(file.File.FullName, destPath);
