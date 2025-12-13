@@ -473,10 +473,11 @@ namespace BlazorWebApp.Services
             else
             {
                 Dictionary<string, string> param = new();
-                if (_m.IsWebuiUp)
-                    param = Parser.ParseWebUIInfoParameters(info["param"]);
+                // WebUI removed - ComfyUI only
+                // param = Parser.ParseWebUIInfoParameters(info["param"]);
 
                 // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
+                // Script system removed - keeping dimension logic for now
                 if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
                 {
                     var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);

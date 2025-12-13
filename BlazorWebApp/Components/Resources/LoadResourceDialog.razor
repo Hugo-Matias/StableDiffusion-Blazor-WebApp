@@ -4,6 +4,7 @@
 @inject ResourcesService ResourcesService
 @inject IConfiguration Configuration
 @inject IDialogService DialogService
+@inject IBackendService Backend
 
 <MudDialog Class="pa-4">
     <TitleContent>
@@ -57,7 +58,7 @@
                 }
                 @if (Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    <MudButton Class="w-100 ma-4" OnClick=@(() => MudDialog.Close("Load")) Color="Color.Success" ButtonType="ButtonType.Button" Disabled=@((!M.IsWebuiUp && !M.IsComfyUIUp) || !File.IsEnabled)>Load Checkpoint</MudButton>
+                    <MudButton Class="w-100 ma-4" OnClick=@(() => MudDialog.Close("Load")) Color="Color.Success" ButtonType="ButtonType.Button" Disabled=@(!Backend.IsBackendAvailable || !File.IsEnabled)>Load Checkpoint</MudButton>
                 }
                 else
                 {
@@ -68,15 +69,15 @@
                     <MudStack Class="align-items-center justify-content-center mt-4 mb-2" Row=true>
                         <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-lines" Class="me-1" Style="font-size:1rem;" />Txt2Img:</MudText>
                         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                            <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=@((!M.IsWebuiUp && !M.IsComfyUIUp) || !File.IsEnabled)>Prompt</MudButton>
-                            <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=@((!M.IsWebuiUp && !M.IsComfyUIUp) || !File.IsEnabled)>Negative Prompt</MudButton>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=@(!Backend.IsBackendAvailable || !File.IsEnabled)>Prompt</MudButton>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Txt2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=@(!Backend.IsBackendAvailable || !File.IsEnabled)>Negative Prompt</MudButton>
                         </MudButtonGroup>
                     </MudStack>
                     <MudStack Class="align-items-center justify-content-center" Row=true>
                         <MudText Typo="Typo.caption"><MudIcon Icon="fa-solid fa-file-image" Class="me-1" Style="font-size:1rem;" />Img2Img:</MudText>
                         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
-                            <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=@(!M.IsWebuiUp || !File.IsEnabled)>Prompt</MudButton>
-                            <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=@((!M.IsWebuiUp && !M.IsComfyUIUp) || !File.IsEnabled)>Negative Prompt</MudButton>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, true))" ButtonType="ButtonType.Button" Color="Color.Success" Disabled=@(!Backend.IsBackendAvailable || !File.IsEnabled)>Prompt</MudButton>
+                            <MudButton OnClick="@(() => LoadResource(ModeType.Img2Img, false))" ButtonType="ButtonType.Button" Color="Color.Error" Disabled=@(!Backend.IsBackendAvailable || !File.IsEnabled)>Negative Prompt</MudButton>
                         </MudButtonGroup>
                     </MudStack>
                 }

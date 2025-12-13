@@ -30,7 +30,7 @@
 
     protected async override Task OnInitializedAsync()
     {
-        M.OnWebuiStateChanged += Refresh;
+        M.OnComfyUIStateChanged += Refresh;
         M.OnDownloadCompleted += Refresh;
         M.OnResourcesStateChanged += Refresh;
         if (M.ResourceTypeDirectories == null) await M.GetResourceTypeDirectories();
@@ -199,7 +199,7 @@
 
     public void Dispose()
     {
-        M.OnWebuiStateChanged -= Refresh;
+        M.OnComfyUIStateChanged -= Refresh;
         M.OnDownloadCompleted -= Refresh;
         M.OnResourcesStateChanged -= Refresh;
     }

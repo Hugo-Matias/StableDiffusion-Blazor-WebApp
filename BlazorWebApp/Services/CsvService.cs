@@ -24,11 +24,8 @@ namespace BlazorWebApp.Services
             _schema = Schema.Parse("Name,Color,Uses,Aliases");
             _options = new CsvDataReaderOptions() { Schema = new CsvSchema(_schema), HasHeaders = false };
 
-            if (_m.IsWebuiUp)
-            {
-                _path = Path.Join(_m.CmdFlags.BaseDir, @"extensions\a1111-sd-webui-tagcomplete\tags\danbooru.csv");
-            }
-            else if (_m.IsComfyUIUp)
+            // ComfyUI only - WebUI removed
+            if (_m.IsComfyUIUp)
             {
                 _path = Path.Join(_configuration["ComfyUIPath"], "danbooru.csv");
             }

@@ -434,10 +434,7 @@
 
     private bool HasWorkflowForMode(ModeType mode)
     {
-        // For WebUI, all modes are always available
-        if (M.IsWebuiUp) return true;
-        
-        // For ComfyUI, check if there's a workflow for the current model base and requested mode
+        // ComfyUI only - check if there's a workflow for the current model base and requested mode
         if (M.IsComfyUIUp && M.State.Generation.Workflows != null)
         {
             var currentBase = M.State.Generation.WorkflowBase;
