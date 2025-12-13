@@ -244,7 +244,7 @@ public class ProgressServiceTests
         _service.CurrentProgress = 50;
 
         // Assert
-        _mockEventService.Verify(e => e.Publish(It.Is<ProgressChangedEventArgs>(p => p.Progress == 50)), Times.Once);
+        _mockEventService.Verify(e => e.Publish(It.Is<ProgressChangedEventArgs>(p => p.Value == 50)), Times.Once);
     }
 
     [Fact]
@@ -309,7 +309,7 @@ public class ProgressServiceTests
         _service.NotifyProgressChanged();
 
         // Assert
-        _mockEventService.Verify(e => e.Publish(It.Is<ProgressChangedEventArgs>(p => p.Progress == 25)), Times.Once);
+        _mockEventService.Verify(e => e.Publish(It.Is<ProgressChangedEventArgs>(p => p.Value == 25)), Times.Once);
     }
 
     #endregion
