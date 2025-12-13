@@ -7,7 +7,7 @@ using Sampler = BlazorWebApp.Models.Sampler;
 
 namespace BlazorWebApp.Services
 {
-    public class DatabaseService
+    public class DatabaseService : IDatabaseService
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
         private readonly ComfyUIService _capi;

@@ -57,7 +57,11 @@ builder.Services.AddSingleton<ISessionService, SessionService>();
 builder.Services.AddSingleton<ManagerService>();
 builder.Services.AddSingleton<ImageService>();
 builder.Services.AddSingleton<DatabaseService>();
+// Register DatabaseService interface - resolves to same singleton instance
+builder.Services.AddSingleton<IDatabaseService>(sp => sp.GetRequiredService<DatabaseService>());
 builder.Services.AddSingleton<IOService>();
+// Register IOService interface - resolves to same singleton instance
+builder.Services.AddSingleton<IIOService>(sp => sp.GetRequiredService<IOService>());
 builder.Services.AddSingleton<CsvService>();
 builder.Services.AddSingleton<ProgressService>();
 builder.Services.AddSingleton<ResourcesService>();

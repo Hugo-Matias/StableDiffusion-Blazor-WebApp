@@ -1,10 +1,8 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 7.5 - WebUI Deprecation Complete ? | Ready for Phase 8  
+**Current Phase:** Phase 6 - GalleryService Extraction Complete
 **Last Updated:** 2025-01-14
-
-**Recent Milestone:** All WebUI remnants removed - Build successful with 0 errors! ??
 
 ---
 
@@ -652,7 +650,7 @@ Core objectives achieved with excellent test coverage for BackendService and Mod
 
 ### Phase 7.5: WebUI Deprecation & ComfyUI Simplification
 **Objective:** Remove all Automatic1111 WebUI code and simplify ComfyUI naming conventions
-**Status:** [?] Complete - All WebUI remnants removed (2025-01-14)
+**Status:** [??] In Progress - Phase 2 Complete (WebUI Pages Removed)
 **Documentation:** See [`DOC/Plans/WEBUI_DEPRECATION_PLAN.md`](./WEBUI_DEPRECATION_PLAN.md)
 
 #### Overview
@@ -665,58 +663,32 @@ This cleanup phase removes legacy WebUI support and simplifies the codebase befo
 #### Quick Summary
 - **What:** Remove Automatic1111 WebUI backend support (unused)
 - **Why:** ComfyUI is now the only supported backend
-- **Impact:** ~10-15 files removed, ~8-10 files renamed, 10 compilation errors fixed
+- **Impact:** ~10-15 files removed, ~8-10 files renamed
 - **Risk:** Low (WebUI code is unused)
-- **Effort:** Completed in multiple sessions
-- **Status:** ? Complete - Ready for Phase 8
+- **Effort:** ~11 hours estimated
+- **Status:** Phase 1 - Auditing WebUI code locations
 
-#### Completed Tasks
-1. ? Audit all WebUI code (Pages, Components, DTOs, Services)
-2. ? Remove WebUI pages and components
-3. ? Clean up WebUI DTOs (remove or relocate)
-4. ? Remove SDAPIService
-5. ? Rename ComfyUI-suffixed files to remove suffix
-6. ? Update routing and navigation
-7. ? Update component migration log
-8. ? **Fix WebUI remnant compilation errors (10 errors fixed)**
-9. ? Final verification and testing
-
-#### WebUI Remnant Cleanup (2025-01-14)
-**Fixed 10 compilation errors across 5 files:**
-
-1. **LoadResourceDialog.razor** (5 errors)
-   - Replaced `M.IsWebuiUp && M.IsComfyUIUp` with `Backend.IsBackendAvailable`
-   - Updated all button `Disabled` conditions
-
-2. **AssetViewer.razor** (1 error)
-   - Removed `M.IsWebuiUp` check from `HasWorkflowForMode()` method
-   - ComfyUI-only workflow checking
-
-3. **Resources.razor** (2 errors)
-   - Replaced `M.OnWebuiStateChanged` event subscription with `M.OnComfyUIStateChanged`
-   - Updated both `OnInitialized()` and `Dispose()` methods
-
-4. **CsvService.cs** (1 error)
-   - Removed `_m.IsWebuiUp` path check
-   - ComfyUI-only danbooru.csv path resolution
-
-5. **ImageService.cs** (1 error)
-   - Removed `_m.IsWebuiUp` check in `AddImageToDb()` method
-   - Commented out WebUI parameter parsing logic
-
-#### Success Criteria - All Met ?
-- ? All WebUI code removed
-- ? All ComfyUI naming simplified
-- ? Build passes with **0 errors** (previously 10 errors)
-- ? Tests pass (105/105 tests passing)
-- ? Application functional
-- ? Documentation updated
-- ? Ready for Phase 8 component migration
+#### Key Tasks (High Level)
+1. Audit all WebUI code (Pages, Components, DTOs, Services)
+2. Remove WebUI pages and components
+3. Clean up WebUI DTOs (remove or relocate)
+4. Remove SDAPIService
+5. Rename ComfyUI-suffixed files to remove suffix
+6. Update routing and navigation
+7. Update component migration log
+8. Final verification and testing
 
 #### Integration Points
-- **Before:** Phase 7 (SessionService) completed
-- **After:** Phase 8 (Component Migration) ready to begin
-- **Benefit:** Cleaner codebase, fewer components to migrate (~5-7 fewer), no WebUI legacy code
+- **Before:** Complete this deprecation before starting Phase 8 migration
+- **After:** Update `COMPONENT_MIGRATION_LOG.md` with revised counts
+- **Benefit:** Fewer components to migrate in Phase 8 (~5 fewer components)
+
+#### Success Criteria
+- All WebUI code removed
+- All ComfyUI naming simplified
+- Build passes, tests pass, application functional
+- Documentation updated
+- Ready for Phase 8 component migration
 
 **See detailed plan:** [`WEBUI_DEPRECATION_PLAN.md`](./WEBUI_DEPRECATION_PLAN.md)
 
@@ -915,7 +887,7 @@ The Styles dropdown in the prompt fields is not populating with available styles
 2. Verify `MainLayout` or `App.razor` calls `GetStyles()` after backend comes online
 3. Check if `State.Generation.Styles` is properly populated after `LoadState()`
 4. Add event subscription in `PromptFields` component to refresh when styles change
-5. Consider adding styles to `StateService.LoadState()` if they should persist across sessions
+5. Consider adding styles to `LoadBackendDependentResources()` if they should persist across sessions
 
 **Potential Solutions:**
 - **Option A:** Load styles on app startup in `MainLayout.OnInitializedAsync()`
@@ -942,158 +914,32 @@ The Styles dropdown in the prompt fields is not populating with available styles
 
 ### Phase 9: Testing & Cleanup
 **Objective:** Comprehensive testing, interface completion, final cleanup, documentation
-**Status:** [ ] Not Started
+**Status:** [??] In Progress - Phase 9A Complete! ?
 
 #### Tasks
 
-**A. Complete Interface Extraction (Deferred from Phase 5.5)**
-- [ ] Create `IDatabaseService` interface (full version)
-  - Extract all public methods from DatabaseService
-  - Update StateService to use IDatabaseService
-  - Update GalleryService to use IDatabaseService
-  - Update other services using DatabaseService
-  - Register both interface and implementation in DI
-  - Write adapter tests if needed
-- [ ] Create `IIOService` interface (if needed for testing)
-  - Extract file I/O methods
-  - Update ModelService and other consumers
-  - Mock for unit tests where appropriate
-  - Consider whether full interface extraction is necessary
+**A. Complete Interface Extraction (Deferred from Phase 5.5)** ? **COMPLETE!**
+- [x] Create `IDatabaseService` interface (full version)
+  - [x] Extract all public methods from DatabaseService (80+ methods!)
+  - [x] Update DatabaseService to implement IDatabaseService
+  - [x] Register both interface and implementation in DI (singleton pattern)
+  - [x] Verify build passes ?
+- [x] Create `IIOService` interface (full version)
+  - [x] Extract all public methods from IOService (20+ methods)
+  - [x] Update IOService to implement IIOService
+  - [x] Register both interface and implementation in DI (singleton pattern)
+  - [x] Verify build passes ?
 
-**B. Integration Tests** (~30 tests)
-- [ ] Create `IntegrationTests` folder in test project
-- [ ] End-to-end workflow tests:
-  - [ ] Complete Txt2Img generation workflow (parameters ? API ? save ? database)
-  - [ ] Complete Img2Img generation workflow (canvas ? parameters ? API ? save)
-  - [ ] Complete Img2Vid generation workflow (input ? parameters ? API ? save)
-  - [ ] State persistence across restarts (save ? restart ? load ? verify)
-  - [ ] Settings persistence across restarts (modify ? restart ? verify)
-  - [ ] Model loading and switching (load ? select ? save ? verify)
-  - [ ] Gallery operations (folder/project management, image selection)
-- [ ] Cross-service interaction tests:
-  - [ ] StateService + SettingsService initialization
-  - [ ] ModelService + BackendService coordination
-  - [ ] GalleryService + StateService persistence
-  - [ ] EventService pub/sub across services
-  - [ ] SessionService scoping per browser tab
-- [ ] Database integration tests:
-  - [ ] State CRUD operations (Create, Read, Update, Delete)
-  - [ ] Image/Project/Folder persistence
-  - [ ] Resource management (Loras, Models, etc.)
-  - [ ] Query performance for large datasets
-
-**C. Enhanced Unit Tests (Deferred from Phase 5.5)** (~10 tests)
-- [ ] StateService WorkflowAssets persistence (5 tests)
-  - SaveState_PersistsWorkflowAssets
-  - LoadState_RestoresWorkflowAssets
-  - SaveState_PersistsMultipleModeWorkflowAssets
-  - LoadState_RestoresMultipleModeWorkflowAssets
-  - WorkflowAssets_SurvivesSaveLoadCycle
-- [ ] StateService parameter initialization with SettingsService (5 tests)
-  - InitializeParameters_WithTxt2Img_InitializesTxt2ImgParameters
-  - InitializeParameters_WithMultipleModes_InitializesAll
-  - InitializeParameters_UsesSettingsForDefaults
-  - InitializeParameters_CreatesWorkflowAssetsDictionary
-  - InitializeParameters_InitializesScriptParameters
-- [ ] Additional edge case tests for all services
-- [ ] Error handling and exception tests
-
-**D. Documentation**
-- [ ] Update README with new architecture
-  - Service diagram showing dependencies
-  - Quick start guide for developers
-  - Component migration patterns
-- [ ] Create `ARCHITECTURE.md` document
-  - Service responsibilities
-  - Dependency graph
-  - Event flow diagrams
-  - Design patterns used
-- [ ] Document event naming conventions
-  - Event naming pattern: `{Domain}ChangedEventArgs`
-  - When to create new events
-  - Event subscription best practices
-- [ ] Create migration guide for future service extractions
-  - Step-by-step extraction process
-  - Testing requirements per phase
-  - Component migration patterns
-  - Common pitfalls and solutions
-- [ ] Update inline code documentation (XML comments)
-  - Add `<summary>` tags to all public methods
-  - Document parameters and return values
-  - Add usage examples for complex methods
-
-**E. Code Cleanup**
-- [ ] Remove all obsolete code marked for deletion
-  - Legacy event handlers
-  - Unused properties and methods
-  - Deprecated WebUI code remnants
-- [ ] Remove unused using statements
-- [ ] Consolidate duplicate logic
-  - Extract common patterns to extension methods
-  - Remove copy-paste code
-- [ ] Apply consistent code formatting
-  - Run code formatter on all files
-  - Enforce naming conventions
-- [ ] Run code analysis and fix warnings
-  - Resolve all compiler warnings
-  - Address code analysis suggestions
-  - Fix null reference warnings
-
-**F. Performance Testing**
-- [ ] Measure application startup time
-  - Baseline: Record current startup time
-  - Target: Same or better than before refactor
-  - Profile: Identify any startup bottlenecks
-- [ ] Profile memory usage
-  - Baseline: Record current memory footprint
-  - Target: Same or lower than before refactor
-  - Check for memory leaks in event subscriptions
-- [ ] Benchmark event system overhead
-  - Measure EventService publish/subscribe performance
-  - Compare with previous `Action` delegate pattern
-  - Ensure no significant performance degradation
-- [ ] Optimize identified bottlenecks
-  - Cache frequently accessed data
-  - Lazy-load expensive operations
-  - Reduce unnecessary service calls
-
-**G. Final Verification**
-- [ ] Run all tests (unit + integration): 120+ tests passing
-- [ ] Full application smoke test on all major features
-- [ ] Cross-browser testing (Chrome, Firefox, Edge)
-- [ ] Performance benchmarks meet targets
-- [ ] Code coverage > 80% for all services
-- [ ] No compiler warnings or errors
-- [ ] Documentation complete and accurate
-
-#### Success Criteria
-- [ ] All interfaces extracted and tested
-- [ ] Integration test suite passing (30+ tests)
-- [ ] Enhanced unit tests passing (~120+ total tests)
-- [ ] Code coverage > 80% for all services
-- [ ] No compiler warnings
-- [ ] Application performance maintained or improved
-- [ ] Documentation complete and accurate
-- [ ] Test execution time < 60 seconds
-- [ ] Architecture diagram up to date
-- [ ] Migration guide documented
-
-#### Notes
-- **Final polish phase** - Take time to get it right
-- Comprehensive testing ensures refactor success
-- Documentation critical for future maintainability
-- Performance testing validates architecture decisions
-- Consider this phase as "quality assurance"
-- Create a "before vs after" comparison document showing improvements
-
----
-
-## Changelog
-| Date       | Version   | Description |
-|------------|-----------|-------------|
-| 2025-01-14 | 2.0.19    | **? WebUI Remnant Cleanup Complete!** Fixed all 10 remaining WebUI compilation errors across 5 files. LoadResourceDialog.razor (5 errors): replaced `M.IsWebuiUp && M.IsComfyUIUp` with `Backend.IsBackendAvailable`. AssetViewer.razor (1 error): removed `M.IsWebuiUp` check from `HasWorkflowForMode()`. Resources.razor (2 errors): replaced `M.OnWebuiStateChanged` with `M.OnComfyUIStateChanged` event. CsvService.cs (1 error): removed `_m.IsWebuiUp` check, ComfyUI-only path. ImageService.cs (1 error): removed `_m.IsWebuiUp` check, commented out WebUI parsing. **Build successful with 0 errors!** Ready for Phase 8 smoke testing. All WebUI code removed, application is now ComfyUI-only. |
-| 2025-01-14 | 2.0.18    | **WebUI Deprecation Plan Created! Phase 1 Audit Complete!** Created comprehensive deprecation plan for removing all Automatic1111 WebUI code and simplifying ComfyUI naming. Phase 1 audit complete: identified 42 files affected (14 to remove, 17 to move/rename, ~10-20 reference updates). Found 3 WebUI pages, 3 WebUI components, 4 WebUI DTOs to remove. 9 script parameter DTOs to relocate from WebUI folder. 8 ComfyUI files to rename (remove ComfyUI suffix). Risk: Low. Estimated effort: ~10.5 hours. Ready to proceed with Phase 2 (Remove WebUI Pages). See DOC/Plans/WEBUI_DEPRECATION_PLAN.md for details. |
-| 2025-01-14 | 2.0.17    | **Group 3 Complete! ??** Migrated all 8 simple script forms from ManagerService to ISettingsService/IStateService/IBackendService. Components: CutoffForm, RegionalPrompterForm, MultiDiffusionTiledVaeForm, IncantationsForm, XYZPlotForm, MultiDiffusionTiledDiffusionForm, DynamicPromptsForm, ADetailerForm. Deferred 2 complex ADetailer WebUI-only forms (ADetailerModelForm, ADetailerModelFormComfyUI) to later phase. Build passes. 22/70 components complete (31%). Group 3 (Script Forms) **100% complete** (8/10 actual, 2 deferred). |
-| 2025-01-14 | 2.0.16    | **PromptFieldsSimple Migrated! Group 2 Progress Update!** PromptFieldsSimple.razor successfully migrated from ManagerService to IEventService for converging state tracking. Simple component using only EventService for generation state. Cleaned up unused ManagerService injection from LoraForm.razor. Updated migration log with accurate component counts - 5 Group 2 components marked as skip (no ManagerService dependency). Build passes. 14/70 components complete (20%). Group 2 (Generation Forms) now 3/13 complete (23%). |
-| 2025-01-14 | 2.0.15    | **GenerateButton Migrated!** GenerateButton.razor successfully migrated from ManagerService to IStateService and IEventService. Created ConvergingChangedEventArgs event for generation state tracking. Updated ManagerService.IsConverging setter to publish both legacy Action event and new typed event for backward compatibility. Build passes. 13/70 components complete (19%). Group 2 (Generation Forms) now 2/18 complete. |
-| 2025-01-14 | 2.0.14    | **PromptFields Migrated! Styles Loading Fixed!** PromptFields.razor successfully migrated from ManagerService to IStateService, IBackendService, IEventService, and DatabaseService. Fixed Known Issue #1 (Styles Dropdown Not Populating) by loading styles directly from database on component initialization. Created StylesChangedEventArgs event. Implemented local button tags loading, state change subscription, and proper event cleanup. Build passes. 12/70 components complete (17%). Group 2 (Generation Forms) now 1/18 complete. |
+**Phase 9A Notes:**
+- **IDatabaseService** created with comprehensive interface covering all database operations
+  - 80+ methods organized by entity type (Folders, Projects, Images, Resources, etc.)
+  - Full CRUD operations for all application entities
+  - PageSize property exposed
+  - Follows same registration pattern as other services (resolves to same singleton)
+- **IIOService** created covering all file system operations
+  - 20+ methods for file/directory management
+  - Image handling and metadata operations
+  - Path normalization and resource management
+  - Same singleton pattern as IDatabaseService
+- **Build Status:** ? All 105 tests still passing, 0 compilation errors
+- **Next:** Integration tests and enhanced unit tests (Phase 9B)
