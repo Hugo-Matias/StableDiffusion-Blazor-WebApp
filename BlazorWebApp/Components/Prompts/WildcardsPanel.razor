@@ -1,4 +1,6 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
+@inject ISettingsService Settings
+@inject ManagerService M
 @inject IOService IO
 @inject DatabaseService DB
 @inject IDialogService DialogService
@@ -13,23 +15,23 @@
         <MudItem xs="9">
             <MudGrid Class="pa-4">
                 <MudItem xs="12">
-                    <MudTabs @bind-ActivePanelIndex=M.State.Prompts.Wildcards.ActivePromptTabIndex Elevation=1 Class="mt-4" Centered=true Rounded=true>
+                    <MudTabs @bind-ActivePanelIndex=State.State.Prompts.Wildcards.ActivePromptTabIndex Elevation=1 Class="mt-4" Centered=true Rounded=true>
                         <MudTabPanel Text="Txt Prompt">
-                            <MudTextField Lines="M.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=M.ParametersTxt2Img.Prompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Prompt" Clearable=true />
+                            <MudTextField Lines="Settings.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=State.ParametersTxt2Img.Prompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Prompt" Clearable=true />
                         </MudTabPanel>
                         <MudTabPanel Text="Txt Negative">
-                            <MudTextField Lines="M.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=M.ParametersTxt2Img.NegativePrompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Negative Prompt" Clearable=true />
+                            <MudTextField Lines="Settings.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=State.ParametersTxt2Img.NegativePrompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Negative Prompt" Clearable=true />
                         </MudTabPanel>
                         <MudTabPanel Text="Img Prompt">
-                            <MudTextField Lines="M.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=M.ParametersImg2Img.Prompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Prompt" Clearable=true />
+                            <MudTextField Lines="Settings.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=State.ParametersImg2Img.Prompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Prompt" Clearable=true />
                         </MudTabPanel>
                         <MudTabPanel Text="Img Negative">
-                            <MudTextField Lines="M.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=M.ParametersImg2Img.NegativePrompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Negative Prompt" Clearable=true />
+                            <MudTextField Lines="Settings.Settings.Prompts.Wildcards.PromptTextfieldLines" @bind-Value=State.ParametersImg2Img.NegativePrompt Adornment=Adornment.End AdornmentIcon="fa-solid fa-floppy-disk" OnAdornmentClick=@(() => ShowPromptDialog()) Label="Negative Prompt" Clearable=true />
                         </MudTabPanel>
                     </MudTabs>
                 </MudItem>
                 <MudItem xs="9">
-                    <MudTextField @bind-Value=M.State.Prompts.Wildcards.Template Label="Template" Disabled=true ReadOnly=true />
+                    <MudTextField @bind-Value=State.State.Prompts.Wildcards.Template Label="Template" Disabled=true ReadOnly=true />
                 </MudItem>
                 <MudItem xs="3">
                     <MudButtonGroup Class="w-100">
@@ -38,23 +40,23 @@
                     </MudButtonGroup>
                 </MudItem>
                 <MudItem xs="12">
-                    <MudTabs @bind-ActivePanelIndex=M.State.Prompts.Wildcards.ActiveActionTabIndex Elevation=1 Class="mt-4" Centered=true Rounded=true>
+                    <MudTabs @bind-ActivePanelIndex=State.State.Prompts.Wildcards.ActiveActionTabIndex Elevation=1 Class="mt-4" Centered=true Rounded=true>
                         <MudTabPanel Text="Generate">
                             <MudStack Row=true>
-                                <MudSlider @bind-Value=M.State.Prompts.Wildcards.GenerationAmount Min=M.Settings.Prompts.Wildcards.Generation.Min Max=M.Settings.Prompts.Wildcards.Generation.Max Step=M.Settings.Prompts.Wildcards.Generation.Step ValueLabel=true><small>Amount:</small> @M.State.Prompts.Wildcards.GenerationAmount</MudSlider>
+                                <MudSlider @bind-Value=State.State.Prompts.Wildcards.GenerationAmount Min=Settings.Settings.Prompts.Wildcards.Generation.Min Max=Settings.Settings.Prompts.Wildcards.Generation.Max Step=Settings.Settings.Prompts.Wildcards.Generation.Step ValueLabel=true><small>Amount:</small> @State.State.Prompts.Wildcards.GenerationAmount</MudSlider>
                                 <MudButton Class="ma-4 w-100 h-100" OnClick=GeneratePrompts Color="Color.Success">Generate Prompts</MudButton>
                             </MudStack>
                             <MudStack>
-                                @if (M.State.Prompts.Wildcards.GeneratedPrompts.Count > 0)
+                                @if (State.State.Prompts.Wildcards.GeneratedPrompts.Count > 0)
                                 {
-                                    foreach (var prompt in M.State.Prompts.Wildcards.GeneratedPrompts)
+                                    foreach (var prompt in State.State.Prompts.Wildcards.GeneratedPrompts)
                                     {
                                         <MudStack AlignItems=AlignItems.Center Row=true>
                                             <MudMenu Icon="fa-solid fa-ellipsis-vertical" IconColor=Color.Secondary>
-                                                <MudMenuItem Icon="fa-solid fa-file-lines" IconColor=Color.Success OnClick=@(() => M.ParametersTxt2Img.Prompt = prompt)>Txt2Img</MudMenuItem>
-                                                <MudMenuItem Icon="fa-solid fa-file-lines" IconColor=Color.Error OnClick=@(() => M.ParametersTxt2Img.NegativePrompt = prompt)>Txt2Img</MudMenuItem>
-                                                <MudMenuItem Icon="fa-solid fa-file-image" IconColor=Color.Success OnClick=@(() => M.ParametersImg2Img.Prompt = prompt)>Img2Img</MudMenuItem>
-                                                <MudMenuItem Icon="fa-solid fa-file-image" IconColor=Color.Error OnClick=@(() => M.ParametersImg2Img.NegativePrompt = prompt)>Img2Img</MudMenuItem>
+                                                <MudMenuItem Icon="fa-solid fa-file-lines" IconColor=Color.Success OnClick=@(() => State.ParametersTxt2Img.Prompt = prompt)>Txt2Img</MudMenuItem>
+                                                <MudMenuItem Icon="fa-solid fa-file-lines" IconColor=Color.Error OnClick=@(() => State.ParametersTxt2Img.NegativePrompt = prompt)>Txt2Img</MudMenuItem>
+                                                <MudMenuItem Icon="fa-solid fa-file-image" IconColor=Color.Success OnClick=@(() => State.ParametersImg2Img.Prompt = prompt)>Img2Img</MudMenuItem>
+                                                <MudMenuItem Icon="fa-solid fa-file-image" IconColor=Color.Error OnClick=@(() => State.ParametersImg2Img.NegativePrompt = prompt)>Img2Img</MudMenuItem>
                                                 <MudMenuItem Icon="fa-solid fa-floppy-disk" IconColor=Color.Info OnClick=@(() => ShowPromptDialog(prompt))>Preset</MudMenuItem>
                                             </MudMenu>
                                             <MudText Typo="Typo.body1">@prompt</MudText>
@@ -105,31 +107,31 @@
 
     private void AppendTemplate(bool toFront)
     {
-        var template = M.State.Prompts.Wildcards.Template;
-        switch (M.State.Prompts.Wildcards.ActivePromptTabIndex)
+        var template = State.State.Prompts.Wildcards.Template;
+        switch (State.State.Prompts.Wildcards.ActivePromptTabIndex)
         {
             case 0:
-                if (toFront) M.ParametersTxt2Img.Prompt += " " + template;
-                else M.ParametersTxt2Img.Prompt = template + " " + M.ParametersTxt2Img.Prompt;
+                if (toFront) State.ParametersTxt2Img.Prompt += " " + template;
+                else State.ParametersTxt2Img.Prompt = template + " " + State.ParametersTxt2Img.Prompt;
                 break;
             case 1:
-                if (toFront) M.ParametersTxt2Img.NegativePrompt += " " + template;
-                else M.ParametersTxt2Img.NegativePrompt = template + " " + M.ParametersTxt2Img.NegativePrompt;
+                if (toFront) State.ParametersTxt2Img.NegativePrompt += " " + template;
+                else State.ParametersTxt2Img.NegativePrompt = template + " " + State.ParametersTxt2Img.NegativePrompt;
                 break;
             case 2:
-                if (toFront) M.ParametersImg2Img.Prompt += " " + template;
-                else M.ParametersImg2Img.Prompt = template + " " + M.ParametersImg2Img.Prompt;
+                if (toFront) State.ParametersImg2Img.Prompt += " " + template;
+                else State.ParametersImg2Img.Prompt = template + " " + State.ParametersImg2Img.Prompt;
                 break;
             case 3:
-                if (toFront) M.ParametersImg2Img.NegativePrompt += " " + template;
-                else M.ParametersImg2Img.NegativePrompt = template + " " + M.ParametersImg2Img.NegativePrompt;
+                if (toFront) State.ParametersImg2Img.NegativePrompt += " " + template;
+                else State.ParametersImg2Img.NegativePrompt = template + " " + State.ParametersImg2Img.NegativePrompt;
                 break;
         }
     }
 
     private void SetTemplate()
     {
-        M.State.Prompts.Wildcards.Template = WriteTemplate();
+        State.State.Prompts.Wildcards.Template = WriteTemplate();
     }
 
     private string WriteTemplate()
@@ -144,17 +146,17 @@
         // TODO: Reimplement prompt generation for ComfyUI workflows
         // The old WebUI-based dynamic prompts script has been removed
         Snackbar.Add("Prompt generation temporarily unavailable - will be reimplemented for ComfyUI", Severity.Info);
-        M.State.Prompts.Wildcards.GeneratedPrompts = new List<string>();
+        State.State.Prompts.Wildcards.GeneratedPrompts = new List<string>();
     }
 
     private string GetPrompt()
     {
-        return M.State.Prompts.Wildcards.ActivePromptTabIndex switch
+        return State.State.Prompts.Wildcards.ActivePromptTabIndex switch
         {
-            0 => M.ParametersTxt2Img.Prompt,
-            1 => M.ParametersTxt2Img.NegativePrompt,
-            2 => M.ParametersImg2Img.Prompt,
-            3 => M.ParametersImg2Img.NegativePrompt,
+            0 => State.ParametersTxt2Img.Prompt,
+            1 => State.ParametersTxt2Img.NegativePrompt,
+            2 => State.ParametersImg2Img.Prompt,
+            3 => State.ParametersImg2Img.NegativePrompt,
         };
     }
 
@@ -171,18 +173,18 @@
     private async Task ShowPromptDialog(string prompt = "")
     {
         var preset = new PromptResource();
-        var tabIndex = M.State.Prompts.Wildcards.ActivePromptTabIndex;
+        var tabIndex = State.State.Prompts.Wildcards.ActivePromptTabIndex;
         if (string.IsNullOrWhiteSpace(prompt))
         {
             if(tabIndex <= 1)
             {
-                preset.Positive = M.ParametersTxt2Img.Prompt;
-                preset.Negative = M.ParametersTxt2Img.NegativePrompt;
+                preset.Positive = State.ParametersTxt2Img.Prompt;
+                preset.Negative = State.ParametersTxt2Img.NegativePrompt;
             }
             else
             {
-                preset.Positive = M.ParametersImg2Img.Prompt;
-                preset.Negative = M.ParametersImg2Img.NegativePrompt;
+                preset.Positive = State.ParametersImg2Img.Prompt;
+                preset.Negative = State.ParametersImg2Img.NegativePrompt;
             }
         }
         else

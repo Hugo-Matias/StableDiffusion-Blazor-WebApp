@@ -19,9 +19,9 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 
 | Metric | Count |
 |--------|-------|
-| Components with `@inject ManagerService M` | 31 ? 19 |
+| Components with `@inject ManagerService M` | 31 ? 15 |
 | Components with direct interface injections | 65+ |
-| Total facade property usages in components | ~305 ? ~150 |
+| Total facade property usages in components | ~305 ? ~80 |
 
 ### Top Facade Usages (Priority Order)
 
@@ -83,16 +83,16 @@ Components with minimal facade usages, straightforward replacements.
 
 ---
 
-### Batch 3: Complex Components (25+ usages)
+### Batch 3: Complex Components (25+ usages) ?
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 23 | `Components/Prompts/WildcardsPanel.razor` | ? | State + Settings |
-| 24 | `Components/Shared/Generation/LLMPromptEnhancerForm.razor` | ? | Settings heavy |
-| 25 | `Components/Img2Vid/GenerateFormImg2Vid.razor` | ? | Largest - 80 usages |
-| 26 | `Components/Txt2Img/GenerateFormTxt2Img.razor` | ? | Already uses interfaces |
+| 23 | `Components/Prompts/WildcardsPanel.razor` | ? | Full refactor - IStateService + ISettingsService |
+| 24 | `Components/Shared/Generation/LLMPromptEnhancerForm.razor` | ? | Removed M completely - only uses State/Settings |
+| 25 | `Components/Img2Vid/GenerateFormImg2Vid.razor` | ? | Full refactor - removed M completely |
+| 26 | `Components/Txt2Img/GenerateFormTxt2Img.razor` | ?? | Already uses interfaces, M only for orchestration |
 
-**Batch 3 Total:** 4 components
+**Batch 3 Complete:** 3 updated, 1 skipped (already proper)
 
 ---
 
@@ -273,7 +273,7 @@ These properties/methods should remain as they are true orchestration concerns:
 |-------|------------|--------|
 | Batch 1 | 12 simple | ? Complete (7 updated, 4 skipped, 1 N/A) |
 | Batch 2 | 10 medium | ? Complete (5 updated, 5 skipped) |
-| Batch 3 | 4 complex | ? Not Started |
+| Batch 3 | 4 complex | ? Complete (3 updated, 1 skipped) |
 | Batch 4 | 5 pages | ? Not Started |
 | Batch 5 | 4 services | ? Not Started |
 | Task A | Facade removal | ? Not Started |
@@ -288,7 +288,7 @@ These properties/methods should remain as they are true orchestration concerns:
 
 - [x] After Batch 1 complete
 - [x] After Batch 2 complete
-- [ ] After Batch 3 complete
+- [x] After Batch 3 complete
 - [ ] After Batch 4 complete
 - [ ] After Batch 5 complete
 - [ ] After Task A (facades removed)
