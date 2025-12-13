@@ -1,7 +1,7 @@
 @using BlazorWebApp.Models
 @using System.Text.Json
 @inject IJSRuntime JS
-@inject ManagerService M
+@inject ISessionService Session
 @inject ILogger<ImageEditorModal> Logger
 @implements IAsyncDisposable
 
@@ -513,10 +513,10 @@
         _isInitialized = false;
         
         // Check if we should restore previous state (has saved canvas with layers)
-        if (M.ImageEditorState != null && M.ImageEditorState.CanvasJson != null && M.ImageEditorState.Layers.Count > 0)
+        if (Session.ImageEditorState != null && Session.ImageEditorState.CanvasJson != null && Session.ImageEditorState.Layers.Count > 0)
         {
             // Restore previous session - use the PRESERVED base image, not the input
-            _state = M.ImageEditorState;
+            _state = Session.ImageEditorState;
             _pendingImageData = _state.BaseImageData; // Use the original base, not the new input
             _pendingIsBlank = _state.IsBlankCanvas;
             _pendingWidth = _state.BlankCanvasWidth;
@@ -557,10 +557,10 @@
         _isInitialized = false;
         
         // Check if we should restore previous state (has saved canvas with layers)
-        if (M.ImageEditorState != null && M.ImageEditorState.CanvasJson != null && M.ImageEditorState.Layers.Count > 0 && M.ImageEditorState.IsBlankCanvas)
+        if (Session.ImageEditorState != null && Session.ImageEditorState.CanvasJson != null && Session.ImageEditorState.Layers.Count > 0 && Session.ImageEditorState.IsBlankCanvas)
         {
             // Restore previous blank canvas session
-            _state = M.ImageEditorState;
+            _state = Session.ImageEditorState;
             _pendingImageData = null;
             _pendingIsBlank = true;
             _pendingWidth = _state.BlankCanvasWidth;
@@ -1109,7 +1109,7 @@
             _state.CanvasJson = await _editorInstance.InvokeAsync<string>("getState");
             // Note: BaseImageData stays as the original, not the flattened export
             _state.IsDirty = false;
-            M.ImageEditorState = _state;
+            Session.ImageEditorState = _state;
             Logger.LogInformation("Saved editor state with {LayerCount} layers, original base preserved", _state.Layers.Count);
             
             await CleanupEditorAsync();
@@ -1164,7 +1164,7 @@
             _state.ResetLayersToBase();
             _state.BaseImageData = imageData; // NEW base image is the flattened result
             _state.CanvasJson = null; // Clear saved state
-            M.ImageEditorState = _state;
+            Session.ImageEditorState = _state;
             Logger.LogInformation("Applied and flattened - new base image created");
             
             await CleanupEditorAsync();
