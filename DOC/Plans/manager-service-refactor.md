@@ -1,7 +1,7 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 15 - Rename & Test Coverage ? **COMPLETE**
+**Current Phase:** Phase 16 - ImageService Test Coverage ? **COMPLETE**
 **Last Updated:** 2025-01-16
 
 ---
@@ -46,7 +46,7 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?  - Pub/sub      ?   ?  - Generation   ?   ?  - Canvas state ?
 ?  - Typed events ?   ?  - Saving       ?   ?  - Editor state ?
 ?  - Mediator     ?   ?  - PathPatterns ?   ?  - Videos       ?
-?  ? Tests       ?   ?                 ?   ?  ? Tests       ?
+?  ? Tests       ?   ?  ? Tests ?    ?   ?  ? Tests       ?
 ???????????????????   ???????????????????   ???????????????????
         ?                           ?
         ?                           ?
@@ -104,56 +104,133 @@ Moved remaining orchestration properties to specialized services:
 ### ? Phase 15: Rename & Test Coverage Expansion (Complete)
 **Completed:** 2025-01-16
 
+- Renamed `ManagerService` to `OrchestratorService`
+- Created ProgressServiceTests (28 tests)
+- Created WorkflowServiceTests (12 tests)
+- Created RouterServiceTests (10 tests)
+
+### ? Phase 16: ImageService Test Coverage (Complete)
+**Completed:** 2025-01-16
+
 #### Objective
-1. Rename `ManagerService` to `OrchestratorService` for clarity
-2. Expand unit test coverage for newly extracted services
+Create comprehensive unit tests for ImageService covering path patterns, folder generation, and service state.
 
-#### Changes Made
+#### Tests Created (25 tests)
 
-**1. Renamed ManagerService ? OrchestratorService** ?
-- Renamed class from `ManagerService` to `OrchestratorService`
-- Renamed file from `ManagerService.cs` to `OrchestratorService.cs`
-- Updated all 18 consuming files (Pages, Components, Services)
-- Updated DI registration in `Program.cs`
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Constructor | 2 | Service creation and property initialization |
+| GetCurrentSaveFolder | 5 | Null handling, Extras path, pattern application, empty path |
+| ConvertPathPattern | 10 | Null/empty, seed, steps, cfg, sampler, model_name, multiple tags, unknown tags, mixed content |
+| Mode-Specific Patterns | 2 | Img2Vid parameters, null parameter defaults |
+| SaveImages | 2 | Images property initialization state |
+| Progress | 1 | Progress property settable |
+| GeneratedImageEntities | 1 | Entities property settable |
+| OnChange Event | 1 | Event subscribable |
+| DownloadImageAsPng | 1 | File exists with no overwrite |
 
-**2. Created ProgressServiceTests** ? (28 tests)
-- Constructor tests
-- Add/Update/Remove progress tracker tests
-- CurrentProgress property tests with event publishing
-- IsConverging property tests with event publishing
-- NotifyProgressChanged tests
-- Integration/lifecycle tests
+#### Phase 16 Metrics
 
-**3. Created WorkflowServiceTests** ? (12 tests)
-- Workflow model default value tests
-- WorkflowAsset model tests
-- WorkflowStep and OutputMapping tests
-- NodeRegistry tests (Register, GetReference, Merge)
-- SubgraphContext tests
-- Constructor tests
-
-**4. Created RouterServiceTests** ? (10 tests)
-- Constructor tests
-- SearchLoras tests (empty search, with query, no results)
-- PostTxt2Img tests (backend unavailable, model service usage)
-- PostImg2Img tests (backend unavailable, no workflow)
-- PostImg2Vid tests (backend unavailable, no workflow)
-- Backend integration tests
-
-**5. Updated MockWorkflowServiceBuilder** ?
-- Fixed to use correct `IConfiguration` dependency for `IOService`
-
-#### Phase 15 Metrics
-
-| Metric | Before Phase 15 | After Phase 15 | Change |
+| Metric | Before Phase 16 | After Phase 16 | Change |
 |--------|-----------------|----------------|--------|
-| Unit tests | 150 | 198 | +32% ? |
-| Services with tests | 8 | 11 | +3 |
-| ManagerService references | 18 files | 0 files | -100% ? |
-| OrchestratorService references | 0 files | 18 files | New |
+| Unit tests | 198 | 223 | +25 ? |
+| Services with tests | 11 | 12 | +1 |
 | Build | ? | ? | - |
 
-#### Test Coverage Summary
+---
+
+## Key Metrics Summary
+
+| Metric | Phase 1 Start | Phase 9.5 End | Phase 14 End | Phase 15 End | Phase 16 End |
+|--------|---------------|---------------|--------------|--------------|--------------|
+| Service name | ManagerService | ManagerService | ManagerService | OrchestratorService | OrchestratorService |
+| Service lines | ~1600 | ~450 | ~240 | ~240 | ~240 |
+| Facade properties | 27 | 0 | 0 | 0 | 0 ? |
+| Orchestration properties | - | 14 | 0 | 0 | 0 ? |
+| Services extracted | 0 | 11 | 11 | 11 | 11 |
+| Services with interfaces | 0 | 11 | 11 | 11 | 11 |
+| Interface-only DI | - | 9 | 11 | 11 | 11 |
+| Unit tests | 0 | 150 | 150 | 198 | **223** ? |
+| Services with tests | 0 | 8 | 8 | 11 | **12** ? |
+
+---
+
+## Future Work
+
+### Phase 17: IOrchestratorService Interface Extraction (Proposed)
+**Priority: Medium** - Create interface for consistency and testability.
+
+#### Objective
+Extract `IOrchestratorService` interface and migrate all consumers.
+
+#### Scope
+1. Create `IOrchestratorService` interface
+2. Migrate all components from `OrchestratorService` to `IOrchestratorService`
+3. Update DI to interface-only pattern
+4. Create `OrchestratorServiceTests`
+
+#### Benefits
+- Consistent with all other services
+- Enables mocking for component tests
+- Completes the interface migration pattern
+
+---
+
+### Phase 18: Integration Tests (Proposed)
+**Priority: Medium** - Test multi-service workflows end-to-end.
+
+#### Objective
+Create integration tests that verify services work correctly together.
+
+#### Scope
+| Test Category | Description |
+|---------------|-------------|
+| Workflow Execution | Load template ? Render ? Execute |
+| State Persistence | Save ? Reload ? Verify round-trip |
+| Event Propagation | Publish ? Subscribe ? Handle across services |
+| Backend Integration | Health check ? Model loading ? Generation |
+
+---
+
+### Phase 19: ComfyUI/Civitai Service Tests (Proposed)
+**Priority: Low** - Requires HTTP mocking strategy.
+
+#### Objective
+Create tests for external API integration services.
+
+#### Scope
+| Service | Test Areas |
+|---------|------------|
+| ComfyUIService | API endpoints, response parsing, error handling |
+| CivitaiService | Model search, downloads, progress tracking |
+
+#### Prerequisites
+- Add HTTP mocking package (e.g., `RichardSzalay.MockHttp`)
+- Create mock response fixtures
+
+---
+
+### Phase 20: Blazor Component Tests (Proposed)
+**Priority: Low** - UI component testing with bUnit.
+
+#### Objective
+Add component-level tests for Blazor UI components.
+
+#### Scope
+| Component | Test Areas |
+|-----------|------------|
+| GenerateFormTxt2Img | Parameter binding, validation |
+| WorkflowAssetSelector | Asset loading, selection |
+| GeneratedImageTabs | Image display, progress states |
+| PromptFields | Prompt editing, style application |
+
+#### Prerequisites
+- Add bUnit package to test project
+- Create component test fixtures
+
+---
+
+## Test Coverage Summary
 
 | Service | Test File | Test Count | Status |
 |---------|-----------|------------|--------|
@@ -165,46 +242,11 @@ Moved remaining orchestration properties to specialized services:
 | SessionService | SessionServiceTests.cs | ? | Existing |
 | SettingsService | SettingsServiceTests.cs | ? | Existing |
 | StateService | StateServiceTests.cs | ? | Existing |
-| **ProgressService** | **ProgressServiceTests.cs** | **28** | **New** ? |
-| **WorkflowService** | **WorkflowServiceTests.cs** | **12** | **New** ? |
-| **RouterService** | **RouterServiceTests.cs** | **10** | **New** ? |
-| ImageService | - | - | Future |
+| ProgressService | ProgressServiceTests.cs | 28 | Phase 15 |
+| WorkflowService | WorkflowServiceTests.cs | 12 | Phase 15 |
+| RouterService | RouterServiceTests.cs | 10 | Phase 15 |
+| **ImageService** | **ImageServiceTests.cs** | **25** | **Phase 16** ? |
 | OrchestratorService | - | - | Future |
-
----
-
-## Key Metrics Summary
-
-| Metric | Phase 1 Start | Phase 9.5 End | Phase 11 End | Phase 12 End | Phase 14 End | Phase 15 End |
-|--------|---------------|---------------|--------------|--------------|--------------|--------------|
-| Service name | ManagerService | ManagerService | ManagerService | ManagerService | ManagerService | **OrchestratorService** |
-| Service lines | ~1600 | ~450 | ~350 | ~320 | ~240 | ~240 |
-| Facade properties | 27 | 0 | 0 | 0 | 0 | 0 ? |
-| Orchestration properties | - | 14 | 5 | 3 | 0 | 0 ? |
-| Services extracted | 0 | 11 | 11 | 11 | 11 | 11 |
-| Services with interfaces | 0 | 11 | 11 | 11 | 11 | 11 |
-| Interface-only DI | - | 9 | 9 | 9 | 11 | 11 |
-| Unit tests | 0 | 150 | 150 | 150 | 150 | **198** ? |
-| Services with tests | 0 | 8 | 8 | 8 | 8 | **11** ? |
-
----
-
-## Future Work
-
-### Potential Phase 16: Additional Test Coverage
-
-Services that could benefit from additional tests:
-1. **ImageService** - Complex generation workflow, file saving logic
-2. **OrchestratorService** - Workflow coordination, parameter loading
-3. **CivitaiService** - API integration (may need mocking strategy)
-4. **ComfyUIService** - Backend API communication
-
-### Potential Phase 17: OrchestratorService Evaluation
-
-Evaluate whether OrchestratorService should be:
-1. **Keep as-is** - Legitimate thin orchestrator pattern
-2. **Further decompose** - Split remaining responsibilities
-3. **Eliminate** - Move all methods to existing specialized services
 
 ---
 
@@ -275,7 +317,8 @@ builder.Services.AddSingleton<OrchestratorService>();
 | Phase 12.5 | Options migrated to IConfiguration | 150 |
 | Phase 13 | Complete interface migration | 150 |
 | Phase 14 | Orchestration properties relocated | 150 |
-| **Phase 15** | **Renamed to OrchestratorService, expanded tests** | **198** |
+| Phase 15 | Renamed to OrchestratorService, expanded tests | 198 |
+| **Phase 16** | **ImageService test coverage** | **223** |
 
 ---
 
