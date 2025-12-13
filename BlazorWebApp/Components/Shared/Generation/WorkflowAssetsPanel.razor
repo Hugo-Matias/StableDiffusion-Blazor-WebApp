@@ -1,6 +1,7 @@
 @using BlazorWebApp.Models
 @using BlazorWebApp.Events
 @using static BlazorWebApp.Data.Enums
+@inject IStateService State
 @inject ManagerService M
 @inject IEventService Events
 @inject WorkflowService WorkflowService
@@ -120,17 +121,17 @@
             return null;
 
         // If a specific workflow is selected, use that
-        if (M.State?.Generation?.CurrentWorkflowId.HasValue == true)
+        if (State.State?.Generation?.CurrentWorkflowId.HasValue == true)
         {
-            var selected = workflows.FirstOrDefault(w => w.Id == M.State.Generation.CurrentWorkflowId.Value);
+            var selected = workflows.FirstOrDefault(w => w.Id == State.State.Generation.CurrentWorkflowId.Value);
             if (selected != null)
                 return selected;
         }
 
         // Try to match by WorkflowBase
-        if (M.State?.Generation?.WorkflowBase != default)
+        if (State.State?.Generation?.WorkflowBase != default)
         {
-            var byBase = workflows.FirstOrDefault(w => w.Base == M.State.Generation.WorkflowBase);
+            var byBase = workflows.FirstOrDefault(w => w.Base == State.State.Generation.WorkflowBase);
             if (byBase != null)
                 return byBase;
         }
@@ -192,7 +193,7 @@
         }
 
         // Save to template file, passing the full workflows list so in-memory defaults are updated
-        var success = WorkflowService.SaveAssetDefaults(workflow, currentAssets, M.State?.Generation?.Workflows);
+        var success = WorkflowService.SaveAssetDefaults(workflow, currentAssets, State.State?.Generation?.Workflows);
         if (success)
         {
             Snackbar.Add("Asset defaults saved to workflow template.", Severity.Success);

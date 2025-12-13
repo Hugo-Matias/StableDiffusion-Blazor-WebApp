@@ -1,4 +1,5 @@
 ﻿@using static BlazorWebApp.Data.Enums
+@inject IStateService State
 @inject ManagerService M
 @inject DatabaseService DB
 @inject IDialogService DialogService
@@ -68,12 +69,12 @@
                     await DB.DeletePrompt(prompt.Id);
                     break;
                 case "Txt2Img":
-                    M.ParametersTxt2Img.Prompt = Parser.ParseStyle(M.ParametersTxt2Img.Prompt, prompt.Positive);
-                    M.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(M.ParametersTxt2Img.NegativePrompt, prompt.Negative);
+                    State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
+                    State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
                     break;
                 case "Img2Img":
-                    M.ParametersImg2Img.Prompt = Parser.ParseStyle(M.ParametersImg2Img.Prompt, prompt.Positive);
-                    M.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(M.ParametersImg2Img.NegativePrompt, prompt.Negative);
+                    State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, prompt.Positive);
+                    State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, prompt.Negative);
                     break;
             }
         }

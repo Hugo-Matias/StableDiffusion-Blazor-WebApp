@@ -1,4 +1,4 @@
-﻿@inject ManagerService M
+﻿@inject IGalleryService Gallery
 @inject DatabaseService DB
 @inject IDialogService DialogService
 
@@ -11,7 +11,7 @@
         </TitleContent>
         <DialogContent>
             <div class="d-flex flex-column align-items-center mb-3">
-                <MudButton OnClick=@(async () => await ShowModal()) Disabled="M.SelectedImageIds.Count <= 0" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="px-4 py-2">
+                <MudButton OnClick=@(async () => await ShowModal()) Disabled="Gallery.SelectedImageIds.Count <= 0" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Primary" Class="px-4 py-2">
                     + Add Selection
                 </MudButton>
             </div>
@@ -49,7 +49,7 @@
 
     private async Task CreateSelection(Selection selection)
     {
-        selection.Images = await DB.GetImages(M.SelectedImageIds);
+        selection.Images = await DB.GetImages(Gallery.SelectedImageIds);
         await DB.CreateSelection(selection);
         MudDialog.Close();
     }
@@ -63,7 +63,7 @@
         parameters.Add("Content", new MarkupString($@"<span class='lead'>Do you want to load the selection?</span><br /><small>There are {selection.Images.Count} images in it.</small>"));
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Load Selection", parameters, _dialogOptions);
         var result = await dialog.Result;
-        if (!result.Canceled) M.ReplaceSelectedImages(selection.Images.Select(i => i.Id).ToList());
+        if (!result.Canceled) Gallery.ReplaceSelectedImages(selection.Images.Select(i => i.Id).ToList());
     }
 
     private async Task ShowReplaceSelectionModal(int id)
@@ -72,10 +72,10 @@
         parameters.Add("OkButtonText", "Replace");
         parameters.Add("CancelButtonText", "Cancel");
         parameters.Add("OkButtonColor", Color.Success);
-        parameters.Add("Content", new MarkupString($@"<span class='lead'>Do you want to replace the selection with the currently selected images?</span><br /><small>There are {M.SelectedImageIds.Count} images selected.</small>"));
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Do you want to replace the selection with the currently selected images?</span><br /><small>There are {Gallery.SelectedImageIds.Count} images selected.</small>"));
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Replace Selection", parameters, _dialogOptions);
         var result = await dialog.Result;
-        if (!result.Canceled) await DB.UpdateSelection(id, M.SelectedImageIds);
+        if (!result.Canceled) await DB.UpdateSelection(id, Gallery.SelectedImageIds);
     }
 
     private async Task ShowDeleteSelectionModal(int id)

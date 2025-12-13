@@ -1,4 +1,4 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
 @inject CivitaiService Civitai
 @inject IOService IO
 @inject DatabaseService DB
@@ -83,7 +83,7 @@
 
     private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
     {
-        var isSuccess = await Civitai.DownloadResource(Model, version, file, M.State.Civitai.ResourceSubtype);
+        var isSuccess = await Civitai.DownloadResource(Model, version, file, State.State.Civitai.ResourceSubtype);
         switch (isSuccess)
         {
             case CivitaiDownloadStatus.Success:

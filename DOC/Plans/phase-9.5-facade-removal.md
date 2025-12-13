@@ -19,7 +19,7 @@ Remove backward compatibility facades from ManagerService, eliminate WebUI remna
 
 | Metric | Count |
 |--------|-------|
-| Components with `@inject ManagerService M` | 31 |
+| Components with `@inject ManagerService M` | 31 ? 24 |
 | Components with direct interface injections | 65+ |
 | Total facade property usages in components | ~305 |
 
@@ -47,20 +47,20 @@ Components with minimal facade usages, straightforward replacements.
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 1 | `Components/Resources/CivitaiFileButton.razor` | ? | |
-| 2 | `Components/Resources/CivitaiModelVersionInfoPanel.razor` | ? | |
-| 3 | `Components/Resources/DanbooruSearchesDrawer.razor` | ? | |
-| 4 | `Components/Resources/CivitaiImageCard.razor` | ? | |
-| 5 | `Pages/Prompts.razor` | ? | |
-| 6 | `Components/Prompts/PromptsPanel.razor` | ? | |
-| 7 | `Components/Prompts/PromptDialog.razor` | ? | |
-| 8 | `Components/Shared/Generation/WorkflowAssetsPanel.razor` | ? | |
-| 9 | `Components/Shared/Generation/WorkflowAssetSelector.razor` | ? | |
-| 10 | `Components/Shared/Generation/ConditioningVariationForm.razor` | ? | |
-| 11 | `Components/Shared/AssetViewer.razor` | ? | |
-| 12 | `Components/Gallery/SelectionsDialog.razor` | ? | |
+| 1 | `Components/Resources/CivitaiFileButton.razor` | ? | M.State ? State.State |
+| 2 | `Components/Resources/CivitaiModelVersionInfoPanel.razor` | ? | M.State ? State.State |
+| 3 | `Components/Resources/DanbooruSearchesDrawer.razor` | ? | M.Settings ? Settings.Settings |
+| 4 | `Components/Resources/CivitaiImageCard.razor` | ? | Removed unused M injection |
+| 5 | `Pages/Prompts.razor` | ? | M.State ? State.State |
+| 6 | `Components/Prompts/PromptsPanel.razor` | ? | Added IStateService, kept M for GetStyles() |
+| 7 | `Components/Prompts/PromptDialog.razor` | ?? | Skipped - only uses M.GetStyles() (orchestration) |
+| 8 | `Components/Shared/Generation/WorkflowAssetsPanel.razor` | ? | Added IStateService, kept M for workflow methods |
+| 9 | `Components/Shared/Generation/WorkflowAssetSelector.razor` | ?? | Skipped - only uses orchestration methods |
+| 10 | `Components/Shared/Generation/ConditioningVariationForm.razor` | ? | M.Settings ? Settings.Settings |
+| 11 | `Components/Shared/AssetViewer.razor` | ?? | Skipped - already uses interfaces, M only for orchestration |
+| 12 | `Components/Gallery/SelectionsDialog.razor` | ? | M.SelectedImageIds ? Gallery.SelectedImageIds |
 
-**Batch 1 Total:** 12 components
+**Batch 1 Complete:** 7 updated, 4 skipped (orchestration only), 1 N/A
 
 ---
 
@@ -271,7 +271,7 @@ These properties/methods should remain as they are true orchestration concerns:
 
 | Phase | Components | Status |
 |-------|------------|--------|
-| Batch 1 | 12 simple | ? Not Started |
+| Batch 1 | 12 simple | ? Complete (7 updated, 4 skipped, 1 N/A) |
 | Batch 2 | 10 medium | ? Not Started |
 | Batch 3 | 4 complex | ? Not Started |
 | Batch 4 | 5 pages | ? Not Started |
@@ -286,7 +286,7 @@ These properties/methods should remain as they are true orchestration concerns:
 
 ## Commit Checkpoints
 
-- [ ] After Batch 1 complete
+- [x] After Batch 1 complete
 - [ ] After Batch 2 complete
 - [ ] After Batch 3 complete
 - [ ] After Batch 4 complete
