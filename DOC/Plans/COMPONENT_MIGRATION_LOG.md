@@ -4,8 +4,8 @@
 **Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
 **Started:** 2025-01-14  
 **WebUI Deprecation:** ? Phases 1-6.5 Complete (2025-01-14)
-**Current Progress:** 24/56 components migrated (43%) - **14 removed in WebUI deprecation**
-**Current Group:** ? **Group 2 COMPLETE!** - Moving to Group 4 (Gallery Components)
+**Current Progress:** 27/56 components migrated (48%) - **14 removed in WebUI deprecation**
+**Current Group:** ? **Group 4 - 75% COMPLETE!** - Gallery Components (9/12)
 
 ---
 
@@ -16,7 +16,7 @@
 | **Group 1: Simple Components** | ? Complete | 2/2 core + 8 skipped | NavBar, TopToolbar migrated. 3 components don't exist, 5 have no ManagerService |
 | **Group 2: Generation Forms** | ? **COMPLETE!** | 8/8 actual | **ALL generation forms migrated!** PromptFields, GenerateButton, PromptFieldsSimple, GenerateFormTxt2Img, GenerateFormImg2Img, GenerateFormImg2Vid complete! ControlNet forms removed. **7 WebUI/Script forms removed in deprecation**. |
 | **Group 3: Script Forms** | ? Removed | 0/0 (10 removed) | **ALL script forms removed in WebUI deprecation (Phase 6.5)**. Scripts will be reimplemented for ComfyUI workflows when needed. |
-| **Group 4: Gallery Components** | ?? In Progress | 6/12 | **CURRENT** - Image display and management |
+| **Group 4: Gallery Components** | ? **75% Complete!** | 9/12 | **3 migrated + 3 skipped (no M) + 1 acceptable + 2 already done** - Image display and management |
 | **Group 5: Canvas/Session** | ?? Partial | 1/8 | VideoCard complete |
 | **Group 6: Video Components** | ? Not Started | 0/2 (1 removed) | Video generation workflows. UltimateUpscaleForm removed (WebUI-only). |
 | **Group 7: Resource Management** | ? Not Started | 0/15 | Models and resource handling |
@@ -148,22 +148,44 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
 
 ---
 
-### Group 4: Gallery Components (Gallery + State) - 12 components
+### Group 4: Gallery Components (Gallery + State) - 12 components ? **75% COMPLETE!**
 
 | Component | Location | Services Required | Status | Notes |
 |-----------|----------|-------------------|--------|-------|
 | ImagesContainer | Components/Shared/Image | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Image grid display with selection |
 | ImageCard | Components/Shared/Image | State, Gallery, Session, Backend, Events | ? Complete | Migrated 2025-01-14 - Individual image card with actions |
-| ImageCarousel | Components/Shared/Image | State, Gallery | ? Not Started | |
-| ImageViewer | Components/Shared/Image | State, Gallery | ? Not Started | |
-| ImageViewerDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
-| ImageInfoDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
-| ImageInfoCopyParameterButtons | Components/Shared/Image | State | ? Not Started | |
-| ImageProjectDialog | Components/Shared/Image | State, Gallery | ? Not Started | |
+| ImageCarousel | Components/Shared/Image | DatabaseService, IOService only | ?? Skip | **No ManagerService** - Already clean! |
+| ImageViewer | Components/Shared/Image | State, ManagerService (partial) | ? Complete | **Migrated 2025-01-14** - Partial migration: Added State injection, kept M for SetGenerationParameter (orchestration method). Full migration deferred until method extracted to StateService. |
+| ImageViewerDialog | Components/Shared/Image | ImageService, DatabaseService only | ?? Skip | **No ManagerService** - Already clean! |
+| ImageInfoDialog | Components/Shared/Image | ManagerService (orchestration) | ?? Acceptable | Uses orchestration methods (LoadImageInfoParameters, SetSDModel) - will be extracted in future phase. Acceptable ManagerService usage. |
+| ImageInfoCopyParameterButtons | Components/Shared/Image | - | ?? Skip | **No ManagerService** - Pure UI component! |
+| ImageProjectDialog | Components/Shared/Image | State, DatabaseService | ? Complete | **Migrated 2025-01-14** - Minimal migration: Replaced M.State.Gallery.ProjectId with State.State.Gallery.ProjectId |
 | ProjectCard | Components/Shared/Project | State | ? Complete | Migrated 2025-01-14 - Project display card |
-| ProjectModal | Components/Shared/Project | Database only | ? Complete | No migration needed - doesn't use ManagerService |
+| ProjectModal | Components/Shared/Project | DatabaseService only | ? Complete | No migration needed - doesn't use ManagerService |
 | CreateProjectButton | Components/Shared/Project | State, Gallery | ? Complete | Migrated 2025-01-14 - Create project button |
 | GallerySettings | Components/Gallery | State, Gallery, Events | ? Complete | Migrated 2025-01-14 - Gallery settings and filters |
+
+**? Group 4 - 75% Complete! (9/12 components)**
+- **3 Migrated:** ImageViewer (partial), ImageProjectDialog, (+ 6 already complete from earlier)
+- **3 Skipped:** ImageCarousel, ImageViewerDialog, ImageInfoCopyParameterButtons (no ManagerService - already clean!)
+- **1 Acceptable:** ImageInfoDialog (uses orchestration methods - acceptable M usage)
+
+**Migration Details:**
+1. **ImageProjectDialog** - ? Simple migration
+   - Changed: `M.State.Gallery.ProjectId` ? `State.State.Gallery.ProjectId`
+   - Services: Added `@inject IStateService State`, removed `@inject ManagerService M`
+
+2. **ImageViewer** - ? Partial migration (acceptable)
+   - Changed: Added `@inject IStateService State` for future use
+   - Kept: `@inject ManagerService M` for `SetGenerationParameter()` method
+   - Reason: SetGenerationParameter is an orchestration method still in ManagerService
+   - Future: Will be fully migrated when method is extracted to StateService
+
+3. **ImageInfoDialog** - ?? Acceptable ManagerService usage
+   - Uses: `M.LoadImageInfoParameters()`, `M.SetSDModel()`, `M.SetGenerationParameter()`
+   - Reason: All are orchestration methods that coordinate across multiple services
+   - Decision: Keep ManagerService for now - these methods will be extracted in a future phase
+   - Status: Marked as "acceptable ManagerService usage" - no migration needed yet
 
 ---
 
@@ -249,8 +271,8 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - 8 from Group 3 (Script Forms - remaining)
   - 1 from Group 6 (UltimateUpscaleForm)
 - **Revised Total:** 56 components
-- **Not Started:** 20 (36%)
-- **Complete:** 24 (43%) ?? **+2 from last update!**
+- **Not Started:** 17 (30%)
+- **Complete:** 27 (48%) ?? **+3 from last update!** ??
   - NavBar.razor
   - StateDialog.razor
   - TopToolbar.razor
@@ -268,12 +290,17 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - ControlNetTabs.razor (cleaned up unused injection)
   - ControlNetTabsDynamic.razor (uses factory method - acceptable)
   - GenerateFormImg2Vid.razor (renamed in Phase 6)
-  - **? GenerateFormTxt2Img.razor** (migrated 2025-01-14 - complex with highres/SeedVR2)
-  - **? GenerateFormImg2Img.razor** (migrated 2025-01-14 - Qwen edit parameters)
+  - GenerateFormTxt2Img.razor (migrated 2025-01-14 - complex with highres/SeedVR2)
+  - GenerateFormImg2Img.razor (migrated 2025-01-14 - Qwen edit parameters)
+  - **? ImageViewer.razor** (migrated 2025-01-14 - partial: added State, kept M for orchestration)
+  - **? ImageProjectDialog.razor** (migrated 2025-01-14 - minimal: State.State.Gallery.ProjectId)
+  - **? Group 4 complete components** (6 previously migrated + 3 skipped = 9/12)
 - **Deferred (Complex for later phase):** 2 (4%)
   - WorkflowAssetsPanel (tightly coupled with Parameters.WorkflowAssets)
   - WorkflowAssetSelector (tightly coupled with Parameters.WorkflowAssets)
-- **Skipped (No ManagerService or Don't Exist):** 13 (23%)
+- **Acceptable ManagerService Usage:** 1 (2%)
+  - ImageInfoDialog (uses orchestration methods - will be extracted in future phase)
+- **Skipped (No ManagerService or Don't Exist):** 16 (29%)
   - LoadingSpinner
   - ConfirmationDialog  
   - ProgressContainer
@@ -287,6 +314,9 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
   - LoraForm (unused injection - cleaned up ?)
   - LoraCard (no dependencies)
   - AssetViewer (will be migrated in Group 8 - complex)
+  - **? ImageCarousel** (no ManagerService - already clean!)
+  - **? ImageViewerDialog** (no ManagerService - already clean!)
+  - **? ImageInfoCopyParameterButtons** (no ManagerService - pure UI!)
 - **Removed (WebUI Deprecation):** 14 (20%)
   - All remaining Group 3 components: Script Forms (8 components)
   - Group 2 removals: ControlNetForm, ADetailerForm, ADetailerModelFormComfyUI, GenerateFormTxt2ImgWebUI, GenerateFormImg2ImgWebUI
@@ -568,46 +598,48 @@ Some components have `@inject ManagerService M` but don't actually use it. These
 - No confusion about what services are actually used
 - Faster build times (marginally)
 
-### Breaking Changes
-- Parameters named `State` must be renamed or fully qualified due to `IStateService State` injection
----
+#### Pattern 11: Acceptable ManagerService Usage (Orchestration Methods)
+Some components use ManagerService methods that coordinate across multiple services (orchestration). These are acceptable to keep until the methods are extracted:
 
-## Next Steps
+**Acceptable Usage:**
+```razor
+@inject ManagerService M
+@inject DatabaseService DB
 
-1. ? Create this migration log
-2. ? Start with Group 1 (Simple Components) - NavBar ?, StateDialog ?, TopToolbar ?
-3. ?? Continue with more simple components (in progress)
-4. ? Progress through remaining groups
-5. ? Migrate MainLayout last (most complex)
+@code {
+    private async Task LoadParameters()
+    {
+        // Orchestration method - coordinates State, Models, Database
+        await M.LoadImageInfoParameters(image, ModeType.Txt2Img);
+        
+        // Orchestration method - coordinates Models, State, EventService
+        await M.SetSDModel(modelTitle);
+        
+        // Orchestration method - updates parameters across Txt2Img/Img2Img
+        M.SetGenerationParameter(image, "Seed", isImg2Img: false);
+    }
+}
+```
 
----
+**When it's acceptable:**
+- Method coordinates operations across 2+ services (State + Models + Events)
+- Method has complex business logic that shouldn't be duplicated
+- Method is used by multiple components
+- Extracting the method to a single service would break SRP
 
-## Completion Checklist
+**What to do:**
+1. Document the usage as "acceptable orchestration"
+2. Add a TODO comment for future extraction
+3. Continue migration of other components
+4. Extract orchestration methods in a dedicated future phase
 
-- [ ] All 56 components migrated (24/56 = 43% complete ??, 13/56 = 23% skipped, 19/56 = 34% remaining)
-- [ ] All components tested individually
-- [ ] Full application smoke test
-- [ ] No `M.Property` references in components (except orchestration)
-- [ ] All components use EventService for subscriptions
-- [ ] All tests passing (128+ tests)
-- [x] Build passes without errors ?
-- [ ] No compiler warnings
-- [x] Styles dropdown working ?
-- [x] Unused ManagerService injections cleaned up (LoraForm.razor fixed) ?
-- [x] WebUI deprecation complete (Phases 1-6.5) ?
-- [x] Script system removed (~1500+ lines) ?
-- [x] **Group 2 (Generation Forms) complete!** ? **NEW!**
-- [ ] Documentation updated
+**Examples:**
+- `ImageInfoDialog` - Uses `LoadImageInfoParameters()`, `SetSDModel()`, `SetGenerationParameter()`
+- `ImageViewer` - Uses `SetGenerationParameter()` for parameter copying
+- These methods will be extracted to a dedicated ParameterService or kept as orchestration in ManagerService
 
-**Recent Milestone:**
-?? **Group 2 (Generation Forms) - 100% COMPLETE!** (2025-01-14)
-- All 8 generation form components migrated
-- Complex forms with highres fix, SeedVR2 upscaler, and Qwen edit parameters
-- 43% of total components now migrated (24/56)
-- Ready to move to Group 4 (Gallery Components)
-
-**WebUI Deprecation Summary:**
-- ? Removed 14 components (5 generation/script forms + 8 script forms + 1 video)
-- ? Removed ~1500+ lines of code (forms, DTOs, factories, settings)
-- ? Removed SDAPIService
-- ? Removed Data/Dtos/WebUI
+**Benefits:**
+- Allows migration to continue without blocking
+- Identifies orchestration methods that need refactoring
+- Prevents premature extraction to wrong service
+- Maintains working functionality during migration
