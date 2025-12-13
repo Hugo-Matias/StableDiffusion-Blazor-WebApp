@@ -1,14 +1,92 @@
 # Component Migration Log - Phase 8
 
 ## Status
-**Phase:** Phase 8 - Orchestrator Refactor & Component Migration  
+**Phase:** Phase 8 - Component Migration ? **COMPLETE!**  
+**Next Phase:** Phase 8.5 - ManagerService Orchestrator Refactor ?? **IN PROGRESS**  
 **Started:** 2025-01-14  
-**WebUI Deprecation:** ? Phases 1-6.5 Complete (2025-01-14)
+**Component Migration Completed:** 2025-01-14  
+**WebUI Deprecation:** ? Phases 1-6.5 Complete (2025-01-14)  
 **Current Progress:** 45/56 components migrated (80%) - **14 removed in WebUI deprecation** ?? **80% COMPLETE!**
-**Current Group:** ? **Groups 1-8 COMPLETE!** (except Group 5 - 1 deferred) | ?? **PHASE 8 COMPONENT MIGRATION - COMPLETE!**
 
-**Recent Milestone:**
-?? **80% COMPLETE - 4 IN 5 - PHASE 8 COMPLETE!** ?? (2025-01-14)
+---
+
+## ?? Phase 8 Summary - MISSION ACCOMPLISHED! ??
+
+**Component Migration: 80% COMPLETE - 45 of 56 Components Migrated**
+
+### **What Was Achieved:**
+- ? **45 components migrated** to use specialized services (State, Settings, Backend, Models, Gallery, Session, Events)
+- ? **14 components removed** in WebUI deprecation (legacy code cleanup)
+- ? **8 of 9 groups complete** (Groups 1, 2, 3 [removed], 4, 6, 7, 8)
+- ? **MainLayout conquered** - The final boss defeated!
+- ? **All 3 generation pages migrated** - Txt2Img, Img2Img, Img2Vid
+- ? **Gallery system complete** - Image selection, projects, folders
+- ? **Resource management complete** - CivitAI integration, resource loading
+
+### **What's Deferred:**
+- ?? **1 complex component** - Img2ImgCanvas (canvas drawing logic - highly complex)
+- ?? **2 workflow asset components** - WorkflowAssetsPanel, WorkflowAssetSelector (tightly coupled)
+- ? **2 acceptable orchestration usages** - ImageInfoDialog, ResourceImageDialog (will be addressed in Phase 8.5)
+
+### **Components with Partial Migration:**
+Some components kept `M` (ManagerService) for orchestration methods. These will be addressed in **Phase 8.5**:
+- AssetViewer - Uses `M.SetGenerationParameter()`
+- ImageViewer - Uses `M.SetGenerationParameter()`
+- ImageInfoDialog - Uses `M.LoadImageInfoParameters()`, `M.SetSDModel()`
+- GeneratedImageTabs - Uses `M.Progress`, `M.GeneratedImageEntities`
+- Generation Pages (Txt2Img, Img2Img, Img2Vid) - Use workflow methods, `M.GeneratedImageEntities`
+- MainLayout - Uses `M.SetWorkflowBase()`, `M.LoadBackendDependentResources()`
+
+---
+
+## ?? Next Phase: Phase 8.5 - ManagerService Orchestrator Refactor
+
+**Status:** ?? **IN PROGRESS** - Started 2025-01-14  
+**Duration:** 2-3 days  
+**Priority:** ?? **CRITICAL**
+
+### **Why Phase 8.5 is Needed:**
+
+Even though components are migrated, **ManagerService is still ~1200 lines** with:
+1. ? **25+ Action events** - Legacy event system still firing
+2. ? **Multiple facade properties** - State, Settings, Models, Gallery, Session all delegating
+3. ? **Orchestration methods** - Some extracted, some still in ManagerService
+4. ? **Components dependency** - Some migrated components still use `M` for orchestration
+
+**Target:** Reduce ManagerService to < 300 lines (lightweight orchestrator)
+
+### **Phase 8.5 Plan:**
+
+**Day 1: Event System Migration** (4-6 hours)
+- Remove all 25+ Action events
+- Complete migration to EventService
+- Create missing EventArgs (Options, Workflow, SamplersSchedulers)
+
+**Day 2: Orchestration Method Extraction** (6-8 hours)
+- Extract parameter loading methods to StateService
+- Extract workflow management methods to WorkflowService/StateService
+- Remove model management facades
+- Update components with orchestration dependencies
+
+**Day 3: Facade Removal & Cleanup** (6-8 hours)
+- Remove all facade properties (State, Settings, Models, Gallery, Session)
+- Update components that kept `M` for orchestration
+- Final verification and testing
+- Verify ManagerService < 300 lines
+
+### **After Phase 8.5:**
+- ? ManagerService is lightweight orchestrator
+- ? All facade properties removed
+- ? All Action events removed
+- ? Components use specialized services exclusively
+- ? Ready for Phase 9: Service Interface Extraction & Testing
+
+**See detailed plan:** [manager-service-refactor.md](./manager-service-refactor.md#phase-85-managerservice-orchestrator-refactor)
+
+---
+
+## Recent Milestone
+?? **80% COMPLETE - 4 IN 5 - PHASE 8 COMPONENT MIGRATION COMPLETE!** ?? (2025-01-14)
 - **45 of 56 components migrated** - LEGENDARY ACHIEVEMENT! ????
 - **Group 8 (Complex/Pages) - 100% COMPLETE!** All 10 components resolved!
   - **?? MAINLAYOUT - THE FINAL BOSS DEFEATED! ??**
@@ -470,12 +548,33 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
 ## Notes & Issues
 
 ### Known Issues
-1. **Styles Dropdown Not Populating** - ? FIXED: PromptFields now loads styles directly from database on initialization
-2. **State Loading Events** - ? FIXED: StateService.LoadState() now publishes StateChangedEventArgs after loading
-3. **Folder Selection "All"** - ? FIXED: GalleryService.SetCurrentFolder() now handles ID=0 case
-4. **Project Card Selection Not Updating Images** - ? FIXED: ManagerService.SetCurrentProject() now delegates to GalleryService to fire ProjectChangedEventArgs
+
+#### 1. ManagerService Still Has Facades and Action Events ??
+**Status:** Will be resolved in Phase 8.5  
+**Severity:** High  
+**Impact:** Blocks Phase 9 (Service Interface Extraction)
+
+**Issue Description:**
+- ManagerService is still ~1200 lines (target: < 300 lines)
+- 25+ Action events still present (should be removed)
+- Facade properties still delegating (State, Settings, Models, etc.)
+- Some components still use `M` for orchestration methods
+
+**Resolution Plan:**
+Phase 8.5 will address this over 2-3 days:
+1. Day 1: Remove all Action events, complete EventService migration
+2. Day 2: Extract orchestration methods to appropriate services
+3. Day 3: Remove facade properties, update remaining components
+
+**Related Components:**
+- AssetViewer, ImageViewer, ImageInfoDialog (use orchestration methods)
+- GeneratedImageTabs, Generation Pages (use Progress, GeneratedImageEntities)
+- MainLayout (uses SetWorkflowBase, LoadBackendDependentResources)
+
+---
 
 ### Fixed Issues
+
 1. **StateService Interface Mismatch** - Fixed LoadState to have two separate overloads (parameterless and with int stateId) matching IStateService interface
 2. **State Loading Events** - StateService.LoadState() now publishes all StateChangedEventArgs events after loading state, ensuring UI components refresh properly
 3. **GalleryService Folder ID=0** - Added handling for folder ID=0 ("All folders") case in SetCurrentFolder method
@@ -483,6 +582,8 @@ The entire WebUI script system was removed as part of the WebUI deprecation effo
 5. **Index Page Event Handlers** - Properly implemented async event handlers to refresh projects list and images when project changes
 6. **VideoCard Menu Styling** - Fixed CSS isolation issue by moving menu styles to global site.css. Blazor's scoped CSS couldn't reach elements inside MudMenuItem components, so global styles ensure proper icon colors, spacing, and hover effects for both ImageCard and VideoCard menus.
 7. **Styles Dropdown Not Populating** - Fixed PromptFields component to load styles directly from database on initialization. Created StylesChangedEventArgs event for style change notifications. Styles now populate automatically without requiring manual GetStyles() call.
+
+---
 
 ### Migration Patterns Discovered
 

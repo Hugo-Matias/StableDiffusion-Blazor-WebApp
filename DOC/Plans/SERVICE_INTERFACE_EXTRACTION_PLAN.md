@@ -1,9 +1,60 @@
 # Service Interface Extraction & Testing Plan
 
 ## Status
-**Current Phase:** Phase A - Critical Service Interfaces
+**Current Phase:** ?? **PAUSED** - Waiting for Phase 8.5 Completion
 **Last Updated:** 2025-01-14
 **Parent Plan:** [manager-service-refactor.md](./manager-service-refactor.md)
+
+---
+
+## ?? **IMPORTANT: Plan Sequencing Update**
+
+### **Prerequisites NOT Met**
+
+This comprehensive interface extraction and testing plan **CANNOT** proceed until **Phase 8.5** is complete.
+
+**Blocking Issues:**
+1. ? Components migrated (Phase 8 - 80% complete)
+2. ? **ManagerService still ~1200 lines** (target: < 300 lines)
+3. ? **25+ Action events still present** (should be removed)
+4. ? **Facade properties still delegating** (should be removed)
+5. ? **Some services still depend on ManagerService** (should be eliminated)
+
+**Why This Blocks Interface Extraction:**
+- Services that depend on ManagerService cannot be properly interfaced
+- Testing requires stable service architecture
+- Integration tests need clear service boundaries
+- Mocking is difficult with circular dependencies
+
+### **Corrected Implementation Order**
+
+```
+Phase 8: Component Migration ? COMPLETE (80% - 45/56 components)
+  ?
+Phase 8.5: ManagerService Orchestrator Refactor ?? IN PROGRESS (2-3 days)
+  ?? Day 1: Event System Migration (remove Action events)
+  ?? Day 2: Orchestration Method Extraction
+  ?? Day 3: Facade Removal & Cleanup
+  ?
+Phase 9: Service Interface Extraction & Testing ?? PAUSED (4 weeks)
+  ?? Week 1: Critical Service Interfaces (ImageService, WorkflowService, ResourcesService)
+  ?? Week 2: External API Interfaces (CivitaiService, DanbooruService, OllamaService)
+  ?? Week 3: Utility Service Interfaces (CacheService, ProgressService, etc.)
+  ?? Week 4: Integration Testing
+```
+
+### **Resume Criteria**
+
+This plan will resume when:
+- ? Phase 8.5 complete
+- ? ManagerService < 300 lines
+- ? All Action events removed
+- ? All facade properties removed
+- ? No services depend on ManagerService facades
+- ? All 166 tests still passing
+- ? Application fully functional
+
+**Estimated Resume Date:** 2025-01-17 (after 2-3 day Phase 8.5)
 
 ---
 
@@ -73,10 +124,11 @@ This initiative is a strategic detour from the main ManagerService refactor to e
 
 ---
 
-## ?? Implementation Phases
+## ??? Implementation Phases
 
 ### **Phase A: Critical Service Interfaces** (Week 1)
-**Priority: HIGH** - Services that block testing or are heavily used
+**Status:** ?? Paused - Waiting for Phase 8.5
+**Priority:** HIGH - Services that block testing or are heavily used
 **Estimated Duration:** 4 days
 **Target Tests:** 60-70 new tests
 
@@ -190,6 +242,7 @@ public interface IWorkflowService
   - Filter by ModelBase
   - Get workflow by ID
   - Handle empty workflow list
+  - Handle multiple workflows with same ModelBase
   
 - **Workflow Validation** (4 tests)
   - Validate workflow structure
@@ -307,7 +360,8 @@ public interface IResourcesService
 ---
 
 ### **Phase B: External API Service Interfaces** (Week 2)
-**Priority: MEDIUM** - External integrations
+**Status:** ?? Paused - Waiting for Phase 8.5
+**Priority:** MEDIUM - External integrations
 **Estimated Duration:** 2 days
 **Target Tests:** 35-40 new tests
 
@@ -407,7 +461,8 @@ public interface IOllamaService
 ---
 
 ### **Phase C: Utility Service Interfaces** (Week 3)
-**Priority: LOW** - Supporting services
+**Status:** ?? Paused - Waiting for Phase 8.5
+**Priority:** LOW - Supporting services
 **Estimated Duration:** 4 days
 **Target Tests:** 65-75 new tests
 
@@ -560,7 +615,8 @@ public interface IRouterService
 ---
 
 ### **Phase D: Integration Testing** (Week 4)
-**Priority: HIGH** - End-to-end workflows
+**Status:** ?? Paused - Waiting for Phase 8.5
+**Priority:** HIGH - End-to-end workflows
 **Estimated Duration:** 5 days
 **Target Tests:** 70-80 new tests
 
@@ -572,21 +628,29 @@ public interface IRouterService
   - Full state persistence lifecycle
   - Version filtering
   - WorkflowAssets persistence
+  - State migration across major versions
+  - Concurrent state access
   
 - **Project/Folder Operations** (5 tests)
   - Project creation with folder associations
   - Folder deletion cascades
   - Project pagination
+  - Project renaming
+  - Concurrent project access
   
 - **Image Operations** (5 tests)
   - Image CRUD with metadata
   - Paging and filtering
   - Sorting by various fields
+  - Image duplication
+  - Concurrent image uploads
   
 - **Resource Operations** (5 tests)
   - Resource CRUD
   - Resource type filtering
   - Base model filtering
+  - Resource metadata updates
+  - Concurrent resource access
 
 **Total Tests:** 20 tests
 
@@ -602,18 +666,30 @@ public interface IRouterService
   - End-to-end Img2Vid workflow
   - Model switching during generation
   - Settings applied correctly
+  - Resource loading during generation
+  - Prompt processing accuracy
+  - Tag application correctness
+  - Error handling in workflows
+  - Performance under load
   
 - **Gallery Workflows** (8 tests)
   - Project creation and image saving
   - Image selection and batch operations
   - Folder navigation with projects
   - Image metadata persistence
+  - Duplicate image handling
+  - Empty state handling
+  - Permission handling
+  - Performance under load
   
 - **State Persistence Workflows** (7 tests)
   - State save/load across services
   - Settings changes reflected in state
   - WorkflowAssets persistence
   - Parameter initialization from settings
+  - Concurrent state updates
+  - Error handling on save/load
+  - Performance under load
 
 **Total Tests:** 25 tests
 
@@ -627,16 +703,22 @@ public interface IRouterService
   - Model browsing workflow
   - Model download workflow
   - Resource metadata updates
+  - Creator information retrieval
+  - Error handling for rate limits
+  - Performance under load
   
 - **Tag Search Integration** (5 tests)
   - Tag autocomplete workflow
   - Tag usage tracking
   - Dictionary search
+  - Fuzzy search handling
+  - Performance under load
   
 - **Ollama Integration** (5 tests)
   - Prompt generation workflow
   - Model selection
   - Error handling
+  - Performance under load
 
 **Total Tests:** 20 tests
 
@@ -686,6 +768,15 @@ Legend: ? Complete | ? Not Started | ?? Planned
 ---
 
 ## ?? Success Criteria
+
+### **Phase 8.5 Completion (Prerequisites):**
+- ? ManagerService < 300 lines
+- ? All Action events removed
+- ? All facade properties removed
+- ? Orchestration methods extracted to appropriate services
+- ? All 166 tests still passing
+- ? Build passes without errors
+- ? Application fully functional
 
 ### **Phase A (Week 1):**
 - [ ] `IImageService`, `IWorkflowService`, `IResourcesService` created
@@ -772,22 +863,32 @@ BlazorWebApp.Tests/
 
 ## ?? Integration with Main Refactor
 
-### **Before Phase 8 (Component Migration)**
-This interface extraction and testing initiative must be **completed** before resuming Phase 8 of the main refactor. This ensures:
+### **Before Phase 8.5 Completion** ??
+This interface extraction plan is **PAUSED** until Phase 8.5 completes. We cannot proceed with:
+- Interface extraction for services that depend on ManagerService
+- Comprehensive testing of services with circular dependencies
+- Mocking services that use ManagerService facades
 
-1. **Stable Services** - All services tested and validated
-2. **Clear Contracts** - Interfaces define expectations
-3. **Mockable Dependencies** - Components can be tested in isolation
-4. **Confident Migration** - Service stability ensures smooth component migration
+### **After Phase 8.5 Completion** ?
+Once ManagerService orchestrator refactor is complete:
+1. ? ManagerService is lightweight orchestrator (< 300 lines)
+2. ? No services depend on ManagerService facades
+3. ? All components use specialized services
+4. ? Clear service boundaries established
+
+**Then Resume:**
+1. Update `manager-service-refactor.md` Phase 9 status
+2. Begin Phase A: Critical Service Interfaces
+3. Proceed with 4-week testing plan
+4. Target: 420+ tests passing
 
 ### **After Phase D Completion**
 1. Update `manager-service-refactor.md` with new test counts
-2. Mark Phase 9B as complete
-3. Resume Phase 8 (Component Migration) with:
-   - Total tests: 420+ passing
-   - All services interfaced and tested
-   - Integration tests validating cross-service workflows
-   - Confidence in service stability
+2. Mark Phase 9 as complete
+3. Service architecture is bulletproof and fully tested
+4. Total tests: 420+ passing
+5. All services interfaced and tested
+6. Integration tests validating cross-service workflows
 
 ---
 
@@ -886,69 +987,53 @@ Writing tests forces better design and reveals edge cases.
 
 ## ?? Next Steps
 
-### **Immediate Actions**
-1. ? Create this plan document
-2. ?? Begin Phase A: Critical Service Interfaces
-3. ?? Start with `IImageService` interface and tests
+### **Immediate Actions (Phase 8.5 - In Progress)**
+1. ?? Complete ManagerService orchestrator refactor (2-3 days)
+2. ? Remove all Action events
+3. ? Extract orchestration methods
+4. ? Remove facade properties
+5. ? Verify all tests passing
 
-### **Weekly Milestones**
+### **After Phase 8.5 Complete**
+1. ? Verify Phase 8.5 success criteria met
+2. ? Update this document to resume Phase A
+3. ? Begin Critical Service Interface extraction
+4. ? Start with `IImageService` interface and tests
+
+### **Weekly Milestones (After Resume)**
 - **Week 1:** Complete Phase A (Critical Services)
 - **Week 2:** Complete Phase B (External APIs)
 - **Week 3:** Complete Phase C (Utility Services)
 - **Week 4:** Complete Phase D (Integration Tests)
 
 ### **Return to Main Refactor**
-After Phase D completion, update main refactor plan and resume Phase 8 with confidence in service stability.
+After Phase D completion, service architecture will be bulletproof with 420+ tests passing.
 
 ---
 
 ## ?? Progress Tracking
 
-### **Weekly Status Updates**
-Update this section at the end of each week:
+### **Phase 8.5: ManagerService Orchestrator Refactor** (Current)
+- [ ] Day 1: Event System Migration
+- [ ] Day 2: Orchestration Method Extraction
+- [ ] Day 3: Facade Removal & Cleanup
+- [ ] ManagerService < 300 lines
+- [ ] All 166 tests passing
 
-#### **Week 1: [Date] - [Date]**
-- [ ] Phase A1: ImageService Interface
-- [ ] Phase A2: WorkflowService Interface
-- [ ] Phase A3: ResourcesService Interface
-- [ ] Tests Added: 0/70
-- [ ] Total Tests: 166/236
-
-#### **Week 2: [Date] - [Date]**
-- [ ] Phase B1: CivitaiService Interface
-- [ ] Phase B2: DanbooruService Interface
-- [ ] Phase B3: OllamaService Interface
-- [ ] Tests Added: 0/40
-- [ ] Total Tests: 236/276
-
-#### **Week 3: [Date] - [Date]**
-- [ ] Phase C1: CacheService Interface
-- [ ] Phase C2: ProgressService Interface
-- [ ] Phase C3: CsvService Interface
-- [ ] Phase C4: DynamicPromptsService Interface
-- [ ] Phase C5: ThemeService Interface
-- [ ] Phase C6: MagickService Interface
-- [ ] Phase C7: RouterService Interface
-- [ ] Tests Added: 0/75
-- [ ] Total Tests: 276/351
-
-#### **Week 4: [Date] - [Date]**
-- [ ] Phase D1: DatabaseService Integration Tests
-- [ ] Phase D2: Cross-Service Integration Tests
-- [ ] Phase D3: External API Integration Tests
-- [ ] Tests Added: 0/70
-- [ ] Total Tests: 351/421
+### **Phase A-D Status** (Paused)
+All phases paused until Phase 8.5 complete.
 
 ---
 
 ## ?? Related Documentation
 
-- [Manager Service Refactor Plan](./manager-service-refactor.md) - Parent refactoring plan
-- [WebUI Deprecation Plan](./WEBUI_DEPRECATION_PLAN.md) - Related cleanup initiative
-- [Component Migration Log](./COMPONENT_MIGRATION_LOG.md) - Component migration tracking
+- [Manager Service Refactor Plan](./manager-service-refactor.md) - Parent refactoring plan (see Phase 8.5)
+- [Component Migration Log](./COMPONENT_MIGRATION_LOG.md) - Component migration tracking (80% complete)
+- [WebUI Deprecation Plan](./WEBUI_DEPRECATION_PLAN.md) - Related cleanup initiative (complete)
 
 ---
 
-**Last Updated:** 2025-01-14
-**Status:** Ready to begin Phase A
-**Next Action:** Create `IImageService` interface
+**Last Updated:** 2025-01-14  
+**Status:** ?? Paused - Waiting for Phase 8.5 completion  
+**Next Action:** Complete Phase 8.5 ManagerService orchestrator refactor  
+**Resume Date:** ~2025-01-17 (estimated)
