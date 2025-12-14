@@ -1,7 +1,7 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 16 - ImageService Test Coverage ? **COMPLETE**
+**Current Phase:** Phase 17 - IOrchestratorService Interface Extraction ? **COMPLETE**
 **Last Updated:** 2025-01-16
 
 ---
@@ -18,6 +18,7 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?  - Coordinates between specialized services                         ?
 ?  - Workflow management and asset coordination                       ?
 ?  - NO state properties (moved to specialized services)              ?
+?  - ? IOrchestratorService interface                                ?
 ????????????????????????????????????????????????????????????????????????
                                     ?
         ?????????????????????????????????????????????????????????
@@ -46,7 +47,7 @@ The `ManagerService` was originally a "God Object" (~1600+ lines) handling too m
 ?  - Pub/sub      ?   ?  - Generation   ?   ?  - Canvas state ?
 ?  - Typed events ?   ?  - Saving       ?   ?  - Editor state ?
 ?  - Mediator     ?   ?  - PathPatterns ?   ?  - Videos       ?
-?  ? Tests       ?   ?  ? Tests ?    ?   ?  ? Tests       ?
+?  ? Tests       ?   ?  ? Tests       ?   ?  ? Tests       ?
 ???????????????????   ???????????????????   ???????????????????
         ?                           ?
         ?                           ?
@@ -116,65 +117,81 @@ Moved remaining orchestration properties to specialized services:
 Create comprehensive unit tests for ImageService covering path patterns, folder generation, and service state.
 
 #### Tests Created (25 tests)
+- Constructor, GetCurrentSaveFolder, ConvertPathPattern, Mode-Specific Patterns, SaveImages, Progress, GeneratedImageEntities, OnChange Event, DownloadImageAsPng
+
+### ? Phase 17: IOrchestratorService Interface Extraction (Complete)
+**Completed:** 2025-01-16
+
+#### Objective
+Extract `IOrchestratorService` interface and migrate all consumers for consistency and testability.
+
+#### Scope Completed
+1. ? Created `IOrchestratorService` interface with all public methods
+2. ? Updated `OrchestratorService` to implement `IOrchestratorService`
+3. ? Migrated all components from `OrchestratorService` to `IOrchestratorService`:
+   - Components/Img2Vid/GeneratedVideoTabs.razor
+   - Components/Resources/CivitaiImageDialog.razor
+   - Components/Resources/ResourceImageDialog.razor
+   - Components/Shared/Generation/GeneratedImageTabs.razor
+   - Components/Shared/Generation/WorkflowAssetSelector.razor
+   - Components/Shared/Generation/WorkflowAssetsPanel.razor
+   - Components/Shared/Image/ImageInfoDialog.razor
+   - Components/Shared/Image/ImageViewer.razor
+   - Components/Shared/AssetViewer.razor
+   - Components/Shared/MainLayout.razor
+   - Components/Txt2Img/GenerateFormTxt2Img.razor
+   - Pages/Danbooru.razor
+   - Pages/Img2Img.razor
+   - Pages/Img2Vid.razor
+   - Pages/Txt2Img.razor
+4. ? Updated DI registration in Program.cs (dual registration pattern)
+5. ? Created `OrchestratorServiceTests.cs` with 42 unit tests
+
+#### Tests Created (42 tests)
 
 | Category | Tests | Description |
 |----------|-------|-------------|
-| Constructor | 2 | Service creation and property initialization |
-| GetCurrentSaveFolder | 5 | Null handling, Extras path, pattern application, empty path |
-| ConvertPathPattern | 10 | Null/empty, seed, steps, cfg, sampler, model_name, multiple tags, unknown tags, mixed content |
-| Mode-Specific Patterns | 2 | Img2Vid parameters, null parameter defaults |
-| SaveImages | 2 | Images property initialization state |
-| Progress | 1 | Progress property settable |
-| GeneratedImageEntities | 1 | Entities property settable |
-| OnChange Event | 1 | Event subscribable |
-| DownloadImageAsPng | 1 | File exists with no overwrite |
+| Constructor | 2 | PageSize setup, DateRange initialization |
+| Event Publishing | 3 | InvokeParametersChanged, InvokeSessionVideosChanged |
+| Parameter Initialization | 1 | Delegation to StateService |
+| Model Management | 7 | GetWorkflowModels, GetSDVAEs, GetModelsForAssetType, GetCurrentModel, SetCurrentModel |
+| Workflow Management | 8 | GetCurrentWorkflow, GetWorkflowById, GetWorkflowsForMode, SetCurrentWorkflow, ResetCurrentWorkflow |
+| Workflow Assets | 5 | GetWorkflowAsset, SetWorkflowAsset, GetWorkflowAssetsForMode |
+| Gallery | 5 | GetFolders, ReplaceSelectedImages, AddSelectedImage, RemoveSelectedImage, ClearSelectedImages |
+| Session | 4 | ResetImageEditorState, SetImg2ImgInputImage, AddSessionVideo, ClearSessionVideos |
+| Settings | 2 | LoadSettings, SaveSettings |
+| State | 2 | LoadState, SaveState |
+| Styles & Prompts | 3 | SetLoras null handling, SetLoras adding, ParseAndCleanCopiedPrompt |
 
-#### Phase 16 Metrics
+#### Phase 17 Metrics
 
-| Metric | Before Phase 16 | After Phase 16 | Change |
+| Metric | Before Phase 17 | After Phase 17 | Change |
 |--------|-----------------|----------------|--------|
-| Unit tests | 198 | 223 | +25 ? |
-| Services with tests | 11 | 12 | +1 |
+| Unit tests | 223 | 265 | +42 ? |
+| Services with tests | 12 | 13 | +1 |
+| Services with interfaces | 11 | 12 | +1 ? |
+| Components using interface | 0 | 15 | +15 ? |
 | Build | ? | ? | - |
 
 ---
 
 ## Key Metrics Summary
 
-| Metric | Phase 1 Start | Phase 9.5 End | Phase 14 End | Phase 15 End | Phase 16 End |
-|--------|---------------|---------------|--------------|--------------|--------------|
-| Service name | ManagerService | ManagerService | ManagerService | OrchestratorService | OrchestratorService |
-| Service lines | ~1600 | ~450 | ~240 | ~240 | ~240 |
-| Facade properties | 27 | 0 | 0 | 0 | 0 ? |
-| Orchestration properties | - | 14 | 0 | 0 | 0 ? |
-| Services extracted | 0 | 11 | 11 | 11 | 11 |
-| Services with interfaces | 0 | 11 | 11 | 11 | 11 |
-| Interface-only DI | - | 9 | 11 | 11 | 11 |
-| Unit tests | 0 | 150 | 150 | 198 | **223** ? |
-| Services with tests | 0 | 8 | 8 | 11 | **12** ? |
+| Metric | Phase 1 Start | Phase 9.5 End | Phase 14 End | Phase 15 End | Phase 16 End | Phase 17 End |
+|--------|---------------|---------------|--------------|--------------|--------------|--------------|
+| Service name | ManagerService | ManagerService | ManagerService | OrchestratorService | OrchestratorService | OrchestratorService |
+| Service lines | ~1600 | ~450 | ~240 | ~240 | ~240 | ~240 |
+| Facade properties | 27 | 0 | 0 | 0 | 0 | 0 ? |
+| Orchestration properties | - | 14 | 0 | 0 | 0 | 0 ? |
+| Services extracted | 0 | 11 | 11 | 11 | 11 | 11 |
+| Services with interfaces | 0 | 11 | 11 | 11 | 11 | **12** ? |
+| Interface-only DI | - | 9 | 11 | 11 | 11 | **12** ? |
+| Unit tests | 0 | 150 | 150 | 198 | 223 | **265** ? |
+| Services with tests | 0 | 8 | 8 | 11 | 12 | **13** ? |
 
 ---
 
 ## Future Work
-
-### Phase 17: IOrchestratorService Interface Extraction (Proposed)
-**Priority: Medium** - Create interface for consistency and testability.
-
-#### Objective
-Extract `IOrchestratorService` interface and migrate all consumers.
-
-#### Scope
-1. Create `IOrchestratorService` interface
-2. Migrate all components from `OrchestratorService` to `IOrchestratorService`
-3. Update DI to interface-only pattern
-4. Create `OrchestratorServiceTests`
-
-#### Benefits
-- Consistent with all other services
-- Enables mocking for component tests
-- Completes the interface migration pattern
-
----
 
 ### Phase 18: Integration Tests (Proposed)
 **Priority: Medium** - Test multi-service workflows end-to-end.
@@ -245,8 +262,8 @@ Add component-level tests for Blazor UI components.
 | ProgressService | ProgressServiceTests.cs | 28 | Phase 15 |
 | WorkflowService | WorkflowServiceTests.cs | 12 | Phase 15 |
 | RouterService | RouterServiceTests.cs | 10 | Phase 15 |
-| **ImageService** | **ImageServiceTests.cs** | **25** | **Phase 16** ? |
-| OrchestratorService | - | - | Future |
+| ImageService | ImageServiceTests.cs | 25 | Phase 16 |
+| **OrchestratorService** | **OrchestratorServiceTests.cs** | **42** | **Phase 17** ? |
 
 ---
 
@@ -298,8 +315,9 @@ builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageSe
 builder.Services.AddHttpClient<ComfyUIService>();
 builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<ComfyUIService>());
 
-// OrchestratorService (formerly ManagerService) - still uses concrete registration
+// OrchestratorService - dual registration for interface access
 builder.Services.AddSingleton<OrchestratorService>();
+builder.Services.AddSingleton<IOrchestratorService>(sp => sp.GetRequiredService<OrchestratorService>());
 ```
 
 ---
@@ -318,7 +336,8 @@ builder.Services.AddSingleton<OrchestratorService>();
 | Phase 13 | Complete interface migration | 150 |
 | Phase 14 | Orchestration properties relocated | 150 |
 | Phase 15 | Renamed to OrchestratorService, expanded tests | 198 |
-| **Phase 16** | **ImageService test coverage** | **223** |
+| Phase 16 | ImageService test coverage | 223 |
+| **Phase 17** | **IOrchestratorService interface, 42 tests** | **265** ? |
 
 ---
 
