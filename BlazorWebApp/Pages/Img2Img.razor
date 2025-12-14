@@ -3,12 +3,12 @@
 @using BlazorWebApp.Components.ImageEditor
 @using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
 @using static BlazorWebApp.Data.Enums
-@inject ComfyUIService API
-@inject OrchestratorService M
+@inject IComfyUIService API
+@inject IOrchestratorService M
 @inject IStateService State
 @inject ISessionService Session
 @inject IEventService Events
-@inject WorkflowService WorkflowService
+@inject IWorkflowService WorkflowService
 @inject IImageService ImageService
 @inject NavigationManager NavManager
 @inject ILogger<Img2Img> Logger

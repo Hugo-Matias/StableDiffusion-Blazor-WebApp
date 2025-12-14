@@ -52,8 +52,9 @@ builder.Services.AddSingleton<IGalleryService, GalleryService>();
 // Session management service (canvas, image editor, videos) - singleton with circuit isolation
 builder.Services.AddSingleton<ISessionService, SessionService>();
 
-// Core application services
+// Orchestrator service - dual registration for interface access
 builder.Services.AddSingleton<OrchestratorService>();
+builder.Services.AddSingleton<IOrchestratorService>(sp => sp.GetRequiredService<OrchestratorService>());
 
 // Image service - dual registration for concrete access by ComfyUIWebsocketService
 builder.Services.AddSingleton<ImageService>();

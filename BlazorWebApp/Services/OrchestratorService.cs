@@ -14,7 +14,7 @@ namespace BlazorWebApp.Services
     /// Orchestrates generation workflows, coordinates between specialized services,
     /// and manages complex multi-service operations.
     /// </summary>
-    public class OrchestratorService
+    public class OrchestratorService : IOrchestratorService
     {
         private readonly IDatabaseService _db;
         private readonly IIOService _io;
