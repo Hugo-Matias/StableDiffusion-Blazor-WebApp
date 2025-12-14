@@ -9,14 +9,14 @@ namespace BlazorWebApp.Services
     {
         private readonly ILogger<ComfyUIWebsocketService> _logger;
         private readonly IBackendService _backend;
-        private readonly ImageService _imageService;
+        private readonly IImageService _imageService;
         private readonly IProgressService _progressService;
         private readonly ComfyUIEventBus _bus;
         private ClientWebSocket? _currentWs;
         private readonly object _lock = new();
         private Guid _promptId;
 
-        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, IBackendService backend, ImageService imageService, IProgressService progressService, ComfyUIEventBus bus)
+        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, IBackendService backend, IImageService imageService, IProgressService progressService, ComfyUIEventBus bus)
         {
             _logger = logger;
             _backend = backend;

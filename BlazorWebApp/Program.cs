@@ -33,7 +33,7 @@ builder.Services.AddSingleton<ComfyUIEventBus>();
 builder.Services.AddSingleton<IEventService, EventService>();
 builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
-// Core data services - interface-only after Phase 13
+// Core data services - interface-only
 builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddSingleton<IIOService, IOService>();
 
@@ -52,29 +52,31 @@ builder.Services.AddSingleton<IGalleryService, GalleryService>();
 // Session management service (canvas, image editor, videos) - singleton with circuit isolation
 builder.Services.AddSingleton<ISessionService, SessionService>();
 
-// Orchestrator service - dual registration for interface access
-builder.Services.AddSingleton<OrchestratorService>();
-builder.Services.AddSingleton<IOrchestratorService>(sp => sp.GetRequiredService<OrchestratorService>());
+// Orchestrator service - interface-only (no consumers need concrete type)
+builder.Services.AddSingleton<IOrchestratorService, OrchestratorService>();
 
-// Image service - dual registration for concrete access by ComfyUIWebsocketService
-builder.Services.AddSingleton<ImageService>();
-builder.Services.AddSingleton<IImageService>(sp => sp.GetRequiredService<ImageService>());
+// Image service - interface-only (IImageService.Progress has setter for WebSocket updates)
+builder.Services.AddSingleton<IImageService, ImageService>();
 
 builder.Services.AddSingleton<CsvService>();
 
-// Progress service - interface-only after Phase 13 (OnUpdate event on IProgressService)
+// Progress service - interface-only
 builder.Services.AddSingleton<IProgressService, ProgressService>();
 
-builder.Services.AddSingleton<ResourcesService>();
+// Resources service - interface-only for testability
+builder.Services.AddSingleton<IResourcesService, ResourcesService>();
 
-// Router service - interface-only (no concrete type injection needed)
+// Router service - interface-only
 builder.Services.AddSingleton<IRouterService, RouterService>();
 
-// Workflow service - interface-only (no concrete type injection needed)
+// Workflow service - interface-only
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 
 builder.Services.AddSingleton<DynamicPromptsService>();
-builder.Services.AddSingleton<CacheService>();
+
+// Cache service - interface-only for testability
+builder.Services.AddSingleton<ICacheService, CacheService>();
+
 builder.Services.AddSingleton<ThemeService>();
 
 // Asset resolution service for workflow models
@@ -126,7 +128,7 @@ app.MapFallbackToPage("/_Host");
 
 app.Run();
 
-var tagUsageService = app.Services.GetRequiredService<CacheService>();
+var tagUsageService = app.Services.GetRequiredService<ICacheService>();
 _ = Task.Run(async () =>
 {
     while (true)

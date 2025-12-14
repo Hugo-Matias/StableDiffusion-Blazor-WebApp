@@ -13,10 +13,10 @@ namespace BlazorWebApp.Services
     public class WorkflowService : IWorkflowService
     {
         private readonly string _workflowPath = Path.Combine(AppContext.BaseDirectory, "Workflows");
-        private readonly IOService _io;
+        private readonly IIOService _io;
         private readonly ILogger<WorkflowService> _logger;
 
-        public WorkflowService(IOService io, ILogger<WorkflowService> logger)
+        public WorkflowService(IIOService io, ILogger<WorkflowService> logger)
         {
             _io = io;
             _logger = logger;

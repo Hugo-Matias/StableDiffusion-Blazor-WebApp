@@ -10,13 +10,13 @@ namespace BlazorWebApp.Services
     {
         private readonly IBackendService _backend;
         private readonly IConfiguration _configuration;
-        private readonly CacheService _cacheService;
+        private readonly ICacheService _cacheService;
         private readonly Schema _schema;
         private readonly CsvDataReaderOptions _options;
         private readonly string _path;
         private readonly string _fileName;
 
-        public CsvService(IBackendService backend, IConfiguration configuration, CacheService cacheService)
+        public CsvService(IBackendService backend, IConfiguration configuration, ICacheService cacheService)
         {
             _backend = backend;
             _configuration = configuration;

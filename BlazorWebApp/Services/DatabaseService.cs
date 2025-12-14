@@ -10,13 +10,13 @@ namespace BlazorWebApp.Services
     public class DatabaseService : IDatabaseService
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
-        private readonly ComfyUIService _capi;
+        private readonly IComfyUIService _capi;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DatabaseService> _logger;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, ComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
         {
             _factory = factory;
             _capi = capi;

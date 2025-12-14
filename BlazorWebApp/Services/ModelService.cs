@@ -14,8 +14,8 @@ namespace BlazorWebApp.Services
         private readonly IBackendService _backend;
         private readonly IStateService _state;
         private readonly IEventService _events;
-        private readonly ProgressService _progress;
-        private readonly IOService _io;
+        private readonly IProgressService _progress;
+        private readonly IIOService _io;
         private readonly IConfiguration _configuration;
 
         public List<SDModel> CheckpointModels { get; private set; } = new();
@@ -35,8 +35,8 @@ namespace BlazorWebApp.Services
             IBackendService backend,
             IStateService state,
             IEventService events,
-            ProgressService progress,
-            IOService io,
+            IProgressService progress,
+            IIOService io,
             IConfiguration configuration)
         {
             _comfyUI = comfyUI;

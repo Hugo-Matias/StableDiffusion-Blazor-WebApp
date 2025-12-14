@@ -1,4 +1,4 @@
-﻿@using System.Diagnostics;
+@using System.Diagnostics;
 @using static BlazorWebApp.Data.Enums;
 @using BlazorWebApp.Events
 @inject IStateService State
@@ -6,8 +6,8 @@
 @inject ISessionService Session
 @inject IBackendService Backend
 @inject IEventService Events
-@inject DatabaseService DB
-@inject IOService IO
+@inject IDatabaseService DB
+@inject IIOService IO
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavManager

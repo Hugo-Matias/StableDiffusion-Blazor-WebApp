@@ -3,7 +3,7 @@ using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
 {
-    public class ResourcesService
+    public class ResourcesService : IResourcesService
     {
         private readonly IStateService _state;
         private readonly IIOService _io;

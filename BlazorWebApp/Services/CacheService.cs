@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
-    public class CacheService
+    public class CacheService : ICacheService
     {
         private readonly IDatabaseService _db;
         private readonly ILogger<CacheService> _logger;

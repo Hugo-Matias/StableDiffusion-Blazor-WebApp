@@ -10,11 +10,11 @@ namespace BlazorWebApp.Services
     public class SettingsService : ISettingsService
     {
         private readonly string _settingsFile = "BlazorDiffusion.json";
-        private readonly IOService _io;
+        private readonly IIOService _io;
 
         public AppSettings Settings { get; private set; }
 
-        public SettingsService(IOService io)
+        public SettingsService(IIOService io)
         {
             _io = io;
             Settings = new AppSettings();

@@ -13,8 +13,8 @@ namespace BlazorWebApp.Services
 {
     public class ComfyUIService : IComfyUIService
     {
-        private readonly WorkflowService _workflow;
-        private readonly IOService _io;
+        private readonly IWorkflowService _workflow;
+        private readonly IIOService _io;
         private readonly ILogger<ComfyUIService> _logger;
         private readonly HttpClient _httpClient;
         private readonly ComfyUIEventBus _bus;
@@ -34,7 +34,7 @@ namespace BlazorWebApp.Services
             ".mp4", ".webm", ".gif", ".avi", ".mov", ".mkv"
         };
 
-        public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, WorkflowService workflow, IOService io, ILogger<ComfyUIService> logger)
+        public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, IWorkflowService workflow, IIOService io, ILogger<ComfyUIService> logger)
         {
             _httpClient = httpClient;
             _bus = bus;

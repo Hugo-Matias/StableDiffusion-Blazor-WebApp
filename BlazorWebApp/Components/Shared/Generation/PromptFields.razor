@@ -1,12 +1,12 @@
-﻿@typeparam T where T : SharedParameters
+@typeparam T where T : SharedParameters
 @using System.Text.Json
 @using static BlazorWebApp.Data.Enums
 @using BlazorWebApp.Events
-@inject IOService IO
+@inject IIOService IO
 @inject IStateService State
 @inject IBackendService Backend
 @inject IEventService Events
-@inject DatabaseService DB
+@inject IDatabaseService DB
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 @implements IDisposable
@@ -183,8 +183,8 @@
                 State.State.Generation.Styles = new List<PromptStyle>();
             }
             
-            // Publish event to notify other components that styles have changed
-            Events.Publish(new StylesChangedEventArgs { ChangeType = "Loaded" });
+            // Note: Removed publishing StylesChangedEventArgs here to prevent infinite recursion
+            // The component that triggers a change (e.g., adding/deleting prompts) should publish the event
         }
         catch (Exception ex)
         {
@@ -219,6 +219,11 @@
 
     private async void HandleStylesChangedEvent(StylesChangedEventArgs args)
     {
+        // Skip reload if this was triggered by our own LoadStyles (would cause infinite recursion)
+        // Only reload when external changes happen (e.g., prompts added/updated/deleted from other components)
+        if (args.ChangeType == "Loaded")
+            return;
+            
         // Reload styles from database when prompts are added/updated/deleted
         await LoadStyles();
         await InvokeAsync(StateHasChanged);
