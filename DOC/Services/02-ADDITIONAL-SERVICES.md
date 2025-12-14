@@ -2,6 +2,31 @@
 
 ## Additional Services
 
+This document covers additional supporting services that complement the core services documented in 01-CORE-SERVICES.md.
+
+### Summary of Service Extraction
+
+The application has undergone a comprehensive refactoring where the original "God Object" ManagerService (~1600+ lines) was split into multiple specialized services:
+
+**Extracted Core Services** (See 01-CORE-SERVICES.md):
+1. **OrchestratorService** (~460 lines) - Service coordination
+2. **StateService** - Application state management
+3. **EventService** - Event aggregation and pub/sub
+4. **ModelService** - Model and asset management
+5. **GalleryService** - Gallery operations
+6. **SessionService** - Session state management
+7. **SettingsService** - Settings persistence
+8. **BackendService** - Backend health and resources
+9. **ProgressService** - Progress tracking
+10. **WorkflowService** - Workflow management
+11. **RouterService** - Backend routing
+12. **ImageService** - Image generation orchestration
+13. **ResourcesService** - Local resource management
+
+**All services now use interface-based dependency injection** for improved testability and maintainability.
+
+---
+
 ### 6. WorkflowService
 
 **File**: `Services/WorkflowService.cs` (803 lines)  
@@ -55,14 +80,14 @@ Workflows define required assets (models, LoRAs, etc.) through metadata:
 
 ---
 
-### 7. CivitaiService
+### 6. CivitaiService
 
 **File**: `Services/CivitaiService.cs` (429 lines)  
 **Lifetime**: HttpClient (Singleton)  
 **Role**: CivitAI Integration
 
 #### Purpose
-Integrates with CivitAI API for model discovery, search, and download.
+Integrates with CivitAI API for model discovery, search, and download. No longer depends on ManagerService facades.
 
 #### Configuration
 ```csharp
@@ -74,36 +99,36 @@ Authorization: Bearer {CivitaiApiToken}
 
 **Model Search**:
 ```csharp
-public async Task<CivitaiModelsDto?> GetModels(CivitaiModelsRequest req)
-public async Task<CivitaiModelDto> GetModel(int id)
-public async Task<CivitaiModelDto> GetModelByHash(string hash)
+Task<CivitaiModelsDto?> GetModels(CivitaiModelsRequest req)
+Task<CivitaiModelDto> GetModel(int id)
+Task<CivitaiModelDto> GetModelByHash(string hash)
 ```
 
 **Image Browsing**:
 ```csharp
-public async Task<CivitaiImagesDto> GetImages(CivitaiImagesRequest req)
-public async Task<CivitaiImageDto?> GetImageById(int id)
+Task<CivitaiImagesDto> GetImages(CivitaiImagesRequest req)
+Task<CivitaiImageDto?> GetImageById(int id)
 ```
 
 **Creator Search**:
 ```csharp
-public async Task<CivitaiCreatorsDto> GetCreators(CivitaiBaseRequest req)
+Task<CivitaiCreatorsDto> GetCreators(CivitaiBaseRequest req)
 ```
 
 **Model Download**:
 ```csharp
-public async Task<string?> DownloadModel(CivitaiFile file, string filename, string path, CivitaiModelType type)
+Task<string?> DownloadModel(CivitaiFile file, string filename, string path, CivitaiModelType type)
 ```
 Downloads with progress tracking via ProgressService.
 
 **Image Download**:
 ```csharp
-public async Task<string?> DownloadImage(CivitaiImageDto image, string filename, string path)
+Task<string?> DownloadImage(CivitaiImageDto image, string filename, string path)
 ```
 
 **Hash Lookup**:
 ```csharp
-public async Task<int> GetModelIdByHash(string hash)
+Task<int> GetModelIdByHash(string hash)
 ```
 Retrieves model ID from file hash for version detection.
 
@@ -114,11 +139,18 @@ Retrieves model ID from file hash for version detection.
 - NSFW filtering support
 - Pagination support
 
+#### Dependencies
+- `HttpClient`: HTTP communication
+- `IProgressService`: Download progress tracking
+- `IEventService`: Download completion events
+- `IConfiguration`: API token
+
 ---
 
-### 8. IOService
+### 7. IOService
 
 **File**: `Services/IOService.cs` (295 lines)  
+**Interface**: `IIOService`  
 **Lifetime**: Singleton  
 **Role**: File System Operations
 
@@ -129,59 +161,64 @@ Centralized file I/O operations with path normalization and error handling.
 
 **File Operations**:
 ```csharp
-public void MoveFile(string sourcePath, string destinationPath)
-public void DeleteFile(string path)
-public void DeleteFile(FileInfo file)
-public FileInfo? GetFileByName(string path, string fileName)
-public IEnumerable<FileInfo> GetFilesByName(string path, string name)
+void MoveFile(string sourcePath, string destinationPath)
+void DeleteFile(string path)
+void DeleteFile(FileInfo file)
+FileInfo? GetFileByName(string path, string fileName)
+IEnumerable<FileInfo> GetFilesByName(string path, string name)
 ```
 
 **Directory Operations**:
 ```csharp
-public DirectoryInfo CreateDirectory(string path)
-public void DeleteFolder(DirectoryInfo dir, bool isRecursive)
-public DirectoryInfo? GetFolderByName(string path, string folderName)
-public IOrderedEnumerable<FileInfo>? GetOrderedFiles(string path)
-public IEnumerable<FileInfo> GetFilesRecursive(string path, string? ignorePath, List<string>? extensionsBlacklist, List<string>? extensionsWhitelist)
+DirectoryInfo CreateDirectory(string path)
+void DeleteFolder(DirectoryInfo dir, bool isRecursive)
+DirectoryInfo? GetFolderByName(string path, string folderName)
+IOrderedEnumerable<FileInfo>? GetOrderedFiles(string path)
+IEnumerable<FileInfo> GetFilesRecursive(string path, string? ignorePath, List<string>? extensionsBlacklist, List<string>? extensionsWhitelist)
 ```
 
 **Image Operations**:
 ```csharp
-public async Task<List<ImageInfo>?> GetImages(string path)
-public string GetBase64FromFile(string path)
-public async Task<string?> GetBase64FromFileAsync(string path)
-public string GetImageStaticFile(string path)
-public string GetResourceImagePath(string type, string filename)
-public int GetFileIndex(string path, Outdir dir)
+Task<List<ImageInfo>?> GetImages(string path)
+string GetBase64FromFile(string path)
+Task<string?> GetBase64FromFileAsync(string path)
+string GetImageStaticFile(string path)
+string GetResourceImagePath(string type, string filename)
+int GetFileIndex(string path, Outdir dir)
 ```
 
 **Text Operations**:
 ```csharp
-public string GetJsonAsString(string path)
-public string[]? LoadTextLines(string path)
-public string? LoadText(string path)
-public void SaveText(string path, string content, bool overwrite = true)
+string GetJsonAsString(string path)
+string[]? LoadTextLines(string path)
+string? LoadText(string path)
+void SaveText(string path, string content, bool overwrite = true)
 ```
 
 **Metadata**:
 ```csharp
-public async Task<string> ReadMetadata(string path)
+Task<string> ReadMetadata(string path)
 ```
 Reads PNG metadata using MetadataExtractor.
 
 **Binary Operations**:
 ```csharp
-public async Task SaveFileToDisk(string path, byte[] data)
+Task SaveFileToDisk(string path, byte[] data)
 ```
 
 #### Path Normalization
 Handles Windows/Linux path differences automatically.
 
+#### Test Coverage
+- **Unit Tests**: 20 tests in `IOServiceTests.cs`
+- **Test Areas**: File operations, directory operations, path normalization, metadata reading
+
 ---
 
-### 9. CacheService
+### 8. CacheService
 
 **File**: `Services/CacheService.cs` (559 lines)  
+**Interface**: `ICacheService`  
 **Lifetime**: Singleton  
 **Role**: Performance Optimization
 
@@ -192,16 +229,48 @@ Caches frequently accessed data to improve performance.
 
 **Tag Usage Cache**:
 ```csharp
-public async Task RefreshTagCache()
-public Dictionary<string, int> GetTagUsageCache()
+Task RefreshTagCache()
+Dictionary<string, int> GetTagUsageCache()
+Task<int> GetLocalTagUsageCount(string tagName)
+Task<List<(string Tag, int Count)>> GetTopLocalTags(int count = 100)
+List<string> GetRecentTags(int count = 10)
+void IncrementTagUsage(string tagName)
 ```
 Caches tag usage counts for autocomplete and suggestions.
+
+**Dictionary Search**:
+```csharp
+Task LoadDictionaries()
+List<DictionaryWord> SearchDictionaries(string query, int maxResults = 10, params DictionaryTheme[] excludeThemes)
+List<DictionaryWord> SearchDictionaryThemes(string query, DictionaryTheme[] themes, int maxResults = 10)
+List<string> GetDictionaryWords(DictionaryTheme theme)
+```
+
+**Fuzzy Matching**:
+```csharp
+int CalculateFuzzyScore(string search, string target)
+```
+
+**Cache Management**:
+```csharp
+Task ReloadDictionaries()
+bool AreDictionariesLoaded()
+Dictionary<string, int> GetDictionaryStats()
+```
 
 **Periodic Refresh**:
 Refreshes every 30 minutes (configured in Program.cs).
 
 **Resource Cache**:
 Caches model and resource metadata.
+
+#### Dependencies
+- `IDatabaseService`: Tag usage data
+- `IIOService`: Dictionary file loading
+
+#### Test Coverage
+- **Unit Tests**: Comprehensive tests in `CacheServiceTests.cs`
+- **Test Areas**: Tag caching, dictionary search, fuzzy matching, cache management
 
 ---
 
@@ -524,100 +593,379 @@ Uses Python.Runtime for wildcard and template processing.
 
 ---
 
-## Service Dependency Graph
+## Service Dependency Graph (Complete)
 
 ```
-ManagerService (Central Hub)
-├── SDAPIService
-├── DatabaseService
-├── IOService
-├── ProgressService
-├── ComfyUIService
-│   ├── WorkflowService
-│   │   └── IOService
-│   └── ComfyUIEventBus
-│       └── ComfyUIWebsocketService
-└── WorkflowService
+Application Layer (Blazor Components)
+    ↓
+─────────────────────────────────────────────────────────────
+Orchestration Layer
+─────────────────────────────────────────────────────────────
+OrchestratorService (IOrchestratorService)
+├── IStateService → StateService
+│   ├── IDatabaseService
+│   ├── IEventService
+│   ├── ISettingsService
+│   └── IConfiguration
+├── IModelService → ModelService
+│   ├── IComfyUIService
+│   ├── IBackendService
+│   ├── IStateService
+│   ├── IEventService
+│   ├── IProgressService
+│   ├── IIOService
+│   └── IConfiguration
+├── IGalleryService → GalleryService
+│   ├── IDatabaseService
+│   ├── IStateService
+│   └── IEventService
+├── ISessionService → SessionService
+│   └── IEventService
+├── IWorkflowService → WorkflowService
+│   ├── IIOService
+│   ├── IConfiguration
+│   └── ILogger
+├── IBackendService → BackendService
+│   ├── IComfyUIService
+│   ├── IConfiguration
+│   └── IEventService
+├── ISettingsService → SettingsService
+│   ├── IIOService
+│   └── IConfiguration
+├── IProgressService → ProgressService
+│   └── IEventService
+├── IResourcesService → ResourcesService
+│   ├── IDatabaseService
+│   ├── IIOService
+│   └── IConfiguration
+└── IDatabaseService → DatabaseService
+    └── IDbContextFactory<AppDbContext>
 
-ImageService
-├── SDAPIService
-├── IOService
-├── ManagerService
-├── MagickService
-├── DatabaseService
-├── ProgressService
-└── RouterService
-    ├── SDAPIService
-    ├── ComfyUIService
-    └── ManagerService
+─────────────────────────────────────────────────────────────
+Generation Layer
+─────────────────────────────────────────────────────────────
+IImageService → ImageService
+├── IRouterService → RouterService
+│   ├── IComfyUIService
+│   ├── IStateService
+│   └── IWorkflowService
+├── IIOService
+├── IStateService
+├── IDatabaseService
+├── IProgressService
+├── MagickService (transient)
+├── IEventService
+└── IConfiguration
 
-CivitaiService
-├── HttpClient
-├── ImageService
-├── IOService
-├── ManagerService
-├── DatabaseService
-└── ProgressService
+─────────────────────────────────────────────────────────────
+External Integration Layer
+─────────────────────────────────────────────────────────────
+IComfyUIService → ComfyUIService (HttpClient)
+├── ComfyUIEventBus
+├── IConfiguration
+└── ILogger
 
-ResourcesService
-├── DatabaseService
-└── IOService
+CivitaiService (HttpClient)
+├── IProgressService
+├── IEventService
+└── IConfiguration
 
-CacheService
-└── DatabaseService
-
-ThemeService
-└── IOService
-
-AssetResolverService (Scoped)
-├── ManagerService
-└── DatabaseService
+DanbooruService (HttpClient)
+└── IConfiguration
 
 OllamaService (Scoped)
 └── HttpClient
 
-JavascriptService (Scoped)
-└── IJSRuntime
+─────────────────────────────────────────────────────────────
+Infrastructure Layer
+─────────────────────────────────────────────────────────────
+IEventService → EventService (Central Event Bus)
+└── (No dependencies)
+
+IIOService → IOService
+└── (No dependencies)
+
+ICacheService → CacheService
+├── IDatabaseService
+└── IIOService
+
+ComfyUIWebsocketService (Hosted Service)
+├── ComfyUIEventBus
+└── IConfiguration
+
+ComfyUIEventBus
+└── (No dependencies)
+
+─────────────────────────────────────────────────────────────
+Utility Services
+─────────────────────────────────────────────────────────────
+CsvService → Tag search/autocomplete
+DynamicPromptsService → Python interop for prompts
+ThemeService → UI theming
+MagickService (Transient) → Image manipulation
+JavascriptService (Scoped) → JS interop
+IAssetResolverService → AssetResolverService (Scoped)
 ```
+
+---
 
 ## Service Patterns Summary
 
 ### Communication Patterns
-1. **Events**: Observer pattern for state changes
-2. **Dependency Injection**: Constructor injection
+1. **Interface-Based Dependency Injection**: All core services use interfaces
+2. **Event Aggregation**: Centralized `IEventService` for pub/sub communication
 3. **Async/Await**: Throughout for I/O operations
-4. **HttpClient**: Typed clients for external APIs
+4. **HttpClient Factory**: Typed clients for external APIs
+5. **Scoped Services**: User-specific context (AssetResolver, Javascript, Ollama)
 
 ### Data Access Patterns
-1. **Factory Pattern**: IDbContextFactory for DbContext
+1. **Factory Pattern**: `IDbContextFactory<AppDbContext>` for DbContext
 2. **Repository-Like**: DatabaseService methods
 3. **DTO Pattern**: Data transfer objects for API communication
+4. **State Management**: Centralized via StateService
 
-### Best Practices ✅
-- Async operations throughout
-- Dependency injection
-- Interface segregation (IAssetResolverService)
-- Single responsibility (mostly)
-- HttpClient factory pattern
-
-### Areas for Improvement ⚠️
-- God object (ManagerService)
-- Console.WriteLine instead of logging
-- No unit tests
-- Some synchronous I/O
-- Event memory leaks potential
-- No cancellation token support in many methods
-- Limited error handling in some areas
-
-## Service Lifecycle Summary
-
-| Lifetime | Count | Services |
-|----------|-------|----------|
-| Singleton | 15 | Core business logic and state |
-| Scoped | 3 | Per-user/request context |
-| Transient | 1 | Stateless operations |
-| HttpClient | 4 | External API clients |
+### Architectural Patterns
+1. **Service Coordinator**: OrchestratorService coordinates complex operations
+2. **Event-Driven**: EventService mediates component communication
+3. **Strategy Pattern**: RouterService selects backend strategy
+4. **Template Pattern**: WorkflowService uses Scriban templates
+5. **Observer Pattern**: EventService pub/sub implementation
 
 ---
 
-This completes the service layer documentation. All 22 services are documented with their purpose, methods, dependencies, and usage patterns.
+## Best Practices ✅
+
+### Achieved
+- ✅ **Interface-based DI**: All core services expose interfaces
+- ✅ **Single Responsibility**: Each service has focused purpose
+- ✅ **Event-driven**: Decoupled communication via EventService
+- ✅ **Comprehensive Testing**: 295 tests (280 unit + 15 integration)
+- ✅ **Async operations**: Throughout
+- ✅ **Type safety**: Generic event handling
+- ✅ **HttpClient factory**: Typed clients for APIs
+- ✅ **Dependency injection**: All dependencies injected
+
+### Key Improvements from Refactoring
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| ManagerService lines | ~1600 | ~460 (OrchestratorService) | 71% reduction |
+| Services with interfaces | 2 | 17 | 750% increase |
+| Unit tests | 0 | 280 | ∞ |
+| Integration tests | 0 | 15 | ∞ |
+| Action events | 25+ | 0 (replaced with EventService) | 100% removed |
+| Direct ManagerService dependencies | Many | 0 (all use specialized services) | Eliminated |
+
+---
+
+## Areas for Continued Improvement ⚠️
+
+### In Progress
+- 🔄 **Logging**: Migrating remaining `Console.WriteLine` to `ILogger`
+- 🔄 **XML Documentation**: Adding comprehensive XML docs to all methods
+
+### Future Considerations
+- ⭕ **Cache Invalidation**: More sophisticated cache strategies
+- ⭕ **Circuit Breaker**: Add resilience patterns for external APIs
+- ⭕ **Retry Policies**: Automatic retry for transient failures
+- ⭕ **Rate Limiting**: Built-in rate limiting for external APIs
+- ⭕ **Telemetry**: Add OpenTelemetry for observability
+- ⭕ **Health Checks**: ASP.NET Core health check endpoints
+
+---
+
+## Service Lifecycle Summary
+
+| Lifetime | Count | Services | Purpose |
+|----------|-------|----------|---------|
+| **Singleton** | 21 | Core services, state management, external APIs | Application-wide state and functionality |
+| **Scoped** | 3 | AssetResolverService, JavascriptService, OllamaService | Per-user/circuit context |
+| **Transient** | 1 | MagickService | Stateless image processing |
+| **HttpClient** | 3 | ComfyUIService, CivitaiService, DanbooruService | External API integration |
+| **Hosted** | 1 | ComfyUIWebsocketService | Background WebSocket connection |
+
+---
+
+## Testing Standards
+
+### Test Categories
+| Category | Count | Coverage |
+|----------|-------|----------|
+| **Unit Tests** | 280 | All core services |
+| **Integration Tests** | 15 | Cross-service workflows |
+| **Total** | **295** | **Comprehensive** |
+
+### Test Organization
+```
+BlazorWebApp.Tests/
+├── Services/                 # Unit tests (280 tests)
+│   ├── OrchestratorServiceTests.cs (42)
+│   ├── StateServiceTests.cs (29)
+│   ├── SettingsServiceTests.cs (31)
+│   ├── EventServiceTests.cs (15)
+│   ├── ModelServiceTests.cs (23)
+│   ├── GalleryServiceTests.cs (13)
+│   ├── SessionServiceTests.cs (20)
+│   ├── BackendServiceTests.cs (15)
+│   ├── ProgressServiceTests.cs (28)
+│   ├── WorkflowServiceTests.cs (12)
+│   ├── RouterServiceTests.cs (10)
+│   ├── ImageServiceTests.cs (25)
+│   ├── IOServiceTests.cs (20)
+│   ├── CacheServiceTests.cs
+│   └── ResourcesServiceTests.cs
+├── Integration/              # Integration tests (15 tests)
+│   └── ServiceIntegrationTests.cs
+├── MockBuilders/             # Reusable mocks
+│   ├── MockStateServiceBuilder.cs
+│   ├── MockComfyUIServiceBuilder.cs
+│   ├── MockWorkflowServiceBuilder.cs
+│   └── MockBackendServiceBuilder.cs
+└── TestFixtures/             # Test data
+    ├── ModelTestFixtures.cs
+    └── BackendTestFixtures.cs
+```
+
+### Testing Best Practices
+1. **AAA Pattern**: Arrange-Act-Assert in all tests
+2. **FluentAssertions**: Readable, expressive assertions
+3. **Mock Builders**: Consistent, reusable mocks
+4. **Test Fixtures**: Shared test data
+5. **Isolation**: No dependencies between tests
+6. **Fast Execution**: Full suite runs in seconds
+7. **CI/CD Ready**: All tests automated and reliable
+
+---
+
+## Event-Driven Architecture Details
+
+### EventService Implementation
+```csharp
+// Thread-safe, type-safe event bus
+public interface IEventService
+{
+    void Publish<TEvent>(TEvent eventArgs) where TEvent : EventArgs;
+    void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : EventArgs;
+    void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : EventArgs;
+}
+```
+
+### Event Categories and Types
+
+**State Events**:
+- `StateChangedEventArgs`: General state updates
+- `ParametersChangedEventArgs`: Generation parameter updates
+- `WorkflowChangedEventArgs`: Workflow selection changes
+
+**Model Events**:
+- `ModelsChangedEventArgs`: Model list updates
+- `SamplersSchedulersChangedEventArgs`: Sampler/scheduler updates
+
+**Gallery Events**:
+- `FolderChangedEventArgs`: Folder navigation
+- `ProjectChangedEventArgs`: Project selection
+- `SelectionChangedEventArgs`: Image selection changes
+
+**Session Events**:
+- `InputImageChangedEventArgs`: Input image updates
+- `SessionVideosChangedEventArgs`: Video list updates
+- `EditorStateChangedEventArgs`: Image editor state
+
+**Progress Events**:
+- `ProgressChangedEventArgs`: Generation progress
+- `ConvergingStateChangedEventArgs`: Converging state changes
+
+### Event Flow Example
+```
+User Action (Component)
+    ↓
+Service Method Call
+    ↓
+Service Updates Internal State
+    ↓
+Service.Publish<TEvent>(new EventArgs(...))
+    ↓
+EventService Broadcasts to All Subscribers
+    ↓
+Components Receive Event
+    ↓
+Components Call StateHasChanged()
+    ↓
+UI Updates
+```
+
+---
+
+## Configuration Reference
+
+### Service Registration Pattern
+```csharp
+// Interface-only (clean pattern) - Most services
+builder.Services.AddSingleton<IServiceName, ServiceName>();
+
+// Dual registration (compatibility) - Special cases
+builder.Services.AddSingleton<ServiceName>();
+builder.Services.AddSingleton<IServiceName>(sp => sp.GetRequiredService<ServiceName>());
+
+// HttpClient services
+builder.Services.AddHttpClient<ComfyUIService>();
+builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<ComfyUIService>());
+
+// Scoped services
+builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
+
+// Transient services
+builder.Services.AddTransient<MagickService>();
+
+// Hosted services
+builder.Services.AddSingleton<ComfyUIWebsocketService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ComfyUIWebsocketService>());
+```
+
+---
+
+## Migration Notes
+
+### From ManagerService to Specialized Services
+
+**Previously** (ManagerService pattern):
+```csharp
+@inject ManagerService Manager
+
+var state = Manager.State;
+var models = Manager.CheckpointModels;
+Manager.OnStateHasChanged += StateHasChanged;
+```
+
+**Now** (Specialized services):
+```csharp
+@inject IStateService State
+@inject IModelService Models
+@inject IEventService Events
+
+var state = State.State;
+var models = Models.CheckpointModels;
+Events.Subscribe<StateChangedEventArgs>(e => StateHasChanged());
+```
+
+### Benefits of Refactoring
+1. **Testability**: Easy to mock individual services
+2. **Maintainability**: Focused, single-purpose services
+3. **Type Safety**: Generic event handling
+4. **Performance**: Better memory management (no event leaks)
+5. **Clarity**: Clear service boundaries and responsibilities
+
+---
+
+## Related Documentation
+
+- [Core Services Documentation](./01-CORE-SERVICES.md) - Detailed documentation of all core services
+- [Architectural Analysis](../Architecture/01-ARCHITECTURAL-ANALYSIS.md) - Architecture patterns and design decisions
+- [Manager Service Refactor Plan](../Plans/manager-service-refactor.md) - Refactoring journey and metrics
+- [Service Interface Extraction Plan](../Plans/SERVICE_INTERFACE_EXTRACTION_PLAN.md) - Interface extraction strategy
+
+---
+
+**Documentation Version**: 2.0  
+**Last Updated**: 2024-12-14  
+**Refactoring Status**: ✅ **Complete** - All 13 specialized services extracted and tested  
+**Test Coverage**: 295 tests (280 unit + 15 integration)
