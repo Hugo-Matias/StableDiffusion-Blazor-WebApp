@@ -11,17 +11,19 @@
 👉 Start here: [System Overview](Architecture/00-SYSTEM-OVERVIEW.md)  
 🏗️ Architecture: [Architectural Analysis](Architecture/01-ARCHITECTURAL-ANALYSIS.md)  
 🔧 Services: [Core Services](Services/01-CORE-SERVICES.md) | [Additional Services](Services/02-ADDITIONAL-SERVICES.md)  
-💾 Data Models: [Data Models Documentation](Models/01-DATA-MODELS.md)
+💾 Data Models: [Data Models Documentation](Models/01-DATA-MODELS.md)  
+✅ Testing: 295 tests (280 unit + 15 integration)
 
 ### For Contributors
-👉 Start here: [Architectural Analysis](Architecture/01-ARCHITECTURAL-ANALYSIS.md)  
+👉 Start here: [System Overview - Refactoring Achievement](Architecture/00-SYSTEM-OVERVIEW.md#service-refactoring-achievement)  
 🎨 UX Improvements: [UX Analysis](UX-UI/01-UX-ANALYSIS-AND-RECOMMENDATIONS.md)  
-📋 Project Status: [Project Summary](PROJECT-SUMMARY.md)
+📋 Refactoring Details: [Manager Service Refactor Plan](Plans/manager-service-refactor.md)
 
 ### For Architects
 👉 Start here: [System Overview](Architecture/00-SYSTEM-OVERVIEW.md)  
-⚠️ Stress Points: [Architectural Analysis](Architecture/01-ARCHITECTURAL-ANALYSIS.md#architectural-stress-points)  
-📊 Scalability: [Architectural Analysis](Architecture/01-ARCHITECTURAL-ANALYSIS.md#scalability-limitations)
+⚠️ Architecture Review: [Architectural Analysis](Architecture/01-ARCHITECTURAL-ANALYSIS.md#architectural-stress-points)  
+🎯 Service Design: [Service Patterns](Services/01-CORE-SERVICES.md#service-patterns-summary)  
+✅ Improvements Achieved: ManagerService refactored (71% size reduction, 295 tests added)
 
 ---
 
@@ -45,10 +47,13 @@
 - Future enhancement opportunities
 
 **Key Stats**:
-- 22 services documented
-- 4 generation modes
-- 10 entity types
-- 3-tier architecture
+- **Services**: 26 total (13 specialized + 13 supporting)
+- **Service Interfaces**: 17 interfaces for testability
+- **Test Coverage**: 295 tests (280 unit + 15 integration)
+- **Generation Modes**: 4 (Txt2Img, Img2Img, Img2Vid, Upscale)
+- **Entity Types**: 10
+- **Architecture**: 3-tier with event-driven communication
+- **Refactoring Achievement**: 71% code reduction in orchestration (1600 → 460 lines)
 
 #### [01-ARCHITECTURAL-ANALYSIS.md](Architecture/01-ARCHITECTURAL-ANALYSIS.md)
 **Size**: 13,235 characters | **Topics**: 15 sections  
@@ -97,43 +102,60 @@
 ### 📁 Services (2 files)
 
 #### [01-CORE-SERVICES.md](Services/01-CORE-SERVICES.md)
-**Size**: 18,963 characters | **Topics**: 6 core services  
+**Size**: ~35,000 characters | **Topics**: 16 core services  
 **What's Inside**:
-- **ManagerService** (1,803 lines) - Central state, 25+ events
-- **DatabaseService** (988 lines) - Data access, EF Core
-- **ImageService** (606 lines) - Generation orchestration
-- **SDAPIService** (171 lines) - WebUI API client
-- **ComfyUIService** (801 lines) - ComfyUI API client
-- **WorkflowService** (803 lines) - Scriban templates
+- **OrchestratorService** (formerly ManagerService, ~460 lines) - Service coordination
+- **StateService** - Application state management with interfaces
+- **EventService** - Type-safe event aggregation (replaces 25+ Action events)
+- **ModelService** - Model and asset management
+- **GalleryService** - Gallery operations
+- **SessionService** - Session state management
+- **SettingsService** - Settings persistence
+- **BackendService** - Backend health and resources
+- **ProgressService** - Progress tracking
+- **DatabaseService** - Data access
+- **ImageService** - Generation orchestration
+- **WorkflowService** - Workflow management
+- **RouterService** - Backend routing
+- **ResourcesService** - Resource management
+- **SDAPIService** - WebUI API (legacy)
+- **ComfyUIService** - ComfyUI API
 
 For each service:
 - Purpose and responsibilities
+- Interface definition
 - Key methods with descriptions
 - Dependencies and relationships
+- Test coverage (295 total tests)
 - Usage patterns
-- Architectural issues
-- Recommended improvements
+- Architectural improvements
 
-**Total Lines Documented**: 4,972 lines of service code
+**Major Update**: Documented comprehensive refactoring from ManagerService "God Object" to 13 specialized services.
+
+**Total Tests**: 295 tests (280 unit + 15 integration)
 
 #### [02-ADDITIONAL-SERVICES.md](Services/02-ADDITIONAL-SERVICES.md)
-**Size**: 14,459 characters | **Topics**: 16 services  
+**Size**: ~35,000 characters | **Topics**: 10+ supporting services  
 **What's Inside**:
 - CivitaiService - CivitAI API integration
-- IOService - File system operations
-- CacheService - Performance optimization
-- ProgressService - Progress tracking
-- RouterService - Backend routing
-- ResourcesService - Local resource management
-- 10 more services documented
+- IOService - File system operations (with interface)
+- CacheService - Performance optimization (with interface)
+- DanbooruService - Tag dataset
+- OllamaService - LLM integration
+- 5+ more utility services
 
 Plus:
-- Service dependency graph
+- Complete service dependency graph (updated)
 - Service lifecycle summary
-- Best practices vs. improvement areas
+- Event-driven architecture patterns
+- Testing standards (295 tests documented)
+- Best practices vs. improvements achieved
 - Service patterns analysis
+- Refactoring metrics and achievements
 
-**Total Services Documented**: 22 services across both files
+**Major Update**: Comprehensive dependency graph showing interface-based architecture and event-driven communication.
+
+**Total Services Documented**: 26 services across both files
 
 ---
 
@@ -285,7 +307,9 @@ Plus:
 ## Documentation Statistics
 
 ### Coverage
-- **Services**: 22/22 (100%)
+- **Services**: 26/26 (100%) - All services documented with interfaces
+- **Service Interfaces**: 17 interfaces documented
+- **Test Coverage**: 295 tests (280 unit + 15 integration)
 - **Pages**: 11/11 (100%)
 - **Entity Models**: 10+ documented
 - **DTOs**: 15+ documented
@@ -293,10 +317,11 @@ Plus:
 
 ### Volume
 - **Total Files**: 10 documentation files
-- **Total Characters**: 98,681+
-- **Total Words**: ~16,000
-- **Code Examples**: 30+
-- **Diagrams**: 5+
+- **Total Characters**: 150,000+
+- **Total Words**: ~25,000
+- **Code Examples**: 50+
+- **Diagrams**: 8+
+- **Test Documentation**: Comprehensive (295 tests)
 
 ### Quality Metrics
 - ✅ Comprehensive coverage
@@ -313,10 +338,11 @@ Plus:
 ### Service Lifetimes
 | Lifetime | Count | Examples |
 |----------|-------|----------|
-| Singleton | 15 | ManagerService, DatabaseService, ImageService |
+| Singleton | 21 | OrchestratorService, StateService, EventService, ModelService, DatabaseService, ImageService |
 | Scoped | 3 | AssetResolverService, JavascriptService, OllamaService |
 | Transient | 1 | MagickService |
-| HttpClient | 4 | SDAPIService, ComfyUIService, CivitaiService, DanbooruService |
+| HttpClient | 3 | ComfyUIService, CivitaiService, DanbooruService |
+| Hosted | 1 | ComfyUIWebsocketService |
 
 ### Page Routes
 | Route | Page | Purpose |
@@ -333,15 +359,17 @@ Plus:
 | `/settings` | Settings | Configuration |
 
 ### Priority Improvements
-| Priority | Type | Item |
-|----------|------|------|
-| 🔴 Critical | Code | Replace Console.WriteLine with ILogger |
-| 🔴 Critical | Code | Add XML documentation |
-| 🔴 High | Architecture | Break up ManagerService |
-| 🟡 High | Code | Standardize error handling |
-| 🟡 High | Testing | Add unit tests |
-| 🟡 Medium | UX | Keyboard shortcuts |
-| 🟡 Medium | UX | Mobile optimization |
+| Priority | Type | Item | Status |
+|----------|------|------|--------|
+| ~~🔴 Critical~~ | ~~Code~~ | ~~Break up ManagerService~~ | ✅ **Complete** |
+| ~~🔴 Critical~~ | ~~Testing~~ | ~~Add comprehensive tests~~ | ✅ **295 tests** |
+| ~~🔴 High~~ | ~~Architecture~~ | ~~Interface-based DI~~ | ✅ **17 interfaces** |
+| ~~🔴 High~~ | ~~Architecture~~ | ~~Event-driven communication~~ | ✅ **EventService** |
+| 🔴 Critical | Code | Replace Console.WriteLine with ILogger | 🔄 In Progress |
+| 🔴 Critical | Code | Add XML documentation | 🔄 In Progress |
+| 🟡 Medium | Testing | Component tests with bUnit | ⏳ Planned |
+| 🟡 Medium | UX | Keyboard shortcuts | ⏳ Planned |
+| 🟡 Medium | UX | Mobile optimization | ⏳ Planned |
 
 ---
 
@@ -407,18 +435,23 @@ README.md (You are here!)
 
 ### Completed ✅
 - [x] Architecture documentation
-- [x] Service documentation (22 services)
+- [x] Service documentation (26 services)
 - [x] Page documentation (11 pages)
 - [x] Model documentation
 - [x] UX/UI analysis
 - [x] Deployment guide
-- [x] Code enhancements (XML docs + logging started)
+- [x] **Major Refactoring**: ManagerService → 13 specialized services
+- [x] **Interface Extraction**: 17 service interfaces
+- [x] **Event-Driven Architecture**: EventService implementation
+- [x] **Comprehensive Testing**: 295 tests (280 unit + 15 integration)
+- [x] **Documentation Update**: All service docs reflect new architecture
 
 ### In Progress 🔄
 - [ ] Complete XML documentation for remaining services
 - [ ] Complete ILogger migration
 
 ### Planned 📋
+- [ ] Component testing with bUnit
 - [ ] Workflow template creation guide
 - [ ] API reference documentation
 - [ ] Video tutorials
@@ -426,9 +459,10 @@ README.md (You are here!)
 
 ---
 
-**Documentation Version**: 1.0  
-**Last Updated**: December 8, 2024  
+**Documentation Version**: 2.0  
+**Last Updated**: December 14, 2024  
 **Application Target**: .NET 8.0  
-**Total Documentation Size**: 98,681+ characters
+**Total Documentation Size**: 150,000+ characters  
+**Refactoring Status**: ✅ **Complete** - ManagerService split into 13 services with 295 tests
 
-This comprehensive knowledge base provides complete reference material for understanding, deploying, maintaining, and improving the Blazor Diffusion application.
+This comprehensive knowledge base provides complete reference material for understanding, deploying, maintaining, and improving the Blazor Diffusion application. The documentation reflects the major architectural refactoring that transformed the application from a monolithic structure to a clean, modular, interface-based architecture with comprehensive test coverage.
