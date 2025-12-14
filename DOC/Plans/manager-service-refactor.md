@@ -1,7 +1,7 @@
 # ManagerService Split and Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 17 - IOrchestratorService Interface Extraction ? **COMPLETE**
+**Current Phase:** Phase 18 - Integration Tests ? **COMPLETE**
 **Last Updated:** 2025-01-16
 
 ---
@@ -128,86 +128,77 @@ Extract `IOrchestratorService` interface and migrate all consumers for consisten
 #### Scope Completed
 1. ? Created `IOrchestratorService` interface with all public methods
 2. ? Updated `OrchestratorService` to implement `IOrchestratorService`
-3. ? Migrated all components from `OrchestratorService` to `IOrchestratorService`:
-   - Components/Img2Vid/GeneratedVideoTabs.razor
-   - Components/Resources/CivitaiImageDialog.razor
-   - Components/Resources/ResourceImageDialog.razor
-   - Components/Shared/Generation/GeneratedImageTabs.razor
-   - Components/Shared/Generation/WorkflowAssetSelector.razor
-   - Components/Shared/Generation/WorkflowAssetsPanel.razor
-   - Components/Shared/Image/ImageInfoDialog.razor
-   - Components/Shared/Image/ImageViewer.razor
-   - Components/Shared/AssetViewer.razor
-   - Components/Shared/MainLayout.razor
-   - Components/Txt2Img/GenerateFormTxt2Img.razor
-   - Pages/Danbooru.razor
-   - Pages/Img2Img.razor
-   - Pages/Img2Vid.razor
-   - Pages/Txt2Img.razor
+3. ? Migrated all components from `OrchestratorService` to `IOrchestratorService`
 4. ? Updated DI registration in Program.cs (dual registration pattern)
 5. ? Created `OrchestratorServiceTests.cs` with 42 unit tests
 
-#### Tests Created (42 tests)
+### ? Phase 18: Integration Tests (Complete)
+**Completed:** 2025-01-16
+
+#### Objective
+Create integration tests that verify services work correctly together through real service coordination.
+
+#### Scope Completed
+1. ? Created `ServiceIntegrationTests.cs` in `BlazorWebApp.Tests/Integration/`
+2. ? State Persistence Round-Trip Tests (2 tests)
+3. ? Event Propagation Tests (3 tests)
+4. ? Progress Service Integration Tests (2 tests)
+5. ? Gallery and Session Service Integration Tests (3 tests)
+6. ? Multi-Service Workflow Tests (3 tests)
+7. ? Settings and State Interaction Tests (2 tests)
+
+#### Tests Created (15 tests)
 
 | Category | Tests | Description |
 |----------|-------|-------------|
-| Constructor | 2 | PageSize setup, DateRange initialization |
-| Event Publishing | 3 | InvokeParametersChanged, InvokeSessionVideosChanged |
-| Parameter Initialization | 1 | Delegation to StateService |
-| Model Management | 7 | GetWorkflowModels, GetSDVAEs, GetModelsForAssetType, GetCurrentModel, SetCurrentModel |
-| Workflow Management | 8 | GetCurrentWorkflow, GetWorkflowById, GetWorkflowsForMode, SetCurrentWorkflow, ResetCurrentWorkflow |
-| Workflow Assets | 5 | GetWorkflowAsset, SetWorkflowAsset, GetWorkflowAssetsForMode |
-| Gallery | 5 | GetFolders, ReplaceSelectedImages, AddSelectedImage, RemoveSelectedImage, ClearSelectedImages |
-| Session | 4 | ResetImageEditorState, SetImg2ImgInputImage, AddSessionVideo, ClearSessionVideos |
-| Settings | 2 | LoadSettings, SaveSettings |
-| State | 2 | LoadState, SaveState |
-| Styles & Prompts | 3 | SetLoras null handling, SetLoras adding, ParseAndCleanCopiedPrompt |
+| State Persistence | 2 | Save/Load round-trip, Img2Vid parameter persistence |
+| Event Propagation | 3 | Multiple subscribers, event type isolation, unsubscribe behavior |
+| Progress Integration | 2 | Converging state events, progress value events |
+| Gallery & Session | 3 | Selection events, input image events, video management |
+| Multi-Service | 3 | State change propagation, gallery isolation, session isolation |
+| Settings & State | 2 | Custom settings initialization, InitializeParameters with settings |
 
-#### Phase 17 Metrics
+#### Key Test Coverage Areas
 
-| Metric | Before Phase 17 | After Phase 17 | Change |
+| Test Area | Services Involved | Verification |
+|-----------|-------------------|--------------|
+| State Persistence | StateService, DatabaseService | Parameters survive save/load cycle |
+| Event Flow | EventService, ProgressService, SessionService, GalleryService | Events publish correctly to subscribers |
+| Progress Tracking | ProgressService, EventService | Converging and progress state events fire |
+| Gallery Selection | GalleryService, EventService | Selection changes publish events |
+| Session Videos | SessionService | Add/Remove/Clear video operations work |
+| Multi-Instance Isolation | GalleryService, SessionService | Service instances don't share state |
+| Settings Propagation | SettingsService, StateService | Settings affect parameter defaults |
+
+#### Phase 18 Metrics
+
+| Metric | Before Phase 18 | After Phase 18 | Change |
 |--------|-----------------|----------------|--------|
-| Unit tests | 223 | 265 | +42 ? |
-| Services with tests | 12 | 13 | +1 |
-| Services with interfaces | 11 | 12 | +1 ? |
-| Components using interface | 0 | 15 | +15 ? |
+| Unit tests | 265 | 280 | +15 ? |
+| Integration tests | 0 | 15 | +15 ? |
+| Test categories | 13 | 14 | +1 |
 | Build | ? | ? | - |
 
 ---
 
 ## Key Metrics Summary
 
-| Metric | Phase 1 Start | Phase 9.5 End | Phase 14 End | Phase 15 End | Phase 16 End | Phase 17 End |
-|--------|---------------|---------------|--------------|--------------|--------------|--------------|
-| Service name | ManagerService | ManagerService | ManagerService | OrchestratorService | OrchestratorService | OrchestratorService |
-| Service lines | ~1600 | ~450 | ~240 | ~240 | ~240 | ~240 |
-| Facade properties | 27 | 0 | 0 | 0 | 0 | 0 ? |
-| Orchestration properties | - | 14 | 0 | 0 | 0 | 0 ? |
-| Services extracted | 0 | 11 | 11 | 11 | 11 | 11 |
-| Services with interfaces | 0 | 11 | 11 | 11 | 11 | **12** ? |
-| Interface-only DI | - | 9 | 11 | 11 | 11 | **12** ? |
-| Unit tests | 0 | 150 | 150 | 198 | 223 | **265** ? |
-| Services with tests | 0 | 8 | 8 | 11 | 12 | **13** ? |
+| Metric | Phase 1 Start | Phase 9.5 End | Phase 14 End | Phase 15 End | Phase 16 End | Phase 17 End | Phase 18 End |
+|--------|---------------|---------------|--------------|--------------|--------------|--------------|--------------|
+| Service name | ManagerService | ManagerService | ManagerService | OrchestratorService | OrchestratorService | OrchestratorService | OrchestratorService |
+| Service lines | ~1600 | ~450 | ~240 | ~240 | ~240 | ~240 | ~240 |
+| Facade properties | 27 | 0 | 0 | 0 | 0 | 0 | 0 ? |
+| Orchestration properties | - | 14 | 0 | 0 | 0 | 0 | 0 ? |
+| Services extracted | 0 | 11 | 11 | 11 | 11 | 11 | 11 |
+| Services with interfaces | 0 | 11 | 11 | 11 | 11 | **12** | **12** ? |
+| Interface-only DI | - | 9 | 11 | 11 | 11 | **12** | **12** ? |
+| Unit tests | 0 | 150 | 150 | 198 | 223 | 265 | **280** ? |
+| Integration tests | 0 | 0 | 0 | 0 | 0 | 0 | **15** ? |
+| Services with tests | 0 | 8 | 8 | 11 | 12 | 13 | **14** ? |
 
 ---
 
 ## Future Work
-
-### Phase 18: Integration Tests (Proposed)
-**Priority: Medium** - Test multi-service workflows end-to-end.
-
-#### Objective
-Create integration tests that verify services work correctly together.
-
-#### Scope
-| Test Category | Description |
-|---------------|-------------|
-| Workflow Execution | Load template ? Render ? Execute |
-| State Persistence | Save ? Reload ? Verify round-trip |
-| Event Propagation | Publish ? Subscribe ? Handle across services |
-| Backend Integration | Health check ? Model loading ? Generation |
-
----
 
 ### Phase 19: ComfyUI/Civitai Service Tests (Proposed)
 **Priority: Low** - Requires HTTP mocking strategy.
@@ -263,7 +254,8 @@ Add component-level tests for Blazor UI components.
 | WorkflowService | WorkflowServiceTests.cs | 12 | Phase 15 |
 | RouterService | RouterServiceTests.cs | 10 | Phase 15 |
 | ImageService | ImageServiceTests.cs | 25 | Phase 16 |
-| **OrchestratorService** | **OrchestratorServiceTests.cs** | **42** | **Phase 17** ? |
+| OrchestratorService | OrchestratorServiceTests.cs | 42 | Phase 17 |
+| **Integration** | **ServiceIntegrationTests.cs** | **15** | **Phase 18** ? |
 
 ---
 
@@ -337,7 +329,8 @@ builder.Services.AddSingleton<IOrchestratorService>(sp => sp.GetRequiredService<
 | Phase 14 | Orchestration properties relocated | 150 |
 | Phase 15 | Renamed to OrchestratorService, expanded tests | 198 |
 | Phase 16 | ImageService test coverage | 223 |
-| **Phase 17** | **IOrchestratorService interface, 42 tests** | **265** ? |
+| Phase 17 | IOrchestratorService interface, 42 tests | 265 |
+| **Phase 18** | **Integration tests** | **280** ? |
 
 ---
 
