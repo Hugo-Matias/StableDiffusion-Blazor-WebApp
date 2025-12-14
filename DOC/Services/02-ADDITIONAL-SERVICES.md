@@ -27,60 +27,7 @@ The application has undergone a comprehensive refactoring where the original "Go
 
 ---
 
-### 6. WorkflowService
-
-**File**: `Services/WorkflowService.cs` (803 lines)  
-**Lifetime**: Singleton  
-**Role**: Workflow Template Management
-
-#### Purpose
-Manages ComfyUI workflow templates using Scriban templating engine. Parses workflow definitions and renders them with runtime parameters.
-
-#### Key Methods
-
-**Workflow Loading**:
-```csharp
-public List<Workflow> GetWorkflows()
-```
-Scans Templates directory for .sbn files and parses workflow definitions.
-
-**Template Parsing**:
-```csharp
-private Workflow ParseWorkflowTemplate(string templateText)
-private List<WorkflowAsset>? ParseAssetsFromTemplate(string templateText)
-private WorkflowAsset? ParseSingleAsset(string assetContent)
-```
-
-**Workflow Rendering**:
-```csharp
-public async Task<string> RenderWorkflow(Workflow workflow, Dictionary<string, object> parameters)
-```
-Processes Scriban template with provided parameters to generate ComfyUI workflow JSON.
-
-**Asset Management**:
-Workflows define required assets (models, LoRAs, etc.) through metadata:
-```json
-{
-  "Assets": [
-    {
-      "parameter": "checkpoint",
-      "label": "Checkpoint",
-      "type": "Checkpoint",
-      "default": "sd_xl_base_1.0.safetensors",
-      "order": 0,
-      "columnSize": 6
-    }
-  ]
-}
-```
-
-#### Dependencies
-- IOService: File system access
-- ILogger<WorkflowService>: Logging
-
----
-
-### 6. CivitaiService
+### 17. CivitaiService
 
 **File**: `Services/CivitaiService.cs` (429 lines)  
 **Lifetime**: HttpClient (Singleton)  
@@ -147,7 +94,7 @@ Retrieves model ID from file hash for version detection.
 
 ---
 
-### 7. IOService
+### 18. IOService
 
 **File**: `Services/IOService.cs` (295 lines)  
 **Interface**: `IIOService`  
@@ -215,7 +162,7 @@ Handles Windows/Linux path differences automatically.
 
 ---
 
-### 8. CacheService
+### 19. CacheService
 
 **File**: `Services/CacheService.cs` (559 lines)  
 **Interface**: `ICacheService`  
@@ -274,7 +221,7 @@ Caches model and resource metadata.
 
 ---
 
-### 10. ProgressService
+### 20. ProgressService
 
 **File**: `Services/ProgressService.cs` (30 lines)  
 **Lifetime**: Singleton  
@@ -297,7 +244,7 @@ Used by CivitaiService for download progress.
 
 ---
 
-### 11. RouterService
+### 21. RouterService
 
 **File**: `Services/RouterService.cs` (81 lines)  
 **Lifetime**: Singleton  
@@ -330,7 +277,7 @@ public async Task<GeneratedVideos> PostImg2Vid(Img2VidParameters param)
 
 ---
 
-### 12. ResourcesService
+### 22. ResourcesService
 
 **File**: `Services/ResourcesService.cs` (225 lines)  
 **Lifetime**: Singleton  
@@ -367,7 +314,7 @@ Supports organizing resources into sub-folders.
 
 ---
 
-### 13. ThemeService
+### 23. ThemeService
 
 **File**: `Services/ThemeService.cs` (199 lines)  
 **Lifetime**: Singleton  
@@ -392,7 +339,7 @@ public MudTheme GetCurrentTheme()
 
 ---
 
-### 14. MagickService
+### 24. MagickService
 
 **File**: `Services/MagickService.cs` (61 lines)  
 **Lifetime**: Transient  
@@ -416,7 +363,7 @@ public byte[] ConvertFormat(byte[] imageData, string format)
 
 ---
 
-### 15. ComfyUIWebsocketService
+### 25. ComfyUIWebsocketService
 
 **File**: `Services/ComfyUIWebsocketService.cs` (191 lines)  
 **Lifetime**: Singleton (also Hosted Service)  
@@ -445,7 +392,7 @@ Automatically reconnects on connection loss.
 
 ---
 
-### 16. ComfyUIEventBus
+### 26. ComfyUIEventBus
 
 **File**: `Services/ComfyUIEventBus.cs` (14 lines)  
 **Lifetime**: Singleton  
@@ -470,7 +417,7 @@ public void OnProgressUpdated(Guid promptId, int current, int total)
 
 ---
 
-### 17. OllamaService
+### 27. OllamaService
 
 **File**: `Services/OllamaService.cs` (178 lines)  
 **Lifetime**: Scoped  
@@ -494,7 +441,7 @@ public async Task<List<string>> GetAvailableModels()
 
 ---
 
-### 18. JavascriptService
+### 28. JavascriptService
 
 **File**: `Services/JavascriptService.cs` (22 lines)  
 **Lifetime**: Scoped  
@@ -513,7 +460,7 @@ public async ValueTask SetLocalStorage(string key, string value)
 
 ---
 
-### 19. AssetResolverService
+### 29. AssetResolverService
 
 **File**: `Services/AssetResolverService.cs` (258 lines)  
 **Lifetime**: Scoped  
@@ -536,7 +483,7 @@ Maps asset types to model categories and provides UI for selection.
 
 ---
 
-### 20. CsvService
+### 30. CsvService
 
 **File**: `Services/CsvService.cs` (134 lines)  
 **Lifetime**: Singleton  
@@ -554,7 +501,7 @@ public async Task ExportData<T>(string path, IEnumerable<T> data)
 
 ---
 
-### 21. DanbooruService
+### 31. DanbooruService
 
 **File**: `Services/DanbooruService.cs` (43 lines)  
 **Lifetime**: HttpClient (Singleton)  
@@ -575,7 +522,7 @@ public async Task<DanbooruResponseDto> GetPosts(DanbooruRequest req)
 
 ---
 
-### 22. DynamicPromptsService
+### 32. DynamicPromptsService
 
 **File**: `Services/DynamicPromptsService.cs` (20 lines)  
 **Lifetime**: Singleton  
