@@ -1,87 +1,161 @@
 @using static BlazorWebApp.Data.Enums
 @using BlazorWebApp.Events
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Extensions
+@using BlazorWebApp.Components.Prompts.Styles
 @inject IStateService State
 @inject IEventService Events
 @inject IDatabaseService DB
 @inject IDialogService DialogService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<MudStack Class="pa-3 mb-4" Row>
-    <MudTextField Value=_searchPositive ValueChanged=@(async (v) => await HandleSearch(v, isPositive: true)) T="string" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" Label="Positive" Immediate />
-    <MudTextField Value=_searchNegative ValueChanged=@(async (v) => await HandleSearch(v, isPositive: false)) T="string" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" Label="Negative" Immediate />
-</MudStack>
-<MudGrid Class="pa-3">
-    <MudButton Variant="Variant.Text" Color="Color.Info" Class="pa-5" OnClick="async () => await ShowPromptDialog(null)">
-        <MudStack Class="d-flex flex-column align-items-center">
-            <MudText Typo="Typo.caption">Add Prompt</MudText>
-            <MudIcon Icon="fa-solid fa-plus" Class="mb-4" />
-        </MudStack>
-    </MudButton>
-    @if (_prompts != null)
-    {
-        foreach (var prompt in _prompts)
-        {
-            <ResourceCard Resource="prompt" OnLoad="async () => await ShowPromptDialog(prompt)" />
-        }
-    }
-</MudGrid>
+<div @ref="_containerRef" tabindex="-1" class="prompts-panel-container">
+    <MudGrid Spacing="2">
+        @* Category Browser Sidebar *@
+        <MudItem xs="12" md="3">
+            <CategoryBrowser @ref="_categoryBrowser" 
+                             OnCategorySelected="HandleCategorySelected" />
+        </MudItem>
+        
+        @* Main Content Area *@
+        <MudItem xs="12" md="9">
+            <PromptStyleTable @ref="_promptStyleTable"
+                              SelectedCategory="@_selectedCategory"
+                              OnCategoryFilterChanged="HandleCategoryFilterChanged"
+                              OnPromptChanged="HandlePromptChanged" />
+        </MudItem>
+    </MudGrid>
+</div>
 
 @code {
-    private List<PromptResource> _prompts = new();
-    private string _searchPositive, _searchNegative;
+    private CategoryBrowser? _categoryBrowser;
+    private PromptStyleTable? _promptStyleTable;
+    private string? _selectedCategory;
+    private ElementReference _containerRef;
+    private IJSObjectReference? _jsModule;
+    private DotNetObjectReference<PromptsPanel>? _dotNetRef;
+    private bool _isDisposed;
 
-    protected async override Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await GetPrompts();
-    }
-
-    private async Task GetPrompts()
-    {
-        _prompts.Clear();
-        var response = await DB.GetPrompts(_searchPositive, _searchNegative);
-        foreach (var prompt in response)
+        if (firstRender && !_isDisposed)
         {
-            _prompts.Add(new(prompt));
-        }
-    }
-
-    private async Task HandleSearch(string value, bool isPositive)
-    {
-        if (isPositive) _searchPositive = value;
-        else _searchNegative = value;
-        await GetPrompts();
-    }
-
-    private async Task ShowPromptDialog(PromptResource? prompt)
-    {
-        if (prompt == null) prompt = new();
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
-        var param = new DialogParameters();
-        param.Add("Prompt", prompt);
-        var dialog = await DialogService.ShowAsync<PromptDialog>("", param, options);
-        var result = await dialog.Result;
-        if (!result.Canceled)
-        {
-            switch (result.Data)
+            try
             {
-                case "Create":
-                    await DB.CreatePrompt(new(prompt));
-                    break;
-                case "Delete":
-                    await DB.DeletePrompt(prompt.Id);
-                    break;
-                case "Txt2Img":
-                    State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
-                    State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
-                    break;
-                case "Img2Img":
-                    State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, prompt.Positive);
-                    State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, prompt.Negative);
-                    break;
+                _dotNetRef = DotNetObjectReference.Create(this);
+                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/KeyboardShortcuts.js");
+                await _jsModule.InvokeVoidAsync("initializeKeyboardShortcuts", _containerRef, _dotNetRef);
+            }
+            catch (Exception)
+            {
+                // Keyboard shortcuts failed to initialize, but component still works
             }
         }
-        await GetPrompts();
+    }
+
+    private async Task HandleCategorySelected(string? category)
+    {
+        _selectedCategory = category;
+        StateHasChanged();
+    }
+
+    private async Task HandleCategoryFilterChanged(string? category)
+    {
+        _selectedCategory = category;
+        StateHasChanged();
+    }
+
+    private async Task HandlePromptChanged()
+    {
+        // Refresh both components when a prompt is added/edited/deleted
+        if (_categoryBrowser != null)
+            await _categoryBrowser.RefreshCategories();
+        
+        if (_promptStyleTable != null)
+            await _promptStyleTable.RefreshPrompts();
+        
         // Notify PromptFields to reload styles from DB
         Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptsUpdated" });
+        
         await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task ApplyPinnedPromptByIndex(int index)
+    {
+        try
+        {
+            var pinnedPrompts = await DB.GetPinnedPrompts();
+            if (index >= 0 && index < pinnedPrompts.Count)
+            {
+                var prompt = pinnedPrompts[index];
+                
+                // Apply to Txt2Img by default (Ctrl+1-9)
+                State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
+                State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
+                
+                // Update usage tracking
+                await DB.UpdatePromptUsage(prompt.Id);
+                
+                // Notify that prompts were updated
+                Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptApplied" });
+                
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception)
+        {
+            // Silently handle errors
+        }
+    }
+
+    [JSInvokable]
+    public async Task ApplyPinnedPromptToImg2ImgByIndex(int index)
+    {
+        try
+        {
+            var pinnedPrompts = await DB.GetPinnedPrompts();
+            if (index >= 0 && index < pinnedPrompts.Count)
+            {
+                var prompt = pinnedPrompts[index];
+                
+                // Apply to Img2Img (Ctrl+Shift+1-9)
+                State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, prompt.Positive);
+                State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, prompt.Negative);
+                
+                // Update usage tracking
+                await DB.UpdatePromptUsage(prompt.Id);
+                
+                // Notify that prompts were updated
+                Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptApplied" });
+                
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception)
+        {
+            // Silently handle errors
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _isDisposed = true;
+        
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("dispose");
+                await _jsModule.DisposeAsync();
+            }
+            catch (Exception) { }
+            
+            _jsModule = null;
+        }
+        
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
     }
 }

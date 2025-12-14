@@ -1,6 +1,8 @@
 @using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Extensions
 @inject IDatabaseService DB
 @inject IDialogService DialogService
+@inject IStateService State
 
 <MudStack Spacing="3">
     @* Quick Access Bar - Pinned Items *@
@@ -370,6 +372,19 @@
     
     private async Task HandleApply((Prompt prompt, bool isImg2Img) args)
     {
+        // Apply prompt to generation parameters
+        if (args.isImg2Img)
+        {
+            State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, args.prompt.Positive);
+            State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, args.prompt.Negative);
+        }
+        else
+        {
+            State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, args.prompt.Positive);
+            State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, args.prompt.Negative);
+        }
+        
+        // Update usage tracking is already handled in the card component
         await OnPromptChanged.InvokeAsync();
     }
     

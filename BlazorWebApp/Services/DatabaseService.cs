@@ -719,10 +719,14 @@ namespace BlazorWebApp.Services
             if (string.IsNullOrWhiteSpace(query))
                 return await context.Prompts.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
             
-            // Simple keyword expansion - split by spaces and search for each keyword
+            // Load all prompts into memory first to avoid EF Core translation issues with complex LINQ
+            var allPrompts = await context.Prompts.ToListAsync();
+            
+            // Split query into keywords
             var keywords = query.ToLower().Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
             
-            var results = await context.Prompts
+            // Filter in memory where we can use complex LINQ operations
+            var results = allPrompts
                 .Where(p => keywords.Any(k => 
                     (p.Title != null && p.Title.ToLower().Contains(k)) ||
                     (p.Positive != null && p.Positive.ToLower().Contains(k)) ||
@@ -731,7 +735,7 @@ namespace BlazorWebApp.Services
                     (p.Tags != null && p.Tags.Any(t => t.ToLower().Contains(k)))))
                 .OrderByDescending(p => p.IsFavorite)
                 .ThenBy(p => p.Title)
-                .ToListAsync();
+                .ToList();
             
             return results;
         }

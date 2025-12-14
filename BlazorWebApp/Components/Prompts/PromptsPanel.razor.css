@@ -1,0 +1,15 @@
+.prompts-panel-container {
+    outline: none;
+    min-height: 80vh;
+}
+
+.prompts-panel-container:focus {
+    outline: none;
+}
+
+/* Ensure the grid layout is responsive */
+@media (max-width: 960px) {
+    .prompts-panel-container .mud-grid-item {
+        padding: 8px !important;
+    }
+}
