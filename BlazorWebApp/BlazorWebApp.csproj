@@ -59,6 +59,7 @@
 
   <ItemGroup>
     <Folder Include="Data\Dictionaries\" />
+    <Folder Include="Scripts\" />
   </ItemGroup>
 
 </Project>

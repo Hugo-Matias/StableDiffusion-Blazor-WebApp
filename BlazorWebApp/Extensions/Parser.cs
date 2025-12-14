@@ -1,6 +1,5 @@
-﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
-using BlazorWebApp.Data.Dtos.WebUI;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
@@ -14,56 +13,6 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
-        public static string CreateScriptParameters(this string payloadKey, ref SharedParameters parameters, BaseScriptParameters scriptParam, bool ignoreBaseParam = false)
-        {
-            if (scriptParam != null && scriptParam.IsEnabled)
-            {
-                var argsArray = scriptParam.GetType().GetProperties().Select(p => p.GetValue(scriptParam, null)).ToArray();
-                // Since the shared ScriptParameteresBase properties are loaded last and order is important, we need to reorder them
-                var tempList = argsArray.ToList();
-                if (scriptParam.IsAlwaysOn)
-                {
-                    // Last element at this point is BaseScriptParameters.IsAlwaysOn, since we don't need the value in the payload it's just discarded
-                    tempList.RemoveAt(tempList.Count - 1);
-                    // Last element at this point is BaseScriptParameters.IsEnabled, the value we need move to top or remove
-                    if (ignoreBaseParam) tempList.RemoveAt(tempList.Count - 1);
-                    else
-                    {
-                        var isEnabledValue = tempList[tempList.Count - 1];
-                        tempList.RemoveAt(tempList.Count - 1);
-                        tempList.Insert(0, isEnabledValue);
-                    }
-
-                    //Expand MultiDiffusion box region controls
-                    if (payloadKey == "Tiled Diffusion")
-                    {
-                        var controls = tempList[tempList.Count - 1];
-                        tempList.RemoveAt(tempList.Count - 1);
-                        foreach (var control in (List<ScriptParametersMultiDiffusionBBoxControl>)controls)
-                        {
-                            tempList.AddRange(control.GetType().GetProperties().Select(p => p.GetValue(control, null)).ToArray());
-                        }
-                    }
-
-                    argsArray = tempList.ToArray();
-                    var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
-                    if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
-                    else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
-                }
-                else
-                {
-                    // Remove the 2 shared values from the payload since they are not needed on triggered scripts like Ultimate Upscale
-                    tempList.RemoveAt(tempList.Count - 1);
-                    tempList.RemoveAt(tempList.Count - 1);
-                    argsArray = tempList.ToArray();
-                    parameters.ScriptName = payloadKey;
-                    parameters.ScriptArgs = argsArray;
-                    return payloadKey;
-                }
-            }
-            return string.Empty;
-        }
-
         public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.').Trim();
 
         public static string NormalizePath(this string path)
@@ -97,23 +46,6 @@ namespace BlazorWebApp.Extensions
 
             if (param.Seed == -1) param.Seed = new Random().Next(0, int.MaxValue);
             return param;
-        }
-
-        public static void ParseDetailerModelLoras(this ScriptParametersADetailer detailer)
-        {
-            void ParseModelPrompts(ScriptParametersADetailerModel model)
-            {
-                if (model == null) return;
-                (var prompt, var negative) = model.Loras != null && model.Loras.Count > 0 ? model.Loras.ParseLoras() : (string.Empty, string.Empty);
-                model.Prompt += prompt;
-                model.NegativePrompt += negative;
-            }
-
-            ParseModelPrompts(detailer.Model1);
-            ParseModelPrompts(detailer.Model2);
-            ParseModelPrompts(detailer.Model3);
-            ParseModelPrompts(detailer.Model4);
-            ParseModelPrompts(detailer.Model5);
         }
 
         public static void ParseComfyDetailerLoras(this DetailerParameters detailer)

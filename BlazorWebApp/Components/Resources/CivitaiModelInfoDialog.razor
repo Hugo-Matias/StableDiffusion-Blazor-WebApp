@@ -1,5 +1,5 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
+@inject IStateService State
+@inject IDatabaseService DB
 
 <div>
     <MudDialog Style="min-width: 90vw; min-height: 90vh;" Class="pa-5">
@@ -76,6 +76,6 @@
     protected async override Task OnInitializedAsync()
     {
         var entity = await DB.GetResourceByCivitaiModelId(Model.Id);
-        if (entity != null) M.State.Civitai.ResourceSubtype = entity.SubType != null ? entity.SubType.Name : "";
+        if (entity != null) State.State.Civitai.ResourceSubtype = entity.SubType != null ? entity.SubType.Name : "";
     }
 }

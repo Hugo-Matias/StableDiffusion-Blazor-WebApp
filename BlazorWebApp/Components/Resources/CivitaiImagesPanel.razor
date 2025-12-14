@@ -1,4 +1,4 @@
-﻿@inject ManagerService M
+﻿@inject IStateService State
 @inject CivitaiService Api
 
 <div>
@@ -58,10 +58,10 @@
     {
         <LoadingSpinner />
     }
-    else if (M.CivitaiImages != null && M.CivitaiImages.Images != null && M.CivitaiImages.Images.Count > 0)
+    else if (_images != null && _images.Images != null && _images.Images.Count > 0)
     {
         <MudGrid Class="images-container">
-            @foreach (var img in M.CivitaiImages.Images)
+            @foreach (var img in _images.Images)
             {
                 <CivitaiImageCard Image="img" OnSaveImage="SaveImage"/>
             }
@@ -72,6 +72,7 @@
 @code {
     public CivitaiImagesRequest Request { get; set; }
     private bool _isSearching;
+    private CivitaiImagesDto _images;
 
     protected override void OnInitialized()
     {
@@ -82,8 +83,8 @@
     {
         _isSearching = true;
         SetState();
-        M.CivitaiImages = await Api.GetImages(Request);
-        await M.SaveState();
+        _images = await Api.GetImages(Request);
+        await State.SaveState();
         _isSearching = false;
     }
 
@@ -95,27 +96,27 @@
     private void LoadState()
     {
         Request = new();
-        Request.Limit = M.State.Civitai.Images.Limit;
-        Request.PostId = M.State.Civitai.Images.PostId;
-        Request.ModelId = M.State.Civitai.Images.ModelId;
-        Request.ModelVersionId = M.State.Civitai.Images.ModelVersionId;
-        Request.Username = M.State.Civitai.Images.Username;
-        Request.Nsfw = M.State.Civitai.Images.Nsfw;
-        Request.Sort = M.State.Civitai.Images.Sort;
-        Request.Period = M.State.Civitai.Images.Period;
-        Request.Page = M.State.Civitai.Images.Page;
+        Request.Limit = State.State.Civitai.Images.Limit;
+        Request.PostId = State.State.Civitai.Images.PostId;
+        Request.ModelId = State.State.Civitai.Images.ModelId;
+        Request.ModelVersionId = State.State.Civitai.Images.ModelVersionId;
+        Request.Username = State.State.Civitai.Images.Username;
+        Request.Nsfw = State.State.Civitai.Images.Nsfw;
+        Request.Sort = State.State.Civitai.Images.Sort;
+        Request.Period = State.State.Civitai.Images.Period;
+        Request.Page = State.State.Civitai.Images.Page;
     }
 
     private void SetState()
     {
-        M.State.Civitai.Images.Limit = Request.Limit;
-        M.State.Civitai.Images.PostId = (int)Request.PostId;
-        M.State.Civitai.Images.ModelId = (int)Request.ModelId;
-        M.State.Civitai.Images.ModelVersionId = (int)Request.ModelVersionId;
-        M.State.Civitai.Images.Username = Request.Username;
-        M.State.Civitai.Images.Nsfw = (CivitaiNsfw)Request.Nsfw;
-        M.State.Civitai.Images.Sort = (CivitaiImageSort)Request.Sort;
-        M.State.Civitai.Images.Period = (CivitaiPeriod)Request.Period;
-        M.State.Civitai.Images.Page = Request.Page;
+        State.State.Civitai.Images.Limit = Request.Limit;
+        State.State.Civitai.Images.PostId = (int)Request.PostId;
+        State.State.Civitai.Images.ModelId = (int)Request.ModelId;
+        State.State.Civitai.Images.ModelVersionId = (int)Request.ModelVersionId;
+        State.State.Civitai.Images.Username = Request.Username;
+        State.State.Civitai.Images.Nsfw = (CivitaiNsfw)Request.Nsfw;
+        State.State.Civitai.Images.Sort = (CivitaiImageSort)Request.Sort;
+        State.State.Civitai.Images.Period = (CivitaiPeriod)Request.Period;
+        State.State.Civitai.Images.Page = Request.Page;
     }
 }

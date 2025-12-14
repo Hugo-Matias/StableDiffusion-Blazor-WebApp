@@ -1,13 +1,13 @@
 ﻿@using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
-@inject ManagerService M
+@inject ISettingsService Settings
 
 <MudText Typo="Typo.button" Style="opacity:0.2;">Conditioning Variation</MudText>
 <MudGrid>
     <MudItem xs="12">
         <MudSlider @bind-Value=Parameters.SwitchPoint
-                   Min=M.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Min
-                   Max=M.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Max
-                   Step=M.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Step
+                   Min=Settings.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Min
+                   Max=Settings.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Max
+                   Step=Settings.Settings.Generation.Txt2Img.ConditioningVariation.SwitchPoint.Step
                    ValueLabel=true>
             <small>Empty Prompt Duration:</small> @((Parameters.SwitchPoint * 100).Value.ToString("F0"))% (@Parameters.SwitchPoint.Value.ToString("F2"))
         </MudSlider>

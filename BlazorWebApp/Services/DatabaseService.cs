@@ -7,20 +7,18 @@ using Sampler = BlazorWebApp.Models.Sampler;
 
 namespace BlazorWebApp.Services
 {
-    public class DatabaseService
+    public class DatabaseService : IDatabaseService
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
-        private readonly SDAPIService _api;
-        private readonly ComfyUIService _capi;
+        private readonly IComfyUIService _capi;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DatabaseService> _logger;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, ComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
         {
             _factory = factory;
-            _api = api;
             _capi = capi;
             _configuration = configuration;
             _logger = logger;
@@ -68,8 +66,8 @@ namespace BlazorWebApp.Services
         public async Task<List<Project>> GetProjects(int folderId = 0)
         {
             using var context = await _factory.CreateDbContextAsync();
-            if (folderId <= 0) return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();
-            else return await context.Projects.Where(p => p.FolderId == folderId).OrderBy(p => p.CreationTime).ToListAsync();
+            if (folderId <= 0) return await context.Projects.OrderByDescending(p => p.CreationTime).ToListAsync();
+            else return await context.Projects.Where(p => p.FolderId == folderId).OrderByDescending(p => p.CreationTime).ToListAsync();
         }
 
         public async Task<Project> GetProject(int id)
@@ -577,20 +575,19 @@ namespace BlazorWebApp.Services
             var samplers = new List<Sampler>();
             try
             {
-                samplers = await _api.GetSamplers();
-            }
-            catch (Exception) { }
-
-            try
-            {
                 samplers = await _capi.GetSamplers();
             }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not retrieve samplers from ComfyUI backend.");
+            }
 
             if (samplers.Count == 0)
             {
-                _logger.LogError("Could not retrieve samplers, no backend available.");
+                _logger.LogWarning("No samplers retrieved, backend may not be available.");
+                return;
             }
+
             using var context = await _factory.CreateDbContextAsync();
             foreach (var sampler in samplers)
             {
@@ -907,11 +904,21 @@ namespace BlazorWebApp.Services
         public async Task<State?> GetState(int id)
         {
             using var context = await _factory.CreateDbContextAsync();
-            var state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync(s => s.Id == id);
+            var stateVersion = int.Parse(_configuration["StateVersion"]);
+            
+            var state = await context.States
+                .Where(s => s.Version == stateVersion)
+                .FirstOrDefaultAsync(s => s.Id == id);
+            
+            // Fallback: If ID 1 requested (AutoSave) and not found, get latest AutoSave for current version
             if (state == null && id == 1)
             {
-                state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync();
+                state = await context.States
+                    .Where(s => s.Version == stateVersion && s.Title == "AutoSave")
+                    .OrderByDescending(s => s.CreationDate)
+                    .FirstOrDefaultAsync();
             }
+            
             return state;
         }
 

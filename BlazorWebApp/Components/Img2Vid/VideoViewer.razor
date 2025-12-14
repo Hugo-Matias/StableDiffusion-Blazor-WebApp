@@ -1,5 +1,5 @@
-@inject IOService IO
-@inject DatabaseService DB
+@inject IIOService IO
+@inject IDatabaseService DB
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -143,7 +143,7 @@
                                 {
                                     <div class="meta-item" title="Resolution">
                                         <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
-                                        <span>@CurrentVideo.Width × @CurrentVideo.Height</span>
+                                        <span>@CurrentVideo.Width ï¿½ @CurrentVideo.Height</span>
                                     </div>
                                 }
                                 @if (CurrentVideo.FrameCount > 0)

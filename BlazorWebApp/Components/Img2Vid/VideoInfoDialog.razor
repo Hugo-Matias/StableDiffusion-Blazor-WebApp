@@ -1,4 +1,4 @@
-@inject IOService IO
+@inject IIOService IO
 
 <MudDialog>
     <TitleContent>
@@ -19,7 +19,7 @@
                 <MudItem xs="12" md="6">
                     <MudStack Spacing="2">
                         <MudTextField Value="@Video.Filename" Label="Filename" ReadOnly Variant="Variant.Outlined" />
-                        <MudTextField Value="@($"{Video.Width}×{Video.Height}")" Label="Resolution" ReadOnly Variant="Variant.Outlined" />
+                        <MudTextField Value="@($"{Video.Width}ï¿½{Video.Height}")" Label="Resolution" ReadOnly Variant="Variant.Outlined" />
                         <MudTextField Value="@Video.FrameCount.ToString()" Label="Frames" ReadOnly Variant="Variant.Outlined" />
                         <MudTextField Value="@($"{Video.FrameRate} fps")" Label="Frame Rate" ReadOnly Variant="Variant.Outlined" />
                         <MudTextField Value="@($"{Video.Duration:F2}s")" Label="Duration" ReadOnly Variant="Variant.Outlined" />

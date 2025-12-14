@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using Microsoft.AspNetCore.WebUtilities;
@@ -15,21 +16,21 @@ namespace BlazorWebApp.Services
     {
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
-        private readonly ImageService _img;
-        private readonly IOService _io;
-        private readonly ManagerService _m;
-        private readonly DatabaseService _db;
-        private readonly ProgressService _progress;
+        private readonly IImageService _img;
+        private readonly IIOService _io;
+        private readonly IEventService _events;
+        private readonly IDatabaseService _db;
+        private readonly IProgressService _progress;
         private readonly ILogger<CivitaiService> _logger;
         private readonly List<string> _ignoreFileType = new() { "config" };
         private readonly List<CivitaiModelType> _ignoreModelTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
 
-        public CivitaiService(HttpClient httpClient, IConfiguration configuration, ImageService img, IOService io, ManagerService m, DatabaseService db, ProgressService progress, ILogger<CivitaiService> logger)
+        public CivitaiService(HttpClient httpClient, IConfiguration configuration, IImageService img, IIOService io, IEventService events, IDatabaseService db, IProgressService progress, ILogger<CivitaiService> logger)
         {
             _configuration = configuration;
             _img = img;
             _io = io;
-            _m = m;
+            _events = events;
             _db = db;
             _logger = logger;
             _progress = progress;
@@ -354,14 +355,17 @@ namespace BlazorWebApp.Services
         }
 
         #region For Development
-        public async Task UpdateResourceDescriptions()
+        public async Task UpdateResourceDescriptions(Action<int> onProgress = null)
         {
             var resources = await _db.GetResources();
             var index = 0;
             foreach (var entity in resources.Where(r => r.CivitaiModelVersionId != null))
             {
                 index++;
-                _m.CurrentProgress = (index * 100) / resources.Count;
+                var progress = (index * 100) / resources.Count;
+                onProgress?.Invoke(progress);
+                _events.Publish(new ProgressChangedEventArgs(progress));
+                
                 var resource = await GetModelVersion((int)entity.CivitaiModelVersionId);
                 if (resource != null)
                 {
@@ -369,7 +373,7 @@ namespace BlazorWebApp.Services
                     await _db.UpdateResource(entity);
                 }
             }
-            _m.CurrentProgress = 0;
+            _events.Publish(new ProgressChangedEventArgs(0));
         }
 
         public async Task UpdateResourceState()
@@ -393,7 +397,7 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public async Task UpdateResourceBaseModels()
+        public async Task UpdateResourceBaseModels(Action<int> onProgress = null)
         {
             var resources = await _db.GetResources();
             var index = 0;
@@ -401,7 +405,9 @@ namespace BlazorWebApp.Services
             foreach (var entity in resources.Where(r => r.CivitaiModelVersionId != null && string.IsNullOrEmpty(r.BaseModel)))
             {
                 index++;
-                _m.CurrentProgress = (index * 100) / resources.Count;
+                var progress = (index * 100) / resources.Count;
+                onProgress?.Invoke(progress);
+                _events.Publish(new ProgressChangedEventArgs(progress));
 
                 try
                 {
@@ -420,7 +426,7 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            _m.CurrentProgress = 0;
+            _events.Publish(new ProgressChangedEventArgs(0));
         }
         #endregion
     }

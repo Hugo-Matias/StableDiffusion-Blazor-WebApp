@@ -8,27 +8,24 @@ namespace BlazorWebApp.Services
 {
     public class CsvService
     {
-        private readonly ManagerService _m;
+        private readonly IBackendService _backend;
         private readonly IConfiguration _configuration;
-        private readonly CacheService _cacheService;
+        private readonly ICacheService _cacheService;
         private readonly Schema _schema;
         private readonly CsvDataReaderOptions _options;
         private readonly string _path;
         private readonly string _fileName;
 
-        public CsvService(ManagerService m, IConfiguration configuration, CacheService cacheService)
+        public CsvService(IBackendService backend, IConfiguration configuration, ICacheService cacheService)
         {
-            _m = m;
+            _backend = backend;
             _configuration = configuration;
             _cacheService = cacheService;
             _schema = Schema.Parse("Name,Color,Uses,Aliases");
             _options = new CsvDataReaderOptions() { Schema = new CsvSchema(_schema), HasHeaders = false };
 
-            if (_m.IsWebuiUp)
-            {
-                _path = Path.Join(_m.CmdFlags.BaseDir, @"extensions\a1111-sd-webui-tagcomplete\tags\danbooru.csv");
-            }
-            else if (_m.IsComfyUIUp)
+            // ComfyUI only - WebUI removed
+            if (_backend.IsBackendAvailable)
             {
                 _path = Path.Join(_configuration["ComfyUIPath"], "danbooru.csv");
             }

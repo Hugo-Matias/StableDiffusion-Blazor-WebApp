@@ -1,7 +1,10 @@
 ﻿@page "/"
-@inject DatabaseService DB
-@inject ManagerService M
-@inject ProgressService ProgressService
+@using BlazorWebApp.Events
+@inject IDatabaseService DB
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IEventService Events
+@inject IProgressService ProgressService
 @inject IJSRuntime JS
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -14,7 +17,7 @@
 {
     <LoadingSpinner />
 }
-else if (_projects.Count() == 0 && M.State.Gallery.FolderId == 0)
+else if (_projects.Count() == 0 && State.State.Gallery.FolderId == 0)
 {
     <MudContainer Class="d-flex flex-column align-items-center justify-content-center" Style="height: 50vh">
         <MudPaper Class="pa-10 d-flex flex-column align-items-center" MaxWidth="30vw" Elevation="5">
@@ -35,7 +38,7 @@ else
                      OnPageSizeChanged="HandlePageSizeChanged"/>
     @if (images != null && images.Images != null && images.Images.Count > 0)
     {
-        @if (M.State.Gallery.UseInfiniteScroll)
+        @if (State.State.Gallery.UseInfiniteScroll)
         {
             <InfiniteScrollMasonry Images="@images" 
                                    OnLoadNextPage="LoadNextPage"
@@ -76,16 +79,16 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        DB.PageSize = M.State.Gallery.PageSize;
-        M.OnProjectChangeTask += HandleProjectChanged;
-        M.OnStateHasChanged += Refresh;
-        M.OnSelectedImagesChanged += RefreshUI;
+        DB.PageSize = State.State.Gallery.PageSize;
+        Events.Subscribe<ProjectChangedEventArgs>(OnProjectChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
         await LoadProjects();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && M.State.Gallery.UseInfiniteScroll)
+        if (firstRender && State.State.Gallery.UseInfiniteScroll)
         {
             await InitializeInfiniteScroll();
         }
@@ -103,37 +106,36 @@ else
 
     private async Task<ImagesDto> FetchImagesPage(int page)
     {
-        if (M.IsGalleryFiltered)
+        if (Gallery.IsGalleryFiltered)
         {
-            if (M.State.Gallery.IsSelectedOnly)
-                return await DB.GetPagedImages(page, M.SelectedImageIds);
+            if (State.State.Gallery.IsSelectedOnly)
+                return await DB.GetPagedImages(page, Gallery.SelectedImageIds);
             else
-                return await DB.GetSortedImages(page, M.State.Gallery.ProjectId, M.State.Gallery);
+                return await DB.GetSortedImages(page, State.State.Gallery.ProjectId, State.State.Gallery);
         }
-        return await DB.GetPagedImages(page, M.State.Gallery.ProjectId);
+        return await DB.GetPagedImages(page, State.State.Gallery.ProjectId);
     }
 
     private async Task LoadProjects()
     {
-        _projects = await DB.GetProjects(M.State.Gallery.FolderId);
-        await M.GetProjects();
+        _projects = await DB.GetProjects(State.State.Gallery.FolderId);
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
         currentImgPage = 1;
         await LoadImages(false);
     }
 
     private async Task FilterImages(bool resetFilter)
     {
-        M.IsGalleryFiltered = !resetFilter;
-        await M.SaveState();
+        Gallery.IsGalleryFiltered = !resetFilter;
+        await State.SaveState();
 
         currentImgPage = 1;
         images = await FetchImagesPage(1);
 
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
-        M.InvokeRefreshImagesContainer();
 
-        if (M.State.Gallery.UseInfiniteScroll)
+        if (State.State.Gallery.UseInfiniteScroll)
         {
             await EnsureEnoughContent();
         }
@@ -149,9 +151,8 @@ else
 
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
-        M.InvokeRefreshImagesContainer();
 
-        if (!append && M.State.Gallery.UseInfiniteScroll)
+        if (!append && State.State.Gallery.UseInfiniteScroll)
         {
             await EnsureEnoughContent();
         }
@@ -224,12 +225,11 @@ else
         images = await FetchImagesPage(page);
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
-        M.InvokeRefreshImagesContainer();
     }
 
     private async Task HandleNavigationModeChanged()
     {
-        if (M.State.Gallery.UseInfiniteScroll)
+        if (State.State.Gallery.UseInfiniteScroll)
         {
             await InitializeInfiniteScroll();
             await EnsureEnoughContent();
@@ -247,15 +247,39 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task HandleProjectChanged()
+    private void OnProjectChanged(ProjectChangedEventArgs args)
     {
-        currentImgPage = 1;
-        await LoadImages(false);
+        _ = HandleProjectChangedAsync();
     }
 
-    private async void Refresh() => await InvokeAsync(async () => await LoadImages(false));
+    private void OnStateChanged(StateChangedEventArgs args)
+    {
+        _ = RefreshAsync();
+    }
 
-    private async void RefreshUI() => await InvokeAsync(StateHasChanged);
+    private void OnImageSelectionChanged(ImageSelectionChangedEventArgs args)
+    {
+        RefreshUI();
+    }
+
+    private async Task HandleProjectChangedAsync()
+    {
+        // Reload projects to ensure UI is in sync
+        _projects = await DB.GetProjects(State.State.Gallery.FolderId);
+        currentImgPage = 1;
+        await LoadImages(false);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshAsync()
+    {
+        await InvokeAsync(async () => await LoadImages(false));
+    }
+
+    private void RefreshUI()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private async Task DisposeInfiniteScroll()
     {
@@ -276,9 +300,9 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        M.OnProjectChangeTask -= HandleProjectChanged;
-        M.OnStateHasChanged -= Refresh;
-        M.OnSelectedImagesChanged -= RefreshUI;
+        Events.Unsubscribe<ProjectChangedEventArgs>(OnProjectChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
 
         await DisposeInfiniteScroll();
     }

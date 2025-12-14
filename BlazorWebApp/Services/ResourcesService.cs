@@ -3,19 +3,32 @@ using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
 {
-    public class ResourcesService
+    public class ResourcesService : IResourcesService
     {
-        private readonly ManagerService _m;
-        private readonly IOService _io;
-        private readonly DatabaseService _db;
+        private readonly IStateService _state;
+        private readonly IIOService _io;
+        private readonly IDatabaseService _db;
         private readonly IConfiguration _configuration;
+        private readonly Dictionary<string, string> _resourceTypeDirectories;
 
-        public ResourcesService(ManagerService manager, IOService io, DatabaseService db, IConfiguration configuration)
+        public ResourcesService(IStateService state, IIOService io, IDatabaseService db, IConfiguration configuration)
         {
-            _m = manager;
+            _state = state;
             _io = io;
             _db = db;
             _configuration = configuration;
+            
+            // Build resource type directories from configuration
+            var baseDir = _configuration["ResourcesPath"];
+            _resourceTypeDirectories = new()
+            {
+                {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
+                {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
+                {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
+                {"LORA", Path.Combine(baseDir, "LORA")},
+                {"LoCon", Path.Combine(baseDir, "LORA")},
+                {"VAE", Path.Combine(baseDir, "VAE")}
+            };
         }
 
         public async Task<List<LocalResource>> CreateLocalResourcesByType(int typeId)
@@ -84,7 +97,7 @@ namespace BlazorWebApp.Services
         public async Task<LocalResourceFile?> GetResourceFileInfo(string resourceType, string? resourceSubtype, LocalResourceFile file)
         {
             var comp = StringComparison.InvariantCultureIgnoreCase;
-            var fileDir = _m.ResourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resourceType, comp)).Value;
+            var fileDir = _resourceTypeDirectories.FirstOrDefault(f => f.Key.Equals(resourceType, comp)).Value;
             if (string.IsNullOrWhiteSpace(fileDir)) fileDir = Path.Combine(_configuration["ResourcesPath"], resourceType);
             if (!string.IsNullOrWhiteSpace(resourceSubtype)) fileDir = Path.Combine(fileDir, resourceSubtype);
             if (File.Exists(Path.Combine(fileDir, file.Filename)))
@@ -117,7 +130,7 @@ namespace BlazorWebApp.Services
             var filename = file.File.Name.Replace(file.File.Extension, "");
             var keyword = string.Empty;
             var triggerWords = string.Empty;
-            var weight = _m.State.Resources.Weight;
+            var weight = _state.State.Resources.Weight;
 
             if (resourceType.Equals("TextualInversion", comp)) keyword = weight != 1 ? $", ({filename}:{weight})" : filename;
             else if (resourceType.Equals("Hypernetwork", comp)) keyword = $", <hypernet:{filename}:{weight}>";
@@ -133,15 +146,15 @@ namespace BlazorWebApp.Services
 
                 if (target.Item1 == ModeType.Txt2Img)
                 {
-                    _m.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _state.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
                 else if (target.Item1 == ModeType.Img2Img)
                 {
-                    _m.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _state.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
                 }
             }
 
-            if (_m.State.Resources.LoadTriggerWords && file.TriggerWords != null)
+            if (_state.State.Resources.LoadTriggerWords && file.TriggerWords != null)
             {
                 triggerWords = ", ";
                 triggerWords += string.Join(", ", file.TriggerWords);
@@ -149,20 +162,20 @@ namespace BlazorWebApp.Services
 
             if (target.Item1 == ModeType.Txt2Img)
             {
-                if (target.Item2 == true) _m.ParametersTxt2Img.Prompt += $"{triggerWords}{keyword}";
-                else _m.ParametersTxt2Img.NegativePrompt += $"{triggerWords}{keyword}";
+                if (target.Item2 == true) _state.ParametersTxt2Img.Prompt += $"{triggerWords}{keyword}";
+                else _state.ParametersTxt2Img.NegativePrompt += $"{triggerWords}{keyword}";
             }
             else if (target.Item1 == ModeType.Img2Img)
             {
-                if (target.Item2 == true) _m.ParametersImg2Img.Prompt += $"{triggerWords}{keyword}";
-                else _m.ParametersImg2Img.NegativePrompt += $"{triggerWords}{keyword}";
+                if (target.Item2 == true) _state.ParametersImg2Img.Prompt += $"{triggerWords}{keyword}";
+                else _state.ParametersImg2Img.NegativePrompt += $"{triggerWords}{keyword}";
             }
         }
 
         public async Task UpdateResource(Resource resource, string directory, string filename, int resourceId, bool isEnabled)
         {
             var fileInfos = _io.GetFilesByName(directory, filename);
-            var baseDestPath = isEnabled ? _m.ResourceTypeDirectories[resource.Type.Name] : Path.Combine(_configuration["ResourcesPath"], "_storage", resource.Type.Name);
+            var baseDestPath = isEnabled ? _resourceTypeDirectories[resource.Type.Name] : Path.Combine(_configuration["ResourcesPath"], "_storage", resource.Type.Name);
             if (resource.SubType != null) baseDestPath = Path.Combine(baseDestPath, resource.SubType.Name);
             // Update other files linked to the model that must share the same name, ie. yaml configs or txt info
             foreach (var fileInfo in fileInfos)
@@ -212,10 +225,9 @@ namespace BlazorWebApp.Services
 
         public async Task ToggleResource(LocalResource resource, LocalResourceFile file)
         {
-            if (_m.ResourceTypeDirectories == null) await _m.GetResourceTypeDirectories();
             string destPath = string.Empty;
             if (file.IsEnabled) destPath = Path.Combine(_configuration["ResourcesPath"], "_storage", resource.Type.Name);
-            else destPath = _m.ResourceTypeDirectories.FirstOrDefault(p => p.Key.Equals(resource.Type.Name, StringComparison.InvariantCultureIgnoreCase)).Value;
+            else destPath = _resourceTypeDirectories.FirstOrDefault(p => p.Key.Equals(resource.Type.Name, StringComparison.InvariantCultureIgnoreCase)).Value;
             if (resource.SubType != null) destPath = Path.Combine(destPath, resource.SubType.Name);
             destPath = Path.Combine(destPath, file.Filename);
             _io.MoveFile(file.File.FullName, destPath);

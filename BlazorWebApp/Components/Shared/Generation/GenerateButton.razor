@@ -1,9 +1,11 @@
-﻿@inject ManagerService M
+﻿@using BlazorWebApp.Events
+@inject IStateService State
+@inject IEventService Events
 @implements IDisposable
 
 <EditForm Model="Parameters" OnSubmit="@Generate" class="d-flex flex-column justify-content-center">
     <MudStack Class="d-flex flex-column justify-content-center align-items-center w-100 h-100">
-        @if (!M.IsConverging)
+        @if (!_isConverging)
         {
             <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" Disabled=ButtonDisabled FullWidth>Generate</MudButton>
         }
@@ -24,18 +26,27 @@
     [Parameter] public EventCallback OnInterrupt { get; set; }
     [Parameter] public bool ButtonDisabled { get; set; }
 
+    private bool _isConverging = false;
+
     protected override void OnInitialized()
     {
-        M.OnConverging += Refresh;
+        Events.Subscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+    }
+
+    private void OnConvergingChanged(ConvergingChangedEventArgs args)
+    {
+        _isConverging = args.IsConverging;
+        _ = InvokeAsync(StateHasChanged);
     }
 
     public async void Generate()
     {
         await OnGenerate.InvokeAsync(Parameters);
-        await M.SaveState();
+        await State.SaveState();
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
-
-    public void Dispose() => M.OnConverging -= Refresh;
+    public void Dispose()
+    {
+        Events.Unsubscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+    }
 }

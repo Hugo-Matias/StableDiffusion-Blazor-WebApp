@@ -8,17 +8,19 @@ namespace BlazorWebApp.Services
     public class ComfyUIWebsocketService : IHostedService
     {
         private readonly ILogger<ComfyUIWebsocketService> _logger;
-        private readonly ManagerService _m;
-        private readonly ProgressService _progressService;
+        private readonly IBackendService _backend;
+        private readonly IImageService _imageService;
+        private readonly IProgressService _progressService;
         private readonly ComfyUIEventBus _bus;
         private ClientWebSocket? _currentWs;
         private readonly object _lock = new();
         private Guid _promptId;
 
-        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, ManagerService m, ProgressService progressService, ComfyUIEventBus bus)
+        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, IBackendService backend, IImageService imageService, IProgressService progressService, ComfyUIEventBus bus)
         {
             _logger = logger;
-            _m = m;
+            _backend = backend;
+            _imageService = imageService;
             _progressService = progressService;
             _bus = bus;
         }
@@ -36,9 +38,9 @@ namespace BlazorWebApp.Services
                 using var ws = new ClientWebSocket();
                 try
                 {
-                    _m.ComfyWSClientId = Guid.NewGuid().ToString();
+                    _backend.ComfyWSClientId = Guid.NewGuid().ToString();
                     await ws.ConnectAsync(
-                        new Uri($"ws://localhost:8188/ws?clientId={_m.ComfyWSClientId}"),
+                        new Uri($"ws://localhost:8188/ws?clientId={_backend.ComfyWSClientId}"),
                         cancellationToken);
 
                     lock (_lock)
@@ -46,8 +48,7 @@ namespace BlazorWebApp.Services
                         _currentWs = ws;
                     }
 
-                    _m.IsComfyUIUp = true;
-                    _logger.LogInformation($"WS connected | ClientID: {_m.ComfyWSClientId}");
+                    _logger.LogInformation($"WS connected | ClientID: {_backend.ComfyWSClientId}");
                     await ListenLoop(ws, cancellationToken);
                 }
                 catch (Exception ex)
@@ -95,8 +96,8 @@ namespace BlazorWebApp.Services
 
                         if (type == "execution_start")
                         {
-                            _m.Progress = new() { State = new() { Job = "Execution Started" } };
-                            _m.InvokeProgressChanged();
+                            _imageService.Progress = new() { State = new() { Job = "Execution Started" } };
+                            _progressService.NotifyProgressChanged();
                         }
 
                         if (type == "progress")
@@ -122,10 +123,10 @@ namespace BlazorWebApp.Services
                                 _progressService.Progresses.Add(progress);
                             }
 
-                            _m.Progress.Value = (float)value / max;
-                            _m.Progress.State.Job = $"Running node: {node}";
+                            _imageService.Progress.Value = (float)value / max;
+                            _imageService.Progress.State.Job = $"Running node: {node}";
                             _progressService.Update(id, value);
-                            _m.InvokeProgressChanged();
+                            _progressService.NotifyProgressChanged();
                         }
 
                         if (type == "execution_success" || type == "execution_error" || type == "execution_interrupted")
@@ -150,8 +151,8 @@ namespace BlazorWebApp.Services
                                 _bus.PublishExecutionFailed(_promptId, $"{errorType} | Node: {nodeId} - {nodeType}: {error}");
                             }
                             _progressService.Remove(_promptId);
-                            _m.Progress = new();
-                            _m.InvokeProgressChanged();
+                            _imageService.Progress = new();
+                            _progressService.NotifyProgressChanged();
                         }
                     }
                     catch (Exception ex)
@@ -169,7 +170,7 @@ namespace BlazorWebApp.Services
                     var imageBytes = fullBytes.Skip(8).ToArray();
 
                     var base64 = Convert.ToBase64String(imageBytes);
-                    _m.Progress.CurrentImage = base64;
+                    _imageService.Progress.CurrentImage = base64;
                 }
             }
         }

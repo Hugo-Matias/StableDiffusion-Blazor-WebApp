@@ -1,8 +1,9 @@
-﻿@using BlazorWebApp.Extensions
-@inject DatabaseService DB
-@inject IOService IO
+@using BlazorWebApp.Extensions
+@inject IStateService State
+@inject IDatabaseService DB
+@inject IIOService IO
 @inject IJSRuntime JS
-@inject ManagerService M
+@inject IOrchestratorService M
 @inject ISnackbar Snackbar
 @implements IDisposable
 

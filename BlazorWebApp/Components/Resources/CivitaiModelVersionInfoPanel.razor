@@ -1,9 +1,9 @@
-﻿@inject ManagerService M
+@inject IStateService State
 @inject CivitaiService Civitai
-@inject IOService IO
-@inject DatabaseService DB
-@inject ImageService ImageService
-@inject ProgressService Progress
+@inject IIOService IO
+@inject IDatabaseService DB
+@inject IImageService ImageService
+@inject IProgressService Progress
 @inject IConfiguration Configuration
 @inject ISnackbar Snackbar
 @using System.Text.Json;
@@ -83,7 +83,7 @@
 
     private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
     {
-        var isSuccess = await Civitai.DownloadResource(Model, version, file, M.State.Civitai.ResourceSubtype);
+        var isSuccess = await Civitai.DownloadResource(Model, version, file, State.State.Civitai.ResourceSubtype);
         switch (isSuccess)
         {
             case CivitaiDownloadStatus.Success:
@@ -101,7 +101,6 @@
         }
         await SaveImage(version.Images[0], version.Id, isPreview: true, showSnackbar: false);
         await SaveAllImages(version, false);
-        M.InvokeDownloadComplete();
     }
 
     private async Task SaveAllImages(CivitaiModelVersionDto version, bool showProgress)

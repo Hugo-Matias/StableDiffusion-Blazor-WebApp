@@ -1,23 +1,104 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33103.184
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlazorWebApp", "BlazorWebApp\BlazorWebApp.csproj", "{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}"
 EndProject
-Global
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebApp.Tests", "BlazorWebApp.Tests\BlazorWebApp.Tests.csproj", "{8C0F91A4-A6F4-4394-B963-18C6722E24D6}"
+EndProject
+
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{A1234567-89AB-CDEF-0123-456789ABCDEF}"
+	ProjectSection(SolutionItems) = preProject
+		DOC\IMAGE_EDITOR_IMPLEMENTATION_PLAN.md = DOC\IMAGE_EDITOR_IMPLEMENTATION_PLAN.md
+		DOC\INDEX.md = DOC\INDEX.md
+		DOC\PROJECT-SUMMARY.md = DOC\PROJECT-SUMMARY.md
+		DOC\README.md = DOC\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Architecture", "Architecture", "{B1234567-89AB-CDEF-0123-456789ABCDEF}"
+	ProjectSection(SolutionItems) = preProject
+		DOC\Architecture\00-SYSTEM-OVERVIEW.md = DOC\Architecture\00-SYSTEM-OVERVIEW.md
+		DOC\Architecture\01-ARCHITECTURAL-ANALYSIS.md = DOC\Architecture\01-ARCHITECTURAL-ANALYSIS.md
+		DOC\Architecture\02-DEPLOYMENT-GUIDE.md = DOC\Architecture\02-DEPLOYMENT-GUIDE.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Models", "Models", "{C1234567-89AB-CDEF-0123-456789ABCDEF}"
+	ProjectSection(SolutionItems) = preProject
+		DOC\Models\01-DATA-MODELS.md = DOC\Models\01-DATA-MODELS.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pages", "Pages", "{D1234567-89AB-CDEF-0123-456789ABCDEF}"
+	ProjectSection(SolutionItems) = preProject
+		DOC\Pages\01-PAGES-OVERVIEW.md = DOC\Pages\01-PAGES-OVERVIEW.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plans", "Plans", "{E1234567-89AB-CDEF-0123-456789ABCDEF}"
+	ProjectSection(SolutionItems) = preProject
+		DOC\Plans\COMPONENT_MIGRATION_LOG.md = DOC\Plans\COMPONENT_MIGRATION_LOG.md
+		DOC\Plans\IMPLEMENTATION_GUIDE.md = DOC\Plans\IMPLEMENTATION_GUIDE.md
+		DOC\Plans\manager-service-refactor.md = DOC\Plans\manager-service-refactor.md
+		DOC\Plans\SERVICE_INTERFACE_EXTRACTION_PLAN.md = DOC\Plans\SERVICE_INTERFACE_EXTRACTION_PLAN.md
+		DOC\Plans\WEBUI_DEPRECATION_PLAN.md = DOC\Plans\WEBUI_DEPRECATION_PLAN.md
+		DOC\Plans\webui-removal.md = DOC\Plans\webui-removal.md
+		DOC\Plans\workflow-driven-ui.md = DOC\Plans\workflow-driven-ui.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{F1234567-89AB-CDEF-0123-456789ABCDEF}"
+	ProjectSection(SolutionItems) = preProject
+		DOC\Services\01-CORE-SERVICES.md = DOC\Services\01-CORE-SERVICES.md
+		DOC\Services\02-ADDITIONAL-SERVICES.md = DOC\Services\02-ADDITIONAL-SERVICES.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UX-UI", "UX-UI", "{01234567-89AB-CDEF-0123-456789ABCDEF}"
+	ProjectSection(SolutionItems) = preProject
+		DOC\UX-UI\01-UX-ANALYSIS-AND-RECOMMENDATIONS.md = DOC\UX-UI\01-UX-ANALYSIS-AND-RECOMMENDATIONS.md
+	EndProjectSection
+EndProjectGlobal
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Debug|x64.Build.0 = Debug|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Debug|x86.Build.0 = Debug|Any CPU
 		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Release|x64.ActiveCfg = Release|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Release|x64.Build.0 = Release|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Release|x86.ActiveCfg = Release|Any CPU
+		{DAC1F5BE-F8AF-4FE4-8A9E-881F79EEDE56}.Release|x86.Build.0 = Release|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Debug|x64.Build.0 = Debug|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Debug|x86.Build.0 = Debug|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Release|x64.ActiveCfg = Release|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Release|x64.Build.0 = Release|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Release|x86.ActiveCfg = Release|Any CPU
+		{8C0F91A4-A6F4-4394-B963-18C6722E24D6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B1234567-89AB-CDEF-0123-456789ABCDEF} = {A1234567-89AB-CDEF-0123-456789ABCDEF}
+		{C1234567-89AB-CDEF-0123-456789ABCDEF} = {A1234567-89AB-CDEF-0123-456789ABCDEF}
+		{D1234567-89AB-CDEF-0123-456789ABCDEF} = {A1234567-89AB-CDEF-0123-456789ABCDEF}
+		{E1234567-89AB-CDEF-0123-456789ABCDEF} = {A1234567-89AB-CDEF-0123-456789ABCDEF}
+		{F1234567-89AB-CDEF-0123-456789ABCDEF} = {A1234567-89AB-CDEF-0123-456789ABCDEF}
+		{01234567-89AB-CDEF-0123-456789ABCDEF} = {A1234567-89AB-CDEF-0123-456789ABCDEF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {831E2020-7A0D-4950-AA74-3520753B7F96}

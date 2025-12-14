@@ -1,5 +1,5 @@
-﻿@inject DatabaseService DB
-@inject IOService IO
+@inject IDatabaseService DB
+@inject IIOService IO
 
 <div>
     <MudCarousel @ref=Reference Class="mud-width-full" Style=@($"width: {_width}; height: {_height}; max-width: {MaxWidth}; max-height: {MaxHeight}") ShowArrows="ShowControls" ShowBullets=false TData="Image" AutoCycle=AutoCycle AutoCycleTime=AutoCycleTime SelectedIndexChanged=@(v => OnImageChanged.InvokeAsync(v))>

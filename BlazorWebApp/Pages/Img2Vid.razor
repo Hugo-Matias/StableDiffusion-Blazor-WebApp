@@ -1,0 +1,159 @@
+@using BlazorWebApp.Events
+@using BlazorWebApp.Components.Shared.Generation
+@using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
+@using static BlazorWebApp.Data.Enums
+@inject IComfyUIService API
+@inject IOrchestratorService M
+@inject IStateService State
+@inject ISessionService Session
+@inject IEventService Events
+@inject IWorkflowService WorkflowService
+@inject IImageService ImageService
+@inject NavigationManager NavManager
+@implements IDisposable
+
+@page "/img2vid/{id}"
+
+@* Workflow Assets Panel - Full width before prompts *@
+<WorkflowAssetsPanel Mode="ModeType.Img2Vid" 
+                     Workflow="@GetCurrentWorkflow()"
+                     Columns="4"
+                     IsInitiallyExpanded="false" />
+
+<PromptFieldsSimple Prompt="@State.ParametersImg2Vid?.Prompt"
+                    PromptChanged="HandlePromptChanged"
+                    NegativePrompt="@State.ParametersImg2Vid?.NegativePrompt"
+                    NegativePromptChanged="HandleNegativePromptChanged"
+                    OnGenerate="Generate"
+                    OnSkip="Skip"
+                    OnInterrupt="Interrupt"
+                    IsGenerateDisabled="@(string.IsNullOrWhiteSpace(Session.Img2VidInputImage))" />
+
+<MudGrid>
+    <MudItem xs="6">
+        <MudStack Spacing="3">
+            <ImageInput ImageData="@Session.Img2VidInputImage" 
+                        ImageDataChanged="HandleImageDataChanged"
+                        Title="Input Image"
+                        OnImageLoaded="HandleImageLoaded" />
+            <GenerateFormImg2Vid />
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        <GeneratedVideoTabs GeneratedVideos="@_generatedVideos" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public string Id { get; set; }
+    
+    private GeneratedVideos _generatedVideos;
+
+    protected override void OnInitialized()
+    {
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<ParametersChangedEventArgs>(OnImg2VidParametersChanged);
+        Events.Subscribe<InputImageChangedEventArgs>(OnImg2VidInputImageChanged);
+    }
+
+    private Workflow? GetCurrentWorkflow()
+    {
+        if (!string.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out var workflowId))
+        {
+            return M.GetWorkflowById(workflowId);
+        }
+        return M.GetCurrentWorkflow();
+    }
+
+    private void HandlePromptChanged(string value)
+    {
+        if (State.ParametersImg2Vid != null)
+        {
+            State.ParametersImg2Vid.Prompt = value;
+        }
+    }
+    
+    private void HandleNegativePromptChanged(string value)
+    {
+        if (State.ParametersImg2Vid != null)
+        {
+            State.ParametersImg2Vid.NegativePrompt = value;
+        }
+    }
+    
+    private void HandleImageDataChanged(string value)
+    {
+        Session.Img2VidInputImage = value;
+        StateHasChanged();
+    }
+
+    private async void Generate()
+    {
+        if (string.IsNullOrWhiteSpace(Session.Img2VidInputImage) || State.ParametersImg2Vid == null)
+        {
+            return;
+        }
+
+        // Update parameters with current values and input image
+        State.ParametersImg2Vid.Image = Session.Img2VidInputImage;
+        State.ParametersImg2Vid.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
+        
+        // Save state before generation
+        await State.SaveState();
+        
+        // Generate video
+        _generatedVideos = await ImageService.GetVideo();
+        
+        // Save state after generation (includes seed, etc.)
+        await State.SaveState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void Skip() => await API.PostClearQueue();
+
+    private async void Interrupt()
+    {
+        State.State.Generation.IsInterrupted = true;
+        await API.PostInterrupt();
+    }
+
+    private void HandleImageLoaded((int width, int height) dimensions)
+    {
+        if (State.ParametersImg2Vid == null) return;
+        
+        // Auto-set resolution based on input image while maintaining aspect ratio
+        if (dimensions.width > 0 && dimensions.height > 0)
+        {
+            var maxDim = Math.Max(dimensions.width, dimensions.height);
+            var scale = 768.0 / maxDim; // Target max dimension of 768
+            
+            if (scale < 1)
+            {
+                State.ParametersImg2Vid.Width = (int)(dimensions.width * scale / 8) * 8; // Round to nearest 8
+                State.ParametersImg2Vid.Height = (int)(dimensions.height * scale / 8) * 8;
+            }
+            else
+            {
+                State.ParametersImg2Vid.Width = (dimensions.width / 8) * 8;
+                State.ParametersImg2Vid.Height = (dimensions.height / 8) * 8;
+            }
+            StateHasChanged();
+        }
+    }
+
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+    private void OnImg2VidParametersChanged(ParametersChangedEventArgs args) => Refresh();
+    private void OnImg2VidInputImageChanged(InputImageChangedEventArgs args) => Refresh();
+
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<ParametersChangedEventArgs>(OnImg2VidParametersChanged);
+        Events.Unsubscribe<InputImageChangedEventArgs>(OnImg2VidInputImageChanged);
+        
+        // Save state on dispose
+        _ = State.SaveState();
+    }
+}

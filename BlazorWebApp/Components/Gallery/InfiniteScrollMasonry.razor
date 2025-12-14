@@ -1,6 +1,6 @@
-﻿@inject DatabaseService DB
-@inject ManagerService M
-@inject IOService IO
+@inject IDatabaseService DB
+@inject IGalleryService Gallery
+@inject IIOService IO
 @inject IJSRuntime JS
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -11,12 +11,12 @@
     <div class="gallery-toolbar">
         <MudButton OnClick="() => OpenViewer(0)" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
         <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
-        @if (M.SelectedImageIds.Count > 0)
+        @if (Gallery.SelectedImageIds.Count > 0)
         {
             <div class="selection-btn-group">
                 <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
                 <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
-                <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">@($"Clear ({M.SelectedImageIds.Count})")</MudButton>
+                <MudButton OnClick="Gallery.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">@($"Clear ({Gallery.SelectedImageIds.Count})")</MudButton>
                 <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
             </div>
         }
@@ -241,18 +241,18 @@
             { "OkButtonColor", Color.Error },
             { "Content", new MarkupString("<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected items?<br /></span><small>This action is irreversible!</small>") }
         };
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
             foreach (var img in selectedImages)
             {
                 await DB.DeleteImage(img);
                 Images.Images.RemoveAll(i => i.Id == img.Id);
             }
             Snackbar.Add("All selected items deleted successfully.", Severity.Success);
-            M.ClearSelectedImages();
+            Gallery.ClearSelectedImages();
             await OnImagesChanged.InvokeAsync();
         }
     }
@@ -260,7 +260,7 @@
     private async Task ShowSwitchProjectDialog()
     {
         var param = new DialogParameters();
-        var selectedImages = await DB.GetImages(M.SelectedImageIds);
+        var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
         param.Add("Images", selectedImages);
         var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
@@ -270,7 +270,7 @@
             var updatedImages = (List<Image>)result.Data;
             await DB.UpdateImages(updatedImages);
             Snackbar.Add("Items projects were changed.", Severity.Success);
-            M.ClearSelectedImages();
+            Gallery.ClearSelectedImages();
             await OnImagesChanged.InvokeAsync();
         }
     }
@@ -279,7 +279,7 @@
     {
         if (Images?.Images == null) return;
         foreach (var id in Images.Images.Select(i => i.Id))
-            M.AddSelectedImage(id);
+            Gallery.AddSelectedImage(id);
     }
 
     public async ValueTask DisposeAsync()

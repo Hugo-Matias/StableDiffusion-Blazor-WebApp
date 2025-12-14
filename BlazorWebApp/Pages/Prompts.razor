@@ -1,7 +1,7 @@
 ﻿@page "/prompts"
-@inject ManagerService M
+@inject IStateService State
 
-<MudTabs @bind-ActivePanelIndex=M.State.Prompts.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded=true Centered=true>
+<MudTabs @bind-ActivePanelIndex=State.State.Prompts.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded=true Centered=true>
     <MudTabPanel Text="Presets">
         <PromptsPanel />
     </MudTabPanel>

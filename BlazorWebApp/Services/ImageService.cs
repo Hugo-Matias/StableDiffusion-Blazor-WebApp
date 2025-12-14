@@ -1,10 +1,9 @@
-﻿using BlazorWebApp.Data.Dtos;
-using BlazorWebApp.Data.Dtos.WebUI;
+using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
-using HtmlAgilityPack;
 using System.Text.RegularExpressions;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
@@ -12,16 +11,18 @@ namespace BlazorWebApp.Services
     /// Service responsible for orchestrating image and video generation workflows.
     /// Coordinates between API services, file I/O, database operations, and progress tracking.
     /// </summary>
-    public class ImageService
+    public class ImageService : IImageService
     {
-        private readonly SDAPIService _api;
-        private readonly IOService _io;
-        private readonly ManagerService _m;
+        private readonly IIOService _io;
+        private readonly IBackendService _backend;
         private readonly MagickService _magick;
-        private readonly DatabaseService _db;
-        private readonly ProgressService _progress;
-        private readonly RouterService _router;
+        private readonly IDatabaseService _db;
+        private readonly IProgressService _progress;
+        private readonly IRouterService _router;
         private readonly ILogger<ImageService> _logger;
+        private readonly IStateService _state;
+        private readonly ISessionService _session;
+        private readonly IModelService _models;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
         private Txt2ImgParameters _txt2imgParams;
@@ -35,25 +36,57 @@ namespace BlazorWebApp.Services
         /// </summary>
         public event Action OnChange;
 
+        #region Generation Results
+
+        /// <summary>
+        /// Raw generated images from the backend (base64 encoded).
+        /// Contains Images list and Info (workflow JSON from ComfyUI).
+        /// </summary>
+        public GeneratedImages Images { get; private set; } = new();
+
+        /// <summary>
+        /// Generated image entities saved to database.
+        /// </summary>
+        public ImagesDto GeneratedImageEntities { get; set; }
+
         /// <summary>
         /// Last generated video result.
         /// </summary>
         public GeneratedVideos GeneratedVideos { get; private set; }
 
-        public ImageService(SDAPIService api, IOService io, ManagerService m, MagickService magick, DatabaseService db, ProgressService progress, RouterService router, ILogger<ImageService> logger)
+        /// <summary>
+        /// Current inference progress. Can be set by websocket service.
+        /// </summary>
+        public InferenceProgress Progress { get; set; } = new();
+
+        #endregion
+
+        public ImageService(
+            IIOService io, 
+            IBackendService backend, 
+            MagickService magick, 
+            IDatabaseService db, 
+            IProgressService progress, 
+            IRouterService router, 
+            ILogger<ImageService> logger, 
+            IStateService state, 
+            ISessionService session, 
+            IModelService models)
         {
-            _api = api;
             _io = io;
-            _m = m;
+            _backend = backend;
             _magick = magick;
             _db = db;
             _progress = progress;
             _router = router;
             _logger = logger;
+            _state = state;
+            _session = session;
+            _models = models;
         }
 
         /// <summary>
-        /// Generates images based on the specified mode (Txt2Img, Img2Img, or Extras/Upscale).
+        /// Generates images based on the specified mode (Txt2Img, Img2Img).
         /// Handles the full generation workflow including API calls, file saving, and database persistence.
         /// </summary>
         /// <param name="mode">The generation mode to use.</param>
@@ -61,11 +94,11 @@ namespace BlazorWebApp.Services
         public async Task<ImagesDto> GetImages(ModeType mode)
         {
             _logger.LogInformation("Starting image generation for mode: {Mode}", mode);
-            _m.IsConverging = true;
+            _progress.IsConverging = true;
 
             ImagesDto images = new();
             string scriptName = string.Empty;
-            _currentModel = _m.GetCurrentModel(mode);
+            _currentModel = _models.GetCurrentModel(mode);
 
             try
             {
@@ -74,53 +107,31 @@ namespace BlazorWebApp.Services
                     case ModeType.Img2Img:
                         _logger.LogDebug("Building Img2Img parameters");
                         var img2imgParams = BuildImg2ImgParameters(ref scriptName);
-                        _m.Images = await _router.PostImg2Img(img2imgParams);
-                        _m.SerializeInfo();
-                        break;
-
-                    case ModeType.Extras:
-                        _logger.LogDebug("Processing upscale request");
-                        _parsingParams = _m.ParametersUpscale;
-                        _m.GeneratedUpscaleImage = await _api.PostExtraSingle(_m.ParametersUpscale);
-                        if (_m.GeneratedUpscaleImage != null && !string.IsNullOrWhiteSpace(_m.GeneratedUpscaleImage.Image))
-                        {
-                            var upscaledResolution = _magick.GetImageSize(_m.GeneratedUpscaleImage.Image);
-                            _parsingParams.Width = upscaledResolution.Item1;
-                            _parsingParams.Height = upscaledResolution.Item2;
-                            var html = new HtmlDocument();
-                            html.LoadHtml(_m.GeneratedUpscaleImage.Info);
-                            _m.GeneratedUpscaleImage.Info = html.DocumentNode.InnerText;
-                        }
+                        Images = await _router.PostImg2Img(img2imgParams);
                         break;
 
                     default:
                         _logger.LogDebug("Building Txt2Img parameters");
                         BuildTxt2ImgParameters(ref scriptName);
-                        _m.Images = await _router.PostTxt2Img(_txt2imgParams);
-                        _m.SerializeInfo();
+                        Images = await _router.PostTxt2Img(_txt2imgParams);
                         break;
                 }
 
-                if (_m.State.Generation.IsInterrupted)
+                if (_state.State.Generation.IsInterrupted)
                 {
                     _logger.LogWarning("Generation was interrupted by user");
                     throw new Exception("Generation Canceled!");
                 }
 
-                await _m.GetOptions();
-
-                if (_m.Options?.SamplesSave == true)
+                if (_backend.OutputPaths.SaveSamples)
                 {
                     switch (mode)
                     {
                         case ModeType.Img2Img:
-                            images = await SaveImages(Outdir.Img2ImgSamples, _m.IsComfyUIUp ? null : Outdir.Img2ImgGrid, scriptName);
-                            break;
-                        case ModeType.Extras:
-                            images = await SaveUpscaleImage();
+                            images = await SaveImages(Outdir.Img2ImgSamples, scriptName);
                             break;
                         default:
-                            images = await SaveImages(Outdir.Txt2ImgSamples, _m.IsComfyUIUp ? null : Outdir.Txt2ImgGrid, scriptName);
+                            images = await SaveImages(Outdir.Txt2ImgSamples, scriptName);
                             break;
                     }
                 }
@@ -132,8 +143,8 @@ namespace BlazorWebApp.Services
                 _logger.LogError(e, "Error occurred during image generation for mode: {Mode}", mode);
             }
 
-            _m.IsConverging = false;
-            _m.State.Generation.IsInterrupted = false;
+            _progress.IsConverging = false;
+            _state.State.Generation.IsInterrupted = false;
 
             NotifyStateChanged();
             return images;
@@ -144,13 +155,13 @@ namespace BlazorWebApp.Services
         /// </summary>
         public async Task<GeneratedVideos> GetVideo()
         {
-            _m.IsConverging = true;
+            _progress.IsConverging = true;
             GeneratedVideos = null;
-            _currentModel = _m.GetCurrentModel(ModeType.Img2Vid);
+            _currentModel = _models.GetCurrentModel(ModeType.Img2Vid);
 
             try
             {
-                _img2vidParams = _m.ParametersImg2Vid;
+                _img2vidParams = _state.ParametersImg2Vid;
 
                 // Ensure seed is set
                 if (_img2vidParams.Seed == -1)
@@ -160,17 +171,15 @@ namespace BlazorWebApp.Services
 
                 GeneratedVideos = await _router.PostImg2Vid(_img2vidParams);
 
-                if (_m.State.Generation.IsInterrupted)
+                if (_state.State.Generation.IsInterrupted)
                 {
                     throw new Exception("Generation Canceled!");
                 }
 
                 // Store the seed used for this generation
-                _m.State.Generation.Seed = (long)_img2vidParams.Seed;
+                _state.State.Generation.Seed = (long)_img2vidParams.Seed;
 
-                await _m.GetOptions();
-
-                if (_m.Options?.SamplesSave == true && GeneratedVideos?.Videos?.Count > 0)
+                if (_backend.OutputPaths.SaveSamples && GeneratedVideos?.Videos?.Count > 0)
                 {
                     await SaveVideos(GeneratedVideos);
                 }
@@ -180,8 +189,8 @@ namespace BlazorWebApp.Services
                 await Console.Out.WriteLineAsync($"Video generation error: {e}");
             }
 
-            _m.IsConverging = false;
-            _m.State.Generation.IsInterrupted = false;
+            _progress.IsConverging = false;
+            _state.State.Generation.IsInterrupted = false;
 
             NotifyStateChanged();
             return GeneratedVideos;
@@ -192,8 +201,6 @@ namespace BlazorWebApp.Services
         /// </summary>
         private async Task SaveVideos(GeneratedVideos videos)
         {
-            await _m.GetOptions();
-
             var saveDir = _io.CreateDirectory(GetVideoSaveFolder());
             var fileIndex = GetVideoFileIndex(saveDir.FullName);
 
@@ -254,7 +261,7 @@ namespace BlazorWebApp.Services
                 CfgScale = (float)_img2vidParams.CfgScale,
                 SamplerId = await _db.GetSamplerIdByName(_img2vidParams.SamplerName),
                 Scheduler = _img2vidParams.Scheduler,
-                ProjectId = _m.State.Gallery.ProjectId,
+                ProjectId = _state.State.Gallery.ProjectId,
                 ModeId = await _db.GetMode(ModeType.Img2Vid),
                 Model = await _db.GetResourceByFilename(_currentModel)
             };
@@ -267,17 +274,13 @@ namespace BlazorWebApp.Services
         /// </summary>
         private string GetVideoSaveFolder()
         {
-            var basePath = _m.Options.OutdirSamplesImg2Vid;
-            if (string.IsNullOrWhiteSpace(basePath))
-            {
-                basePath = Path.Combine(_m.Options.OutdirSamplesTxt2Img.Replace("Text-2-Image", "Image-2-Video"));
-            }
+            var basePath = _backend.GetOutputPath(Outdir.Img2VidSamples);
 
             // Apply directory pattern if configured
-            var dirPattern = _m.Options.FilenamePatternDir;
+            var dirPattern = _backend.OutputPaths.DirectoryPattern;
             if (!string.IsNullOrWhiteSpace(dirPattern))
             {
-                var subPath = _m.ConvertPathPattern(dirPattern, ModeType.Img2Vid);
+                var subPath = ConvertPathPattern(dirPattern, ModeType.Img2Vid);
                 basePath = Path.Combine(basePath, subPath).Replace('/', Path.DirectorySeparatorChar);
             }
 
@@ -317,7 +320,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         private string GenerateVideoFilename(int fileIndex)
         {
-            var pattern = _m.Options.FilenamePatternSamples;
+            var pattern = _backend.OutputPaths.FilenamePattern;
             var filename = $"{fileIndex.ToString().PadLeft(5, '0')}";
 
             if (!string.IsNullOrWhiteSpace(pattern))
@@ -334,159 +337,137 @@ namespace BlazorWebApp.Services
 
         private void BuildTxt2ImgParameters(ref string scriptName)
         {
-            _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersTxt2Img), _m.State.Generation.Styles);
-            CreateControlNetUnits(ref _parsingParams, _m.ParametersTxt2Img.Scripts.ControlNet);
-            Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Cutoff);
-            Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersTxt2Img.Scripts.DynamicPrompts);
-            Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledDiffusion);
-            Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersTxt2Img.Scripts.MultiDiffusionTiledVae);
-            Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersTxt2Img.Scripts.RegionalPrompter);
-            Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersTxt2Img.Scripts.ADetailer);
-            Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersTxt2Img.Scripts.Incantations, ignoreBaseParam: true);
-            scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersTxt2Img.Scripts.XYZPlot);
+            _parsingParams = Parser.ParseParameters(new SharedParameters(_state.ParametersTxt2Img), _state.State.Generation.Styles);
             _txt2imgParams = new Txt2ImgParameters(_parsingParams);
-            _txt2imgParams.EnableHR = _m.ParametersTxt2Img.EnableHR;
+            _txt2imgParams.EnableHR = _state.ParametersTxt2Img.EnableHR;
             if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
             {
-                _txt2imgParams.FirstphaseWidth = _m.ParametersTxt2Img.Width;
-                _txt2imgParams.FirstphaseHeight = _m.ParametersTxt2Img.Height;
-                _txt2imgParams.HRUpscaler = _m.ParametersTxt2Img.HRUpscaler;
-                _txt2imgParams.HRScale = _m.ParametersTxt2Img.HRScale;
-                _txt2imgParams.HRWidth = _m.ParametersTxt2Img.HRWidth;
-                _txt2imgParams.HRHeight = _m.ParametersTxt2Img.HRHeight;
-                _txt2imgParams.HRSecondPassSteps = _m.ParametersTxt2Img.HRSecondPassSteps;
-                _txt2imgParams.DenoisingStrength = _m.ParametersTxt2Img.DenoisingStrength;
+                _txt2imgParams.FirstphaseWidth = _state.ParametersTxt2Img.Width;
+                _txt2imgParams.FirstphaseHeight = _state.ParametersTxt2Img.Height;
+                _txt2imgParams.HRUpscaler = _state.ParametersTxt2Img.HRUpscaler;
+                _txt2imgParams.HRScale = _state.ParametersTxt2Img.HRScale;
+                _txt2imgParams.HRWidth = _state.ParametersTxt2Img.HRWidth;
+                _txt2imgParams.HRHeight = _state.ParametersTxt2Img.HRHeight;
+                _txt2imgParams.HRSecondPassSteps = _state.ParametersTxt2Img.HRSecondPassSteps;
+                _txt2imgParams.DenoisingStrength = _state.ParametersTxt2Img.DenoisingStrength;
             }
-            _txt2imgParams.Scripts = _m.ParametersTxt2Img.Scripts;
-            _txt2imgParams.SeedVR2 = _m.ParametersTxt2Img.SeedVR2;
-            _txt2imgParams.ConditioningVariation = _m.ParametersTxt2Img.ConditioningVariation;
+            _txt2imgParams.SeedVR2 = _state.ParametersTxt2Img.SeedVR2;
+            _txt2imgParams.ConditioningVariation = _state.ParametersTxt2Img.ConditioningVariation;
         }
 
         private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)
         {
-            _parsingParams = Parser.ParseParameters(new SharedParameters(_m.ParametersImg2Img), _m.State.Generation.Styles);
-            CreateControlNetUnits(ref _parsingParams, _m.ParametersImg2Img.Scripts.ControlNet);
-            Parser.CreateScriptParameters("cutoff", ref _parsingParams, _m.ParametersImg2Img.Scripts.Cutoff);
-            Parser.CreateScriptParameters(_m.GetDynamicPromptsVersion(), ref _parsingParams, _m.ParametersImg2Img.Scripts.DynamicPrompts);
-            Parser.CreateScriptParameters("Tiled Diffusion", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledDiffusion);
-            Parser.CreateScriptParameters("Tiled VAE", ref _parsingParams, _m.ParametersImg2Img.Scripts.MultiDiffusionTiledVae);
-            Parser.CreateScriptParameters("Regional Prompter", ref _parsingParams, _m.ParametersImg2Img.Scripts.RegionalPrompter);
-            Parser.CreateScriptParameters("ADetailer", ref _parsingParams, _m.ParametersImg2Img.Scripts.ADetailer);
-            Parser.CreateScriptParameters("incantations", ref _parsingParams, _m.ParametersImg2Img.Scripts.Incantations, ignoreBaseParam: true);
-            scriptName = Parser.CreateScriptParameters("Ultimate SD upscale", ref _parsingParams, _m.ParametersImg2Img.Scripts.UltimateUpscale);
-            scriptName = Parser.CreateScriptParameters("X/Y/Z plot", ref _parsingParams, _m.ParametersImg2Img.Scripts.XYZPlot);
+            _parsingParams = Parser.ParseParameters(new SharedParameters(_state.ParametersImg2Img), _state.State.Generation.Styles);
             var img2imgParams = new Img2ImgParameters(_parsingParams);
-            img2imgParams.InitImages = _m.ParametersImg2Img.InitImages;
-            img2imgParams.Mask = _m.ParametersImg2Img.Mask;
-            img2imgParams.MaskBlur = _m.ParametersImg2Img.MaskBlur;
-            img2imgParams.ResizeMode = _m.ParametersImg2Img.ResizeMode;
-            img2imgParams.InpaintingFill = _m.ParametersImg2Img.InpaintingFill;
-            img2imgParams.InpaintFullRes = _m.ParametersImg2Img.InpaintFullRes;
-            img2imgParams.InpaintFullResPadding = _m.ParametersImg2Img.InpaintFullResPadding;
-            img2imgParams.InpaintingMaskInvert = _m.ParametersImg2Img.InpaintingMaskInvert;
+            img2imgParams.InitImages = _state.ParametersImg2Img.InitImages;
+            img2imgParams.Mask = _state.ParametersImg2Img.Mask;
+            img2imgParams.MaskBlur = _state.ParametersImg2Img.MaskBlur;
+            img2imgParams.ResizeMode = _state.ParametersImg2Img.ResizeMode;
+            img2imgParams.InpaintingFill = _state.ParametersImg2Img.InpaintingFill;
+            img2imgParams.InpaintFullRes = _state.ParametersImg2Img.InpaintFullRes;
+            img2imgParams.InpaintFullResPadding = _state.ParametersImg2Img.InpaintFullResPadding;
+            img2imgParams.InpaintingMaskInvert = _state.ParametersImg2Img.InpaintingMaskInvert;
             SetSourceImageSize();
             return img2imgParams;
         }
 
-        private void CreateControlNetUnits(ref SharedParameters parameters, List<ScriptParametersControlNet> units)
+        public async Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName)
         {
-            if (_m.ControlNetEnabled && units != null && units.Count > 0)
-            {
-                var nulledUnits = new List<ScriptParametersControlNet?>();
-                foreach (var unit in units)
-                {
-                    if (unit.Model.Equals("None", StringComparison.InvariantCultureIgnoreCase) && unit.Preprocessor == ControlNetPreprocessor.none) nulledUnits.Add(null);
-                    else
-                    {
-                        unit.InputImage = Parser.RemoveBase64Header(unit.InputImage);
-                        nulledUnits.Add(unit);
-                    }
-                }
-                parameters.AlwaysOnScripts = new() { { "controlnet", new Dictionary<string, List<ScriptParametersControlNet>>() { { "args", nulledUnits } } } };
-            }
-        }
-
-        public async Task<ImagesDto> SaveImages(Outdir outdirSamples, Outdir? outdirGrid, string scriptName)
-        {
-            await _m.GetOptions();
-            DirectoryInfo saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(outdirSamples));
+            DirectoryInfo saveDir = _io.CreateDirectory(GetCurrentSaveFolder(outdirSamples));
             ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
 
             var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
             var mode = Parser.ModeTypeFromOutdir(outdirSamples);
 
-            for (int i = 0; i < _m.Images.Images.Count; i++)
+            // Parse info from the workflow JSON (Images.Info contains ComfyUI workflow data)
+            var info = Parser.ParseInfoStrings(Images.Info, mode, _backend.IsBackendAvailable);
+
+            for (int i = 0; i < Images.Images.Count; i++)
             {
                 fileIndex++;
-                var extension = _m.Options.SamplesFormat.ToLowerInvariant();
+                var extension = _backend.OutputPaths.SamplesFormat.ToLowerInvariant();
 
-
-                // Under certain conditions, SD returns images without info data, creating a mismatch between Images and Info list size.
-                // To prevent crashing later in the method when info is parsed and saved, we must preemptively break the execution and save the extra images to disk.
-                // These images aren't added to the database.
-                if (_m.IsWebuiUp && i >= _m.ImagesInfo.InfoTexts.Length)
-                {
-                    if ((outdirSamples == Outdir.Txt2ImgSamples && _txt2imgParams.AlwaysOnScripts != null && _txt2imgParams.AlwaysOnScripts.ContainsKey("controlnet") && _txt2imgParams.AlwaysOnScripts["controlnet"] != null) ||
-                        (outdirSamples == Outdir.Img2ImgSamples && _m.ParametersImg2Img.AlwaysOnScripts != null && _m.ParametersImg2Img.AlwaysOnScripts.ContainsKey("controlnet") && _m.ParametersImg2Img.AlwaysOnScripts["controlnet"] != null))
-                    {
-                        var cnImagePath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-ControlNet Annotator {i - _m.ImagesInfo.InfoTexts.Length + 1}.{extension}";
-                        await _io.SaveFileToDisk(cnImagePath, Convert.FromBase64String(_m.Images.Images[i]));
-                    }
-                    else if (outdirSamples == Outdir.Img2ImgSamples && scriptName == "Ultimate SD upscale")
-                    {
-                        var seamfixPath = $"{GetImagePath(saveDir.FullName, fileIndex - 1, mode)}-SeamFix.{extension}";
-                        await _io.SaveFileToDisk(seamfixPath, Convert.FromBase64String(_m.Images.Images[i]));
-                    }
-                    continue;
-                }
-
-                // ComfyUI sends a single info text
-                var info = Parser.ParseInfoStrings(_m.ImagesInfo.InfoTexts[_m.IsComfyUIUp ? 0 : i], mode, _m.IsComfyUIUp);
-
-                // Uses Seed value from the response when -1 is sent (random).
-                if (_m.IsWebuiUp)
-                {
-                    Dictionary<string, string>? param = null;
-                    if (info != null) param = Parser.ParseWebUIInfoParameters(info["param"]);
-                    _m.State.Generation.Seed = param != null && !string.IsNullOrEmpty(param["Seed"]) ? long.Parse(param["Seed"]) : (long)_parsingParams.Seed;
-                }
+                // Use seed from parameters (already set during generation)
+                _state.State.Generation.Seed = (long)_parsingParams.Seed;
 
                 var fullpath = GetImagePath(saveDir.FullName, fileIndex, mode);
                 var imagePath = $"{fullpath}.{extension}";
 
-                await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_m.Images.Images[i]));
+                await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(Images.Images[i]));
 
                 savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info));
             }
 
-            if (outdirGrid != null && (bool)_m.Options.GridSave && (_m.Images.Images.Count > 1 && (bool)_m.Options.GridOnlyIfMultiple))
-            {
-                saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(outdirGrid));
-                fileIndex = _io.GetFileIndex(saveDir.FullName, (Outdir)outdirGrid) + 1;
-                string fullpath = Path.Combine(saveDir.FullName, $"grid-{fileIndex.ToString().PadLeft(4, '0')}");
-                string extension = _m.Options.GridFormat.ToLowerInvariant();
-                string gridPath = $"{fullpath}.{extension}";
-
-                _m.GridImage = await _magick.SaveGrid(_m.Images.Images, gridPath);
-            }
             return savedImages;
         }
 
-        public async Task<ImagesDto?> SaveUpscaleImage()
+        /// <summary>
+        /// Gets the save folder for the specified output type.
+        /// </summary>
+        public string GetCurrentSaveFolder(Outdir? outdir)
         {
-            DirectoryInfo saveDir = _io.CreateDirectory(_m.GetCurrentSaveFolder(Outdir.Extras));
-            ImagesDto savedImage = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
+            if (outdir == null) return string.Empty;
+            
+            var basePath = _backend.GetOutputPath(outdir.Value);
+            if (string.IsNullOrEmpty(basePath)) return string.Empty;
+            
+            // For Extras, don't add directory pattern
+            if (outdir == Outdir.Extras) return basePath;
 
-            var fileIndex = _io.GetFileIndex(saveDir.FullName, Outdir.Extras) + 1;
-            var fullpath = Path.Combine(saveDir.FullName, fileIndex.ToString().PadLeft(5, '0'));
-            var extension = _m.Options.SamplesFormat.ToLowerInvariant();
-            var imagePath = $"{fullpath}.{extension}";
-            await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(_m.GeneratedUpscaleImage.Image));
+            var dirPattern = _backend.OutputPaths.DirectoryPattern;
+            if (!string.IsNullOrWhiteSpace(dirPattern))
+            {
+                var subPath = ConvertPathPattern(dirPattern, Parser.ModeTypeFromOutdir(outdir.Value));
+                basePath = Path.Combine(basePath, subPath).Replace('/', Path.DirectorySeparatorChar);
+            }
 
-            var info = Parser.ParseInfoStrings(_m.GeneratedUpscaleImage.Info, ModeType.Extras, _m.IsComfyUIUp);
-            savedImage.Images.Add(await AddImageToDb(imagePath, Outdir.Extras, info));
+            return basePath;
+        }
 
-            return savedImage;
+        /// <summary>
+        /// Converts a path pattern with placeholders to actual values.
+        /// </summary>
+        public string ConvertPathPattern(string pattern, ModeType mode)
+        {
+            if (string.IsNullOrWhiteSpace(pattern)) return string.Empty;
+            var rg = new Regex(@"(\[.+?\])");
+            return rg.Replace(pattern, t => ConvertPathTag(t.Value, mode));
+        }
+
+        private string ConvertPathTag(string tag, ModeType mode)
+        {
+            if (tag == "[model_name]")
+            {
+                var modelAsPath = _models.GetCurrentModel(mode)?.Replace('/', Path.DirectorySeparatorChar) ?? "unknown";
+                return Path.Combine(Path.GetDirectoryName(modelAsPath) ?? string.Empty, Path.GetFileNameWithoutExtension(modelAsPath));
+            }
+
+            return tag switch
+            {
+                "[sampler]" => mode switch
+                {
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.SamplerName ?? "euler",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.SamplerIndex ?? "euler",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.SamplerName ?? "euler",
+                    _ => "euler"
+                },
+                "[seed]" => _state.State.Generation.Seed.ToString(),
+                "[steps]" => mode switch
+                {
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.Steps?.ToString() ?? "20",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.Steps?.ToString() ?? "8",
+                    _ => "20"
+                },
+                "[cfg]" => mode switch
+                {
+                    ModeType.Txt2Img => _state.ParametersTxt2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Img => _state.ParametersImg2Img?.CfgScale?.ToString() ?? "7",
+                    ModeType.Img2Vid => _state.ParametersImg2Vid?.CfgScale?.ToString() ?? "1",
+                    _ => "7"
+                },
+                _ => string.Empty
+            };
         }
 
         private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info)
@@ -494,7 +475,8 @@ namespace BlazorWebApp.Services
             Image image = new();
 
             image.Path = path;
-            image.ProjectId = _m.State.Gallery.ProjectId;
+            image.ProjectId = _state.State.Gallery.ProjectId;
+            
             if (outdir == Outdir.Txt2ImgSamples && _txt2imgParams.EnableHR == true)
             {
                 var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _txt2imgParams.HRWidth, _txt2imgParams.HRHeight, _txt2imgParams.HRScale);
@@ -503,65 +485,24 @@ namespace BlazorWebApp.Services
             }
             else if (outdir == Outdir.Img2ImgSamples)
             {
-
-                if (info == null || string.IsNullOrWhiteSpace(info["param"]))
-                {
-                    image.Width = _canvasSourceWidth;
-                    image.Height = _canvasSourceHeight;
-                }
-                else
-                {
-                    var param = Parser.ParseWebUIInfoParameters(info["param"]);
-                    // Handles upscaling scripts (Ultimate Upscale) edge cases where the input image has lower resolution than the output info
-                    if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
-                    {
-                        var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);
-                        var sizeW = int.Parse(size[0].Trim());
-                        var sizeH = int.Parse(size[1].Trim());
-                        image.Width = sizeW > _canvasSourceWidth ? sizeW : _canvasSourceWidth;
-                        image.Height = sizeH > _canvasSourceHeight ? sizeH : _canvasSourceHeight;
-                    }
-                    else
-                    {
-                        image.Width = _canvasSourceWidth;
-                        image.Height = _canvasSourceHeight;
-                    }
-                }
+                image.Width = _canvasSourceWidth;
+                image.Height = _canvasSourceHeight;
             }
             else
             {
-                Dictionary<string, string> param = new();
-                if (_m.IsWebuiUp)
-                    param = Parser.ParseWebUIInfoParameters(info["param"]);
-
-                // Handles upscaling scripts (MultiDiffusion) edge cases where the output resolution is higher than the parameters passed into the api
-                if (param != null && param.ContainsKey("Size") && !string.IsNullOrWhiteSpace(param["Size"]))
-                {
-                    var size = param["Size"].Split("x", 2, StringSplitOptions.RemoveEmptyEntries);
-                    var sizeW = int.Parse(size[0].Trim());
-                    var sizeH = int.Parse(size[1].Trim());
-                    image.Width = sizeW > _parsingParams.Width ? sizeW : (int)_parsingParams.Width;
-                    image.Height = sizeH > _parsingParams.Height ? sizeH : (int)_parsingParams.Height;
-                }
-                else
-                {
-                    image.Width = (int)_parsingParams.Width;
-                    image.Height = (int)_parsingParams.Height;
-                }
-            }
-            if (outdir != Outdir.Extras)
-            {
-                image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
-                image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
-                image.SamplerId = await _db.GetSamplerIdByName(_parsingParams.SamplerName);
-                image.Scheduler = _parsingParams.Scheduler;
-                image.Steps = (int)_parsingParams.Steps;
-                image.Seed = (long)_parsingParams.Seed;
-                image.CfgScale = (float)_parsingParams.CfgScale;
-                image.DenoisingStrength = _parsingParams.DenoisingStrength;
-                image.Model = await _db.GetResourceByFilename(_currentModel);
+                image.Width = (int)_parsingParams.Width;
+                image.Height = (int)_parsingParams.Height;
             }
 
+            image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
+            image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
+            image.SamplerId = await _db.GetSamplerIdByName(_parsingParams.SamplerName);
+            image.Scheduler = _parsingParams.Scheduler;
+            image.Steps = (int)_parsingParams.Steps;
+            image.Seed = (long)_parsingParams.Seed;
+            image.CfgScale = (float)_parsingParams.CfgScale;
+            image.DenoisingStrength = _parsingParams.DenoisingStrength;
+            image.Model = await _db.GetResourceByFilename(_currentModel);
             image.ModeId = await _db.GetMode(Parser.ModeTypeFromOutdir(outdir));
 
             return await _db.AddImage(image);
@@ -585,7 +526,7 @@ namespace BlazorWebApp.Services
 
         private string GetImagePath(string path, int fileIndex, ModeType mode)
         {
-            string infoname = _m.ConvertPathPattern(_m.Options.FilenamePatternSamples, mode);
+            string infoname = ConvertPathPattern(_backend.OutputPaths.FilenamePattern, mode);
             string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
             return Path.Combine(path, filename);
         }
@@ -596,7 +537,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         private void SetSourceImageSize()
         {
-            var data = Regex.Replace(_m.CanvasImageData, @"data.+?,", "");
+            var data = Regex.Replace(_session.CanvasImageData, @"data.+?,", "");
             var size = _magick.GetImageSize(data);
             _canvasSourceWidth = size.Item1;
             _canvasSourceHeight = size.Item2;
@@ -604,14 +545,15 @@ namespace BlazorWebApp.Services
 
         private async void StartProgressChecker(BaseProgress progress)
         {
+            // Progress checking temporarily disabled - will be reimplemented for ComfyUI
             _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
             _progress.Add(progress);
 
             while (await _timer.WaitForNextTickAsync())
             {
-                var current = await _api.GetProgress();
-                _m.Progress = current;
-                _progress.Update(progress.Id, current.Value * 100);
+                // ComfyUI progress checking to be implemented
+                Progress = new InferenceProgress();
+                _progress.Update(progress.Id, 0);
                 NotifyStateChanged();
             }
         }
@@ -620,7 +562,7 @@ namespace BlazorWebApp.Services
         {
             _timer?.Dispose();
             _progress.Remove(id);
-            _m.Progress = new();
+            Progress = new();
         }
 
         private void NotifyStateChanged() => OnChange?.Invoke();

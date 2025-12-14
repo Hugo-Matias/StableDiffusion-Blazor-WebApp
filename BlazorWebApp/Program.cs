@@ -19,8 +19,9 @@ builder.Services.AddMudServices(opt =>
     opt.SnackbarConfiguration.PreventDuplicates = false;
 });
 
-builder.Services.AddHttpClient<SDAPIService>();
 builder.Services.AddHttpClient<ComfyUIService>();
+// Register the interface to resolve to the same ComfyUIService instance
+builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<ComfyUIService>());
 builder.Services.AddHttpClient<CivitaiService>();
 builder.Services.AddHttpClient<DanbooruService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
@@ -29,25 +30,62 @@ builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data 
 builder.Services.AddSingleton<ComfyUIWebsocketService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ComfyUIWebsocketService>());
 builder.Services.AddSingleton<ComfyUIEventBus>();
+builder.Services.AddSingleton<IEventService, EventService>();
+builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
-builder.Services.AddSingleton<ManagerService>();
-builder.Services.AddSingleton<ImageService>();
-builder.Services.AddSingleton<DatabaseService>();
-builder.Services.AddSingleton<IOService>();
+// Core data services - interface-only
+builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
+builder.Services.AddSingleton<IIOService, IOService>();
+
+// State management service
+builder.Services.AddSingleton<IStateService, StateService>();
+
+// Backend orchestration service (ComfyUI)
+builder.Services.AddSingleton<IBackendService, BackendService>();
+
+// Model and asset management service
+builder.Services.AddSingleton<IModelService, ModelService>();
+
+// Gallery management service (folders, projects, image selection)
+builder.Services.AddSingleton<IGalleryService, GalleryService>();
+
+// Session management service (canvas, image editor, videos) - singleton with circuit isolation
+builder.Services.AddSingleton<ISessionService, SessionService>();
+
+// Orchestrator service - interface-only (no consumers need concrete type)
+builder.Services.AddSingleton<IOrchestratorService, OrchestratorService>();
+
+// Image service - interface-only (IImageService.Progress has setter for WebSocket updates)
+builder.Services.AddSingleton<IImageService, ImageService>();
+
 builder.Services.AddSingleton<CsvService>();
-builder.Services.AddSingleton<ProgressService>();
-builder.Services.AddSingleton<ResourcesService>();
-builder.Services.AddSingleton<RouterService>();
-builder.Services.AddSingleton<WorkflowService>();
+
+// Progress service - interface-only
+builder.Services.AddSingleton<IProgressService, ProgressService>();
+
+// Resources service - interface-only for testability
+builder.Services.AddSingleton<IResourcesService, ResourcesService>();
+
+// Router service - interface-only
+builder.Services.AddSingleton<IRouterService, RouterService>();
+
+// Workflow service - interface-only
+builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
+
 builder.Services.AddSingleton<DynamicPromptsService>();
-builder.Services.AddSingleton<CacheService>();
+
+// Cache service - interface-only for testability
+builder.Services.AddSingleton<ICacheService, CacheService>();
+
 builder.Services.AddSingleton<ThemeService>();
+
 // Asset resolution service for workflow models
 builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddScoped<OllamaService>();
 
+// MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 
 builder.Logging.ClearProviders();
@@ -90,7 +128,7 @@ app.MapFallbackToPage("/_Host");
 
 app.Run();
 
-var tagUsageService = app.Services.GetRequiredService<CacheService>();
+var tagUsageService = app.Services.GetRequiredService<ICacheService>();
 _ = Task.Run(async () =>
 {
     while (true)

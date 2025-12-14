@@ -11,10 +11,10 @@ using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
-    public class ComfyUIService
+    public class ComfyUIService : IComfyUIService
     {
-        private readonly WorkflowService _workflow;
-        private readonly IOService _io;
+        private readonly IWorkflowService _workflow;
+        private readonly IIOService _io;
         private readonly ILogger<ComfyUIService> _logger;
         private readonly HttpClient _httpClient;
         private readonly ComfyUIEventBus _bus;
@@ -34,7 +34,7 @@ namespace BlazorWebApp.Services
             ".mp4", ".webm", ".gif", ".avi", ".mov", ".mkv"
         };
 
-        public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, WorkflowService workflow, IOService io, ILogger<ComfyUIService> logger)
+        public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, IWorkflowService workflow, IIOService io, ILogger<ComfyUIService> logger)
         {
             _httpClient = httpClient;
             _bus = bus;
@@ -233,28 +233,24 @@ namespace BlazorWebApp.Services
             }
         }
 
-        // TODO: Load from AppSettings
-        public async Task<Options> GenerateOptions()
+        #region GET
+        /// <summary>
+        /// Checks if ComfyUI backend is available by querying the system stats endpoint.
+        /// Returns true if the endpoint responds successfully, false otherwise.
+        /// </summary>
+        public async Task<bool> CheckComfyUIState()
         {
-            Options options = new Options()
+            try
             {
-                ClipSkip = 1,
-                SaveTxt = false,
-                GridSave = false,
-                SamplesSave = true,
-                SamplesFormat = "png",
-                FilenamePatternDir = "[model_name]/[sampler]",
-                FilenamePatternSamples = "[seed]_[steps]_[cfg]",
-                OutdirSamplesImg2Img = Path.Combine(_configuration["OutputDir"], "Image-2-Image\\_samples"),
-                OutdirSamplesTxt2Img = Path.Combine(_configuration["OutputDir"], "Text-2-Image\\_samples"),
-                OutdirSamplesExtras = Path.Combine(_configuration["OutputDir"], "Extras"),
-                OutdirSamplesImg2Vid = Path.Combine(_configuration["OutputDir"], "Image-2-Video\\_samples")
-            };
-
-            return options;
+                var response = await _httpClient.GetAsync("/system_stats");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
-        #region GET
         private async Task<string> GetClientIdFromHistory()
         {
             var response = await _httpClient.GetAsync($"/history");
@@ -276,7 +272,7 @@ namespace BlazorWebApp.Services
 
         public async Task<List<Upscaler>> GetUpscalers() => await GetModels("upscale_models", m => new Upscaler { Name = m });
 
-        public async Task<List<string>> GetVAEs() => await GetModels("vae", m => m);
+        public async Task<List<string>> GetVAEModels() => await GetModels("vae", m => m);
 
         public async Task<List<string>> GetTextEncoders() => await GetModels("text_encoders", m => m);
 

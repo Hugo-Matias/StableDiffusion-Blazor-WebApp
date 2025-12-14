@@ -1,0 +1,122 @@
+@page "/txt2img/{id}"
+@using BlazorWebApp.Events
+@using BlazorWebApp.Components.Shared.Generation
+@using static BlazorWebApp.Data.Enums
+@inject IComfyUIService API
+@inject IOrchestratorService M
+@inject IStateService State
+@inject IEventService Events
+@inject IWorkflowService WorkflowService
+@inject IImageService ImageService
+@inject NavigationManager NavManager
+@implements IDisposable
+
+@* Workflow Assets Panel - Full width before prompts *@
+<WorkflowAssetsPanel Mode="ModeType.Txt2Img" 
+                     Workflow="@GetCurrentWorkflow()"
+                     Columns="3"
+                     IsInitiallyExpanded="false" />
+
+<PromptFields @bind-Parameters="Parameters" T="Txt2ImgParameters" OnGenerate="Generate" OnSkip="Skip" OnInterrupt="Interrupt" OnPromptTagAppended="@((tags) => TagAppended(tags, false))" OnNegativePromptTagAppended="@((tags) => TagAppended(tags, true))" OnStylesChanged="HandleStylesChanged"/>
+
+<MudGrid>
+    <MudItem xs="6">
+        <GenerateFormTxt2Img @bind-Parameters="@Parameters" />
+    </MudItem>
+    <MudItem xs="6">
+        <GeneratedImageTabs />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+    public Txt2ImgParameters Parameters { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<ParametersChangedEventArgs>(OnTxt2ImgParametersChanged);
+        InitializeParameters();
+    }
+
+    private Workflow? GetCurrentWorkflow()
+    {
+        if (!string.IsNullOrWhiteSpace(Id) && Guid.TryParse(Id, out var workflowId))
+        {
+            return M.GetWorkflowById(workflowId);
+        }
+        return M.GetCurrentWorkflow();
+    }
+
+    private async void Generate()
+    {
+        State.ParametersTxt2Img.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
+        var generated = await ImageService.GetImages(ModeType.Txt2Img);
+        if (generated != null && generated.Images != null && generated.Images.Count > 0) 
+        {
+            ImageService.GeneratedImageEntities = generated;
+        }
+    }
+
+    private async void Skip() => await API.PostClearQueue();
+
+    private async void Interrupt()
+    {
+        State.State.Generation.IsInterrupted = true;
+        await API.PostInterrupt();
+    }
+
+    private void TagAppended(AppendedTags tags, bool isNegativePrompt)
+    {
+        if (isNegativePrompt)
+        {
+            if (tags.IsPrefix) Parameters.NegativePrompt = tags.Tags + (string.IsNullOrEmpty(Parameters.NegativePrompt) ? "" : ", " + Parameters.NegativePrompt);
+            else Parameters.NegativePrompt += (string.IsNullOrEmpty(Parameters.NegativePrompt) ? "" : ", ") + tags.Tags;
+        }
+        else
+        {
+            if (tags.IsPrefix) Parameters.Prompt = tags.Tags + (string.IsNullOrEmpty(Parameters.Prompt) ? "" : ", " + Parameters.Prompt);
+            else Parameters.Prompt += (string.IsNullOrEmpty(Parameters.Prompt) ? "" : ", ") + tags.Tags;
+        }
+    }
+
+    private async void InitializeParameters()
+    {
+        Parameters = State.ParametersTxt2Img;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+    private void OnTxt2ImgParametersChanged(ParametersChangedEventArgs args) => InitializeParameters();
+
+    private async void Refresh() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<ParametersChangedEventArgs>(OnTxt2ImgParametersChanged);
+    }
+    
+    private void HandleStylesChanged()
+    {
+        foreach (var style in State.State.Generation.Styles)
+        {
+            foreach (var lora in style.Loras)
+            {
+                if (!Parameters.Loras.Any(x => x.Name == lora.Name))
+                {
+                    Parameters.Loras.Add(lora);
+                }
+                else
+                {
+                    var existingLora = Parameters.Loras.First(x => x.Name == lora.Name);
+                    existingLora.IsEnabled = lora.IsEnabled;
+                    existingLora.IsNegative = lora.IsNegative;
+                    existingLora.Strength = lora.Strength;
+                }
+            }
+        }
+    }
+}

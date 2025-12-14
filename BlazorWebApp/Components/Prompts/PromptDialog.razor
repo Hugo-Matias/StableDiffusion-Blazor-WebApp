@@ -1,5 +1,6 @@
-﻿@inject DatabaseService DB
-@inject ManagerService M
+@using BlazorWebApp.Events
+@inject IDatabaseService DB
+@inject IEventService Events
 @inject IDialogService DialogService
 
 <MudDialog Style="min-width: 40vw;">
@@ -66,7 +67,7 @@
     private async Task HandledLorasUpdated()
     {
         await DB.UpdatePrompt(Prompt);
-        await M.GetStyles();
+        Events.Publish(new StylesChangedEventArgs { ChangeType = "LorasUpdated" });
     }
 
     private async Task ShowDeletePromptDialog()

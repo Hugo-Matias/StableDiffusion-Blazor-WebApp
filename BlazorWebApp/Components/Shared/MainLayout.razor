@@ -1,15 +1,18 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@using BlazorWebApp.Events
 @using static BlazorWebApp.Data.Enums
-@inject ManagerService M
-@inject SDAPIService SDAPI
-@inject ComfyUIService CAPI
+@inject IOrchestratorService M
+@inject IStateService State
+@inject IBackendService Backend
+@inject IModelService Models
+@inject IEventService Events
 @inject ThemeService ThemeService
 @inject NavigationManager NavManager
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
 
-<MudThemeProvider @bind-IsDarkMode=M.State.IsDarkMode Theme="_currentTheme" />
+<MudThemeProvider @bind-IsDarkMode=State.State.IsDarkMode Theme="_currentTheme" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
@@ -22,9 +25,9 @@
             <MudSpacer />
             
             @* Base Selector (ComfyUI only) *@
-            @if (M.IsComfyUIUp && _workflowBases != null && _workflowBases.Count > 0)
+            @if (Backend.IsBackendAvailable && _workflowBases != null && _workflowBases.Count > 0)
             {
-                <MudSelect Value="M.State.Generation.WorkflowBase" 
+                <MudSelect Value="State.State.Generation.WorkflowBase" 
                            T="ModelBase" 
                            ValueChanged="HandleWorkflowBaseSelected" 
                            Label="Base" 
@@ -40,9 +43,9 @@
             }
             
             @* Dark/Light Mode Toggle *@
-            <MudIconButton Icon="@(M.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
+            <MudIconButton Icon="@(State.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
                            Color="Color.Inherit" 
-                           Title="@(M.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
+                           Title="@(State.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
                            OnClick="ToggleDarkMode" />
             
             <MudIconButton Class=@(_isModelLoading ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(_isModelLoading ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
@@ -80,20 +83,23 @@
 
     protected override void OnInitialized()
     {
-        M.OnProgressChanged += Refresh;
-        M.OnSDModelsChange += Refresh;
-        M.OnWorkflowBaseChanged += Refresh;
-        M.OnComfyUIStateChanged += OnBackendStateChanged;
-        M.OnWebuiStateChanged += OnBackendStateChanged;
+        Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
+        Events.Subscribe<ModelsChangedEventArgs>(OnSDModelsChange);
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
         LoadTheme();
     }
 
     protected async override Task OnInitializedAsync() 
     { 
-        M.IsWebuiUp = await SDAPI.CheckWebuiState();
+        // Load persisted state from database
+        await State.LoadState();
         
-        // Load backend-dependent resources if a backend is up
-        if (M.IsWebuiUp || M.IsComfyUIUp)
+        // Check backend availability using BackendService
+        var isBackendAvailable = await Backend.CheckBackendAvailability();
+        
+        // Load backend-dependent resources if backend is available
+        if (isBackendAvailable)
         {
             await M.LoadBackendDependentResources();
         }
@@ -101,12 +107,12 @@
         LoadWorkflowBases();
     }
 
-    private async void OnBackendStateChanged()
+    private async void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args)
     {
         LoadWorkflowBases();
         
-        // Load backend-dependent resources when a backend comes online
-        if (M.IsWebuiUp || M.IsComfyUIUp)
+        // Load backend-dependent resources when backend comes online
+        if (Backend.IsBackendAvailable)
         {
             await M.LoadBackendDependentResources();
         }
@@ -116,9 +122,9 @@
 
     private void LoadWorkflowBases()
     {
-        if (M.IsComfyUIUp && M.State?.Generation?.Workflows != null)
+        if (Backend.IsBackendAvailable && State.State?.Generation?.Workflows != null)
         {
-            _workflowBases = M.State.Generation.Workflows
+            _workflowBases = State.State.Generation.Workflows
                 .Select(w => w.Base.ToString())
                 .Where(b => !string.IsNullOrWhiteSpace(b))
                 .Distinct(StringComparer.InvariantCultureIgnoreCase)
@@ -130,7 +136,7 @@
 
     private void LoadTheme()
     {
-        _currentTheme = ThemeService.GetTheme(M.State.CurrentTheme ?? "Default");
+        _currentTheme = ThemeService.GetTheme(State.State.CurrentTheme ?? "Default");
     }
 
     private void HandleThemeChanged()
@@ -141,17 +147,17 @@
 
     private async Task ToggleDarkMode()
     {
-        M.State.IsDarkMode = !M.State.IsDarkMode;
-        await M.SaveState();
+        State.State.IsDarkMode = !State.State.IsDarkMode;
+        await State.SaveState();
         StateHasChanged();
     }
 
     private async Task HandleWorkflowBaseSelected(ModelBase selected)
     {
-        var previousBase = M.State.Generation.WorkflowBase;
+        var previousBase = State.State.Generation.WorkflowBase;
         
         M.SetWorkflowBase(selected);
-        await M.GetWorkflowModels();
+        await Models.GetWorkflowModels();
         
         // If base changed and user is on a generation page, redirect to Index
         if (previousBase != selected && !IsOnSafePage())
@@ -192,19 +198,22 @@
         StateHasChanged();
     }
 
+    private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();
+    private void OnSDModelsChange(ModelsChangedEventArgs args) => Refresh();
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+
     private async void Refresh()
     {
-        _isModelLoading = string.IsNullOrEmpty(M.GetCurrentModel()) || M.GetCurrentModel() == "Loading...";
+        _isModelLoading = string.IsNullOrEmpty(Models.GetCurrentModel()) || Models.GetCurrentModel() == "Loading...";
         LoadWorkflowBases();
         await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        M.OnProgressChanged -= Refresh;
-        M.OnSDModelsChange -= Refresh;
-        M.OnWorkflowBaseChanged -= Refresh;
-        M.OnComfyUIStateChanged -= OnBackendStateChanged;
-        M.OnWebuiStateChanged -= OnBackendStateChanged;
+        Events.Unsubscribe<ProgressChangedEventArgs>(OnProgressChanged);
+        Events.Unsubscribe<ModelsChangedEventArgs>(OnSDModelsChange);
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
     }
 }

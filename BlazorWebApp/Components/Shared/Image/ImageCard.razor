@@ -1,8 +1,13 @@
-﻿@using System.Diagnostics;
+@using System.Diagnostics;
 @using static BlazorWebApp.Data.Enums;
-@inject ManagerService M
-@inject DatabaseService DB
-@inject IOService IO
+@using BlazorWebApp.Events
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject ISessionService Session
+@inject IBackendService Backend
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IIOService IO
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavManager
@@ -199,9 +204,20 @@
 
     protected override void OnInitialized()
     {
-        _isSelected = M.SelectedImageIds.Contains(Image.Id);
-        M.OnSelectedImagesChanged += Refresh;
-        M.OnRefreshImagesContainer += Refresh;
+        _isSelected = Gallery.SelectedImageIds.Contains(Image.Id);
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+    }
+
+    private void OnImageSelectionChanged(ImageSelectionChangedEventArgs args)
+    {
+        _isSelected = Gallery.SelectedImageIds.Contains(Image.Id);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnStateChanged(StateChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private string GetCardClasses()
@@ -229,14 +245,11 @@
 
     private bool HasWorkflowForMode(ModeType mode)
     {
-        // For WebUI, all modes are always available
-        if (M.IsWebuiUp) return true;
-        
         // For ComfyUI, check if there's a workflow for the current model base and requested mode
-        if (M.IsComfyUIUp && M.State.Generation.Workflows != null)
+        if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null)
         {
-            var currentBase = M.State.Generation.WorkflowBase;
-            return M.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
+            var currentBase = State.State.Generation.WorkflowBase;
+            return State.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
         }
         
         return false;
@@ -244,10 +257,10 @@
 
     private Workflow? GetWorkflowForMode(ModeType mode)
     {
-        if (M.State.Generation.Workflows == null) return null;
+        if (State.State.Generation.Workflows == null) return null;
         
-        var currentBase = M.State.Generation.WorkflowBase;
-        return M.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
+        var currentBase = State.State.Generation.WorkflowBase;
+        return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
     }
 
     private async Task ToggleFavorite(bool isChecked)
@@ -272,22 +285,51 @@
 
     private async Task SetProjectCover()
     {
-        await DB.SetProjectCover(M.State.Gallery.ProjectId, Image.Path);
+        await DB.SetProjectCover(State.State.Gallery.ProjectId, Image.Path);
         await OnCoverChanged.InvokeAsync();
-        Snackbar.Add($"Cover image selected for project {M.State.Gallery.ProjectName}.", Severity.Success);
+        Snackbar.Add($"Cover image selected for project {State.State.Gallery.ProjectName}.", Severity.Success);
     }
 
     private void SendTo(bool img2img)
     {
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
-        if (img2img) M.CanvasImageData = data;
-        else M.UpscaleImageData = data;
+        
+        if (img2img)
+        {
+            // For Img2Img, find the workflow and navigate
+            var workflow = GetWorkflowForMode(ModeType.Img2Img);
+            if (workflow != null)
+            {
+                Session.CanvasImageData = data;
+                NavManager.NavigateTo($"/comfyui/img2img/{workflow.Id}");
+                Snackbar.Add("Image sent to Img2Img", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("No Img2Img workflow found for current model base", Severity.Warning);
+            }
+        }
+        else
+        {
+            // For Upscale, find the workflow and navigate
+            var workflow = GetWorkflowForMode(ModeType.Extras);
+            if (workflow != null)
+            {
+                Session.UpscaleImageData = data;
+                NavManager.NavigateTo($"/comfyui/upscale/{workflow.Id}");
+                Snackbar.Add("Image sent to Upscale", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("No Upscale workflow found for current model base", Severity.Warning);
+            }
+        }
     }
 
     private void SendToImg2Vid()
     {
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
-        M.Img2VidInputImage = data;
+        Session.Img2VidInputImage = data;
         
         // Find the Img2Vid workflow for the current model base
         var workflow = GetWorkflowForMode(ModeType.Img2Vid);
@@ -330,20 +372,14 @@
 
     private void HandleSelected(bool isChecked)
     {
-        if (isChecked) M.AddSelectedImage(Image.Id);
-        else M.RemoveSelectedImage(Image.Id);
+        if (isChecked) Gallery.AddSelectedImage(Image.Id);
+        else Gallery.RemoveSelectedImage(Image.Id);
         _isSelected = isChecked;
-    }
-
-    private async void Refresh()
-    {
-        _isSelected = M.SelectedImageIds.Contains(Image.Id);
-        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        M.OnSelectedImagesChanged -= Refresh;
-        M.OnRefreshImagesContainer -= Refresh;
+        Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
     }
 }

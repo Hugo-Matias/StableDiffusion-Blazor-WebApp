@@ -1,10 +1,13 @@
 @using BlazorWebApp.Extensions
 @using ImageEntity = BlazorWebApp.Data.Entities.Image
 @using static BlazorWebApp.Data.Enums;
-@inject DatabaseService DB
-@inject IOService IO
+@inject IDatabaseService DB
+@inject IIOService IO
 @inject IJSRuntime JS
-@inject ManagerService M
+@inject IOrchestratorService M
+@inject IStateService State
+@inject IBackendService Backend
+@inject ISessionService Session
 @inject ISnackbar Snackbar
 @inject NavigationManager NavManager
 @implements IDisposable
@@ -99,7 +102,7 @@
                             <span class="counter-current">@(_currentIndex + 1)</span>
                             <span class="counter-sep">/</span>
                             <span class="counter-total">@Assets.Count</span>
-                            <span class="counter-dot">•</span>
+                            <span class="counter-dot">ï¿½</span>
                             <span class="counter-total-label">@TotalCount</span>
                         </div>
                         @if (PageCount > 1)
@@ -253,7 +256,7 @@
                                     <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")" 
                                          @onclick="@(() => ToggleParam("Width"))" title="Resolution">
                                         <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
-                                        <span>@CurrentAsset.Width × @CurrentAsset.Height</span>
+                                        <span>@CurrentAsset.Width ï¿½ @CurrentAsset.Height</span>
                                     </div>
                                 }
                                 @if (CurrentAsset.Seed > 0)
@@ -434,14 +437,11 @@
 
     private bool HasWorkflowForMode(ModeType mode)
     {
-        // For WebUI, all modes are always available
-        if (M.IsWebuiUp) return true;
-        
-        // For ComfyUI, check if there's a workflow for the current model base and requested mode
-        if (M.IsComfyUIUp && M.State.Generation.Workflows != null)
+        // ComfyUI only - check if there's a workflow for the current model base and requested mode
+        if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null)
         {
-            var currentBase = M.State.Generation.WorkflowBase;
-            return M.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
+            var currentBase = State.State.Generation.WorkflowBase;
+            return State.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
         }
         
         return false;
@@ -449,10 +449,10 @@
 
     private Workflow? GetWorkflowForMode(ModeType mode)
     {
-        if (M.State.Generation.Workflows == null) return null;
+        if (State.State.Generation.Workflows == null) return null;
         
-        var currentBase = M.State.Generation.WorkflowBase;
-        return M.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
+        var currentBase = State.State.Generation.WorkflowBase;
+        return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
     }
 
     private void SendImageTo(bool img2img)
@@ -460,8 +460,8 @@
         if (CurrentAsset == null) return;
 
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(CurrentAsset.Path)}";
-        if (img2img) M.CanvasImageData = data;
-        else M.UpscaleImageData = data;
+        if (img2img) Session.CanvasImageData = data;
+        else Session.UpscaleImageData = data;
 
         var target = img2img ? "Img2Img" : "Upscale";
         Snackbar.Add($"Image sent to {target}", Severity.Success);
@@ -472,7 +472,7 @@
         if (CurrentAsset == null) return;
 
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(CurrentAsset.Path)}";
-        M.Img2VidInputImage = data;
+        Session.Img2VidInputImage = data;
         
         // Find the Img2Vid workflow for the current model base
         var workflow = GetWorkflowForMode(ModeType.Img2Vid);

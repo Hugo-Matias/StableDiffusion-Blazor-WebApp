@@ -41,7 +41,7 @@ namespace BlazorWebApp.Services
                 {
                     AssetType.CheckpointModel => (await _comfy.GetCheckpoints())?.Select(m => m.Model_name).ToList() ?? new List<string>(),
                     AssetType.DiffusionModel => (await _comfy.GetDiffusionModels())?.Select(m => m.Model_name).ToList() ?? new List<string>(),
-                    AssetType.Vae => await _comfy.GetVAEs() ?? new List<string>(),
+                    AssetType.Vae => await _comfy.GetVAEModels() ?? new List<string>(),
                     AssetType.Clip => await _comfy.GetClipModels() ?? new List<string>(),
                     AssetType.ClipVision => await _comfy.GetClipVisionModels() ?? new List<string>(),
                     _ => new List<string>()

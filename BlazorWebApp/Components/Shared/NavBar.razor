@@ -1,40 +1,39 @@
-﻿@inject ManagerService M
+﻿@using BlazorWebApp.Events
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IBackendService Backend
+@inject IEventService Events
 @implements IDisposable
 
 <div>
     <MudNavMenu Class="navbar-horizontal" Rounded>
         <MudNavLink Href="/" Match=NavLinkMatch.All><i class="fas fa-images me-1" /> Gallery</MudNavLink>
-        @if (M.Projects.Count > 0)
+        @if (Gallery.Projects.Count > 0)
         {
-            if (M.IsWebuiUp)
+            if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null && State.State.Generation.Workflows.Count > 0)
             {
-                <MudNavLink Href="/webui/txt2img" Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-lines me-1" /> Txt2Img</MudNavLink>
-                <MudNavLink Href="/webui/img2img" Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-image me-1" /> Img2Img</MudNavLink>
-                <MudNavLink Href="/webui/upscale" Match=NavLinkMatch.Prefix><i class="fa-solid fa-panorama me-1" /> Upscale</MudNavLink>
-            }
-            if (M.IsComfyUIUp && M.State.Generation.Workflows != null && M.State.Generation.Workflows.Count > 0)
-            {
-                var w = M.State.Generation.Workflows;
-                var b = M.State.Generation.WorkflowBase;
+                var w = State.State.Generation.Workflows;
+                var b = State.State.Generation.WorkflowBase;
                 if (w.Any(w => w.Mode == ModeType.Txt2Img))
                 {
                     foreach (var workflow in w.Where(w => w.Mode == ModeType.Txt2Img && (b != null ? w.Base == b : true)))
                     {
-                        <MudNavLink Href=@($"/comfyui/txt2img/{workflow.Id}") Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-lines me-1" /> @(workflow.Title)</MudNavLink>
+                        <MudNavLink Href=@($"/txt2img/{workflow.Id}") Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-lines me-1" /> @(workflow.Title)</MudNavLink>
                     }
                 }
                 if (w.Any(w => w.Mode == ModeType.Img2Img))
                 {
                     foreach (var workflow in w.Where(w => w.Mode == ModeType.Img2Img && (b != null ? w.Base == b : true)))
                     {
-                        <MudNavLink Href=@($"/comfyui/img2img/{workflow.Id}") Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-image me-1" /> @(workflow.Title)</MudNavLink>
+                        <MudNavLink Href=@($"/img2img/{workflow.Id}") Match=NavLinkMatch.Prefix><i class="fa-regular fa-file-image me-1" /> @(workflow.Title)</MudNavLink>
                     }
                 }
                 if (w.Any(w => w.Mode == ModeType.Img2Vid))
                 {
                     foreach (var workflow in w.Where(w => w.Mode == ModeType.Img2Vid && (b != null ? w.Base == b : true)))
                     {
-                        <MudNavLink Href=@($"/comfyui/img2vid/{workflow.Id}") Match=NavLinkMatch.Prefix><i class="fa-solid fa-video me-1" /> @(workflow.Title)</MudNavLink>
+                        <MudNavLink Href=@($"/img2vid/{workflow.Id}") Match=NavLinkMatch.Prefix><i class="fa-solid fa-video me-1" /> @(workflow.Title)</MudNavLink>
                     }
                 }
             }
@@ -48,17 +47,32 @@
 @code {
     protected override void OnInitialized()
     {
-        M.OnWebuiStateChanged += Refresh;
-        M.OnProjectsChange += Refresh;
-        M.OnWorkflowBaseChanged += Refresh;
+        Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        Events.Subscribe<ProjectChangedEventArgs>(OnProjectsChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+    }
+
+    private void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args)
+    {
+        Refresh();
+    }
+
+    private void OnProjectsChanged(ProjectChangedEventArgs args)
+    {
+        Refresh();
+    }
+
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args)
+    {
+        Refresh();
     }
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        M.OnWebuiStateChanged -= Refresh;
-        M.OnProjectsChange -= Refresh;
-        M.OnWorkflowBaseChanged -= Refresh;
+        Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        Events.Unsubscribe<ProjectChangedEventArgs>(OnProjectsChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
     }
 }

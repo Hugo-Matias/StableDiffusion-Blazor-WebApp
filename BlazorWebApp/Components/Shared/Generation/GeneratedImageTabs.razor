@@ -1,23 +1,25 @@
-﻿@inject ManagerService M
-@inject ImageService ImageService
-@inject DatabaseService DB
+@using BlazorWebApp.Events
+@inject IOrchestratorService M
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IGalleryService Gallery
+@inject IEventService Events
+@inject IImageService ImageService
+@inject IProgressService Progress
+@inject IDatabaseService DB
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @implements IDisposable
 
 <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" MinimumTabWidth="100px" Rounded Centered>
     <MudTabPanel Icon="fa-solid fa-play">
-        @if (M.GeneratedImageEntities != null && M.GeneratedImageEntities.Images != null)
+        @if (ImageService.GeneratedImageEntities != null && ImageService.GeneratedImageEntities.Images != null)
         {
-            <ImageCarousel Images="M.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
+            <ImageCarousel Images="ImageService.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
             <br />
-            @if (M.ImagesInfo != null)
+            @if (!string.IsNullOrWhiteSpace(ImageService.Images?.Info))
             {
-                <span class="generation-info-text"><small>@M.ImagesInfo.InfoTexts[0]</small></span>
-            }
-            else if (M.GeneratedUpscaleImage.Info != null)
-            {
-                <span class="generation-info-text"><small>@M.GeneratedUpscaleImage.Info</small></span>
+                <span class="generation-info-text"><small>@ImageService.Images.Info</small></span>
             }
         }
         else
@@ -26,9 +28,9 @@
         }
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-image">
-        @if (M.GeneratedImageEntities != null)
+        @if (ImageService.GeneratedImageEntities != null)
         {
-            <ImagesContainer Images="M.GeneratedImageEntities" CanSelect=true />
+            <ImagesContainer Images="ImageService.GeneratedImageEntities" CanSelect=true />
         }
         else
         {
@@ -37,14 +39,14 @@
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-spinner">
         <div class="queue-panel">
-            @if (M.IsConverging)
+            @if (Progress.IsConverging)
             {
                 <MudStack AlignItems="AlignItems.Center" Class="pa-4" Style="width: 100%;">
                     @* Preview Image from KSampler *@
                     <div class="preview-image-container">
-                        @if (!string.IsNullOrWhiteSpace(M.Progress?.CurrentImage))
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.CurrentImage))
                         {
-                            <MudImage Src="@($"data:image/png;base64,{M.Progress.CurrentImage}")" 
+                            <MudImage Src="@($"data:image/png;base64,{ImageService.Progress.CurrentImage}")" 
                                       Alt="Generation Preview" 
                                       Class="preview-image"
                                       ObjectFit="ObjectFit.Contain" />
@@ -59,24 +61,24 @@
                     
                     @* Progress Information *@
                     <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="mt-3" Style="width: 100%; max-width: 400px;">
-                        @if (!string.IsNullOrWhiteSpace(M.Progress?.State?.Job))
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.State?.Job))
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                @M.Progress.State.Job
+                                @ImageService.Progress.State.Job
                             </MudText>
                         }
                         
                         @* Progress Bar *@
-                        @if (M.Progress?.Value > 0)
+                        @if (ImageService.Progress?.Value > 0)
                         {
                             <MudProgressLinear Color="Color.Primary" 
-                                               Value="@(M.Progress.Value * 100)" 
+                                               Value="@(ImageService.Progress.Value * 100)" 
                                                Class="mt-2" 
                                                Style="width: 100%;"
                                                Rounded
                                                Size="Size.Medium" />
                             <MudText Typo="Typo.caption">
-                                @($"{M.Progress.Value * 100:F0}%")
+                                @($"{ImageService.Progress.Value * 100:F0}%")
                             </MudText>
                         }
                         else
@@ -112,9 +114,9 @@
                                StartIcon="fa-solid fa-trash-can" 
                                Color="Color.Error"
                                Size="Size.Small">
-                        Delete (@M.SelectedImageIds.Count)
+                        Delete (@Gallery.SelectedImageIds.Count)
                     </MudButton>
-                    <MudButton OnClick="M.ClearSelectedImages" 
+                    <MudButton OnClick="Gallery.ClearSelectedImages" 
                                StartIcon="fa-regular fa-square" 
                                Color="Color.Warning"
                                Size="Size.Small">Clear</MudButton>
@@ -176,13 +178,13 @@
     <MudTabPanel Icon="fa-solid fa-shuffle">
         <MudStack>
             <MudText Typo="Typo.caption">Source:</MudText>
-            <MudRadioGroup T="string" @bind-Value="M.State.Generation.RandomImagesSource">
+            <MudRadioGroup T="string" @bind-Value="State.State.Generation.RandomImagesSource">
                 <MudRadio T="string" Value="@("generated")" Color="Color.Primary">Generated</MudRadio>
                 <MudRadio T="string" Value="@("resource")" Color="Color.Secondary">Resource</MudRadio>
             </MudRadioGroup>
             <MudStack Row=true>
-                <MudSlider @bind-Value=M.State.Generation.RandomImagesAmount Min=M.Settings.Generation.RandomImages.Min Max=M.Settings.Generation.RandomImages.Max Step=M.Settings.Generation.RandomImages.Step ValueLabel=true>
-                    <small>Amount: </small>@M.State.Generation.RandomImagesAmount
+                <MudSlider @bind-Value=State.State.Generation.RandomImagesAmount Min=Settings.Settings.Generation.RandomImages.Min Max=Settings.Settings.Generation.RandomImages.Max Step=Settings.Settings.Generation.RandomImages.Step ValueLabel=true>
+                    <small>Amount: </small>@State.State.Generation.RandomImagesAmount
                 </MudSlider>
                 <MudButton OnClick="LoadRandomImages" Color="Color.Success">Random</MudButton>
             </MudStack>
@@ -253,7 +255,7 @@
              StartIndex="_selectedViewerIndex"
              CurrentPage="_selectedImagesPage"
              PageCount="@(_selectedImages?.PageCount ?? 1)"
-             TotalCount="@(M.SelectedImageIds.Count)"
+             TotalCount="@(Gallery.SelectedImageIds.Count)"
              OnPageChange="HandleSelectedViewerPageChange"
              OnAssetChanged="HandleAssetChanged"
              OnClosed="StateHasChanged" />
@@ -289,8 +291,8 @@
     {
         await LoadSelectedPage(1);
         ImageService.OnChange += Refresh;
-        M.OnSelectedImagesChanged += Refresh;
-        M.OnProgressChanged += Refresh;
+        Events.Subscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
+        Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
     }
 
     private bool IsVideoFile(string path)
@@ -354,7 +356,7 @@
         await LoadSelectedImages();
     }
 
-    private async Task LoadSelectedImages() => _selectedImages = await DB.GetPagedImages(_selectedImagesPage, M.SelectedImageIds);
+    private async Task LoadSelectedImages() => _selectedImages = await DB.GetPagedImages(_selectedImagesPage, Gallery.SelectedImageIds);
 
     private void OpenSelectedViewer(int startIndex)
     {
@@ -371,18 +373,18 @@
     private async Task LoadRandomImages()
     {
         _randomPage = 1;
-        switch (M.State.Generation.RandomImagesSource)
+        switch (State.State.Generation.RandomImagesSource)
         {
             case "generated":
-                _randomImages = await DB.GetRandomImages(M.State.Generation.RandomImagesAmount);
+                _randomImages = await DB.GetRandomImages(State.State.Generation.RandomImagesAmount);
                 break;
             case "resource":
-                _randomImages = await DB.GetRandomResourceImages(M.State.Generation.RandomImagesAmount);
+                _randomImages = await DB.GetRandomResourceImages(State.State.Generation.RandomImagesAmount);
                 break;
             default:
                 break;
         }
-        await M.SaveState();
+        await State.SaveState();
         StateHasChanged();
     }
 
@@ -406,26 +408,29 @@
 
     private async Task ShowDeleteSelectedDialog()
     {
-        if (M.SelectedImageIds.Count == 0) return;
+        if (Gallery.SelectedImageIds.Count == 0) return;
         
         var parameters = new DialogParameters();
         parameters.Add("OkButtonText", "Yes");
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
-        parameters.Add("Content", new MarkupString($@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> {M.SelectedImageIds.Count} selected items?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> {Gallery.SelectedImageIds.Count} selected items?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
             foreach (var image in selectedImages)
             {
                 await DB.DeleteImage(image);
             }
             Snackbar.Add("All selected items deleted successfully.", Severity.Success);
-            M.ClearSelectedImages();
+            Gallery.ClearSelectedImages();
         }
     }
+
+    private void OnSelectedImagesChanged(SelectedImagesChangedEventArgs args) => Refresh();
+    private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();
 
     private async void Refresh()
     {
@@ -436,7 +441,7 @@
     public void Dispose()
     {
         ImageService.OnChange -= Refresh;
-        M.OnSelectedImagesChanged -= Refresh;
-        M.OnProgressChanged -= Refresh;
+        Events.Unsubscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
+        Events.Unsubscribe<ProgressChangedEventArgs>(OnProgressChanged);
     }
 }

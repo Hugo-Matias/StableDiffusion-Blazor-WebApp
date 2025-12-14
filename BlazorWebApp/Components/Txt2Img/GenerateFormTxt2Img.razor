@@ -1,13 +1,24 @@
-﻿@inject ManagerService M
+@using System.Text.Json
+@using BlazorWebApp.Data.Dtos.ComfyUI.Workflow
+@using BlazorWebApp.Components.Shared
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IBackendService Backend
+@inject IImageService ImageService
+@inject IOrchestratorService M
 
 <div style="margin-bottom:15rem;">
     <EditForm Model="@Parameters">
         <MudGrid Class="pa-5">
+            <MudItem xs="12">
+                <LoraForm Loras="Parameters.Loras" Backend="@BlazorWebApp.Data.Enums.Backend.ComfyUI"/>
+            </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Sampler" @bind-Value=Parameters.SamplerName AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (M.Samplers != null)
+                    @if (Backend.Samplers != null)
                     {
-                        @foreach (var sampler in M.Samplers)
+                        @foreach (var sampler in Backend.Samplers)
                         {
                             <MudSelectItem Value=@sampler.Name />
                         }
@@ -16,17 +27,17 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSelect T="string" Label="Scheduler" @bind-Value=Parameters.Scheduler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (M.Schedulers != null)
+                    @if (Backend.Schedulers != null)
                     {
-                        @foreach (var scheduler in M.Schedulers)
+                        @foreach (var scheduler in Backend.Schedulers)
                         {
-                            <MudSelectItem Value=@scheduler.Name >@scheduler.Label</MudSelectItem>
+                            <MudSelectItem Value=@scheduler.Name />
                         }
                     }
                 </MudSelect>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.Steps Min=M.Settings.Generation.Shared.Steps.Min Max=M.Settings.Generation.Shared.Steps.Max Step=M.Settings.Generation.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
+                <MudSlider @bind-Value=Parameters.Steps Min=Settings.Settings.Generation.Shared.Steps.Min Max=Settings.Settings.Generation.Shared.Steps.Max Step=Settings.Settings.Generation.Shared.Steps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @Parameters.Steps</MudSlider>
             </MudItem>
             <MudItem xs="5">
                 <MudNumericField @bind-Value=Parameters.Seed Label="Seed" Min="-1" Max="long.MaxValue" />
@@ -37,16 +48,25 @@
                     <MudIconButton OnClick=RestoreSeed Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" />
                 </MudButtonGroup>
             </MudItem>
+            @if (_guidanceBases.Contains(State.State.Generation.WorkflowBase))
+            {
+                <MudItem xs="6">
+                    <MudSlider @bind-Value=Parameters.DistilledCfgScale Min=Settings.Settings.Generation.Shared.DistilledCfg.Min Max=Settings.Settings.Generation.Shared.DistilledCfg.Max Step=Settings.Settings.Generation.Shared.DistilledCfg.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Guidance:</small> @Parameters.DistilledCfgScale</MudSlider>
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="6">
+                    <MudSlider @bind-Value=Parameters.CfgScale Min=Settings.Settings.Generation.Shared.CfgScale.Min Max=Settings.Settings.Generation.Shared.CfgScale.Max Step=Settings.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
+                </MudItem>
+            }
             <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.CfgScale Min=M.Settings.Generation.Shared.CfgScale.Min Max=M.Settings.Generation.Shared.CfgScale.Max Step=M.Settings.Generation.Shared.CfgScale.Step Variant="Variant.Filled" ValueLabel TickMarks><small>CFG Scale:</small> @Parameters.CfgScale</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.DistilledCfgScale Min=M.Settings.Generation.Shared.DistilledCfg.Min Max=M.Settings.Generation.Shared.DistilledCfg.Max Step=M.Settings.Generation.Shared.DistilledCfg.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Distilled CFG:</small> @Parameters.DistilledCfgScale</MudSlider>
+                <MudSlider @bind-Value=Parameters.BatchSize Min=Settings.Settings.Generation.Shared.Batch.Size.Min Max=Settings.Settings.Generation.Shared.Batch.Size.Max Step=Settings.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
             </MudItem>
             <MudItem xs="12">
                 <MudText Typo="Typo.caption" Class="mb-4">Quick Resolution:</MudText>
                 <MudGrid Spacing="2" Justify="Justify.Center">
-                    @foreach (var res in M.Settings.Generation.Shared.QuickResolutions)
+                    @foreach (var res in Settings.Settings.Generation.Shared.QuickResolutions)
                     {
                         <MudItem xs="6" sm="4" md="3" lg="2">
                             <MudButton OnClick="@(() => SetResolution(res.Width, res.Height))"
@@ -80,61 +100,29 @@
                 </div>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: true)) Value=Parameters.Width Min=Settings.Settings.Generation.Shared.Resolution.Min Max=Settings.Settings.Generation.Shared.Resolution.Max Step=Settings.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Width:</small> @(Parameters.Width)px</MudSlider>
             </MudItem>
             <MudItem xs="6">
-                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=M.Settings.Generation.Shared.Resolution.Min Max=M.Settings.Generation.Shared.Resolution.Max Step=M.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.NIter Min=M.Settings.Generation.Shared.Batch.Count.Min Max=M.Settings.Generation.Shared.Batch.Count.Max Step=M.Settings.Generation.Shared.Batch.Count.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Count:</small> @Parameters.NIter</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.BatchSize Min=M.Settings.Generation.Shared.Batch.Size.Min Max=M.Settings.Generation.Shared.Batch.Size.Max Step=M.Settings.Generation.Shared.Batch.Size.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Batch Size:</small> @Parameters.BatchSize</MudSlider>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSelect T="string" Label="Refiner Checkpoint" @bind-Value=Parameters.RefinerCheckpoint AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                    @if (M.CheckpointModels != null)
-                    {
-                        <MudSelectItem Value=@("None")>None</MudSelectItem>
-                        @foreach (var model in M.CheckpointModels)
-                        {
-                            <MudSelectItem Value=@model.Model_name >@model.Title</MudSelectItem>
-                        }
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="6">
-                <MudSlider @bind-Value=Parameters.RefinerSwitchAt Min=0f Max=1f Step=0.01f Variant="Variant.Filled" ValueLabel TickMarks><small>Refiner Switch At:</small> @Parameters.RefinerSwitchAt</MudSlider>
+                <MudSlider T="int?" ValueChanged=@((v) => HandleResolutionChanged((int)v, isWidth: false)) Value=Parameters.Height Min=Settings.Settings.Generation.Shared.Resolution.Min Max=Settings.Settings.Generation.Shared.Resolution.Max Step=Settings.Settings.Generation.Shared.Resolution.Step Variant="Variant.Filled" ValueLabel TickMarks><small>Height:</small> @(Parameters.Height)px</MudSlider>
             </MudItem>
             <MudItem xs="12">
                 <MudChipSet SelectedChipsChanged="HandleParameterChecked" MultiSelection Filter>
-                    <MudChip Text="Restore Faces" Default="Parameters.RestoreFaces" Variant="Variant.Text" Color="Color.Primary">Restore Faces</MudChip>
-                    <MudChip Text="ADetailer" Default="Parameters.Scripts.ADetailer.IsEnabled" Variant="Variant.Text" Color="Color.Primary">ADetailer</MudChip>
-                    <MudChip Text="Tiling" Default="Parameters.Tiling" Variant="Variant.Text" Color="Color.Primary">Tiling</MudChip>
-                    <MudChip Text="Highres Fix" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Highres Fix</MudChip>
-                    <MudChip Text="Tiled Diffusion" Default="Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Tiled Diffusion</MudChip>
-                    <MudChip Text="Tiled VAE" Default="Parameters.Scripts.MultiDiffusionTiledVae.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Tiled VAE</MudChip>
-                    <MudChip Text="Cutoff" Default="Parameters.Scripts.Cutoff.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Cutoff</MudChip>
-                    <MudChip Text="Regional Prompter" Default="Parameters.Scripts.RegionalPrompter.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Regional Prompter</MudChip>
-                    <MudChip Text="Dynamic Prompts" Default="Parameters.Scripts.DynamicPrompts.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Dynamic Prompts</MudChip>
-                    <MudChip Text="ControlNet" Default="M.ControlNetEnabled" Variant="Variant.Text" Color="Color.Primary">ControlNet</MudChip>
-                    <MudChip Text="XYZ Plot" Default="Parameters.Scripts.XYZPlot.IsEnabled" Variant="Variant.Text" Color="Color.Primary">X/Y/Z Plot</MudChip>
-                    <MudChip Text="Incantations" Default="Parameters.Scripts.Incantations.IsEnabled" Variant="Variant.Text" Color="Color.Primary">Incantations</MudChip>
+                    <MudChip Text="Upscale" Default="Parameters.EnableHR" Variant="Variant.Text" Color="Color.Primary">Upscale</MudChip>
+                    <MudChip Text="SeedVR2" Default="Parameters.SeedVR2?.IsActive" Variant="Variant.Text" Color="Color.Primary">SeedVR2 Upscale</MudChip>
+                    <MudChip Text="Conditioning Variation" Default="Parameters.ConditioningVariation.IsActive" Variant="Variant.Text" Color="Color.Primary">Conditioning Variation</MudChip>
                 </MudChipSet>
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.ADetailer.IsEnabled ? "show" : "")}")">
-                 <ADetailerForm Parameters=Parameters.Scripts.ADetailer />
             </MudItem>
             <MudItem xs="12">
                 <MudGrid Class=@($"collapse {(Parameters.EnableHR == true ? "show" : "")}")>
+                    <MudText Typo="Typo.button" Style="opacity:0.2;">Upscale</MudText>
                     <MudItem xs="12" Class="align-items-center justify-content-center d-flex mt-n3">
                         <MudText Typo="Typo.overline">@_resizeInfo</MudText>
                     </MudItem>
                     <MudItem xs="4">
                         <MudSelect T="string" Label="Upscaler" @bind-Value=Parameters.HRUpscaler AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                            @if (M.Upscalers != null && M.Upscalers.Count > 0)
+                            @if (Backend.Upscalers != null && Backend.Upscalers.Count > 0)
                             {
-                                @foreach (var upscaler in _hiresUpscalers)
+                                @foreach (var upscaler in Backend.Upscalers)
                                 {
                                     <MudSelectItem Value=@(upscaler.Name) />
                                 }
@@ -142,45 +130,82 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider @bind-Value=Parameters.HRSecondPassSteps Min=M.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Min Max=M.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Max Step=M.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @($"{(Parameters.HRSecondPassSteps > 0 ? Parameters.HRSecondPassSteps : $"Original ({Parameters.Steps})")}")</MudSlider>
+                        <MudSlider @bind-Value=Parameters.HRSecondPassSteps Min=Settings.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.SecondPassSteps.Step Variant="Variant.Filled" ValueLabel><small>Steps:</small> @($"{(Parameters.HRSecondPassSteps > 0 ? Parameters.HRSecondPassSteps : $"Original ({Parameters.Steps})")}")</MudSlider>
                         </MudItem>
                         <MudItem xs="4">
-                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=M.Settings.Generation.Shared.Denoising.Min Max=M.Settings.Generation.Shared.Denoising.Max Step=M.Settings.Generation.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
+                            <MudSlider @bind-Value=Parameters.DenoisingStrength Min=Settings.Settings.Generation.Shared.Denoising.Min Max=Settings.Settings.Generation.Shared.Denoising.Max Step=Settings.Settings.Generation.Shared.Denoising.Step Variant="Variant.Filled" ValueLabel><small>Denoising:</small> @Parameters.DenoisingStrength</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=M.Settings.Generation.Txt2Img.HighRes.Scale.Min Max=M.Settings.Generation.Txt2Img.HighRes.Scale.Max Step=M.Settings.Generation.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
+                        <MudSlider T="double" ValueChanged=HandleHRScaleChanged Value=Parameters.HRScale Min=Settings.Settings.Generation.Txt2Img.HighRes.Scale.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.Scale.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.Scale.Step Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.HRScale)x</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=M.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=M.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=M.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: true)) Value=Parameters.HRWidth Min=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Width:</small> @(Parameters.HRWidth)px</MudSlider>
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=M.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=M.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=M.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
+                        <MudSlider T="int" ValueChanged=@((v) => HandleHRResolutionChanged(v, isWidth: false)) Value=Parameters.HRHeight Min=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Min Max=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Max Step=Settings.Settings.Generation.Txt2Img.HighRes.Resolution.Step Variant="Variant.Filled" ValueLabel><small>Height:</small> @(Parameters.HRHeight)px</MudSlider>
                     </MudItem>
                 </MudGrid>
             </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled ? "show" : "")}")">
-                <MultiDiffusionTiledDiffusionForm Parameters=Parameters.Scripts.MultiDiffusionTiledDiffusion IsImg2Img=false />
+            <MudItem xs="12">
+                <MudGrid Class=@($"collapse {(Parameters.SeedVR2?.IsActive == true ? "show" : "")}")>
+                    <MudText Typo="Typo.button" Style="opacity:0.2;">SeedVR2 Upscaler</MudText>
+                    <MudItem xs="12" Class="align-items-center justify-content-center d-flex mt-n3">
+                        <MudText Typo="Typo.overline">@_seedVR2ResizeInfo</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value=Parameters.SeedVR2.Model Label="Model" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="double" ValueChanged=HandleSeedVR2ScaleChanged Value=(double)Parameters.SeedVR2.Scale Min=1.0 Max=8.0 Step=0.1 Variant="Variant.Filled" ValueLabel><small>Scale Multiplier:</small> @(Parameters.SeedVR2.Scale)x</MudSlider>
+                    </MudItem>
+                    <MudItem xs="2">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.BatchSize 
+                           Label="Batch Size" 
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.BatchSize.Step />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.BlocksToSwap 
+                           Label="Blocks to Swap" 
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.BlocksToSwap.Step />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.VaeTileSize 
+                           Label="VAE Tile Size" 
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileSize.Step />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField @bind-Value=Parameters.SeedVR2.VaeTileOverlap 
+                           Label="VAE Tile Overlap" 
+                           Min=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Min 
+                           Max=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Max 
+                           Step=Settings.Settings.Generation.Txt2Img.SeedVR2.VaeTileOverlap.Step />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.SeedVR2.InputNoiseScale 
+                     Min=Settings.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Min 
+                     Max=Settings.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Max 
+                     Step=Settings.Settings.Generation.Txt2Img.SeedVR2.InputNoiseScale.Step 
+                     Variant="Variant.Filled" 
+                     ValueLabel><small>Input Noise Scale:</small> @(Parameters.SeedVR2.InputNoiseScale?.ToString("F2") ?? "0.00")</MudSlider>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSlider @bind-Value=Parameters.SeedVR2.LatentNoiseScale 
+                     Min=Settings.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Min 
+                     Max=Settings.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Max 
+                     Step=Settings.Settings.Generation.Txt2Img.SeedVR2.LatentNoiseScale.Step 
+                     Variant="Variant.Filled" 
+                     ValueLabel><small>Latent Noise Scale:</small> @(Parameters.SeedVR2.LatentNoiseScale?.ToString("F2") ?? "0.00")</MudSlider>
+                    </MudItem>
+                </MudGrid>
             </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.MultiDiffusionTiledVae.IsEnabled ? "show" : "")}")">
-                <MultiDiffusionTiledVaeForm Parameters=Parameters.Scripts.MultiDiffusionTiledVae />
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.Cutoff.IsEnabled ? "show" : "")}")">
-                <CutoffForm Parameters=Parameters.Scripts.Cutoff />
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.RegionalPrompter.IsEnabled ? "show" : "")}")">
-                <RegionalPrompterForm Parameters=Parameters.Scripts.RegionalPrompter />
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.DynamicPrompts.IsEnabled ? "show" : "")}")">
-                <DynamicPromptsForm Parameters=Parameters.Scripts.DynamicPrompts IsImg2Img=false />
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(M.ControlNetEnabled ? "show" : "")}")">
-                <ControlNetTabs Units="Parameters.Scripts.ControlNet" />
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.XYZPlot.IsEnabled ? "show" : "")}")">
-                <XYZPlotForm Parameters="Parameters.Scripts.XYZPlot" IsImg2Img=false />
-            </MudItem>
-            <MudItem xs="12" Class="@($"collapse {(Parameters.Scripts.Incantations.IsEnabled ? "show" : "")}")">
-                <IncantationsForm Parameters="Parameters.Scripts.Incantations" />
+            <MudItem xs="12" Class="@($"collapse {(Parameters.ConditioningVariation.IsActive.Value ? "show" : "")}")">
+                <ConditioningVariationForm Parameters=Parameters.ConditioningVariation />
             </MudItem>
         </MudGrid>
     </EditForm>
@@ -190,91 +215,106 @@
     [Parameter] public Txt2ImgParameters Parameters { get; set; }
     [Parameter] public EventCallback<Txt2ImgParameters> ParametersChanged { get; set; }
 
-    private Options _options;
     private MarkupString _resizeInfo;
-    private List<Upscaler> _hiresUpscalers = new();
-    private List<string> _hiresUpscalerNames = new() { "Latent", "Latent (antialiased)", "Latent (bicubic)", "Latent (bicubic antialiased)", "Latent (nearest)", "Latent (nearest-exact)" };
+    private MarkupString _seedVR2ResizeInfo;
+    private List<ModelBase> _guidanceBases = new() { ModelBase.Flux };
 
     protected async override Task OnInitializedAsync()
     {
-        _options = M.Options;
-        if (M.Upscalers == null || M.Upscalers.Count == 0) await M.GetUpscalers();
+        if (Backend.Upscalers == null || Backend.Upscalers.Count == 0) 
+            await Backend.LoadBackendDependentResources();
         RefreshHighresInfo();
-        InitializeUpscalers();
     }
 
-    private void InitializeUpscalers()
+    /// <summary>
+    /// Gets the current Txt2Img workflow based on the selected workflow or base.
+    /// </summary>
+    private Workflow? GetCurrentWorkflow()
     {
-        foreach (var upscaler in _hiresUpscalerNames)
+        // Get workflows for Txt2Img mode
+        var workflows = M.GetWorkflowsForMode(ModeType.Txt2Img);
+        if (workflows == null || workflows.Count == 0)
+            return null;
+
+        // If a specific workflow is selected, use that
+        if (State.State?.Generation?.CurrentWorkflowId.HasValue == true)
         {
-            _hiresUpscalers.Add(new Upscaler() { Name = upscaler, ModelName = upscaler, ModelPath = string.Empty, ModelUrl = string.Empty });
+            var selected = workflows.FirstOrDefault(w => w.Id == State.State.Generation.CurrentWorkflowId.Value);
+            if (selected != null)
+                return selected;
         }
-        _hiresUpscalers.AddRange(M.Upscalers);
+
+        // Try to match by WorkflowBase
+        if (State.State?.Generation?.WorkflowBase != default)
+        {
+            var byBase = workflows.FirstOrDefault(w => w.Base == State.State.Generation.WorkflowBase);
+            if (byBase != null)
+                return byBase;
+        }
+
+        // Default to first Txt2Img workflow
+        return workflows.FirstOrDefault();
     }
 
     private void SetRandomSeed() => Parameters.Seed = -1;
 
     private void RestoreSeed()
     {
-        if (M.ImagesInfo != null && M.ImagesInfo.Seed != null)
-            Parameters.Seed = M.ImagesInfo.Seed;
+        // ComfyUI-only now (WebUI removed)
+        if (Backend.IsBackendAvailable && !string.IsNullOrWhiteSpace(ImageService.Images?.Info))
+        {
+            var info = ImageService.Images.Info;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(info);
+                var root = doc.RootElement;
+
+                // ComfyUI stores the workflow as a flat object where each key is a node ID
+                // We need to search through all nodes for one that has a "seed" input
+                foreach (var nodeProperty in root.EnumerateObject())
+                {
+                    if (nodeProperty.Value.ValueKind == JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                        inputs.TryGetProperty("seed", out var seedEl))
+                    {
+                        if (seedEl.ValueKind == JsonValueKind.Number && seedEl.TryGetInt64(out var seedValue))
+                        {
+                            Parameters.Seed = seedValue;
+                            break; // Found the seed, stop searching
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If parsing fails, do nothing
+            }
+        }
     }
 
     private void HandleParameterChecked(MudChip[] checkboxes)
     {
-        Parameters.RestoreFaces = false;
-        Parameters.Scripts.ADetailer.IsEnabled = false;
-        Parameters.Tiling = false;
+        // Scripts system removed - only handle non-script parameters
         Parameters.EnableHR = false;
-        Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled = false;
-        Parameters.Scripts.MultiDiffusionTiledVae.IsEnabled = false;
-        Parameters.Scripts.Cutoff.IsEnabled = false;
-        Parameters.Scripts.RegionalPrompter.IsEnabled = false;
-        Parameters.Scripts.DynamicPrompts.IsEnabled = false;
-        M.ControlNetEnabled = false;
-        Parameters.Scripts.XYZPlot.IsEnabled = false;
-        Parameters.Scripts.Incantations.IsEnabled = false;
+        if (Parameters.SeedVR2 != null) Parameters.SeedVR2.IsActive = false;
+        if (Parameters.ConditioningVariation != null) Parameters.ConditioningVariation.IsActive = false;
+        
         if (checkboxes == null || checkboxes.Count() == 0) return;
 
         foreach (var check in checkboxes)
         {
             switch (check.Text)
             {
-                case "Restore Faces":
-                    Parameters.RestoreFaces = true;
-                    break;
-                case "ADetailer":
-                    Parameters.Scripts.ADetailer.IsEnabled = true;
-                    break;
-                case "Tiling":
-                    Parameters.Tiling = true;
-                    break;
-                case "Highres Fix":
+                case "Upscale":
                     Parameters.EnableHR = true;
                     break;
-                case "Tiled Diffusion":
-                    Parameters.Scripts.MultiDiffusionTiledDiffusion.IsEnabled = true;
+                case "SeedVR2":
+                    if (Parameters.SeedVR2 == null) Parameters.SeedVR2 = new SeedVR2Parameters();
+                    Parameters.SeedVR2.IsActive = true;
                     break;
-                case "Tiled VAE":
-                    Parameters.Scripts.MultiDiffusionTiledVae.IsEnabled = true;
-                    break;
-                case "Cutoff":
-                    Parameters.Scripts.Cutoff.IsEnabled = true;
-                    break;
-                case "Regional Prompter":
-                    Parameters.Scripts.RegionalPrompter.IsEnabled = true;
-                    break;
-                case "Dynamic Prompts":
-                    Parameters.Scripts.DynamicPrompts.IsEnabled = true;
-                    break;
-                case "ControlNet":
-                    M.ControlNetEnabled = true;
-                    break;
-                case "XYZ Plot":
-                    Parameters.Scripts.XYZPlot.IsEnabled = true;
-                    break;
-                case "Incantations":
-                    Parameters.Scripts.Incantations.IsEnabled = true;
+                case "Conditioning Variation":
+                    if (Parameters.ConditioningVariation == null) Parameters.ConditioningVariation = new ConditioningVariationParameters();
+                    Parameters.ConditioningVariation.IsActive = true;
                     break;
             }
         }
@@ -285,6 +325,7 @@
         if (isWidth) Parameters.Width = value;
         else Parameters.Height = value;
         RefreshHighresInfo();
+        RefreshSeedVR2Info();
     }
 
     private void HandleHRResolutionChanged(int value, bool isWidth)
@@ -300,34 +341,69 @@
         RefreshHighresInfo();
     }
 
+    private void HandleSeedVR2ScaleChanged(double value)
+    {
+        Parameters.SeedVR2.Scale = value;
+        RefreshSeedVR2Info();
+    }
+
     private void SetResolution(int width, int height)
     {
         Parameters.Width = width;
         Parameters.Height = height;
         RefreshHighresInfo();
+        RefreshSeedVR2Info();
     }
 
     private void ScaleResolution(double scale)
     {
         var currentWidth = Parameters.Width ?? 512;
         var currentHeight = Parameters.Height ?? 512;
-        var step = M.Settings.Generation.Shared.Resolution.Step;
+        var step = Settings.Settings.Generation.Shared.Resolution.Step;
         
         // Scale and round to nearest step
         var newWidth = (int)(Math.Round(currentWidth * scale / step) * step);
         var newHeight = (int)(Math.Round(currentHeight * scale / step) * step);
         
         // Clamp to min/max
-        var min = M.Settings.Generation.Shared.Resolution.Min;
-        var max = M.Settings.Generation.Shared.Resolution.Max;
+        var min = Settings.Settings.Generation.Shared.Resolution.Min;
+        var max = Settings.Settings.Generation.Shared.Resolution.Max;
         newWidth = Math.Clamp(newWidth, min, max);
         newHeight = Math.Clamp(newHeight, min, max);
         
         Parameters.Width = newWidth;
         Parameters.Height = newHeight;
         RefreshHighresInfo();
+        RefreshSeedVR2Info();
     }
 
     private void RefreshHighresInfo() => _resizeInfo = Parser.ParseHighresFixResizeInfo(Parameters);
 
+    private void RefreshSeedVR2Info()
+    {
+        if (Parameters.SeedVR2 == null || Parameters.Width == null || Parameters.Height == null)
+        {
+            _seedVR2ResizeInfo = new MarkupString(string.Empty);
+            return;
+        }
+
+        var currentRes = $"{Parameters.Width}x{Parameters.Height} px";
+        var (targetWidth, targetHeight, smallestSide) = CalculateSeedVR2Resolution((int)Parameters.Width, (int)Parameters.Height, (double)Parameters.SeedVR2.Scale);
+        
+        Parameters.SeedVR2.Resolution = smallestSide;
+        
+        _seedVR2ResizeInfo = new MarkupString($"From: {currentRes} | To: <strong>{targetWidth}x{targetHeight} px</strong> (Smallest side: {smallestSide}px)");
+    }
+
+    private (int width, int height, int smallestSide) CalculateSeedVR2Resolution(int width, int height, double scale)
+    {
+        var targetWidth = (int)(width * scale);
+        var targetHeight = (int)(height * scale);
+        
+        // ComfyUI SeedVR2 expects the size of the smallest side
+        // It will maintain the aspect ratio automatically
+        var smallestSide = Math.Min(targetWidth, targetHeight);
+        
+        return (targetWidth, targetHeight, smallestSide);
+    }
 }

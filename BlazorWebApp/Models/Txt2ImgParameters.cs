@@ -1,5 +1,4 @@
-﻿using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
-using BlazorWebApp.Data.Dtos.WebUI;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 
 namespace BlazorWebApp.Models
 {
@@ -15,7 +14,6 @@ namespace BlazorWebApp.Models
         public int HRHeight { get; set; }
         public SeedVR2Parameters SeedVR2 { get; set; }
         public ConditioningVariationParameters ConditioningVariation { get; set; }
-        public Txt2ImgScriptParameters Scripts { get; set; }
 
         public Txt2ImgParameters() { }
         public Txt2ImgParameters(SharedParameters clone)
@@ -57,18 +55,5 @@ namespace BlazorWebApp.Models
             ScriptName = clone.ScriptName;
             ScriptArgs = clone.ScriptArgs;
         }
-    }
-
-    public class Txt2ImgScriptParameters
-    {
-        public List<ScriptParametersControlNet> ControlNet { get; set; }
-        public ScriptParametersCutoff Cutoff { get; set; }
-        public ScriptParametersDynamicPrompts DynamicPrompts { get; set; }
-        public ScriptParametersMultiDiffusionTiledDiffusion MultiDiffusionTiledDiffusion { get; set; }
-        public ScriptParametersMultiDiffusionTiledVae MultiDiffusionTiledVae { get; set; }
-        public ScriptParametersRegionalPrompter RegionalPrompter { get; set; }
-        public ScriptParametersXYZPlot XYZPlot { get; set; }
-        public ScriptParametersADetailer ADetailer { get; set; }
-        public ScriptParametersIncantations Incantations { get; set; }
     }
 }

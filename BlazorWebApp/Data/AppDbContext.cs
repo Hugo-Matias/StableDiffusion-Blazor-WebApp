@@ -45,9 +45,9 @@ namespace BlazorWebApp.Data
             modelBuilder.Ignore<SharedParameters>();
             modelBuilder.Ignore<SharedParameters.ComfySharedParameters>();
             modelBuilder.Ignore<Txt2ImgParameters>();
-            modelBuilder.Ignore<Txt2ImgScriptParameters>();
+            // modelBuilder.Ignore<Txt2ImgScriptParameters>();
             modelBuilder.Ignore<Img2ImgParameters>();
-            modelBuilder.Ignore<Img2ImgScriptParameters>();
+            // modelBuilder.Ignore<Img2ImgScriptParameters>();
             modelBuilder.Ignore<UpscaleParameters>();
             modelBuilder.Ignore<Img2VidParameters>();
             modelBuilder.Ignore<Img2VidParameters.ComfyImg2VidParameters>();

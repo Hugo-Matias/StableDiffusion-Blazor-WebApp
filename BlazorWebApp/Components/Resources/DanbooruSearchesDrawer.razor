@@ -1,4 +1,4 @@
-﻿@inject ManagerService M
+﻿@inject ISettingsService Settings
 
 <div style="display:@(Visible ? "block" : "none");">
     <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark" ClipMode="DrawerClipMode.Always" Height="calc(100vh - 45px)" Width="45vw" Fixed>
@@ -10,7 +10,7 @@
         <MudButton OnClick=@(() => OnAddCurrent.InvokeAsync())>Add Current</MudButton>
         <MudPaper Class="pa-2 ma-4" Elevation="4">
             <MudStack>
-                @foreach (var search in M.Settings.Resources.Danbooru.SavedSearches)
+                @foreach (var search in Settings.Settings.Resources.Danbooru.SavedSearches)
                 {
                     <MudButton OnClick=@(() => OnWriteSearch.InvokeAsync(search))>
                         @(search.Truncate(30))

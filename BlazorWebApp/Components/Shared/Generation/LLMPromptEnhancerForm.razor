@@ -1,6 +1,7 @@
 @using BlazorWebApp.Data.Dtos.Ollama
 @inject OllamaService OllamaAPI
-@inject ManagerService M
+@inject IStateService State
+@inject ISettingsService Settings
 
 <MudPaper Class="pa-4 mb-4">
     <MudGrid>
@@ -39,11 +40,11 @@
         </MudItem>
 
         <MudItem xs="6">
-            <MudNumericField @bind-Value="M.State.Generation.LLM.Options.Seed"
+            <MudNumericField @bind-Value="State.State.Generation.LLM.Options.Seed"
                            Label="Seed"
                            Variant="Variant.Outlined"
-                           Min="@M.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
-                           Max="@M.Settings.Generation.Shared.LLMEnhancer.Seed.Max"
+                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
+                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max"
                            Immediate />
         </MudItem>
 
@@ -64,50 +65,50 @@
             <MudExpansionPanel Text="Advanced Options">
                 <MudGrid>
                     <MudItem xs="6">
-                        <MudSlider @bind-Value="M.State.Generation.LLM.Options.Temperature"
-                                   Min="@M.Settings.Generation.Shared.LLMEnhancer.Temperature.Min"
-                                   Max="@M.Settings.Generation.Shared.LLMEnhancer.Temperature.Max"
-                                   Step="@M.Settings.Generation.Shared.LLMEnhancer.Temperature.Step"
+                        <MudSlider @bind-Value="State.State.Generation.LLM.Options.Temperature"
+                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Min"
+                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Max"
+                                   Step="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Step"
                                    Variant="Variant.Filled"
-                                   ValueLabel><small>Temperature:</small> @M.State.Generation.LLM.Options.Temperature.ToString("F1")</MudSlider>
+                                   ValueLabel><small>Temperature:</small> @State.State.Generation.LLM.Options.Temperature.ToString("F1")</MudSlider>
                     </MudItem>
                     <MudItem xs="6">
-                        <MudSlider @bind-Value="M.State.Generation.LLM.Options.TopP"
-                                   Min="@M.Settings.Generation.Shared.LLMEnhancer.TopP.Min"
-                                   Max="@M.Settings.Generation.Shared.LLMEnhancer.TopP.Max"
-                                   Step="@M.Settings.Generation.Shared.LLMEnhancer.TopP.Step"
+                        <MudSlider @bind-Value="State.State.Generation.LLM.Options.TopP"
+                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Min"
+                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Max"
+                                   Step="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Step"
                                    Variant="Variant.Filled"
-                                   ValueLabel><small>Top P:</small> @M.State.Generation.LLM.Options.TopP.ToString("F2")</MudSlider>
+                                   ValueLabel><small>Top P:</small> @State.State.Generation.LLM.Options.TopP.ToString("F2")</MudSlider>
                     </MudItem>
                     <MudItem xs="6">
-                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.TopK"
+                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.TopK"
                                        Label="Top K"
                                        Variant="Variant.Outlined"
-                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
-                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
+                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
+                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
                     </MudItem>
                     <MudItem xs="6">
-                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.NumPredict"
+                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumPredict"
                                        Label="Max Tokens"
                                        Variant="Variant.Outlined"
-                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
-                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
+                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
+                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
                     </MudItem>
                     <MudItem xs="6">
-                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.MinP"
+                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.MinP"
                                        Label="Min P"
                                        Variant="Variant.Outlined"
-                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
-                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
-                                       Step="@M.Settings.Generation.Shared.LLMEnhancer.MinP.Step"
+                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
+                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
+                                       Step="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Step"
                                        HelperText="Minimum probability threshold (optional)" />
                     </MudItem>
                     <MudItem xs="6">
-                        <MudNumericField @bind-Value="M.State.Generation.LLM.Options.NumCtx"
+                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumCtx"
                                        Label="Context Length"
                                        Variant="Variant.Outlined"
-                                       Min="@M.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
-                                       Max="@M.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max"
+                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
+                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max"
                                        HelperText="Number of tokens in context (optional)" />
                     </MudItem>
                 </MudGrid>
@@ -116,8 +117,8 @@
 
         @{
             var enhancedPrompt = IsNegativePrompt 
-                ? M.State.Generation.LLM.EnhancedNegativePrompt 
-                : M.State.Generation.LLM.EnhancedPrompt;
+                ? State.State.Generation.LLM.EnhancedNegativePrompt 
+                : State.State.Generation.LLM.EnhancedPrompt;
         }
 
         @if (!string.IsNullOrEmpty(enhancedPrompt))
@@ -172,43 +173,43 @@
 
     private string _currentPrompt
     {
-        get => IsNegativePrompt ? M.State.Generation.LLM.NegativePrompt : M.State.Generation.LLM.Prompt;
+        get => IsNegativePrompt ? State.State.Generation.LLM.NegativePrompt : State.State.Generation.LLM.Prompt;
         set
         {
             if (IsNegativePrompt)
-                M.State.Generation.LLM.NegativePrompt = value;
+                State.State.Generation.LLM.NegativePrompt = value;
             else
-                M.State.Generation.LLM.Prompt = value;
+                State.State.Generation.LLM.Prompt = value;
         }
     }
 
     private string _currentInstructions
     {
         get => IsNegativePrompt 
-            ? (string.IsNullOrEmpty(M.State.Generation.LLM.NegativeInstructions) 
-                ? M.Settings.Generation.Shared.LLMEnhancer.NegativeInstructions 
-                : M.State.Generation.LLM.NegativeInstructions)
-            : (string.IsNullOrEmpty(M.State.Generation.LLM.Instructions) 
-                ? M.Settings.Generation.Shared.LLMEnhancer.Instructions 
-                : M.State.Generation.LLM.Instructions);
+            ? (string.IsNullOrEmpty(State.State.Generation.LLM.NegativeInstructions) 
+                ? Settings.Settings.Generation.Shared.LLMEnhancer.NegativeInstructions 
+                : State.State.Generation.LLM.NegativeInstructions)
+            : (string.IsNullOrEmpty(State.State.Generation.LLM.Instructions) 
+                ? Settings.Settings.Generation.Shared.LLMEnhancer.Instructions 
+                : State.State.Generation.LLM.Instructions);
         set
         {
             if (IsNegativePrompt)
-                M.State.Generation.LLM.NegativeInstructions = value;
+                State.State.Generation.LLM.NegativeInstructions = value;
             else
-                M.State.Generation.LLM.Instructions = value;
+                State.State.Generation.LLM.Instructions = value;
         }
     }
 
     private string _currentEnhancedPrompt
     {
-        get => IsNegativePrompt ? M.State.Generation.LLM.EnhancedNegativePrompt : M.State.Generation.LLM.EnhancedPrompt;
+        get => IsNegativePrompt ? State.State.Generation.LLM.EnhancedNegativePrompt : State.State.Generation.LLM.EnhancedPrompt;
         set
         {
             if (IsNegativePrompt)
-                M.State.Generation.LLM.EnhancedNegativePrompt = value;
+                State.State.Generation.LLM.EnhancedNegativePrompt = value;
             else
-                M.State.Generation.LLM.EnhancedPrompt = value;
+                State.State.Generation.LLM.EnhancedPrompt = value;
         }
     }
 
@@ -224,7 +225,7 @@
             _availableModels = await OllamaAPI.GetModels();
             if (_availableModels != null && _availableModels.Count > 0)
             {
-                _selectedModel = M.Settings.Generation.Shared.LLMEnhancer.Model;
+                _selectedModel = Settings.Settings.Generation.Shared.LLMEnhancer.Model;
                 if (!_availableModels.Any(m => m.Name == _selectedModel))
                 {
                     _selectedModel = _availableModels[0].Name;
@@ -261,11 +262,11 @@
                 _currentPrompt,
                 _selectedModel,
                 IsNegativePrompt,
-                M.State.Generation.LLM.Options.ToOllamaOptions());
+                State.State.Generation.LLM.Options.ToOllamaOptions());
 
             _currentEnhancedPrompt = enhancedPrompt;
 
-            await M.SaveState();
+            await State.SaveState();
         }
         catch (Exception ex)
         {
@@ -280,7 +281,7 @@
 
     private void RandomizeSeed()
     {
-        M.State.Generation.LLM.Options.Seed = new Random().Next();
+        State.State.Generation.LLM.Options.Seed = new Random().Next();
     }
 
     private async Task ApplyToMainPrompt()
@@ -294,6 +295,6 @@
     private async Task ClearResult()
     {
         _currentEnhancedPrompt = string.Empty;
-        await M.SaveState();
+        await State.SaveState();
     }
 }

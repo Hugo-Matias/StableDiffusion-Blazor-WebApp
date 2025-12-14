@@ -1,10 +1,15 @@
-﻿@typeparam T where T : SharedParameters
+@typeparam T where T : SharedParameters
 @using System.Text.Json
 @using static BlazorWebApp.Data.Enums
-@inject IOService IO
-@inject ManagerService M
+@using BlazorWebApp.Events
+@inject IIOService IO
+@inject IStateService State
+@inject IBackendService Backend
+@inject IEventService Events
+@inject IDatabaseService DB
 @inject IJSRuntime JS
 @implements IAsyncDisposable
+@implements IDisposable
 
 <div @ref="_containerRef" tabindex="-1">
     <EditForm Model="Parameters">
@@ -22,9 +27,9 @@
                                 AdornmentIcon="fa-solid fa-tags"
                                 MinCharsToTrigger="2"
                                 MaxSuggestions="15"
-                                EnableFuzzyMatching="M.State.Generation.Autocomplete.EnableFuzzySearch"
+                                EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
                                 EnableDictionary="true" 
-                                EnableAutocomplete="M.State.Generation.Autocomplete.IsEnabled"
+                                EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
                                 IsNegative="false" />
                             
                             <TextFieldAutocomplete 
@@ -34,27 +39,27 @@
                                 @bind-Value="@Parameters.NegativePrompt"
                                 OnAdornmentClick="() => NegativePromptDrawer.Visible = true" 
                                 AdornmentIcon="fa-solid fa-tags"
-                                Disabled="M.IsComfyUIUp && M.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(M.State.Generation.WorkflowBase)"
+                                Disabled="Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase)"
                                 MinCharsToTrigger="2"
                                 MaxSuggestions="15"
-                                EnableFuzzyMatching="M.State.Generation.Autocomplete.EnableFuzzySearch"
+                                EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
                                 EnableDictionary="true"
-                                EnableAutocomplete="M.State.Generation.Autocomplete.IsEnabled"
+                                EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
                                 IsNegative="true" />
                         </MudStack>
                         <MudStack Row=true Spacing="2">
                             <MudTooltip Text="Toggle autocomplete suggestions">
-                                <MudSwitch Checked="M.State.Generation.Autocomplete.IsEnabled" 
+                                <MudSwitch Checked="State.State.Generation.Autocomplete.IsEnabled" 
                                            CheckedChanged="@((bool value) => HandleAutocompleteChanged(value))"
                                            Color="Color.Primary" 
                                            Label="Autocomplete"/>
                             </MudTooltip>
                             <MudTooltip Text="Toggle fuzzy subsequence matching (e.g., 'cascl' matches 'casual clothing')">
-                                <MudSwitch Checked="M.State.Generation.Autocomplete.EnableFuzzySearch" 
+                                <MudSwitch Checked="State.State.Generation.Autocomplete.EnableFuzzySearch" 
                                            CheckedChanged="@((bool value) => HandleFuzzySearchChanged(value))"
                                            Color="Color.Primary" 
                                            Label="Fuzzy Search" 
-                                           Disabled="!M.State.Generation.Autocomplete.IsEnabled" />
+                                           Disabled="!State.State.Generation.Autocomplete.IsEnabled" />
                             </MudTooltip>
                         </MudStack>
                     </MudStack>
@@ -62,20 +67,20 @@
                 <MudItem xs="3">
                     <MudStack Class="h-100 w-100">
                         <MudChipSet Style="height: 10vh; overflow: scroll;" ReadOnly>
-                            @if (M.State.Generation.Styles != null && M.State.Generation.Styles.Count() > 0)
+                            @if (State.State.Generation.Styles != null && State.State.Generation.Styles.Count() > 0)
                             {
-                                @foreach (var style in M.State.Generation.Styles)
+                                @foreach (var style in State.State.Generation.Styles)
                                 {
                                     <MudChip Color="Color.Primary">@style.Name</MudChip>
                                 }
                             }
                         </MudChipSet>
                         <MudStack Row=true>
-                            <MudSelect Label="Styles" Text="" SelectedValues="M.State.Generation.Styles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
+                            <MudSelect Label="Styles" Text="" SelectedValues="State.State.Generation.Styles" SelectedValuesChanged=HandleStylesChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
 
-                                @if (M.Styles != null)
+                                @if (_availableStyles != null)
                                 {
-                                    @foreach (var style in M.Styles)
+                                    @foreach (var style in _availableStyles)
                                     {
                                         if (!(string.IsNullOrWhiteSpace(style.Prompt) && string.IsNullOrWhiteSpace(style.NegativePrompt)))
                                         {
@@ -96,8 +101,8 @@
     </EditForm>
 </div>
 
-<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags=M.ButtonTags OnPromptReplaced=@(p => HandleLLMPromptApplied(p, false)) IsNegativePrompt=false />
-<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags=M.ButtonTags OnPromptReplaced=@(p => HandleLLMPromptApplied(p, true)) IsNegativePrompt=true />
+<TagDrawer @ref="PromptDrawer" OnAppendTags="OnPromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="OnNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true" />
 
 @code {
     [Parameter]
@@ -126,16 +131,67 @@
     private int _promptLines = 6;
     private int _negativePromptLines = 4;
     private bool _isDrawerOpen = false;
+    private bool _isConverging = false;
     private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux, ModelBase.Qwen };
+    private List<PromptStyle>? _availableStyles;
+    private PromptButton? _buttonTags;
     private ElementReference _containerRef;
     private GenerateButton _generateButtonRef;
     private IJSObjectReference? _jsModule;
     private DotNetObjectReference<PromptFields<T>> _dotNetRef;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        if (M.ButtonTags == null) M.GetButtonTags();
+        // Load button tags from IOService
+        LoadButtonTags();
+        
+        // Load styles from database
+        await LoadStyles();
+        
         _dotNetRef = DotNetObjectReference.Create(this);
+        
+        // Subscribe to state changes to update styles when they're loaded
+        Events.Subscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Subscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
+    }
+
+    private async Task LoadStyles()
+    {
+        try
+        {
+            // Load prompts from database and convert to styles
+            var promptResources = await DB.GetPrompts();
+            var styles = new List<PromptStyle>();
+            
+            foreach (var prompt in promptResources)
+            {
+                styles.Add(new PromptStyle(prompt));
+            }
+            
+            // Update available styles list
+            _availableStyles = styles;
+            
+            // If there are currently selected styles in state, preserve them if they still exist
+            if (State.State.Generation.Styles != null && State.State.Generation.Styles.Any())
+            {
+                var currentStyles = State.State.Generation.Styles.ToList();
+                State.State.Generation.Styles = styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
+            }
+            else
+            {
+                // Initialize to empty list if null
+                State.State.Generation.Styles = new List<PromptStyle>();
+            }
+            
+            // Note: Removed publishing StylesChangedEventArgs here to prevent infinite recursion
+            // The component that triggers a change (e.g., adding/deleting prompts) should publish the event
+        }
+        catch (Exception ex)
+        {
+            // If styles loading fails, initialize to empty list
+            _availableStyles = new List<PromptStyle>();
+            State.State.Generation.Styles ??= new List<PromptStyle>();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -154,10 +210,42 @@
         }
     }
 
+    private async void HandleStateChanged(StateChangedEventArgs args)
+    {
+        // Reload styles from database when state changes (in case new prompts were added)
+        await LoadStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleStylesChangedEvent(StylesChangedEventArgs args)
+    {
+        // Skip reload if this was triggered by our own LoadStyles (would cause infinite recursion)
+        // Only reload when external changes happen (e.g., prompts added/updated/deleted from other components)
+        if (args.ChangeType == "Loaded")
+            return;
+            
+        // Reload styles from database when prompts are added/updated/deleted
+        await LoadStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadButtonTags()
+    {
+        try
+        {
+            var json = IO.GetJsonAsString("Data/example.json");
+            _buttonTags = JsonSerializer.Deserialize<PromptButton>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+        }
+        catch
+        {
+            _buttonTags = null;
+        }
+    }
+
     [JSInvokable]
     public async Task HandleCtrlEnter()
     {
-        if (!ButtonDisabled && !M.IsConverging && _generateButtonRef != null)
+        if (!ButtonDisabled && !_isConverging && _generateButtonRef != null)
         {
             _generateButtonRef.Generate();
         }
@@ -165,7 +253,7 @@
 
     private void HandleStylesChanged(IEnumerable<PromptStyle> styles) 
     { 
-        M.State.Generation.Styles = styles;
+        State.State.Generation.Styles = styles;
         OnStylesChanged.InvokeAsync();
     }
 
@@ -185,26 +273,34 @@
 
     private void WritePrompts()
     {
-        Parser.ParseParameters(Parameters, M.State.Generation.Styles);
+        Parser.ParseParameters(Parameters, State.State.Generation.Styles);
         HandleStylesChanged(Array.Empty<PromptStyle>());
     }
 
     private async Task HandleAutocompleteChanged(bool value)
     {
-        M.State.Generation.Autocomplete.IsEnabled = value;
-        await M.SaveState();
+        State.State.Generation.Autocomplete.IsEnabled = value;
+        await State.SaveState();
         StateHasChanged();
     }
 
     private async Task HandleFuzzySearchChanged(bool value)
     {
-        M.State.Generation.Autocomplete.EnableFuzzySearch = value;
-        await M.SaveState();
+        State.State.Generation.Autocomplete.EnableFuzzySearch = value;
+        await State.SaveState();
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Unsubscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
     }
 
     public async ValueTask DisposeAsync()
     {
+        Dispose();
+        
         _dotNetRef?.Dispose();
         if (_jsModule != null)
         {

@@ -1,11 +1,11 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
+@inject IStateService State
+@inject IDatabaseService DB
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 
 <div>
     <MudStack Class=@Class>
-        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=M.State.Civitai.ResourceSubtype SearchFunc="DB.GetResourceSubtypeNames" MaxItems="50" MaxHeight="900" CoerceValue ResetValueOnEmptyText Clearable />
+        <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=State.State.Civitai.ResourceSubtype SearchFunc="DB.GetResourceSubtypeNames" MaxItems="50" MaxHeight="900" CoerceValue ResetValueOnEmptyText Clearable />
         <MudTextField Label="Filename" @bind-Value=_selected.Name />
         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
             <MudButton Class="w-100" OnClick=@(async () => await OnDownload.InvokeAsync(_selected)) Variant="Variant.Filled" StartIcon="@_icon" Color="_color" Style="text-transform: none !important">

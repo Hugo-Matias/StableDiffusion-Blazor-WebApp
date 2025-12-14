@@ -1,6 +1,6 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
-@inject IOService IO
+@inject IStateService State
+@inject IDatabaseService DB
+@inject IIOService IO
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -45,7 +45,7 @@
         </div>
         
         @* Selected Indicator *@
-        @if (M.State.Gallery.ProjectId == ProjectId)
+        @if (State.State.Gallery.ProjectId == ProjectId)
         {
             <div class="selected-indicator">
                 <i class="fa-solid fa-check"></i>
@@ -85,7 +85,7 @@
     private string GetCardClasses()
     {
         var classes = "project-card";
-        if (M.State.Gallery.ProjectId == ProjectId) classes += " selected";
+        if (State.State.Gallery.ProjectId == ProjectId) classes += " selected";
         if (_isHovered) classes += " hovered";
         return classes;
     }

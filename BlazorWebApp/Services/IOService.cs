@@ -6,7 +6,7 @@ using Directory = System.IO.Directory;
 
 namespace BlazorWebApp.Services
 {
-    public class IOService
+    public class IOService : IIOService
     {
         private readonly IConfiguration _configuration;
 
