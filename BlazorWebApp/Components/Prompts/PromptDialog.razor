@@ -6,28 +6,145 @@
 <MudDialog Style="min-width: 40vw;">
     <TitleContent>
         <MudText Typo="Typo.h6">@(_isNew ? "Create New Prompt" : Prompt.Title)</MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudStack Style="align-items: baseline" Row>
-            <MudTextField Label="Title" Value="Prompt.Title" ValueChanged="@(async v => await HandleValueChanged(v, "title"))" T="string" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Success" />
-            <MudCheckBox CheckedChanged=@(async v => await HandleValueChanged("","",v)) T="bool" Checked="Prompt.IsFavorite" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error" />
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @* Title and Favorite *@
+            <div style="display: flex; align-items: baseline; gap: 8px;">
+                <MudTextField Label="Title" 
+                              Value="Prompt.Title" 
+                              ValueChanged="@(async v => await HandleValueChanged(v, "title"))" 
+                              T="string" 
+                              AdornmentIcon="fa-solid fa-quote-right" 
+                              AdornmentColor="Color.Success"
+                              Style="flex: 1;" />
+                <MudCheckBox CheckedChanged="@(async v => await HandleValueChanged("","",v))" 
+                             T="bool" 
+                             Checked="Prompt.IsFavorite" 
+                             CheckedIcon="@Icons.Material.Filled.Favorite" 
+                             UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" 
+                             Color="Color.Error" />
+            </div>
+            
+            @* Category and Pin *@
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <MudAutocomplete T="string"
+                                 Label="Category"
+                                 Value="Prompt.Category"
+                                 ValueChanged="@(async v => await HandleCategoryChanged(v))"
+                                 SearchFunc="SearchCategories"
+                                 ResetValueOnEmptyText
+                                 CoerceText
+                                 CoerceValue
+                                 Clearable
+                                 AdornmentIcon="@Icons.Material.Filled.Folder"
+                                 AdornmentColor="Color.Info"
+                                 Placeholder="Select or type a category..."
+                                 Style="flex: 1;" />
+                
+                <MudTooltip Text="@(Prompt.IsPinned ? "Unpin from quick access" : "Pin to quick access")">
+                    <MudCheckBox CheckedChanged="@(async v => await HandlePinChanged(v))" 
+                                 T="bool" 
+                                 Checked="Prompt.IsPinned" 
+                                 CheckedIcon="@Icons.Material.Filled.PushPin" 
+                                 UncheckedIcon="@Icons.Material.Outlined.PushPin" 
+                                 Color="Color.Primary" />
+                </MudTooltip>
+            </div>
+            
+            @* Tags Input *@
+            <MudStack Spacing="2">
+                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                    <MudTextField Label="Tags" 
+                                  @bind-Value="_tagInput"
+                                  Placeholder="Type a tag and press Enter..."
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Filled.Add"
+                                  OnAdornmentClick="AddTag"
+                                  OnKeyUp="HandleTagKeyUp"
+                                  Style="flex: 1;" />
+                    
+                    <MudTooltip Text="AI suggest tags (Phase 5)">
+                        <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome" 
+                                       Color="Color.Secondary" 
+                                       Disabled
+                                       Size="Size.Medium" />
+                    </MudTooltip>
+                </div>
+                
+                @* Tags Display *@
+                @if (Prompt.Tags != null && Prompt.Tags.Any())
+                {
+                    <MudPaper Class="pa-2" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            @foreach (var tag in Prompt.Tags)
+                            {
+                                <MudChip Size="Size.Small" 
+                                         Color="Color.Primary" 
+                                         OnClose="() => RemoveTag(tag)">
+                                    @tag
+                                </MudChip>
+                            }
+                        </div>
+                    </MudPaper>
+                }
+            </MudStack>
+            
+            @* Positive Prompt *@
+            <MudTextField Lines="5" 
+                          Label="Positive" 
+                          Value="Prompt.Positive" 
+                          ValueChanged="@(async v => await HandleValueChanged(v, "positive"))" 
+                          T="string" 
+                          Adornment="Adornment.End" 
+                          AdornmentIcon="fa-solid fa-quote-right" 
+                          AdornmentColor="Color.Success" />
+            
+            @* Negative Prompt *@
+            <MudTextField Lines="5" 
+                          Label="Negative" 
+                          Value="Prompt.Negative" 
+                          ValueChanged="@(async v => await HandleValueChanged(v, "negative"))" 
+                          T="string" 
+                          Adornment="Adornment.End" 
+                          AdornmentIcon="fa-solid fa-quote-right" 
+                          AdornmentColor="Color.Error" />
+            
+            @* Loras *@
+            <LoraForm Loras="Prompt.Loras" 
+                      Backend="Enums.Backend.ComfyUI" 
+                      OnLorasUpdated="@(HandledLorasUpdated)" />
         </MudStack>
-        <MudTextField Lines="5" Label="Positive" Value="Prompt.Positive" ValueChanged="@(async v => await HandleValueChanged(v, "positive"))" T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Success" />
-        <MudTextField Lines="5" Label="Negative" Value="Prompt.Negative" ValueChanged="@(async v => await HandleValueChanged(v, "negative"))" T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-quote-right" AdornmentColor="Color.Error" />
-        <LoraForm Loras="Prompt.Loras" Backend="Enums.Backend.ComfyUI" OnLorasUpdated="@(HandledLorasUpdated)" />
     </DialogContent>
     <DialogActions>
         <MudContainer Class="w-100 d-flex justify-content-center">
             @if (_isNew)
             {
-                <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="ma-3" OnClick="@(() => MudDialog.Close("Create"))">Create</MudButton>
+                <MudButton Color="Color.Primary" 
+                           Variant="Variant.Filled" 
+                           Class="ma-3" 
+                           OnClick="@(() => MudDialog.Close("Create"))">
+                    Create
+                </MudButton>
             }
             else
             {
                 <MudButtonGroup Class="ma-3" OverrideStyles=false>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => MudDialog.Close("Txt2Img"))">Txt2Img</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => MudDialog.Close("Img2Img"))">Img2Img</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ShowDeletePromptDialog">Delete</MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               OnClick="@(() => MudDialog.Close("Txt2Img"))">
+                        Txt2Img
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Secondary" 
+                               OnClick="@(() => MudDialog.Close("Img2Img"))">
+                        Img2Img
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Error" 
+                               OnClick="ShowDeletePromptDialog">
+                        Delete
+                    </MudButton>
                 </MudButtonGroup>
             }
         </MudContainer>
@@ -39,11 +156,17 @@
     [Parameter, EditorRequired] public PromptResource Prompt { get; set; }
 
     private bool _isNew;
+    private string _tagInput = string.Empty;
+    private List<string> _availableCategories = new();
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (Prompt.Id <= 0) _isNew = true;
         if (Prompt.Loras == null) Prompt.Loras = new List<Lora>();
+        if (Prompt.Tags == null) Prompt.Tags = new List<string>();
+        
+        // Load available categories
+        _availableCategories = await DB.GetAllPromptCategories();
     }
 
     private async Task HandleValueChanged(string value, string type, bool? isFavorite = null)
@@ -62,6 +185,70 @@
         }
         if (isFavorite != null) Prompt.IsFavorite = (bool)isFavorite;
         if (!_isNew) await DB.UpdatePrompt(Prompt);
+    }
+    
+    private async Task HandleCategoryChanged(string? category)
+    {
+        Prompt.Category = category;
+        if (!_isNew) await DB.UpdatePrompt(Prompt);
+    }
+    
+    private async Task HandlePinChanged(bool isPinned)
+    {
+        Prompt.IsPinned = isPinned;
+        if (!_isNew) await DB.UpdatePrompt(Prompt);
+    }
+    
+    private async Task<IEnumerable<string>> SearchCategories(string value)
+    {
+        // If text is empty or null, show all categories
+        if (string.IsNullOrWhiteSpace(value))
+            return _availableCategories;
+        
+        // Filter categories that contain the search value
+        return _availableCategories
+            .Where(c => c.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+    
+    private async Task HandleTagKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddTag();
+        }
+    }
+    
+    private async Task AddTag()
+    {
+        if (string.IsNullOrWhiteSpace(_tagInput)) 
+            return;
+        
+        var tag = _tagInput.Trim();
+        
+        if (string.IsNullOrWhiteSpace(tag)) 
+            return;
+        
+        if (Prompt.Tags == null) 
+            Prompt.Tags = new List<string>();
+        
+        if (!Prompt.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+        {
+            Prompt.Tags.Add(tag);
+            if (!_isNew) 
+                await DB.UpdatePrompt(Prompt);
+        }
+        
+        _tagInput = string.Empty;
+    }
+    
+    private async Task RemoveTag(string tag)
+    {
+        if (Prompt.Tags != null && Prompt.Tags.Contains(tag))
+        {
+            Prompt.Tags.Remove(tag);
+            if (!_isNew) await DB.UpdatePrompt(Prompt);
+        }
     }
 
     private async Task HandledLorasUpdated()
