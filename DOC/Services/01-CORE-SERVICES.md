@@ -896,14 +896,14 @@ string FilenamePattern { get; }   // e.g., "[seed]_[steps]_[cfg]"
 
 ### 12. SDAPIService
 
+> **⚠️ DEPRECATION NOTICE**: This service is being phased out in favor of ComfyUI-only workflows. It remains for backward compatibility with Automatic1111 WebUI but is not actively maintained for new features.
+
 **File**: `Services/SDAPIService.cs` (171 lines)  
 **Lifetime**: HttpClient (Singleton)  
-**Role**: WebUI API Client
-
-**Note**: This service is being phased out in favor of ComfyUI-only workflows. It remains for backward compatibility.
+**Role**: WebUI API Client (Legacy)
 
 #### Purpose
-Thin wrapper around Automatic1111's Stable Diffusion WebUI API.
+Thin wrapper around Automatic1111's Stable Diffusion WebUI API. This service provides compatibility with the legacy WebUI backend.
 
 #### Configuration
 ```csharp

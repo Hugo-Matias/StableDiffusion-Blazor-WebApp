@@ -34,7 +34,7 @@ The application has undergone a comprehensive refactoring where the original "Go
 **Role**: CivitAI Integration
 
 #### Purpose
-Integrates with CivitAI API for model discovery, search, and download. No longer depends on ManagerService facades.
+Integrates with CivitAI API for model discovery, search, and download. Operates independently without requiring orchestration service dependencies.
 
 #### Configuration
 ```csharp
@@ -87,10 +87,10 @@ Retrieves model ID from file hash for version detection.
 - Pagination support
 
 #### Dependencies
-- `HttpClient`: HTTP communication
+- `HttpClient`: HTTP communication (injected via HttpClientFactory)
 - `IProgressService`: Download progress tracking
 - `IEventService`: Download completion events
-- `IConfiguration`: API token
+- `IConfiguration`: API token and configuration
 
 ---
 
