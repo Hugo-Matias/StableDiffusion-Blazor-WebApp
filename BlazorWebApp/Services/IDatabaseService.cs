@@ -73,6 +73,14 @@ namespace BlazorWebApp.Services
 
         // Prompt Operations
         Task<List<Prompt>> GetPrompts(string positive = "", string negative = "");
+        Task<List<Prompt>> GetPromptsByCategory(string? category);
+        Task<List<Prompt>> GetPromptsByTags(List<string> tags);
+        Task<List<Prompt>> GetPinnedPrompts();
+        Task<List<Prompt>> GetFavoritePrompts();
+        Task<List<string>> GetAllPromptCategories();
+        Task<List<string>> GetAllPromptTags();
+        Task UpdatePromptUsage(int promptId);
+        Task<List<Prompt>> SearchPromptsWithKeywords(string query);
         Task CreatePrompt(Prompt prompt);
         Task UpdatePrompt(PromptResource prompt);
         Task DeletePrompt(int id);

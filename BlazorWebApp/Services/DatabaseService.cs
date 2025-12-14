@@ -633,6 +633,109 @@ namespace BlazorWebApp.Services
             return query.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToList();
         }
 
+        public async Task<List<Prompt>> GetPromptsByCategory(string? category)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var query = context.Prompts.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(category))
+                query = query.Where(p => p.Category == category);
+            return await query.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+        }
+
+        public async Task<List<Prompt>> GetPromptsByTags(List<string> tags)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (tags == null || !tags.Any()) 
+                return await context.Prompts.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+            
+            var query = context.Prompts.AsQueryable();
+            foreach (var tag in tags)
+            {
+                var tagLower = tag.ToLower();
+                query = query.Where(p => p.Tags != null && p.Tags.Any(t => t.ToLower().Contains(tagLower)));
+            }
+            return await query.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+        }
+
+        public async Task<List<Prompt>> GetPinnedPrompts()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Prompts
+                .Where(p => p.IsPinned)
+                .OrderBy(p => p.SortOrder)
+                .ToListAsync();
+        }
+
+        public async Task<List<Prompt>> GetFavoritePrompts()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Prompts
+                .Where(p => p.IsFavorite)
+                .OrderBy(p => p.Title)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAllPromptCategories()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Prompts
+                .Where(p => !string.IsNullOrWhiteSpace(p.Category))
+                .Select(p => p.Category!)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAllPromptTags()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var allPrompts = await context.Prompts
+                .Where(p => p.Tags != null && p.Tags.Any())
+                .Select(p => p.Tags!)
+                .ToListAsync();
+            
+            return allPrompts
+                .SelectMany(tags => tags)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToList();
+        }
+
+        public async Task UpdatePromptUsage(int promptId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var prompt = await context.Prompts.FirstOrDefaultAsync(p => p.Id == promptId);
+            if (prompt != null)
+            {
+                prompt.UsageCount++;
+                prompt.LastUsedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<List<Prompt>> SearchPromptsWithKeywords(string query)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (string.IsNullOrWhiteSpace(query))
+                return await context.Prompts.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+            
+            // Simple keyword expansion - split by spaces and search for each keyword
+            var keywords = query.ToLower().Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            var results = await context.Prompts
+                .Where(p => keywords.Any(k => 
+                    (p.Title != null && p.Title.ToLower().Contains(k)) ||
+                    (p.Positive != null && p.Positive.ToLower().Contains(k)) ||
+                    (p.Negative != null && p.Negative.ToLower().Contains(k)) ||
+                    (p.Category != null && p.Category.ToLower().Contains(k)) ||
+                    (p.Tags != null && p.Tags.Any(t => t.ToLower().Contains(k)))))
+                .OrderByDescending(p => p.IsFavorite)
+                .ThenBy(p => p.Title)
+                .ToListAsync();
+            
+            return results;
+        }
+
         public async Task CreatePrompt(Prompt prompt)
         {
             using var context = await _factory.CreateDbContextAsync();
@@ -644,6 +747,8 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             var entity = await context.Prompts.FirstOrDefaultAsync(p => p.Id == prompt.Id);
+            if (entity == null) return;
+            
             entity.Title = prompt.Title;
             entity.Positive = prompt.Positive;
             entity.Negative = prompt.Negative;
