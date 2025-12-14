@@ -754,6 +754,10 @@ namespace BlazorWebApp.Services
             entity.Negative = prompt.Negative;
             entity.IsFavorite = prompt.IsFavorite;
             entity.Loras = prompt.Loras;
+            entity.Category = prompt.Category;
+            entity.Tags = prompt.Tags;
+            entity.IsPinned = prompt.IsPinned;
+            entity.SortOrder = prompt.SortOrder;
             await context.SaveChangesAsync();
         }
 
