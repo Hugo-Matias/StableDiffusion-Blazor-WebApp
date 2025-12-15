@@ -68,7 +68,7 @@
                 }
             </MudStack>
             <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
-                <MudButton StartIcon="@Icons.Material.Filled.FileDownload">Export</MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.FileDownload" OnClick="ShowExportDialog">Export</MudButton>
             </MudButtonGroup>
         </MudStack>
     </MudPaper>
@@ -418,6 +418,29 @@
             {
                 Snackbar.Add($"Error deleting collection: {ex.Message}", Severity.Error);
             }
+        }
+    }
+
+    private async Task ShowExportDialog()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters
+        {
+            { "Collection", Collection }
+        };
+        
+        var dialog = await DialogService.ShowAsync<WildcardExportDialog>("Export Collection", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add($"Collection exported successfully", Severity.Success);
         }
     }
 
