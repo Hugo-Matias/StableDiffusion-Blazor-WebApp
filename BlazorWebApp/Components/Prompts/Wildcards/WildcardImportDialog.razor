@@ -1,0 +1,364 @@
+@using BlazorWebApp.Data.Entities
+@using System.Text.Json
+@inject IDatabaseService Database
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.FileUpload" Class="mr-2" />
+            Import Wildcard Collection
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (string.IsNullOrEmpty(_fileContent))
+            {
+                <MudText Typo="Typo.body2">
+                    Upload a text file (.txt) with one entry per line, or a JSON file with collection data.
+                </MudText>
+                
+                @* File Upload Area with Drag & Drop *@
+                <MudPaper Elevation="0" 
+                          Class="@($"{_dragClass} file-upload-zone")"
+                          Style="border-color: var(--mud-palette-lines-default); cursor: pointer;"
+                          @ondragenter="SetDragClass"
+                          @ondragleave="ClearDragClass"
+                          @ondragover:preventDefault>
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="2" Class="pa-8">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload" 
+                                 Size="Size.Large" 
+                                 Color="Color.Primary" />
+                        <MudText Typo="Typo.h6" Color="Color.Primary">
+                            Drop file here or click to browse
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Supports .txt and .json files (max 1MB)
+                        </MudText>
+                        <InputFile id="fileInput" OnChange="@OnFileSelected" accept=".txt,.json" hidden />
+                        <MudButton HtmlTag="label"
+                                   for="fileInput"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.AttachFile"
+                                   Size="Size.Large">
+                            Choose File
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+
+                @if (!string.IsNullOrEmpty(_selectedFileName))
+                {
+                    <MudChip Icon="@Icons.Material.Filled.Description" 
+                             Color="Color.Info"
+                             OnClose="ClearFile">
+                        @_selectedFileName
+                    </MudChip>
+                }
+            }
+            else
+            {
+                @* Preview Section *@
+                <MudPaper Elevation="0" Class="pa-3 mud-theme-surface" Style="border: 1px solid var(--mud-palette-lines-default);">
+                    <MudStack Spacing="2">
+                        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.h6">Preview</MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                          Size="Size.Small" 
+                                          OnClick="ClearFile" />
+                        </MudStack>
+                        
+                        @if (_isJson)
+                        {
+                            <MudText Typo="Typo.body2"><strong>Collection Name:</strong> @_previewCollection?.Name</MudText>
+                            <MudText Typo="Typo.body2"><strong>Category:</strong> @_previewCollection?.Category</MudText>
+                            <MudText Typo="Typo.body2"><strong>Description:</strong> @_previewCollection?.Description</MudText>
+                        }
+                        else
+                        {
+                            <MudTextField @bind-Value="_collectionName" 
+                                         Label="Collection Name" 
+                                         Required 
+                                         Immediate 
+                                         Variant="Variant.Outlined" />
+                            <MudTextField @bind-Value="_collectionCategory" 
+                                         Label="Category" 
+                                         Immediate 
+                                         Variant="Variant.Outlined" />
+                            <MudTextField @bind-Value="_collectionDescription" 
+                                         Label="Description" 
+                                         Lines="2" 
+                                         Immediate 
+                                         Variant="Variant.Outlined" />
+                        }
+                        
+                        <MudDivider />
+                        
+                        <MudText Typo="Typo.body2"><strong>Entries (@_previewEntries.Count):</strong></MudText>
+                        <MudList Dense Style="max-height: 200px; overflow-y: auto; background-color: transparent;">
+                            @foreach (var entry in _previewEntries.Take(10))
+                            {
+                                <MudListItem Style="background-color: transparent;">
+                                    <MudStack Row Justify="Justify.SpaceBetween">
+                                        <MudText Typo="Typo.body2">@entry.Value</MudText>
+                                        <MudChip Size="Size.Small" Variant="Variant.Text">@entry.Weight.ToString("F1")</MudChip>
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                            @if (_previewEntries.Count > 10)
+                            {
+                                <MudListItem Style="background-color: transparent;">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        ... and @(_previewEntries.Count - 10) more
+                                    </MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+
+                        @if (_duplicateCount > 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense Variant="Variant.Outlined">
+                                Found @_duplicateCount duplicate entries (will be skipped)
+                            </MudAlert>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense Variant="Variant.Outlined">@_errorMessage</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Import"
+                   Disabled="@(!CanImport)">
+            Import
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+
+    private string? _selectedFileName;
+    private string? _fileContent;
+    private bool _isJson;
+    private string _errorMessage = string.Empty;
+    
+    private string _collectionName = string.Empty;
+    private string _collectionCategory = string.Empty;
+    private string _collectionDescription = string.Empty;
+    
+    private WildcardCollection? _previewCollection;
+    private List<WildcardEntry> _previewEntries = new();
+    private int _duplicateCount;
+
+    private bool CanImport => 
+        !string.IsNullOrEmpty(_fileContent) && 
+        _previewEntries.Any() && 
+        (_isJson || !string.IsNullOrWhiteSpace(_collectionName));
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _errorMessage = string.Empty;
+        var file = e.File;
+        _selectedFileName = file.Name;
+        
+        try
+        {
+            // Read file content (limit to 1MB)
+            const long maxFileSize = 1024 * 1024;
+            using var reader = new StreamReader(file.OpenReadStream(maxFileSize));
+            _fileContent = await reader.ReadToEndAsync();
+            
+            // Determine file type and parse
+            _isJson = _selectedFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+            
+            if (_isJson)
+            {
+                await ParseJsonFile();
+            }
+            else
+            {
+                ParseTextFile();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error reading file: {ex.Message}";
+            _fileContent = null;
+        }
+        
+        StateHasChanged();
+    }
+
+    private void ParseTextFile()
+    {
+        _previewEntries.Clear();
+        
+        var lines = _fileContent!
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => l.Trim())
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .Distinct()
+            .ToList();
+
+        for (int i = 0; i < lines.Count; i++)
+        {
+            _previewEntries.Add(new WildcardEntry
+            {
+                Value = lines[i],
+                Weight = 1.0f,
+                SortOrder = i
+            });
+        }
+    }
+
+    private async Task ParseJsonFile()
+    {
+        try
+        {
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            };
+            
+            var importData = JsonSerializer.Deserialize<ImportCollectionDto>(_fileContent!, options);
+            
+            if (importData == null)
+            {
+                _errorMessage = "Invalid JSON format";
+                return;
+            }
+
+            _previewCollection = new WildcardCollection
+            {
+                Name = importData.Name ?? "Unnamed Collection",
+                Category = importData.Category ?? string.Empty,
+                Description = importData.Description ?? string.Empty,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _previewEntries = importData.Entries?
+                .Select((e, i) => new WildcardEntry
+                {
+                    Value = e.Value ?? string.Empty,
+                    Weight = (float)(e.Weight ?? 1.0),
+                    SortOrder = e.SortOrder ?? i
+                })
+                .Where(e => !string.IsNullOrWhiteSpace(e.Value))
+                .ToList() ?? new();
+        }
+        catch (JsonException ex)
+        {
+            _errorMessage = $"Invalid JSON format: {ex.Message}";
+        }
+    }
+
+    private void ClearFile()
+    {
+        _fileContent = null;
+        _selectedFileName = null;
+        _previewCollection = null;
+        _previewEntries.Clear();
+        _errorMessage = string.Empty;
+        _collectionName = string.Empty;
+        _collectionCategory = string.Empty;
+        _collectionDescription = string.Empty;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Import()
+    {
+        try
+        {
+            WildcardCollection collection;
+            
+            if (_isJson && _previewCollection != null)
+            {
+                collection = _previewCollection;
+            }
+            else
+            {
+                collection = new WildcardCollection
+                {
+                    Name = _collectionName,
+                    Category = _collectionCategory,
+                    Description = _collectionDescription,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+            }
+
+            // Check for duplicate collection name
+            var existing = await Database.GetWildcardCollectionByName(collection.Name);
+            if (existing != null)
+            {
+                _errorMessage = $"A collection named '{collection.Name}' already exists. Please choose a different name.";
+                if (!_isJson)
+                {
+                    // Allow user to change name
+                    return;
+                }
+            }
+
+            // Create collection
+            await Database.CreateWildcardCollection(collection);
+
+            // Add entries
+            foreach (var entry in _previewEntries)
+            {
+                entry.CollectionId = collection.Id;
+                await Database.CreateWildcardEntry(entry);
+            }
+
+            Snackbar.Add($"Imported {_previewEntries.Count} entries into '{collection.Name}'", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(collection));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error importing: {ex.Message}";
+            Snackbar.Add($"Import failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // DTO for JSON deserialization
+    private class ImportCollectionDto
+    {
+        public string? Name { get; set; }
+        public string? Category { get; set; }
+        public string? Description { get; set; }
+        public List<ImportEntryDto>? Entries { get; set; }
+    }
+
+    private class ImportEntryDto
+    {
+        public string? Value { get; set; }
+        public double? Weight { get; set; }
+        public int? SortOrder { get; set; }
+    }
+
+    // Drag & Drop styling (visual feedback only - Blazor Server doesn't support native file drop)
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4";
+    private string _dragClass = DefaultDragClass;
+
+    private void SetDragClass()
+    {
+        _dragClass = $"{DefaultDragClass} mud-border-primary";
+    }
+
+    private void ClearDragClass()
+    {
+        _dragClass = DefaultDragClass;
+    }
+}

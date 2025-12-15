@@ -11,6 +11,12 @@
                                Size="Size.Small" 
                                OnClick="OnRefresh" />
             </MudTooltip>
+            <MudTooltip Text="Import collection">
+                <MudIconButton Icon="@Icons.Material.Filled.FileUpload" 
+                               Size="Size.Small" 
+                               Color="Color.Secondary"
+                               OnClick="ImportCollection" />
+            </MudTooltip>
             <MudTooltip Text="Create new collection">
                 <MudIconButton Icon="@Icons.Material.Filled.Add" 
                                Size="Size.Small" 
@@ -226,6 +232,25 @@
         {
             await OnRefresh.InvokeAsync();
             Snackbar.Add("Collection created successfully", Severity.Success);
+        }
+    }
+
+    private async Task ImportCollection()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+        
+        var dialog = await DialogService.ShowAsync<WildcardImportDialog>("Import Collection", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await OnRefresh.InvokeAsync();
+            Snackbar.Add("Collection imported successfully", Severity.Success);
         }
     }
 }
