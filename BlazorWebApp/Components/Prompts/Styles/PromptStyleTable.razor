@@ -1,5 +1,7 @@
 @using BlazorWebApp.Data.Entities
 @using BlazorWebApp.Extensions
+@using BlazorWebApp.Models
+@using BlazorWebApp.Components.Prompts
 @inject IDatabaseService DB
 @inject IDialogService DialogService
 @inject IStateService State
@@ -69,7 +71,7 @@
                                    Color="Color.Default" />
                 </MudTooltip>
                 
-                <MudTooltip Text="Add new prompt">
+                <MudTooltip Text="Add new prompt" ShowOnFocus="false">
                     <MudButton Variant="Variant.Filled" 
                                Color="Color.Primary" 
                                StartIcon="@Icons.Material.Filled.Add"
@@ -328,14 +330,49 @@
     
     private async Task HandleAddNew()
     {
-        await OnPromptChanged.InvokeAsync();
-        await LoadPrompts();
+        var newPrompt = new PromptResource();
+        await ShowPromptDialog(newPrompt);
     }
     
     private async Task HandleEdit(Prompt prompt)
     {
-        await OnPromptChanged.InvokeAsync();
+        var promptResource = new PromptResource(prompt);
+        await ShowPromptDialog(promptResource);
+    }
+    
+    private async Task ShowPromptDialog(PromptResource prompt)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var param = new DialogParameters();
+        param.Add("Prompt", prompt);
+        var dialog = await DialogService.ShowAsync<PromptDialog>("", param, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            switch (result.Data)
+            {
+                case "Create":
+                    await DB.CreatePrompt(new(prompt));
+                    break;
+                case "Delete":
+                    await DB.DeletePrompt(prompt.Id);
+                    break;
+                case "Txt2Img":
+                    State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
+                    State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
+                    await DB.UpdatePromptUsage(prompt.Id);
+                    break;
+                case "Img2Img":
+                    State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, prompt.Positive);
+                    State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, prompt.Negative);
+                    await DB.UpdatePromptUsage(prompt.Id);
+                    break;
+            }
+        }
+        
         await LoadPrompts();
+        await OnPromptChanged.InvokeAsync();
     }
     
     private async Task HandleDelete(Prompt prompt)
