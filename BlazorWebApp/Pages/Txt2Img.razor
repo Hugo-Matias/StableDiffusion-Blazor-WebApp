@@ -36,7 +36,7 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Subscribe<ParametersChangedEventArgs>(OnTxt2ImgParametersChanged);
         InitializeParameters();
     }
@@ -88,14 +88,26 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+    private void OnStateChanged(StateChangedEventArgs args)
+    {
+        // Re-initialize parameters when Txt2ImgParameters change (e.g., loading state from DB)
+        if (args.ChangeType == StateChangeType.Txt2ImgParameters)
+        {
+            InitializeParameters();
+        }
+        else
+        {
+            Refresh();
+        }
+    }
+    
     private void OnTxt2ImgParametersChanged(ParametersChangedEventArgs args) => InitializeParameters();
 
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Unsubscribe<ParametersChangedEventArgs>(OnTxt2ImgParametersChanged);
     }
     
