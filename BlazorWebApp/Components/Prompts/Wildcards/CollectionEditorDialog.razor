@@ -8,16 +8,19 @@
             <MudTextField @bind-Value="_name" 
                           Label="Collection Name" 
                           Required 
-                          HelperText="e.g., tops, bottoms, fantasy-locations" />
+                          HelperText="e.g., tops, bottoms, fantasy-locations"
+                          Variant="Variant.Outlined" />
             
             <MudTextField @bind-Value="_category" 
                           Label="Category" 
-                          HelperText="e.g., Clothing, Locations, Styles" />
+                          HelperText="e.g., Clothing, Locations, Styles"
+                          Variant="Variant.Outlined" />
             
             <MudTextField @bind-Value="_description" 
                           Label="Description" 
                           Lines="3"
-                          HelperText="Brief description of this collection" />
+                          HelperText="Brief description of this collection"
+                          Variant="Variant.Outlined" />
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -26,7 +29,7 @@
                    Color="Color.Primary" 
                    Variant="Variant.Filled"
                    Disabled="string.IsNullOrWhiteSpace(_name)">
-            Create
+            @(_isEdit ? "Update" : "Create")
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -35,9 +38,28 @@
     [CascadingParameter]
     MudDialogInstance MudDialog { get; set; } = null!;
 
+    [Parameter]
+    public WildcardCollection? Collection { get; set; }
+
+    [Parameter]
+    public bool IsEdit { get; set; }
+
     private string _name = string.Empty;
     private string _category = string.Empty;
     private string _description = string.Empty;
+    private bool _isEdit = false;
+
+    protected override void OnInitialized()
+    {
+        _isEdit = IsEdit;
+        
+        if (Collection != null)
+        {
+            _name = Collection.Name;
+            _category = Collection.Category ?? string.Empty;
+            _description = Collection.Description ?? string.Empty;
+        }
+    }
 
     private void Cancel() => MudDialog.Cancel();
 
@@ -45,23 +67,34 @@
     {
         try
         {
-            var collection = new WildcardCollection
+            if (_isEdit && Collection != null)
             {
-                Name = _name.Trim(),
-                Category = string.IsNullOrWhiteSpace(_category) ? null : _category.Trim(),
-                Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now,
-                UsageCount = 0,
-                Entries = new List<WildcardEntry>()
-            };
+                Collection.Name = _name.Trim();
+                Collection.Category = string.IsNullOrWhiteSpace(_category) ? null : _category.Trim();
+                Collection.Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+                await Database.UpdateWildcardCollection(Collection);
+            }
+            else
+            {
+                var collection = new WildcardCollection
+                {
+                    Name = _name.Trim(),
+                    Category = string.IsNullOrWhiteSpace(_category) ? null : _category.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                    UsageCount = 0,
+                    Entries = new List<WildcardEntry>()
+                };
 
-            var created = await Database.CreateWildcardCollection(collection);
-            MudDialog.Close(DialogResult.Ok(created));
+                await Database.CreateWildcardCollection(collection);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error creating collection: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error saving collection: {ex.Message}", Severity.Error);
         }
     }
 }

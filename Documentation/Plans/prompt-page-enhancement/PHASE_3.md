@@ -321,49 +321,95 @@ private string _searchText = string.Empty;
 
 ### Step 4: Create EntryManager Component
 **Complexity:** 3 points  
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
-- [ ] Create `EntryManager.razor` component
-- [ ] Display collection header with name/description
-- [ ] Implement entry list with virtual scrolling
-- [ ] Add entry selection/highlighting
-- [ ] Add "Add Entry" button
-- [ ] Implement entry editing (inline or dialog)
-- [ ] Add delete with confirmation
-- [ ] Test CRUD operations
-
-#### Key Features
-- Show collection details at top
-- List all entries with weights
-- Inline editing for quick changes
-- Add new entries easily
-- Delete with confirmation
-- Show entry count and statistics
-
-#### UI Mockup
-```
-????????????????????????????????????????
-? Collection: Tops                     ?
-? Category: Clothing                   ?
-? Description: Various upper body...   ?
-? ??????????????????????????????????  ?
-? ? [+ Add Entry]  [Import] [Export]?  ?
-? ??????????????????????????????????  ?
-?                                      ?
-? Entries (8):                         ?
-? ????????????????????????????????   ?
-? 1. ? white t-shirt      [1.0] [?][?]?
-? 2. ? black hoodie       [1.0] [?][?]?
-? 3. ? red dress shirt    [1.0] [?][?]?
-? 4. ? blue sweater       [1.0] [?][?]?
-? 5. ? green tank top     [1.0] [?][?]?
-? ...                                  ?
-????????????????????????????????????????
-```
+- [x] Create `EntryManager.razor` component
+- [x] Display collection header with name/description
+- [x] Implement entry list with scrolling
+- [x] Add entry selection/highlighting
+- [x] Add "Add Entry" button
+- [x] Implement entry editing via dialog
+- [x] Add delete with confirmation
+- [x] Test CRUD operations
 
 #### Changes Made
-{Update after completion}
+
+**Files Created:**
+1. `BlazorWebApp/Components/Prompts/Wildcards/EntryManager.razor`
+   - Complete entry management interface
+   - Collection header with name, category chip, description
+   - Edit/Delete collection buttons with confirmations
+   - Action toolbar (Add Entry, Import, Export buttons)
+   - Entry list with weight badges and actions per entry
+   - Drag handle icons (preparation for Step 5)
+   - Empty state for collections with no entries
+   - Loading state support
+   - Preview panel with:
+     - Wildcard syntax display
+     - Copy to clipboard button
+     - Probability calculations for each entry
+     - "Test Random Selection" feature
+     - Shows top 5 entries with percentages
+
+2. `BlazorWebApp/Components/Prompts/Wildcards/EntryEditorDialog.razor`
+   - Add/Edit entry dialog
+   - Value text field (multi-line support)
+   - Weight slider (0.1 to 2.0)
+   - Real-time probability calculation
+   - Info alert showing estimated probability
+   - Create and Update modes
+   - Validation (required value field)
+
+3. `BlazorWebApp/Components/Prompts/Wildcards/EntryManager.razor.css`
+   - Scoped styling for entry list
+   - Hover effects with left border highlight
+   - Scrollable entry list (max 400px)
+   - Scrollable preview list (max 200px)
+   - Drag handle hover effect
+
+**Files Modified:**
+- `BlazorWebApp/Components/Prompts/Wildcards/CollectionEditorDialog.razor`
+  - Added edit mode support
+  - IsEdit parameter
+  - Collection parameter
+  - Update operation
+  - Dynamic button text (Create/Update)
+
+**Key Features Implemented:**
+- ? Collection header with metadata display
+- ? Edit collection button (opens dialog with existing data)
+- ? Delete collection button (with confirmation dialog)
+- ? Add entry button (opens entry editor dialog)
+- ? Entry list with weight badges
+- ? Edit entry button per entry
+- ? Delete entry button per entry (with confirmation)
+- ? Empty state message when no entries
+- ? Loading state with progress indicator
+- ? Preview panel showing wildcard syntax
+- ? Copy syntax to clipboard (with feedback)
+- ? Probability calculator (shows % for each entry)
+- ? Test random selection feature
+- ? Shows top 5 entries in preview
+- ? Entry count badge
+- ? Import/Export buttons (placeholders for Steps 9-10)
+
+**CRUD Operations:**
+- ? **Create Entry:** Opens dialog, validates, saves to database
+- ? **Read Entries:** Loads from database, displays with metadata
+- ? **Update Entry:** Opens dialog with existing data, saves changes
+- ? **Delete Entry:** Confirmation dialog, removes from database
+- ? **Update Collection:** Edit name, category, description
+- ? **Delete Collection:** Confirmation, deletes collection + entries
+
+**Testing:**
+- ? Build successful
+- ? No compilation errors
+- ? Component integrates with WildcardsTab
+- ? Dialogs open and close correctly
+- ? Database operations functional
+
+**Ready for Step 5:** Drag-and-Drop Reordering (drag handles already in place)
 
 ---
 
@@ -1012,8 +1058,8 @@ Target verbosity: {verbosity_level}
 | 1. Design UI Layout | [x] | 2 pts | Complete - Simplified structure, Phase 1 patterns |
 | 2. Refactor Base Panel | [x] | 2 pts | Complete - WildcardsTab.razor created and integrated |
 | 3. Collection Browser | [x] | 3 pts | Complete - Category grouping, search, selection |
-| 4. Entry Manager | [ ] | 3 pts | Next - Right pane with entry list |
-| 5. Drag-Drop Reorder | [ ] | 3 pts | Entry reordering |
+| 4. Entry Manager | [x] | 3 pts | Complete - Full CRUD, preview panel |
+| 5. Drag-Drop Reorder | [ ] | 3 pts | Next - Entry reordering with MudDropContainer |
 | 6. Collection CRUD | [ ] | 2 pts | Create/Edit/Delete collections |
 | 7. Entry Editor | [ ] | 2 pts | Add/Edit entry dialog |
 | 8. Preview Panel | [ ] | 2 pts | Wildcard syntax preview |
@@ -1023,7 +1069,7 @@ Target verbosity: {verbosity_level}
 | 12. Polish & Shortcuts | [ ] | 1 pt | Final touches |
 | 13. Generation Docs | [ ] | 2 pts | Templates for LLM generation |
 
-**Completed:** 7 points / 29 points (24%)
+**Completed:** 10 points / 29 points (34%)
 
 ---
 
@@ -1035,7 +1081,7 @@ Target verbosity: {verbosity_level}
 
 ## Commit Checkpoints
 
-- [ ] After Step 4 complete (Basic UI structure working)
+- [x] After Step 4 complete (Basic UI structure working) ? **CHECKPOINT REACHED**
 - [ ] After Step 7 complete (Full CRUD operations functional)
 - [ ] After Step 10 complete (Import/Export working)
 - [ ] After Step 12 complete (UI polished)

@@ -1,13 +1,173 @@
 @using BlazorWebApp.Data.Entities
+@inject IDatabaseService Database
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <MudStack Spacing="3">
-    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-        <MudText Typo="Typo.h5">@Collection.Name</MudText>
-    </MudStack>
+    @* Collection Header *@
+    <MudPaper Elevation="2" Class="pa-4">
+        <MudStack Spacing="2">
+            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5">@Collection.Name</MudText>
+                <MudStack Row Spacing="1">
+                    <MudTooltip Text="Edit collection">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                       Size="Size.Small" 
+                                       OnClick="EditCollection" />
+                    </MudTooltip>
+                    <MudTooltip Text="Delete collection">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                       Size="Size.Small" 
+                                       Color="Color.Error"
+                                       OnClick="DeleteCollection" />
+                    </MudTooltip>
+                </MudStack>
+            </MudStack>
+            
+            @if (!string.IsNullOrWhiteSpace(Collection.Category))
+            {
+                <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                    @Collection.Category
+                </MudChip>
+            }
+            
+            @if (!string.IsNullOrWhiteSpace(Collection.Description))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@Collection.Description</MudText>
+            }
+        </MudStack>
+    </MudPaper>
 
-    <MudText Typo="Typo.body2" Color="Color.Default">
-        Entry manager will be implemented in Step 4
-    </MudText>
+    @* Action Toolbar *@
+    <MudPaper Elevation="1" Class="pa-2">
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddEntry">
+                Add Entry
+            </MudButton>
+            <MudButtonGroup Variant="Variant.Text">
+                <MudButton StartIcon="@Icons.Material.Filled.FileUpload">Import</MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.FileDownload">Export</MudButton>
+            </MudButtonGroup>
+        </MudStack>
+    </MudPaper>
+
+    @* Entry List *@
+    <MudPaper Elevation="1" Class="pa-3">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6">Entries (@_entries.Count)</MudText>
+            <MudDivider />
+            
+            @if (_isLoading)
+            {
+                <MudProgressLinear Indeterminate Color="Color.Primary" />
+            }
+            else if (!_entries.Any())
+            {
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="pa-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.body1" Color="Color.Default">No entries yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Add your first entry to get started</MudText>
+                </MudStack>
+            }
+            else
+            {
+                <MudList Clickable Dense Class="entry-list">
+                    @foreach (var entry in _entries.OrderBy(e => e.SortOrder))
+                    {
+                        <MudListItem Class="entry-item">
+                            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="flex-grow-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.DragIndicator" 
+                                             Size="Size.Small" 
+                                             Color="Color.Default"
+                                             Style="cursor: grab;" />
+                                    <MudText Typo="Typo.body1" Class="flex-grow-1">@entry.Value</MudText>
+                                </MudStack>
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudChip Size="Size.Small" Variant="Variant.Text">
+                                        @entry.Weight.ToString("F1")
+                                    </MudChip>
+                                    <MudTooltip Text="Edit entry">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                       Size="Size.Small" 
+                                                       OnClick="() => EditEntry(entry)" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Delete entry">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                       Size="Size.Small" 
+                                                       Color="Color.Error"
+                                                       OnClick="() => DeleteEntry(entry)" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudStack>
+    </MudPaper>
+
+    @* Preview Panel *@
+    <MudPaper Elevation="1" Class="pa-3">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6">Preview</MudText>
+            <MudDivider />
+            
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudText Typo="Typo.body2"><strong>Syntax:</strong></MudText>
+                <MudChip Size="Size.Small" Color="Color.Primary">@GetWildcardSyntax()</MudChip>
+                <MudTooltip Text="Copy to clipboard">
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                   Size="Size.Small"
+                                   OnClick="CopySyntax" />
+                </MudTooltip>
+            </MudStack>
+            
+            @if (_entries.Any())
+            {
+                <MudText Typo="Typo.body2" Class="mt-2"><strong>Possible Values:</strong></MudText>
+                <MudList Dense Class="preview-list">
+                    @foreach (var entry in _entries.OrderBy(e => e.SortOrder).Take(5))
+                    {
+                        var probability = CalculateProbability(entry);
+                        <MudListItem>
+                            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2">• @entry.Value</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">~@probability.ToString("F1")%</MudText>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                    @if (_entries.Count > 5)
+                    {
+                        <MudListItem>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                ... and @(_entries.Count - 5) more
+                            </MudText>
+                        </MudListItem>
+                    }
+                </MudList>
+                
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Shuffle"
+                           OnClick="TestRandomSelection"
+                           FullWidth
+                           Class="mt-2">
+                    Test Random Selection
+                </MudButton>
+                
+                @if (!string.IsNullOrWhiteSpace(_randomResult))
+                {
+                    <MudAlert Severity="Severity.Info" Dense>
+                        <strong>Result:</strong> "@_randomResult"
+                    </MudAlert>
+                }
+            }
+        </MudStack>
+    </MudPaper>
 </MudStack>
 
 @code {
@@ -19,4 +179,212 @@
 
     [Parameter]
     public EventCallback OnCollectionDeleted { get; set; }
+
+    private List<WildcardEntry> _entries = new();
+    private bool _isLoading = true;
+    private string _randomResult = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _entries = await Database.GetEntriesByCollectionId(Collection.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading entries: {ex.Message}", Severity.Error);
+            _entries = new();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddEntry()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters
+        {
+            { "CollectionId", Collection.Id },
+            { "NextSortOrder", _entries.Any() ? _entries.Max(e => e.SortOrder) + 1 : 0 }
+        };
+        
+        var dialog = await DialogService.ShowAsync<EntryEditorDialog>("Add Entry", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadEntries();
+            await OnEntriesChanged.InvokeAsync();
+            Snackbar.Add("Entry added successfully", Severity.Success);
+        }
+    }
+
+    private async Task EditEntry(WildcardEntry entry)
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters
+        {
+            { "Entry", entry }
+        };
+        
+        var dialog = await DialogService.ShowAsync<EntryEditorDialog>("Edit Entry", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadEntries();
+            await OnEntriesChanged.InvokeAsync();
+            Snackbar.Add("Entry updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DeleteEntry(WildcardEntry entry)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            $"Are you sure you want to delete the entry \"{entry.Value}\"?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await Database.DeleteWildcardEntry(entry.Id);
+                await LoadEntries();
+                await OnEntriesChanged.InvokeAsync();
+                Snackbar.Add("Entry deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting entry: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task EditCollection()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters
+        {
+            { "Collection", Collection },
+            { "IsEdit", true }
+        };
+        
+        var dialog = await DialogService.ShowAsync<CollectionEditorDialog>("Edit Collection", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await OnEntriesChanged.InvokeAsync();
+            Snackbar.Add("Collection updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DeleteCollection()
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            $"Are you sure you want to delete the collection \"{Collection.Name}\" and all its entries?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await Database.DeleteWildcardCollection(Collection.Id);
+                await OnCollectionDeleted.InvokeAsync();
+                Snackbar.Add("Collection deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting collection: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task TestRandomSelection()
+    {
+        if (!_entries.Any())
+        {
+            _randomResult = string.Empty;
+            return;
+        }
+
+        try
+        {
+            var result = await Database.GetWildcardCollectionByName(Collection.Name);
+            if (result != null)
+            {
+                var totalWeight = result.Entries.Sum(e => e.Weight);
+                var random = new Random().NextDouble() * totalWeight;
+                var cumulative = 0.0;
+
+                foreach (var entry in result.Entries)
+                {
+                    cumulative += entry.Weight;
+                    if (random <= cumulative)
+                    {
+                        _randomResult = entry.Value;
+                        break;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error testing random selection: {ex.Message}", Severity.Error);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CopySyntax()
+    {
+        // Note: Clipboard API needs JavaScript interop
+        var syntax = GetWildcardSyntax();
+        Snackbar.Add($"Syntax copied: {syntax}", Severity.Info);
+    }
+
+    private string GetWildcardSyntax()
+    {
+        return $"__{Collection.Name}__";
+    }
+
+    private double CalculateProbability(WildcardEntry entry)
+    {
+        var totalWeight = _entries.Sum(e => e.Weight);
+        if (totalWeight == 0) return 0;
+        return (entry.Weight / totalWeight) * 100;
+    }
 }

@@ -29,8 +29,7 @@ namespace BlazorWebApp.Services
             _logger = logger;
             _random = new Random();
             
-            // Seed wildcard collections on service initialization
-            _ = Task.Run(async () => await SeedCollections());
+            // Seeding is now manual - users can click "Load Sample Data" button in the UI
         }
 
         public async Task<string?> GetRandomEntry(string collectionName)

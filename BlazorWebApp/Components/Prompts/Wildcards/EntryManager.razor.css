@@ -1,0 +1,24 @@
+.entry-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.entry-item {
+    transition: background-color 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.entry-item:hover {
+    background-color: var(--mud-palette-action-default-hover);
+    border-left-color: var(--mud-palette-primary);
+}
+
+.preview-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Drag handle cursor */
+.entry-item:hover .mud-icon-root[style*="grab"] {
+    color: var(--mud-palette-primary);
+}

@@ -11,6 +11,8 @@
             @if (_isLoading)
             {
                 <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">Loading collections...</MudText>
+                    <MudProgressLinear Indeterminate Color="Color.Primary" />
                     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="40px" />
                     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
                     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
@@ -33,12 +35,18 @@
                     <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
                         Create your first wildcard collection to get started
                     </MudText>
-                    <MudButton Variant="Variant.Filled" 
-                               Color="Color.Primary" 
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="CreateNewCollection">
-                        Create Collection
-                    </MudButton>
+                    <MudButtonGroup Variant="Variant.Filled">
+                        <MudButton Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="CreateNewCollection">
+                            Create Collection
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" 
+                                   StartIcon="@Icons.Material.Filled.CloudDownload"
+                                   OnClick="SeedSampleCollections">
+                            Load Sample Data
+                        </MudButton>
+                    </MudButtonGroup>
                 </MudStack>
             }
         </MudPaper>
@@ -47,7 +55,14 @@
     <MudItem xs="12" md="8" lg="9">
         <!-- Entry Manager -->
         <MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
-            @if (_selectedCollection != null)
+            @if (_isLoading)
+            {
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
+                    <MudProgressCircular Indeterminate Color="Color.Primary" />
+                    <MudText Typo="Typo.body1" Color="Color.Default">Loading...</MudText>
+                </MudStack>
+            }
+            else if (_selectedCollection != null)
             {
                 <EntryManager Collection="_selectedCollection"
                               OnEntriesChanged="RefreshSelectedCollection"
@@ -168,6 +183,28 @@
         {
             await LoadCollections();
             Snackbar.Add("Collection created successfully", Severity.Success);
+        }
+    }
+
+    private async Task SeedSampleCollections()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            await WildcardService.SeedCollections();
+            await LoadCollections();
+            Snackbar.Add("Sample collections loaded successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading sample data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 }
