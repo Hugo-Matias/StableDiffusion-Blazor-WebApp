@@ -4,21 +4,25 @@
 }
 
 .entry-item {
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
     border-left: 3px solid transparent;
+    cursor: pointer;
 }
 
 .entry-item:hover {
     background-color: var(--mud-palette-action-default-hover);
-    border-left-color: var(--mud-palette-primary);
+}
+
+.entry-item-selected {
+    background-color: var(--mud-palette-action-selected) !important;
+    border-left-color: var(--mud-palette-primary) !important;
+}
+
+.entry-item-selected:hover {
+    background-color: var(--mud-palette-action-selected) !important;
 }
 
 .preview-list {
     max-height: 200px;
     overflow-y: auto;
-}
-
-/* Drag handle cursor */
-.entry-item:hover .mud-icon-root[style*="grab"] {
-    color: var(--mud-palette-primary);
 }

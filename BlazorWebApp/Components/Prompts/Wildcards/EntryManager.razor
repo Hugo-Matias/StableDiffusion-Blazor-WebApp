@@ -40,14 +40,34 @@
 
     @* Action Toolbar *@
     <MudPaper Elevation="1" Class="pa-2">
-        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-            <MudButton Variant="Variant.Filled" 
-                       Color="Color.Primary" 
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="AddEntry">
-                Add Entry
-            </MudButton>
-            <MudButtonGroup Variant="Variant.Text">
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="flex-wrap">
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           OnClick="AddEntry">
+                    Add Entry
+                </MudButton>
+                @if (_selectedEntry != null && _entries.Count > 1)
+                {
+                    <MudDivider Vertical FlexItem Class="mx-2" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Move:</MudText>
+                    <MudTooltip Text="Move up">
+                        <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp"
+                                       Size="Size.Small"
+                                       Disabled="@(_selectedEntry.SortOrder == 0)"
+                                       OnClick="MoveUp" />
+                    </MudTooltip>
+                    <MudTooltip Text="Move down">
+                        <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown"
+                                       Size="Size.Small"
+                                       Disabled="@(_selectedEntry.SortOrder == _entries.Count - 1)"
+                                       OnClick="MoveDown" />
+                    </MudTooltip>
+                }
+            </MudStack>
+            <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
                 <MudButton StartIcon="@Icons.Material.Filled.FileUpload">Import</MudButton>
                 <MudButton StartIcon="@Icons.Material.Filled.FileDownload">Export</MudButton>
             </MudButtonGroup>
@@ -77,30 +97,31 @@
                 <MudList Clickable Dense Class="entry-list">
                     @foreach (var entry in _entries.OrderBy(e => e.SortOrder))
                     {
-                        <MudListItem Class="entry-item">
+                        var isSelected = _selectedEntry?.Id == entry.Id;
+                        var textColor = isSelected ? Color.Secondary : Color.Default;
+                        <MudListItem Class="@(isSelected ? "entry-item entry-item-selected" : "entry-item")"
+                                     OnClick="() => SelectEntry(entry)">
                             <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="flex-grow-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.DragIndicator" 
-                                             Size="Size.Small" 
-                                             Color="Color.Default"
-                                             Style="cursor: grab;" />
-                                    <MudText Typo="Typo.body1" Class="flex-grow-1">@entry.Value</MudText>
-                                </MudStack>
-                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudText Typo="Typo.body1" Class="flex-grow-1" Color="@textColor">@entry.Value</MudText>
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
                                     <MudChip Size="Size.Small" Variant="Variant.Text">
                                         @entry.Weight.ToString("F1")
                                     </MudChip>
-                                    <MudTooltip Text="Edit entry">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                                       Size="Size.Small" 
-                                                       OnClick="() => EditEntry(entry)" />
-                                    </MudTooltip>
-                                    <MudTooltip Text="Delete entry">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                       Size="Size.Small" 
-                                                       Color="Color.Error"
-                                                       OnClick="() => DeleteEntry(entry)" />
-                                    </MudTooltip>
+                                    <span @onclick:stopPropagation="true">
+                                        <MudTooltip Text="Edit entry">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                           Size="Size.Small" 
+                                                           OnClick="() => EditEntry(entry)" />
+                                        </MudTooltip>
+                                    </span>
+                                    <span @onclick:stopPropagation="true">
+                                        <MudTooltip Text="Delete entry">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                           Size="Size.Small" 
+                                                           Color="Color.Error"
+                                                           OnClick="() => DeleteEntry(entry)" />
+                                        </MudTooltip>
+                                    </span>
                                 </MudStack>
                             </MudStack>
                         </MudListItem>
@@ -181,12 +202,20 @@
     public EventCallback OnCollectionDeleted { get; set; }
 
     private List<WildcardEntry> _entries = new();
+    private WildcardEntry? _selectedEntry;
+    private int? _lastCollectionId;
     private bool _isLoading = true;
     private string _randomResult = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
-        await LoadEntries();
+        // Only clear selection when switching to a different collection
+        if (_lastCollectionId != Collection.Id)
+        {
+            _selectedEntry = null;
+            _lastCollectionId = Collection.Id;
+            await LoadEntries();
+        }
     }
 
     private async Task LoadEntries()
@@ -208,6 +237,60 @@
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private void SelectEntry(WildcardEntry entry)
+    {
+        if (_selectedEntry?.Id == entry.Id)
+        {
+            _selectedEntry = null; // Toggle deselect if clicking same entry
+        }
+        else
+        {
+            _selectedEntry = entry;
+        }
+        StateHasChanged();
+    }
+
+    private async Task MoveUp()
+    {
+        if (_selectedEntry == null || _selectedEntry.SortOrder == 0) return;
+        await SwapEntries(_selectedEntry.SortOrder, _selectedEntry.SortOrder - 1);
+    }
+
+    private async Task MoveDown()
+    {
+        if (_selectedEntry == null || _selectedEntry.SortOrder >= _entries.Count - 1) return;
+        await SwapEntries(_selectedEntry.SortOrder, _selectedEntry.SortOrder + 1);
+    }
+
+    private async Task SwapEntries(int fromIndex, int toIndex)
+    {
+        try
+        {
+            var fromEntry = _entries.First(e => e.SortOrder == fromIndex);
+            var toEntry = _entries.First(e => e.SortOrder == toIndex);
+
+            // Swap sort orders
+            fromEntry.SortOrder = toIndex;
+            toEntry.SortOrder = fromIndex;
+
+            await Database.UpdateWildcardEntry(fromEntry);
+            await Database.UpdateWildcardEntry(toEntry);
+
+            await OnEntriesChanged.InvokeAsync();
+            
+            // Keep the same entry selected (it's still the same object, just with updated SortOrder)
+            // No need to reload - the local list is already updated
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error reordering entries: {ex.Message}", Severity.Error);
+            _selectedEntry = null;
+            await LoadEntries();
+        }
+
+        StateHasChanged();
     }
 
     private async Task AddEntry()
@@ -274,6 +357,12 @@
             try
             {
                 await Database.DeleteWildcardEntry(entry.Id);
+                
+                if (_selectedEntry?.Id == entry.Id)
+                {
+                    _selectedEntry = null;
+                }
+                
                 await LoadEntries();
                 await OnEntriesChanged.InvokeAsync();
                 Snackbar.Add("Entry deleted successfully", Severity.Success);
@@ -371,7 +460,6 @@
 
     private async Task CopySyntax()
     {
-        // Note: Clipboard API needs JavaScript interop
         var syntax = GetWildcardSyntax();
         Snackbar.Add($"Syntax copied: {syntax}", Severity.Info);
     }
