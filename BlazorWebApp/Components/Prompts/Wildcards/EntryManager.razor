@@ -1,0 +1,22 @@
+@using BlazorWebApp.Data.Entities
+
+<MudStack Spacing="3">
+    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h5">@Collection.Name</MudText>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Color="Color.Default">
+        Entry manager will be implemented in Step 4
+    </MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public WildcardCollection Collection { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnEntriesChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnCollectionDeleted { get; set; }
+}

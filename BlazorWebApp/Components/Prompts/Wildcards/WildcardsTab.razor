@@ -1,0 +1,173 @@
+@using BlazorWebApp.Data.Entities
+@inject IWildcardService WildcardService
+@inject IDatabaseService Database
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" md="4" lg="3">
+        <!-- Collections Browser -->
+        <MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+            @if (_isLoading)
+            {
+                <MudStack Spacing="2">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="40px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
+                </MudStack>
+            }
+            else if (_collections.Any())
+            {
+                <CollectionBrowser Collections="_collections"
+                                   CollectionsByCategory="_collectionsByCategory"
+                                   SelectedCollection="_selectedCollection"
+                                   OnCollectionSelected="HandleCollectionSelected"
+                                   OnRefresh="LoadCollections" />
+            }
+            else
+            {
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
+                    <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.h6" Color="Color.Default">No Collections Yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                        Create your first wildcard collection to get started
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="CreateNewCollection">
+                        Create Collection
+                    </MudButton>
+                </MudStack>
+            }
+        </MudPaper>
+    </MudItem>
+    
+    <MudItem xs="12" md="8" lg="9">
+        <!-- Entry Manager -->
+        <MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+            @if (_selectedCollection != null)
+            {
+                <EntryManager Collection="_selectedCollection"
+                              OnEntriesChanged="RefreshSelectedCollection"
+                              OnCollectionDeleted="HandleCollectionDeleted" />
+            }
+            else
+            {
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
+                    <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.h6" Color="Color.Default">Select a Collection</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                        Choose a wildcard collection from the left panel to view and edit its entries
+                    </MudText>
+                </MudStack>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private bool _isLoading = true;
+    private List<WildcardCollection> _collections = new();
+    private Dictionary<string, List<WildcardCollection>> _collectionsByCategory = new();
+    private WildcardCollection? _selectedCollection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCollections();
+    }
+
+    private async Task LoadCollections()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _collections = await Database.GetAllWildcardCollections();
+            GroupCollectionsByCategory();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading collections: {ex.Message}", Severity.Error);
+            _collections = new();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GroupCollectionsByCategory()
+    {
+        _collectionsByCategory = _collections
+            .GroupBy(c => c.Category ?? "Uncategorized")
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(c => c.Name).ToList()
+            );
+    }
+
+    private async Task HandleCollectionSelected(WildcardCollection collection)
+    {
+        _selectedCollection = collection;
+        StateHasChanged();
+    }
+
+    private async Task RefreshSelectedCollection()
+    {
+        if (_selectedCollection != null)
+        {
+            try
+            {
+                // Reload the selected collection to get updated entries
+                var updated = await Database.GetWildcardCollectionById(_selectedCollection.Id);
+                if (updated != null)
+                {
+                    _selectedCollection = updated;
+                    
+                    // Update in the main list
+                    var index = _collections.FindIndex(c => c.Id == updated.Id);
+                    if (index >= 0)
+                    {
+                        _collections[index] = updated;
+                        GroupCollectionsByCategory();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error refreshing collection: {ex.Message}", Severity.Error);
+            }
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleCollectionDeleted()
+    {
+        _selectedCollection = null;
+        await LoadCollections();
+    }
+
+    private async Task CreateNewCollection()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+        
+        var dialog = await DialogService.ShowAsync<CollectionEditorDialog>("Create Collection", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadCollections();
+            Snackbar.Add("Collection created successfully", Severity.Success);
+        }
+    }
+}

@@ -1,0 +1,35 @@
+@using BlazorWebApp.Data.Entities
+
+<MudStack Spacing="3">
+    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">Collections</MudText>
+        <MudTooltip Text="Refresh collections">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                           Size="Size.Small" 
+                           OnClick="OnRefresh" />
+        </MudTooltip>
+    </MudStack>
+
+    <MudDivider />
+
+    <MudText Typo="Typo.body2" Color="Color.Default">
+        Collection browser will be implemented in Step 3
+    </MudText>
+</MudStack>
+
+@code {
+    [Parameter]
+    public List<WildcardCollection> Collections { get; set; } = new();
+
+    [Parameter]
+    public Dictionary<string, List<WildcardCollection>> CollectionsByCategory { get; set; } = new();
+
+    [Parameter]
+    public WildcardCollection? SelectedCollection { get; set; }
+
+    [Parameter]
+    public EventCallback<WildcardCollection> OnCollectionSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+}
