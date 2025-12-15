@@ -65,7 +65,7 @@ Every implementation session follows three distinct phases:
    - **Estimate complexity using Fibonacci points** (1, 2, 3, 5, 8, 13, 21...)
 
 ### Deliverable
-A planning document folder at `DOC/Plans/{task-name}/` containing:
+A planning document folder at `Documentation/Plans/{task-name}/` containing:
 - `MAIN_PLAN.md` - The primary implementation roadmap
 - Phase documents created as work progresses: `PHASE_{#}.md`
 - Supporting documentation as needed
@@ -139,7 +139,7 @@ This provides a gauge for users to evaluate execution order and task complexity.
 ### Objectives
 After all phases are complete:
 
-1. **Update Knowledge Base** (`/DOC` folder)
+1. **Update Knowledge Base** (`/Documentation` folder)
    - Add new feature documentation
    - Update existing docs affected by changes
    - Add architectural decision records if significant
@@ -161,7 +161,7 @@ After all phases are complete:
 ### Folder Organization
 Each task or feature must have its own folder:
 ```
-DOC/
+Documentation/
 ??? Plans/
     ??? {task-name}/
         ??? MAIN_PLAN.md        # Primary roadmap (required)
@@ -513,7 +513,7 @@ The user has open:
 - [ ] Conventions defined
 - [ ] Phases identified with complexity points
 - [ ] Risks documented
-- [ ] Folder created: `DOC/Plans/{task-name}/`
+- [ ] Folder created: `Documentation/Plans/{task-name}/`
 - [ ] MAIN_PLAN.md created
 
 ### Execution Phase Checklist (per step)
