@@ -92,8 +92,7 @@
                 <div class="control-section nav-section">
                     <button class="viewer-btn nav-btn" 
                             @onclick="Previous" 
-                            disabled="@(!CanGoPrevious)"
-                            title="Previous (?)">
+                            title="Previous (←)">
                         <MudIcon Icon="fa-solid fa-chevron-left" />
                     </button>
                     
@@ -102,7 +101,7 @@
                             <span class="counter-current">@(_currentIndex + 1)</span>
                             <span class="counter-sep">/</span>
                             <span class="counter-total">@Assets.Count</span>
-                            <span class="counter-dot">�</span>
+                            <span class="counter-dot">•</span>
                             <span class="counter-total-label">@TotalCount</span>
                         </div>
                         @if (PageCount > 1)
@@ -115,8 +114,7 @@
                     
                     <button class="viewer-btn nav-btn" 
                             @onclick="Next" 
-                            disabled="@(!CanGoNext)"
-                            title="Next (?)">
+                            title="Next (→)">
                         <MudIcon Icon="fa-solid fa-chevron-right" />
                     </button>
                 </div>
@@ -620,6 +618,18 @@
             _isLoadingPage = false;
             await OnNavigate();
         }
+        else
+        {
+            // Cycle back to the first page and first item
+            if (PageCount > 1)
+            {
+                _isLoadingPage = true;
+                await OnPageChange.InvokeAsync(1);
+                _isLoadingPage = false;
+            }
+            _currentIndex = 0;
+            await OnNavigate();
+        }
     }
 
     private async Task Previous()
@@ -638,6 +648,18 @@
             await OnPageChange.InvokeAsync(CurrentPage - 1);
             _currentIndex = Assets.Count - 1;
             _isLoadingPage = false;
+            await OnNavigate();
+        }
+        else
+        {
+            // Cycle back to the last page and last item
+            if (PageCount > 1)
+            {
+                _isLoadingPage = true;
+                await OnPageChange.InvokeAsync(PageCount);
+                _isLoadingPage = false;
+            }
+            _currentIndex = Assets.Count - 1;
             await OnNavigate();
         }
     }
