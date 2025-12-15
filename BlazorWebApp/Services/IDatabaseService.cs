@@ -128,5 +128,22 @@ namespace BlazorWebApp.Services
         Task<ResourceTemplate?> GetResourceTemplate(int id);
         Task<ResourceTemplate> UpdateResourceTemplate(ResourceTemplate template);
         Task DeleteResourceTemplate(int id);
+
+        // Wildcard Collection Operations
+        Task<List<WildcardCollection>> GetAllWildcardCollections();
+        Task<WildcardCollection?> GetWildcardCollectionById(int id);
+        Task<WildcardCollection?> GetWildcardCollectionByName(string name);
+        Task<List<WildcardCollection>> GetWildcardCollectionsByCategory(string? category);
+        Task<List<string>> GetAllWildcardCategories();
+        Task<WildcardCollection> CreateWildcardCollection(WildcardCollection collection);
+        Task<WildcardCollection> UpdateWildcardCollection(WildcardCollection collection);
+        Task DeleteWildcardCollection(int id);
+        Task UpdateWildcardCollectionUsage(int collectionId);
+
+        // Wildcard Entry Operations
+        Task<List<WildcardEntry>> GetEntriesByCollectionId(int collectionId);
+        Task<WildcardEntry> CreateWildcardEntry(WildcardEntry entry);
+        Task<WildcardEntry> UpdateWildcardEntry(WildcardEntry entry);
+        Task DeleteWildcardEntry(int id);
     }
 }

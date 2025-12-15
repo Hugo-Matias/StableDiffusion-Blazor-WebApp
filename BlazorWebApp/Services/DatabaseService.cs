@@ -1104,5 +1104,178 @@ namespace BlazorWebApp.Services
                 await context.SaveChangesAsync();
             }
         }
+
+        #region Wildcard Operations
+
+        // Wildcard Collection Operations
+        public async Task<List<WildcardCollection>> GetAllWildcardCollections()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Include(c => c.Entries)
+                .OrderBy(c => c.Category)
+                .ThenBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task<WildcardCollection?> GetWildcardCollectionById(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Include(c => c.Entries.OrderBy(e => e.SortOrder))
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<WildcardCollection?> GetWildcardCollectionByName(string name)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Include(c => c.Entries.OrderBy(e => e.SortOrder))
+                .FirstOrDefaultAsync(c => c.Name.ToLower() == name.ToLower());
+        }
+
+        public async Task<List<WildcardCollection>> GetWildcardCollectionsByCategory(string? category)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var query = context.WildcardCollections.Include(c => c.Entries).AsQueryable();
+            
+            if (!string.IsNullOrWhiteSpace(category))
+                query = query.Where(c => c.Category == category);
+            
+            return await query
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAllWildcardCategories()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Where(c => !string.IsNullOrWhiteSpace(c.Category))
+                .Select(c => c.Category!)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToListAsync();
+        }
+
+        public async Task<WildcardCollection> CreateWildcardCollection(WildcardCollection collection)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            collection.CreatedAt = DateTime.Now;
+            collection.UpdatedAt = DateTime.Now;
+            var entity = await context.WildcardCollections.AddAsync(collection);
+            await context.SaveChangesAsync();
+            return entity.Entity;
+        }
+
+        public async Task<WildcardCollection> UpdateWildcardCollection(WildcardCollection collection)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var existing = await context.WildcardCollections.FindAsync(collection.Id);
+            if (existing == null) return null;
+
+            existing.Name = collection.Name;
+            existing.Description = collection.Description;
+            existing.Category = collection.Category;
+            existing.UpdatedAt = DateTime.Now;
+            
+            await context.SaveChangesAsync();
+            return existing;
+        }
+
+        public async Task UpdateWildcardCollectionUsage(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var collection = await context.WildcardCollections.FindAsync(id);
+            if (collection != null)
+            {
+                collection.UsageCount++;
+                collection.UpdatedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+        }
+
+        public async Task DeleteWildcardCollection(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var collection = await context.WildcardCollections.FindAsync(id);
+            if (collection != null)
+            {
+                context.WildcardCollections.Remove(collection);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        // Wildcard Entry Operations
+        public async Task<List<WildcardEntry>> GetEntriesByCollectionId(int collectionId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardEntries
+                .Where(e => e.CollectionId == collectionId)
+                .OrderBy(e => e.SortOrder)
+                .ToListAsync();
+        }
+
+        public async Task<WildcardEntry> CreateWildcardEntry(WildcardEntry entry)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = await context.WildcardEntries.AddAsync(entry);
+            await context.SaveChangesAsync();
+            
+            // Update collection timestamp
+            var collection = await context.WildcardCollections.FindAsync(entry.CollectionId);
+            if (collection != null)
+            {
+                collection.UpdatedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+            
+            return entity.Entity;
+        }
+
+        public async Task<WildcardEntry> UpdateWildcardEntry(WildcardEntry entry)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var existing = await context.WildcardEntries.FindAsync(entry.Id);
+            if (existing == null) return null;
+
+            existing.Value = entry.Value;
+            existing.Weight = entry.Weight;
+            existing.SortOrder = entry.SortOrder;
+            
+            await context.SaveChangesAsync();
+            
+            // Update collection timestamp
+            var collection = await context.WildcardCollections.FindAsync(existing.CollectionId);
+            if (collection != null)
+            {
+                collection.UpdatedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+            
+            return existing;
+        }
+
+        public async Task DeleteWildcardEntry(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entry = await context.WildcardEntries.FindAsync(id);
+            if (entry != null)
+            {
+                var collectionId = entry.CollectionId;
+                context.WildcardEntries.Remove(entry);
+                await context.SaveChangesAsync();
+                
+                // Update collection timestamp
+                var collection = await context.WildcardCollections.FindAsync(collectionId);
+                if (collection != null)
+                {
+                    collection.UpdatedAt = DateTime.Now;
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        #endregion
     }
 }
