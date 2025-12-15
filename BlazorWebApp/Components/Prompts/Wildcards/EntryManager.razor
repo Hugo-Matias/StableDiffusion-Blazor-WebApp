@@ -76,7 +76,22 @@
     @* Entry List *@
     <MudPaper Elevation="1" Class="pa-3">
         <MudStack Spacing="2">
-            <MudText Typo="Typo.h6">Entries (@_entries.Count)</MudText>
+            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h6">Entries (@GetFilteredEntries().Count)</MudText>
+                @if (_entries.Count > 3)
+                {
+                    <MudTextField @bind-Value="_entrySearchText"
+                                  Placeholder="Search entries..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Clearable
+                                  Immediate
+                                  DebounceInterval="300"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Style="max-width: 250px;" />
+                }
+            </MudStack>
             <MudDivider />
             
             @if (_isLoading)
@@ -93,39 +108,52 @@
             }
             else
             {
-                <MudList Clickable Dense Class="entry-list">
-                    @foreach (var entry in _entries.OrderBy(e => e.SortOrder))
-                    {
-                        var isSelected = _selectedEntry?.Id == entry.Id;
-                        var textColor = isSelected ? Color.Secondary : Color.Default;
-                        <MudListItem Class="@(isSelected ? "entry-item entry-item-selected" : "entry-item")"
-                                     OnClick="() => SelectEntry(entry)">
-                            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                <MudText Typo="Typo.body1" Class="flex-grow-1" Color="@textColor">@entry.Value</MudText>
-                                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudChip Size="Size.Small" Variant="Variant.Text">
-                                        @entry.Weight.ToString("F1")
-                                    </MudChip>
-                                    <span @onclick:stopPropagation="true">
-                                        <MudTooltip Text="Edit entry">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                                           Size="Size.Small" 
-                                                           OnClick="() => EditEntry(entry)" />
-                                        </MudTooltip>
-                                    </span>
-                                    <span @onclick:stopPropagation="true">
-                                        <MudTooltip Text="Delete entry">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                                           Size="Size.Small" 
-                                                           Color="Color.Error"
-                                                           OnClick="() => DeleteEntry(entry)" />
-                                        </MudTooltip>
-                                    </span>
+                var filteredEntries = GetFilteredEntries();
+                
+                @if (!filteredEntries.Any())
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="pa-4">
+                        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Default" />
+                        <MudText Typo="Typo.body1" Color="Color.Default">No matching entries</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Try a different search term</MudText>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudList Clickable Dense Class="entry-list">
+                        @foreach (var entry in filteredEntries.OrderBy(e => e.SortOrder))
+                        {
+                            var isSelected = _selectedEntry?.Id == entry.Id;
+                            var textColor = isSelected ? Color.Secondary : Color.Default;
+                            <MudListItem Class="@(isSelected ? "entry-item entry-item-selected" : "entry-item")"
+                                         OnClick="() => SelectEntry(entry)">
+                                <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.body1" Class="flex-grow-1" Color="@textColor">@entry.Value</MudText>
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudChip Size="Size.Small" Variant="Variant.Text">
+                                            @entry.Weight.ToString("F1")
+                                        </MudChip>
+                                        <span @onclick:stopPropagation="true">
+                                            <MudTooltip Text="Edit entry">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                               Size="Size.Small" 
+                                                               OnClick="() => EditEntry(entry)" />
+                                            </MudTooltip>
+                                        </span>
+                                        <span @onclick:stopPropagation="true">
+                                            <MudTooltip Text="Delete entry">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                               Size="Size.Small" 
+                                                               Color="Color.Error"
+                                                               OnClick="() => DeleteEntry(entry)" />
+                                            </MudTooltip>
+                                        </span>
+                                    </MudStack>
                                 </MudStack>
-                            </MudStack>
-                        </MudListItem>
-                    }
-                </MudList>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
             }
         </MudStack>
     </MudPaper>
@@ -205,6 +233,7 @@
     private int? _lastCollectionId;
     private bool _isLoading = true;
     private string _randomResult = string.Empty;
+    private string _entrySearchText = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -213,6 +242,7 @@
         {
             _selectedEntry = null;
             _lastCollectionId = Collection.Id;
+            _entrySearchText = string.Empty; // Clear search when changing collections
             await LoadEntries();
         }
     }
@@ -496,5 +526,18 @@
         var totalWeight = _entries.Sum(e => e.Weight);
         if (totalWeight == 0) return 0;
         return (entry.Weight / totalWeight) * 100;
+    }
+
+    private List<WildcardEntry> GetFilteredEntries()
+    {
+        if (string.IsNullOrWhiteSpace(_entrySearchText))
+        {
+            return _entries;
+        }
+
+        var searchLower = _entrySearchText.ToLower();
+        return _entries
+            .Where(e => e.Value.Contains(searchLower, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 }
