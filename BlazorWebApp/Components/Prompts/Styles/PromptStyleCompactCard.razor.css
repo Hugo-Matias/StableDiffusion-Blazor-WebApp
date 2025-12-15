@@ -1,0 +1,229 @@
+.compact-card {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.compact-card:hover {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.compact-card.expanded {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+/* Compact Header */
+.compact-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+}
+
+.compact-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.compact-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--mud-palette-text-primary);
+    overflow: hidden;
+}
+
+.title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pin-icon {
+    flex-shrink: 0;
+}
+
+.compact-badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.category-chip {
+    font-size: 0.7rem !important;
+    height: 20px !important;
+}
+
+.category-chip .mud-chip-content {
+    padding: 0 6px !important;
+}
+
+.compact-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+    align-items: center;
+}
+
+.usage-count {
+    font-weight: 500;
+}
+
+.last-used::before {
+    content: "\2022";
+    margin-right: 8px;
+    color: var(--mud-palette-text-disabled);
+}
+
+.lora-list-count {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--mud-palette-primary);
+    font-weight: 500;
+}
+
+.lora-prompt-count {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--mud-palette-warning);
+    font-weight: 500;
+}
+
+/* Only show bullet before LoRA counts if there's content before them */
+.usage-count ~ .lora-list-count::before,
+.last-used ~ .lora-list-count::before {
+    content: "\2022";
+    margin-right: 6px;
+    color: var(--mud-palette-text-disabled);
+}
+
+.usage-count ~ .lora-prompt-count::before,
+.last-used ~ .lora-prompt-count::before,
+.lora-list-count ~ .lora-prompt-count::before {
+    content: "\2022";
+    margin-right: 6px;
+    color: var(--mud-palette-text-disabled);
+}
+
+/* Quick Actions (hover state in compact mode) */
+.compact-quick-actions {
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    background: var(--mud-palette-surface);
+    border-radius: 4px;
+    padding: 2px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.compact-quick-actions.visible {
+    opacity: 1;
+}
+
+/* Expanded Content */
+.expanded-content {
+    animation: expandIn 0.2s ease;
+}
+
+@keyframes expandIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.prompt-section {
+    margin-bottom: 8px;
+}
+
+.prompt-text {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    background: var(--mud-palette-background);
+    padding: 8px;
+    border-radius: 4px;
+    max-height: 80px;
+    overflow-y: auto;
+    word-break: break-word;
+}
+
+.tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.expanded-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.action-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Pinned/Favorite indicators */
+.compact-card[data-pinned="true"] {
+    border-left: 3px solid var(--mud-palette-primary);
+}
+
+.compact-card[data-favorite="true"]:not([data-pinned="true"]) {
+    border-left: 3px solid var(--mud-palette-error);
+}
+
+/* Dark mode adjustments */
+.mud-theme-dark .compact-card {
+    background: var(--mud-palette-surface);
+}
+
+.mud-theme-dark .compact-quick-actions {
+    background: var(--mud-palette-dark);
+}
+
+.mud-theme-dark .prompt-text {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .expanded-actions {
+        flex-direction: column;
+    }
+    
+    .action-group {
+        width: 100%;
+        justify-content: center;
+    }
+}

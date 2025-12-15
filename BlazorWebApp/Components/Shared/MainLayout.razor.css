@@ -99,6 +99,7 @@ main {
 ::deep .base-selector {
     min-width: 90px;
     max-width: 140px;
+    margin-right: 8px;
 }
 
 ::deep .base-selector .mud-input-slot {

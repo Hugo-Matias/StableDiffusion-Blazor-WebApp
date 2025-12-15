@@ -1,0 +1,278 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Extensions
+@using BlazorWebApp.Models
+@inject IDatabaseService DB
+
+<div class="compact-card @(_isExpanded ? "expanded" : "")" 
+     @onmouseenter="() => _isHovered = true" 
+     @onmouseleave="HandleMouseLeave"
+     @onclick="ToggleExpand">
+    
+    @* Compact View (Always visible) *@
+    <div class="compact-header">
+        <div class="compact-title-row">
+            <div class="compact-title">
+                @if (Prompt.IsPinned)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Color="Color.Primary" Class="pin-icon" />
+                }
+                <span class="title-text">@Prompt.Title</span>
+            </div>
+            <div class="compact-badges">
+                @if (!string.IsNullOrWhiteSpace(Prompt.Category))
+                {
+                    <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Filled" Class="category-chip">
+                        @Prompt.Category
+                    </MudChip>
+                }
+                @if (Prompt.IsFavorite)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" Color="Color.Error" />
+                }
+            </div>
+        </div>
+        
+        <div class="compact-meta">
+            @if (Prompt.UsageCount > 0)
+            {
+                <span class="usage-count">@Prompt.UsageCount×</span>
+            }
+            @if (Prompt.LastUsedAt != null)
+            {
+                <span class="last-used">@FormatLastUsed(Prompt.LastUsedAt.Value)</span>
+            }
+            @if (GetLoraListCount() > 0)
+            {
+                <span class="lora-list-count">
+                    <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" Style="font-size: 0.75rem;" />
+                    @GetLoraListCount()
+                </span>
+            }
+            @if (GetLoraPromptCount() > 0)
+            {
+                <span class="lora-prompt-count">
+                    <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Small" Style="font-size: 0.75rem;" />
+                    @GetLoraPromptCount()
+                </span>
+            }
+        </div>
+        
+        @* Quick Actions (visible on hover in compact mode) *@
+        <div class="compact-quick-actions @(_isHovered && !_isExpanded ? "visible" : "")" @onclick:stopPropagation="true">
+            <MudTooltip Text="Apply to Txt2Img" Delay="300">
+                <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" 
+                               Size="Size.Small" 
+                               Color="Color.Success"
+                               OnClick="() => HandleApply(false)" />
+            </MudTooltip>
+            <MudTooltip Text="Edit" Delay="300">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                               Size="Size.Small" 
+                               Color="Color.Primary"
+                               OnClick="HandleEdit" />
+            </MudTooltip>
+        </div>
+    </div>
+    
+    @* Expanded View (shown on click/hover expansion) *@
+    @if (_isExpanded)
+    {
+        <div class="expanded-content" @onclick:stopPropagation="true">
+            <MudDivider Class="my-2" />
+            
+            @* Prompt Preview *@
+            @if (!string.IsNullOrWhiteSpace(Prompt.Positive))
+            {
+                <div class="prompt-section">
+                    <MudText Typo="Typo.caption" Color="Color.Success"><strong>Positive:</strong></MudText>
+                    <MudText Typo="Typo.body2" Class="prompt-text">@TruncateText(Prompt.Positive, 200)</MudText>
+                </div>
+            }
+            
+            @if (!string.IsNullOrWhiteSpace(Prompt.Negative))
+            {
+                <div class="prompt-section">
+                    <MudText Typo="Typo.caption" Color="Color.Error"><strong>Negative:</strong></MudText>
+                    <MudText Typo="Typo.body2" Class="prompt-text">@TruncateText(Prompt.Negative, 150)</MudText>
+                </div>
+            }
+            
+            @* Tags *@
+            @if (Prompt.Tags != null && Prompt.Tags.Any())
+            {
+                <div class="tags-row">
+                    @foreach (var tag in Prompt.Tags.Take(4))
+                    {
+                        <MudChip Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">@tag</MudChip>
+                    }
+                    @if (Prompt.Tags.Count > 4)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">+@(Prompt.Tags.Count - 4)</MudText>
+                    }
+                </div>
+            }
+            
+            <MudDivider Class="my-2" />
+            
+            @* Full Actions *@
+            <div class="expanded-actions">
+                <div class="action-group">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Success" 
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Image"
+                               OnClick="() => HandleApply(false)">
+                        Txt2Img
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Secondary" 
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.BurstMode"
+                               OnClick="() => HandleApply(true)">
+                        Img2Img
+                    </MudButton>
+                </div>
+                
+                <div class="action-group">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Size="Size.Small" 
+                                   Color="Color.Primary"
+                                   OnClick="HandleEdit" />
+                    <MudIconButton Icon="@(Prompt.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" 
+                                   Size="Size.Small" 
+                                   Color="Color.Error"
+                                   OnClick="HandleToggleFavorite" />
+                    <MudIconButton Icon="@(Prompt.IsPinned ? Icons.Material.Filled.PushPin : Icons.Material.Outlined.PushPin)" 
+                                   Size="Size.Small" 
+                                   Color="@(Prompt.IsPinned ? Color.Primary : Color.Default)"
+                                   OnClick="HandleTogglePin" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Size="Size.Small" 
+                                   Color="Color.Error"
+                                   OnClick="HandleDelete" />
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Prompt Prompt { get; set; } = null!;
+    
+    [Parameter]
+    public EventCallback<Prompt> OnEdit { get; set; }
+    
+    [Parameter]
+    public EventCallback<Prompt> OnDelete { get; set; }
+    
+    [Parameter]
+    public EventCallback<Prompt> OnToggleFavorite { get; set; }
+    
+    [Parameter]
+    public EventCallback<Prompt> OnTogglePin { get; set; }
+    
+    [Parameter]
+    public EventCallback<(Prompt prompt, bool isImg2Img)> OnApply { get; set; }
+    
+    private bool _isHovered = false;
+    private bool _isExpanded = false;
+    
+    private void ToggleExpand()
+    {
+        _isExpanded = !_isExpanded;
+    }
+    
+    private void HandleMouseLeave()
+    {
+        _isHovered = false;
+        // Don't auto-collapse on mouse leave - let user click to collapse
+    }
+    
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        if (text.Length <= maxLength) return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+    
+    private string FormatLastUsed(DateTime lastUsed)
+    {
+        var timeSpan = DateTime.Now - lastUsed;
+        
+        if (timeSpan.TotalMinutes < 1) return "now";
+        if (timeSpan.TotalHours < 1) return $"{(int)timeSpan.TotalMinutes}m";
+        if (timeSpan.TotalDays < 1) return $"{(int)timeSpan.TotalHours}h";
+        if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays}d";
+        if (timeSpan.TotalDays < 30) return $"{(int)(timeSpan.TotalDays / 7)}w";
+        return $"{(int)(timeSpan.TotalDays / 30)}mo";
+    }
+    
+    private int GetLoraListCount()
+    {
+        // Count LoRAs from the Loras list property
+        return Prompt.Loras?.Count ?? 0;
+    }
+    
+    private int GetLoraPromptCount()
+    {
+        // Count LoRAs in prompt text that are NOT in the list
+        var loraPattern = @"<lora:([^>:]+)(?::[^>]+)?>";
+        var matches = new System.Collections.Generic.HashSet<string>();
+        
+        if (!string.IsNullOrWhiteSpace(Prompt.Positive))
+        {
+            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(Prompt.Positive, loraPattern))
+            {
+                matches.Add(match.Groups[1].Value);
+            }
+        }
+        
+        if (!string.IsNullOrWhiteSpace(Prompt.Negative))
+        {
+            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(Prompt.Negative, loraPattern))
+            {
+                matches.Add(match.Groups[1].Value);
+            }
+        }
+        
+        // Remove LoRAs that are already in the list
+        if (Prompt.Loras != null)
+        {
+            foreach (var lora in Prompt.Loras)
+            {
+                matches.Remove(lora.Name);
+            }
+        }
+        
+        return matches.Count;
+    }
+    
+    private async Task HandleEdit()
+    {
+        await OnEdit.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleDelete()
+    {
+        await OnDelete.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleToggleFavorite()
+    {
+        Prompt.IsFavorite = !Prompt.IsFavorite;
+        await OnToggleFavorite.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleTogglePin()
+    {
+        Prompt.IsPinned = !Prompt.IsPinned;
+        await OnTogglePin.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleApply(bool isImg2Img)
+    {
+        await OnApply.InvokeAsync((Prompt, isImg2Img));
+        await DB.UpdatePromptUsage(Prompt.Id);
+    }
+}
