@@ -138,13 +138,35 @@
     [Parameter] public bool EnableAutocomplete { get; set; } = true;
     [Parameter] public bool IsNegative { get; set; } = false;
 
+    // Phase 4: Event callbacks for non-prompt triggers (LoRA/Style selection)
+    [Parameter] public EventCallback<Lora> OnLoraSelected { get; set; }
+    [Parameter] public EventCallback<PromptStyle> OnStyleSelected { get; set; }
+
     private MudTextField<string> _textFieldRef;
     private ElementReference _wrapperRef;
+    
+    // Existing suggestion lists (Tags/Dictionary)
     private List<Tag> _tagSuggestions = new();
     private List<DictionaryWord> _wordSuggestions = new();
+    
+    // Phase 4: Wildcard suggestion lists
+    private List<string> _wildcardCategorySuggestions = new();
+    private List<WildcardCollection> _wildcardCollectionSuggestions = new();
+    
+    // Phase 4: LoRA and Style suggestion lists
+    private List<LocalResource> _loraSuggestions = new();
+    private List<PromptStyle> _styleSuggestions = new();
+    
     private bool _showSuggestions = false;
     private int _selectedIndex = 0;
     private SuggestionSection _selectedSection = SuggestionSection.Tags;
+    
+    // Phase 4: Current autocomplete mode (determines which search/UI path to use)
+    private AutocompleteMode _currentMode = AutocompleteMode.Tags;
+    
+    // Phase 4: Wildcard navigation context for hierarchical selection
+    private WildcardContext? _wildcardContext;
+    
     private string _currentWord = string.Empty;
     private int _cursorPosition = 0;
     private System.Timers.Timer _debounceTimer;
@@ -153,7 +175,55 @@
     private IJSObjectReference _jsModule;
     private bool _isSelectingSuggestion = false;
 
+    // Existing section enum for Tags/Words keyboard navigation
     private enum SuggestionSection { Tags, Words }
+
+    #region Phase 4: Multi-Trigger Architecture Types
+
+    /// <summary>
+    /// Autocomplete mode determines which trigger is active and which search/UI path to use.
+    /// Priority order: Wildcards > LoRA > Style > Tags (forced) > Tags (default)
+    /// </summary>
+    private enum AutocompleteMode
+    {
+        None,                   // No trigger detected, autocomplete disabled
+        Tags,                   // Default or # trigger (tag/dictionary search)
+        WildcardCategory,       // _ trigger (searching categories)
+        WildcardCollection,     // __category/ (searching collections within category)
+        Lora,                   // < trigger (LoRA search, adds to list)
+        Style                   // @ trigger (Style search, adds to list)
+    }
+
+    /// <summary>
+    /// State machine for wildcard hierarchical navigation.
+    /// Tracks whether user is selecting category or collection.
+    /// </summary>
+    private enum WildcardState
+    {
+        SearchingCategories,     // After "_" or "_c" - show/filter categories
+        SearchingCollections,    // After "__category/" - show/filter collections
+        Complete                 // After "__category/collection__ " - selection finished
+    }
+
+    /// <summary>
+    /// Context for wildcard navigation, maintains state between category and collection selection.
+    /// </summary>
+    private class WildcardContext
+    {
+        /// <summary>Current state in the wildcard selection flow</summary>
+        public WildcardState State { get; set; }
+        
+        /// <summary>Category selected in first step (e.g., "clothing")</summary>
+        public string? SelectedCategory { get; set; }
+        
+        /// <summary>Position where the trigger started (for text replacement)</summary>
+        public int TriggerStartPosition { get; set; }
+        
+        /// <summary>Current search/filter query within the mode</summary>
+        public string SearchQuery { get; set; } = "";
+    }
+
+    #endregion
 
     protected override void OnInitialized()
     {
