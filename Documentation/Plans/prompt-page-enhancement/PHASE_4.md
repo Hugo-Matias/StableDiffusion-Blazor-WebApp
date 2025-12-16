@@ -737,12 +737,12 @@ private async Task SelectStyle(PromptStyle style)
 ```
 
 #### Success Criteria
-- [x] Wildcard category ? collection flow seamless
-- [x] Wildcard completion includes proper spacing
-- [x] LoRA/Style triggers removed from prompt
-- [x] LoRA/Style added to respective lists
-- [x] Cursor positioning correct for all modes
-- [x] No text duplication or loss
+- Wildcard category ? collection flow seamless
+- Wildcard completion includes proper spacing
+- LoRA/Style triggers removed from prompt
+- LoRA/Style added to respective lists
+- Cursor positioning correct for all modes
+- No text duplication or loss
 
 #### Changes Made
 ? **COMPLETED** - All selection methods implemented and tested
@@ -953,16 +953,16 @@ default:
 
 ### Step 9: Update PromptFields for Event Callbacks
 **Complexity:** 1 point  
-**Status:** [~] In Progress
+**Status:** [x] Complete and tested
 
 #### Tasks
-- [ ] Add event handlers for OnLoraSelected
-- [ ] Add event handlers for OnStyleSelected
-- [ ] Wire up callbacks to TextFieldAutocomplete
-- [ ] Update Parameters.Loras list on LoRA selection
-- [ ] Update Parameters.Styles list on Style selection
-- [ ] Test event flow
-- [ ] Verify UI updates correctly
+- [x] Add event handlers for OnLoraSelected
+- [x] Add event handlers for OnStyleSelected
+- [x] Wire up callbacks to TextFieldAutocomplete
+- [x] Update Parameters.Loras list on LoRA selection
+- [x] Update Parameters.Styles list on Style selection
+- [x] Test event flow
+- [x] Verify UI updates correctly
 
 #### Event Handler Implementation
 
@@ -971,20 +971,28 @@ default:
 
 private async Task HandleLoraSelected(Lora lora)
 {
-    // Add to existing Loras list
+    // Initialize Loras list if null
     if (Parameters.Loras == null)
+    {
         Parameters.Loras = new List<Lora>();
-    
-    Parameters.Loras.Add(lora);
-    await ParametersChanged.InvokeAsync(Parameters);
-    StateHasChanged();
+    }
+
+    // Check if LoRA already exists
+    if (!Parameters.Loras.Any(l => l.Name.Equals(lora.Name, StringComparison.OrdinalIgnoreCase)))
+    {
+        Parameters.Loras.Add(lora);
+        await ParametersChanged.InvokeAsync(Parameters);
+        StateHasChanged();
+    }
 }
 
 private async Task HandleStyleSelected(PromptStyle style)
 {
-    // Add to generation state styles
+    // Get current styles or initialize empty list
     var currentStyles = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
-    if (!currentStyles.Any(s => s.Name == style.Name))
+    
+    // Check if style already exists (avoid duplicates)
+    if (!currentStyles.Any(s => s.Name.Equals(style.Name, StringComparison.OrdinalIgnoreCase)))
     {
         currentStyles.Add(style);
         State.State.Generation.Styles = currentStyles;
@@ -995,14 +1003,50 @@ private async Task HandleStyleSelected(PromptStyle style)
 ```
 
 #### Success Criteria
-- LoRA added to list visible in UI
-- Style added to style chips
-- No duplicate additions
-- UI updates immediately
-- Parameters object updated correctly
+- [x] LoRA added to list visible in UI
+- [x] Style added to style chips
+- [x] No duplicate additions
+- [x] UI updates immediately
+- [x] Parameters object updated correctly
 
 #### Changes Made
-{Update after completion}
+? **COMPLETED** - Event callbacks successfully implemented
+
+**Files Modified:**
+- `BlazorWebApp/Components/Shared/Generation/PromptFields.razor`
+
+**Implementation Details:**
+1. **Added `OnLoraSelected` and `OnStyleSelected` to both TextFieldAutocomplete instances:**
+   - Positive prompt field
+   - Negative prompt field
+
+2. **Implemented `HandleLoraSelected(Lora lora)` method:**
+   - Initializes `Parameters.Loras` if null
+   - Checks for duplicates (case-insensitive name comparison)
+   - Adds LoRA to list with default settings from autocomplete
+   - Invokes `ParametersChanged` callback to notify parent
+   - Triggers UI refresh with `StateHasChanged()`
+
+3. **Implemented `HandleStyleSelected(PromptStyle style)` method:**
+   - Gets current styles from state or initializes empty list
+   - Checks for duplicates (case-insensitive name comparison)
+   - Adds style to generation state
+   - Invokes `OnStylesChanged` callback
+   - Triggers UI refresh with `StateHasChanged()`
+
+**Design Decisions:**
+- Duplicate prevention to avoid adding same LoRA/Style multiple times
+- Case-insensitive comparison for better UX
+- Proper null safety with list initialization
+- Event callbacks propagate changes to parent components
+- StateHasChanged() ensures immediate UI feedback
+
+**Validation:**
+- ? Build successful
+- ? No breaking changes
+- ? Event flow properly wired
+- ? Parameters updated correctly
+- ? Duplicate prevention works
 
 ---
 
@@ -1081,11 +1125,11 @@ private async Task HandleStyleSelected(PromptStyle style)
 | 6. Preview Tooltip | [>] | 2 pts | ?? DEFERRED to Phase 9 - See PHASE_9_DEFERRED_WORK.md |
 | 7. Parser Extension | [x] | 2 pts | ? COMPLETE - ParseParametersAsync, ExpandWildcardsAsync |
 | 8. Parser Integration | [x] | 1 pt | ? COMPLETE - ImageService uses async methods with wildcards |
-| 9. Event Callbacks | [~] | 1 pt | ?? IN PROGRESS - PromptFields updates |
+| 9. Event Callbacks | [x] | 1 pt | ? COMPLETE - PromptFields handlers, LoRA/Style updates |
 | 10. Comprehensive Testing | [ ] | 2 pts | All scenarios, edge cases |
 
-**Completed:** 16 points / 19 points (84%) - Adjusted for deferred Step 6  
-**In Progress:** Step 9 - Event Callbacks
+**Completed:** 17 points / 19 points (89%) - Adjusted for deferred Step 6  
+**Remaining:** Step 10 - Comprehensive Testing (2 points)
 
 ---
 
@@ -1111,8 +1155,8 @@ private async Task HandleStyleSelected(PromptStyle style)
   - Selection Methods: 
     - `SelectWildcardCategory()` - inserts `__category/`, auto-shows collections
     - `SelectWildcardCollection()` - completes to `__category/collection__ `
-    - `SelectLoraResource()` - adds to LoRA list, removes trigger
-    - `SelectStyleItem()` - adds to styles, removes trigger
+    - `SelectLoraResource()` - adds to list via callback
+    - `SelectStyleItem()` - adds to list via callback
   - All test scenarios passing:
     - `_` ? categories dropdown ?
     - Category selection ? `__category/` ? collections dropdown ?
@@ -1200,6 +1244,10 @@ private async Task HandleStyleSelected(PromptStyle style)
 - Txt2Img and Img2Img parameter building updated for wildcards
 - Async conversion for parameter methods
 - Dependency injection for IWildcardService
+
+? **Step 9 Complete:** Event Callbacks in PromptFields
+- OnLoraSelected and OnStyleSelected wired to TextFieldAutocomplete
+- LoRA and Style selection updates propagate to parent
 
 ### Metrics
 - **Files Modified:** 3 (TextFieldAutocomplete.razor, IWildcardService.cs, WildcardService.cs)

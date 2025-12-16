@@ -1165,17 +1165,7 @@
     {
         try
         {
-            // Create Lora object and invoke callback
-            var loraItem = new Lora
-            {
-                Name = lora.Title,
-                Strength = 1.0f,
-                IsEnabled = true
-            };
-            
-            await OnLoraSelected.InvokeAsync(loraItem);
-            
-            // Remove '<' trigger and any typed text from prompt
+            // Remove '<' trigger and any typed text from prompt FIRST
             var textBeforeCursor = Value.Substring(0, _cursorPosition);
             var lastLt = textBeforeCursor.LastIndexOf('<');
             
@@ -1184,15 +1174,55 @@
                 var beforeTrigger = Value.Substring(0, lastLt);
                 var afterCursor = Value.Substring(_cursorPosition);
                 
+                // Clean up spacing
+                beforeTrigger = beforeTrigger.TrimEnd();
+                afterCursor = afterCursor.TrimStart();
+                
+                // Add proper spacing if needed
+                if (beforeTrigger.Length > 0 && afterCursor.Length > 0)
+                {
+                    if (!beforeTrigger.EndsWith(","))
+                    {
+                        beforeTrigger += "";  // No extra comma needed
+                    }
+                }
+                
+                var newValue = beforeTrigger + (afterCursor.Length > 0 ? " " : "") + afterCursor;
+                newValue = newValue.Trim();
+                
                 _isSelectingSuggestion = true;
                 _showSuggestions = false;
                 
-                Value = $"{beforeTrigger}{afterCursor}";
-                await _textFieldRef.SetText(Value);
-                await ValueChanged.InvokeAsync(Value);
+                // Update local value first
+                Value = newValue;
                 
-                _cursorPosition = lastLt;
-                await SetCursorPosition(lastLt);
+                // Force immediate MudTextField update
+                await _textFieldRef.SetText(newValue);
+                
+                // Force the text field to blur and refocus to ensure update
+                await _textFieldRef.BlurAsync();
+                
+                // Propagate to parent
+                await ValueChanged.InvokeAsync(newValue);
+                
+                // Small delay to ensure DOM is updated
+                await Task.Delay(50);
+                
+                _cursorPosition = beforeTrigger.Length + (afterCursor.Length > 0 ? 1 : 0);
+                await SetCursorPosition(_cursorPosition);
+                
+                // Refocus the field
+                await _textFieldRef.FocusAsync();
+                
+                // NOW invoke callback to add LoRA (after text is cleaned)
+                var loraItem = new Lora
+                {
+                    Name = lora.Title,
+                    Strength = 1.0f,
+                    IsEnabled = true
+                };
+                
+                await OnLoraSelected.InvokeAsync(loraItem);
             }
             
             StateHasChanged();
@@ -1210,10 +1240,7 @@
     {
         try
         {
-            // Invoke callback to add style
-            await OnStyleSelected.InvokeAsync(style);
-            
-            // Remove '@' trigger and any typed text from prompt
+            // Remove '@' trigger and any typed text from prompt FIRST
             var textBeforeCursor = Value.Substring(0, _cursorPosition);
             var lastAt = textBeforeCursor.LastIndexOf('@');
             
@@ -1222,15 +1249,48 @@
                 var beforeTrigger = Value.Substring(0, lastAt);
                 var afterCursor = Value.Substring(_cursorPosition);
                 
+                // Clean up spacing
+                beforeTrigger = beforeTrigger.TrimEnd();
+                afterCursor = afterCursor.TrimStart();
+                
+                // Add proper spacing if needed
+                if (beforeTrigger.Length > 0 && afterCursor.Length > 0)
+                {
+                    if (!beforeTrigger.EndsWith(","))
+                    {
+                        beforeTrigger += "";  // No extra comma needed
+                    }
+                }
+                
+                var newValue = beforeTrigger + (afterCursor.Length > 0 ? " " : "") + afterCursor;
+                newValue = newValue.Trim();
+                
                 _isSelectingSuggestion = true;
                 _showSuggestions = false;
                 
-                Value = $"{beforeTrigger}{afterCursor}";
-                await _textFieldRef.SetText(Value);
-                await ValueChanged.InvokeAsync(Value);
+                // Update local value first
+                Value = newValue;
                 
-                _cursorPosition = lastAt;
-                await SetCursorPosition(lastAt);
+                // Force immediate MudTextField update
+                await _textFieldRef.SetText(newValue);
+                
+                // Force the text field to blur and refocus to ensure update
+                await _textFieldRef.BlurAsync();
+                
+                // Propagate to parent
+                await ValueChanged.InvokeAsync(newValue);
+                
+                // Small delay to ensure DOM is updated
+                await Task.Delay(50);
+                
+                _cursorPosition = beforeTrigger.Length + (afterCursor.Length > 0 ? 1 : 0);
+                await SetCursorPosition(_cursorPosition);
+                
+                // Refocus the field
+                await _textFieldRef.FocusAsync();
+                
+                // NOW invoke callback to add Style (after text is cleaned)
+                await OnStyleSelected.InvokeAsync(style);
             }
             
             StateHasChanged();
@@ -1240,7 +1300,7 @@
             Logger.LogError(ex, "Error selecting style '{Style}'", style.Name);
         }
     }
-
+    
     #endregion
 
     [JSInvokable]
