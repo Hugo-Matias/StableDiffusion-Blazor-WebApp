@@ -13,7 +13,8 @@
             
             <MudTextField @bind-Value="_category" 
                           Label="Category" 
-                          HelperText="e.g., Clothing, Locations, Styles"
+                          Required
+                          HelperText="e.g., Clothing, Locations, Styles (required)"
                           Variant="Variant.Outlined" />
             
             <MudTextField @bind-Value="_description" 
@@ -28,7 +29,7 @@
         <MudButton OnClick="Save" 
                    Color="Color.Primary" 
                    Variant="Variant.Filled"
-                   Disabled="string.IsNullOrWhiteSpace(_name)">
+                   Disabled="string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_category)">
             @(_isEdit ? "Update" : "Create")
         </MudButton>
     </DialogActions>
@@ -56,7 +57,7 @@
         if (Collection != null)
         {
             _name = Collection.Name;
-            _category = Collection.Category ?? string.Empty;
+            _category = Collection.Category;
             _description = Collection.Description ?? string.Empty;
         }
     }
@@ -67,10 +68,16 @@
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(_category))
+            {
+                Snackbar.Add("Category is required", Severity.Warning);
+                return;
+            }
+
             if (_isEdit && Collection != null)
             {
                 Collection.Name = _name.Trim();
-                Collection.Category = string.IsNullOrWhiteSpace(_category) ? null : _category.Trim();
+                Collection.Category = _category.Trim();
                 Collection.Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
                 await Database.UpdateWildcardCollection(Collection);
             }
@@ -79,7 +86,7 @@
                 var collection = new WildcardCollection
                 {
                     Name = _name.Trim(),
-                    Category = string.IsNullOrWhiteSpace(_category) ? null : _category.Trim(),
+                    Category = _category.Trim(),
                     Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now,

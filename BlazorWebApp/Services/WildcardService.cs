@@ -36,7 +36,7 @@ namespace BlazorWebApp.Services
         {
             try
             {
-                var collection = await _database.GetWildcardCollectionByName(collectionName);
+                var collection = await ResolveCollection(collectionName);
                 if (collection == null || !collection.Entries.Any())
                 {
                     _logger.LogWarning("Collection '{CollectionName}' not found or has no entries", collectionName);
@@ -61,7 +61,7 @@ namespace BlazorWebApp.Services
         {
             try
             {
-                var collection = await _database.GetWildcardCollectionByName(collectionName);
+                var collection = await ResolveCollection(collectionName);
                 if (collection == null || !collection.Entries.Any())
                 {
                     _logger.LogWarning("Collection '{CollectionName}' not found or has no entries", collectionName);
@@ -102,11 +102,40 @@ namespace BlazorWebApp.Services
             }
         }
 
+        /// <summary>
+        /// Resolves a collection by name, supporting both formats:
+        /// - "category/collection" format (e.g., "Clothing/tops")
+        /// - "collection" format (e.g., "tops") - searches by name directly
+        /// </summary>
+        private async Task<WildcardCollection?> ResolveCollection(string wildcardPath)
+        {
+            if (string.IsNullOrWhiteSpace(wildcardPath))
+                return null;
+
+            // Check if it's a category/collection format
+            if (wildcardPath.Contains('/'))
+            {
+                var parts = wildcardPath.Split('/', 2);
+                var category = parts[0];
+                var collectionName = parts[1];
+
+                // Get collections for the category and find by name (case-insensitive)
+                var collections = await _database.GetWildcardCollectionsByCategory(category);
+                return collections.FirstOrDefault(c => 
+                    c.Name.Equals(collectionName, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                // Simple collection name - search by name directly
+                return await _database.GetWildcardCollectionByName(wildcardPath);
+            }
+        }
+
         public async Task<List<string>> GetAllEntryValues(string collectionName)
         {
             try
             {
-                var collection = await _database.GetWildcardCollectionByName(collectionName);
+                var collection = await ResolveCollection(collectionName);
                 if (collection == null || !collection.Entries.Any())
                 {
                     return new List<string>();
@@ -128,7 +157,7 @@ namespace BlazorWebApp.Services
         {
             try
             {
-                var collection = await _database.GetWildcardCollectionByName(collectionName);
+                var collection = await ResolveCollection(collectionName);
                 return collection != null;
             }
             catch (Exception ex)
@@ -212,7 +241,7 @@ namespace BlazorWebApp.Services
                     // Clothing - Tops
                     new WildcardCollection
                     {
-                        Name = "clothing/tops",
+                        Name = "tops",
                         Description = "Various upper body clothing items",
                         Category = "Clothing",
                         Entries = new List<WildcardEntry>
@@ -230,7 +259,7 @@ namespace BlazorWebApp.Services
                     // Clothing - Bottoms
                     new WildcardCollection
                     {
-                        Name = "clothing/bottoms",
+                        Name = "bottoms",
                         Description = "Various lower body clothing items",
                         Category = "Clothing",
                         Entries = new List<WildcardEntry>
@@ -246,7 +275,7 @@ namespace BlazorWebApp.Services
                     // Clothing - Shoes
                     new WildcardCollection
                     {
-                        Name = "clothing/shoes",
+                        Name = "shoes",
                         Description = "Various footwear options",
                         Category = "Clothing",
                         Entries = new List<WildcardEntry>
@@ -261,7 +290,7 @@ namespace BlazorWebApp.Services
                     // Locations - Indoor
                     new WildcardCollection
                     {
-                        Name = "locations/indoor",
+                        Name = "indoor",
                         Description = "Indoor location settings",
                         Category = "Locations",
                         Entries = new List<WildcardEntry>
@@ -277,7 +306,7 @@ namespace BlazorWebApp.Services
                     // Locations - Outdoor
                     new WildcardCollection
                     {
-                        Name = "locations/outdoor",
+                        Name = "outdoor",
                         Description = "Outdoor location settings",
                         Category = "Locations",
                         Entries = new List<WildcardEntry>
@@ -293,7 +322,7 @@ namespace BlazorWebApp.Services
                     // Locations - Fantasy
                     new WildcardCollection
                     {
-                        Name = "locations/fantasy",
+                        Name = "fantasy",
                         Description = "Fantasy and sci-fi locations",
                         Category = "Locations",
                         Entries = new List<WildcardEntry>
@@ -309,7 +338,7 @@ namespace BlazorWebApp.Services
                     // Styles - Art Medium
                     new WildcardCollection
                     {
-                        Name = "styles/art-medium",
+                        Name = "art-medium",
                         Description = "Different artistic mediums and techniques",
                         Category = "Styles",
                         Entries = new List<WildcardEntry>
@@ -325,7 +354,7 @@ namespace BlazorWebApp.Services
                     // Styles - Lighting
                     new WildcardCollection
                     {
-                        Name = "styles/lighting",
+                        Name = "lighting",
                         Description = "Different lighting conditions and moods",
                         Category = "Styles",
                         Entries = new List<WildcardEntry>
@@ -341,7 +370,7 @@ namespace BlazorWebApp.Services
                     // Styles - Mood
                     new WildcardCollection
                     {
-                        Name = "styles/mood",
+                        Name = "mood",
                         Description = "Emotional atmosphere and mood",
                         Category = "Styles",
                         Entries = new List<WildcardEntry>
@@ -356,7 +385,7 @@ namespace BlazorWebApp.Services
                     // Characters - Hair Color
                     new WildcardCollection
                     {
-                        Name = "characters/hair-color",
+                        Name = "hair-color",
                         Description = "Hair color options for characters",
                         Category = "Characters",
                         Entries = new List<WildcardEntry>
@@ -372,7 +401,7 @@ namespace BlazorWebApp.Services
                     // Characters - Hair Style
                     new WildcardCollection
                     {
-                        Name = "characters/hair-style",
+                        Name = "hair-style",
                         Description = "Hair style variations",
                         Category = "Characters",
                         Entries = new List<WildcardEntry>
@@ -388,7 +417,7 @@ namespace BlazorWebApp.Services
                     // Characters - Eye Color
                     new WildcardCollection
                     {
-                        Name = "characters/eye-color",
+                        Name = "eye-color",
                         Description = "Eye color options for characters",
                         Category = "Characters",
                         Entries = new List<WildcardEntry>
@@ -403,7 +432,7 @@ namespace BlazorWebApp.Services
                     // Actions - Poses
                     new WildcardCollection
                     {
-                        Name = "actions/poses",
+                        Name = "poses",
                         Description = "Character poses and positions",
                         Category = "Actions",
                         Entries = new List<WildcardEntry>
@@ -418,7 +447,7 @@ namespace BlazorWebApp.Services
                     // Actions - Expressions
                     new WildcardCollection
                     {
-                        Name = "actions/expressions",
+                        Name = "expressions",
                         Description = "Facial expressions",
                         Category = "Actions",
                         Entries = new List<WildcardEntry>
@@ -487,7 +516,7 @@ namespace BlazorWebApp.Services
                 
                 return allCollections
                     .Where(c => c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                               (c.Category != null && c.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)))
+                               c.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
                     .Take(maxResults)
                     .ToList();
             }

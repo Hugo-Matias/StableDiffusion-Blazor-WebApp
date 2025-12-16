@@ -21,6 +21,7 @@ public class ImageServiceTests
     private readonly Mock<ISessionService> _mockSession;
     private readonly Mock<IModelService> _mockModels;
     private readonly Mock<ISettingsService> _mockSettings;
+    private readonly Mock<IWildcardService> _mockWildcardService;
     private readonly MagickService _magickService;
 
     public ImageServiceTests()
@@ -35,6 +36,7 @@ public class ImageServiceTests
         _mockSession = new Mock<ISessionService>();
         _mockModels = new Mock<IModelService>();
         _mockSettings = new Mock<ISettingsService>();
+        _mockWildcardService = new Mock<IWildcardService>();
 
         // Setup settings for MagickService
         var appSettings = new AppSettings
@@ -130,7 +132,8 @@ public class ImageServiceTests
             _mockLogger.Object,
             _mockState.Object,
             _mockSession.Object,
-            _mockModels.Object);
+            _mockModels.Object,
+            _mockWildcardService.Object);
     }
 
     #region Constructor Tests
