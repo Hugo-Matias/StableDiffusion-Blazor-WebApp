@@ -1,5 +1,8 @@
+@using System.Text.RegularExpressions
 @inject CsvService CsvService
 @inject ICacheService CacheService
+@inject IWildcardService WildcardService
+@inject IDatabaseService DatabaseService
 @inject IJSRuntime JS
 @inject ILogger<TextFieldAutocomplete> Logger
 @implements IAsyncDisposable
@@ -178,8 +181,6 @@
     // Existing section enum for Tags/Words keyboard navigation
     private enum SuggestionSection { Tags, Words }
 
-    #region Phase 4: Multi-Trigger Architecture Types
-
     /// <summary>
     /// Autocomplete mode determines which trigger is active and which search/UI path to use.
     /// Priority order: Wildcards > LoRA > Style > Tags (forced) > Tags (default)
@@ -223,7 +224,169 @@
         public string SearchQuery { get; set; } = "";
     }
 
-    #endregion
+    /// <summary>
+    /// Detects which autocomplete mode should be active based on text before cursor.
+    /// Priority order: Wildcards > LoRA > Style > Tag Force > Tags (default)
+    /// </summary>
+    private AutocompleteMode DetectAutocompleteMode(string textBeforeCursor)
+    {
+        if (string.IsNullOrEmpty(textBeforeCursor))
+        {
+            _wildcardContext = null;
+            return AutocompleteMode.Tags;
+        }
+
+        // 1. Wildcard detection (highest priority due to complexity)
+        // Find the last underscore that could be a trigger
+        var lastUnderscore = textBeforeCursor.LastIndexOf('_');
+        if (lastUnderscore >= 0)
+        {
+            var afterUnderscore = textBeforeCursor.Substring(lastUnderscore);
+            
+            // Pattern: __category/ (collection search) - check this first as it's more specific
+            var categoryCollectionMatch = Regex.Match(afterUnderscore, @"^__([a-zA-Z0-9\-_]+)/([a-zA-Z0-9\-_]*)$");
+            if (categoryCollectionMatch.Success)
+            {
+                _wildcardContext = new WildcardContext
+                {
+                    State = WildcardState.SearchingCollections,
+                    SelectedCategory = categoryCollectionMatch.Groups[1].Value,
+                    TriggerStartPosition = lastUnderscore,
+                    SearchQuery = categoryCollectionMatch.Groups[2].Value
+                };
+                return AutocompleteMode.WildcardCollection;
+            }
+            
+            // Pattern: Single _ at word boundary (category search)
+            // Must be at start of text or preceded by space/comma/newline
+            var charBeforeUnderscore = lastUnderscore > 0 ? textBeforeCursor[lastUnderscore - 1] : ' ';
+            if (charBeforeUnderscore == ' ' || charBeforeUnderscore == ',' || charBeforeUnderscore == '\n' || lastUnderscore == 0)
+            {
+                // Check if it's a single underscore followed by valid category chars (no second underscore yet)
+                if (Regex.IsMatch(afterUnderscore, @"^_[a-zA-Z0-9\-]*$") && !afterUnderscore.StartsWith("__"))
+                {
+                    _wildcardContext = new WildcardContext
+                    {
+                        State = WildcardState.SearchingCategories,
+                        TriggerStartPosition = lastUnderscore,
+                        SearchQuery = afterUnderscore.Substring(1) // Remove the leading "_"
+                    };
+                    return AutocompleteMode.WildcardCategory;
+                }
+            }
+        }
+        
+        // Reset wildcard context if no wildcard pattern matched
+        _wildcardContext = null;
+        
+        // 2. LoRA trigger '<'
+        var lastLt = textBeforeCursor.LastIndexOf('<');
+        if (lastLt >= 0)
+        {
+            var afterLt = textBeforeCursor.Substring(lastLt + 1);
+            // Valid if no delimiter (comma/newline) between trigger and cursor
+            // Also check it's not inside a completed LoRA tag (no '>')
+            if (!afterLt.Contains(',') && !afterLt.Contains('\n') && !afterLt.Contains('>'))
+            {
+                return AutocompleteMode.Lora;
+            }
+        }
+        
+        // 3. Style trigger '@'
+        var lastAt = textBeforeCursor.LastIndexOf('@');
+        if (lastAt >= 0)
+        {
+            var afterAt = textBeforeCursor.Substring(lastAt + 1);
+            // Valid if no delimiter between trigger and cursor
+            if (!afterAt.Contains(',') && !afterAt.Contains('\n'))
+            {
+                return AutocompleteMode.Style;
+            }
+        }
+        
+        // 4. Tag force trigger '#' - allows searching for tags with special chars
+        var lastHash = textBeforeCursor.LastIndexOf('#');
+        if (lastHash >= 0)
+        {
+            var afterHash = textBeforeCursor.Substring(lastHash + 1);
+            // Valid if no delimiter between trigger and cursor
+            if (!afterHash.Contains(',') && !afterHash.Contains('\n'))
+            {
+                // For forced tag search, we'll use the text after # as the search query
+                return AutocompleteMode.Tags;
+            }
+        }
+        
+        // 5. Default: existing tag/dictionary behavior
+        return AutocompleteMode.Tags;
+    }
+
+    /// <summary>
+    /// Gets the search query for the current mode based on trigger position.
+    /// </summary>
+    private string GetSearchQueryForMode(string textBeforeCursor, AutocompleteMode mode)
+    {
+        switch (mode)
+        {
+            case AutocompleteMode.WildcardCategory:
+            case AutocompleteMode.WildcardCollection:
+                return _wildcardContext?.SearchQuery ?? "";
+                
+            case AutocompleteMode.Lora:
+                var lastLt = textBeforeCursor.LastIndexOf('<');
+                return lastLt >= 0 ? textBeforeCursor.Substring(lastLt + 1) : "";
+                
+            case AutocompleteMode.Style:
+                var lastAt = textBeforeCursor.LastIndexOf('@');
+                return lastAt >= 0 ? textBeforeCursor.Substring(lastAt + 1) : "";
+                
+            case AutocompleteMode.Tags:
+                // Check for # trigger first
+                var lastHash = textBeforeCursor.LastIndexOf('#');
+                if (lastHash >= 0)
+                {
+                    var afterHash = textBeforeCursor.Substring(lastHash + 1);
+                    if (!afterHash.Contains(',') && !afterHash.Contains('\n'))
+                    {
+                        return afterHash;
+                    }
+                }
+                // Fall back to word at cursor
+                return _currentWord;
+                
+            default:
+                return "";
+        }
+    }
+
+    /// <summary>
+    /// Clears all suggestion lists across all modes.
+    /// </summary>
+    private void ClearAllSuggestions()
+    {
+        _tagSuggestions.Clear();
+        _wordSuggestions.Clear();
+        _wildcardCategorySuggestions.Clear();
+        _wildcardCollectionSuggestions.Clear();
+        _loraSuggestions.Clear();
+        _styleSuggestions.Clear();
+    }
+
+    /// <summary>
+    /// Checks if any suggestions exist for the current mode.
+    /// </summary>
+    private bool HasAnySuggestions()
+    {
+        return _currentMode switch
+        {
+            AutocompleteMode.WildcardCategory => _wildcardCategorySuggestions.Any(),
+            AutocompleteMode.WildcardCollection => _wildcardCollectionSuggestions.Any(),
+            AutocompleteMode.Lora => _loraSuggestions.Any(),
+            AutocompleteMode.Style => _styleSuggestions.Any(),
+            AutocompleteMode.Tags => _tagSuggestions.Any() || _wordSuggestions.Any(),
+            _ => false
+        };
+    }
 
     protected override void OnInitialized()
     {
@@ -287,8 +450,8 @@
     {
         await InvokeAsync(async () =>
         {
-            _tagSuggestions.Clear();
-            _wordSuggestions.Clear();
+            // Clear all suggestion lists across all modes
+            ClearAllSuggestions();
 
             // Don't show suggestions if autocomplete is disabled
             if (!EnableAutocomplete)
@@ -301,52 +464,219 @@
             if (string.IsNullOrWhiteSpace(Value))
             {
                 _showSuggestions = false;
+                _currentMode = AutocompleteMode.Tags;
+                _wildcardContext = null;
                 StateHasChanged();
                 return;
             }
             
+            // Get text before cursor for mode detection
+            var textBeforeCursor = Value.Substring(0, Math.Min(_cursorPosition, Value.Length));
+            
+            // Detect which autocomplete mode should be active
+            _currentMode = DetectAutocompleteMode(textBeforeCursor);
+            
+            // Get the current word for default tag searches
             _currentWord = GetWordAtCursor(Value, _cursorPosition);
 
-            if (ShouldTriggerAutocomplete(_currentWord))
+            // Route to appropriate search method based on mode
+            switch (_currentMode)
             {
-                // Search tags with fuzzy matching
-                var tagResults = await CsvService.SearchTags(_currentWord, EnableFuzzyMatching);
-                _tagSuggestions = tagResults.Take(MaxSuggestions).ToList();
-
-                // Search dictionary words if enabled
-                if (EnableDictionary && _currentWord.Length >= 3)
-                {
-                    // For negative prompts, only search the Negative theme
-                    if (IsNegative)
-                    {
-                        _wordSuggestions = CacheService.SearchDictionaryThemes(
-                            _currentWord, 
-                            new[] { DictionaryTheme.Negative }, 
-                            5
-                        );
-                    }
-                    else
-                    {
-                        // For positive prompts, exclude Negative theme
-                        _wordSuggestions = CacheService.SearchDictionaries(
-                            _currentWord, 
-                            5, 
-                            DictionaryTheme.Negative
-                        );
-                    }
-                }
-
-                _showSuggestions = _tagSuggestions.Any() || _wordSuggestions.Any();
-                _selectedIndex = 0;
-                _selectedSection = _tagSuggestions.Any() ? SuggestionSection.Tags : SuggestionSection.Words;
+                case AutocompleteMode.WildcardCategory:
+                    await SearchWildcardCategories();
+                    break;
+                    
+                case AutocompleteMode.WildcardCollection:
+                    await SearchWildcardCollections();
+                    break;
+                    
+                case AutocompleteMode.Lora:
+                    await SearchLoras(GetSearchQueryForMode(textBeforeCursor, _currentMode));
+                    break;
+                    
+                case AutocompleteMode.Style:
+                    await SearchStyles(GetSearchQueryForMode(textBeforeCursor, _currentMode));
+                    break;
+                    
+                case AutocompleteMode.Tags:
+                default:
+                    await SearchTagsAndDictionary();
+                    break;
             }
-            else
+
+            // Update visibility based on whether we have any suggestions
+            _showSuggestions = HasAnySuggestions();
+            _selectedIndex = 0;
+            
+            // Reset section for tag mode
+            if (_currentMode == AutocompleteMode.Tags)
             {
-                _showSuggestions = false;
+                _selectedSection = _tagSuggestions.Any() ? SuggestionSection.Tags : SuggestionSection.Words;
             }
 
             StateHasChanged();
         });
+    }
+
+    /// <summary>
+    /// Search for tags and dictionary words (existing behavior).
+    /// </summary>
+    private async Task SearchTagsAndDictionary()
+    {
+        if (!ShouldTriggerAutocomplete(_currentWord))
+            return;
+
+        // Search tags with fuzzy matching
+        var tagResults = await CsvService.SearchTags(_currentWord, EnableFuzzyMatching);
+        _tagSuggestions = tagResults.Take(MaxSuggestions).ToList();
+
+        // Search dictionary words if enabled
+        if (EnableDictionary && _currentWord.Length >= 3)
+        {
+            // For negative prompts, only search the Negative theme
+            if (IsNegative)
+            {
+                _wordSuggestions = CacheService.SearchDictionaryThemes(
+                    _currentWord, 
+                    new[] { DictionaryTheme.Negative }, 
+                    5
+                );
+            }
+            else
+            {
+                // For positive prompts, exclude Negative theme
+                _wordSuggestions = CacheService.SearchDictionaries(
+                    _currentWord, 
+                    5, 
+                    DictionaryTheme.Negative
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Search for wildcard categories.
+    /// </summary>
+    private async Task SearchWildcardCategories()
+    {
+        if (_wildcardContext == null) return;
+        
+        try
+        {
+            var allCategories = await WildcardService.GetCategories();
+            
+            // Filter by search query if provided
+            if (!string.IsNullOrWhiteSpace(_wildcardContext.SearchQuery))
+            {
+                allCategories = allCategories
+                    .Where(c => c.StartsWith(_wildcardContext.SearchQuery, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+            
+            _wildcardCategorySuggestions = allCategories.Take(MaxSuggestions).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching wildcard categories");
+            _wildcardCategorySuggestions.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Search for wildcard collections within the selected category.
+    /// </summary>
+    private async Task SearchWildcardCollections()
+    {
+        if (_wildcardContext == null || string.IsNullOrEmpty(_wildcardContext.SelectedCategory))
+            return;
+        
+        try
+        {
+            var collections = await WildcardService.GetCollectionsByCategory(_wildcardContext.SelectedCategory);
+            
+            // Filter by search query if provided
+            if (!string.IsNullOrWhiteSpace(_wildcardContext.SearchQuery))
+            {
+                collections = collections
+                    .Where(c => c.Name.StartsWith(_wildcardContext.SearchQuery, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+            
+            _wildcardCollectionSuggestions = collections.Take(MaxSuggestions).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching wildcard collections for category '{Category}'", _wildcardContext.SelectedCategory);
+            _wildcardCollectionSuggestions.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Search for LoRA resources.
+    /// </summary>
+    private async Task SearchLoras(string searchQuery)
+    {
+        try
+        {
+            // Get all resources and filter for LORA/LoCon types
+            var allResources = await DatabaseService.GetResources();
+            
+            var loraResources = allResources
+                .Where(r => r.Type != null && 
+                           (r.Type.Name.Equals("LORA", StringComparison.OrdinalIgnoreCase) ||
+                            r.Type.Name.Equals("LoCon", StringComparison.OrdinalIgnoreCase)) &&
+                       r.IsEnabled); // Only show enabled LoRAs
+            
+            // Filter by search query if provided
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                loraResources = loraResources.Where(r => 
+                    r.Title.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    r.Filename.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    (r.Tags != null && r.Tags.Any(t => t.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))));
+            }
+            
+            // Convert to LocalResource and take max suggestions
+            _loraSuggestions = loraResources
+                .OrderBy(r => r.Title)
+                .Take(MaxSuggestions)
+                .Select(r => new LocalResource(r))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching LoRAs with query '{Query}'", searchQuery);
+            _loraSuggestions.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Search for prompt styles.
+    /// </summary>
+    private async Task SearchStyles(string searchQuery)
+    {
+        try
+        {
+            var allPrompts = await DatabaseService.GetPrompts();
+            
+            // Convert to PromptStyle and filter
+            var styles = allPrompts
+                .Select(p => new PromptStyle(p))
+                .Where(s => !string.IsNullOrWhiteSpace(s.Prompt) || !string.IsNullOrWhiteSpace(s.NegativePrompt));
+            
+            // Filter by search query if provided
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                styles = styles.Where(s => s.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            _styleSuggestions = styles.Take(MaxSuggestions).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching styles with query '{Query}'", searchQuery);
+            _styleSuggestions.Clear();
+        }
     }
 
     [JSInvokable]

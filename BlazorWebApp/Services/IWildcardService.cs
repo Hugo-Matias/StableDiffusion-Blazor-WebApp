@@ -1,3 +1,5 @@
+using BlazorWebApp.Data.Entities;
+
 namespace BlazorWebApp.Services
 {
     /// <summary>
@@ -53,5 +55,30 @@ namespace BlazorWebApp.Services
         /// Called during application startup to provide default wildcard options.
         /// </summary>
         Task SeedCollections();
+
+        #region Phase 4: Autocomplete Support
+
+        /// <summary>
+        /// Gets all distinct wildcard categories for autocomplete.
+        /// </summary>
+        /// <returns>List of category names (e.g., "Clothing", "Locations")</returns>
+        Task<List<string>> GetCategories();
+
+        /// <summary>
+        /// Gets all collections within a specific category.
+        /// </summary>
+        /// <param name="category">Category name to filter by</param>
+        /// <returns>List of collections in the category</returns>
+        Task<List<WildcardCollection>> GetCollectionsByCategory(string category);
+
+        /// <summary>
+        /// Searches collections by name pattern.
+        /// </summary>
+        /// <param name="searchQuery">Search query to filter collection names</param>
+        /// <param name="maxResults">Maximum number of results to return</param>
+        /// <returns>List of matching collections</returns>
+        Task<List<WildcardCollection>> SearchCollections(string searchQuery, int maxResults = 10);
+
+        #endregion
     }
 }

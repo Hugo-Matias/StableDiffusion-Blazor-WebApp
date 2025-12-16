@@ -445,5 +445,59 @@ namespace BlazorWebApp.Services
                 _logger.LogError(ex, "Error seeding wildcard collections");
             }
         }
+
+        #region Phase 4: Autocomplete Support
+
+        public async Task<List<string>> GetCategories()
+        {
+            try
+            {
+                return await _database.GetAllWildcardCategories();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting wildcard categories");
+                return new List<string>();
+            }
+        }
+
+        public async Task<List<WildcardCollection>> GetCollectionsByCategory(string category)
+        {
+            try
+            {
+                return await _database.GetWildcardCollectionsByCategory(category);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting collections for category '{Category}'", category);
+                return new List<WildcardCollection>();
+            }
+        }
+
+        public async Task<List<WildcardCollection>> SearchCollections(string searchQuery, int maxResults = 10)
+        {
+            try
+            {
+                var allCollections = await _database.GetAllWildcardCollections();
+                
+                if (string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    return allCollections.Take(maxResults).ToList();
+                }
+                
+                return allCollections
+                    .Where(c => c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                               (c.Category != null && c.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)))
+                    .Take(maxResults)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching collections with query '{Query}'", searchQuery);
+                return new List<WildcardCollection>();
+            }
+        }
+
+        #endregion
     }
 }
