@@ -1,5 +1,7 @@
 @using BlazorWebApp.Data.Entities
 @using BlazorWebApp.Extensions
+@using BlazorWebApp.Models
+@using BlazorWebApp.Components.Prompts
 @inject IDatabaseService DB
 @inject IDialogService DialogService
 @inject IStateService State
@@ -10,18 +12,22 @@
     {
         <MudPaper Elevation="2" Class="pa-3">
             <MudStack Spacing="2">
-                <MudText Typo="Typo.h6">
+                <MudText Typo="Typo.subtitle2">
                     <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Color="Color.Primary" />
-                    Quick Access
+                    Quick Access (Ctrl+1-9)
                 </MudText>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    @foreach (var prompt in _pinnedPrompts)
+                    @{ var pinnedIndex = 1; }
+                    @foreach (var prompt in _pinnedPrompts.Take(9))
                     {
+                        var index = pinnedIndex;
                         <MudChip Color="Color.Primary" 
                                  OnClick="() => HandleQuickApply(prompt)"
-                                 OnClose="() => HandleUnpin(prompt)">
-                            @prompt.Title
+                                 OnClose="() => HandleUnpin(prompt)"
+                                 Size="Size.Small">
+                            <MudText Typo="Typo.caption"><strong>@index</strong> @prompt.Title</MudText>
                         </MudChip>
+                        pinnedIndex++;
                     }
                 </div>
             </MudStack>
@@ -30,8 +36,8 @@
     
     @* Search and Actions Bar *@
     <MudPaper Elevation="1" Class="pa-3">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 300px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 250px; max-width: 400px;">
                 <MudTextField @bind-Value="_searchQuery"
                               Placeholder="Search prompts..."
                               Adornment="Adornment.Start"
@@ -40,43 +46,48 @@
                               DebounceInterval="300"
                               OnDebounceIntervalElapsed="HandleSearch"
                               Clearable
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
                               Style="flex: 1;" />
-                
-                <MudTooltip Text="@(_isSearchActive ? "Clear search" : "Search by keywords")">
-                    <MudIconButton Icon="@(_isSearchActive ? Icons.Material.Filled.Clear : Icons.Material.Filled.Search)"
-                                   Color="@(_isSearchActive ? Color.Warning : Color.Default)"
-                                   OnClick="ClearSearch" />
-                </MudTooltip>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <MudSelect T="string" 
                            Label="Sort by" 
                            Value="_sortBy" 
                            ValueChanged="HandleSortChanged"
                            Dense
-                           Variant="Variant.Outlined">
+                           Margin="Margin.Dense"
+                           Variant="Variant.Outlined"
+                           Style="min-width: 120px;">
                     <MudSelectItem Value="@("title")">Title</MudSelectItem>
                     <MudSelectItem Value="@("category")">Category</MudSelectItem>
                     <MudSelectItem Value="@("usage")">Most Used</MudSelectItem>
                     <MudSelectItem Value="@("recent")">Recently Used</MudSelectItem>
-                    <MudSelectItem Value="@("created")">Date Created</MudSelectItem>
                 </MudSelect>
                 
-                <MudTooltip Text="Toggle sort order">
-                    <MudIconButton Icon="@(_sortDescending ? Icons.Material.Filled.ArrowDownward : Icons.Material.Filled.ArrowUpward)"
-                                   OnClick="ToggleSortOrder"
-                                   Color="Color.Default" />
-                </MudTooltip>
+                <MudIconButton Icon="@(_sortDescending ? Icons.Material.Filled.ArrowDownward : Icons.Material.Filled.ArrowUpward)"
+                               OnClick="ToggleSortOrder"
+                               Size="Size.Small"
+                               Color="Color.Default" />
                 
-                <MudTooltip Text="Add new prompt">
-                    <MudButton Variant="Variant.Filled" 
-                               Color="Color.Primary" 
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="HandleAddNew">
-                        New
-                    </MudButton>
-                </MudTooltip>
+                <MudDivider Vertical FlexItem Class="mx-1" />
+                
+                @* View Toggle *@
+                <MudToggleIconButton @bind-Toggled="_isGridView"
+                                     Icon="@Icons.Material.Filled.ViewList"
+                                     ToggledIcon="@Icons.Material.Filled.GridView"
+                                     Size="Size.Small"
+                                     ToggledColor="Color.Primary"
+                                     Title="@(_isGridView ? "Switch to List View" : "Switch to Grid View")" />
+                
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           OnClick="HandleAddNew">
+                    New
+                </MudButton>
             </div>
         </div>
         
@@ -84,13 +95,13 @@
         @if (_selectedCategory != null || _selectedTags.Any())
         {
             <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; align-items: center;">
-                <MudText Typo="Typo.caption" Color="Color.Default">Active filters:</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">Filters:</MudText>
                 @if (_selectedCategory != null)
                 {
                     <MudChip Size="Size.Small" 
                              Color="Color.Info" 
                              OnClose="() => OnCategoryFilterChanged.InvokeAsync(null)">
-                        Category: @GetCategoryDisplayName(_selectedCategory)
+                        @GetCategoryDisplayName(_selectedCategory)
                     </MudChip>
                 }
                 @foreach (var tag in _selectedTags)
@@ -98,42 +109,110 @@
                     <MudChip Size="Size.Small" 
                              Color="Color.Secondary" 
                              OnClose="() => RemoveTagFilter(tag)">
-                        Tag: @tag
+                        @tag
                     </MudChip>
                 }
             </div>
         }
     </MudPaper>
     
-    @* Results Info *@
-    <MudText Typo="Typo.body2" Color="Color.Default">
-        Showing @_filteredPrompts.Count of @_totalCount prompts
-    </MudText>
+    @* Results Info with Pagination Controls *@
+    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.body2" Color="Color.Default">
+            Showing @((_currentPage - 1) * _pageSize + 1)-@Math.Min(_currentPage * _pageSize, _filteredPrompts.Count) of @_filteredPrompts.Count prompts
+        </MudText>
+        
+        @if (_filteredPrompts.Count > _pageSize)
+        {
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudSelect T="int" 
+                           Value="_pageSize" 
+                           ValueChanged="OnPageSizeChanged"
+                           Label="Per Page"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Style="min-width: 80px;">
+                    <MudSelectItem Value="12">12</MudSelectItem>
+                    <MudSelectItem Value="24">24</MudSelectItem>
+                    <MudSelectItem Value="48">48</MudSelectItem>
+                    <MudSelectItem Value="96">96</MudSelectItem>
+                </MudSelect>
+            </MudStack>
+        }
+    </MudStack>
     
-    @* Prompts Grid *@
+    @* Prompts Display *@
     @if (_isLoading)
     {
         <MudProgressLinear Indeterminate Color="Color.Primary" />
-        <MudStack Spacing="3">
-            @for (int i = 0; i < 6; i++)
-            {
-                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
-            }
-        </MudStack>
+        @if (_isGridView)
+        {
+            <div class="prompt-grid">
+                @for (int i = 0; i < 12; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" />
+                }
+            </div>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @for (int i = 0; i < 6; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px" />
+                }
+            </MudStack>
+        }
     }
     else if (_filteredPrompts.Any())
     {
-        <MudStack Spacing="3">
-            @foreach (var prompt in _filteredPrompts)
-            {
-                <PromptStyleCard Prompt="prompt"
-                                 OnEdit="HandleEdit"
-                                 OnDelete="HandleDelete"
-                                 OnToggleFavorite="HandleToggleFavorite"
-                                 OnTogglePin="HandleTogglePin"
-                                 OnApply="HandleApply" />
-            }
-        </MudStack>
+        var pagedPrompts = GetPagedPrompts();
+        
+        @if (_isGridView)
+        {
+            @* Grid View - Compact Cards *@
+            <div class="prompt-grid">
+                @foreach (var prompt in pagedPrompts)
+                {
+                    <PromptStyleCompactCard Prompt="prompt"
+                                            OnEdit="HandleEdit"
+                                            OnDelete="HandleDelete"
+                                            OnToggleFavorite="HandleToggleFavorite"
+                                            OnTogglePin="HandleTogglePin"
+                                            OnApply="HandleApply" />
+                }
+            </div>
+        }
+        else
+        {
+            @* List View - Full Cards *@
+            <MudStack Spacing="2">
+                @foreach (var prompt in pagedPrompts)
+                {
+                    <PromptStyleCard Prompt="prompt"
+                                     OnEdit="HandleEdit"
+                                     OnDelete="HandleDelete"
+                                     OnToggleFavorite="HandleToggleFavorite"
+                                     OnTogglePin="HandleTogglePin"
+                                     OnApply="HandleApply" />
+                }
+            </MudStack>
+        }
+        
+        @* Pagination *@
+        @if (GetTotalPages() > 1)
+        {
+            <MudStack Row Justify="Justify.Center" Class="mt-3">
+                <MudPagination Count="@GetTotalPages()" 
+                               Selected="_currentPage" 
+                               SelectedChanged="OnPageChanged"
+                               ShowFirstButton
+                               ShowLastButton
+                               Size="Size.Small"
+                               BoundaryCount="1"
+                               MiddleCount="3" />
+            </MudStack>
+        }
     }
     else
     {
@@ -165,6 +244,20 @@
     }
 </MudStack>
 
+<style>
+    .prompt-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+    
+    @@media (max-width: 600px) {
+        .prompt-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
 @code {
     private const string FAVORITES_FILTER = "__favorites__";
     private const string PINNED_FILTER = "__pinned__";
@@ -193,6 +286,11 @@
     private string _sortBy = "title";
     private bool _sortDescending = false;
     
+    // View and pagination
+    private bool _isGridView = true;
+    private int _currentPage = 1;
+    private int _pageSize = 24;
+    
     protected override async Task OnInitializedAsync()
     {
         await LoadPrompts();
@@ -203,8 +301,35 @@
         if (_selectedCategory != SelectedCategory)
         {
             _selectedCategory = SelectedCategory;
+            _currentPage = 1; // Reset to first page on filter change
             await ApplyFilters();
         }
+    }
+    
+    private List<Prompt> GetPagedPrompts()
+    {
+        return _filteredPrompts
+            .Skip((_currentPage - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+    }
+    
+    private int GetTotalPages()
+    {
+        return (int)Math.Ceiling(_filteredPrompts.Count / (double)_pageSize);
+    }
+    
+    private void OnPageChanged(int newPage)
+    {
+        _currentPage = newPage;
+        StateHasChanged();
+    }
+    
+    private void OnPageSizeChanged(int newPageSize)
+    {
+        _pageSize = newPageSize;
+        _currentPage = 1;
+        StateHasChanged();
     }
     
     private async Task LoadPrompts()
@@ -267,26 +392,32 @@
                 ? filtered.OrderByDescending(p => p.Category ?? string.Empty)
                 : filtered.OrderBy(p => p.Category ?? string.Empty),
             "usage" => _sortDescending 
-                ? filtered.OrderByDescending(p => p.UsageCount)
-                : filtered.OrderBy(p => p.UsageCount),
+                ? filtered.OrderBy(p => p.UsageCount)
+                : filtered.OrderByDescending(p => p.UsageCount),
             "recent" => _sortDescending 
-                ? filtered.OrderByDescending(p => p.LastUsedAt ?? DateTime.MinValue)
-                : filtered.OrderBy(p => p.LastUsedAt ?? DateTime.MinValue),
-            "created" => _sortDescending 
-                ? filtered.OrderByDescending(p => p.Id)
-                : filtered.OrderBy(p => p.Id),
+                ? filtered.OrderBy(p => p.LastUsedAt ?? DateTime.MinValue)
+                : filtered.OrderByDescending(p => p.LastUsedAt ?? DateTime.MinValue),
             _ => _sortDescending 
                 ? filtered.OrderByDescending(p => p.Title)
                 : filtered.OrderBy(p => p.Title)
         };
         
         _filteredPrompts = filtered.ToList();
+        
+        // Ensure current page is valid
+        var totalPages = GetTotalPages();
+        if (_currentPage > totalPages && totalPages > 0)
+        {
+            _currentPage = totalPages;
+        }
+        
         StateHasChanged();
     }
     
     private async Task HandleSearch()
     {
         _isSearchActive = !string.IsNullOrWhiteSpace(_searchQuery);
+        _currentPage = 1;
         await ApplyFilters();
     }
     
@@ -294,6 +425,7 @@
     {
         _searchQuery = null;
         _isSearchActive = false;
+        _currentPage = 1;
         await ApplyFilters();
     }
     
@@ -328,14 +460,49 @@
     
     private async Task HandleAddNew()
     {
-        await OnPromptChanged.InvokeAsync();
-        await LoadPrompts();
+        var newPrompt = new PromptResource();
+        await ShowPromptDialog(newPrompt);
     }
     
     private async Task HandleEdit(Prompt prompt)
     {
-        await OnPromptChanged.InvokeAsync();
+        var promptResource = new PromptResource(prompt);
+        await ShowPromptDialog(promptResource);
+    }
+    
+    private async Task ShowPromptDialog(PromptResource prompt)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var param = new DialogParameters();
+        param.Add("Prompt", prompt);
+        var dialog = await DialogService.ShowAsync<PromptDialog>("", param, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            switch (result.Data)
+            {
+                case "Create":
+                    await DB.CreatePrompt(new(prompt));
+                    break;
+                case "Delete":
+                    await DB.DeletePrompt(prompt.Id);
+                    break;
+                case "Txt2Img":
+                    State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
+                    State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
+                    await DB.UpdatePromptUsage(prompt.Id);
+                    break;
+                case "Img2Img":
+                    State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, prompt.Positive);
+                    State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, prompt.Negative);
+                    await DB.UpdatePromptUsage(prompt.Id);
+                    break;
+            }
+        }
+        
         await LoadPrompts();
+        await OnPromptChanged.InvokeAsync();
     }
     
     private async Task HandleDelete(Prompt prompt)
@@ -372,7 +539,6 @@
     
     private async Task HandleApply((Prompt prompt, bool isImg2Img) args)
     {
-        // Apply prompt to generation parameters
         if (args.isImg2Img)
         {
             State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, args.prompt.Positive);
@@ -384,12 +550,14 @@
             State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, args.prompt.Negative);
         }
         
-        // Update usage tracking is already handled in the card component
         await OnPromptChanged.InvokeAsync();
     }
     
     private async Task HandleQuickApply(Prompt prompt)
     {
+        // Quick apply to Txt2Img
+        State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
+        State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
         await DB.UpdatePromptUsage(prompt.Id);
         await OnPromptChanged.InvokeAsync();
     }

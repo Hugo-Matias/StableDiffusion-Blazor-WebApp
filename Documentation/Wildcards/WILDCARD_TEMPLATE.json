@@ -1,0 +1,199 @@
+{
+  "_comment": "Wildcard Collection Template v1.0",
+  "_instructions": [
+    "This template helps create wildcard collections for AI image generation.",
+    "Fill in all required fields marked with 'REQUIRED'.",
+    "Remove '_comment' and '_instructions' before importing.",
+    "See WILDCARD_GENERATION_GUIDE.md for detailed instructions."
+  ],
+
+  "metadata": {
+    "_comment": "Optional metadata for generation tracking",
+    "template_version": "1.0",
+    "generator": "human | llm | mixed",
+    "theme": "Brief description of the theme (e.g., 'Fantasy Environments')",
+    "verbosity": "minimal | balanced | detailed | verbose",
+    "keywords": [
+      "keyword1",
+      "keyword2",
+      "keyword3"
+    ],
+    "target_use_case": "Description of intended use",
+    "estimated_entries": 10,
+    "creation_date": "2024-01-01",
+    "author": "Creator name (optional)"
+  },
+
+  "collection": {
+    "_comment": "REQUIRED: Main collection data that will be imported",
+
+    "name": "REQUIRED: collection-name",
+    "_name_instructions": [
+      "Use lowercase with hyphens (e.g., 'facial-expressions')",
+      "Keep it short and descriptive",
+      "Use plural form when appropriate",
+      "Avoid special characters except hyphens"
+    ],
+
+    "category": "REQUIRED: Category Name",
+    "_category_options": [
+      "Fashion & Clothing",
+      "Locations & Settings",
+      "Artistic Styles",
+      "Lighting & Atmosphere",
+      "Character Features",
+      "Actions & Poses",
+      "Objects & Props",
+      "Colors & Palettes",
+      "Emotions & Expressions",
+      "Composition & Framing",
+      "Custom Category"
+    ],
+
+    "description": "REQUIRED: Brief description of this collection's purpose and contents",
+    "_description_instructions": [
+      "Keep it under 200 characters",
+      "Explain what the collection contains",
+      "Mention verbosity level if relevant",
+      "Help users understand when to use it"
+    ],
+
+    "entries": [
+      {
+        "_comment": "REQUIRED: Array of wildcard entries",
+        "value": "REQUIRED: The actual wildcard text",
+        "weight": 1.0,
+        "_weight_instructions": [
+          "Default: 1.0 (equal probability)",
+          "Common/popular: 1.2-1.5",
+          "Rare/experimental: 0.3-0.7",
+          "Very rare: 0.1-0.2",
+          "Must be between 0.1 and 2.0"
+        ],
+        "sortOrder": 0,
+        "_sortOrder_instructions": [
+          "Start at 0 and increment by 1",
+          "Determines display order in UI",
+          "Logical grouping recommended"
+        ],
+        "tags": [
+          "optional",
+          "for",
+          "organization"
+        ],
+        "_tags_instructions": [
+          "Optional metadata",
+          "Not used by system (yet)",
+          "Useful for documentation"
+        ],
+        "notes": "Optional: Generation context or usage notes"
+      },
+      {
+        "value": "Second entry example",
+        "weight": 1.0,
+        "sortOrder": 1
+      },
+      {
+        "value": "Third entry example",
+        "weight": 1.2,
+        "sortOrder": 2,
+        "tags": ["popular"]
+      }
+    ]
+  },
+
+  "generation_prompt": {
+    "_comment": "Optional: If using LLM generation, document the prompts used",
+    "system_prompt": "System-level instructions given to the LLM",
+    "user_prompt": "User-level prompt with specific requirements",
+    "constraints": [
+      "Constraint 1: e.g., 'Maintain 3-6 word length'",
+      "Constraint 2: e.g., 'Focus on visual descriptions only'",
+      "Constraint 3: e.g., 'Include variety of perspectives'"
+    ],
+    "llm_model": "e.g., 'ollama:llama3', 'gpt-4', 'claude-3'",
+    "temperature": 0.7,
+    "notes": "Any additional generation context"
+  },
+
+  "examples": {
+    "_comment": "Optional: Example usage in prompts",
+    "basic_usage": "portrait of a woman, __collection-name__",
+    "combined_usage": "landscape photo, __collection-name__, __another-collection__",
+    "expected_output": "Example of what the wildcard expands to"
+  },
+
+  "validation": {
+    "_comment": "Checklist for quality assurance",
+    "checklist": {
+      "consistent_verbosity": false,
+      "no_duplicates": false,
+      "visual_descriptions": false,
+      "proper_weights": false,
+      "tested_in_prompts": false,
+      "spelling_checked": false,
+      "category_appropriate": false,
+      "description_clear": false
+    }
+  },
+
+  "_minimal_example": {
+    "_comment": "Minimal valid collection structure (remove metadata sections)",
+    "collection": {
+      "name": "basic-colors",
+      "category": "Colors",
+      "description": "Basic color names",
+      "entries": [
+        {"value": "red", "weight": 1.0, "sortOrder": 0},
+        {"value": "blue", "weight": 1.0, "sortOrder": 1},
+        {"value": "green", "weight": 1.0, "sortOrder": 2}
+      ]
+    }
+  },
+
+  "_verbosity_examples": {
+    "_comment": "Examples for each verbosity level",
+    "minimal": {
+      "description": "1-3 words, tag-like",
+      "examples": [
+        "red dress",
+        "casual outfit",
+        "vintage car"
+      ]
+    },
+    "balanced": {
+      "description": "3-6 words, descriptive phrases",
+      "examples": [
+        "elegant red evening dress",
+        "casual denim jacket outfit",
+        "vintage classic muscle car"
+      ]
+    },
+    "detailed": {
+      "description": "6-12 words, rich descriptions",
+      "examples": [
+        "elegant flowing red evening dress with lace details",
+        "casual distressed denim jacket with white t-shirt underneath",
+        "vintage classic muscle car with chrome accents and racing stripes"
+      ]
+    },
+    "verbose": {
+      "description": "12+ words, comprehensive descriptions",
+      "examples": [
+        "elegant flowing red evening dress with intricate lace details, silk fabric, and a dramatic train trailing behind",
+        "casual vintage distressed denim jacket worn over a simple white t-shirt, paired with comfortable jeans and sneakers",
+        "vintage classic American muscle car with gleaming chrome accents, bold racing stripes, and a powerful rumbling engine"
+      ]
+    }
+  },
+
+  "_import_instructions": {
+    "step1": "Remove all fields starting with '_' (comments and instructions)",
+    "step2": "Fill in all REQUIRED fields in the 'collection' object",
+    "step3": "Add your entries to the 'entries' array",
+    "step4": "Optionally fill in 'metadata' and 'generation_prompt' sections",
+    "step5": "Validate JSON syntax (use a JSON validator tool)",
+    "step6": "Import using the Wildcards tab Import button",
+    "minimal_structure": "Only 'collection' object with name, category, description, and entries is required for import"
+  }
+}

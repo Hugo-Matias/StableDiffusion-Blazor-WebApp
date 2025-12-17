@@ -1,0 +1,362 @@
+@using BlazorWebApp.Data.Entities
+@using Microsoft.JSInterop
+@inject IWildcardService WildcardService
+@inject IDatabaseService Database
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IInfoService InfoService
+@implements IAsyncDisposable
+
+<div @ref="_containerRef" tabindex="-1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4" lg="3">
+            <!-- Collections Browser -->
+            <MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+                @if (_isLoading)
+                {
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">Loading collections...</MudText>
+                        <MudProgressLinear Indeterminate Color="Color.Primary" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="40px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" />
+                    </MudStack>
+                }
+                else if (_collections.Any())
+                {
+                    <CollectionBrowser Collections="_collections"
+                                       CollectionsByCategory="_collectionsByCategory"
+                                       SelectedCollection="_selectedCollection"
+                                       OnCollectionSelected="HandleCollectionSelected"
+                                       OnRefresh="LoadCollections" />
+                }
+                else
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
+                        <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Large" Color="Color.Default" />
+                        <MudText Typo="Typo.h6" Color="Color.Default">No Collections Yet</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                            Create your first wildcard collection to get started
+                        </MudText>
+                        <MudButtonGroup Variant="Variant.Filled">
+                            <MudButton Color="Color.Primary" 
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="ShowCreateCollectionDialog">
+                                Create Collection
+                            </MudButton>
+                            <MudButton Color="Color.Secondary" 
+                                       StartIcon="@Icons.Material.Filled.CloudDownload"
+                                       OnClick="SeedSampleCollections">
+                                Load Sample Data
+                            </MudButton>
+                        </MudButtonGroup>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" md="8" lg="9">
+            <!-- Entry Manager -->
+            <MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+                @if (_isLoading)
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
+                        <MudProgressCircular Indeterminate Color="Color.Primary" />
+                        <MudText Typo="Typo.body1" Color="Color.Default">Loading...</MudText>
+                    </MudStack>
+                }
+                else if (_selectedCollection != null)
+                {
+                    <EntryManager Collection="_selectedCollection"
+                                  OnEntriesChanged="RefreshSelectedCollection"
+                                  OnCollectionDeleted="HandleCollectionDeleted" />
+                }
+                else
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
+                        <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Large" Color="Color.Default" />
+                        <MudText Typo="Typo.h6" Color="Color.Default">Select a Collection</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                            Choose a wildcard collection from the left panel to view and edit its entries
+                        </MudText>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private List<WildcardCollection> _collections = new();
+    private Dictionary<string, List<WildcardCollection>> _collectionsByCategory = new();
+    private WildcardCollection? _selectedCollection;
+    private ElementReference _containerRef;
+    private IJSObjectReference? _jsModule;
+    private DotNetObjectReference<WildcardsTab>? _dotNetRef;
+    private CollectionBrowser? _collectionBrowserRef;
+    private EntryManager? _entryManagerRef;
+
+    // Info content
+    private readonly InfoContent _infoContent = new(
+        Title: "Wildcards - Quick Guide",
+        Overview: "Manage reusable wildcard collections for dynamic prompt generation. Use wildcards to add variety to your prompts without manual editing.",
+        Shortcuts: new List<ShortcutInfo>
+        {
+            new("Ctrl+N", "Create new collection"),
+            new("Ctrl+F", "Focus search field"),
+            new("Ctrl+I", "Import collection from file"),
+            new("Ctrl+E", "Edit selected collection"),
+            new("Ctrl+Shift+E", "Export collection to file"),
+            new("Delete", "Delete selected collection"),
+            new("Ctrl+?", "Move selected entry up"),
+            new("Ctrl+?", "Move selected entry down")
+        },
+        Tips: new List<string>
+        {
+            "Click entries to select them before reordering with up/down arrows",
+            "Use __collection-name__ syntax in your prompts to insert wildcards",
+            "Import/Export collections for backup and sharing with others",
+            "Entry weights control probability (higher = more likely to be selected)",
+            "Search works across collection names, categories, and descriptions",
+            "Categories help organize related collections (e.g., 'Clothing', 'Poses')",
+            "Preview panel shows wildcard syntax and probability distribution",
+            "Test Random Selection to see how weights affect results"
+        }
+    );
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCollections();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Register info content after first render to ensure InfoDrawer is subscribed
+            InfoService.SetInfo(_infoContent);
+            StateHasChanged();
+            
+            try
+            {
+                _dotNetRef = DotNetObjectReference.Create(this);
+                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/WildcardShortcuts.js");
+                await _jsModule.InvokeVoidAsync("initializeWildcardShortcuts", _containerRef, _dotNetRef);
+            }
+            catch (Exception ex)
+            {
+                // Keyboard shortcuts failed to initialize, but component still works
+                Console.WriteLine($"Failed to initialize keyboard shortcuts: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadCollections()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _collections = await Database.GetAllWildcardCollections();
+            GroupCollectionsByCategory();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading collections: {ex.Message}", Severity.Error);
+            _collections = new();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GroupCollectionsByCategory()
+    {
+        _collectionsByCategory = _collections
+            .GroupBy(c => c.Category ?? "Uncategorized")
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(c => c.Name).ToList()
+            );
+    }
+
+    private async Task HandleCollectionSelected(WildcardCollection collection)
+    {
+        _selectedCollection = collection;
+        StateHasChanged();
+    }
+
+    private async Task RefreshSelectedCollection()
+    {
+        if (_selectedCollection != null)
+        {
+            try
+            {
+                // Reload the selected collection to get updated entries
+                var updated = await Database.GetWildcardCollectionById(_selectedCollection.Id);
+                if (updated != null)
+                {
+                    _selectedCollection = updated;
+                    
+                    // Update in the main list
+                    var index = _collections.FindIndex(c => c.Id == updated.Id);
+                    if (index >= 0)
+                    {
+                        _collections[index] = updated;
+                        GroupCollectionsByCategory();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error refreshing collection: {ex.Message}", Severity.Error);
+            }
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleCollectionDeleted()
+    {
+        _selectedCollection = null;
+        await LoadCollections();
+    }
+
+    private async Task SeedSampleCollections()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            await WildcardService.SeedCollections();
+            await LoadCollections();
+            Snackbar.Add("Sample collections loaded successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading sample data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // Keyboard shortcut handlers (called from JavaScript)
+    [JSInvokable]
+    public async Task CreateNewCollection()
+    {
+        await ShowCreateCollectionDialog();
+    }
+
+    [JSInvokable]
+    public async Task ImportCollection()
+    {
+        // Trigger import in CollectionBrowser (handled via ref if needed)
+        Snackbar.Add("Press Ctrl+I in the collections panel to import", Severity.Info);
+    }
+
+    [JSInvokable]
+    public async Task EditSelected()
+    {
+        if (_selectedCollection != null)
+        {
+            // Edit collection
+            Snackbar.Add("Use the edit button in the collection header", Severity.Info);
+        }
+    }
+
+    [JSInvokable]
+    public async Task ExportCollection()
+    {
+        if (_selectedCollection != null)
+        {
+            // Export handled by EntryManager
+            Snackbar.Add("Use the Export button in the collection toolbar", Severity.Info);
+        }
+    }
+
+    [JSInvokable]
+    public async Task DeleteSelected()
+    {
+        if (_selectedCollection != null)
+        {
+            // Delete handled by EntryManager
+            Snackbar.Add("Use the Delete button to remove the collection", Severity.Info);
+        }
+    }
+
+    [JSInvokable]
+    public Task FocusSearch()
+    {
+        Snackbar.Add("Search is available in the collections panel", Severity.Info);
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task MoveEntryUp()
+    {
+        if (_selectedCollection != null)
+        {
+            Snackbar.Add("Select an entry and use the up arrow button", Severity.Info);
+        }
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task MoveEntryDown()
+    {
+        if (_selectedCollection != null)
+        {
+            Snackbar.Add("Select an entry and use the down arrow button", Severity.Info);
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task ShowCreateCollectionDialog()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+        
+        var dialog = await DialogService.ShowAsync<CollectionEditorDialog>("Create Collection", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadCollections();
+            Snackbar.Add("Collection created successfully", Severity.Success);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        InfoService.ClearInfo();
+        
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("dispose");
+                await _jsModule.DisposeAsync();
+            }
+            catch (Exception) { }
+            
+            _jsModule = null;
+        }
+        
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+}

@@ -1,0 +1,9 @@
+gentle smile
+laughing happily
+serious expression
+sad expression
+surprised look
+angry face
+neutral expression
+joyful grin
+worried frown

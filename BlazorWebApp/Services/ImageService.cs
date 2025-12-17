@@ -23,6 +23,7 @@ namespace BlazorWebApp.Services
         private readonly IStateService _state;
         private readonly ISessionService _session;
         private readonly IModelService _models;
+        private readonly IWildcardService _wildcardService;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
         private Txt2ImgParameters _txt2imgParams;
@@ -71,7 +72,8 @@ namespace BlazorWebApp.Services
             ILogger<ImageService> logger, 
             IStateService state, 
             ISessionService session, 
-            IModelService models)
+            IModelService models,
+            IWildcardService wildcardService)
         {
             _io = io;
             _backend = backend;
@@ -83,6 +85,7 @@ namespace BlazorWebApp.Services
             _state = state;
             _session = session;
             _models = models;
+            _wildcardService = wildcardService;
         }
 
         /// <summary>
@@ -106,13 +109,13 @@ namespace BlazorWebApp.Services
                 {
                     case ModeType.Img2Img:
                         _logger.LogDebug("Building Img2Img parameters");
-                        var img2imgParams = BuildImg2ImgParameters(ref scriptName);
+                        var img2imgParams = await BuildImg2ImgParametersAsync(scriptName);
                         Images = await _router.PostImg2Img(img2imgParams);
                         break;
 
                     default:
                         _logger.LogDebug("Building Txt2Img parameters");
-                        BuildTxt2ImgParameters(ref scriptName);
+                        await BuildTxt2ImgParametersAsync(scriptName);
                         Images = await _router.PostTxt2Img(_txt2imgParams);
                         break;
                 }
@@ -335,9 +338,12 @@ namespace BlazorWebApp.Services
             return filename + ".mp4";
         }
 
-        private void BuildTxt2ImgParameters(ref string scriptName)
+        private async Task BuildTxt2ImgParametersAsync(string scriptName)
         {
-            _parsingParams = Parser.ParseParameters(new SharedParameters(_state.ParametersTxt2Img), _state.State.Generation.Styles);
+            _parsingParams = await Parser.ParseParametersAsync(
+                new SharedParameters(_state.ParametersTxt2Img), 
+                _state.State.Generation.Styles,
+                _wildcardService);
             _txt2imgParams = new Txt2ImgParameters(_parsingParams);
             _txt2imgParams.EnableHR = _state.ParametersTxt2Img.EnableHR;
             if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
@@ -353,11 +359,15 @@ namespace BlazorWebApp.Services
             }
             _txt2imgParams.SeedVR2 = _state.ParametersTxt2Img.SeedVR2;
             _txt2imgParams.ConditioningVariation = _state.ParametersTxt2Img.ConditioningVariation;
+            _txt2imgParams.SeedVarianceEnhancer = _state.ParametersTxt2Img.SeedVarianceEnhancer;
         }
 
-        private Img2ImgParameters BuildImg2ImgParameters(ref string scriptName)
+        private async Task<Img2ImgParameters> BuildImg2ImgParametersAsync(string scriptName)
         {
-            _parsingParams = Parser.ParseParameters(new SharedParameters(_state.ParametersImg2Img), _state.State.Generation.Styles);
+            _parsingParams = await Parser.ParseParametersAsync(
+                new SharedParameters(_state.ParametersImg2Img), 
+                _state.State.Generation.Styles,
+                _wildcardService);
             var img2imgParams = new Img2ImgParameters(_parsingParams);
             img2imgParams.InitImages = _state.ParametersImg2Img.InitImages;
             img2imgParams.Mask = _state.ParametersImg2Img.Mask;

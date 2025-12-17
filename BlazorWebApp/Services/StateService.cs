@@ -219,25 +219,9 @@ namespace BlazorWebApp.Services
                 HRScale = 2.0,
                 HRWidth = 0,
                 HRHeight = 0,
-                HRSecondPassSteps = 0,
-                SeedVR2 = new SeedVR2Parameters
-                {
-                    IsActive = false,
-                    Model = "",
-                    BlocksToSwap = 1,
-                    VaeTileSize = 512,
-                    VaeTileOverlap = 64,
-                    Resolution = 1024,
-                    Scale = 2.0,
-                    BatchSize = 1,
-                    InputNoiseScale = 0.1f,
-                    LatentNoiseScale = 0.1f
-                },
-                ConditioningVariation = new ConditioningVariationParameters
-                {
-                    IsActive = false,
-                    SwitchPoint = 0.5f
-                }
+                HRSecondPassSteps = 0
+                // SeedVR2, ConditioningVariation, SeedVarianceEnhancer are initialized by UI
+                // and copied in ImageService.BuildTxt2ImgParametersAsync
             };
         }
 

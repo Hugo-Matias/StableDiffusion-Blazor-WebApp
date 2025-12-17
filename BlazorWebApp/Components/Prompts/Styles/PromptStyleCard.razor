@@ -81,7 +81,7 @@
     <MudCardActions>
         <MudStack Row Justify="Justify.SpaceBetween" Class="w-100 px-2">
             <MudStack Row Spacing="1">
-                <MudTooltip Text="Edit prompt">
+                <MudTooltip Text="Edit prompt" ShowOnFocus="false">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" 
                                    Size="Size.Small" 
                                    Color="Color.Primary" 
@@ -118,7 +118,7 @@
                                    OnClick="() => HandleApply(true)" />
                 </MudTooltip>
                 
-                <MudTooltip Text="Delete prompt">
+                <MudTooltip Text="Delete prompt" ShowOnFocus="false">
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" 
                                    Size="Size.Small" 
                                    Color="Color.Error" 

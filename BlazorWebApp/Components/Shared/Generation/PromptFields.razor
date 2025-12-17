@@ -30,7 +30,9 @@
                                 EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
                                 EnableDictionary="true" 
                                 EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
-                                IsNegative="false" />
+                                IsNegative="false"
+                                OnLoraSelected="HandleLoraSelected"
+                                OnStyleSelected="HandleStyleSelected" />
                             
                             <TextFieldAutocomplete 
                                 Class="negative-prompt" 
@@ -45,7 +47,9 @@
                                 EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
                                 EnableDictionary="true"
                                 EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
-                                IsNegative="true" />
+                                IsNegative="true"
+                                OnLoraSelected="HandleLoraSelected"
+                                OnStyleSelected="HandleStyleSelected" />
                         </MudStack>
                         <MudStack Row=true Spacing="2">
                             <MudTooltip Text="Toggle autocomplete suggestions">
@@ -248,6 +252,46 @@
         if (!ButtonDisabled && !_isConverging && _generateButtonRef != null)
         {
             _generateButtonRef.Generate();
+        }
+    }
+
+    /// <summary>
+    /// Handles LoRA selection from autocomplete trigger.
+    /// Adds the LoRA to the Parameters.Loras list with default settings.
+    /// </summary>
+    private async Task HandleLoraSelected(Lora lora)
+    {
+        // Initialize Loras list if null
+        if (Parameters.Loras == null)
+        {
+            Parameters.Loras = new List<Lora>();
+        }
+
+        // Check if LoRA already exists
+        if (!Parameters.Loras.Any(l => l.Name.Equals(lora.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            Parameters.Loras.Add(lora);
+            await ParametersChanged.InvokeAsync(Parameters);
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles style selection from autocomplete trigger.
+    /// Adds the style to the generation state styles list.
+    /// </summary>
+    private async Task HandleStyleSelected(PromptStyle style)
+    {
+        // Get current styles or initialize empty list
+        var currentStyles = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        
+        // Check if style already exists (avoid duplicates)
+        if (!currentStyles.Any(s => s.Name.Equals(style.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            currentStyles.Add(style);
+            State.State.Generation.Styles = currentStyles;
+            await OnStylesChanged.InvokeAsync();
+            StateHasChanged();
         }
     }
 

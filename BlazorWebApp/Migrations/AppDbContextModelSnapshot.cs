@@ -477,6 +477,73 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("States");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardCollection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("WildcardCollections");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<float>("Weight")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectionId");
+
+                    b.HasIndex("SortOrder");
+
+                    b.ToTable("WildcardEntries");
+                });
+
             modelBuilder.Entity("ImageSelection", b =>
                 {
                     b.Property<int>("ImagesId")
@@ -539,6 +606,17 @@ namespace BlazorWebApp.Migrations
                     b.Navigation("Type");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardEntry", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.WildcardCollection", "Collection")
+                        .WithMany("Entries")
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Collection");
+                });
+
             modelBuilder.Entity("ImageSelection", b =>
                 {
                     b.HasOne("BlazorWebApp.Data.Entities.Image", null)
@@ -567,6 +645,11 @@ namespace BlazorWebApp.Migrations
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Project", b =>
                 {
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardCollection", b =>
+                {
+                    b.Navigation("Entries");
                 });
 #pragma warning restore 612, 618
         }

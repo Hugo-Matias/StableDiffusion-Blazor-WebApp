@@ -13,6 +13,9 @@ namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
+        // Regex pattern to match __wildcard__ syntax (same as WildcardService)
+        private static readonly Regex WildcardPattern = new Regex(@"__([a-zA-Z0-9](?:[a-zA-Z0-9_\-./]*[a-zA-Z0-9])?)__", RegexOptions.Compiled);
+
         public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.').Trim();
 
         public static string NormalizePath(this string path)
@@ -48,6 +51,74 @@ namespace BlazorWebApp.Extensions
             return param;
         }
 
+        /// <summary>
+        /// Parses parameters with wildcard expansion support.
+        /// Order of operations:
+        /// 1. Expand wildcards (first, uses database for random selection)
+        /// 2. Apply styles (second, uses template strings)
+        /// 3. Parse LoRAs (third, extracts tags)
+        /// 4. Generate seed if -1
+        /// </summary>
+        public static async Task<SharedParameters> ParseParametersAsync(
+            this SharedParameters param, 
+            IEnumerable<PromptStyle> styles,
+            IWildcardService? wildcardService = null)
+        {
+            // STEP 1: Expand wildcards FIRST (before styles, as wildcards can contain style references)
+            if (wildcardService != null)
+            {
+                param.Prompt = await ExpandWildcardsAsync(param.Prompt, wildcardService);
+                param.NegativePrompt = await ExpandWildcardsAsync(param.NegativePrompt, wildcardService);
+            }
+            
+            // STEP 2: Apply styles (existing logic)
+            param.Prompt = param.Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
+            param.NegativePrompt = param.NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(), true);
+
+            // STEP 3: Parse LoRAs (existing logic)
+            (var prompt, var negative) = param.Loras.ParseLoras();
+            param.Prompt += prompt;
+            param.NegativePrompt += negative;
+
+            // STEP 4: Handle seed (existing logic)
+            if (param.Seed == -1) param.Seed = new Random().Next(0, int.MaxValue);
+            
+            return param;
+        }
+
+        /// <summary>
+        /// Expands all wildcards in the input string using the WildcardService.
+        /// Wildcards are in the format: __category/collection__ or __collection__
+        /// </summary>
+        /// <param name="input">Input string containing wildcards</param>
+        /// <param name="wildcardService">Wildcard service for random entry selection</param>
+        /// <returns>String with wildcards replaced by random entries</returns>
+        public static async Task<string> ExpandWildcardsAsync(string? input, IWildcardService wildcardService)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return input ?? string.Empty;
+
+            // Use the WildcardService's ParseWildcards method which handles weighted selection
+            return await wildcardService.ParseWildcards(input);
+        }
+
+        /// <summary>
+        /// Detects wildcards in the input string without expanding them.
+        /// Useful for UI to show which wildcards will be expanded.
+        /// </summary>
+        /// <param name="input">Input string to check for wildcards</param>
+        /// <returns>List of wildcard names found</returns>
+        public static List<string> DetectWildcards(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return new List<string>();
+
+            var matches = WildcardPattern.Matches(input);
+            return matches
+                .Select(m => m.Groups[1].Value)
+                .Distinct()
+                .ToList();
+        }
         public static void ParseComfyDetailerLoras(this DetailerParameters detailer)
         {
             (var prompt, var negative) = detailer.Loras != null && detailer.Loras.Count > 0 ? detailer.Loras.ParseLoras() : (string.Empty, string.Empty);

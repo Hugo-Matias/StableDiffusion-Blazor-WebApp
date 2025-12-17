@@ -76,6 +76,9 @@ export function initializeAutocomplete(wrapperRef, dotNetHelper) {
         element.removeEventListener('keydown', oldHandlers.keydown, true);
         element.removeEventListener('click', oldHandlers.click);
         element.removeEventListener('keyup', oldHandlers.keyup);
+        if (oldHandlers.input) {
+            element.removeEventListener('input', oldHandlers.input);
+        }
     }
 
     // Keydown handler: intercepts navigation keys when dropdown is visible
@@ -120,8 +123,9 @@ export function initializeAutocomplete(wrapperRef, dotNetHelper) {
         }, 10);
     };
 
-    // Keyup handler: updates cursor position on arrow key navigation
+    // Keyup handler: updates cursor position on arrow key navigation and input changes
     const keyupHandler = async (e) => {
+        // Track cursor position for navigation keys
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') {
             setTimeout(async () => {
                 try {
@@ -134,11 +138,24 @@ export function initializeAutocomplete(wrapperRef, dotNetHelper) {
         }
     };
 
+    // Input handler: updates cursor position when text changes (typing, deleting, pasting)
+    const inputHandler = async (e) => {
+        setTimeout(async () => {
+            try {
+                const position = element.selectionStart;
+                await dotNetHelper.invokeMethodAsync('OnCursorPositionChanged', position);
+            } catch (error) {
+                console.error('Error handling input:', error);
+            }
+        }, 10);
+    };
+
     // Store handler references for cleanup
     const handlers = {
         keydown: keydownHandler,
         click: clickHandler,
-        keyup: keyupHandler
+        keyup: keyupHandler,
+        input: inputHandler
     };
     autocompleteHandlers.set(element, handlers);
 
@@ -146,6 +163,7 @@ export function initializeAutocomplete(wrapperRef, dotNetHelper) {
     element.addEventListener('keydown', keydownHandler, true);
     element.addEventListener('click', clickHandler);
     element.addEventListener('keyup', keyupHandler);
+    element.addEventListener('input', inputHandler);
 }
 
 /**

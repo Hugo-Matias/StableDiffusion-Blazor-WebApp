@@ -8,6 +8,7 @@
 @inject IEventService Events
 @inject ThemeService ThemeService
 @inject NavigationManager NavManager
+@inject IInfoService InfoService
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
@@ -24,31 +25,50 @@
             <NavBar />
             <MudSpacer />
             
-            @* Base Selector (ComfyUI only) *@
-            @if (Backend.IsBackendAvailable && _workflowBases != null && _workflowBases.Count > 0)
-            {
-                <MudSelect Value="State.State.Generation.WorkflowBase" 
-                           T="ModelBase" 
-                           ValueChanged="HandleWorkflowBaseSelected" 
-                           Label="Base" 
-                           Variant="Variant.Outlined"
-                           Class="base-selector mr-1"
-                           AnchorOrigin="Origin.BottomCenter" 
-                           TransformOrigin="Origin.TopCenter">
-                    @foreach (var workflowBase in _workflowBases)
-                    {
-                        <MudSelectItem Value="@workflowBase" />
-                    }
-                </MudSelect>
-            }
-            
-            @* Dark/Light Mode Toggle *@
-            <MudIconButton Icon="@(State.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
-                           Color="Color.Inherit" 
-                           Title="@(State.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
-                           OnClick="ToggleDarkMode" />
-            
-            <MudIconButton Class=@(_isModelLoading ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(_isModelLoading ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
+            @* Right-aligned toolbar items *@
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                @* Base Selector (ComfyUI only) *@
+                @if (Backend.IsBackendAvailable && _workflowBases != null && _workflowBases.Count > 0)
+                {
+                    <MudSelect Value="State.State.Generation.WorkflowBase" 
+                               T="ModelBase" 
+                               ValueChanged="HandleWorkflowBaseSelected" 
+                               Label="Base" 
+                               Variant="Variant.Outlined"
+                               Class="base-selector"
+                               AnchorOrigin="Origin.BottomCenter" 
+                               TransformOrigin="Origin.TopCenter"
+                               Adornment="Adornment.End"
+                               AdornmentIcon="@Icons.Material.Filled.Refresh"
+                               AdornmentColor="Color.Inherit"
+                               OnAdornmentClick="RefreshWorkflows">
+                        @foreach (var workflowBase in _workflowBases)
+                        {
+                            <MudSelectItem Value="@workflowBase" />
+                        }
+                    </MudSelect>
+                }
+                
+                @* Dark/Light Mode Toggle *@
+                <MudIconButton Icon="@(State.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
+                               Color="Color.Inherit" 
+                               Title="@(State.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
+                               OnClick="ToggleDarkMode" />
+                
+                @* Info/Help Button *@
+                @if (InfoService.CurrentInfo != null)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Info"
+                                   Color="Color.Inherit"
+                                   Title="Help & Shortcuts"
+                                   OnClick="OpenInfoDrawer" />
+                }
+                
+                <MudIconButton Class=@(_isModelLoading ? "spinner" : "") 
+                               Icon="@Icons.Material.Filled.Settings" 
+                               Color=@(_isModelLoading ? Color.Info : Color.Inherit) 
+                               OnClick="() => DrawerToggler()" />
+            </MudStack>
         </MudAppBar>
 
         @* Backdrop for TopToolbar *@
@@ -69,6 +89,9 @@
                 @Body
             </MudContainer>
         </MudMainContent>
+        
+        @* Info Drawer (global, contextual) - inside MudLayout for proper overlay *@
+        <InfoDrawer @ref="_infoDrawer" />
     </MudLayout>
 </div>
 
@@ -77,6 +100,7 @@
     private bool _isModelLoading = false;
     private MudTheme _currentTheme = new MudTheme();
     private List<ModelBase> _workflowBases = new();
+    private InfoDrawer? _infoDrawer;
     
     // Pages that should NOT redirect when Base changes (non-generation pages)
     private static readonly string[] _safePages = { "/", "/prompts", "/resources", "/danbooru" };
@@ -87,6 +111,8 @@
         Events.Subscribe<ModelsChangedEventArgs>(OnSDModelsChange);
         Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
         Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        InfoService.OnInfoChanged += HandleInfoChanged;
+        NavManager.LocationChanged += HandleLocationChanged;
         LoadTheme();
     }
 
@@ -166,6 +192,13 @@
         }
     }
 
+    private void RefreshWorkflows()
+    {
+        M.RefreshWorkflowsFromDisk();
+        LoadWorkflowBases();
+        StateHasChanged();
+    }
+
     /// <summary>
     /// Checks if the current page is a "safe" page that shouldn't redirect on Base change.
     /// Safe pages: Index, Prompts, Resources, Danbooru
@@ -198,6 +231,28 @@
         StateHasChanged();
     }
 
+    private void OpenInfoDrawer()
+    {
+        if (_infoDrawer != null)
+        {
+            if (_infoDrawer.IsOpen)
+                _infoDrawer.Close();
+            else
+                _infoDrawer.Open();
+        }
+    }
+
+    private void HandleInfoChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // Close drawer when navigating away from page
+        _infoDrawer?.Close();
+    }
+
     private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();
     private void OnSDModelsChange(ModelsChangedEventArgs args) => Refresh();
     private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
@@ -215,5 +270,7 @@
         Events.Unsubscribe<ModelsChangedEventArgs>(OnSDModelsChange);
         Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
         Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        InfoService.OnInfoChanged -= HandleInfoChanged;
+        NavManager.LocationChanged -= HandleLocationChanged;
     }
 }

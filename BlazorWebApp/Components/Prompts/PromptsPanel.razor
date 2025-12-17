@@ -8,6 +8,7 @@
 @inject IDatabaseService DB
 @inject IDialogService DialogService
 @inject IJSRuntime JS
+@inject IInfoService InfoService
 @implements IAsyncDisposable
 
 <div @ref="_containerRef" tabindex="-1" class="prompts-panel-container">
@@ -37,10 +38,34 @@
     private DotNetObjectReference<PromptsPanel>? _dotNetRef;
     private bool _isDisposed;
 
+    // Info content
+    private readonly InfoContent _infoContent = new(
+        Title: "Presets - Quick Guide",
+        Overview: "Save and apply complete prompt configurations including positive and negative prompts, LoRA models, and other settings. Pin your favorites for instant access with keyboard shortcuts.",
+        Shortcuts: new List<ShortcutInfo>
+        {
+            new("Ctrl+1-9", "Apply pinned preset to Txt2Img"),
+            new("Ctrl+Shift+1-9", "Apply pinned preset to Img2Img"),
+        },
+        Tips: new List<string>
+        {
+            "Pin up to 9 presets for quick keyboard access (star icon in preset list)",
+            "Categories help organize presets by theme, style, or use case",
+            "Usage counter shows how often each preset has been applied",
+            "Favorites (heart icon) appear at the top of the list",
+            "Apply button replaces current prompt, Insert adds to existing text",
+            "Search works across preset name, category, and tags",
+            "Edit presets to update prompts or add LoRA configurations",
+            "Duplicate presets to create variations quickly"
+        }
+    );
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !_isDisposed)
         {
+            InfoService.SetInfo(_infoContent);
+            
             try
             {
                 _dotNetRef = DotNetObjectReference.Create(this);
@@ -142,6 +167,7 @@
     public async ValueTask DisposeAsync()
     {
         _isDisposed = true;
+        InfoService.ClearInfo();
         
         if (_jsModule != null)
         {

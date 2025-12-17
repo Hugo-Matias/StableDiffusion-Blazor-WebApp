@@ -320,16 +320,29 @@ namespace BlazorWebApp.Services
 
             foreach (var part in parts)
             {
-                if (current is Dictionary<string, object> dict)
+                if (current is IDictionary<string, object> dict)
                 {
                     if (!dict.TryGetValue(part, out current))
-                        return false;
+                    {
+                        // Try case-insensitive lookup for dictionaries that don't have a case-insensitive comparer
+                        var match = dict.Keys.FirstOrDefault(k => k.Equals(part, StringComparison.OrdinalIgnoreCase));
+                        if (match != null)
+                        {
+                            current = dict[match];
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
                 }
                 else if (current != null)
                 {
                     var prop = current.GetType().GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                     if (prop == null)
+                    {
                         return false;
+                    }
                     current = prop.GetValue(current);
                 }
                 else
@@ -339,7 +352,9 @@ namespace BlazorWebApp.Services
             }
 
             if (current is bool boolValue)
+            {
                 return boolValue;
+            }
 
             return false;
         }
@@ -682,12 +697,12 @@ namespace BlazorWebApp.Services
                     }, RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
                     // Update the in-memory workflow asset default (on the workflow from the list)
-                    var asset = workflowToUpdate.Assets?.FirstOrDefault(a => 
+                    var asset = workflowToUpdate.Assets?.FirstOrDefault(a =>
                         a.Parameter.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
                     if (asset != null)
                     {
                         asset.DefaultValue = kvp.Value;
-                        _logger.LogDebug("Updated in-memory default for '{Parameter}': '{Value}' (workflow: {WorkflowTitle})", 
+                        _logger.LogDebug("Updated in-memory default for '{Parameter}': '{Value}' (workflow: {WorkflowTitle})",
                             kvp.Key, kvp.Value, workflowToUpdate.Title);
                     }
                 }
@@ -766,7 +781,7 @@ namespace BlazorWebApp.Services
             // Try to get WorkflowAssets dictionary via reflection
             var workflowAssetsProp = param.GetType().GetProperty("WorkflowAssets");
             var workflowAssets = workflowAssetsProp?.GetValue(param) as Dictionary<string, string>;
-            
+
             if (workflowAssets != null)
             {
                 foreach (var kvp in workflowAssets)
@@ -786,7 +801,7 @@ namespace BlazorWebApp.Services
                 foreach (var asset in workflow.Assets)
                 {
                     // Only inject default if parameter not already in global params with a valid value
-                    if (!globalParams.ContainsKey(asset.Parameter) || 
+                    if (!globalParams.ContainsKey(asset.Parameter) ||
                         globalParams[asset.Parameter] == null ||
                         string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
                     {

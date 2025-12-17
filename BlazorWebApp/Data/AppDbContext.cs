@@ -121,6 +121,25 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<State>().Property(nameof(State.Img2ImgParameters)).HasConversion(img2imgConverter);
             modelBuilder.Entity<State>().Property(nameof(State.UpscaleParameters)).HasConversion(upscaleConverter);
             modelBuilder.Entity<State>().Property(nameof(State.Img2VidParameters)).HasConversion(img2vidConverter);
+
+            // Wildcard entity configuration
+            modelBuilder.Entity<WildcardCollection>()
+                .HasMany(c => c.Entries)
+                .WithOne(e => e.Collection)
+                .HasForeignKey(e => e.CollectionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WildcardCollection>()
+                .HasIndex(c => c.Name);
+
+            modelBuilder.Entity<WildcardCollection>()
+                .HasIndex(c => c.Category);
+
+            modelBuilder.Entity<WildcardEntry>()
+                .HasIndex(e => e.CollectionId);
+
+            modelBuilder.Entity<WildcardEntry>()
+                .HasIndex(e => e.SortOrder);
         }
 
         public DbSet<Image> Images { get; set; }
@@ -136,5 +155,7 @@ namespace BlazorWebApp.Data
         public DbSet<ResourceTemplate> ResourceTemplates { get; set; }
         public DbSet<State> States { get; set; }
         public DbSet<Selection> Selections { get; set; }
+        public DbSet<WildcardCollection> WildcardCollections { get; set; }
+        public DbSet<WildcardEntry> WildcardEntries { get; set; }
     }
 }

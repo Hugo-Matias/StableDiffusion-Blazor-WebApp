@@ -1,5 +1,8 @@
+@using System.Text.RegularExpressions
 @inject CsvService CsvService
 @inject ICacheService CacheService
+@inject IWildcardService WildcardService
+@inject IDatabaseService DatabaseService
 @inject IJSRuntime JS
 @inject ILogger<TextFieldAutocomplete> Logger
 @implements IAsyncDisposable
@@ -19,89 +22,234 @@
                   Immediate="@Immediate"
                   Disabled="@Disabled" />
 
-    @if (_showSuggestions && (_tagSuggestions.Any() || _wordSuggestions.Any()))
+    @if (_showSuggestions && HasAnySuggestions())
     {
         <MudPaper Class="autocomplete-dropdown" Elevation="8" Style="@GetDropdownStyle()">
             <MudList Clickable Dense>
-                <!-- Tag Suggestions Section -->
-                @if (_tagSuggestions.Any())
+                
+                @* Wildcard Category Mode *@
+                @if (_currentMode == AutocompleteMode.WildcardCategory && _wildcardCategorySuggestions.Any())
                 {
-                    @if (_wordSuggestions.Any())
-                    {
-                        <MudListSubheader>
-                            <MudText Typo="Typo.caption" Style="opacity:0.6;">
-                                <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" /> Tags
-                            </MudText>
-                        </MudListSubheader>
-                    }
-
-                    @for (int i = 0; i < _tagSuggestions.Count; i++)
+                    <MudListSubheader>
+                        <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                            <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Tertiary" /> Wildcard Categories
+                        </MudText>
+                    </MudListSubheader>
+                    
+                    @for (int i = 0; i < _wildcardCategorySuggestions.Count; i++)
                     {
                         var index = i;
-                        var tag = _tagSuggestions[i];
-                        var isSelected = index == _selectedIndex && _selectedSection == SuggestionSection.Tags;
+                        var category = _wildcardCategorySuggestions[i];
+                        var isSelected = index == _selectedIndex;
 
                         <MudListItem Class="@(isSelected ? "selected-suggestion" : "")"
-                                     OnClick="() => SelectTag(tag)"
+                                     OnClick="() => SelectWildcardCategory(category)"
                                      Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
-                            <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="@GetTagColor(tag.Color)">
-                                @if (tag.IsRecentlyUsed)
-                                {
-                                    <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Style="opacity:0.6; margin-right: 4px;" />
-                                }
-                                <strong>@GetHighlightedText(tag.Name)</strong>
-                                @if (!tag.Name.Contains(_currentWord, StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(tag.Aliases))
-                                {
-                                    <small style="opacity:0.5;"> → @GetMatchingAlias(tag)</small>
-                                }
-                            </MudText>
-                            <MudText Typo="Typo.caption" Style="opacity:0.4; margin-left: auto; display: flex; align-items: center; gap: 8px;">
-                                @if (tag.LocalUses > 0)
-                                {
-                                    <span style="color: var(--mud-palette-success);">Uses: @tag.LocalUses</span>
-                                }
-                                @if (!string.IsNullOrEmpty(tag.Source))
-                                {
-                                    <span style="opacity:0.3;">[@tag.Source]</span>
-                                }
+                            <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="Color.Tertiary">
+                                <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Style="margin-right: 4px;" />
+                                <strong>@category</strong>
                             </MudText>
                         </MudListItem>
                     }
                 }
-
-                <!-- Dictionary Words Section -->
-                @if (_wordSuggestions.Any())
+                
+                @* Wildcard Collection Mode *@
+                @if (_currentMode == AutocompleteMode.WildcardCollection && _wildcardCollectionSuggestions.Any())
                 {
-                    @if (_tagSuggestions.Any())
-                    {
-                        <MudDivider Class="my-2" />
-                        <MudListSubheader>
-                            <MudText Typo="Typo.caption" Style="opacity:0.6;">
-                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" /> Dictionaries
-                            </MudText>
-                        </MudListSubheader>
-                    }
-
-                    @for (int i = 0; i < _wordSuggestions.Count; i++)
+                    <MudListSubheader>
+                        <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                            <MudIcon Icon="@Icons.Material.Filled.Casino" Size="Size.Small" Color="Color.Tertiary" /> 
+                            Collections in "<strong>@_wildcardContext?.SelectedCategory</strong>"
+                        </MudText>
+                    </MudListSubheader>
+                    
+                    @for (int i = 0; i < _wildcardCollectionSuggestions.Count; i++)
                     {
                         var index = i;
-                        var word = _wordSuggestions[i];
-                        var isSelected = index == _selectedIndex && _selectedSection == SuggestionSection.Words;
+                        var collection = _wildcardCollectionSuggestions[i];
+                        var isSelected = index == _selectedIndex;
+                        var collectionName = collection.Name;
+                        if (collectionName.Contains("/"))
+                        {
+                            collectionName = collectionName.Substring(collectionName.LastIndexOf('/') + 1);
+                        }
 
                         <MudListItem Class="@(isSelected ? "selected-suggestion" : "")"
-                                     OnClick="() => SelectWord(word.Word)"
+                                     OnClick="() => SelectWildcardCollection(collection)"
                                      Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
-                            <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="Color.Info">
-                                <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Style="opacity:0.6;" />
-                                @GetHighlightedText(word.Word)
-                            </MudText>
-                            @if (!string.IsNullOrEmpty(word.Source))
-                            {
-                                <MudText Typo="Typo.caption" Style="opacity:0.3; margin-left: auto;">
-                                    [@word.Source]
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="Color.Tertiary">
+                                    <MudIcon Icon="@Icons.Material.Filled.CollectionsBookmark" Size="Size.Small" Style="margin-right: 4px;" />
+                                    <strong>@collectionName</strong>
                                 </MudText>
-                            }
+                                <MudChip Size="Size.Small" Color="Color.Info" Style="margin-left: 8px;">
+                                    @collection.Entries.Count entries
+                                </MudChip>
+                            </div>
                         </MudListItem>
+                    }
+                }
+                
+                @* LoRA Mode *@
+                @if (_currentMode == AutocompleteMode.Lora && _loraSuggestions.Any())
+                {
+                    <MudListSubheader>
+                        <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                            <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" Color="Color.Success" /> LoRA Resources
+                        </MudText>
+                    </MudListSubheader>
+                    
+                    @for (int i = 0; i < _loraSuggestions.Count; i++)
+                    {
+                        var index = i;
+                        var lora = _loraSuggestions[i];
+                        var isSelected = index == _selectedIndex;
+                        var matchInfo = _loraMatchInfo.GetValueOrDefault(lora.Title);
+
+                        <MudListItem Class="@(isSelected ? "selected-suggestion" : "")"
+                                     OnClick="() => SelectLoraResource(lora)"
+                                     Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                <div style="display: flex; flex-direction: column; gap: 2px;">
+                                    <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="Color.Success">
+                                        <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" Style="margin-right: 4px;" />
+                                        <strong>@lora.Title</strong>
+                                    </MudText>
+                                    @if (matchInfo.MatchType == LoraMatchType.Filename)
+                                    {
+                                        <MudText Typo="Typo.caption" Style="opacity:0.5; margin-left: 24px;">
+                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Style="margin-right: 2px; vertical-align: middle;" />
+                                            @matchInfo.MatchedValue
+                                        </MudText>
+                                    }
+                                    else if (matchInfo.MatchType == LoraMatchType.Tag && !string.IsNullOrEmpty(matchInfo.MatchedValue))
+                                    {
+                                        <MudText Typo="Typo.caption" Style="opacity:0.5; margin-left: 24px;">
+                                            <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Style="margin-right: 2px; vertical-align: middle;" />
+                                            @matchInfo.MatchedValue
+                                        </MudText>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(lora.BaseModel))
+                                {
+                                    <MudChip Size="Size.Small" Color="Color.Default" Style="margin-left: 8px; opacity: 0.6;">
+                                        @lora.BaseModel
+                                    </MudChip>
+                                }
+                            </div>
+                        </MudListItem>
+                    }
+                }
+                
+                @* Style Mode *@
+                @if (_currentMode == AutocompleteMode.Style && _styleSuggestions.Any())
+                {
+                    <MudListSubheader>
+                        <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                            <MudIcon Icon="@Icons.Material.Filled.Style" Size="Size.Small" Color="Color.Primary" /> Prompt Styles
+                        </MudText>
+                    </MudListSubheader>
+                    
+                    @for (int i = 0; i < _styleSuggestions.Count; i++)
+                    {
+                        var index = i;
+                        var style = _styleSuggestions[i];
+                        var isSelected = index == _selectedIndex;
+
+                        <MudListItem Class="@(isSelected ? "selected-suggestion" : "")"
+                                     OnClick="() => SelectStyleItem(style)"
+                                     Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
+                            <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="Color.Primary">
+                                <MudIcon Icon="@Icons.Material.Filled.Style" Size="Size.Small" Style="margin-right: 4px;" />
+                                <strong>@style.Name</strong>
+                            </MudText>
+                        </MudListItem>
+                    }
+                }
+                
+                @* Tags Mode (existing behavior) *@
+                @if (_currentMode == AutocompleteMode.Tags)
+                {
+                    <!-- Tag Suggestions Section -->
+                    @if (_tagSuggestions.Any())
+                    {
+                        @if (_wordSuggestions.Any())
+                        {
+                            <MudListSubheader>
+                                <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" /> Tags
+                                </MudText>
+                            </MudListSubheader>
+                        }
+
+                        @for (int i = 0; i < _tagSuggestions.Count; i++)
+                        {
+                            var index = i;
+                            var tag = _tagSuggestions[i];
+                            var isSelected = index == _selectedIndex && _selectedSection == SuggestionSection.Tags;
+
+                            <MudListItem Class="@(isSelected ? "selected-suggestion" : "")"
+                                         OnClick="() => SelectTag(tag)"
+                                         Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
+                                <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="@GetTagColor(tag.Color)">
+                                    @if (tag.IsRecentlyUsed)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Style="opacity:0.6; margin-right: 4px;" />
+                                    }
+                                    <strong>@GetHighlightedText(tag.Name)</strong>
+                                    @if (!tag.Name.Contains(_currentWord, StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(tag.Aliases))
+                                    {
+                                        <small style="opacity:0.5;"> → @GetMatchingAlias(tag)</small>
+                                    }
+                                </MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:0.4; margin-left: auto; display: flex; align-items: center; gap: 8px;">
+                                    @if (tag.LocalUses > 0)
+                                    {
+                                        <span style="color: var(--mud-palette-success);">Uses: @tag.LocalUses</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(tag.Source))
+                                    {
+                                        <span style="opacity:0.3;">[@tag.Source]</span>
+                                    }
+                                </MudText>
+                            </MudListItem>
+                        }
+                    }
+
+                    <!-- Dictionary Words Section -->
+                    @if (_wordSuggestions.Any())
+                    {
+                        @if (_tagSuggestions.Any())
+                        {
+                            <MudDivider Class="my-2" />
+                            <MudListSubheader>
+                                <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                                    <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" /> Dictionaries
+                                </MudText>
+                            </MudListSubheader>
+                        }
+
+                        @for (int i = 0; i < _wordSuggestions.Count; i++)
+                        {
+                            var index = i;
+                            var word = _wordSuggestions[i];
+                            var isSelected = index == _selectedIndex && _selectedSection == SuggestionSection.Words;
+
+                            <MudListItem Class="@(isSelected ? "selected-suggestion" : "")"
+                                         OnClick="() => SelectWord(word.Word)"
+                                         Style="@(isSelected ? "background-color: var(--mud-palette-action-default-hover);" : "")">
+                                <MudText Typo="Typo.body2" Style="font-family:'FiraCode NF';" Color="Color.Info">
+                                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Style="opacity:0.6;" />
+                                    @GetHighlightedText(word.Word)
+                                </MudText>
+                                @if (!string.IsNullOrEmpty(word.Source))
+                                {
+                                    <MudText Typo="Typo.caption" Style="opacity:0.3; margin-left: auto;">
+                                        [@word.Source]
+                                    </MudText>
+                                }
+                            </MudListItem>
+                        }
                     }
                 }
             </MudList>
@@ -138,13 +286,48 @@
     [Parameter] public bool EnableAutocomplete { get; set; } = true;
     [Parameter] public bool IsNegative { get; set; } = false;
 
+    // Phase 4: Event callbacks for non-prompt triggers (LoRA/Style selection)
+    [Parameter] public EventCallback<Lora> OnLoraSelected { get; set; }
+    [Parameter] public EventCallback<PromptStyle> OnStyleSelected { get; set; }
+
     private MudTextField<string> _textFieldRef;
     private ElementReference _wrapperRef;
+    
+    // Existing suggestion lists (Tags/Dictionary)
     private List<Tag> _tagSuggestions = new();
     private List<DictionaryWord> _wordSuggestions = new();
+    
+    // Phase 4: Wildcard suggestion lists
+    private List<string> _wildcardCategorySuggestions = new();
+    private List<WildcardCollection> _wildcardCollectionSuggestions = new();
+    
+    // Phase 4: LoRA and Style suggestion lists
+    private List<LocalResource> _loraSuggestions = new();
+    private List<PromptStyle> _styleSuggestions = new();
+    
+    // LoRA match type information for UI display
+    private Dictionary<string, (LoraMatchType MatchType, string? MatchedValue)> _loraMatchInfo = new();
+    
+    /// <summary>
+    /// Match type for LoRA search results, ordered by priority.
+    /// </summary>
+    private enum LoraMatchType
+    {
+        Title = 0,    // Highest priority - matched on title
+        Filename = 1, // Medium priority - matched on filename
+        Tag = 2       // Lowest priority - matched on tag
+    }
+
     private bool _showSuggestions = false;
     private int _selectedIndex = 0;
     private SuggestionSection _selectedSection = SuggestionSection.Tags;
+    
+    // Phase 4: Current autocomplete mode (determines which search/UI path to use)
+    private AutocompleteMode _currentMode = AutocompleteMode.Tags;
+    
+    // Phase 4: Wildcard navigation context for hierarchical selection
+    private WildcardContext? _wildcardContext;
+    
     private string _currentWord = string.Empty;
     private int _cursorPosition = 0;
     private System.Timers.Timer _debounceTimer;
@@ -153,7 +336,316 @@
     private IJSObjectReference _jsModule;
     private bool _isSelectingSuggestion = false;
 
+    // Existing section enum for Tags/Words keyboard navigation
     private enum SuggestionSection { Tags, Words }
+
+    /// <summary>
+    /// Autocomplete mode determines which trigger is active and which search/UI path to use.
+    /// Priority order: Wildcards > LoRA > Style > Tags (forced) > Tags (default)
+    /// </summary>
+    private enum AutocompleteMode
+    {
+        None,                   // No trigger detected, autocomplete disabled
+        Tags,                   // Default or # trigger (tag/dictionary search)
+        WildcardCategory,       // _ trigger (searching categories)
+        WildcardCollection,     // __category/ (searching collections within category)
+        Lora,                   // < trigger (LoRA search, adds to list)
+        Style                   // @ trigger (Style search, adds to list)
+    }
+
+    /// <summary>
+    /// State machine for wildcard hierarchical navigation.
+    /// Tracks whether user is selecting category or collection.
+    /// </summary>
+    private enum WildcardState
+    {
+        SearchingCategories,     // After "_" or "_c" - show/filter categories
+        SearchingCollections,    // After "__category/" - show/filter collections
+        Complete                 // After "__category/collection__ " - selection finished
+    }
+
+    /// <summary>
+    /// Context for wildcard navigation, maintains state between category and collection selection.
+    /// </summary>
+    private class WildcardContext
+    {
+        /// <summary>Current state in the wildcard selection flow</summary>
+        public WildcardState State { get; set; }
+        
+        /// <summary>Category selected in first step (e.g., "clothing")</summary>
+        public string? SelectedCategory { get; set; }
+        
+        /// <summary>Position where the trigger started (for text replacement)</summary>
+        public int TriggerStartPosition { get; set; }
+        
+        /// <summary>Current search/filter query within the mode</summary>
+        public string SearchQuery { get; set; } = "";
+    }
+
+    // Track forced tag search query (from # trigger)
+    private string? _forcedTagQuery = null;
+
+    /// <summary>
+    /// Detects which autocomplete mode should be active based on text before cursor.
+    /// Priority order: Wildcards > LoRA > Style > Tag Force > Tags (default)
+    /// </summary>
+    private AutocompleteMode DetectAutocompleteMode(string textBeforeCursor)
+    {
+        if (string.IsNullOrEmpty(textBeforeCursor))
+        {
+            _wildcardContext = null;
+            return AutocompleteMode.Tags;
+        }
+
+        // 1. Wildcard detection (highest priority due to complexity)
+        // Look for wildcard patterns - handle editing existing wildcards
+        
+        // Check if we're editing inside a completed wildcard by looking at text AFTER cursor too
+        // Pattern: cursor is at "__category/query|__" or "__category/|__"
+        var textAfterCursor = "";
+        if (_cursorPosition < Value?.Length)
+        {
+            textAfterCursor = Value.Substring(_cursorPosition);
+        }
+        
+        // If text after cursor starts with "__, " or "__" followed by delimiter, we're editing inside a wildcard
+        var isInsideCompletedWildcard = Regex.IsMatch(textAfterCursor, @"^__(?:,|\s|$)");
+        
+        // First, check for collection search patterns (most specific)
+        // Patterns to match:
+        // - __category/         (just typed slash, show all collections)
+        // - __category/query    (filtering collections)
+        // - cursor inside completed wildcard: __category/|__, 
+        
+        // Try to find __category/ pattern, allowing for start of string or delimiters
+        var collectionMatch = Regex.Match(textBeforeCursor, @"(?:^|[\s,\n])__([a-zA-Z0-9\-_]+)/([a-zA-Z0-9\-_]*)$");
+        
+        // If no match with delimiter, try matching from start of string (for when wildcard is first item)
+        if (!collectionMatch.Success && textBeforeCursor.StartsWith("__"))
+        {
+            collectionMatch = Regex.Match(textBeforeCursor, @"^__([a-zA-Z0-9\-_]+)/([a-zA-Z0-9\-_]*)$");
+        }
+        
+        if (collectionMatch.Success)
+        {
+            // Find the start position of the match
+            var matchValue = collectionMatch.Value;
+            var triggerStart = textBeforeCursor.Length - matchValue.Length;
+            // Skip leading whitespace/delimiters to get to __
+            while (triggerStart < textBeforeCursor.Length && textBeforeCursor[triggerStart] != '_')
+                triggerStart++;
+            
+            _wildcardContext = new WildcardContext
+            {
+                State = WildcardState.SearchingCollections,
+                SelectedCategory = collectionMatch.Groups[1].Value,
+                TriggerStartPosition = triggerStart,
+                SearchQuery = collectionMatch.Groups[2].Value
+            };
+            return AutocompleteMode.WildcardCollection;
+        }
+        
+        // If we're inside a completed wildcard, also check for category patterns
+        // This handles editing like: "__Clo|thing/shoes__"
+        if (isInsideCompletedWildcard)
+        {
+            // Pattern: __category| where cursor is before /collection__
+            var categoryInsideMatch = Regex.Match(textBeforeCursor, @"(?:^|[\s,\n])__([a-zA-Z0-9\-_]*)$");
+            if (!categoryInsideMatch.Success && textBeforeCursor.StartsWith("__"))
+            {
+                categoryInsideMatch = Regex.Match(textBeforeCursor, @"^__([a-zA-Z0-9\-_]*)$");
+            }
+            
+            if (categoryInsideMatch.Success)
+            {
+                var matchValue = categoryInsideMatch.Value;
+                var triggerStart = textBeforeCursor.Length - matchValue.Length;
+                while (triggerStart < textBeforeCursor.Length && textBeforeCursor[triggerStart] != '_')
+                    triggerStart++;
+                
+                _wildcardContext = new WildcardContext
+                {
+                    State = WildcardState.SearchingCategories,
+                    TriggerStartPosition = triggerStart,
+                    SearchQuery = categoryInsideMatch.Groups[1].Value
+                };
+                return AutocompleteMode.WildcardCategory;
+            }
+        }
+        
+        // Pattern: __category (no slash yet - user is still typing category or editing)
+        // Patterns to match:
+        // - __           (just typed double underscore)
+        // - __cat        (partially typed category)
+        // - __category   (full category, no slash yet)
+        var categoryEditMatch = Regex.Match(textBeforeCursor, @"(?:^|[\s,\n])__([a-zA-Z0-9\-_]*)$");
+        if (!categoryEditMatch.Success && textBeforeCursor.StartsWith("__"))
+        {
+            categoryEditMatch = Regex.Match(textBeforeCursor, @"^__([a-zA-Z0-9\-_]*)$");
+        }
+        
+        if (categoryEditMatch.Success)
+        {
+            var matchValue = categoryEditMatch.Value;
+            var triggerStart = textBeforeCursor.Length - matchValue.Length;
+            // Skip leading whitespace/delimiters to get to __
+            while (triggerStart < textBeforeCursor.Length && textBeforeCursor[triggerStart] != '_')
+                triggerStart++;
+            
+            _wildcardContext = new WildcardContext
+            {
+                State = WildcardState.SearchingCategories,
+                TriggerStartPosition = triggerStart,
+                SearchQuery = categoryEditMatch.Groups[1].Value
+            };
+            return AutocompleteMode.WildcardCategory;
+        }
+        
+        // Pattern: Single _ at word boundary (new category search)
+        // Must NOT be followed by another underscore (that's handled above)
+        var singleUnderscoreMatch = Regex.Match(textBeforeCursor, @"(?:^|[\s,\n])_([a-zA-Z0-9\-]*)$");
+        if (singleUnderscoreMatch.Success)
+        {
+            // Check it's not actually a double underscore pattern
+            var fullMatch = singleUnderscoreMatch.Value;
+            var matchStart = textBeforeCursor.Length - fullMatch.Length;
+            
+            // Find the position of the underscore
+            var underscorePos = matchStart;
+            while (underscorePos < textBeforeCursor.Length && textBeforeCursor[underscorePos] != '_')
+                underscorePos++;
+            
+            // Make sure there's no second underscore right after
+            if (underscorePos + 1 < textBeforeCursor.Length && textBeforeCursor[underscorePos + 1] == '_')
+            {
+                // This is actually a __ pattern, skip to let the above patterns handle it
+                // (shouldn't reach here if regex is correct, but safety check)
+            }
+            else
+            {
+                _wildcardContext = new WildcardContext
+                {
+                    State = WildcardState.SearchingCategories,
+                    TriggerStartPosition = underscorePos,
+                    SearchQuery = singleUnderscoreMatch.Groups[1].Value
+                };
+                return AutocompleteMode.WildcardCategory;
+            }
+        }
+        
+        // Reset wildcard context if no wildcard pattern matched
+        _wildcardContext = null;
+        
+        // 2. LoRA trigger '<'
+        var lastLt = textBeforeCursor.LastIndexOf('<');
+        if (lastLt >= 0)
+        {
+            var afterLt = textBeforeCursor.Substring(lastLt + 1);
+            // Valid if no delimiter (comma/newline) between trigger and cursor
+            // Also check it's not inside a completed LoRA tag (no '>')
+            if (!afterLt.Contains(',') && !afterLt.Contains('\n') && !afterLt.Contains('>'))
+            {
+                return AutocompleteMode.Lora;
+            }
+        }
+        
+        // 3. Style trigger '@'
+        var lastAt = textBeforeCursor.LastIndexOf('@');
+        if (lastAt >= 0)
+        {
+            var afterAt = textBeforeCursor.Substring(lastAt + 1);
+            // Valid if no delimiter between trigger and cursor
+            if (!afterAt.Contains(',') && !afterAt.Contains('\n'))
+            {
+                return AutocompleteMode.Style;
+            }
+        }
+        
+        // 4. Tag force trigger '#' - allows searching for tags with special chars
+        var lastHash = textBeforeCursor.LastIndexOf('#');
+        if (lastHash >= 0)
+        {
+            var afterHash = textBeforeCursor.Substring(lastHash + 1);
+            // Valid if no delimiter between trigger and cursor
+            if (!afterHash.Contains(',') && !afterHash.Contains('\n'))
+            {
+                // Store the search query for forced tag search
+                _forcedTagQuery = afterHash;
+                return AutocompleteMode.Tags;
+            }
+        }
+        
+        // 5. Default: existing tag/dictionary behavior
+        _forcedTagQuery = null;
+        return AutocompleteMode.Tags;
+    }
+
+    /// <summary>
+    /// Gets the search query for the current mode based on trigger position.
+    /// </summary>
+    private string GetSearchQueryForMode(string textBeforeCursor, AutocompleteMode mode)
+    {
+        switch (mode)
+        {
+            case AutocompleteMode.WildcardCategory:
+            case AutocompleteMode.WildcardCollection:
+                return _wildcardContext?.SearchQuery ?? "";
+                
+            case AutocompleteMode.Lora:
+                var lastLt = textBeforeCursor.LastIndexOf('<');
+                return lastLt >= 0 ? textBeforeCursor.Substring(lastLt + 1) : "";
+                
+            case AutocompleteMode.Style:
+                var lastAt = textBeforeCursor.LastIndexOf('@');
+                return lastAt >= 0 ? textBeforeCursor.Substring(lastAt + 1) : "";
+                
+            case AutocompleteMode.Tags:
+                // Check for # trigger first
+                var lastHash = textBeforeCursor.LastIndexOf('#');
+                if (lastHash >= 0)
+                {
+                    var afterHash = textBeforeCursor.Substring(lastHash + 1);
+                    if (!afterHash.Contains(',') && !afterHash.Contains('\n'))
+                    {
+                        return afterHash;
+                    }
+                }
+                // Fall back to word at cursor
+                return _currentWord;
+                
+            default:
+                return "";
+        }
+    }
+
+    /// <summary>
+    /// Clears all suggestion lists across all modes.
+    /// </summary>
+    private void ClearAllSuggestions()
+    {
+        _tagSuggestions.Clear();
+        _wordSuggestions.Clear();
+        _wildcardCategorySuggestions.Clear();
+        _wildcardCollectionSuggestions.Clear();
+        _loraSuggestions.Clear();
+        _styleSuggestions.Clear();
+    }
+
+    /// <summary>
+    /// Checks if any suggestions exist for the current mode.
+    /// </summary>
+    private bool HasAnySuggestions()
+    {
+        return _currentMode switch
+        {
+            AutocompleteMode.WildcardCategory => _wildcardCategorySuggestions.Any(),
+            AutocompleteMode.WildcardCollection => _wildcardCollectionSuggestions.Any(),
+            AutocompleteMode.Lora => _loraSuggestions.Any(),
+            AutocompleteMode.Style => _styleSuggestions.Any(),
+            AutocompleteMode.Tags => _tagSuggestions.Any() || _wordSuggestions.Any(),
+            _ => false
+        };
+    }
 
     protected override void OnInitialized()
     {
@@ -193,17 +685,20 @@
 
     private async Task HandleValueChanged(string newValue)
     {
+        // Always update the value first
+        Value = newValue;
+        await ValueChanged.InvokeAsync(Value);
+        
+        // If we're in the middle of selecting a suggestion, don't trigger autocomplete
+        // But reset the flag so the next change will trigger normally
         if (_isSelectingSuggestion)
         {
             _isSelectingSuggestion = false;
-            Value = newValue;
-            await ValueChanged.InvokeAsync(Value);
             return;
         }
 
-        Value = newValue;
-        await ValueChanged.InvokeAsync(Value);
-
+        // Small delay to ensure DOM is updated before getting cursor position
+        await Task.Delay(10);
         _cursorPosition = await GetCursorPosition();
 
         if (EnableAutocomplete)
@@ -217,8 +712,11 @@
     {
         await InvokeAsync(async () =>
         {
-            _tagSuggestions.Clear();
-            _wordSuggestions.Clear();
+            // Clear all suggestion lists across all modes
+            ClearAllSuggestions();
+            
+            // Reset forced tag query
+            _forcedTagQuery = null;
 
             // Don't show suggestions if autocomplete is disabled
             if (!EnableAutocomplete)
@@ -231,104 +729,662 @@
             if (string.IsNullOrWhiteSpace(Value))
             {
                 _showSuggestions = false;
+                _currentMode = AutocompleteMode.Tags;
+                _wildcardContext = null;
                 StateHasChanged();
                 return;
             }
             
+            // Get text before cursor for mode detection
+            var textBeforeCursor = Value.Substring(0, Math.Min(_cursorPosition, Value.Length));
+            
+            // Detect which autocomplete mode should be active
+            _currentMode = DetectAutocompleteMode(textBeforeCursor);
+            
+            // Get the current word for default tag searches
             _currentWord = GetWordAtCursor(Value, _cursorPosition);
 
-            if (ShouldTriggerAutocomplete(_currentWord))
+            // Route to appropriate search method based on mode
+            switch (_currentMode)
             {
-                // Search tags with fuzzy matching
-                var tagResults = await CsvService.SearchTags(_currentWord, EnableFuzzyMatching);
-                _tagSuggestions = tagResults.Take(MaxSuggestions).ToList();
-
-                // Search dictionary words if enabled
-                if (EnableDictionary && _currentWord.Length >= 3)
-                {
-                    // For negative prompts, only search the Negative theme
-                    if (IsNegative)
-                    {
-                        _wordSuggestions = CacheService.SearchDictionaryThemes(
-                            _currentWord, 
-                            new[] { DictionaryTheme.Negative }, 
-                            5
-                        );
-                    }
-                    else
-                    {
-                        // For positive prompts, exclude Negative theme
-                        _wordSuggestions = CacheService.SearchDictionaries(
-                            _currentWord, 
-                            5, 
-                            DictionaryTheme.Negative
-                        );
-                    }
-                }
-
-                _showSuggestions = _tagSuggestions.Any() || _wordSuggestions.Any();
-                _selectedIndex = 0;
-                _selectedSection = _tagSuggestions.Any() ? SuggestionSection.Tags : SuggestionSection.Words;
+                case AutocompleteMode.WildcardCategory:
+                    await SearchWildcardCategories();
+                    break;
+                    
+                case AutocompleteMode.WildcardCollection:
+                    await SearchWildcardCollections();
+                    break;
+                    
+                case AutocompleteMode.Lora:
+                    await SearchLoras(GetSearchQueryForMode(textBeforeCursor, _currentMode));
+                    break;
+                    
+                case AutocompleteMode.Style:
+                    await SearchStyles(GetSearchQueryForMode(textBeforeCursor, _currentMode));
+                    break;
+                    
+                case AutocompleteMode.Tags:
+                default:
+                    await SearchTagsAndDictionary();
+                    break;
             }
-            else
+
+            // Update visibility based on whether we have any suggestions
+            _showSuggestions = HasAnySuggestions();
+            _selectedIndex = 0;
+            
+            // Reset section for tag mode
+            if (_currentMode == AutocompleteMode.Tags)
             {
-                _showSuggestions = false;
+                _selectedSection = _tagSuggestions.Any() ? SuggestionSection.Tags : SuggestionSection.Words;
             }
 
             StateHasChanged();
         });
     }
 
+    /// <summary>
+    /// Search for tags and dictionary words (existing behavior).
+    /// </summary>
+    private async Task SearchTagsAndDictionary()
+    {
+        // Use forced tag query if # trigger was used, otherwise use current word
+        var searchQuery = _forcedTagQuery ?? _currentWord;
+        
+        // For # trigger, we don't require MinCharsToTrigger
+        if (_forcedTagQuery != null)
+        {
+            // Allow empty query with # to show all tags (or require at least 1 char)
+            if (string.IsNullOrEmpty(searchQuery))
+            {
+                // Show nothing if just "#" typed - wait for at least one char
+                return;
+            }
+        }
+        else if (!ShouldTriggerAutocomplete(searchQuery))
+        {
+            return;
+        }
+
+        // Search tags with fuzzy matching
+        var tagResults = await CsvService.SearchTags(searchQuery, EnableFuzzyMatching);
+        _tagSuggestions = tagResults.Take(MaxSuggestions).ToList();
+
+        // Search dictionary words if enabled (only for non-forced queries)
+        if (EnableDictionary && searchQuery.Length >= 3 && _forcedTagQuery == null)
+        {
+            // For negative prompts, only search the Negative theme
+            if (IsNegative)
+            {
+                _wordSuggestions = CacheService.SearchDictionaryThemes(
+                    searchQuery, 
+                    new[] { DictionaryTheme.Negative }, 
+                    5
+                );
+            }
+            else
+            {
+                // For positive prompts, exclude Negative theme
+                _wordSuggestions = CacheService.SearchDictionaries(
+                    searchQuery, 
+                    5, 
+                    DictionaryTheme.Negative
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// Search for wildcard categories.
+    /// </summary>
+    private async Task SearchWildcardCategories()
+    {
+        if (_wildcardContext == null) return;
+        
+        try
+        {
+            var allCategories = await WildcardService.GetCategories();
+            
+            // Filter by search query if provided
+            if (!string.IsNullOrWhiteSpace(_wildcardContext.SearchQuery))
+            {
+                allCategories = allCategories
+                    .Where(c => c.StartsWith(_wildcardContext.SearchQuery, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+            
+            _wildcardCategorySuggestions = allCategories.Take(MaxSuggestions).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching wildcard categories");
+            _wildcardCategorySuggestions.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Search for wildcard collections within the selected category.
+    /// </summary>
+    private async Task SearchWildcardCollections()
+    {
+        if (_wildcardContext == null || string.IsNullOrEmpty(_wildcardContext.SelectedCategory))
+            return;
+        
+        try
+        {
+            var collections = await WildcardService.GetCollectionsByCategory(_wildcardContext.SelectedCategory);
+            
+            // Filter by search query if provided
+            if (!string.IsNullOrWhiteSpace(_wildcardContext.SearchQuery))
+            {
+                // Compare against collection name only (strip category prefix if present)
+                collections = collections
+                    .Where(c => 
+                    {
+                        var name = c.Name;
+                        if (name.Contains("/"))
+                        {
+                            name = name.Substring(name.LastIndexOf('/') + 1);
+                        }
+                        return name.StartsWith(_wildcardContext.SearchQuery, StringComparison.OrdinalIgnoreCase);
+                    })
+                    .ToList();
+            }
+            
+            _wildcardCollectionSuggestions = collections.Take(MaxSuggestions).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching wildcard collections for category '{Category}'", _wildcardContext.SelectedCategory);
+            _wildcardCollectionSuggestions.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Search for LoRA resources with prioritized matching (Title > Filename > Tag).
+    /// </summary>
+    private async Task SearchLoras(string searchQuery)
+    {
+        try
+        {
+            _loraMatchInfo.Clear();
+            
+            // Get all resources and filter for LORA/LoCon types
+            var allResources = await DatabaseService.GetResources();
+            
+            var loraResources = allResources
+                .Where(r => r.Type != null && 
+                           (r.Type.Name.Equals("LORA", StringComparison.OrdinalIgnoreCase) ||
+                            r.Type.Name.Equals("LoCon", StringComparison.OrdinalIgnoreCase)) &&
+                       r.IsEnabled); // Only show enabled LoRAs
+            
+            // Categorize matches by type for priority sorting
+            var matchedLoras = new List<(LocalResource Resource, LoraMatchType MatchType, string? MatchedValue)>();
+            
+            foreach (var r in loraResources)
+            {
+                if (string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    // No query - show all, default to Title match type
+                    matchedLoras.Add((new LocalResource(r), LoraMatchType.Title, null));
+                }
+                else if (r.Title.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Title match - highest priority
+                    matchedLoras.Add((new LocalResource(r), LoraMatchType.Title, null));
+                }
+                else if (r.Filename.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Filename match - medium priority
+                    matchedLoras.Add((new LocalResource(r), LoraMatchType.Filename, r.Filename));
+                }
+                else if (r.Tags != null)
+                {
+                    // Tag match - lowest priority
+                    var matchedTag = r.Tags.FirstOrDefault(t => t.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+                    if (matchedTag != null)
+                    {
+                        matchedLoras.Add((new LocalResource(r), LoraMatchType.Tag, matchedTag));
+                    }
+                }
+            }
+            
+            // Sort by match type priority (Title > Filename > Tag), then alphabetically by title
+            var sortedResults = matchedLoras
+                .OrderBy(m => (int)m.MatchType)
+                .ThenBy(m => m.Resource.Title)
+                .Take(MaxSuggestions)
+                .ToList();
+            
+            // Store suggestions and match info for UI display
+            _loraSuggestions = sortedResults.Select(m => m.Resource).ToList();
+            
+            foreach (var match in sortedResults)
+            {
+                _loraMatchInfo[match.Resource.Title] = (match.MatchType, match.MatchedValue);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching LoRAs with query '{Query}'", searchQuery);
+            _loraSuggestions.Clear();
+            _loraMatchInfo.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Search for prompt styles.
+    /// </summary>
+    private async Task SearchStyles(string searchQuery)
+    {
+        try
+        {
+            var allPrompts = await DatabaseService.GetPrompts();
+            
+            // Convert to PromptStyle and filter
+            var styles = allPrompts
+                .Select(p => new PromptStyle(p))
+                .Where(s => !string.IsNullOrWhiteSpace(s.Prompt) || !string.IsNullOrWhiteSpace(s.NegativePrompt));
+            
+            // Filter by search query if provided
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                styles = styles.Where(s => s.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            _styleSuggestions = styles.Take(MaxSuggestions).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching styles with query '{Query}'", searchQuery);
+            _styleSuggestions.Clear();
+        }
+    }
+
+    #region Phase 4: Selection Methods
+
+    /// <summary>
+    /// Selects a wildcard category and transitions to collection search.
+    /// </summary>
+    private async Task SelectWildcardCategory(string category)
+    {
+        if (_wildcardContext == null) return;
+        
+        try
+        {
+            var beforeTrigger = Value.Substring(0, _wildcardContext.TriggerStartPosition);
+            var afterCursor = Value.Substring(_cursorPosition);
+            
+            // Check if we're editing inside an existing wildcard pattern
+            // Look for existing category/collection structure after cursor
+            // Pattern: "lothing/shoes__" or "lothing/__" or just "lothing/"
+            var existingWildcardMatch = Regex.Match(afterCursor, @"^[a-zA-Z0-9\-_]*/[a-zA-Z0-9\-_]*(?:__)?(?:,\s*|$)");
+            if (existingWildcardMatch.Success)
+            {
+                // We're replacing an existing category - strip the old category/collection part
+                afterCursor = afterCursor.Substring(existingWildcardMatch.Length);
+                // Clean up any remaining trailing comma/space
+                afterCursor = afterCursor.TrimStart();
+                if (afterCursor.StartsWith(","))
+                {
+                    afterCursor = afterCursor.Substring(1).TrimStart();
+                }
+            }
+            else
+            {
+                // Check for partial existing structure (just the rest of category name)
+                // Pattern: "lothing/" when cursor is at "__C|lothing/"
+                var partialCategoryMatch = Regex.Match(afterCursor, @"^[a-zA-Z0-9\-_]*/");
+                if (partialCategoryMatch.Success)
+                {
+                    // Strip the partial category and keep looking for collection
+                    var remaining = afterCursor.Substring(partialCategoryMatch.Length);
+                    var collectionMatch = Regex.Match(remaining, @"^[a-zA-Z0-9\-_]*(?:__)?(?:,\s*|$)");
+                    if (collectionMatch.Success)
+                    {
+                        afterCursor = remaining.Substring(collectionMatch.Length);
+                        afterCursor = afterCursor.TrimStart();
+                        if (afterCursor.StartsWith(","))
+                        {
+                            afterCursor = afterCursor.Substring(1).TrimStart();
+                        }
+                    }
+                    else
+                    {
+                        // Just strip the partial category with slash
+                        afterCursor = remaining;
+                    }
+                }
+            }
+            
+            // Insert "__category/" and keep autocomplete open for collections
+            var newValue = $"{beforeTrigger}__{category}/{afterCursor}";
+            
+            _isSelectingSuggestion = true;
+            Value = newValue;
+            await _textFieldRef.SetText(newValue);
+            await ValueChanged.InvokeAsync(newValue);
+            
+            // Position cursor after "/"
+            var newCursorPos = beforeTrigger.Length + category.Length + 3; // "__category/"
+            _cursorPosition = newCursorPos;
+            await SetCursorPosition(newCursorPos);
+            
+            // Update context for collection search
+            _wildcardContext.State = WildcardState.SearchingCollections;
+            _wildcardContext.SelectedCategory = category;
+            _wildcardContext.SearchQuery = "";
+            _wildcardContext.TriggerStartPosition = beforeTrigger.Length;
+            
+            // Auto-trigger collection search
+            await SearchWildcardCollections();
+            _showSuggestions = _wildcardCollectionSuggestions.Any();
+            _selectedIndex = 0;
+            _currentMode = AutocompleteMode.WildcardCollection;
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error selecting wildcard category '{Category}'", category);
+        }
+    }
+
+    /// <summary>
+    /// Selects a wildcard collection and completes the wildcard syntax.
+    /// </summary>
+    private async Task SelectWildcardCollection(WildcardCollection collection)
+    {
+        if (_wildcardContext == null) return;
+        
+        try
+        {
+            // Get the collection name without category prefix if present
+            var collectionName = collection.Name;
+            if (collectionName.Contains("/"))
+            {
+                collectionName = collectionName.Substring(collectionName.LastIndexOf('/') + 1);
+            }
+            
+            // Find pattern in text: "__category/"
+            var pattern = $"__{_wildcardContext.SelectedCategory}/";
+            var patternIndex = Value.LastIndexOf(pattern, _cursorPosition);
+            
+            if (patternIndex == -1) return;
+            
+            var beforePattern = Value.Substring(0, patternIndex);
+            var afterCursor = Value.Substring(_cursorPosition);
+            
+            // Remove any existing trailing "__ " or "__" from afterCursor if present
+            if (afterCursor.StartsWith("__ "))
+            {
+                afterCursor = afterCursor.Substring(3);
+            }
+            else if (afterCursor.StartsWith("__"))
+            {
+                afterCursor = afterCursor.Substring(2);
+            }
+            
+            // Also trim any leading whitespace/comma from afterCursor since we'll add ", "
+            afterCursor = afterCursor.TrimStart();
+            if (afterCursor.StartsWith(","))
+            {
+                afterCursor = afterCursor.Substring(1).TrimStart();
+            }
+            
+            // Complete wildcard syntax with trailing "__" and ", " for proper word boundary
+            var wildcardSyntax = $"__{_wildcardContext.SelectedCategory}/{collectionName}__";
+            var suffix = afterCursor.Length > 0 ? ", " : ", ";
+            var newValue = $"{beforePattern}{wildcardSyntax}{suffix}{afterCursor}";
+            
+            _isSelectingSuggestion = true;
+            _showSuggestions = false;
+            _wildcardContext = null;
+            
+            Value = newValue;
+            await _textFieldRef.SetText(newValue);
+            await ValueChanged.InvokeAsync(newValue);
+            
+            // Position cursor after the ", "
+            var newCursorPos = beforePattern.Length + wildcardSyntax.Length + suffix.Length;
+            _cursorPosition = newCursorPos;
+            await SetCursorPosition(newCursorPos);
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error selecting wildcard collection '{Collection}'", collection.Name);
+        }
+    }
+
+    /// <summary>
+    /// Selects a LoRA resource - adds to Parameters.Loras and removes trigger from prompt.
+    /// </summary>
+    private async Task SelectLoraResource(LocalResource lora)
+    {
+        try
+        {
+            // Remove '<' trigger and any typed text from prompt FIRST
+            var textBeforeCursor = Value.Substring(0, _cursorPosition);
+            var lastLt = textBeforeCursor.LastIndexOf('<');
+            
+            if (lastLt >= 0)
+            {
+                var beforeTrigger = Value.Substring(0, lastLt);
+                var afterCursor = Value.Substring(_cursorPosition);
+                
+                // Clean up spacing
+                beforeTrigger = beforeTrigger.TrimEnd();
+                afterCursor = afterCursor.TrimStart();
+                
+                // Add proper spacing if needed
+                if (beforeTrigger.Length > 0 && afterCursor.Length > 0)
+                {
+                    if (!beforeTrigger.EndsWith(","))
+                    {
+                        beforeTrigger += "";  // No extra comma needed
+                    }
+                }
+                
+                var newValue = beforeTrigger + (afterCursor.Length > 0 ? " " : "") + afterCursor;
+                newValue = newValue.Trim();
+                
+                _isSelectingSuggestion = true;
+                _showSuggestions = false;
+                
+                // Update local value first
+                Value = newValue;
+                
+                // Force immediate MudTextField update
+                await _textFieldRef.SetText(newValue);
+                
+                // Force the text field to blur and refocus to ensure update
+                await _textFieldRef.BlurAsync();
+                
+                // Propagate to parent
+                await ValueChanged.InvokeAsync(newValue);
+                
+                // Small delay to ensure DOM is updated
+                await Task.Delay(50);
+                
+                _cursorPosition = beforeTrigger.Length + (afterCursor.Length > 0 ? 1 : 0);
+                await SetCursorPosition(_cursorPosition);
+                
+                // Refocus the field
+                await _textFieldRef.FocusAsync();
+                
+                // NOW invoke callback to add LoRA (after text is cleaned)
+                var loraItem = new Lora
+                {
+                    Name = lora.Title,
+                    Strength = 1.0f,
+                    IsEnabled = true
+                };
+                
+                await OnLoraSelected.InvokeAsync(loraItem);
+            }
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error selecting LoRA '{Lora}'", lora.Title);
+        }
+    }
+
+    /// <summary>
+    /// Selects a style - adds to Parameters.Styles and removes trigger from prompt.
+    /// </summary>
+    private async Task SelectStyleItem(PromptStyle style)
+    {
+        try
+        {
+            // Remove '@' trigger and any typed text from prompt FIRST
+            var textBeforeCursor = Value.Substring(0, _cursorPosition);
+            var lastAt = textBeforeCursor.LastIndexOf('@');
+            
+            if (lastAt >= 0)
+            {
+                var beforeTrigger = Value.Substring(0, lastAt);
+                var afterCursor = Value.Substring(_cursorPosition);
+                
+                // Clean up spacing
+                beforeTrigger = beforeTrigger.TrimEnd();
+                afterCursor = afterCursor.TrimStart();
+                
+                // Add proper spacing if needed
+                if (beforeTrigger.Length > 0 && afterCursor.Length > 0)
+                {
+                    if (!beforeTrigger.EndsWith(","))
+                    {
+                        beforeTrigger += "";  // No extra comma needed
+                    }
+                }
+                
+                var newValue = beforeTrigger + (afterCursor.Length > 0 ? " " : "") + afterCursor;
+                newValue = newValue.Trim();
+                
+                _isSelectingSuggestion = true;
+                _showSuggestions = false;
+                
+                // Update local value first
+                Value = newValue;
+                
+                // Force immediate MudTextField update
+                await _textFieldRef.SetText(newValue);
+                
+                // Force the text field to blur and refocus to ensure update
+                await _textFieldRef.BlurAsync();
+                
+                // Propagate to parent
+                await ValueChanged.InvokeAsync(newValue);
+                
+                // Small delay to ensure DOM is updated
+                await Task.Delay(50);
+                
+                _cursorPosition = beforeTrigger.Length + (afterCursor.Length > 0 ? 1 : 0);
+                await SetCursorPosition(_cursorPosition);
+                
+                // Refocus the field
+                await _textFieldRef.FocusAsync();
+                
+                // NOW invoke callback to add Style (after text is cleaned)
+                await OnStyleSelected.InvokeAsync(style);
+            }
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error selecting style '{Style}'", style.Name);
+        }
+    }
+    
+    #endregion
+
     [JSInvokable]
     public async Task HandleKeyDownFromJS(string key)
     {
         if (!_showSuggestions) return;
 
-        var totalTagsCount = _tagSuggestions.Count;
-        var totalWordsCount = _wordSuggestions.Count;
+        // Get total count based on current mode
+        var totalCount = _currentMode switch
+        {
+            AutocompleteMode.WildcardCategory => _wildcardCategorySuggestions.Count,
+            AutocompleteMode.WildcardCollection => _wildcardCollectionSuggestions.Count,
+            AutocompleteMode.Lora => _loraSuggestions.Count,
+            AutocompleteMode.Style => _styleSuggestions.Count,
+            AutocompleteMode.Tags => _tagSuggestions.Count + _wordSuggestions.Count,
+            _ => 0
+        };
+
+        if (totalCount == 0) return;
 
         switch (key)
         {
             case "ArrowDown":
-                if (_selectedSection == SuggestionSection.Tags && _selectedIndex < totalTagsCount - 1)
+                if (_currentMode == AutocompleteMode.Tags)
                 {
-                    _selectedIndex++;
+                    // Handle Tags mode with two sections
+                    var totalTagsCount = _tagSuggestions.Count;
+                    var totalWordsCount = _wordSuggestions.Count;
+                    
+                    if (_selectedSection == SuggestionSection.Tags && _selectedIndex < totalTagsCount - 1)
+                    {
+                        _selectedIndex++;
+                    }
+                    else if (_selectedSection == SuggestionSection.Tags && totalWordsCount > 0)
+                    {
+                        _selectedSection = SuggestionSection.Words;
+                        _selectedIndex = 0;
+                    }
+                    else if (_selectedSection == SuggestionSection.Words && _selectedIndex < totalWordsCount - 1)
+                    {
+                        _selectedIndex++;
+                    }
                 }
-                else if (_selectedSection == SuggestionSection.Tags && totalWordsCount > 0)
+                else
                 {
-                    _selectedSection = SuggestionSection.Words;
-                    _selectedIndex = 0;
-                }
-                else if (_selectedSection == SuggestionSection.Words && _selectedIndex < totalWordsCount - 1)
-                {
-                    _selectedIndex++;
+                    // Single list for other modes
+                    if (_selectedIndex < totalCount - 1)
+                    {
+                        _selectedIndex++;
+                    }
                 }
                 await InvokeAsync(StateHasChanged);
                 break;
 
             case "ArrowUp":
-                if (_selectedIndex > 0)
+                if (_currentMode == AutocompleteMode.Tags)
                 {
-                    _selectedIndex--;
+                    // Handle Tags mode with two sections
+                    var totalTagsCount = _tagSuggestions.Count;
+                    
+                    if (_selectedIndex > 0)
+                    {
+                        _selectedIndex--;
+                    }
+                    else if (_selectedSection == SuggestionSection.Words && totalTagsCount > 0)
+                    {
+                        _selectedSection = SuggestionSection.Tags;
+                        _selectedIndex = totalTagsCount - 1;
+                    }
                 }
-                else if (_selectedSection == SuggestionSection.Words && totalTagsCount > 0)
+                else
                 {
-                    _selectedSection = SuggestionSection.Tags;
-                    _selectedIndex = totalTagsCount - 1;
+                    // Single list for other modes
+                    if (_selectedIndex > 0)
+                    {
+                        _selectedIndex--;
+                    }
                 }
                 await InvokeAsync(StateHasChanged);
                 break;
 
             case "Enter":
             case "Tab":
-                if (_selectedSection == SuggestionSection.Tags && _tagSuggestions.Any())
-                {
-                    await InvokeAsync(async () => await SelectTag(_tagSuggestions[_selectedIndex]));
-                }
-                else if (_selectedSection == SuggestionSection.Words && _wordSuggestions.Any())
-                {
-                    await InvokeAsync(async () => await SelectWord(_wordSuggestions[_selectedIndex].Word));
-                }
+                await SelectCurrentItem();
                 break;
 
             case "Escape":
@@ -338,18 +1394,141 @@
         }
     }
 
-    [JSInvokable]
-    public bool IsDropdownVisible() => _showSuggestions;
+    /// <summary>
+    /// Selects the currently highlighted item based on mode and index.
+    /// </summary>
+    private async Task SelectCurrentItem()
+    {
+        switch (_currentMode)
+        {
+            case AutocompleteMode.WildcardCategory:
+                if (_selectedIndex < _wildcardCategorySuggestions.Count)
+                {
+                    await SelectWildcardCategory(_wildcardCategorySuggestions[_selectedIndex]);
+                }
+                break;
+                
+            case AutocompleteMode.WildcardCollection:
+                if (_selectedIndex < _wildcardCollectionSuggestions.Count)
+                {
+                    await SelectWildcardCollection(_wildcardCollectionSuggestions[_selectedIndex]);
+                }
+                break;
+                
+            case AutocompleteMode.Lora:
+                if (_selectedIndex < _loraSuggestions.Count)
+                {
+                    await SelectLoraResource(_loraSuggestions[_selectedIndex]);
+                }
+                break;
+                
+            case AutocompleteMode.Style:
+                if (_selectedIndex < _styleSuggestions.Count)
+                {
+                    await SelectStyleItem(_styleSuggestions[_selectedIndex]);
+                }
+                break;
+                
+            case AutocompleteMode.Tags:
+                if (_selectedSection == SuggestionSection.Tags && _selectedIndex < _tagSuggestions.Count)
+                {
+                    await SelectTag(_tagSuggestions[_selectedIndex]);
+                }
+                else if (_selectedSection == SuggestionSection.Words && _selectedIndex < _wordSuggestions.Count)
+                {
+                    await SelectWord(_wordSuggestions[_selectedIndex].Word);
+                }
+                break;
+        }
+    }
 
     private async Task SelectTag(Tag tag)
     {
-        await InsertSuggestion(tag.Name);
+        // If # trigger was used, remove it before inserting
+        if (_forcedTagQuery != null)
+        {
+            await InsertSuggestionWithTriggerRemoval(tag.Name, '#');
+        }
+        else
+        {
+            await InsertSuggestion(tag.Name);
+        }
         CacheService.IncrementTagUsage(tag.Name);
     }
 
     private async Task SelectWord(string word)
     {
-        await InsertSuggestion(word);
+        // If # trigger was used, remove it before inserting
+        if (_forcedTagQuery != null)
+        {
+            await InsertSuggestionWithTriggerRemoval(word, '#');
+        }
+        else
+        {
+            await InsertSuggestion(word);
+        }
+    }
+
+    /// <summary>
+    /// Inserts a suggestion while removing the trigger character and typed query.
+    /// </summary>
+    private async Task InsertSuggestionWithTriggerRemoval(string suggestion, char trigger)
+    {
+        try
+        {
+            var textBeforeCursor = Value.Substring(0, _cursorPosition);
+            var lastTrigger = textBeforeCursor.LastIndexOf(trigger);
+            
+            if (lastTrigger < 0)
+            {
+                // Fallback to regular insertion
+                await InsertSuggestion(suggestion);
+                return;
+            }
+            
+            var beforeTrigger = Value.Substring(0, lastTrigger);
+            var afterCursor = Value.Substring(_cursorPosition);
+            
+            // Build new value with proper formatting
+            var beforeTrimmed = beforeTrigger.TrimEnd();
+            var afterTrimmed = afterCursor.TrimStart();
+            
+            string prefix = "";
+            if (beforeTrimmed.Length > 0)
+            {
+                prefix = beforeTrimmed.EndsWith(",") ? " " : ", ";
+            }
+
+            string suffix = "";
+            if (afterTrimmed.Length > 0)
+            {
+                suffix = afterTrimmed.StartsWith(",") ? (afterTrimmed.StartsWith(", ") ? "" : " ") : ", ";
+            }
+            else
+            {
+                suffix = ", ";
+            }
+
+            var newValue = $"{beforeTrimmed}{prefix}{suggestion}{suffix}{afterTrimmed}";
+
+            _showSuggestions = false;
+            _isSelectingSuggestion = true;
+            _forcedTagQuery = null;
+
+            Value = newValue;
+            await _textFieldRef.SetText(newValue);
+            await ValueChanged.InvokeAsync(newValue);
+
+            StateHasChanged();
+            await Task.Delay(50);
+
+            var newCursorPos = beforeTrimmed.Length + prefix.Length + suggestion.Length + suffix.Length;
+            await SetCursorPosition(newCursorPos);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error inserting suggestion with trigger removal");
+        }
     }
 
     private async Task InsertSuggestion(string suggestion)

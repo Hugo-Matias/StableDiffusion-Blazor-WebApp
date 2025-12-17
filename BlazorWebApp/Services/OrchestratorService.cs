@@ -142,6 +142,29 @@ namespace BlazorWebApp.Services
         
         public void GetComfyWorkflows() => _state.State.Generation.Workflows = _workflow.GetWorkflows();
         
+        /// <summary>
+        /// Force refresh workflows from disk, reloading all template files.
+        /// Use this after editing workflow template files during development.
+        /// </summary>
+        public void RefreshWorkflowsFromDisk()
+        {
+            var (workflows, suggestedBase, suggestedId) = _workflow.RefreshWorkflows(
+                _state.State?.Generation?.WorkflowBase,
+                _state.State?.Generation?.CurrentWorkflowId
+            );
+            
+            if (_state.State?.Generation != null)
+            {
+                _state.State.Generation.Workflows = workflows;
+                if (suggestedBase.HasValue) _state.State.Generation.WorkflowBase = suggestedBase.Value;
+                if (suggestedId.HasValue) _state.State.Generation.CurrentWorkflowId = suggestedId.Value;
+            }
+
+            _events.Publish(new WorkflowChangedEventArgs(
+                _state.State?.Generation?.CurrentWorkflowId ?? Guid.Empty, 
+                "RefreshFromDisk"));
+        }
+        
         public void SetCurrentWorkflow(Guid workflowId, ModeType? mode = null)
         {
             var workflow = GetWorkflowById(workflowId);

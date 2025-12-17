@@ -85,6 +85,12 @@ builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddScoped<OllamaService>();
 
+// Wildcard service for prompt wildcard management
+builder.Services.AddSingleton<IWildcardService, WildcardService>();
+
+// Info service for contextual help/shortcuts across the app
+builder.Services.AddSingleton<IInfoService, InfoService>();
+
 // MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 
