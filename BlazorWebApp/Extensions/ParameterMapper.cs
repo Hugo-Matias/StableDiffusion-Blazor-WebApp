@@ -38,7 +38,8 @@ namespace BlazorWebApp.Extensions
                 },
                 Detailer = null, // ADetailer removed - Scripts system no longer supported
                 SeedVR2 = src.SeedVR2,
-                ConditioningVariation = src.ConditioningVariation
+                ConditioningVariation = src.ConditioningVariation,
+                SeedVarianceEnhancer = src.SeedVarianceEnhancer
             };
 
             return param;

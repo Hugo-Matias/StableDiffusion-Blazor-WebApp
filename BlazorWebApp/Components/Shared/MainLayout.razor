@@ -37,7 +37,11 @@
                                Variant="Variant.Outlined"
                                Class="base-selector"
                                AnchorOrigin="Origin.BottomCenter" 
-                               TransformOrigin="Origin.TopCenter">
+                               TransformOrigin="Origin.TopCenter"
+                               Adornment="Adornment.End"
+                               AdornmentIcon="@Icons.Material.Filled.Refresh"
+                               AdornmentColor="Color.Inherit"
+                               OnAdornmentClick="RefreshWorkflows">
                         @foreach (var workflowBase in _workflowBases)
                         {
                             <MudSelectItem Value="@workflowBase" />
@@ -186,6 +190,13 @@
         {
             NavManager.NavigateTo("/");
         }
+    }
+
+    private void RefreshWorkflows()
+    {
+        M.RefreshWorkflowsFromDisk();
+        LoadWorkflowBases();
+        StateHasChanged();
     }
 
     /// <summary>

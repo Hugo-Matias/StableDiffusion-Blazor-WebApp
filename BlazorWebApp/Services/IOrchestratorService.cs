@@ -115,6 +115,12 @@ namespace BlazorWebApp.Services
         void GetComfyWorkflows();
 
         /// <summary>
+        /// Force refresh workflows from disk, reloading all template files.
+        /// Use this after editing workflow template files during development.
+        /// </summary>
+        void RefreshWorkflowsFromDisk();
+
+        /// <summary>
         /// Sets the current workflow by ID.
         /// </summary>
         void SetCurrentWorkflow(Guid workflowId, ModeType? mode = null);

@@ -41,7 +41,20 @@
         "positive": {{ Prompt | json }},
         "negative": {{ NegativePrompt | json }}
       }
-    }, 
+    },
+    {
+      "fragment": "seed-variance-enhancer.sbn",
+      "parameters": {
+        "randomize_percent": {{ SeedVarianceEnhancer.RandomizePercent ?? 50 | json }},
+        "strength": {{ SeedVarianceEnhancer.Strength ?? 20 | json }},
+        "noise_insert": {{ SeedVarianceEnhancer.NoiseInsert ?? "noise on beginning steps" | json }},
+        "steps_switchover_percent": {{ SeedVarianceEnhancer.StepsSwitchoverPercent ?? 20 | json }},
+        "seed": {{ SeedVarianceEnhancer.Seed ?? 0 | json }},
+        "mask_starts_at": {{ SeedVarianceEnhancer.MaskStartsAt ?? "beginning" | json }},
+        "mask_percent": {{ SeedVarianceEnhancer.MaskPercent ?? 0 | json }},
+        "log_to_console": {{ SeedVarianceEnhancer.LogToConsole ?? false | json }}
+      }
+    },
     {
       "fragment": "conditioning-variation.sbn",
       "parameters": {

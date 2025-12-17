@@ -359,6 +359,7 @@ namespace BlazorWebApp.Services
             }
             _txt2imgParams.SeedVR2 = _state.ParametersTxt2Img.SeedVR2;
             _txt2imgParams.ConditioningVariation = _state.ParametersTxt2Img.ConditioningVariation;
+            _txt2imgParams.SeedVarianceEnhancer = _state.ParametersTxt2Img.SeedVarianceEnhancer;
         }
 
         private async Task<Img2ImgParameters> BuildImg2ImgParametersAsync(string scriptName)

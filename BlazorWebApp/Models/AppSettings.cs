@@ -1,4 +1,3 @@
-
 namespace BlazorWebApp.Models
 {
     public class AppSettings
@@ -138,6 +137,7 @@ namespace BlazorWebApp.Models
         public HighresSettingsModel HighRes { get; set; } = new();
         public SeedVR2Settings SeedVR2 { get; set; } = new();
         public ConditioningVariationSettings ConditioningVariation { get; set; } = new();
+        public SeedVarianceEnhancerSettings SeedVarianceEnhancer { get; set; } = new();
     }
     public class HighresSettingsModel
     {
@@ -202,6 +202,19 @@ namespace BlazorWebApp.Models
     {
         public bool Enabled { get; set; } = false;
         public DoubleRange SwitchPoint { get; set; } = new() { Min = 0, Max = 1, Value = 0.2, Step = 0.05 };
+    }
+
+    public class SeedVarianceEnhancerSettings
+    {
+        public bool Enabled { get; set; } = false;
+        public IntRange RandomizePercent { get; set; } = new() { Min = 0, Max = 100, Value = 50, Step = 5 };
+        public IntRange Strength { get; set; } = new() { Min = 0, Max = 100, Value = 20, Step = 1 };
+        public List<string> NoiseInsertOptions { get; set; } = new() { "noise on beginning steps", "noise on ending steps", "noise on all steps", "disabled" };
+        public string DefaultNoiseInsert { get; set; } = "noise on beginning steps";
+        public IntRange StepsSwitchoverPercent { get; set; } = new() { Min = 0, Max = 100, Value = 20, Step = 5 };
+        public List<string> MaskStartsAtOptions { get; set; } = new() { "beginning", "end" };
+        public string DefaultMaskStartsAt { get; set; } = "beginning";
+        public IntRange MaskPercent { get; set; } = new() { Min = 0, Max = 100, Value = 0, Step = 5 };
     }
     #endregion
 

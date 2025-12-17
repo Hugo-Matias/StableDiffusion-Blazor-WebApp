@@ -12,8 +12,9 @@ namespace BlazorWebApp.Models
         public int HRSecondPassSteps { get; set; }
         public int HRWidth { get; set; }
         public int HRHeight { get; set; }
-        public SeedVR2Parameters SeedVR2 { get; set; }
-        public ConditioningVariationParameters ConditioningVariation { get; set; }
+        public SeedVR2Parameters SeedVR2 { get; set; } = new();
+        public ConditioningVariationParameters ConditioningVariation { get; set; } = new();
+        public SeedVarianceEnhancerParameters SeedVarianceEnhancer { get; set; } = new();
 
         public Txt2ImgParameters() { }
         public Txt2ImgParameters(SharedParameters clone)
