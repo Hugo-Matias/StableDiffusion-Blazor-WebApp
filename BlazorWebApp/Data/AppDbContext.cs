@@ -157,5 +157,6 @@ namespace BlazorWebApp.Data
         public DbSet<Selection> Selections { get; set; }
         public DbSet<WildcardCollection> WildcardCollections { get; set; }
         public DbSet<WildcardEntry> WildcardEntries { get; set; }
+        public DbSet<SystemPromptTemplate> SystemPromptTemplates { get; set; }
     }
 }

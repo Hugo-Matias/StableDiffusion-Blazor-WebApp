@@ -174,3 +174,34 @@ body:has(.image-editor-overlay) .mud-menu-popover {
 .menu-icon.error {
     color: var(--mud-palette-error);
 }
+
+/* ===========================================
+   MudButtonGroup Customization
+   Remove vertical divider lines for text variant
+   and increase spacing between buttons
+   =========================================== */
+
+/* Remove vertical divider lines between buttons in text variant */
+.mud-button-group-text .mud-button-group-root .mud-button-root:not(:first-child),
+.mud-button-group-text > .mud-button-root:not(:first-child),
+.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(.mud-button-group-rtl) .mud-button-root:not(:first-child) {
+    border-left: 0 !important;
+}
+
+/* Also remove any border-right from non-last children */
+.mud-button-group-text .mud-button-group-root .mud-button-root:not(:last-child),
+.mud-button-group-text > .mud-button-root:not(:last-child),
+.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(.mud-button-group-rtl) .mud-button-root:not(:last-child) {
+    border-right: 0 !important;
+}
+
+/* Increase gap between buttons in button groups */
+.mud-button-group-root {
+    gap: 4px !important;
+}
+
+/* Ensure buttons in text variant have some horizontal spacing */
+.mud-button-group-text .mud-button-root {
+    margin-left: 2px !important;
+    margin-right: 2px !important;
+}

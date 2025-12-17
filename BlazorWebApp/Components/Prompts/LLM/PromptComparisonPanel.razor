@@ -1,0 +1,189 @@
+@inject IJSRuntime JSRuntime
+
+@if (!string.IsNullOrEmpty(OriginalPrompt) && !string.IsNullOrEmpty(ResultPrompt))
+{
+    <MudPaper Class="pa-4" Outlined>
+        <MudText Typo="Typo.subtitle2" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Compare" Size="Size.Small" Class="mr-1" />
+            Comparison
+        </MudText>
+        
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Original
+                        </MudText>
+                        <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                            ~@GetTokenCount(OriginalPrompt) tokens
+                        </MudChip>
+                    </div>
+                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+                        @OriginalPrompt
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+            
+            <MudItem xs="12" md="8">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <MudText Typo="Typo.caption" Color="Color.Success">
+                            @OperationType Result
+                        </MudText>
+                        <div class="d-flex align-center gap-2">
+                            <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                ~@GetTokenCount(_editableResult) tokens
+                            </MudChip>
+                            <MudChip Size="Size.Small" 
+                                     Color="@GetImprovementColor()"
+                                     Icon="@Icons.Material.Filled.TrendingUp">
+                                @GetImprovementPercentage()%
+                            </MudChip>
+                        </div>
+                    </div>
+                    
+                    <MudTextField @bind-Value="_editableResult"
+                                  Variant="Variant.Outlined"
+                                  Lines="6"
+                                  Immediate />
+                    
+                    <div class="d-flex gap-2 mt-3 flex-wrap">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   Size="Size.Small"
+                                   OnClick="HandleApply"
+                                   StartIcon="@Icons.Material.Filled.Check">
+                            Apply
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="HandleRegenerate"
+                                   StartIcon="@Icons.Material.Filled.Refresh">
+                            Regenerate
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   OnClick="HandleCopy"
+                                   StartIcon="@Icons.Material.Filled.ContentCopy">
+                            Copy
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Tertiary"
+                                   Size="Size.Small"
+                                   OnClick="HandleSaveToLibrary"
+                                   StartIcon="@Icons.Material.Filled.SaveAlt">
+                            Save to Library
+                        </MudButton>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="HandleClear"
+                                   StartIcon="@Icons.Material.Filled.Clear">
+                            Clear
+                        </MudButton>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public string OriginalPrompt { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ResultPrompt { get; set; } = string.Empty;
+
+    [Parameter]
+    public string OperationType { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> OnApply { get; set; }
+
+    [Parameter]
+    public EventCallback OnRegenerate { get; set; }
+
+    [Parameter]
+    public EventCallback OnClear { get; set; }
+    
+    [Parameter]
+    public EventCallback<string> OnSaveToLibrary { get; set; }
+
+    private string _editableResult = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(ResultPrompt))
+        {
+            _editableResult = ResultPrompt;
+        }
+    }
+
+    private int GetTokenCount(string text)
+    {
+        return string.IsNullOrEmpty(text) ? 0 : (text.Length / 4);
+    }
+
+    private Color GetImprovementColor()
+    {
+        var diff = GetTokenCount(_editableResult) - GetTokenCount(OriginalPrompt);
+        return diff > 0 ? Color.Success : Color.Warning;
+    }
+
+    private int GetImprovementPercentage()
+    {
+        var original = GetTokenCount(OriginalPrompt);
+        var result = GetTokenCount(_editableResult);
+        
+        if (original == 0) return 0;
+        
+        return (int)(((float)(result - original) / original) * 100);
+    }
+
+    private async Task HandleApply()
+    {
+        if (OnApply.HasDelegate)
+        {
+            await OnApply.InvokeAsync(_editableResult);
+        }
+    }
+
+    private async Task HandleRegenerate()
+    {
+        if (OnRegenerate.HasDelegate)
+        {
+            await OnRegenerate.InvokeAsync();
+        }
+    }
+
+    private async Task HandleCopy()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _editableResult);
+        }
+        catch
+        {
+            // Clipboard API might not be available
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        if (OnClear.HasDelegate)
+        {
+            await OnClear.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleSaveToLibrary()
+    {
+        if (OnSaveToLibrary.HasDelegate)
+        {
+            await OnSaveToLibrary.InvokeAsync(_editableResult);
+        }
+    }
+}

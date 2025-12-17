@@ -27,6 +27,7 @@ namespace BlazorWebApp.Services
             InitializeDatabase();
             PopulateModes();
             PopulateSamplers();
+            SeedDefaultSystemPromptTemplates();
         }
 
         public async Task InitializeDatabase()
@@ -1274,6 +1275,101 @@ namespace BlazorWebApp.Services
                     await context.SaveChangesAsync();
                 }
             }
+        }
+
+        #endregion
+
+        #region System Prompt Template Operations
+
+        private async void SeedDefaultSystemPromptTemplates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            
+            // Check if default templates already exist
+            var existingDefaults = await context.SystemPromptTemplates
+                .Where(t => t.IsDefault)
+                .CountAsync();
+            
+            if (existingDefaults > 0)
+                return; // Default templates already seeded
+            
+            var defaultTemplates = new List<SystemPromptTemplate>
+            {
+                new SystemPromptTemplate
+                {
+                    Name = "Enhance (Default)",
+                    Description = "Expand simple prompts with artistic details",
+                    Template = "You are an expert at expanding concise prompts into detailed, descriptive image generation prompts. Given a simple prompt, add artistic details, lighting, mood, composition elements, and sensory descriptions. Keep the core concept but make it vivid and specific. Output only the enhanced prompt without explanation.",
+                    IsDefault = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "Simplify (Default)",
+                    Description = "Distill complex prompts to essential elements",
+                    Template = "You are an expert at distilling complex prompts to their essential elements. Given a detailed prompt, identify and keep only the most important descriptors. Remove redundancy, excessive detail, and unnecessary modifiers. Output only the simplified prompt without explanation.",
+                    IsDefault = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "Negative Prompt (Default)",
+                    Description = "Expand negative prompts with quality issues to avoid",
+                    Template = "You are an expert at expanding negative prompts for image generation. Given a simple negative prompt, expand it with specific details about what to avoid, artifacts, quality issues, and undesired elements. Keep it concise. Output only the expanded negative prompt without explanation.",
+                    IsDefault = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            };
+            
+            await context.SystemPromptTemplates.AddRangeAsync(defaultTemplates);
+            await context.SaveChangesAsync();
+            
+            _logger.LogInformation("Seeded {Count} default system prompt templates", defaultTemplates.Count);
+        }
+
+        public async Task<List<SystemPromptTemplate>> GetSystemPromptTemplates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.SystemPromptTemplates
+                .OrderBy(t => t.IsDefault ? 0 : 1)
+                .ThenBy(t => t.Name)
+                .ToListAsync();
+        }
+
+        public async Task<SystemPromptTemplate?> GetSystemPromptTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.SystemPromptTemplates.FindAsync(id);
+        }
+
+        public async Task<bool> CreateSystemPromptTemplate(SystemPromptTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            template.CreatedAt = DateTime.UtcNow;
+            template.UpdatedAt = DateTime.UtcNow;
+            await context.SystemPromptTemplates.AddAsync(template);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> UpdateSystemPromptTemplate(SystemPromptTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            template.UpdatedAt = DateTime.UtcNow;
+            context.SystemPromptTemplates.Update(template);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> DeleteSystemPromptTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var template = await context.SystemPromptTemplates.FindAsync(id);
+            if (template == null || template.IsDefault) return false;
+            
+            context.SystemPromptTemplates.Remove(template);
+            return await context.SaveChangesAsync() > 0;
         }
 
         #endregion

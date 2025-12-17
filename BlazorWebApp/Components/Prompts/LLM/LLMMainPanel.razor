@@ -1,0 +1,463 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@inject OllamaService OllamaService
+@inject IStateService State
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@inject IDatabaseService DB
+
+<MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+    <MudTabs @bind-ActivePanelIndex="_activeTab" 
+             Elevation="0" 
+             Rounded 
+             PanelClass="pt-4">
+        <MudTabPanel Text="Enhance / Simplify" Icon="@Icons.Material.Filled.AutoAwesome">
+            <MudStack Spacing="3">
+                @* Input Prompt *@
+                <MudTextField @bind-Value="_inputPrompt"
+                              Label="Input Prompt"
+                              Variant="Variant.Outlined"
+                              Lines="4"
+                              Placeholder="Enter your prompt here..."
+                              Disabled="_isProcessing"
+                              Immediate />
+                
+                @* Operation Buttons *@
+                <div class="d-flex gap-2 align-center flex-wrap">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="HandleEnhance"
+                               Disabled="_isProcessing || string.IsNullOrWhiteSpace(_inputPrompt)"
+                               StartIcon="@Icons.Material.Filled.TrendingUp">
+                        @(_isProcessing && _currentOperation == "Enhanced" ? "Enhancing..." : "Enhance")
+                    </MudButton>
+                    
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               OnClick="HandleSimplify"
+                               Disabled="_isProcessing || string.IsNullOrWhiteSpace(_inputPrompt)"
+                               StartIcon="@Icons.Material.Filled.TrendingDown">
+                        @(_isProcessing && _currentOperation == "Simplified" ? "Simplifying..." : "Simplify")
+                    </MudButton>
+                    
+                    <MudSpacer />
+                    
+                    <MudIconButton Icon="@Icons.Material.Filled.Undo"
+                                  Color="Color.Default"
+                                  OnClick="Undo"
+                                  Disabled="_isProcessing || _history.Count == 0"
+                                  Title="Undo" />
+                                  
+                    <MudIconButton Icon="@Icons.Material.Filled.Redo"
+                                  Color="Color.Default"
+                                  OnClick="Redo"
+                                  Disabled="_isProcessing || _redoStack.Count == 0"
+                                  Title="Redo" />
+                </div>
+                
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Dense Variant="Variant.Outlined">
+                        @_errorMessage
+                    </MudAlert>
+                }
+                
+                @* Comparison Panel *@
+                @if (!string.IsNullOrEmpty(_resultPrompt))
+                {
+                    <PromptComparisonPanel OriginalPrompt="@_inputPrompt"
+                                           ResultPrompt="@_resultPrompt"
+                                           OperationType="@_currentOperation"
+                                           OnApply="HandleApplyResult"
+                                           OnRegenerate="HandleRegenerateResult"
+                                           OnClear="HandleClearResult"
+                                           OnSaveToLibrary="HandleSaveToLibrary" />
+                }
+            </MudStack>
+        </MudTabPanel>
+        
+        <MudTabPanel Text="System Prompts" Icon="@Icons.Material.Filled.Code">
+            <SystemPromptEditor @ref="_systemPromptEditor"
+                                OnTemplateChanged="HandleTemplateChanged" />
+        </MudTabPanel>
+        
+        <MudTabPanel Text="Batch Processing" Icon="@Icons.Material.Filled.BatchPrediction">
+            <BatchProcessingPanel SelectedModel="@SelectedModel"
+                                  GetCurrentTemplate="GetCurrentTemplate" />
+        </MudTabPanel>
+        
+        <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History" 
+                     BadgeData="@(_history.Count > 0 ? _history.Count.ToString() : null)"
+                     BadgeColor="Color.Info">
+            @if (_history.Any())
+            {
+                <MudStack Spacing="2">
+                    <div class="d-flex gap-2 align-center">
+                        <MudText Typo="Typo.subtitle2">Recent Operations</MudText>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="ClearHistory"
+                                   StartIcon="@Icons.Material.Filled.Clear"
+                                   Color="Color.Error">
+                            Clear All
+                        </MudButton>
+                    </div>
+                    
+                    <MudList Clickable Dense>
+                        @foreach (var entry in _history)
+                        {
+                            <MudListItem OnClick="@(() => RestoreFromHistory(entry))">
+                                <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                    <div style="flex: 1;">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@GetOperationIcon(entry.Operation)" 
+                                                     Size="Size.Small" 
+                                                     Color="@GetOperationColor(entry.Operation)" />
+                                            <MudText Typo="Typo.body2">
+                                                @entry.Operation
+                                            </MudText>
+                                            <MudChip Size="Size.Small" Variant="Variant.Text">
+                                                @entry.ModelUsed
+                                            </MudChip>
+                                            @if (entry.IsSavedToDb)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.CloudDone" 
+                                                         Size="Size.Small" 
+                                                         Color="Color.Success"
+                                                         Title="Saved to library" />
+                                            }
+                                        </div>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @entry.Timestamp.ToString("HH:mm:ss") - @TruncateText(entry.OriginalPrompt, 80)
+                                        </MudText>
+                                    </div>
+                                    <MudIconButton Icon="@Icons.Material.Filled.RestorePage"
+                                                  Size="Size.Small"
+                                                  Color="Color.Info"
+                                                  Title="Restore"
+                                                  OnClick="@(() => RestoreFromHistory(entry))" />
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 300px;">
+                    <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.h6" Color="Color.Default">No History Yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                        Generate some prompts to see them here
+                    </MudText>
+                </MudStack>
+            }
+        </MudTabPanel>
+    </MudTabs>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public string SelectedModel { get; set; } = string.Empty;
+
+    private SystemPromptEditor? _systemPromptEditor;
+    private int _activeTab;
+    private string _inputPrompt = string.Empty;
+    private string _resultPrompt = string.Empty;
+    private string _currentOperation = string.Empty;
+    private string _currentSystemPrompt = string.Empty;
+    private bool _isProcessing;
+    private string? _errorMessage;
+    
+    // History management
+    private List<PromptHistoryEntry> _history = new();
+    private Stack<PromptHistoryEntry> _redoStack = new();
+    private const int MaxHistorySize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistoryFromStorage();
+    }
+
+    private async Task LoadHistoryFromStorage()
+    {
+        try
+        {
+            var historyJson = await JSRuntime.InvokeAsync<List<PromptHistoryEntry>>("PromptHistoryStorage.getHistory");
+            if (historyJson != null && historyJson.Any())
+            {
+                _history = historyJson;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not load history from LocalStorage: {ex.Message}");
+        }
+    }
+
+    private async Task SaveHistoryToStorage()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("PromptHistoryStorage.saveHistory", _history);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not save history to LocalStorage: {ex.Message}");
+        }
+    }
+
+    private async Task HandleTemplateChanged(string template)
+    {
+        _currentSystemPrompt = template;
+    }
+
+    private async Task HandleEnhance()
+    {
+        _currentOperation = "Enhanced";
+        await ProcessPrompt();
+    }
+
+    private async Task HandleSimplify()
+    {
+        _currentOperation = "Simplified";
+        await ProcessPrompt();
+    }
+
+    private async Task ProcessPrompt()
+    {
+        if (string.IsNullOrWhiteSpace(_inputPrompt))
+        {
+            _errorMessage = "Please enter a prompt first.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedModel))
+        {
+            _errorMessage = "Please select an LLM model first.";
+            return;
+        }
+
+        _isProcessing = true;
+        _errorMessage = null;
+        _resultPrompt = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var systemPrompt = GetCurrentTemplate() 
+                ?? (_currentOperation == "Enhanced" ? GetEnhanceSystemPrompt() : GetSimplifySystemPrompt());
+
+            var messages = new List<OllamaChatMessage>
+            {
+                new OllamaChatMessage { Role = "system", Content = systemPrompt },
+                new OllamaChatMessage { Role = "user", Content = _inputPrompt }
+            };
+
+            var response = await OllamaService.SendChatMessage(
+                SelectedModel,
+                messages,
+                State.State.Generation.LLM.Options.ToOllamaOptions());
+
+            if (response?.Message?.Content != null)
+            {
+                _resultPrompt = response.Message.Content;
+                
+                await AddToHistory(new PromptHistoryEntry
+                {
+                    Operation = _currentOperation,
+                    OriginalPrompt = _inputPrompt,
+                    ResultPrompt = _resultPrompt,
+                    TemplateName = GetCurrentTemplateName(),
+                    ModelUsed = SelectedModel
+                });
+            }
+            else
+            {
+                _errorMessage = "No response received from model.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error processing prompt: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetEnhanceSystemPrompt()
+    {
+        return "You are an expert at expanding concise prompts into detailed, descriptive image generation prompts. Given a simple prompt, add artistic details, lighting, mood, composition elements, and sensory descriptions. Keep the core concept but make it vivid and specific. Output only the enhanced prompt without explanation.";
+    }
+
+    private string GetSimplifySystemPrompt()
+    {
+        return "You are an expert at distilling complex prompts to their essential elements. Given a detailed prompt, identify and keep only the most important descriptors. Remove redundancy, excessive detail, and unnecessary modifiers. Output only the simplified prompt without explanation.";
+    }
+
+    private async Task HandleApplyResult(string result)
+    {
+        _inputPrompt = result;
+        _resultPrompt = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task HandleRegenerateResult()
+    {
+        await ProcessPrompt();
+    }
+
+    private async Task HandleClearResult()
+    {
+        _resultPrompt = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task HandleSaveToLibrary(string result)
+    {
+        try
+        {
+            var newPrompt = new Prompt
+            {
+                Title = $"{_currentOperation} Prompt - {DateTime.Now:yyyy-MM-dd HH:mm}",
+                Positive = result,
+                Loras = new List<Lora>(),
+                Category = "LLM Generated",
+                Tags = new List<string> { _currentOperation, "AI Generated" }
+            };
+            
+            await DB.CreatePrompt(newPrompt);
+            Snackbar.Add("Prompt saved to library successfully!", Severity.Success);
+            
+            if (_history.Any())
+            {
+                var latestEntry = _history[0];
+                latestEntry.IsSavedToDb = true;
+                await SaveHistoryToStorage();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving to library: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AddToHistory(PromptHistoryEntry entry)
+    {
+        _history.Insert(0, entry);
+        _redoStack.Clear();
+        
+        if (_history.Count > MaxHistorySize)
+        {
+            _history = _history.Take(MaxHistorySize).ToList();
+        }
+        
+        await SaveHistoryToStorage();
+        StateHasChanged();
+    }
+
+    private async Task Undo()
+    {
+        if (_history.Count == 0) return;
+        
+        var entry = _history[0];
+        _history.RemoveAt(0);
+        _redoStack.Push(entry);
+        
+        if (_history.Count > 0)
+        {
+            var previousEntry = _history[0];
+            _inputPrompt = previousEntry.OriginalPrompt;
+            _resultPrompt = previousEntry.ResultPrompt;
+            _currentOperation = previousEntry.Operation;
+        }
+        else
+        {
+            _inputPrompt = string.Empty;
+            _resultPrompt = string.Empty;
+        }
+        
+        await SaveHistoryToStorage();
+        StateHasChanged();
+    }
+
+    private async Task Redo()
+    {
+        if (_redoStack.Count == 0) return;
+        
+        var entry = _redoStack.Pop();
+        _history.Insert(0, entry);
+        
+        _inputPrompt = entry.OriginalPrompt;
+        _resultPrompt = entry.ResultPrompt;
+        _currentOperation = entry.Operation;
+        
+        await SaveHistoryToStorage();
+        StateHasChanged();
+    }
+
+    private async Task RestoreFromHistory(PromptHistoryEntry entry)
+    {
+        _inputPrompt = entry.OriginalPrompt;
+        _resultPrompt = entry.ResultPrompt;
+        _currentOperation = entry.Operation;
+        
+        // Switch to the Enhance/Simplify tab
+        _activeTab = 0;
+        
+        Snackbar.Add($"Restored {entry.Operation} operation from history", Severity.Info);
+        StateHasChanged();
+    }
+
+    private async Task ClearHistory()
+    {
+        _history.Clear();
+        _redoStack.Clear();
+        
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("PromptHistoryStorage.clearHistory");
+            Snackbar.Add("History cleared", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not clear history from LocalStorage: {ex.Message}");
+        }
+        
+        StateHasChanged();
+    }
+
+    private string GetOperationIcon(string operation)
+    {
+        return operation switch
+        {
+            "Enhanced" => Icons.Material.Filled.TrendingUp,
+            "Simplified" => Icons.Material.Filled.TrendingDown,
+            _ => Icons.Material.Filled.Edit
+        };
+    }
+
+    private Color GetOperationColor(string operation)
+    {
+        return operation switch
+        {
+            "Enhanced" => Color.Primary,
+            "Simplified" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+
+    // Public methods for accessing system prompt editor
+    private string? GetCurrentTemplate() => _systemPromptEditor?.GetCurrentTemplate();
+    private string? GetCurrentTemplateName() => _systemPromptEditor?.GetCurrentTemplateName();
+}

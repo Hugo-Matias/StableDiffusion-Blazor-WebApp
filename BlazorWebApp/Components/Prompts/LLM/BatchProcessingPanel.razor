@@ -1,0 +1,319 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@inject IDatabaseService DB
+@inject ISnackbar Snackbar
+@inject OllamaService OllamaService
+@inject IJSRuntime JSRuntime
+@inject IStateService State
+
+<MudStack Spacing="3">
+    @if (_isLoadingPrompts)
+    {
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 300px;">
+            <MudProgressCircular Indeterminate Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Color="Color.Default">Loading prompts...</MudText>
+        </MudStack>
+    }
+    else if (_availablePrompts != null && _availablePrompts.Any())
+    {
+        @* Operation Selection *@
+        <div class="d-flex gap-3 align-center flex-wrap">
+            <MudSelect T="string"
+                       @bind-Value="_selectedOperation"
+                       Label="Operation"
+                       Variant="Variant.Outlined"
+                       Dense
+                       Style="max-width: 200px;"
+                       Disabled="_isProcessing">
+                <MudSelectItem Value="@("Enhanced")">Enhance</MudSelectItem>
+                <MudSelectItem Value="@("Simplified")">Simplify</MudSelectItem>
+            </MudSelect>
+            
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="ProcessBatch"
+                       Disabled="_isProcessing || !_selectedPrompts.Any() || string.IsNullOrEmpty(_selectedOperation)"
+                       StartIcon="@Icons.Material.Filled.PlayArrow">
+                @(_isProcessing ? $"Processing {_processedCount}/{_selectedPrompts.Count}..." : $"Process {_selectedPrompts.Count} Prompts")
+            </MudButton>
+            
+            @if (_isProcessing)
+            {
+                <MudProgressLinear Color="Color.Primary" 
+                                   Value="@_progressPercentage"
+                                   Style="flex: 1; min-width: 150px;" />
+            }
+        </div>
+        
+        @* Prompt Selection Table *@
+        <MudText Typo="Typo.subtitle2">Select Prompts</MudText>
+        <MudTable Items="@_availablePrompts"
+                  MultiSelection="true"
+                  @bind-SelectedItems="_selectedPrompts"
+                  Hover="true"
+                  Dense="true"
+                  Striped="true"
+                  FixedHeader="true"
+                  Height="250px">
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh>Prompt Preview</MudTh>
+                <MudTh>Category</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.Title</MudText>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.caption">@TruncateText(context.Positive ?? "", 50)</MudText>
+                </MudTd>
+                <MudTd>
+                    @if (!string.IsNullOrEmpty(context.Category))
+                    {
+                        <MudChip Size="Size.Small" Variant="Variant.Text">@context.Category</MudChip>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+        
+        @* Results *@
+        @if (_batchResults.Any())
+        {
+            <MudDivider />
+            
+            <div class="d-flex justify-space-between align-center">
+                <MudText Typo="Typo.subtitle2">Results</MudText>
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               OnClick="ClearResults"
+                               Color="Color.Default">
+                        Clear Results
+                    </MudButton>
+                </div>
+            </div>
+            
+            <MudTable Items="@_batchResults"
+                      Hover="true"
+                      Dense="true"
+                      Striped="true"
+                      FixedHeader="true"
+                      Height="250px">
+                <HeaderContent>
+                    <MudTh>Original</MudTh>
+                    <MudTh>Result</MudTh>
+                    <MudTh Style="width: 100px;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.PromptTitle</MudText>
+                        <MudText Typo="Typo.body2">@TruncateText(context.OriginalText, 40)</MudText>
+                    </MudTd>
+                    <MudTd>
+                        @if (context.IsSuccess)
+                        {
+                            <MudText Typo="Typo.body2">@TruncateText(context.ResultText ?? "", 50)</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Error">@context.ErrorMessage</MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (context.IsSuccess)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                          Size="Size.Small"
+                                          Color="Color.Info"
+                                          OnClick="@(() => CopyResult(context.ResultText))"
+                                          Title="Copy" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                          Size="Size.Small"
+                                          Color="Color.Success"
+                                          OnClick="@(() => SaveResult(context))"
+                                          Title="Save" />
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    }
+    else
+    {
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 300px;">
+            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.h6" Color="Color.Default">No Prompts Available</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                Add prompts to your library first to use batch processing
+            </MudText>
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public string SelectedModel { get; set; } = string.Empty;
+    
+    [Parameter]
+    public Func<string?>? GetCurrentTemplate { get; set; }
+
+    private List<Prompt>? _availablePrompts;
+    private HashSet<Prompt> _selectedPrompts = new();
+    private string _selectedOperation = "Enhanced";
+    private bool _isLoadingPrompts;
+    private bool _isProcessing;
+    private int _processedCount;
+    private double _progressPercentage;
+    private List<BatchProcessingResult> _batchResults = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPrompts();
+    }
+
+    private async Task LoadPrompts()
+    {
+        _isLoadingPrompts = true;
+        try
+        {
+            _availablePrompts = await DB.GetPrompts();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading prompts: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoadingPrompts = false;
+        }
+    }
+
+    private async Task ProcessBatch()
+    {
+        if (!_selectedPrompts.Any()) return;
+
+        _isProcessing = true;
+        _processedCount = 0;
+        _progressPercentage = 0;
+        _batchResults.Clear();
+
+        var totalCount = _selectedPrompts.Count;
+
+        foreach (var prompt in _selectedPrompts)
+        {
+            var result = new BatchProcessingResult
+            {
+                PromptId = prompt.Id,
+                PromptTitle = prompt.Title,
+                OriginalText = prompt.Positive ?? "",
+                Operation = _selectedOperation
+            };
+
+            try
+            {
+                var systemPrompt = GetCurrentTemplate?.Invoke() ?? GetSystemPromptForOperation(_selectedOperation);
+                var messages = new List<OllamaChatMessage>
+                {
+                    new OllamaChatMessage { Role = "system", Content = systemPrompt },
+                    new OllamaChatMessage { Role = "user", Content = prompt.Positive ?? "" }
+                };
+
+                var response = await OllamaService.SendChatMessage(
+                    SelectedModel,
+                    messages,
+                    State.State.Generation.LLM.Options.ToOllamaOptions());
+
+                if (response?.Message?.Content != null)
+                {
+                    result.ResultText = response.Message.Content;
+                    result.IsSuccess = true;
+                }
+                else
+                {
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "No response received";
+                }
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = ex.Message;
+            }
+
+            _batchResults.Add(result);
+            _processedCount++;
+            _progressPercentage = (double)_processedCount / totalCount * 100;
+            StateHasChanged();
+        }
+
+        _isProcessing = false;
+        Snackbar.Add($"Batch processing complete! Processed {_processedCount} prompts.", Severity.Success);
+    }
+
+    private string GetSystemPromptForOperation(string operation)
+    {
+        return operation == "Enhanced"
+            ? "You are an expert at expanding concise prompts into detailed, descriptive image generation prompts. Given a simple prompt, add artistic details, lighting, mood, composition elements, and sensory descriptions. Keep the core concept but make it vivid and specific. Output only the enhanced prompt without explanation."
+            : "You are an expert at distilling complex prompts to their essential elements. Given a detailed prompt, identify and keep only the most important descriptors. Remove redundancy, excessive detail, and unnecessary modifiers. Output only the simplified prompt without explanation.";
+    }
+
+    private async Task CopyResult(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add("Result copied to clipboard", Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add("Could not copy to clipboard", Severity.Warning);
+        }
+    }
+
+    private async Task SaveResult(BatchProcessingResult result)
+    {
+        try
+        {
+            var newPrompt = new Prompt
+            {
+                Title = $"{result.PromptTitle} ({result.Operation})",
+                Positive = result.ResultText,
+                Loras = new List<Lora>(),
+                Category = "Batch Processed"
+            };
+            
+            await DB.CreatePrompt(newPrompt);
+            Snackbar.Add("Result saved to library", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving result: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ClearResults()
+    {
+        _batchResults.Clear();
+        _selectedPrompts.Clear();
+        StateHasChanged();
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+
+    public class BatchProcessingResult
+    {
+        public int PromptId { get; set; }
+        public string PromptTitle { get; set; } = string.Empty;
+        public string OriginalText { get; set; } = string.Empty;
+        public string? ResultText { get; set; }
+        public string Operation { get; set; } = string.Empty;
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+}
