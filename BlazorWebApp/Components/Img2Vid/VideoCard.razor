@@ -173,14 +173,26 @@
 
     protected override void OnInitialized()
     {
-        // Initialize selection state from the shared selection list
-        if (Video.Id > 0)
+        UpdateSelectionState();
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnSelectionChanged);
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Update selection state whenever Video parameter changes (e.g., page navigation)
+        UpdateSelectionState();
+    }
+
+    private void UpdateSelectionState()
+    {
+        if (Video != null && Video.Id > 0)
         {
             _isSelected = Gallery.SelectedImageIds.Contains(Video.Id);
         }
-        
-        // Subscribe to selection changes via EventService
-        Events.Subscribe<ImageSelectionChangedEventArgs>(OnSelectionChanged);
+        else
+        {
+            _isSelected = false;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -193,11 +205,7 @@
 
     private void OnSelectionChanged(ImageSelectionChangedEventArgs args)
     {
-        // Sync selection state from the shared list
-        if (Video.Id > 0)
-        {
-            _isSelected = Gallery.SelectedImageIds.Contains(Video.Id);
-        }
+        UpdateSelectionState();
         _ = InvokeAsync(StateHasChanged);
     }
 
