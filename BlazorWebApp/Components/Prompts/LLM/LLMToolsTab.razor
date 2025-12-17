@@ -20,24 +20,29 @@
     // Info content
     private readonly InfoContent _infoContent = new(
         Title: "LLM Tools - Quick Guide",
-        Overview: "Use AI language models to enhance, simplify, and transform your image generation prompts. Configure model settings on the left, and use the tabs on the right to process prompts.",
+        Overview: "Use AI language models to transform your image generation prompts with customizable templates. Configure model settings on the left, select a template from the toolbar, then process prompts individually or in batches.",
         Shortcuts: new List<ShortcutInfo>
         {
-            new("Ctrl+Enter", "Process prompt with current operation"),
+            new("Ctrl+Enter", "Process prompt with selected template"),
             new("Ctrl+Z", "Undo last operation"),
             new("Ctrl+Y", "Redo undone operation"),
         },
         Tips: new List<string>
         {
-            "Enhance expands simple prompts with artistic details and atmosphere",
-            "Simplify distills complex prompts to essential elements",
+            "Templates define the behavior (enhance, simplify, translate, etc.)",
+            "Select templates directly from the Process tab toolbar",
+            "Templates are shared across Single and Batch modes",
+            "Switch between Single and Batch mode with the mode toggle buttons",
+            "Single mode: Process one prompt at a time with real-time feedback",
+            "Batch mode: Select multiple prompts from your library to process at once",
+            "Process button color adapts to the selected template type",
             "Adjust Temperature for more creative (higher) or focused (lower) results",
-            "Use custom system prompt templates for specific styles",
-            "Batch processing allows transforming multiple prompts at once",
-            "History persists across sessions - restore any previous result",
-            "Save to Library adds the result to your Presets collection",
-            "Export/Import templates to share with others",
-            "System Prompts tab lets you create and manage custom templates"
+            "Default templates provide few-shot learning examples for best results",
+            "History persists across sessions - restore any previous result with one click",
+            "Batch results are expandable - click to see original vs processed comparison",
+            "Save batch results to library individually with one click",
+            "Create custom templates in the Prompts page for specialized processing",
+            "Template selection determines the AI's behavior and output style"
         }
     );
 

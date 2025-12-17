@@ -1,3 +1,4 @@
+@using BlazorWebApp.Data.Dtos.Ollama
 @inject IDatabaseService DB
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -5,7 +6,8 @@
 
 <MudStack Spacing="3">
     @* Template Selection *@
-    <MudSelect @bind-Value="_selectedTemplateId"
+    <MudSelect Value="_selectedTemplateId"
+              ValueChanged="OnTemplateSelectionChanged"
               Label="Select Template"
               Variant="Variant.Outlined"
               T="int">
@@ -28,21 +30,103 @@
     
     @if (_selectedTemplate != null)
     {
-        <MudText Typo="Typo.caption" Style="opacity: 30%">
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
             @_selectedTemplate.Description
         </MudText>
         
         <MudDivider />
         
-        @* Template Editor *@
+        @* Message Builder *@
         <div>
-            <MudText Typo="Typo.subtitle1" Class="mb-2">Template Content</MudText>
-            <MudTextField @bind-Value="_editableTemplate"
-                          Variant="Variant.Outlined"
-                          Lines="12"
-                          HelperText="Use {prompt} as a placeholder for the user's input prompt"
-                          Immediate />
+            <div class="d-flex justify-space-between align-center mb-2">
+                <MudText Typo="Typo.subtitle1">Messages</MudText>
+                <MudButton Size="Size.Small" 
+                           Variant="Variant.Outlined" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="AddMessage">
+                    Add Message
+                </MudButton>
+            </div>
+            
+            @if (_editableMessages.Any())
+            {
+                <MudStack Spacing="2">
+                    @for (int i = 0; i < _editableMessages.Count; i++)
+                    {
+                        var index = i;
+                        var message = _editableMessages[i];
+                        
+                        <MudPaper Class="pa-3" Outlined>
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12" md="3">
+                                    <MudSelect @bind-Value="message.Role"
+                                              Label="Role"
+                                              Variant="Variant.Outlined"
+                                              Dense>
+                                        <MudSelectItem Value="@("system")">
+                                            <div class="d-flex align-center gap-1">
+                                                <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                                                <span>System</span>
+                                            </div>
+                                        </MudSelectItem>
+                                        <MudSelectItem Value="@("user")">
+                                            <div class="d-flex align-center gap-1">
+                                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                                <span>User</span>
+                                            </div>
+                                        </MudSelectItem>
+                                        <MudSelectItem Value="@("assistant")">
+                                            <div class="d-flex align-center gap-1">
+                                                <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" />
+                                                <span>Assistant</span>
+                                            </div>
+                                        </MudSelectItem>
+                                    </MudSelect>
+                                </MudItem>
+                                
+                                <MudItem xs="12" md="9" Class="d-flex align-center gap-2">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Message @(index + 1)
+                                    </MudText>
+                                    <MudSpacer />
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                                  Size="Size.Small"
+                                                  OnClick="@(() => MoveMessageUp(index))"
+                                                  Disabled="@(index == 0)"
+                                                  Title="Move up" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                                  Size="Size.Small"
+                                                  OnClick="@(() => MoveMessageDown(index))"
+                                                  Disabled="@(index == _editableMessages.Count - 1)"
+                                                  Title="Move down" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                  Size="Size.Small"
+                                                  Color="Color.Error"
+                                                  OnClick="@(() => RemoveMessage(index))"
+                                                  Title="Delete message" />
+                                </MudItem>
+                                
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="message.Content"
+                                                Label="Content"
+                                                Variant="Variant.Outlined"
+                                                Lines="4"
+                                                Immediate />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    }
+                </MudStack>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense>
+                    No messages yet. Click "Add Message" to start building your template.
+                </MudAlert>
+            }
         </div>
+        
+        <MudDivider />
         
         @* Action Buttons *@
         <div class="d-flex gap-2 flex-wrap">
@@ -73,7 +157,7 @@
             <MudSpacer />
             
             @* Import/Export *@
-            <MudButtonGroup Variant="Variant.Text">
+            <MudButtonGroup Variant="Variant.Outlined">
                 <MudButton OnClick="ExportTemplate"
                            StartIcon="@Icons.Material.Filled.Download"
                            Disabled="_selectedTemplate == null">
@@ -94,26 +178,46 @@
         
         @* Template Info *@
         <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Template Variables</MudText>
-            <MudText Typo="Typo.body2" Class="mb-2">
-                You can use the following variables in your templates:
-            </MudText>
+            <MudText Typo="Typo.subtitle2" Class="mb-2">About Message Roles</MudText>
             <MudList Dense>
                 <MudListItem>
                     <div>
-                        <MudText Typo="Typo.body2" Style="font-family: monospace;">
-                            <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">{"{prompt}"}</MudChip>
-                        </MudText>
+                        <div class="d-flex align-center gap-2 mb-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">System</MudText>
+                        </div>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            The user's input prompt text
+                            Sets the behavior and personality of the assistant. Use for instructions and context.
+                        </MudText>
+                    </div>
+                </MudListItem>
+                <MudListItem>
+                    <div>
+                        <div class="d-flex align-center gap-2 mb-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">User</MudText>
+                        </div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Represents user input. Use <MudChip Size="Size.Small" Variant="Variant.Text">{"{prompt}"}</MudChip> to inject the actual prompt.
+                        </MudText>
+                    </div>
+                </MudListItem>
+                <MudListItem>
+                    <div>
+                        <div class="d-flex align-center gap-2 mb-1">
+                            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Color="Color.Tertiary" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">Assistant</MudText>
+                        </div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Example responses from the assistant. Use for few-shot learning to guide output format.
                         </MudText>
                     </div>
                 </MudListItem>
             </MudList>
             
-            <MudText Typo="Typo.caption" Color="Color.Info" Class="mt-2">
+            <MudText Typo="Typo.caption" Color="Color.Info" Class="mt-3">
                 <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Size="Size.Small" Class="mr-1" />
-                Tip: Keep instructions clear and specific for best results. Include style, tone, and output format guidelines.
+                Tip: Use multiple user/assistant message pairs to provide examples (few-shot learning) that guide the model's responses.
             </MudText>
         </MudPaper>
     }
@@ -129,13 +233,13 @@
 
 @code {
     [Parameter]
-    public EventCallback<string> OnTemplateChanged { get; set; }
+    public EventCallback<List<OllamaChatMessage>> OnTemplateChanged { get; set; }
 
     private List<SystemPromptTemplate>? _templates;
     private int _selectedTemplateId;
     private SystemPromptTemplate? _selectedTemplate;
-    private string _editableTemplate = string.Empty;
-    private string _originalTemplate = string.Empty;
+    private List<OllamaChatMessage> _editableMessages = new();
+    private List<OllamaChatMessage> _originalMessages = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,10 +274,19 @@
             
             if (_selectedTemplate != null)
             {
-                _editableTemplate = _selectedTemplate.Template;
-                _originalTemplate = _selectedTemplate.Template;
+                _editableMessages = _selectedTemplate.Messages.Select(m => new OllamaChatMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content
+                }).ToList();
                 
-                await OnTemplateChanged.InvokeAsync(_editableTemplate);
+                _originalMessages = _selectedTemplate.Messages.Select(m => new OllamaChatMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content
+                }).ToList();
+                
+                await OnTemplateChanged.InvokeAsync(_editableMessages);
             }
         }
         catch (Exception ex)
@@ -182,11 +295,48 @@
         }
     }
 
+    private async Task OnTemplateSelectionChanged(int templateId)
+    {
+        _selectedTemplateId = templateId;
+        await OnTemplateSelected();
+        StateHasChanged();
+    }
+
+    private void AddMessage()
+    {
+        _editableMessages.Add(new OllamaChatMessage 
+        { 
+            Role = "user", 
+            Content = "" 
+        });
+    }
+    
+    private void RemoveMessage(int index)
+    {
+        _editableMessages.RemoveAt(index);
+    }
+    
+    private void MoveMessageUp(int index)
+    {
+        if (index <= 0) return;
+        var temp = _editableMessages[index];
+        _editableMessages[index] = _editableMessages[index - 1];
+        _editableMessages[index - 1] = temp;
+    }
+    
+    private void MoveMessageDown(int index)
+    {
+        if (index >= _editableMessages.Count - 1) return;
+        var temp = _editableMessages[index];
+        _editableMessages[index] = _editableMessages[index + 1];
+        _editableMessages[index + 1] = temp;
+    }
+
     private async Task SaveAsCustomTemplate()
     {
-        if (string.IsNullOrWhiteSpace(_editableTemplate))
+        if (!_editableMessages.Any())
         {
-            Snackbar.Add("Template cannot be empty", Severity.Warning);
+            Snackbar.Add("Template must have at least one message", Severity.Warning);
             return;
         }
 
@@ -216,8 +366,8 @@
             var newTemplate = new SystemPromptTemplate
             {
                 Name = templateName,
-                Description = $"Custom template based on {_selectedTemplate?.Name ?? "unknown"}",
-                Template = _editableTemplate,
+                Description = $"Custom template with {_editableMessages.Count} message(s)",
+                Messages = _editableMessages,
                 IsDefault = false
             };
 
@@ -296,20 +446,31 @@
     {
         if (_selectedTemplate != null)
         {
-            _editableTemplate = _selectedTemplate.Template;
-            _originalTemplate = _selectedTemplate.Template;
+            _editableMessages = _selectedTemplate.Messages.Select(m => new OllamaChatMessage
+            {
+                Role = m.Role,
+                Content = m.Content
+            }).ToList();
+            
+            _originalMessages = _selectedTemplate.Messages.Select(m => new OllamaChatMessage
+            {
+                Role = m.Role,
+                Content = m.Content
+            }).ToList();
+            
             Snackbar.Add("Template reset to original", Severity.Info);
         }
     }
 
     private bool IsTemplateUnchanged()
     {
-        return _editableTemplate == _originalTemplate;
+        return System.Text.Json.JsonSerializer.Serialize(_editableMessages) == 
+               System.Text.Json.JsonSerializer.Serialize(_originalMessages);
     }
 
-    public string GetCurrentTemplate()
+    public List<OllamaChatMessage> GetCurrentTemplate()
     {
-        return _editableTemplate;
+        return _editableMessages;
     }
 
     public string? GetCurrentTemplateName()

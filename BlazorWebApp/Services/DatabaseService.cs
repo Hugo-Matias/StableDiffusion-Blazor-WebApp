@@ -13,15 +13,17 @@ namespace BlazorWebApp.Services
         private readonly IComfyUIService _capi;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DatabaseService> _logger;
+        private readonly OllamaService _ollamaService;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger, OllamaService ollamaService)
         {
             _factory = factory;
             _capi = capi;
             _configuration = configuration;
             _logger = logger;
+            _ollamaService = ollamaService;
             PageSize = 5;
 
             InitializeDatabase();
@@ -1293,41 +1295,19 @@ namespace BlazorWebApp.Services
             if (existingDefaults > 0)
                 return; // Default templates already seeded
             
-            var defaultTemplates = new List<SystemPromptTemplate>
+            // Get default templates from OllamaService
+            var defaultTemplates = _ollamaService.GetDefaultTemplates();
+            
+            foreach (var template in defaultTemplates)
             {
-                new SystemPromptTemplate
-                {
-                    Name = "Enhance (Default)",
-                    Description = "Expand simple prompts with artistic details",
-                    Template = "You are an expert at expanding concise prompts into detailed, descriptive image generation prompts. Given a simple prompt, add artistic details, lighting, mood, composition elements, and sensory descriptions. Keep the core concept but make it vivid and specific. Output only the enhanced prompt without explanation.",
-                    IsDefault = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                new SystemPromptTemplate
-                {
-                    Name = "Simplify (Default)",
-                    Description = "Distill complex prompts to essential elements",
-                    Template = "You are an expert at distilling complex prompts to their essential elements. Given a detailed prompt, identify and keep only the most important descriptors. Remove redundancy, excessive detail, and unnecessary modifiers. Output only the simplified prompt without explanation.",
-                    IsDefault = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                new SystemPromptTemplate
-                {
-                    Name = "Negative Prompt (Default)",
-                    Description = "Expand negative prompts with quality issues to avoid",
-                    Template = "You are an expert at expanding negative prompts for image generation. Given a simple negative prompt, expand it with specific details about what to avoid, artifacts, quality issues, and undesired elements. Keep it concise. Output only the expanded negative prompt without explanation.",
-                    IsDefault = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }
-            };
+                template.CreatedAt = DateTime.UtcNow;
+                template.UpdatedAt = DateTime.UtcNow;
+            }
             
             await context.SystemPromptTemplates.AddRangeAsync(defaultTemplates);
             await context.SaveChangesAsync();
             
-            _logger.LogInformation("Seeded {Count} default system prompt templates", defaultTemplates.Count);
+            _logger.LogInformation("Seeded {Count} default system prompt templates from OllamaService", defaultTemplates.Count);
         }
 
         public async Task<List<SystemPromptTemplate>> GetSystemPromptTemplates()

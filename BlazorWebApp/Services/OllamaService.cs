@@ -1,4 +1,5 @@
 using BlazorWebApp.Data.Dtos.Ollama;
+using BlazorWebApp.Data.Entities;
 using System.Text;
 using System.Text.Json;
 
@@ -100,6 +101,64 @@ namespace BlazorWebApp.Services
         public void ClearAllSessions()
         {
             _sessionCache.Clear();
+        }
+
+        /// <summary>
+        /// Get default system prompt templates for seeding database
+        /// </summary>
+        public List<SystemPromptTemplate> GetDefaultTemplates()
+        {
+            return new List<SystemPromptTemplate>
+            {
+                new SystemPromptTemplate
+                {
+                    Name = "Enhance (Default)",
+                    Description = "Expand simple prompts with artistic details using few-shot examples",
+                    Messages = GetPositivePromptInstructions("{prompt}"),
+                    IsDefault = true
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "Simplify (Default)",
+                    Description = "Distill complex prompts to essential elements",
+                    Messages = GetSimplifyInstructions("{prompt}"),
+                    IsDefault = true
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "Negative Prompt (Default)",
+                    Description = "Expand negative prompts with quality issues to avoid",
+                    Messages = GetNegativePromptInstructions("{prompt}"),
+                    IsDefault = true
+                }
+            };
+        }
+
+        private List<OllamaChatMessage> GetSimplifyInstructions(string input)
+        {
+            return new List<OllamaChatMessage>
+            {
+                new OllamaChatMessage
+                {
+                    Role = "system",
+                    Content = "You are an expert at distilling complex prompts to their essential elements. Given a detailed prompt, identify and keep only the most important descriptors. Remove redundancy, excessive detail, and unnecessary modifiers. Output only the simplified prompt without explanation."
+                },
+                new OllamaChatMessage
+                {
+                    Role = "user",
+                    Content = "Simplify this complex prompt to its essential elements: \"A highly detailed, photorealistic digital painting of a majestic golden dragon with intricate scales, fierce glowing amber eyes, massive leathery wings spread wide, perched atop an ancient crumbling stone castle tower at sunset, with dramatic clouds in the background, volumetric lighting, 8k resolution, trending on artstation, hyperrealistic, cinematic composition\""
+                },
+                new OllamaChatMessage
+                {
+                    Role = "assistant",
+                    Content = "Golden dragon with glowing eyes and spread wings on castle tower at sunset, detailed scales, dramatic clouds"
+                },
+                new OllamaChatMessage
+                {
+                    Role = "user",
+                    Content = $"Simplify this prompt to its essential elements: \"{input}\""
+                }
+            };
         }
 
         private List<OllamaChatMessage> GetPositivePromptInstructions(string input)
