@@ -110,7 +110,7 @@
 
     private void HandleInfoChanged()
     {
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
     public void Open()

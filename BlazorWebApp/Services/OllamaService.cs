@@ -1,5 +1,7 @@
 using BlazorWebApp.Data.Dtos.Ollama;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Models;
+using MudBlazor;
 using System.Text;
 using System.Text.Json;
 
@@ -9,12 +11,14 @@ namespace BlazorWebApp.Services
     {
         private readonly HttpClient _client;
         private readonly ILogger<OllamaService> _logger;
+        private readonly IProgressService _progress;
         private readonly string _baseUrl;
         private readonly Dictionary<string, List<OllamaChatMessage>> _sessionCache;
 
-        public OllamaService(ILogger<OllamaService> logger, IConfiguration configuration)
+        public OllamaService(ILogger<OllamaService> logger, IConfiguration configuration, IProgressService progress)
         {
             _logger = logger;
+            _progress = progress;
             _baseUrl = configuration["Ollama:BaseUrl"] ?? "http://10.0.0.11:11434";
             _client = new HttpClient { BaseAddress = new Uri(_baseUrl) };
             _sessionCache = new Dictionary<string, List<OllamaChatMessage>>();
@@ -51,8 +55,18 @@ namespace BlazorWebApp.Services
             string? keepAlive = "15m",
             bool stream = false)
         {
+            BaseProgress? progressBar = null;
+
             try
             {
+                // Create progress bar
+                progressBar = new BaseProgress
+                {
+                    IsIndeterminate = true,
+                    BarColor = Color.Tertiary
+                };
+                _progress.Add(progressBar);
+
                 var payload = new OllamaChatRequest
                 {
                     Model = modelName,
@@ -75,6 +89,14 @@ namespace BlazorWebApp.Services
             {
                 _logger.LogError(ex, "Failed to send chat message to Ollama");
                 return null;
+            }
+            finally
+            {
+                // Remove progress bar
+                if (progressBar != null)
+                {
+                    _progress.Remove(progressBar.Id);
+                }
             }
         }
 
@@ -112,21 +134,21 @@ namespace BlazorWebApp.Services
             {
                 new SystemPromptTemplate
                 {
-                    Name = "Enhance (Default)",
+                    Name = "Enhance",
                     Description = "Expand simple prompts with artistic details using few-shot examples",
                     Messages = GetPositivePromptInstructions("{prompt}"),
                     IsDefault = true
                 },
                 new SystemPromptTemplate
                 {
-                    Name = "Simplify (Default)",
+                    Name = "Simplify",
                     Description = "Distill complex prompts to essential elements",
                     Messages = GetSimplifyInstructions("{prompt}"),
                     IsDefault = true
                 },
                 new SystemPromptTemplate
                 {
-                    Name = "Negative Prompt (Default)",
+                    Name = "Negative Prompt",
                     Description = "Expand negative prompts with quality issues to avoid",
                     Messages = GetNegativePromptInstructions("{prompt}"),
                     IsDefault = true

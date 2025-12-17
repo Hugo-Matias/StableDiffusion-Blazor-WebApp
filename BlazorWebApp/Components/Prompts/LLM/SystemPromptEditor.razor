@@ -6,27 +6,47 @@
 
 <MudStack Spacing="3">
     @* Template Selection *@
-    <MudSelect Value="_selectedTemplateId"
-              ValueChanged="OnTemplateSelectionChanged"
-              Label="Select Template"
-              Variant="Variant.Outlined"
-              T="int">
-        @if (_templates != null)
-        {
-            @foreach (var template in _templates)
+    <div class="d-flex gap-2 align-center">
+        <MudSelect Value="_selectedTemplateId"
+                  ValueChanged="OnTemplateSelectionChanged"
+                  Label="Select Template"
+                  Variant="Variant.Outlined"
+                  Style="flex: 1;"
+                  T="int">
+            @if (_templates != null)
             {
-                <MudSelectItem Value="@template.Id">
-                    <div class="d-flex justify-space-between align-center" style="width: 100%;">
-                        <span>@template.Name</span>
-                        @if (template.IsDefault)
-                        {
-                            <MudChip Size="Size.Small" Color="Color.Info">Default</MudChip>
-                        }
-                    </div>
-                </MudSelectItem>
+                @foreach (var template in _templates)
+                {
+                    <MudSelectItem Value="@template.Id">
+                        <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                            <span>@template.Name</span>
+                            @if (template.IsDefault)
+                            {
+                                <MudChip Size="Size.Small" Color="Color.Info">Default</MudChip>
+                            }
+                        </div>
+                    </MudSelectItem>
+                }
             }
-        }
-    </MudSelect>
+        </MudSelect>
+        
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Success"
+                   OnClick="CreateNewTemplate"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Style="height: 56px;">
+            New
+        </MudButton>
+        
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="EditTemplateInfo"
+                   StartIcon="@Icons.Material.Filled.Edit"
+                   Disabled="_selectedTemplate == null"
+                   Style="height: 56px;">
+            Edit
+        </MudButton>
+    </div>
     
     @if (_selectedTemplate != null)
     {
@@ -132,10 +152,10 @@
         <div class="d-flex gap-2 flex-wrap">
             <MudButton Variant="Variant.Filled"
                        Color="Color.Success"
-                       OnClick="SaveAsCustomTemplate"
+                       OnClick="SaveChanges"
                        StartIcon="@Icons.Material.Filled.Save"
-                       Disabled="IsTemplateUnchanged()">
-                Save as Custom Template
+                       Disabled="IsTemplateUnchanged() || _selectedTemplate.IsDefault">
+                Save Changes
             </MudButton>
             
             @if (!_selectedTemplate.IsDefault)
@@ -198,7 +218,7 @@
                             <MudText Typo="Typo.body2" Style="font-weight: 500;">User</MudText>
                         </div>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            Represents user input. Use <MudChip Size="Size.Small" Variant="Variant.Text">{"{prompt}"}</MudChip> to inject the actual prompt.
+                            Represents user input. Use <MudChip Size="Size.Small" Variant="Variant.Text">{prompt}</MudChip> to inject the actual prompt.
                         </MudText>
                     </div>
                 </MudListItem>
@@ -332,58 +352,29 @@
         _editableMessages[index + 1] = temp;
     }
 
-    private async Task SaveAsCustomTemplate()
+    private async Task SaveChanges()
     {
+        if (_selectedTemplate == null || _selectedTemplate.IsDefault) return;
+        
         if (!_editableMessages.Any())
         {
             Snackbar.Add("Template must have at least one message", Severity.Warning);
             return;
         }
 
-        var dialogOptions = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small };
-        var parameters = new DialogParameters
-        {
-            ["Title"] = "Save Custom Template",
-            ["Label"] = "Template Name",
-            ["Placeholder"] = "Enter template name..."
-        };
-
-        var dialog = await DialogService.ShowAsync<SimpleTextInputDialog>("Save Template", parameters, dialogOptions);
-        var result = await dialog.Result;
-
-        if (result.Canceled || result.Data == null)
-            return;
-
-        var templateName = result.Data.ToString();
-        if (string.IsNullOrWhiteSpace(templateName))
-        {
-            Snackbar.Add("Template name cannot be empty", Severity.Warning);
-            return;
-        }
-
         try
         {
-            var newTemplate = new SystemPromptTemplate
-            {
-                Name = templateName,
-                Description = $"Custom template with {_editableMessages.Count} message(s)",
-                Messages = _editableMessages,
-                IsDefault = false
-            };
-
-            var success = await DB.CreateSystemPromptTemplate(newTemplate);
+            _selectedTemplate.Messages = _editableMessages;
+            var success = await DB.UpdateSystemPromptTemplate(_selectedTemplate);
             
             if (success)
             {
-                Snackbar.Add("Custom template saved successfully!", Severity.Success);
-                await LoadTemplates();
-                
-                var created = _templates?.FirstOrDefault(t => t.Name == templateName);
-                if (created != null)
+                Snackbar.Add("Template saved successfully!", Severity.Success);
+                _originalMessages = _editableMessages.Select(m => new OllamaChatMessage
                 {
-                    _selectedTemplateId = created.Id;
-                    await OnTemplateSelected();
-                }
+                    Role = m.Role,
+                    Content = m.Content
+                }).ToList();
             }
             else
             {
@@ -459,6 +450,101 @@
             }).ToList();
             
             Snackbar.Add("Template reset to original", Severity.Info);
+        }
+    }
+    
+    private async Task CreateNewTemplate()
+    {
+        var dialogOptions = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters();
+
+        var dialog = await DialogService.ShowAsync<TemplateInfoDialog>("Create New Template", parameters, dialogOptions);
+        var result = await dialog.Result;
+
+        if (result.Canceled || result.Data == null)
+            return;
+
+        var data = (Dictionary<string, string>)result.Data;
+
+        try
+        {
+            var newTemplate = new SystemPromptTemplate
+            {
+                Name = data["Name"],
+                Description = data["Description"],
+                Messages = new List<OllamaChatMessage>
+                {
+                    new() { Role = "system", Content = "You are a helpful assistant." },
+                    new() { Role = "user", Content = "{prompt}" }
+                },
+                IsDefault = false
+            };
+
+            var success = await DB.CreateSystemPromptTemplate(newTemplate);
+            
+            if (success)
+            {
+                Snackbar.Add("Template created successfully!", Severity.Success);
+                await LoadTemplates();
+                
+                var created = _templates?.FirstOrDefault(t => t.Name == data["Name"]);
+                if (created != null)
+                {
+                    _selectedTemplateId = created.Id;
+                    await OnTemplateSelected();
+                }
+            }
+            else
+            {
+                Snackbar.Add("Failed to create template", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating template: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    private async Task EditTemplateInfo()
+    {
+        if (_selectedTemplate == null) return;
+
+        var dialogOptions = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            ["Name"] = _selectedTemplate.Name,
+            ["Description"] = _selectedTemplate.Description,
+            ["IsDefault"] = _selectedTemplate.IsDefault
+        };
+
+        var dialog = await DialogService.ShowAsync<TemplateInfoDialog>("Edit Template Info", parameters, dialogOptions);
+        var result = await dialog.Result;
+
+        if (result.Canceled || result.Data == null)
+            return;
+
+        var data = (Dictionary<string, string>)result.Data;
+
+        try
+        {
+            _selectedTemplate.Name = data["Name"];
+            _selectedTemplate.Description = data["Description"];
+            
+            var success = await DB.UpdateSystemPromptTemplate(_selectedTemplate);
+            
+            if (success)
+            {
+                Snackbar.Add("Template info updated successfully!", Severity.Success);
+                await LoadTemplates();
+            }
+            else
+            {
+                Snackbar.Add("Failed to update template info", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating template info: {ex.Message}", Severity.Error);
         }
     }
 

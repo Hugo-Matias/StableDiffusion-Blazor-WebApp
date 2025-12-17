@@ -205,3 +205,124 @@ body:has(.image-editor-overlay) .mud-menu-popover {
     margin-left: 2px !important;
     margin-right: 2px !important;
 }
+
+/* ===========================================
+   Token Preview Styles
+   For interactive token visualization in LLM Tools
+   =========================================== */
+
+.token-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 12px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+
+.token-item {
+    padding: 2px 4px;
+    margin: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    white-space: pre;
+    display: inline-block;
+}
+
+/* Color-coded backgrounds with good contrast */
+.token-item[data-color="primary"] {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.15);
+    color: var(--mud-palette-primary-text);
+}
+
+.token-item[data-color="secondary"] {
+    background-color: rgba(var(--mud-palette-secondary-rgb), 0.15);
+    color: var(--mud-palette-secondary-text);
+}
+
+.token-item[data-color="tertiary"] {
+    background-color: rgba(var(--mud-palette-tertiary-rgb), 0.15);
+    color: var(--mud-palette-tertiary-text);
+}
+
+.token-item[data-color="success"] {
+    background-color: rgba(var(--mud-palette-success-rgb), 0.15);
+    color: var(--mud-palette-success-text);
+}
+
+.token-item[data-color="info"] {
+    background-color: rgba(var(--mud-palette-info-rgb), 0.15);
+    color: var(--mud-palette-info-text);
+}
+
+.token-item[data-color="warning"] {
+    background-color: rgba(var(--mud-palette-warning-rgb), 0.15);
+    color: var(--mud-palette-warning-text);
+}
+
+.token-item[data-color="error"] {
+    background-color: rgba(var(--mud-palette-error-rgb), 0.15);
+    color: var(--mud-palette-error-text);
+}
+
+.token-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+}
+
+/* Add a subtle border on hover to show token boundaries */
+.token-item:hover::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 2px solid currentColor;
+    border-radius: 4px;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+    .token-preview {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+    
+    .token-item[data-color="primary"] {
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.25);
+    }
+    
+    .token-item[data-color="secondary"] {
+        background-color: rgba(var(--mud-palette-secondary-rgb), 0.25);
+    }
+    
+    .token-item[data-color="tertiary"] {
+        background-color: rgba(var(--mud-palette-tertiary-rgb), 0.25);
+    }
+    
+    .token-item[data-color="success"] {
+        background-color: rgba(var(--mud-palette-success-rgb), 0.25);
+    }
+    
+    .token-item[data-color="info"] {
+        background-color: rgba(var(--mud-palette-info-rgb), 0.25);
+    }
+    
+    .token-item[data-color="warning"] {
+        background-color: rgba(var(--mud-palette-warning-rgb), 0.25);
+    }
+    
+    .token-item[data-color="error"] {
+        background-color: rgba(var(--mud-palette-error-rgb), 0.25);
+    }
+}

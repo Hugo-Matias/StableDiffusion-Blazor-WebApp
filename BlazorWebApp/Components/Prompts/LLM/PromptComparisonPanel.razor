@@ -1,4 +1,5 @@
 @inject IJSRuntime JSRuntime
+@inject ITokenizerService Tokenizer
 
 @if (!string.IsNullOrEmpty(OriginalPrompt) && !string.IsNullOrEmpty(ResultPrompt))
 {
@@ -15,13 +16,32 @@
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
                             Original
                         </MudText>
-                        <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
-                            ~@GetTokenCount(OriginalPrompt) tokens
+                        <MudChip Size="Size.Small" 
+                                 Color="Color.Info" 
+                                 Variant="Variant.Text"
+                                 OnClick="@(() => ToggleOriginalTokenPreview())"
+                                 Style="cursor: pointer;">
+                            @_originalTokenCount tokens
                         </MudChip>
                     </div>
-                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
-                        @OriginalPrompt
-                    </MudText>
+                    
+                    @if (_showOriginalTokens)
+                    {
+                        <div class="token-preview mb-2">
+                            @foreach (var token in _originalTokens.Select((t, i) => new { Token = t, Index = i }))
+                            {
+                                <span class="token-item" 
+                                      data-color="@GetTokenColorName(token.Index)"
+                                      title="Token @(token.Index + 1)">@token.Token</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+                            @OriginalPrompt
+                        </MudText>
+                    }
                 </MudPaper>
             </MudItem>
             
@@ -32,8 +52,12 @@
                             @OperationType Result
                         </MudText>
                         <div class="d-flex align-center gap-2">
-                            <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
-                                ~@GetTokenCount(_editableResult) tokens
+                            <MudChip Size="Size.Small" 
+                                     Color="Color.Info" 
+                                     Variant="Variant.Text"
+                                     OnClick="@(() => ToggleResultTokenPreview())"
+                                     Style="cursor: pointer;">
+                                @_resultTokenCount tokens
                             </MudChip>
                             <MudChip Size="Size.Small" 
                                      Color="@GetImprovementColor()"
@@ -42,6 +66,18 @@
                             </MudChip>
                         </div>
                     </div>
+                    
+                    @if (_showResultTokens)
+                    {
+                        <div class="token-preview mb-2" style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var token in _resultTokens.Select((t, i) => new { Token = t, Index = i }))
+                            {
+                                <span class="token-item" 
+                                      data-color="@GetTokenColorName(token.Index)"
+                                      title="Token @(token.Index + 1)">@token.Token</span>
+                            }
+                        </div>
+                    }
                     
                     <MudTextField @bind-Value="_editableResult"
                                   Variant="Variant.Outlined"
@@ -113,34 +149,84 @@
     public EventCallback<string> OnSaveToLibrary { get; set; }
 
     private string _editableResult = string.Empty;
+    
+    // Token preview state
+    private int _originalTokenCount;
+    private int _resultTokenCount;
+    private List<string> _originalTokens = new();
+    private List<string> _resultTokens = new();
+    private bool _showOriginalTokens;
+    private bool _showResultTokens;
+    
+    // Color palette for token cycling
+    private readonly Color[] _tokenColors = new[]
+    {
+        Color.Primary,
+        Color.Secondary,
+        Color.Tertiary,
+        Color.Success,
+        Color.Info,
+        Color.Warning,
+        Color.Error
+    };
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (!string.IsNullOrEmpty(ResultPrompt))
         {
             _editableResult = ResultPrompt;
         }
+        
+        // Update token counts and tokens asynchronously
+        await UpdateTokenizationAsync();
+    }
+    
+    private async Task UpdateTokenizationAsync()
+    {
+        _originalTokenCount = await Tokenizer.CountTokensAsync(OriginalPrompt);
+        _resultTokenCount = await Tokenizer.CountTokensAsync(_editableResult);
+        
+        _originalTokens = await Tokenizer.TokenizeTextAsync(OriginalPrompt);
+        _resultTokens = await Tokenizer.TokenizeTextAsync(_editableResult);
+    }
+    
+    private void ToggleOriginalTokenPreview()
+    {
+        _showOriginalTokens = !_showOriginalTokens;
+    }
+    
+    private void ToggleResultTokenPreview()
+    {
+        _showResultTokens = !_showResultTokens;
+    }
+    
+    private Color GetTokenColor(int index)
+    {
+        return _tokenColors[index % _tokenColors.Length];
+    }
+    
+    private string GetTokenColorName(int index)
+    {
+        var colorNames = new[] { "primary", "secondary", "tertiary", "success", "info", "warning", "error" };
+        return colorNames[index % colorNames.Length];
     }
 
-    private int GetTokenCount(string text)
+    private async Task<int> GetTokenCount(string text)
     {
-        return string.IsNullOrEmpty(text) ? 0 : (text.Length / 4);
+        return string.IsNullOrEmpty(text) ? 0 : await Tokenizer.CountTokensAsync(text);
     }
 
     private Color GetImprovementColor()
     {
-        var diff = GetTokenCount(_editableResult) - GetTokenCount(OriginalPrompt);
+        var diff = _resultTokenCount - _originalTokenCount;
         return diff > 0 ? Color.Success : Color.Warning;
     }
 
     private int GetImprovementPercentage()
     {
-        var original = GetTokenCount(OriginalPrompt);
-        var result = GetTokenCount(_editableResult);
+        if (_originalTokenCount == 0) return 0;
         
-        if (original == 0) return 0;
-        
-        return (int)(((float)(result - original) / original) * 100);
+        return (int)(((float)(_resultTokenCount - _originalTokenCount) / _originalTokenCount) * 100);
     }
 
     private async Task HandleApply()

@@ -91,6 +91,9 @@ builder.Services.AddSingleton<IWildcardService, WildcardService>();
 // Info service for contextual help/shortcuts across the app
 builder.Services.AddSingleton<IInfoService, InfoService>();
 
+// Tokenizer service for accurate token counting
+builder.Services.AddSingleton<ITokenizerService, TokenizerService>();
+
 // MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 
