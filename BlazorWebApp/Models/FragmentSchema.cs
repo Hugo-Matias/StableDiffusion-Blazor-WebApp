@@ -70,6 +70,12 @@ namespace BlazorWebApp.Models
         public bool HasDesignedComponent => !string.IsNullOrEmpty(Component);
 
         /// <summary>
+        /// Gets whether this fragment has any UI definition.
+        /// True if it has a designed component OR dynamic fields.
+        /// </summary>
+        public bool HasUI => HasDesignedComponent || UsesDynamicFields;
+
+        /// <summary>
         /// Gets constraints for a specific parameter.
         /// Returns empty constraints if not defined.
         /// </summary>

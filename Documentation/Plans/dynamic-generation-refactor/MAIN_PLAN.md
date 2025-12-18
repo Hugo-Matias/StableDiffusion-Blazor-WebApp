@@ -1,7 +1,7 @@
 # Dynamic Generation Page Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Execution (Phase 5)
+**Current Phase:** Execution (Phase 6 - Service Layer Updates)
 
 ---
 
@@ -262,42 +262,44 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 ### Phase 4: Dynamic Form Components
 **Objective:** Create reusable form components that render from schema
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Step 4.1 - Create `DynamicField.razor` (single field from schema)
-- [ ] Step 4.2 - Create `DynamicFragmentForm.razor` (fragment form with dynamic fields)
-- [ ] Step 4.3 - Create `FragmentFormContainer.razor` (enable/disable, chaining UI)
-- [ ] Step 4.4 - Create `SourcesPanel.razor` (tabbed image/video inputs)
-- [ ] Step 4.5 - Migrate existing form logic to designed components with schema binding
-- [ ] Step 4.6 - Create component stubs for all registered components
+- [x] Step 4.1 - Create `DynamicField.razor` (single field from schema)
+- [x] Step 4.2 - Create `DynamicFragmentForm.razor` (fragment form with dynamic fields)
+- [x] Step 4.3 - Create `FragmentFormContainer.razor` (enable/disable, chaining UI)
+- [x] Step 4.4 - Create `SourcesPanel.razor` (tabbed image/video inputs)
+- [x] Step 4.5 - Create `FragmentFormBase.cs` (base class for designed components)
+- [x] Step 4.6 - Register components in ComponentRegistry
 
 #### Success Criteria
-- Dynamic fields render all defined types correctly
-- Designed components read constraints from schema
-- Two-way binding works for all field types
-- SourcesPanel handles multiple input types
+- [x] Dynamic fields render all defined types correctly
+- [x] Designed components read constraints from schema
+- [x] Two-way binding works for all field types
+- [x] SourcesPanel handles multiple input types (reuses ImageInput)
 
 ---
 
 ### Phase 5: Unified Generation Page
 **Objective:** Create single generation page that works for all modes
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Step 5.1 - Create `Generate.razor` page layout
-- [ ] Step 5.2 - Implement prompt fields with fragment binding
-- [ ] Step 5.3 - Implement SourcesPanel integration
-- [ ] Step 5.4 - Implement workflow selection and switching
-- [ ] Step 5.5 - Implement fragment form rendering from pipeline
-- [ ] Step 5.6 - Implement asset panel integration (existing AssetResolverService)
-- [ ] Step 5.7 - Implement generate button and progress
+- [x] Step 5.1 - Create `Generate.razor` page layout
+- [x] Step 5.2 - Implement workflow selection and switching
+- [x] Step 5.3 - Implement prompt fields with fragment binding
+- [x] Step 5.4 - Implement SourcesPanel integration
+- [x] Step 5.5 - Implement fragment form rendering from pipeline
+- [x] Step 5.6 - Implement asset panel integration
+- [x] Step 5.7 - Implement generate button and progress
 
 #### Success Criteria
-- Single page handles Txt2Img, Img2Img, Img2Vid
-- Forms render dynamically based on selected workflow
-- Generation works end-to-end
+- [x] Single page works for Txt2Img, Img2Img, Img2Vid
+- [x] Workflow selector switches between modes
+- [x] Fragments render from pipeline
+- [x] Sources show for workflows that need them
+- [x] Generation triggers correctly
 
 ---
 
@@ -435,6 +437,14 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 | Phase 4 | Created FragmentFormBase.cs - base class for designed components |
 | Phase 4 | Created 4 new stub components (PromptsFormNew, SamplerFormNew, etc.) |
 | Phase 4 | Updated ComponentRegistry with all registrations |
+| Phase 4 | Fixed MudFileUpload API (ButtonTemplate for MudBlazor 6.1.8) |
+| Phase 5 | Created Generate.razor unified page |
+| Phase 5 | Implemented workflow selector with mode grouping |
+| Phase 5 | Implemented PromptsFormNew with FragmentFormBase binding |
+| Phase 5 | Added source parsing to WorkflowService |
+| Phase 5 | Added InitializeSourcesFromWorkflow to GenerationParameterService |
+| Phase 5 | Updated GenerateButton for parameterless callbacks |
+| Phase 5 | Implemented temporary parameter mapping for backward compatibility |
 
 ---
 

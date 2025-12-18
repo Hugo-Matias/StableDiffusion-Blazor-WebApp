@@ -1,0 +1,586 @@
+@page "/generate"
+@page "/generate/{WorkflowId}"
+@using BlazorWebApp.Events
+@using BlazorWebApp.Components.Shared.Generation
+@using BlazorWebApp.Components.ImageEditor
+@using static BlazorWebApp.Data.Enums
+@inject IComfyUIService API
+@inject IOrchestratorService Orchestrator
+@inject IStateService State
+@inject ISessionService Session
+@inject IEventService Events
+@inject IWorkflowService WorkflowService
+@inject IImageService ImageService
+@inject IGenerationParameterService ParameterService
+@inject IComponentRegistry ComponentRegistry
+@inject NavigationManager NavManager
+@inject ILogger<Generate> Logger
+@implements IDisposable
+
+@* Workflow Selection and Assets *@
+<MudGrid Class="mb-3">
+    <MudItem xs="8">
+        <MudSelect T="Workflow" 
+                   Value="_selectedWorkflow" 
+                   ValueChanged="OnWorkflowSelected"
+                   Label="Workflow"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Filled.AccountTree">
+            @if (_workflows != null)
+            {
+                @foreach (var group in _workflows.GroupBy(w => w.Mode))
+                {
+                    <MudSelectItem T="Workflow" Disabled="true" Value="null">
+                        <MudText Typo="Typo.overline">@group.Key</MudText>
+                    </MudSelectItem>
+                    @foreach (var workflow in group)
+                    {
+                        <MudSelectItem T="Workflow" Value="@workflow">
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="@GetModeColor(workflow.Mode)">
+                                    @workflow.Base
+                                </MudChip>
+                                @workflow.Title
+                            </MudStack>
+                        </MudSelectItem>
+                    }
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4">
+        @if (_selectedWorkflow != null)
+        {
+            <MudChip Color="@GetModeColor(_selectedWorkflow.Mode)" Variant="Variant.Filled">
+                @_selectedWorkflow.Mode
+            </MudChip>
+            <MudChip Color="Color.Default" Variant="Variant.Outlined">
+                @_selectedWorkflow.Base
+            </MudChip>
+        }
+    </MudItem>
+</MudGrid>
+
+@if (_selectedWorkflow != null)
+{
+    @* Workflow Assets Panel *@
+    <WorkflowAssetsPanel Mode="@_selectedWorkflow.Mode" 
+                         Workflow="@_selectedWorkflow"
+                         Columns="3"
+                         IsInitiallyExpanded="false" />
+
+    @* Main Content Grid *@
+    <MudGrid>
+        @* Left Column - Parameters *@
+        <MudItem xs="6">
+            <MudStack Spacing="3">
+                @* Prompt Fields *@
+                @if (_promptsFragment != null)
+                {
+                    <MudPaper Elevation="0" Class="pa-3">
+                        <PromptsFormNew Schema="@_promptsSchema" 
+                                        Parameters="@_promptsFragment" 
+                                        OnValueChanged="HandleValueChanged" />
+                    </MudPaper>
+                }
+
+                @* Sources Panel (if workflow has sources) *@
+                @if (Parameters?.Sources?.Count > 0)
+                {
+                    <SourcesPanel Sources="@Parameters.Sources"
+                                  OnSourceChanged="HandleSourceChanged"
+                                  OnEditClicked="HandleEditClicked"
+                                  OnBlankCanvasClicked="HandleBlankCanvasClicked" />
+                }
+
+                @* Fragment Forms - sorted by order *@
+                @foreach (var fragmentEntry in GetOrderedFragments())
+                {
+                    var fragmentId = fragmentEntry.Key;
+                    var fragment = fragmentEntry.Value;
+                    var schema = GetFragmentSchema(fragment.FragmentFile);
+                    
+                    @if (schema != null && schema.HasUI && fragmentId != "prompts")
+                    {
+                        <FragmentFormContainer Schema="@schema"
+                                               Parameters="@fragment"
+                                               FragmentId="@fragmentId"
+                                               OnActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentId, active))"
+                                               OnAddInstance="@(() => HandleAddFragmentInstance(fragmentId))">
+                            @if (schema.HasDesignedComponent && ComponentRegistry.IsRegistered(schema.Component))
+                            {
+                                @RenderDesignedComponent(schema.Component, fragment, schema)
+                            }
+                            else if (schema.UsesDynamicFields)
+                            {
+                                <DynamicFragmentForm Schema="@schema"
+                                                     Parameters="@fragment"
+                                                     OnValueChanged="HandleValueChanged" />
+                            }
+                        </FragmentFormContainer>
+                    }
+                }
+
+                @* Generate Button *@
+                <GenerateButton OnGenerateClicked="GenerateAsync"
+                                OnSkip="SkipAsync"
+                                OnInterrupt="InterruptAsync"
+                                IsDisabled="@(!CanGenerate())" />
+            </MudStack>
+        </MudItem>
+
+        @* Right Column - Output *@
+        <MudItem xs="6">
+            @if (_selectedWorkflow.Mode == ModeType.Img2Vid)
+            {
+                <GeneratedVideoTabs GeneratedVideos="@ImageService.GeneratedVideos" />
+            }
+            else
+            {
+                <GeneratedImageTabs />
+            }
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <MudAlert Severity="Severity.Info" Class="mt-4">
+        Select a workflow to begin generating.
+    </MudAlert>
+}
+
+@* Image Editor Modal *@
+<ImageEditorModal @ref="_editorModal"
+                  OnApply="HandleEditorApply"
+                  OnCancel="HandleEditorCancel" />
+
+@code {
+    [Parameter] public string? WorkflowId { get; set; }
+
+    // State
+    private List<Workflow>? _workflows;
+    private Workflow? _selectedWorkflow;
+    private GenerationParameters Parameters { get; set; } = new();
+    
+    // Cached fragment data
+    private FragmentParameters? _promptsFragment;
+    private FragmentSchema? _promptsSchema;
+    private Dictionary<string, FragmentSchema> _schemaCache = new();
+    
+    // Editor
+    private ImageEditorModal? _editorModal;
+    private string? _editingSourceId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to events
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+        
+        // Load all workflows by combining all modes
+        _workflows = new List<Workflow>();
+        foreach (var mode in new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid })
+        {
+            var modeWorkflows = Orchestrator.GetWorkflowsForMode(mode);
+            if (modeWorkflows != null)
+            {
+                _workflows.AddRange(modeWorkflows);
+            }
+        }
+        
+        // Initialize from URL parameter or state
+        if (!string.IsNullOrEmpty(WorkflowId) && Guid.TryParse(WorkflowId, out var workflowGuid))
+        {
+            var workflow = _workflows.FirstOrDefault(w => w.Id == workflowGuid);
+            if (workflow != null)
+            {
+                await OnWorkflowSelected(workflow);
+            }
+        }
+        else if (State.State?.Generation?.CurrentWorkflowId.HasValue == true)
+        {
+            var workflow = _workflows.FirstOrDefault(w => w.Id == State.State.Generation.CurrentWorkflowId.Value);
+            if (workflow != null)
+            {
+                await OnWorkflowSelected(workflow);
+            }
+        }
+        else if (_workflows.Count > 0)
+        {
+            await OnWorkflowSelected(_workflows.First());
+        }
+    }
+
+    private async Task OnWorkflowSelected(Workflow workflow)
+    {
+        if (workflow == null) return;
+        
+        _selectedWorkflow = workflow;
+        
+        // Update state
+        if (State.State?.Generation != null)
+        {
+            State.State.Generation.CurrentWorkflowId = workflow.Id;
+            State.State.Generation.WorkflowBase = workflow.Base;
+        }
+        
+        // Initialize parameters from workflow
+        Parameters = await ParameterService.InitializeFromWorkflowAsync(workflow);
+        
+        // Cache prompts fragment for direct binding
+        if (Parameters.Fragments.TryGetValue("prompts", out var prompts))
+        {
+            _promptsFragment = prompts;
+            _promptsSchema = GetFragmentSchema(prompts.FragmentFile);
+        }
+        
+        // Update URL without full navigation
+        var newUrl = $"/generate/{workflow.Id}";
+        NavManager.NavigateTo(newUrl, forceLoad: false, replace: true);
+        
+        StateHasChanged();
+    }
+
+    private FragmentSchema? GetFragmentSchema(string fragmentFile)
+    {
+        if (string.IsNullOrEmpty(fragmentFile)) return null;
+        
+        if (!_schemaCache.TryGetValue(fragmentFile, out var schema))
+        {
+            schema = WorkflowService.GetFragmentSchema(fragmentFile);
+            if (schema != null)
+            {
+                _schemaCache[fragmentFile] = schema;
+            }
+        }
+        
+        return schema;
+    }
+
+    private IEnumerable<KeyValuePair<string, FragmentParameters>> GetOrderedFragments()
+    {
+        return Parameters.Fragments
+            .Select(kvp => new { 
+                Entry = kvp, 
+                Order = GetFragmentSchema(kvp.Value.FragmentFile)?.Order ?? 999 
+            })
+            .OrderBy(x => x.Order)
+            .Select(x => x.Entry);
+    }
+
+    private RenderFragment RenderDesignedComponent(string componentName, FragmentParameters fragment, FragmentSchema schema)
+    {
+        var componentType = ComponentRegistry.GetComponent(componentName);
+        if (componentType == null)
+        {
+            return builder => builder.AddContent(0, $"Component '{componentName}' not found");
+        }
+
+        return builder =>
+        {
+            builder.OpenComponent(0, componentType);
+            builder.AddAttribute(1, "Schema", schema);
+            builder.AddAttribute(2, "Parameters", fragment);
+            builder.AddAttribute(3, "OnValueChanged", EventCallback.Factory.Create<(string, object?)>(this, HandleValueChanged));
+            builder.CloseComponent();
+        };
+    }
+
+    #region Event Handlers
+
+    private void HandleValueChanged((string key, object? value) args)
+    {
+        // Value already updated in fragment, just trigger save
+        _ = State.SaveState();
+    }
+
+    private void HandleSourceChanged((string sourceId, SourceAsset source) args)
+    {
+        if (Parameters.Sources.ContainsKey(args.sourceId))
+        {
+            Parameters.Sources[args.sourceId] = args.source;
+        }
+        StateHasChanged();
+    }
+
+    private void HandleFragmentActiveChanged(string fragmentId, bool active)
+    {
+        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment))
+        {
+            fragment.IsActive = active;
+        }
+    }
+
+    private void HandleAddFragmentInstance(string fragmentId)
+    {
+        // TODO: Implement fragment chaining in Phase 8
+        Logger.LogInformation("Add fragment instance requested for: {FragmentId}", fragmentId);
+    }
+
+    private async Task HandleEditClicked(string sourceId)
+    {
+        _editingSourceId = sourceId;
+        if (_editorModal != null && Parameters.Sources.TryGetValue(sourceId, out var source))
+        {
+            await _editorModal.Open(source.Data);
+        }
+    }
+
+    private async Task HandleBlankCanvasClicked(string sourceId)
+    {
+        _editingSourceId = sourceId;
+        if (_editorModal != null)
+        {
+            await _editorModal.OpenBlank(1024, 1024);
+        }
+    }
+
+    private void HandleEditorApply((string image, string? mask) result)
+    {
+        if (!string.IsNullOrEmpty(_editingSourceId) && Parameters.Sources.TryGetValue(_editingSourceId, out var source))
+        {
+            source.Data = result.image;
+            StateHasChanged();
+        }
+        _editingSourceId = null;
+    }
+
+    private void HandleEditorCancel()
+    {
+        _editingSourceId = null;
+    }
+
+    #endregion
+
+    #region Generation
+
+    private bool CanGenerate()
+    {
+        if (_selectedWorkflow == null) return false;
+        
+        // Check if required sources are filled
+        if (_selectedWorkflow.Sources != null)
+        {
+            foreach (var sourceDefinition in _selectedWorkflow.Sources)
+            {
+                // Check if source is required (from workflow definition)
+                if (sourceDefinition.Required && 
+                    (!Parameters.Sources.TryGetValue(sourceDefinition.Id, out var source) || 
+                     !source.HasData))
+                {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    private async Task GenerateAsync()
+    {
+        if (_selectedWorkflow == null) return;
+
+        try
+        {
+            // Save state before generation
+            await State.SaveState();
+
+            // Map parameters to the appropriate legacy format for now
+            // TODO: In Phase 6, update ImageService to work directly with GenerationParameters
+            await MapAndGenerate();
+
+            // Save state after generation
+            await State.SaveState();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during generation");
+        }
+    }
+
+    private async Task MapAndGenerate()
+    {
+        // Temporary: Map GenerationParameters to legacy parameter types
+        // This will be refactored in Phase 6 when we update ImageService
+        
+        switch (_selectedWorkflow!.Mode)
+        {
+            case ModeType.Txt2Img:
+                MapToTxt2ImgParameters();
+                var images = await ImageService.GetImages(ModeType.Txt2Img);
+                if (images?.Images?.Count > 0)
+                {
+                    ImageService.GeneratedImageEntities = images;
+                }
+                break;
+                
+            case ModeType.Img2Img:
+                MapToImg2ImgParameters();
+                var img2imgImages = await ImageService.GetImages(ModeType.Img2Img);
+                if (img2imgImages?.Images?.Count > 0)
+                {
+                    ImageService.GeneratedImageEntities = img2imgImages;
+                }
+                break;
+                
+            case ModeType.Img2Vid:
+                MapToImg2VidParameters();
+                var videos = await ImageService.GetVideo();
+                break;
+        }
+    }
+
+    private void MapToTxt2ImgParameters()
+    {
+        var p = State.ParametersTxt2Img;
+        p.Comfy.Workflow = _selectedWorkflow;
+        
+        // Map prompts
+        if (_promptsFragment != null)
+        {
+            p.Prompt = _promptsFragment.GetValueOrDefault<string>("positive", "");
+            p.NegativePrompt = _promptsFragment.GetValueOrDefault<string>("negative", "");
+        }
+        
+        // Map sampler if present
+        if (Parameters.Fragments.TryGetValue("main_sampler", out var sampler))
+        {
+            p.Steps = sampler.GetValueOrDefault("steps", 20);
+            p.CfgScale = (float)sampler.GetValueOrDefault("cfg", 7.0);
+            p.Seed = sampler.GetValueOrDefault("seed", -1L);
+            p.SamplerName = sampler.GetValueOrDefault<string>("sampler_name", "euler");
+            p.Scheduler = sampler.GetValueOrDefault<string>("scheduler", "normal");
+        }
+        
+        // Map assets
+        foreach (var asset in Parameters.Assets)
+        {
+            p.WorkflowAssets[asset.Key] = asset.Value;
+        }
+        
+        // Map loras
+        p.Loras = Parameters.Loras;
+    }
+
+    private void MapToImg2ImgParameters()
+    {
+        var p = State.ParametersImg2Img;
+        p.Comfy.Workflow = _selectedWorkflow;
+        
+        // Map prompts
+        if (_promptsFragment != null)
+        {
+            p.Prompt = _promptsFragment.GetValueOrDefault<string>("positive", "");
+            p.NegativePrompt = _promptsFragment.GetValueOrDefault<string>("negative", "");
+        }
+        
+        // Map source image
+        if (Parameters.Sources.TryGetValue("source_image", out var source))
+        {
+            p.Image = source.Data;
+        }
+        
+        // Map sampler if present
+        if (Parameters.Fragments.TryGetValue("main_sampler", out var sampler))
+        {
+            p.Steps = sampler.GetValueOrDefault("steps", 20);
+            p.CfgScale = (float)sampler.GetValueOrDefault("cfg", 7.0);
+            p.Seed = sampler.GetValueOrDefault("seed", -1L);
+            p.DenoisingStrength = sampler.GetValueOrDefault("denoise", 0.7);
+        }
+        
+        // Map assets
+        foreach (var asset in Parameters.Assets)
+        {
+            p.WorkflowAssets[asset.Key] = asset.Value;
+        }
+    }
+
+    private void MapToImg2VidParameters()
+    {
+        var p = State.ParametersImg2Vid;
+        p.Comfy.Workflow = _selectedWorkflow;
+        
+        // Map prompts
+        if (_promptsFragment != null)
+        {
+            p.Prompt = _promptsFragment.GetValueOrDefault<string>("positive", "");
+            p.NegativePrompt = _promptsFragment.GetValueOrDefault<string>("negative", "");
+        }
+        
+        // Map source image
+        if (Parameters.Sources.TryGetValue("source_image", out var source))
+        {
+            p.Image = source.Data;
+        }
+        
+        // Map assets
+        foreach (var asset in Parameters.Assets)
+        {
+            p.WorkflowAssets[asset.Key] = asset.Value;
+        }
+    }
+
+    private async Task SkipAsync()
+    {
+        try
+        {
+            await API.PostClearQueue();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error skipping generation");
+        }
+    }
+
+    private async Task InterruptAsync()
+    {
+        try
+        {
+            State.State.Generation.IsInterrupted = true;
+            await API.PostInterrupt();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error interrupting generation");
+        }
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private Color GetModeColor(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => Color.Primary,
+        ModeType.Img2Img => Color.Secondary,
+        ModeType.Img2Vid => Color.Tertiary,
+        _ => Color.Default
+    };
+
+    private void OnStateChanged(StateChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
+    private void OnParametersChanged(GenerationParametersChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+        
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await State.SaveState();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to save state on dispose");
+            }
+        });
+    }
+
+    #endregion
+}

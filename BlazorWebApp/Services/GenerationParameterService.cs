@@ -57,6 +57,9 @@ namespace BlazorWebApp.Services
                 }
             }
 
+            // Initialize sources from workflow definition
+            InitializeSourcesFromWorkflow(workflow, newParams);
+
             // Parse pipeline to extract fragments and their defaults
             try
             {
@@ -69,6 +72,68 @@ namespace BlazorWebApp.Services
 
             _current = newParams;
             PublishChange(GenerationParametersChangedEventArgs.WorkflowChanged(workflow.Id));
+        }
+
+        /// <summary>
+        /// Initializes source assets from workflow definition or RawJson.
+        /// </summary>
+        private void InitializeSourcesFromWorkflow(Workflow workflow, GenerationParameters parameters)
+        {
+            // First try from parsed Sources property
+            if (workflow.Sources != null && workflow.Sources.Count > 0)
+            {
+                foreach (var source in workflow.Sources)
+                {
+                    parameters.Sources[source.Id] = new SourceAsset
+                    {
+                        Label = source.Label,
+                        Type = source.Type
+                    };
+                    _logger.LogTrace("Initialized source '{SourceId}' ({Type}) from workflow definition", source.Id, source.Type);
+                }
+                return;
+            }
+
+            // Fall back to parsing from RawJson
+            if (string.IsNullOrEmpty(workflow.RawJson))
+                return;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(workflow.RawJson);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("Sources", out var sourcesEl) && sourcesEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var sourceEl in sourcesEl.EnumerateArray())
+                    {
+                        var id = sourceEl.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? "" : "";
+                        var label = sourceEl.TryGetProperty("label", out var labelEl) ? labelEl.GetString() ?? id : id;
+                        var type = sourceEl.TryGetProperty("type", out var typeEl) ? typeEl.GetString() ?? "image" : "image";
+
+                        if (!string.IsNullOrEmpty(id))
+                        {
+                            parameters.Sources[id] = new SourceAsset
+                            {
+                                Label = label,
+                                Type = type
+                            };
+                            _logger.LogTrace("Initialized source '{SourceId}' ({Type}) from RawJson", id, type);
+                        }
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse sources from workflow RawJson");
+            }
+        }
+
+        /// <inheritdoc />
+        public Task<GenerationParameters> InitializeFromWorkflowAsync(Workflow workflow)
+        {
+            InitializeFromWorkflow(workflow);
+            return Task.FromResult(_current);
         }
 
         /// <summary>

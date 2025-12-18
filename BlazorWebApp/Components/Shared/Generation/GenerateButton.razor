@@ -3,11 +3,11 @@
 @inject IEventService Events
 @implements IDisposable
 
-<EditForm Model="Parameters" OnSubmit="@Generate" class="d-flex flex-column justify-content-center">
+<EditForm Model="_dummyModel" OnSubmit="@Generate" class="d-flex flex-column justify-content-center">
     <MudStack Class="d-flex flex-column justify-content-center align-items-center w-100 h-100">
         @if (!_isConverging)
         {
-            <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" Disabled=ButtonDisabled FullWidth>Generate</MudButton>
+            <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" Disabled="@(ButtonDisabled || IsDisabled)" FullWidth>Generate</MudButton>
         }
         else
         {
@@ -20,13 +20,36 @@
 </EditForm>
 
 @code {
-    [Parameter] public SharedParameters Parameters { get; set; }
+    /// <summary>
+    /// Legacy parameter binding (optional - for backward compatibility).
+    /// </summary>
+    [Parameter] public SharedParameters? Parameters { get; set; }
+    
+    /// <summary>
+    /// Called when generate is clicked (legacy - with parameters).
+    /// </summary>
     [Parameter] public EventCallback<SharedParameters> OnGenerate { get; set; }
+    
+    /// <summary>
+    /// Called when generate is clicked (new - parameterless).
+    /// </summary>
+    [Parameter] public EventCallback OnGenerateClicked { get; set; }
+    
     [Parameter] public EventCallback OnSkip { get; set; }
     [Parameter] public EventCallback OnInterrupt { get; set; }
+    
+    /// <summary>
+    /// Legacy disabled state binding.
+    /// </summary>
     [Parameter] public bool ButtonDisabled { get; set; }
+    
+    /// <summary>
+    /// New disabled state binding.
+    /// </summary>
+    [Parameter] public bool IsDisabled { get; set; }
 
     private bool _isConverging = false;
+    private object _dummyModel = new(); // For EditForm when Parameters is null
 
     protected override void OnInitialized()
     {
@@ -41,7 +64,17 @@
 
     public async void Generate()
     {
-        await OnGenerate.InvokeAsync(Parameters);
+        // New pattern - parameterless callback
+        if (OnGenerateClicked.HasDelegate)
+        {
+            await OnGenerateClicked.InvokeAsync();
+        }
+        // Legacy pattern - with parameters
+        else if (OnGenerate.HasDelegate && Parameters != null)
+        {
+            await OnGenerate.InvokeAsync(Parameters);
+        }
+        
         await State.SaveState();
     }
 

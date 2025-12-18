@@ -1,34 +1,129 @@
 @inherits FragmentFormBase
+@using BlazorWebApp.Events
+@using static BlazorWebApp.Data.Enums
+@inject IEventService Events
+@inject IStateService State
+@implements IDisposable
 
 @* New Prompts Form - uses FragmentSchema for binding *@
-@* This is a stub component - will be fully implemented when Generate page is built *@
+@* Designed component for prompts fragment with positive/negative textareas *@
 
-<MudGrid>
-    <MudItem xs="12">
+<MudPaper Class="pa-4" Elevation="2">
+    <MudStack Spacing="3">
+        @* Positive Prompt *@
         <MudTextField T="string"
                       Value="@GetString("positive")"
-                      ValueChanged="@((string v) => SetValue("positive", v))"
+                      ValueChanged="@((string v) => SetValueAsync("positive", v))"
                       Label="Prompt"
-                      Lines="5"
+                      Lines="@_promptLines"
                       Variant="Variant.Outlined"
-                      Placeholder="Enter your prompt..." />
-    </MudItem>
-    <MudItem xs="12">
-        <MudTextField T="string"
-                      Value="@GetString("negative")"
-                      ValueChanged="@((string v) => SetValue("negative", v))"
-                      Label="Negative Prompt"
-                      Lines="2"
-                      Variant="Variant.Outlined"
-                      Placeholder="Enter negative prompt..." />
-    </MudItem>
-</MudGrid>
+                      Placeholder="Enter your prompt..."
+                      Immediate="false"
+                      DebounceInterval="300" />
+
+        @* Negative Prompt (hidden for some model bases like Flux) *@
+        @if (!_hideNegativePrompt)
+        {
+            <MudTextField T="string"
+                          Value="@GetString("negative")"
+                          ValueChanged="@((string v) => SetValueAsync("negative", v))"
+                          Label="Negative Prompt"
+                          Lines="@_negativePromptLines"
+                          Variant="Variant.Outlined"
+                          Placeholder="Enter negative prompt..."
+                          Immediate="false"
+                          DebounceInterval="300" />
+        }
+
+        @* Quick Actions Row *@
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Row Spacing="1">
+                <MudTooltip Text="Clear prompts">
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear" 
+                                   Size="Size.Small" 
+                                   Color="Color.Default"
+                                   OnClick="ClearPrompts" />
+                </MudTooltip>
+                <MudTooltip Text="Swap prompts">
+                    <MudIconButton Icon="@Icons.Material.Filled.SwapVert" 
+                                   Size="Size.Small" 
+                                   Color="Color.Default"
+                                   OnClick="SwapPrompts"
+                                   Disabled="@_hideNegativePrompt" />
+                </MudTooltip>
+            </MudStack>
+            
+            @* Character/token count indicator *@
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                @GetPromptStats()
+            </MudText>
+        </MudStack>
+    </MudStack>
+</MudPaper>
 
 @code {
-    // PromptsFormNew extends FragmentFormBase
-    // Full implementation will include:
-    // - Wildcard support
-    // - Style integration
-    // - LLM enhancer button
-    // - Tag append functionality
+    private int _promptLines = 5;
+    private int _negativePromptLines = 2;
+    private bool _hideNegativePrompt = false;
+    
+    // Model bases that don't use negative prompts
+    private static readonly HashSet<ModelBase> _noNegativeBases = new() 
+    { 
+        ModelBase.Flux, 
+        ModelBase.Qwen 
+    };
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        UpdateNegativePromptVisibility();
+    }
+
+    private void OnStateChanged(StateChangedEventArgs args)
+    {
+        if (args.ChangeType == StateChangeType.WorkflowBase)
+        {
+            UpdateNegativePromptVisibility();
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void UpdateNegativePromptVisibility()
+    {
+        var currentBase = State.State?.Generation?.WorkflowBase;
+        _hideNegativePrompt = currentBase.HasValue && _noNegativeBases.Contains(currentBase.Value);
+    }
+
+    private async Task ClearPrompts()
+    {
+        await SetValueAsync("positive", "");
+        await SetValueAsync("negative", "");
+    }
+
+    private async Task SwapPrompts()
+    {
+        var positive = GetString("positive");
+        var negative = GetString("negative");
+        await SetValueAsync("positive", negative);
+        await SetValueAsync("negative", positive);
+    }
+
+    private string GetPromptStats()
+    {
+        var positive = GetString("positive") ?? "";
+        var negative = GetString("negative") ?? "";
+        var totalChars = positive.Length + negative.Length;
+        
+        // Simple word count approximation
+        var positiveWords = string.IsNullOrWhiteSpace(positive) ? 0 : positive.Split(new[] { ' ', ',', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        var negativeWords = string.IsNullOrWhiteSpace(negative) ? 0 : negative.Split(new[] { ' ', ',', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        
+        return $"{positiveWords + negativeWords} words &bull; {totalChars} chars";
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+    }
 }

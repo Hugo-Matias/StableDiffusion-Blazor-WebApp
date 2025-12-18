@@ -130,6 +130,9 @@ namespace BlazorWebApp.Services
             // Parse Assets from workflow template
             wf.Assets = ParseAssetsFromTemplate(templateText);
 
+            // Parse Sources from workflow template
+            wf.Sources = ParseSourcesFromTemplate(templateText);
+
             // Generate a unique ID based on available properties
             var uniqueString = $"{wf.Title}_{wf.Base}_{wf.Mode}";
             wf.Id = GenerateDeterministicGuid(uniqueString);
@@ -137,6 +140,82 @@ namespace BlazorWebApp.Services
             wf.Pipeline = null;
 
             return wf;
+        }
+
+        /// <summary>
+        /// Parses the Sources array from a workflow template.
+        /// Sources define input images/videos required by the workflow.
+        /// </summary>
+        private List<WorkflowSource>? ParseSourcesFromTemplate(string templateText)
+        {
+            // Look for "Sources": [...] in the template
+            var sourcesMatch = Regex.Match(templateText, @"""Sources""\s*:\s*\[(.*?)\]", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            if (!sourcesMatch.Success)
+                return null;
+
+            var sourcesArrayContent = sourcesMatch.Groups[1].Value.Trim();
+            if (string.IsNullOrWhiteSpace(sourcesArrayContent))
+                return null;
+
+            var sources = new List<WorkflowSource>();
+
+            // Parse each source object in the array
+            var sourceMatches = Regex.Matches(sourcesArrayContent, @"\{([^{}]*)\}", RegexOptions.Singleline);
+
+            foreach (Match sourceMatch in sourceMatches)
+            {
+                var sourceContent = sourceMatch.Groups[1].Value;
+                var source = ParseSingleSource(sourceContent);
+                if (source != null)
+                {
+                    sources.Add(source);
+                }
+            }
+
+            return sources.Count > 0 ? sources : null;
+        }
+
+        /// <summary>
+        /// Parses a single source definition from JSON-like content.
+        /// </summary>
+        private WorkflowSource? ParseSingleSource(string sourceContent)
+        {
+            var source = new WorkflowSource();
+
+            // Parse id
+            var idMatch = Regex.Match(sourceContent, @"""id""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (idMatch.Success)
+                source.Id = idMatch.Groups[1].Value;
+            else
+                return null; // ID is required
+
+            // Parse label
+            var labelMatch = Regex.Match(sourceContent, @"""label""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (labelMatch.Success)
+                source.Label = labelMatch.Groups[1].Value;
+            else
+                source.Label = source.Id; // Default to ID
+
+            // Parse type
+            var typeMatch = Regex.Match(sourceContent, @"""type""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (typeMatch.Success)
+                source.Type = typeMatch.Groups[1].Value;
+            else
+                source.Type = "image"; // Default to image
+
+            // Parse required
+            var requiredMatch = Regex.Match(sourceContent, @"""required""\s*:\s*(true|false)", RegexOptions.IgnoreCase);
+            if (requiredMatch.Success)
+                source.Required = requiredMatch.Groups[1].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            else
+                source.Required = true; // Default to required
+
+            // Parse parameter
+            var paramMatch = Regex.Match(sourceContent, @"""parameter""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+            if (paramMatch.Success)
+                source.Parameter = paramMatch.Groups[1].Value;
+
+            return source;
         }
 
         /// <summary>

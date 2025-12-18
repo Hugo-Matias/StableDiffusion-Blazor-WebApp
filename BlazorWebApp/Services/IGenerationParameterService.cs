@@ -22,6 +22,13 @@ namespace BlazorWebApp.Services
         void InitializeFromWorkflow(Workflow workflow);
 
         /// <summary>
+        /// Initializes parameters from a workflow template asynchronously.
+        /// Returns the initialized GenerationParameters.
+        /// Publishes GenerationParametersChangedEventArgs.WorkflowChanged event.
+        /// </summary>
+        Task<GenerationParameters> InitializeFromWorkflowAsync(Workflow workflow);
+
+        /// <summary>
         /// Sets a value for a fragment parameter (no event published).
         /// Use for batch updates, call NotifyChanged() when done.
         /// </summary>
