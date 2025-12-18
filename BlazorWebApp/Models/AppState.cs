@@ -196,6 +196,12 @@ namespace BlazorWebApp.Models
         public int Score { get; set; } = 0;
         public bool IsScore { get; set; } = false;
         public bool UseInfiniteScroll { get; set; } = true;
+        
+        /// <summary>
+        /// Seed for consistent random ordering across page navigations.
+        /// Reset when filters are applied or OrderBy changes.
+        /// </summary>
+        public int? RandomSeed { get; set; }
     }
 
     public enum GalleryOrderBy { Random, Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }

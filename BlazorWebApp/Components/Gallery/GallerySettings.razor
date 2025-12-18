@@ -273,6 +273,16 @@
 
                     <!-- Filter/Reset Buttons - Centered -->
                     <MudStack Row=true Spacing="2" Class="action-buttons-center">
+                        @if (State.State.Gallery.OrderBy == GalleryOrderBy.Random)
+                        {
+                            <MudButton OnClick="async () => await OnReshuffleImages.InvokeAsync()" 
+                                       Variant="Variant.Filled" 
+                                       Color="Color.Info"
+                                       StartIcon="@Icons.Material.Filled.Shuffle"
+                                       Size="Size.Large">
+                                Reshuffle
+                            </MudButton>
+                        }
                         <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" 
                                    Variant="Variant.Filled" 
                                    Color="Color.Warning"
@@ -299,6 +309,7 @@
 
 @code {
     [Parameter] public EventCallback OnFilterImages { get; set; }
+    [Parameter] public EventCallback OnReshuffleImages { get; set; }
     [Parameter] public EventCallback OnResetFilters { get; set; }
     [Parameter] public EventCallback OnProjectDeleted { get; set; }
     [Parameter] public EventCallback<int> OnPageChanged { get; set; }

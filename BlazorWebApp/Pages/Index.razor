@@ -31,6 +31,7 @@ else if (_projects.Count() == 0 && State.State.Gallery.FolderId == 0)
 else
 {
     <GallerySettings OnFilterImages="async () => await FilterImages(false)"
+                     OnReshuffleImages="async () => await ReshuffleImages()"
                      OnResetFilters="async () => await FilterImages(true)"
                      OnProjectDeleted="async () => await RefreshProjects()" 
                      OnPageChanged="HandlePageChanged"
@@ -127,6 +128,15 @@ else
     private async Task FilterImages(bool resetFilter)
     {
         Gallery.IsGalleryFiltered = !resetFilter;
+        
+        // Clear seed when resetting filters or switching away from Random ordering
+        if (resetFilter || State.State.Gallery.OrderBy != GalleryOrderBy.Random)
+        {
+            State.State.Gallery.RandomSeed = null;
+        }
+        // When filtering with Random ordering, keep existing seed (maintain current order)
+        // User must click "Reshuffle" to generate new seed
+        
         await State.SaveState();
 
         currentImgPage = 1;
@@ -138,6 +148,28 @@ else
         if (State.State.Gallery.UseInfiniteScroll)
         {
             await EnsureEnoughContent();
+        }
+    }
+
+    private async Task ReshuffleImages()
+    {
+        // Generate new random seed only when explicitly requested
+        if (State.State.Gallery.OrderBy == GalleryOrderBy.Random)
+        {
+            State.State.Gallery.RandomSeed = Random.Shared.Next(1, 1000000);
+            Gallery.IsGalleryFiltered = true;
+            await State.SaveState();
+
+            currentImgPage = 1;
+            images = await FetchImagesPage(1);
+
+            await InvokeAsync(StateHasChanged);
+            await Task.Yield();
+
+            if (State.State.Gallery.UseInfiniteScroll)
+            {
+                await EnsureEnoughContent();
+            }
         }
     }
 
