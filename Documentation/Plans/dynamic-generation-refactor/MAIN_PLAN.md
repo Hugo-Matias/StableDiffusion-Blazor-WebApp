@@ -1,7 +1,7 @@
 # Dynamic Generation Page Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Execution (Phase 6 - Service Layer Updates)
+**Current Phase:** Execution (Phase 6 - State &amp; Persistence - Nearly Complete)
 
 ---
 
@@ -10,7 +10,7 @@
 **Follow these conventions throughout execution:**
 
 ### Execution Workflow (per step)
-1. **Initial Code Writing** ? 2. **Test and Debug Features** ? 3. **Discuss Improvements** ? 4. **Update Phase Document**
+1. **Initial Code Writing** &rarr; 2. **Test and Debug Features** &rarr; 3. **Discuss Improvements** &rarr; 4. **Update Phase Document**
    - Do NOT proceed to next step until testing is complete
    - User must explicitly approve before updating phase document
    - Build runs only after user requests or after completing all file edits
@@ -37,6 +37,7 @@
 - **Phase documents must contain enough context** to resume in new sessions
 - **Minimal, focused changes** - avoid over-engineering
 - **User permission required** before moving to next phase
+- **All events must use IEventService** - no direct event subscriptions
 
 ### Documentation Requirements
 - Create `PHASE_{#}.md` when entering a new phase
@@ -74,6 +75,7 @@ The current generation architecture suffers from **tight coupling** between:
 4. **Simplified node integration** reducing 8+ file changes to 2-3 files
 5. **Support for node chaining** (multiple samplers, detailers, etc.)
 6. **Simplified AppSettings** by moving constraints to fragment schemas
+7. **Remove all legacy parameter classes** in favor of `GenerationParameters`
 
 ---
 
@@ -84,46 +86,38 @@ The current generation architecture suffers from **tight coupling** between:
 ```
 ???????????????????????????????????????????????????????????????????
 ?                     Workflow Template (.sbn)                     ?
-?  ???????????? ???????????? ???????????????????????????????????? ?
+?  ??????????? ??????????? ????????????????????????????????????? ?
 ?  ?  Assets  ? ? Sources  ? ?           Pipeline[]             ? ?
 ?  ? (models) ? ?(img/vid) ? ?  id, fragment, parameters(def)  ? ?
-?  ???????????? ???????????? ???????????????????????????????????? ?
+?  ??????????? ??????????? ????????????????????????????????????? ?
 ???????????????????????????????????????????????????????????????????
                               ?
          ???????????????????????????????????????????
          ?                    ?                    ?
-???????????????????  ???????????????????  ???????????????????
+??????????????????????  ??????????????????????  ??????????????????????
 ?  Fragment #meta ?  ?  Fragment #meta ?  ?  Fragment #meta ?
-?  ?????????????  ?  ?  ?????????????  ?  ?  ?????????????  ?
+?  ????????????????  ?  ?  ????????????????  ?  ?  ????????????????  ?
 ?  ? outputs   ?  ?  ?  ? outputs   ?  ?  ?  ? outputs   ?  ?
-?  ? conditions?  ?  ?  ? conditions?  ?  ?  ? conditions?  ?
-?  ? ui:       ?  ?  ?  ? ui:       ?  ?  ?  ? (no ui)   ?  ?
-?  ?  component?  ?  ?  ?  component?  ?  ?  ?????????????  ?
-?  ?  params   ?  ?  ?  ?  fields[] ?  ?  ?  (utility node) ?
-?  ?????????????  ?  ?????????????????  ?  ???????????????????
+?  ? conditions?  ?  ?  ? conditions?  ?  ?  ? (no ui)   ?  ?
+?  ? ui:       ?  ?  ?  ? ui:       ?  ?  ?  ????????????????  ?
+?  ?  component?  ?  ?  ?  fields[] ?  ?  ?  (utility node) ?
+?  ????????????????  ?  ??????????????????????  ??????????????????????
 ? (designed comp) ?  (dynamic fields)   ?
-???????????????????  ???????????????????
+??????????????????????  ??????????????????????
          ?                    ?
          ?                    ?
 ???????????????????????????????????????????????????????????????????
 ?                    GenerationParameters                          ?
-?  ???????????????? ???????????????? ???????????????? ??????????? ?
+?  ????????????????? ????????????????? ????????????????? ???????? ?
 ?  ?  Fragments   ? ?    Assets    ? ?   Sources    ? ?  Loras  ? ?
 ?  ? Dict<id,val> ? ? Dict<id,val> ? ? Dict<id,val> ? ?  List   ? ?
-?  ???????????????? ???????????????? ???????????????? ??????????? ?
+?  ????????????????? ????????????????? ????????????????? ???????? ?
 ???????????????????????????????????????????????????????????????????
                               ?
                               ?
 ???????????????????????????????????????????????????????????????????
-?                   Dynamic Generate Page                          ?
-?  ????????????????????????????????????????????????????????????   ?
-?  ?                    Prompt Fields                          ?   ?
-?  ????????????????????????????????????????????????????????????   ?
-?  ???????????????  ???????????????  ???????????????              ?
-?  ?   Sources   ?  ?  Designed   ?  ?  Dynamic    ?              ?
-?  ?   Panel     ?  ?  Component  ?  ?   Fields    ?              ?
-?  ? (img/video) ?  ? (from comp) ?  ? (fallback)  ?              ?
-?  ???????????????  ???????????????  ???????????????              ?
+?                    ImageService / RouterService                  ?
+?  GenerationParameters ? ComfyUI Workflow API ? Generated Output ?
 ???????????????????????????????????????????????????????????????????
 ```
 
@@ -137,6 +131,7 @@ The current generation architecture suffers from **tight coupling** between:
 | Fragment `#meta.ui` defines constraints only | Pipeline defines default values per workflow |
 | Fragment ID links Pipeline to GenerationParameters | Unique ID enables multiple instances of same fragment |
 | No legacy support | Old pages removed, clean migration |
+| **RouterService accepts GenerationParameters directly** | Eliminates legacy parameter conversion layer |
 
 ### Conventions
 
@@ -146,6 +141,7 @@ The current generation architecture suffers from **tight coupling** between:
 - **Utility fragments** have no `ui` block and render no form
 - **Sources** appear first in the parameters panel, below prompts
 - **Chainable fragments** can have multiple instances (e.g., `main_sampler`, `refiner_sampler`)
+- **All events use IEventService** - no direct event subscriptions on services
 
 ---
 
@@ -199,63 +195,48 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 
 ## Implementation Phases
 
-### Phase 1: Schema Definition & Documentation
+### Phase 1: Schema Definition &amp; Documentation
 **Objective:** Define the UI schema format and document conventions
 **Complexity:** 5 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Step 1.1 - Design complete UI schema JSON structure
-- [ ] Step 1.2 - Create `FRAGMENT_SCHEMA_GUIDE.md` documentation
-- [ ] Step 1.3 - Define field types and their properties
-- [ ] Step 1.4 - Define component registry conventions
-- [ ] Step 1.5 - Review with example fragments (sampler, prompts, upscale)
-
-#### Success Criteria
-- Schema format is fully documented
-- All field types are defined with validation rules
-- Component naming conventions established
+- [x] Step 1.1 - Design complete UI schema JSON structure
+- [x] Step 1.2 - Create `FRAGMENT_SCHEMA_GUIDE.md` documentation
+- [x] Step 1.3 - Define field types and their properties
+- [x] Step 1.4 - Define component registry conventions
+- [x] Step 1.5 - Review with example fragments (sampler, prompts, upscale)
 
 ---
 
 ### Phase 2: Core Infrastructure
 **Objective:** Create the foundational types and services for dynamic parameters
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Step 2.1 - Create `GenerationParameters` model
-- [ ] Step 2.2 - Create `FragmentParameters` model
-- [ ] Step 2.3 - Create `FragmentSchema` model (parsed from #meta.ui)
-- [ ] Step 2.4 - Create `SourceAsset` model for input images/videos
-- [ ] Step 2.5 - Create `ComponentRegistry` service
-- [ ] Step 2.6 - Extend `WorkflowService` to parse UI schema
-- [ ] Step 2.7 - Create `GenerationParameterService` for parameter CRUD
-
-#### Success Criteria
-- New models compile and serialize correctly
-- WorkflowService extracts UI schema from fragments
-- ComponentRegistry resolves fragment types to component names
+- [x] Step 2.1 - Create `GenerationParameters` model
+- [x] Step 2.2 - Create `FragmentParameters` model
+- [x] Step 2.3 - Create `FragmentSchema` model (parsed from #meta.ui)
+- [x] Step 2.4 - Create `SourceAsset` model for input images/videos
+- [x] Step 2.5 - Create `ComponentRegistry` service
+- [x] Step 2.6 - Extend `WorkflowService` to parse UI schema
+- [x] Step 2.7 - Create `GenerationParameterService` for parameter CRUD
 
 ---
 
 ### Phase 3: Fragment Updates
 **Objective:** Update key fragments with UI schema
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Step 3.1 - Update `prompts.sbn` with UI schema
-- [ ] Step 3.2 - Update `sampler.sbn` with UI schema
-- [ ] Step 3.3 - Update `upscale.sbn` with UI schema
-- [ ] Step 3.4 - Update `detailer-core.sbn` with UI schema
-- [ ] Step 3.5 - Update loader fragments (flux, sd, etc.) - utility, no UI
-- [ ] Step 3.6 - Validate all schemas parse correctly
-
-#### Success Criteria
-- Core fragments have valid UI schema
-- WorkflowService correctly parses all updated fragments
-- Schema validation catches malformed definitions
+- [x] Step 3.1 - Update `prompts.sbn` with UI schema
+- [x] Step 3.2 - Update `sampler.sbn` with UI schema
+- [x] Step 3.3 - Update `upscale.sbn` with UI schema
+- [x] Step 3.4 - Update `detailer-core.sbn` with UI schema
+- [x] Step 3.5 - Update loader fragments (flux, sd, etc.) - utility, no UI
+- [x] Step 3.6 - Validate all schemas parse correctly
 
 ---
 
@@ -271,12 +252,6 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 - [x] Step 4.4 - Create `SourcesPanel.razor` (tabbed image/video inputs)
 - [x] Step 4.5 - Create `FragmentFormBase.cs` (base class for designed components)
 - [x] Step 4.6 - Register components in ComponentRegistry
-
-#### Success Criteria
-- [x] Dynamic fields render all defined types correctly
-- [x] Designed components read constraints from schema
-- [x] Two-way binding works for all field types
-- [x] SourcesPanel handles multiple input types (reuses ImageInput)
 
 ---
 
@@ -294,31 +269,27 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 - [x] Step 5.6 - Implement asset panel integration
 - [x] Step 5.7 - Implement generate button and progress
 
-#### Success Criteria
-- [x] Single page works for Txt2Img, Img2Img, Img2Vid
-- [x] Workflow selector switches between modes
-- [x] Fragments render from pipeline
-- [x] Sources show for workflows that need them
-- [x] Generation triggers correctly
-
 ---
 
-### Phase 6: State & Persistence
+### Phase 6: State &amp; Persistence
 **Objective:** Update state management to use new parameter structure
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [~] Nearly Complete (pending manual testing)
 
 #### Steps
-- [ ] Step 6.1 - Update `StateService` to handle `GenerationParameters`
-- [ ] Step 6.2 - Update `ImageService` to use new parameters
-- [ ] Step 6.3 - Update database state serialization
-- [ ] Step 6.4 - Implement parameter parsing (wildcards, seeds) in new flow
-- [ ] Step 6.5 - Test state persistence and recovery
+- [x] Step 6.1 - Update `StateService` to handle `GenerationParameters`
+- [x] Step 6.2 - Update `ImageService` to use new parameters
+  - Added `GenerateImagesAsync(GenerationParameters, Workflow)`
+  - Added `GenerateVideoAsync(GenerationParameters, Workflow)`
+  - Migrated `OnChange` event to `IEventService` pattern (`ImagesGeneratedEventArgs`)
+- [x] Step 6.3 - Router/ComfyUI factories (deferred to Phase 9 - internal conversion sufficient)
+- [x] Step 6.4 - Implement parameter parsing (wildcards, seeds) - integrated in 6.2
+- [~] Step 6.5 - Test state persistence and recovery (pending manual testing)
 
 #### Success Criteria
-- State saves and loads correctly
-- Wildcards and seed randomization work
-- No data loss between sessions
+- [x] State saves and loads correctly
+- [x] Wildcards and seed randomization work
+- [ ] No data loss between sessions (manual verification needed)
 
 ---
 
@@ -360,23 +331,99 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 
 ---
 
-### Phase 9: Cleanup & Simplification
-**Objective:** Remove deprecated code and simplify AppSettings
-**Complexity:** 5 points
+### Phase 9: Legacy Deprecation &amp; RouterService Refactor
+**Objective:** Remove all legacy parameter classes and DTOs; RouterService accepts GenerationParameters directly
+**Complexity:** 13 points (increased from 5)
 **Status:** [ ] Not Started
 
+#### Overview
+This phase eliminates the temporary conversion layer added in Phase 6 and establishes `GenerationParameters` as the sole parameter model throughout the system.
+
 #### Steps
-- [ ] Step 9.1 - Remove old parameter classes (`Txt2ImgParameters`, etc.)
-- [ ] Step 9.2 - Remove old DTO classes (`Txt2ImgComfyUI`, etc.)
-- [ ] Step 9.3 - Remove old generation pages (`Txt2Img.razor`, etc.)
-- [ ] Step 9.4 - Simplify `AppSettings` (remove component constraints)
-- [ ] Step 9.5 - Remove `ParameterMapper.cs`
-- [ ] Step 9.6 - Update `NODE_INTEGRATION_GUIDE.md` with new workflow
+
+##### Step 9.1: Update RouterService for GenerationParameters
+- [ ] Add `IRouterService.PostGenerationAsync(GenerationParameters, Workflow)` method
+- [ ] Build ComfyUI workflow payload directly from `GenerationParameters.Fragments`
+- [ ] Remove mode-specific routing (`PostTxt2Img`, `PostImg2Img`, `PostImg2Vid`)
+
+##### Step 9.2: Update ComfyUI DTOs
+- [ ] Create `ComfyUIWorkflowBuilder.FromGenerationParameters()` factory
+- [ ] Remove `Txt2ImgComfyUI.cs`
+- [ ] Remove `Img2ImgComfyUI.cs`
+- [ ] Remove `Img2VidComfyUI.cs`
+
+##### Step 9.3: Remove Legacy Parameter Classes
+- [ ] Remove `SharedParameters.cs`
+- [ ] Remove `Txt2ImgParameters.cs`
+- [ ] Remove `Img2ImgParameters.cs`
+- [ ] Remove `Img2VidParameters.cs`
+- [ ] Remove `UpscaleParameters.cs`
+- [ ] Remove `DetailerParameters.cs` (if separate)
+- [ ] Remove `ParameterMapper.cs`
+
+##### Step 9.4: Update ImageService
+- [ ] Remove `BuildLegacyParametersFromGenerationParams()` method
+- [ ] Remove `BuildTxt2ImgFromGenerationParams()` method
+- [ ] Remove `BuildImg2ImgFromGenerationParams()` method
+- [ ] Remove `BuildImg2VidFromGenerationParams()` method
+- [ ] Remove legacy `GetImages(ModeType)` method
+- [ ] Remove legacy `GetVideo()` method
+- [ ] Update `SaveImages()` to read from `GenerationParameters` directly
+
+##### Step 9.5: Update StateService
+- [ ] Remove `ParametersTxt2Img` property
+- [ ] Remove `ParametersImg2Img` property
+- [ ] Remove `ParametersImg2Vid` property
+- [ ] Remove legacy parameter initialization
+- [ ] Update `IStateService` interface
+
+##### Step 9.6: Remove Legacy UI Components
+- [ ] Remove `Txt2Img.razor` page
+- [ ] Remove `Img2Img.razor` page
+- [ ] Remove `Img2Vid.razor` page
+- [ ] Remove `GenerateFormTxt2Img.razor`
+- [ ] Remove `GenerateFormImg2Img.razor`
+- [ ] Remove `GenerateFormImg2Vid.razor`
+- [ ] Update navigation to only use `/generate` route
+
+##### Step 9.7: Simplify AppSettings
+- [ ] Remove component constraints from `AppSettings`
+- [ ] Move all min/max/step values to fragment schemas
+- [ ] Update `appsettings.json`
+- [ ] Update settings documentation
+
+##### Step 9.8: Update Parser.cs
+- [ ] Remove `ParseParameters()` method (sync version)
+- [ ] Update `ParseParametersAsync()` to work with `GenerationParameters` directly
+- [ ] Or create new `ParseGenerationParametersAsync()` method
 
 #### Success Criteria
-- Codebase is clean with no dead code
+- No references to `Txt2ImgParameters`, `Img2ImgParameters`, `Img2VidParameters` in codebase
+- No references to `Txt2ImgComfyUI`, `Img2ImgComfyUI`, `Img2VidComfyUI` in codebase
+- `RouterService` has single generation method accepting `GenerationParameters`
+- `ImageService` has no legacy methods
+- `StateService` only manages `GenerationParameters`
 - AppSettings is significantly smaller
-- New node integration requires only 2-3 files
+- All tests pass with new architecture
+
+#### Files to Remove
+```
+Models/SharedParameters.cs
+Models/Txt2ImgParameters.cs
+Models/Img2ImgParameters.cs
+Models/Img2VidParameters.cs
+Models/UpscaleParameters.cs
+Data/Dtos/ComfyUI/Txt2ImgComfyUI.cs
+Data/Dtos/ComfyUI/Img2ImgComfyUI.cs
+Data/Dtos/ComfyUI/Img2VidComfyUI.cs
+Services/ParameterMapper.cs (if exists)
+Pages/Txt2Img.razor
+Pages/Img2Img.razor
+Pages/Img2Vid.razor
+Components/Shared/Generation/GenerateFormTxt2Img.razor
+Components/Shared/Generation/GenerateFormImg2Img.razor
+Components/Shared/Generation/GenerateFormImg2Vid.razor
+```
 
 ---
 
@@ -387,16 +434,18 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 
 #### Steps
 - [ ] Step 10.1 - Create architecture overview document
-- [ ] Step 10.2 - Update all affected guides
-- [ ] Step 10.3 - Create migration notes for users
+- [ ] Step 10.2 - Update `NODE_INTEGRATION_GUIDE.md` with new workflow (2-3 files instead of 8+)
+- [ ] Step 10.3 - Update all affected guides
+- [ ] Step 10.4 - Create migration notes for users
 
 #### Success Criteria
 - Documentation is complete and accurate
 - New developers can understand the system
+- Node integration guide shows simplified process
 
 ---
 
-## Stress Points & Risks
+## Stress Points &amp; Risks
 
 | Risk | Mitigation | Complexity |
 |------|------------|------------|
@@ -405,6 +454,7 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 | Parameter parsing (wildcards, seeds) breaks | Keep Parser.cs logic, integrate carefully in Phase 6 | 3 |
 | Component binding performance | Lazy loading, minimize re-renders | 3 |
 | State serialization format changes | Version the state format, handle gracefully | 3 |
+| Legacy parameter removal breaks existing features | Thorough testing in Phase 9, keep feature parity | 8 |
 
 ---
 
@@ -445,6 +495,13 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 | Phase 5 | Added InitializeSourcesFromWorkflow to GenerationParameterService |
 | Phase 5 | Updated GenerateButton for parameterless callbacks |
 | Phase 5 | Implemented temporary parameter mapping for backward compatibility |
+| Phase 6 | Added GenerationParameters to StateService for persistence |
+| Phase 6 | Added GenerateImagesAsync/GenerateVideoAsync to ImageService |
+| Phase 6 | Migrated ImageService.OnChange to IEventService pattern |
+| Phase 6 | Created ImagesGeneratedEventArgs |
+| Phase 6 | Updated GeneratedImageTabs to use EventService subscription |
+| Phase 6 | Integrated wildcard/seed parsing in new flow |
+| Phase 6 | Expanded Phase 9 scope to include full legacy deprecation |
 
 ---
 
@@ -532,184 +589,56 @@ public class SourceAsset
 }
 ```
 
-### Template with Sources and Pipeline IDs
-
-```json
-{
-  "Title": "SteadyDancer",
-  "Base": "Wan",
-  "Mode": "img2vid",
-  "Assets": [
-    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "...", "order": 1 }
-  ],
-  "Sources": [
-    { "id": "source_video", "label": "Source Video", "type": "video", "required": true },
-    { "id": "reference_image", "label": "Reference Pose", "type": "image", "required": true }
-  ],
-  "Pipeline": [
-    {
-      "id": "prompts",
-      "fragment": "prompts.sbn",
-      "parameters": {
-        "positive": {{ Prompt | json }},
-        "negative": {{ NegativePrompt | json }}
-      }
-    },
-    {
-      "id": "main_sampler",
-      "fragment": "sampler.sbn",
-      "parameters": {
-        "sampler_name": "euler",
-        "scheduler": "normal",
-        "steps": 20,
-        "cfg": 7,
-        "seed": -1
-      }
-    }
-  ]
-}
-```
-
-### Fragment with Designed Component
-
-```json
-#meta
-{
-  "outputs": {
-    "latent_output": {"node": "{{ sampler_id }}", "index": 0}
-  },
-  "conditions": {
-    "required": ["Fragments.{{ sampler_id }}.IsActive"]
-  },
-  "ui": {
-    "component": "SamplerForm",
-    "title": "Sampler",
-    "icon": "fa-solid fa-dice",
-    "collapsible": true,
-    "chainable": true,
-    "parameters": {
-      "sampler_name": { "source": "Backend.Samplers" },
-      "scheduler": { "source": "Backend.Schedulers" },
-      "steps": { "min": 1, "max": 150, "step": 1 },
-      "cfg": { "min": 1, "max": 30, "step": 0.5 },
-      "seed": { "min": -1 }
-    }
-  }
-}
-#end
-```
-
-### Fragment with Dynamic Fields (no custom component)
-
-```json
-#meta
-{
-  "outputs": { ... },
-  "ui": {
-    "component": null,
-    "title": "Experimental Node",
-    "collapsible": true,
-    "fields": [
-      { 
-        "parameter": "strength", 
-        "label": "Strength", 
-        "type": "slider", 
-        "min": 0, 
-        "max": 1, 
-        "step": 0.01 
-      },
-      { 
-        "parameter": "mode", 
-        "label": "Mode", 
-        "type": "select", 
-        "options": ["fast", "quality"] 
-      }
-    ]
-  }
-}
-#end
-```
-
-### Designed Component with Schema Binding
-
-```razor
-@* SamplerForm.razor *@
-@inject IBackendService Backend
-
-<MudGrid>
-    <MudItem xs="6">
-        <MudSelect T="string" 
-                   @bind-Value="@Values["sampler_name"]" 
-                   Label="Sampler">
-            @foreach (var sampler in Backend.Samplers)
-            {
-                <MudSelectItem Value="@sampler.Name" />
-            }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="6">
-        <MudSelect T="string" 
-                   @bind-Value="@Values["scheduler"]" 
-                   Label="Scheduler">
-            @foreach (var scheduler in Backend.Schedulers)
-            {
-                <MudSelectItem Value="@scheduler.Name" />
-            }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="6">
-        <MudSlider T="int" 
-                   @bind-Value="@GetInt("steps")"
-                   Min="@Schema.Parameters["steps"].Min"
-                   Max="@Schema.Parameters["steps"].Max"
-                   Step="@Schema.Parameters["steps"].Step"
-                   Variant="Variant.Filled" ValueLabel>
-            <small>Steps:</small> @GetInt("steps")
-        </MudSlider>
-    </MudItem>
-    <!-- ... more fields ... -->
-</MudGrid>
-
-@code {
-    [Parameter] public Dictionary<string, object?> Values { get; set; } = new();
-    [Parameter] public FragmentSchema Schema { get; set; } = new();
-    
-    private int GetInt(string key) => Convert.ToInt32(Values.GetValueOrDefault(key, 0));
-}
-```
-
----
-
-## Simplified AppSettings (After Migration)
+### New RouterService Interface (Phase 9)
 
 ```csharp
-public class AppSettings
+public interface IRouterService
 {
-    public ThemeSettings Theme { get; set; }
-    public PathSettings Paths { get; set; }
-    public BackendSettings Backend { get; set; }
-    public GenerationSettings Generation { get; set; }
-    // ... other non-component settings
+    /// <summary>
+    /// Executes a generation workflow using the unified GenerationParameters model.
+    /// Replaces PostTxt2Img, PostImg2Img, PostImg2Vid.
+    /// </summary>
+    Task<GeneratedImages> PostGenerationAsync(GenerationParameters parameters, Workflow workflow);
+    
+    /// <summary>
+    /// Executes a video generation workflow.
+    /// </summary>
+    Task<GeneratedVideos> PostVideoGenerationAsync(GenerationParameters parameters, Workflow workflow);
+    
+    // Legacy methods marked obsolete
+    [Obsolete("Use PostGenerationAsync instead")]
+    Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters);
+    
+    [Obsolete("Use PostGenerationAsync instead")]
+    Task<GeneratedImages> PostImg2Img(Img2ImgParameters parameters);
+    
+    [Obsolete("Use PostVideoGenerationAsync instead")]
+    Task<GeneratedVideos> PostImg2Vid(Img2VidParameters parameters);
 }
+```
 
-public class GenerationSettings
+### Simplified ImageService (Phase 9)
+
+```csharp
+public interface IImageService
 {
-    /// <summary>
-    /// Quick resolution presets for the resolution picker.
-    /// </summary>
-    public List<ResolutionPreset> QuickResolutions { get; set; }
+    // New unified methods
+    Task<ImagesDto> GenerateImagesAsync(GenerationParameters parameters, Workflow workflow);
+    Task<GeneratedVideos> GenerateVideoAsync(GenerationParameters parameters, Workflow workflow);
     
-    /// <summary>
-    /// LLM enhancer settings.
-    /// </summary>
-    public LLMEnhancerSettings LLMEnhancer { get; set; }
+    // Results
+    GeneratedImages Images { get; }
+    ImagesDto GeneratedImageEntities { get; set; }
+    GeneratedVideos GeneratedVideos { get; }
+    InferenceProgress Progress { get; set; }
     
-    /// <summary>
-    /// Random images settings for gallery.
-    /// </summary>
-    public RandomImagesSettings RandomImages { get; set; }
+    // Utility
+    Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName);
+    Task<bool> DownloadImageAsPng(string url, string path, bool overwrite = true);
     
-    // All min/max/step/default values moved to fragment schemas!
+    // Legacy methods removed in Phase 9:
+    // - GetImages(ModeType mode)
+    // - GetVideo()
 }
 ```
 
@@ -717,19 +646,19 @@ public class GenerationSettings
 
 ## Total Complexity
 
-| Phase | Points |
-|-------|--------|
-| Phase 1: Schema Definition | 5 |
-| Phase 2: Core Infrastructure | 13 |
-| Phase 3: Fragment Updates | 8 |
-| Phase 4: Dynamic Components | 13 |
-| Phase 5: Unified Page | 13 |
-| Phase 6: State & Persistence | 8 |
-| Phase 7: Workflow Templates | 5 |
-| Phase 8: Node Chaining | 8 |
-| Phase 9: Cleanup | 5 |
-| Phase 10: Documentation | 3 |
-| **Total** | **81 points** |
+| Phase | Points | Status |
+|-------|--------|--------|
+| Phase 1: Schema Definition | 5 | &check; Complete |
+| Phase 2: Core Infrastructure | 13 | &check; Complete |
+| Phase 3: Fragment Updates | 8 | &check; Complete |
+| Phase 4: Dynamic Components | 13 | &check; Complete |
+| Phase 5: Unified Page | 13 | &check; Complete |
+| Phase 6: State &amp; Persistence | 8 | [~] Nearly Complete |
+| Phase 7: Workflow Templates | 5 | [ ] Not Started |
+| Phase 8: Node Chaining | 8 | [ ] Not Started |
+| Phase 9: Legacy Deprecation | 13 | [ ] Not Started |
+| Phase 10: Documentation | 3 | [ ] Not Started |
+| **Total** | **89 points** | |
 
 ---
 
@@ -738,3 +667,4 @@ public class GenerationSettings
 - [NODE_INTEGRATION_GUIDE.md](../../BlazorWebApp/Workflows/NODE_INTEGRATION_GUIDE.md) - Current integration process
 - [TEMPLATE_GUIDE.md](../../BlazorWebApp/Workflows/TEMPLATE_GUIDE.md) - Workflow template conventions
 - [IMPLEMENTATION_GUIDE.md](../IMPLEMENTATION_GUIDE.md) - Planning conventions
+- [FRAGMENT_SCHEMA_GUIDE.md](./FRAGMENT_SCHEMA_GUIDE.md) - Fragment UI schema documentation

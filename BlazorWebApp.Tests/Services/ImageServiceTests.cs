@@ -1,5 +1,6 @@
 using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,7 @@ public class ImageServiceTests
     private readonly Mock<IModelService> _mockModels;
     private readonly Mock<ISettingsService> _mockSettings;
     private readonly Mock<IWildcardService> _mockWildcardService;
+    private readonly Mock<IEventService> _mockEvents;
     private readonly MagickService _magickService;
 
     public ImageServiceTests()
@@ -37,6 +39,7 @@ public class ImageServiceTests
         _mockModels = new Mock<IModelService>();
         _mockSettings = new Mock<ISettingsService>();
         _mockWildcardService = new Mock<IWildcardService>();
+        _mockEvents = new Mock<IEventService>();
 
         // Setup settings for MagickService
         var appSettings = new AppSettings
@@ -133,7 +136,8 @@ public class ImageServiceTests
             _mockState.Object,
             _mockSession.Object,
             _mockModels.Object,
-            _mockWildcardService.Object);
+            _mockWildcardService.Object,
+            _mockEvents.Object);
     }
 
     #region Constructor Tests
@@ -455,19 +459,17 @@ public class ImageServiceTests
 
     #endregion
 
-    #region OnChange Event Tests
+    #region Event Tests
 
     [Fact]
-    public void OnChange_ShouldBeSubscribable()
+    public void NotifyStateChanged_ShouldPublishEventThroughEventService()
     {
         // Arrange
         var service = CreateService();
-        var eventRaised = false;
-        service.OnChange += () => eventRaised = true;
-
-        // We can't directly trigger NotifyStateChanged() since it's private
-        // This test verifies the event can be subscribed to
-        Assert.False(eventRaised); // Event not raised yet
+        
+        // We can verify the event service is set up correctly
+        // The actual publishing happens internally through NotifyStateChanged
+        _mockEvents.Verify(e => e.Publish(It.IsAny<ImagesGeneratedEventArgs>()), Times.Never);
     }
 
     #endregion

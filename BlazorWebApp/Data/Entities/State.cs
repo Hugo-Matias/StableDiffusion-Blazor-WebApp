@@ -13,5 +13,11 @@ namespace BlazorWebApp.Data.Entities
         public Img2ImgParameters? Img2ImgParameters { get; set; }
         public UpscaleParameters? UpscaleParameters { get; set; }
         public Img2VidParameters? Img2VidParameters { get; set; }
+        
+        /// <summary>
+        /// New unified generation parameters.
+        /// Will eventually replace the mode-specific parameter properties.
+        /// </summary>
+        public GenerationParameters? GenerationParameters { get; set; }
     }
 }

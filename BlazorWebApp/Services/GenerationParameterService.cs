@@ -6,26 +6,28 @@ namespace BlazorWebApp.Services
 {
     /// <summary>
     /// Service for managing generation parameters.
-    /// Provides CRUD operations and workflow initialization.
+    /// Operates on StateService.GenerationParameters for state persistence.
     /// </summary>
     public class GenerationParameterService : IGenerationParameterService
     {
         private readonly ILogger<GenerationParameterService> _logger;
         private readonly IWorkflowService _workflowService;
         private readonly IEventService _eventService;
-        private GenerationParameters _current = new();
+        private readonly IStateService _stateService;
 
         /// <inheritdoc />
-        public GenerationParameters Current => _current;
+        public GenerationParameters Current => _stateService.GenerationParameters;
 
         public GenerationParameterService(
             ILogger<GenerationParameterService> logger,
             IWorkflowService workflowService,
-            IEventService eventService)
+            IEventService eventService,
+            IStateService stateService)
         {
             _logger = logger;
             _workflowService = workflowService;
             _eventService = eventService;
+            _stateService = stateService;
         }
 
         /// <inheritdoc />
@@ -39,11 +41,13 @@ namespace BlazorWebApp.Services
 
             _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle}", workflow.Title);
 
-            // Create new parameters instance
-            var newParams = new GenerationParameters
-            {
-                WorkflowId = workflow.Id
-            };
+            // Clear existing parameters and reinitialize
+            var current = Current;
+            current.WorkflowId = workflow.Id;
+            current.Fragments.Clear();
+            current.Assets.Clear();
+            current.Sources.Clear();
+            // Note: Loras are preserved across workflow changes
 
             // Initialize assets from workflow defaults
             if (workflow.Assets != null)
@@ -52,25 +56,24 @@ namespace BlazorWebApp.Services
                 {
                     if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
                     {
-                        newParams.Assets[asset.Parameter] = asset.DefaultValue;
+                        current.Assets[asset.Parameter] = asset.DefaultValue;
                     }
                 }
             }
 
             // Initialize sources from workflow definition
-            InitializeSourcesFromWorkflow(workflow, newParams);
+            InitializeSourcesFromWorkflow(workflow, current);
 
             // Parse pipeline to extract fragments and their defaults
             try
             {
-                InitializeFragmentsFromPipeline(workflow, newParams);
+                InitializeFragmentsFromPipeline(workflow, current);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error parsing pipeline for workflow {WorkflowTitle}", workflow.Title);
             }
 
-            _current = newParams;
             PublishChange(GenerationParametersChangedEventArgs.WorkflowChanged(workflow.Id));
         }
 
@@ -133,7 +136,7 @@ namespace BlazorWebApp.Services
         public Task<GenerationParameters> InitializeFromWorkflowAsync(Workflow workflow)
         {
             InitializeFromWorkflow(workflow);
-            return Task.FromResult(_current);
+            return Task.FromResult(Current);
         }
 
         /// <summary>
@@ -249,7 +252,7 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void SetFragmentValue(string fragmentId, string parameter, object? value)
         {
-            var fragment = _current.GetOrCreateFragment(fragmentId);
+            var fragment = Current.GetOrCreateFragment(fragmentId);
             fragment.SetValue(parameter, value);
             _logger.LogTrace("Set {FragmentId}.{Parameter} = {Value}", fragmentId, parameter, value);
         }
@@ -264,7 +267,7 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public T? GetFragmentValue<T>(string fragmentId, string parameter)
         {
-            var fragment = _current.GetFragment(fragmentId);
+            var fragment = Current.GetFragment(fragmentId);
             if (fragment == null)
                 return default;
             return fragment.GetValue<T>(parameter);
@@ -273,7 +276,7 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void SetFragmentActive(string fragmentId, bool isActive)
         {
-            var fragment = _current.GetFragment(fragmentId);
+            var fragment = Current.GetFragment(fragmentId);
             if (fragment != null)
             {
                 fragment.IsActive = isActive;
@@ -285,7 +288,7 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public bool IsFragmentActive(string fragmentId)
         {
-            var fragment = _current.GetFragment(fragmentId);
+            var fragment = Current.GetFragment(fragmentId);
             return fragment?.IsActive ?? false;
         }
 
@@ -297,14 +300,14 @@ namespace BlazorWebApp.Services
             var index = 1;
             var fragmentId = baseName;
             
-            while (_current.Fragments.ContainsKey(fragmentId))
+            while (Current.Fragments.ContainsKey(fragmentId))
             {
                 fragmentId = $"{baseName}_{index++}";
             }
 
             // Get max order
-            var maxOrder = _current.Fragments.Values.Any() 
-                ? _current.Fragments.Values.Max(f => f.Order) 
+            var maxOrder = Current.Fragments.Values.Any() 
+                ? Current.Fragments.Values.Max(f => f.Order) 
                 : 0;
 
             var parameters = new FragmentParameters
@@ -314,7 +317,7 @@ namespace BlazorWebApp.Services
                 Order = maxOrder + 1
             };
 
-            _current.Fragments[fragmentId] = parameters;
+            Current.Fragments[fragmentId] = parameters;
             _logger.LogDebug("Added fragment instance '{FragmentId}' for {FragmentFile}", fragmentId, fragmentFile);
             
             PublishChange(GenerationParametersChangedEventArgs.FragmentAdded(fragmentId));
@@ -325,7 +328,7 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public bool RemoveFragmentInstance(string fragmentId)
         {
-            var removed = _current.Fragments.Remove(fragmentId);
+            var removed = Current.Fragments.Remove(fragmentId);
             if (removed)
             {
                 _logger.LogDebug("Removed fragment instance '{FragmentId}'", fragmentId);
@@ -340,7 +343,7 @@ namespace BlazorWebApp.Services
             var order = 0;
             foreach (var id in fragmentIds)
             {
-                if (_current.Fragments.TryGetValue(id, out var fragment))
+                if (Current.Fragments.TryGetValue(id, out var fragment))
                 {
                     fragment.Order = order++;
                 }
@@ -351,7 +354,7 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void SetAsset(string assetName, string value)
         {
-            _current.Assets[assetName] = value;
+            Current.Assets[assetName] = value;
             _logger.LogTrace("Set asset {AssetName} = {Value}", assetName, value);
         }
 
@@ -365,13 +368,13 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public string? GetAsset(string assetName)
         {
-            return _current.Assets.GetValueOrDefault(assetName);
+            return Current.Assets.GetValueOrDefault(assetName);
         }
 
         /// <inheritdoc />
         public void SetSource(string sourceId, SourceAsset source)
         {
-            _current.Sources[sourceId] = source;
+            Current.Sources[sourceId] = source;
             _logger.LogTrace("Set source {SourceId}", sourceId);
         }
 
@@ -385,13 +388,13 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public SourceAsset? GetSource(string sourceId)
         {
-            return _current.Sources.GetValueOrDefault(sourceId);
+            return Current.Sources.GetValueOrDefault(sourceId);
         }
 
         /// <inheritdoc />
         public void ClearSource(string sourceId)
         {
-            if (_current.Sources.TryGetValue(sourceId, out var source))
+            if (Current.Sources.TryGetValue(sourceId, out var source))
             {
                 source.Clear();
                 PublishChange(GenerationParametersChangedEventArgs.SourceChanged(sourceId));
@@ -401,15 +404,35 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void LoadParameters(GenerationParameters parameters)
         {
-            _current = parameters ?? new GenerationParameters();
-            _logger.LogDebug("Loaded generation parameters (WorkflowId: {WorkflowId})", _current.WorkflowId);
+            // Copy values into the State's GenerationParameters
+            var current = Current;
+            current.WorkflowId = parameters.WorkflowId;
+            current.Fragments.Clear();
+            foreach (var kvp in parameters.Fragments)
+            {
+                current.Fragments[kvp.Key] = kvp.Value;
+            }
+            current.Assets.Clear();
+            foreach (var kvp in parameters.Assets)
+            {
+                current.Assets[kvp.Key] = kvp.Value;
+            }
+            current.Sources.Clear();
+            foreach (var kvp in parameters.Sources)
+            {
+                current.Sources[kvp.Key] = kvp.Value;
+            }
+            current.Loras.Clear();
+            current.Loras.AddRange(parameters.Loras);
+            
+            _logger.LogDebug("Loaded generation parameters (WorkflowId: {WorkflowId})", current.WorkflowId);
             PublishChange(GenerationParametersChangedEventArgs.ParametersLoaded());
         }
 
         /// <inheritdoc />
         public GenerationParameters CreateSnapshot()
         {
-            return _current.Clone();
+            return Current.Clone();
         }
 
         /// <inheritdoc />

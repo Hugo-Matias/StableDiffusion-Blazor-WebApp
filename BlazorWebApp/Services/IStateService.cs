@@ -16,6 +16,11 @@ namespace BlazorWebApp.Services
         Img2ImgParameters ParametersImg2Img { get; }
         UpscaleParameters ParametersUpscale { get; }
         Img2VidParameters ParametersImg2Vid { get; }
+        
+        /// <summary>
+        /// Gets the current generation parameters (new unified model).
+        /// </summary>
+        GenerationParameters GenerationParameters { get; }
 
         // State management
         Task LoadState();

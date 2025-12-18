@@ -111,7 +111,7 @@
                                                OnAddInstance="@(() => HandleAddFragmentInstance(fragmentId))">
                             @if (schema.HasDesignedComponent && ComponentRegistry.IsRegistered(schema.Component))
                             {
-                                @RenderDesignedComponent(schema.Component, fragment, schema)
+                                @RenderDesignedComponent(schema.Component, fragment, schema, fragmentId)
                             }
                             else if (schema.UsesDynamicFields)
                             {
@@ -162,7 +162,12 @@ else
     // State
     private List<Workflow>? _workflows;
     private Workflow? _selectedWorkflow;
-    private GenerationParameters Parameters { get; set; } = new();
+    
+    /// <summary>
+    /// Reference to the State.GenerationParameters for convenience.
+    /// This is the same object persisted by StateService.
+    /// </summary>
+    private GenerationParameters Parameters => State.GenerationParameters;
     
     // Cached fragment data
     private FragmentParameters? _promptsFragment;
@@ -187,6 +192,19 @@ else
             if (modeWorkflows != null)
             {
                 _workflows.AddRange(modeWorkflows);
+            }
+        }
+        
+        // Check if Parameters already has a workflow (from state restore)
+        if (Parameters.WorkflowId.HasValue)
+        {
+            var restoredWorkflow = _workflows.FirstOrDefault(w => w.Id == Parameters.WorkflowId.Value);
+            if (restoredWorkflow != null)
+            {
+                _selectedWorkflow = restoredWorkflow;
+                CachePromptsFragment();
+                StateHasChanged();
+                return;
             }
         }
         
@@ -226,21 +244,31 @@ else
             State.State.Generation.WorkflowBase = workflow.Base;
         }
         
-        // Initialize parameters from workflow
-        Parameters = await ParameterService.InitializeFromWorkflowAsync(workflow);
+        // Initialize parameters from workflow (updates State.GenerationParameters)
+        await ParameterService.InitializeFromWorkflowAsync(workflow);
         
         // Cache prompts fragment for direct binding
-        if (Parameters.Fragments.TryGetValue("prompts", out var prompts))
-        {
-            _promptsFragment = prompts;
-            _promptsSchema = GetFragmentSchema(prompts.FragmentFile);
-        }
+        CachePromptsFragment();
         
         // Update URL without full navigation
         var newUrl = $"/generate/{workflow.Id}";
         NavManager.NavigateTo(newUrl, forceLoad: false, replace: true);
         
         StateHasChanged();
+    }
+
+    private void CachePromptsFragment()
+    {
+        if (Parameters.Fragments.TryGetValue("prompts", out var prompts))
+        {
+            _promptsFragment = prompts;
+            _promptsSchema = GetFragmentSchema(prompts.FragmentFile);
+        }
+        else
+        {
+            _promptsFragment = null;
+            _promptsSchema = null;
+        }
     }
 
     private FragmentSchema? GetFragmentSchema(string fragmentFile)
@@ -270,7 +298,7 @@ else
             .Select(x => x.Entry);
     }
 
-    private RenderFragment RenderDesignedComponent(string componentName, FragmentParameters fragment, FragmentSchema schema)
+    private RenderFragment RenderDesignedComponent(string componentName, FragmentParameters fragment, FragmentSchema schema, string fragmentId)
     {
         var componentType = ComponentRegistry.GetComponent(componentName);
         if (componentType == null)
@@ -284,6 +312,7 @@ else
             builder.AddAttribute(1, "Schema", schema);
             builder.AddAttribute(2, "Parameters", fragment);
             builder.AddAttribute(3, "OnValueChanged", EventCallback.Factory.Create<(string, object?)>(this, HandleValueChanged));
+            builder.AddAttribute(4, "FragmentId", fragmentId);
             builder.CloseComponent();
         };
     }
@@ -387,9 +416,21 @@ else
             // Save state before generation
             await State.SaveState();
 
-            // Map parameters to the appropriate legacy format for now
-            // TODO: In Phase 6, update ImageService to work directly with GenerationParameters
-            await MapAndGenerate();
+            // Use the new GenerationParameters-based methods
+            switch (_selectedWorkflow.Mode)
+            {
+                case ModeType.Img2Vid:
+                    var videos = await ImageService.GenerateVideoAsync(Parameters, _selectedWorkflow);
+                    break;
+                    
+                default: // Txt2Img and Img2Img
+                    var images = await ImageService.GenerateImagesAsync(Parameters, _selectedWorkflow);
+                    if (images?.Images?.Count > 0)
+                    {
+                        ImageService.GeneratedImageEntities = images;
+                    }
+                    break;
+            }
 
             // Save state after generation
             await State.SaveState();
@@ -398,129 +439,6 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error during generation");
-        }
-    }
-
-    private async Task MapAndGenerate()
-    {
-        // Temporary: Map GenerationParameters to legacy parameter types
-        // This will be refactored in Phase 6 when we update ImageService
-        
-        switch (_selectedWorkflow!.Mode)
-        {
-            case ModeType.Txt2Img:
-                MapToTxt2ImgParameters();
-                var images = await ImageService.GetImages(ModeType.Txt2Img);
-                if (images?.Images?.Count > 0)
-                {
-                    ImageService.GeneratedImageEntities = images;
-                }
-                break;
-                
-            case ModeType.Img2Img:
-                MapToImg2ImgParameters();
-                var img2imgImages = await ImageService.GetImages(ModeType.Img2Img);
-                if (img2imgImages?.Images?.Count > 0)
-                {
-                    ImageService.GeneratedImageEntities = img2imgImages;
-                }
-                break;
-                
-            case ModeType.Img2Vid:
-                MapToImg2VidParameters();
-                var videos = await ImageService.GetVideo();
-                break;
-        }
-    }
-
-    private void MapToTxt2ImgParameters()
-    {
-        var p = State.ParametersTxt2Img;
-        p.Comfy.Workflow = _selectedWorkflow;
-        
-        // Map prompts
-        if (_promptsFragment != null)
-        {
-            p.Prompt = _promptsFragment.GetValueOrDefault<string>("positive", "");
-            p.NegativePrompt = _promptsFragment.GetValueOrDefault<string>("negative", "");
-        }
-        
-        // Map sampler if present
-        if (Parameters.Fragments.TryGetValue("main_sampler", out var sampler))
-        {
-            p.Steps = sampler.GetValueOrDefault("steps", 20);
-            p.CfgScale = (float)sampler.GetValueOrDefault("cfg", 7.0);
-            p.Seed = sampler.GetValueOrDefault("seed", -1L);
-            p.SamplerName = sampler.GetValueOrDefault<string>("sampler_name", "euler");
-            p.Scheduler = sampler.GetValueOrDefault<string>("scheduler", "normal");
-        }
-        
-        // Map assets
-        foreach (var asset in Parameters.Assets)
-        {
-            p.WorkflowAssets[asset.Key] = asset.Value;
-        }
-        
-        // Map loras
-        p.Loras = Parameters.Loras;
-    }
-
-    private void MapToImg2ImgParameters()
-    {
-        var p = State.ParametersImg2Img;
-        p.Comfy.Workflow = _selectedWorkflow;
-        
-        // Map prompts
-        if (_promptsFragment != null)
-        {
-            p.Prompt = _promptsFragment.GetValueOrDefault<string>("positive", "");
-            p.NegativePrompt = _promptsFragment.GetValueOrDefault<string>("negative", "");
-        }
-        
-        // Map source image
-        if (Parameters.Sources.TryGetValue("source_image", out var source))
-        {
-            p.Image = source.Data;
-        }
-        
-        // Map sampler if present
-        if (Parameters.Fragments.TryGetValue("main_sampler", out var sampler))
-        {
-            p.Steps = sampler.GetValueOrDefault("steps", 20);
-            p.CfgScale = (float)sampler.GetValueOrDefault("cfg", 7.0);
-            p.Seed = sampler.GetValueOrDefault("seed", -1L);
-            p.DenoisingStrength = sampler.GetValueOrDefault("denoise", 0.7);
-        }
-        
-        // Map assets
-        foreach (var asset in Parameters.Assets)
-        {
-            p.WorkflowAssets[asset.Key] = asset.Value;
-        }
-    }
-
-    private void MapToImg2VidParameters()
-    {
-        var p = State.ParametersImg2Vid;
-        p.Comfy.Workflow = _selectedWorkflow;
-        
-        // Map prompts
-        if (_promptsFragment != null)
-        {
-            p.Prompt = _promptsFragment.GetValueOrDefault<string>("positive", "");
-            p.NegativePrompt = _promptsFragment.GetValueOrDefault<string>("negative", "");
-        }
-        
-        // Map source image
-        if (Parameters.Sources.TryGetValue("source_image", out var source))
-        {
-            p.Image = source.Data;
-        }
-        
-        // Map assets
-        foreach (var asset in Parameters.Assets)
-        {
-            p.WorkflowAssets[asset.Key] = asset.Value;
         }
     }
 

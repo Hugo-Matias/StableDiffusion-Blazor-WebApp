@@ -1,5 +1,7 @@
 using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.RegularExpressions;
@@ -10,6 +12,7 @@ namespace BlazorWebApp.Services
     /// <summary>
     /// Service responsible for orchestrating image and video generation workflows.
     /// Coordinates between API services, file I/O, database operations, and progress tracking.
+    /// Events are published through IEventService.
     /// </summary>
     public class ImageService : IImageService
     {
@@ -24,6 +27,7 @@ namespace BlazorWebApp.Services
         private readonly ISessionService _session;
         private readonly IModelService _models;
         private readonly IWildcardService _wildcardService;
+        private readonly IEventService _events;
         private PeriodicTimer? _timer;
         private SharedParameters _parsingParams;
         private Txt2ImgParameters _txt2imgParams;
@@ -31,11 +35,6 @@ namespace BlazorWebApp.Services
         private int _canvasSourceWidth;
         private int _canvasSourceHeight;
         private string _currentModel = string.Empty;
-
-        /// <summary>
-        /// Event fired when image generation state changes.
-        /// </summary>
-        public event Action OnChange;
 
         #region Generation Results
 
@@ -73,7 +72,8 @@ namespace BlazorWebApp.Services
             IStateService state, 
             ISessionService session, 
             IModelService models,
-            IWildcardService wildcardService)
+            IWildcardService wildcardService,
+            IEventService events)
         {
             _io = io;
             _backend = backend;
@@ -86,6 +86,7 @@ namespace BlazorWebApp.Services
             _session = session;
             _models = models;
             _wildcardService = wildcardService;
+            _events = events;
         }
 
         /// <summary>
@@ -599,6 +600,314 @@ namespace BlazorWebApp.Services
             Progress = new();
         }
 
-        private void NotifyStateChanged() => OnChange?.Invoke();
+        private void NotifyStateChanged(bool success = true, int count = 0) 
+            => _events.Publish(new ImagesGeneratedEventArgs(success, count));
+
+        #region New GenerationParameters-based Methods
+
+        /// <inheritdoc />
+        public async Task<ImagesDto> GenerateImagesAsync(GenerationParameters parameters, Workflow workflow)
+        {
+            if (workflow == null)
+            {
+                _logger.LogError("Cannot generate images: workflow is null");
+                return new ImagesDto();
+            }
+
+            _logger.LogInformation("Starting image generation with GenerationParameters for workflow: {WorkflowTitle}", workflow.Title);
+            _progress.IsConverging = true;
+
+            ImagesDto images = new();
+            
+            try
+            {
+                // Extract parameters from fragments
+                var promptsFragment = parameters.GetFragment("prompts");
+                var samplerFragment = parameters.GetFragment("main_sampler");
+                
+                // Build legacy parameters from GenerationParameters
+                var legacyParams = await BuildLegacyParametersFromGenerationParams(parameters, workflow, promptsFragment, samplerFragment);
+                _parsingParams = legacyParams;
+                _currentModel = parameters.Assets.GetValueOrDefault("Model", "") ?? _models.GetCurrentModel(workflow.Mode);
+
+                // Determine mode and call appropriate router method
+                switch (workflow.Mode)
+                {
+                    case ModeType.Img2Img:
+                        var img2imgParams = BuildImg2ImgFromGenerationParams(parameters, legacyParams, workflow);
+                        Images = await _router.PostImg2Img(img2imgParams);
+                        break;
+
+                    default: // Txt2Img
+                        _txt2imgParams = BuildTxt2ImgFromGenerationParams(parameters, legacyParams, workflow);
+                        Images = await _router.PostTxt2Img(_txt2imgParams);
+                        break;
+                }
+
+                if (_state.State.Generation.IsInterrupted)
+                {
+                    _logger.LogWarning("Generation was interrupted by user");
+                    throw new Exception("Generation Canceled!");
+                }
+
+                if (_backend.OutputPaths.SaveSamples)
+                {
+                    var outdir = workflow.Mode == ModeType.Img2Img 
+                        ? Outdir.Img2ImgSamples 
+                        : Outdir.Txt2ImgSamples;
+                    images = await SaveImages(outdir, string.Empty);
+                }
+
+                _logger.LogInformation("Image generation completed for workflow: {WorkflowTitle}, generated {ImageCount} images", 
+                    workflow.Title, images?.Images?.Count ?? 0);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during image generation for workflow: {WorkflowTitle}", workflow.Title);
+            }
+
+            _progress.IsConverging = false;
+            _state.State.Generation.IsInterrupted = false;
+
+            NotifyStateChanged();
+            return images;
+        }
+
+        /// <inheritdoc />
+        public async Task<GeneratedVideos> GenerateVideoAsync(GenerationParameters parameters, Workflow workflow)
+        {
+            if (workflow == null)
+            {
+                _logger.LogError("Cannot generate video: workflow is null");
+                return new GeneratedVideos();
+            }
+
+            _logger.LogInformation("Starting video generation with GenerationParameters for workflow: {WorkflowTitle}", workflow.Title);
+            _progress.IsConverging = true;
+            GeneratedVideos = null;
+
+            try
+            {
+                // Extract parameters from fragments
+                var promptsFragment = parameters.GetFragment("prompts");
+                var samplerFragment = parameters.GetFragment("main_sampler");
+                
+                // Get source image
+                var sourceImage = parameters.Sources.GetValueOrDefault("source_image")?.Data;
+                
+                _currentModel = parameters.Assets.GetValueOrDefault("HighModel", "") 
+                    ?? parameters.Assets.GetValueOrDefault("Model", "") 
+                    ?? _models.GetCurrentModel(ModeType.Img2Vid);
+
+                // Build Img2Vid parameters
+                var img2vidParams = BuildImg2VidFromGenerationParams(parameters, promptsFragment, samplerFragment, sourceImage, workflow);
+                _img2vidParams = img2vidParams;
+
+                // Generate random seed if -1
+                var actualSeed = img2vidParams.Seed == -1 
+                    ? new Random().Next(0, int.MaxValue) 
+                    : (long)img2vidParams.Seed;
+                img2vidParams.Seed = actualSeed;
+
+                GeneratedVideos = await _router.PostImg2Vid(img2vidParams);
+
+                if (_state.State.Generation.IsInterrupted)
+                {
+                    throw new Exception("Generation Canceled!");
+                }
+
+                // Store the actual seed used
+                _state.State.Generation.Seed = actualSeed;
+
+                if (_backend.OutputPaths.SaveSamples && GeneratedVideos?.Videos?.Count > 0)
+                {
+                    await SaveVideos(GeneratedVideos, actualSeed);
+                    _session.AddSessionVideos(GeneratedVideos.Videos);
+                }
+
+                _logger.LogInformation("Video generation completed for workflow: {WorkflowTitle}", workflow.Title);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during video generation for workflow: {WorkflowTitle}", workflow.Title);
+            }
+
+            _progress.IsConverging = false;
+            _state.State.Generation.IsInterrupted = false;
+
+            NotifyStateChanged();
+            return GeneratedVideos;
+        }
+
+        /// <summary>
+        /// Builds legacy SharedParameters from the new GenerationParameters model.
+        /// Handles wildcard expansion and seed randomization.
+        /// </summary>
+        private async Task<SharedParameters> BuildLegacyParametersFromGenerationParams(
+            GenerationParameters parameters,
+            Workflow workflow,
+            FragmentParameters? promptsFragment,
+            FragmentParameters? samplerFragment)
+        {
+            // Extract values from fragments
+            var prompt = promptsFragment?.GetValueOrDefault<string>("positive", "") ?? "";
+            var negativePrompt = promptsFragment?.GetValueOrDefault<string>("negative", "") ?? "";
+            var steps = samplerFragment?.GetValueOrDefault("steps", 20) ?? 20;
+            var cfg = samplerFragment?.GetValueOrDefault("cfg", 7.0) ?? 7.0;
+            var seed = samplerFragment?.GetValueOrDefault("seed", -1L) ?? -1L;
+            var samplerName = samplerFragment?.GetValueOrDefault<string>("sampler_name", "euler") ?? "euler";
+            var scheduler = samplerFragment?.GetValueOrDefault<string>("scheduler", "normal") ?? "normal";
+            var denoise = samplerFragment?.GetValueOrDefault("denoise", 1.0) ?? 1.0;
+            var width = samplerFragment?.GetValueOrDefault("width", 1024) ?? 1024;
+            var height = samplerFragment?.GetValueOrDefault("height", 1024) ?? 1024;
+            var batchSize = samplerFragment?.GetValueOrDefault("batch_size", 1) ?? 1;
+
+            // Build base SharedParameters
+            var legacyParams = new SharedParameters
+            {
+                Comfy = new SharedParameters.ComfySharedParameters { Workflow = workflow },
+                Prompt = prompt,
+                NegativePrompt = negativePrompt,
+                Steps = steps,
+                CfgScale = (float)cfg,
+                Seed = seed,
+                SamplerName = samplerName,
+                Scheduler = scheduler,
+                DenoisingStrength = denoise,
+                Width = width,
+                Height = height,
+                BatchSize = batchSize,
+                NIter = 1,
+                Loras = parameters.Loras,
+                WorkflowAssets = new Dictionary<string, string>(parameters.Assets)
+            };
+
+            // Apply wildcard expansion and style parsing
+            legacyParams = await Parser.ParseParametersAsync(
+                legacyParams,
+                _state.State.Generation.Styles,
+                _wildcardService);
+
+            return legacyParams;
+        }
+
+        /// <summary>
+        /// Builds Txt2ImgParameters from GenerationParameters.
+        /// </summary>
+        private Txt2ImgParameters BuildTxt2ImgFromGenerationParams(
+            GenerationParameters parameters,
+            SharedParameters baseParams,
+            Workflow workflow)
+        {
+            var txt2imgParams = new Txt2ImgParameters(baseParams);
+            txt2imgParams.Comfy.Workflow = workflow;
+
+            // Check for upscale/highres fragment
+            var upscaleFragment = parameters.GetFragment("upscale");
+            if (upscaleFragment != null && upscaleFragment.IsActive)
+            {
+                txt2imgParams.EnableHR = true;
+                txt2imgParams.HRUpscaler = upscaleFragment.GetValueOrDefault<string>("upscaler", "Latent");
+                txt2imgParams.HRScale = upscaleFragment.GetValueOrDefault("scale", 2.0);
+                txt2imgParams.HRSecondPassSteps = upscaleFragment.GetValueOrDefault("steps", 10);
+            }
+
+            // Check for SeedVR2 fragment
+            var seedVr2Fragment = parameters.GetFragment("seed_vr2");
+            if (seedVr2Fragment != null && seedVr2Fragment.IsActive)
+            {
+                txt2imgParams.SeedVR2 = new Txt2ImgParameters().SeedVR2 ?? new SeedVR2Parameters();
+                txt2imgParams.SeedVR2.IsActive = true;
+                txt2imgParams.SeedVR2.Model = seedVr2Fragment.GetValueOrDefault<string>("model", "");
+                txt2imgParams.SeedVR2.VaeModel = seedVr2Fragment.GetValueOrDefault<string>("vae_model", "");
+                txt2imgParams.SeedVR2.Scale = seedVr2Fragment.GetValueOrDefault("scale", 2.0);
+            }
+
+            // Check for ConditioningVariation fragment
+            var condVarFragment = parameters.GetFragment("conditioning_variation");
+            if (condVarFragment != null && condVarFragment.IsActive)
+            {
+                txt2imgParams.ConditioningVariation = new Txt2ImgParameters().ConditioningVariation ?? new ConditioningVariationParameters();
+                txt2imgParams.ConditioningVariation.IsActive = true;
+                txt2imgParams.ConditioningVariation.SwitchPoint = condVarFragment.GetValueOrDefault("switch_point", 0.35);
+            }
+
+            return txt2imgParams;
+        }
+
+        /// <summary>
+        /// Builds Img2ImgParameters from GenerationParameters.
+        /// </summary>
+        private Img2ImgParameters BuildImg2ImgFromGenerationParams(
+            GenerationParameters parameters,
+            SharedParameters baseParams,
+            Workflow workflow)
+        {
+            var img2imgParams = new Img2ImgParameters(baseParams);
+            img2imgParams.Comfy.Workflow = workflow;
+
+            // Get source image
+            var sourceImage = parameters.Sources.GetValueOrDefault("source_image");
+            if (sourceImage?.HasData == true)
+            {
+                img2imgParams.InitImages = new List<string> { sourceImage.Data! };
+                img2imgParams.Image = sourceImage.Data;
+            }
+
+            // Get mask if present
+            var maskSource = parameters.Sources.GetValueOrDefault("mask");
+            if (maskSource?.HasData == true)
+            {
+                img2imgParams.Mask = maskSource.Data;
+            }
+
+            // Inpainting settings from fragment if present
+            var inpaintFragment = parameters.GetFragment("inpaint");
+            if (inpaintFragment != null)
+            {
+                img2imgParams.MaskBlur = inpaintFragment.GetValueOrDefault("mask_blur", 4);
+                img2imgParams.InpaintFullRes = inpaintFragment.GetValueOrDefault("full_res", true);
+                img2imgParams.InpaintFullResPadding = inpaintFragment.GetValueOrDefault("full_res_padding", 32);
+            }
+
+            return img2imgParams;
+        }
+
+        /// <summary>
+        /// Builds Img2VidParameters from GenerationParameters.
+        /// </summary>
+        private Img2VidParameters BuildImg2VidFromGenerationParams(
+            GenerationParameters parameters,
+            FragmentParameters? promptsFragment,
+            FragmentParameters? samplerFragment,
+            string? sourceImage,
+            Workflow workflow)
+        {
+            // Get video-specific fragment
+            var videoFragment = parameters.GetFragment("video_settings") ?? parameters.GetFragment("main_sampler");
+            
+            return new Img2VidParameters
+            {
+                Comfy = new Img2VidParameters.ComfyImg2VidParameters { Workflow = workflow },
+                Prompt = promptsFragment?.GetValueOrDefault<string>("positive", "") ?? "",
+                NegativePrompt = promptsFragment?.GetValueOrDefault<string>("negative", "") ?? "",
+                Image = sourceImage,
+                Seed = samplerFragment?.GetValueOrDefault("seed", -1L) ?? -1L,
+                Steps = videoFragment?.GetValueOrDefault("steps", 8) ?? 8,
+                CfgScale = (float)(videoFragment?.GetValueOrDefault("cfg", 1.0) ?? 1.0),
+                Width = videoFragment?.GetValueOrDefault("width", 768) ?? 768,
+                Height = videoFragment?.GetValueOrDefault("height", 768) ?? 768,
+                Length = videoFragment?.GetValueOrDefault("length", 81) ?? 81,
+                FrameRate = videoFragment?.GetValueOrDefault("frame_rate", 16) ?? 16,
+                MotionAmplitude = (float)(videoFragment?.GetValueOrDefault("motion_amplitude", 1.1) ?? 1.1),
+                Shift = videoFragment?.GetValueOrDefault("shift", 5) ?? 5,
+                SamplerName = videoFragment?.GetValueOrDefault<string>("sampler_name", "euler") ?? "euler",
+                Scheduler = videoFragment?.GetValueOrDefault<string>("scheduler", "simple") ?? "simple",
+                WorkflowAssets = new Dictionary<string, string>(parameters.Assets),
+                Loras = parameters.Loras
+            };
+        }
+
+        #endregion
     }
 }

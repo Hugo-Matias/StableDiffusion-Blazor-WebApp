@@ -23,6 +23,9 @@ namespace BlazorWebApp.Services
         public Img2ImgParameters ParametersImg2Img { get; private set; }
         public Models.UpscaleParameters ParametersUpscale { get; private set; }
         public Img2VidParameters ParametersImg2Vid { get; private set; }
+        
+        /// <inheritdoc />
+        public GenerationParameters GenerationParameters { get; private set; } = new();
 
         public StateService(
             IDatabaseService db,
@@ -106,6 +109,12 @@ namespace BlazorWebApp.Services
                 {
                     ParametersImg2Vid = dbState.Img2VidParameters;
                 }
+                
+                // Load new GenerationParameters if present
+                if (dbState.GenerationParameters != null)
+                {
+                    GenerationParameters = dbState.GenerationParameters;
+                }
 
                 // Normalize state after loading
                 NormalizeState();
@@ -139,6 +148,7 @@ namespace BlazorWebApp.Services
             entity.Img2ImgParameters = ParametersImg2Img;
             entity.UpscaleParameters = ParametersUpscale;
             entity.Img2VidParameters = ParametersImg2Vid;
+            entity.GenerationParameters = GenerationParameters;
 
             await _db.UpdateState(entity);
         }
@@ -183,6 +193,9 @@ namespace BlazorWebApp.Services
                 ChangeType = StateChangeType.Img2VidParameters,
                 NewValue = ParametersImg2Vid
             });
+            
+            // Publish GenerationParameters changed event
+            _events.Publish(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
         }
 
         private SharedParameters CreateDefaultParameters()
