@@ -13,20 +13,23 @@ namespace BlazorWebApp.Services
         private readonly IComfyUIService _capi;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DatabaseService> _logger;
+        private readonly OllamaService _ollamaService;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger, OllamaService ollamaService)
         {
             _factory = factory;
             _capi = capi;
             _configuration = configuration;
             _logger = logger;
+            _ollamaService = ollamaService;
             PageSize = 5;
 
             InitializeDatabase();
             PopulateModes();
             PopulateSamplers();
+            SeedDefaultSystemPromptTemplates();
         }
 
         public async Task InitializeDatabase()
@@ -1274,6 +1277,79 @@ namespace BlazorWebApp.Services
                     await context.SaveChangesAsync();
                 }
             }
+        }
+
+        #endregion
+
+        #region System Prompt Template Operations
+
+        private async void SeedDefaultSystemPromptTemplates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            
+            // Check if default templates already exist
+            var existingDefaults = await context.SystemPromptTemplates
+                .Where(t => t.IsDefault)
+                .CountAsync();
+            
+            if (existingDefaults > 0)
+                return; // Default templates already seeded
+            
+            // Get default templates from OllamaService
+            var defaultTemplates = _ollamaService.GetDefaultTemplates();
+            
+            foreach (var template in defaultTemplates)
+            {
+                template.CreatedAt = DateTime.UtcNow;
+                template.UpdatedAt = DateTime.UtcNow;
+            }
+            
+            await context.SystemPromptTemplates.AddRangeAsync(defaultTemplates);
+            await context.SaveChangesAsync();
+            
+            _logger.LogInformation("Seeded {Count} default system prompt templates from OllamaService", defaultTemplates.Count);
+        }
+
+        public async Task<List<SystemPromptTemplate>> GetSystemPromptTemplates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.SystemPromptTemplates
+                .OrderBy(t => t.IsDefault ? 0 : 1)
+                .ThenBy(t => t.Name)
+                .ToListAsync();
+        }
+
+        public async Task<SystemPromptTemplate?> GetSystemPromptTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.SystemPromptTemplates.FindAsync(id);
+        }
+
+        public async Task<bool> CreateSystemPromptTemplate(SystemPromptTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            template.CreatedAt = DateTime.UtcNow;
+            template.UpdatedAt = DateTime.UtcNow;
+            await context.SystemPromptTemplates.AddAsync(template);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> UpdateSystemPromptTemplate(SystemPromptTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            template.UpdatedAt = DateTime.UtcNow;
+            context.SystemPromptTemplates.Update(template);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> DeleteSystemPromptTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var template = await context.SystemPromptTemplates.FindAsync(id);
+            if (template == null || template.IsDefault) return false;
+            
+            context.SystemPromptTemplates.Remove(template);
+            return await context.SaveChangesAsync() > 0;
         }
 
         #endregion

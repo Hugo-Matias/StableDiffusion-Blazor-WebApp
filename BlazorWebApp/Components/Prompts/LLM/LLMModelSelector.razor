@@ -1,0 +1,109 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@inject OllamaService OllamaService
+
+<MudSelect @bind-Value="SelectedModel"
+          Label="LLM Model"
+          Variant="Variant.Outlined"
+          AnchorOrigin="Origin.BottomLeft"
+          TransformOrigin="Origin.TopLeft"
+          Adornment="Adornment.Start"
+          AdornmentIcon="@Icons.Material.Filled.SmartToy"
+          AdornmentColor="Color.Primary"
+          Disabled="IsDisabled">
+    @if (AvailableModels != null && AvailableModels.Any())
+    {
+        @foreach (var model in AvailableModels)
+        {
+            <MudSelectItem Value="@model.Name">
+                <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                    <span>@model.Name</span>
+                    @if (!string.IsNullOrEmpty(model.Details?.ParameterSize))
+                    {
+                        <MudChip Size="Size.Small" Color="Color.Info">
+                            @model.Details.ParameterSize
+                        </MudChip>
+                    }
+                </div>
+            </MudSelectItem>
+        }
+    }
+    else if (_isLoading)
+    {
+        <MudSelectItem Value="@string.Empty" Disabled>
+            <div class="d-flex align-center">
+                <MudProgressCircular Size="Size.Small" Indeterminate />
+                <span class="ml-2">Loading models...</span>
+            </div>
+        </MudSelectItem>
+    }
+    else if (_errorMessage != null)
+    {
+        <MudSelectItem Value="@string.Empty" Disabled>
+            <MudText Color="Color.Error" Typo="Typo.caption">
+                @_errorMessage
+            </MudText>
+        </MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter]
+    public string SelectedModel { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SelectedModelChanged { get; set; }
+
+    [Parameter]
+    public List<OllamaModel>? AvailableModels { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // If models not provided, load them
+        if (AvailableModels == null || !AvailableModels.Any())
+        {
+            await LoadModels();
+        }
+    }
+
+    private async Task LoadModels()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            AvailableModels = await OllamaService.GetModels();
+            
+            if (AvailableModels == null || !AvailableModels.Any())
+            {
+                _errorMessage = "No models available. Check Ollama connection.";
+            }
+            else if (string.IsNullOrEmpty(SelectedModel))
+            {
+                // Auto-select first model if none selected
+                SelectedModel = AvailableModels[0].Name;
+                await SelectedModelChanged.InvokeAsync(SelectedModel);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load models: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public async Task RefreshModels()
+    {
+        await LoadModels();
+        StateHasChanged();
+    }
+}

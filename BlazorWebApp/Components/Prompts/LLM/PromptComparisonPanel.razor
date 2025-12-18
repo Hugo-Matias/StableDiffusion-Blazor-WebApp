@@ -1,0 +1,275 @@
+@inject IJSRuntime JSRuntime
+@inject ITokenizerService Tokenizer
+
+@if (!string.IsNullOrEmpty(OriginalPrompt) && !string.IsNullOrEmpty(ResultPrompt))
+{
+    <MudPaper Class="pa-4" Outlined>
+        <MudText Typo="Typo.subtitle2" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Compare" Size="Size.Small" Class="mr-1" />
+            Comparison
+        </MudText>
+        
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Original
+                        </MudText>
+                        <MudChip Size="Size.Small" 
+                                 Color="Color.Info" 
+                                 Variant="Variant.Text"
+                                 OnClick="@(() => ToggleOriginalTokenPreview())"
+                                 Style="cursor: pointer;">
+                            @_originalTokenCount tokens
+                        </MudChip>
+                    </div>
+                    
+                    @if (_showOriginalTokens)
+                    {
+                        <div class="token-preview mb-2">
+                            @foreach (var token in _originalTokens.Select((t, i) => new { Token = t, Index = i }))
+                            {
+                                <span class="token-item" 
+                                      data-color="@GetTokenColorName(token.Index)"
+                                      title="Token @(token.Index + 1)">@token.Token</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+                            @OriginalPrompt
+                        </MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+            
+            <MudItem xs="12" md="8">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <MudText Typo="Typo.caption" Color="Color.Success">
+                            @OperationType Result
+                        </MudText>
+                        <div class="d-flex align-center gap-2">
+                            <MudChip Size="Size.Small" 
+                                     Color="Color.Info" 
+                                     Variant="Variant.Text"
+                                     OnClick="@(() => ToggleResultTokenPreview())"
+                                     Style="cursor: pointer;">
+                                @_resultTokenCount tokens
+                            </MudChip>
+                            <MudChip Size="Size.Small" 
+                                     Color="@GetImprovementColor()"
+                                     Icon="@Icons.Material.Filled.TrendingUp">
+                                @GetImprovementPercentage()%
+                            </MudChip>
+                        </div>
+                    </div>
+                    
+                    @if (_showResultTokens)
+                    {
+                        <div class="token-preview mb-2" style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var token in _resultTokens.Select((t, i) => new { Token = t, Index = i }))
+                            {
+                                <span class="token-item" 
+                                      data-color="@GetTokenColorName(token.Index)"
+                                      title="Token @(token.Index + 1)">@token.Token</span>
+                            }
+                        </div>
+                    }
+                    
+                    <MudTextField @bind-Value="_editableResult"
+                                  Variant="Variant.Outlined"
+                                  Lines="15"
+                                  Immediate />
+                    
+                    <div class="d-flex gap-2 mt-3 flex-wrap">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   Size="Size.Small"
+                                   OnClick="HandleApply"
+                                   StartIcon="@Icons.Material.Filled.Check">
+                            Apply
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="HandleRegenerate"
+                                   StartIcon="@Icons.Material.Filled.Refresh">
+                            Regenerate
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   OnClick="HandleCopy"
+                                   StartIcon="@Icons.Material.Filled.ContentCopy">
+                            Copy
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Tertiary"
+                                   Size="Size.Small"
+                                   OnClick="HandleSaveToLibrary"
+                                   StartIcon="@Icons.Material.Filled.SaveAlt">
+                            Save to Library
+                        </MudButton>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="HandleClear"
+                                   StartIcon="@Icons.Material.Filled.Clear">
+                            Clear
+                        </MudButton>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public string OriginalPrompt { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ResultPrompt { get; set; } = string.Empty;
+
+    [Parameter]
+    public string OperationType { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> OnApply { get; set; }
+
+    [Parameter]
+    public EventCallback OnRegenerate { get; set; }
+
+    [Parameter]
+    public EventCallback OnClear { get; set; }
+    
+    [Parameter]
+    public EventCallback<string> OnSaveToLibrary { get; set; }
+
+    private string _editableResult = string.Empty;
+    
+    // Token preview state
+    private int _originalTokenCount;
+    private int _resultTokenCount;
+    private List<string> _originalTokens = new();
+    private List<string> _resultTokens = new();
+    private bool _showOriginalTokens;
+    private bool _showResultTokens;
+    
+    // Color palette for token cycling
+    private readonly Color[] _tokenColors = new[]
+    {
+        Color.Primary,
+        Color.Secondary,
+        Color.Tertiary,
+        Color.Success,
+        Color.Info,
+        Color.Warning,
+        Color.Error
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(ResultPrompt))
+        {
+            _editableResult = ResultPrompt;
+        }
+        
+        // Update token counts and tokens asynchronously
+        await UpdateTokenizationAsync();
+    }
+    
+    private async Task UpdateTokenizationAsync()
+    {
+        _originalTokenCount = await Tokenizer.CountTokensAsync(OriginalPrompt);
+        _resultTokenCount = await Tokenizer.CountTokensAsync(_editableResult);
+        
+        _originalTokens = await Tokenizer.TokenizeTextAsync(OriginalPrompt);
+        _resultTokens = await Tokenizer.TokenizeTextAsync(_editableResult);
+    }
+    
+    private void ToggleOriginalTokenPreview()
+    {
+        _showOriginalTokens = !_showOriginalTokens;
+    }
+    
+    private void ToggleResultTokenPreview()
+    {
+        _showResultTokens = !_showResultTokens;
+    }
+    
+    private Color GetTokenColor(int index)
+    {
+        return _tokenColors[index % _tokenColors.Length];
+    }
+    
+    private string GetTokenColorName(int index)
+    {
+        var colorNames = new[] { "primary", "secondary", "tertiary", "success", "info", "warning", "error" };
+        return colorNames[index % colorNames.Length];
+    }
+
+    private async Task<int> GetTokenCount(string text)
+    {
+        return string.IsNullOrEmpty(text) ? 0 : await Tokenizer.CountTokensAsync(text);
+    }
+
+    private Color GetImprovementColor()
+    {
+        var diff = _resultTokenCount - _originalTokenCount;
+        return diff > 0 ? Color.Success : Color.Warning;
+    }
+
+    private int GetImprovementPercentage()
+    {
+        if (_originalTokenCount == 0) return 0;
+        
+        return (int)(((float)(_resultTokenCount - _originalTokenCount) / _originalTokenCount) * 100);
+    }
+
+    private async Task HandleApply()
+    {
+        if (OnApply.HasDelegate)
+        {
+            await OnApply.InvokeAsync(_editableResult);
+        }
+    }
+
+    private async Task HandleRegenerate()
+    {
+        if (OnRegenerate.HasDelegate)
+        {
+            await OnRegenerate.InvokeAsync();
+        }
+    }
+
+    private async Task HandleCopy()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _editableResult);
+        }
+        catch
+        {
+            // Clipboard API might not be available
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        if (OnClear.HasDelegate)
+        {
+            await OnClear.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleSaveToLibrary()
+    {
+        if (OnSaveToLibrary.HasDelegate)
+        {
+            await OnSaveToLibrary.InvokeAsync(_editableResult);
+        }
+    }
+}

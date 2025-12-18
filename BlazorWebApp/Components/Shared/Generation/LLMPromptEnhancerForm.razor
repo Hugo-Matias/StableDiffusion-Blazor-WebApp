@@ -1,7 +1,10 @@
 @using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
 @inject OllamaService OllamaAPI
+@inject IDatabaseService DB
 @inject IStateService State
 @inject ISettingsService Settings
+@inject ISnackbar Snackbar
 
 <MudPaper Class="pa-4 mb-4">
     <MudGrid>
@@ -31,12 +34,27 @@
         </MudItem>
 
         <MudItem xs="12">
-            <MudTextField @bind-Value="_currentInstructions"
-                          Label="Instructions"
-                          Variant="Variant.Outlined"
-                          Lines="2"
-                          HelperText="Use {prompt} as placeholder for the input prompt"
-                          Immediate />
+            <MudSelect Value="_selectedTemplateId"
+                       ValueChanged="OnTemplateChanged"
+                       Label="Template"
+                       Variant="Variant.Outlined"
+                       T="int">
+                @if (_templates != null)
+                {
+                    foreach (var template in _templates)
+                    {
+                        <MudSelectItem Value="@template.Id">
+                            <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                <span>@template.Name</span>
+                                @if (template.IsDefault)
+                                {
+                                    <MudChip Size="Size.Small" Color="Color.Info">Default</MudChip>
+                                }
+                            </div>
+                        </MudSelectItem>
+                    }
+                }
+            </MudSelect>
         </MudItem>
 
         <MudItem xs="6">
@@ -169,7 +187,10 @@
     private bool _isGenerating;
     private string? _errorMessage;
     private List<OllamaModel>? _availableModels;
+    private List<SystemPromptTemplate>? _templates;
     private string _selectedModel = string.Empty;
+    private int _selectedTemplateId;
+    private SystemPromptTemplate? _selectedTemplate;
 
     private string _currentPrompt
     {
@@ -180,24 +201,6 @@
                 State.State.Generation.LLM.NegativePrompt = value;
             else
                 State.State.Generation.LLM.Prompt = value;
-        }
-    }
-
-    private string _currentInstructions
-    {
-        get => IsNegativePrompt 
-            ? (string.IsNullOrEmpty(State.State.Generation.LLM.NegativeInstructions) 
-                ? Settings.Settings.Generation.Shared.LLMEnhancer.NegativeInstructions 
-                : State.State.Generation.LLM.NegativeInstructions)
-            : (string.IsNullOrEmpty(State.State.Generation.LLM.Instructions) 
-                ? Settings.Settings.Generation.Shared.LLMEnhancer.Instructions 
-                : State.State.Generation.LLM.Instructions);
-        set
-        {
-            if (IsNegativePrompt)
-                State.State.Generation.LLM.NegativeInstructions = value;
-            else
-                State.State.Generation.LLM.Instructions = value;
         }
     }
 
@@ -216,6 +219,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadModels();
+        await LoadTemplates();
     }
 
     private async Task LoadModels()
@@ -238,6 +242,57 @@
         }
     }
 
+    private async Task LoadTemplates()
+    {
+        try
+        {
+            _templates = await DB.GetSystemPromptTemplates();
+            
+            if (_templates != null && _templates.Any())
+            {
+                // Select appropriate default template based on IsNegativePrompt
+                var defaultTemplate = _templates.FirstOrDefault(t => 
+                    t.IsDefault && t.Name.Contains(IsNegativePrompt ? "Negative" : "Enhance"));
+                
+                if (defaultTemplate != null)
+                {
+                    _selectedTemplateId = defaultTemplate.Id;
+                    await LoadSelectedTemplate();
+                }
+                else
+                {
+                    _selectedTemplateId = _templates[0].Id;
+                    await LoadSelectedTemplate();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading templates: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnTemplateChanged(int templateId)
+    {
+        _selectedTemplateId = templateId;
+        await LoadSelectedTemplate();
+        StateHasChanged();
+    }
+
+    private async Task LoadSelectedTemplate()
+    {
+        if (_selectedTemplateId <= 0) return;
+
+        try
+        {
+            _selectedTemplate = await DB.GetSystemPromptTemplate(_selectedTemplateId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading template: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task GeneratePrompt()
     {
         if (string.IsNullOrWhiteSpace(_currentPrompt))
@@ -252,21 +307,39 @@
             return;
         }
 
+        if (_selectedTemplate == null)
+        {
+            _errorMessage = "Please select a template first.";
+            return;
+        }
+
         _isGenerating = true;
         _errorMessage = null;
         StateHasChanged();
 
         try
         {
-            var enhancedPrompt = await OllamaAPI.ExpandPrompt(
-                _currentPrompt,
+            // Get messages from selected template and replace {prompt} placeholder
+            var messages = _selectedTemplate.Messages.Select(m => new OllamaChatMessage
+            {
+                Role = m.Role,
+                Content = m.Content?.Replace("{prompt}", _currentPrompt) ?? ""
+            }).ToList();
+
+            var response = await OllamaAPI.SendChatMessage(
                 _selectedModel,
-                IsNegativePrompt,
+                messages,
                 State.State.Generation.LLM.Options.ToOllamaOptions());
 
-            _currentEnhancedPrompt = enhancedPrompt;
-
-            await State.SaveState();
+            if (response?.Message?.Content != null)
+            {
+                _currentEnhancedPrompt = response.Message.Content;
+                await State.SaveState();
+            }
+            else
+            {
+                _errorMessage = "No response received from model.";
+            }
         }
         catch (Exception ex)
         {

@@ -1,4 +1,7 @@
 using BlazorWebApp.Data.Dtos.Ollama;
+using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Models;
+using MudBlazor;
 using System.Text;
 using System.Text.Json;
 
@@ -8,12 +11,14 @@ namespace BlazorWebApp.Services
     {
         private readonly HttpClient _client;
         private readonly ILogger<OllamaService> _logger;
+        private readonly IProgressService _progress;
         private readonly string _baseUrl;
         private readonly Dictionary<string, List<OllamaChatMessage>> _sessionCache;
 
-        public OllamaService(ILogger<OllamaService> logger, IConfiguration configuration)
+        public OllamaService(ILogger<OllamaService> logger, IConfiguration configuration, IProgressService progress)
         {
             _logger = logger;
+            _progress = progress;
             _baseUrl = configuration["Ollama:BaseUrl"] ?? "http://10.0.0.11:11434";
             _client = new HttpClient { BaseAddress = new Uri(_baseUrl) };
             _sessionCache = new Dictionary<string, List<OllamaChatMessage>>();
@@ -50,8 +55,18 @@ namespace BlazorWebApp.Services
             string? keepAlive = "15m",
             bool stream = false)
         {
+            BaseProgress? progressBar = null;
+
             try
             {
+                // Create progress bar
+                progressBar = new BaseProgress
+                {
+                    IsIndeterminate = true,
+                    BarColor = Color.Tertiary
+                };
+                _progress.Add(progressBar);
+
                 var payload = new OllamaChatRequest
                 {
                     Model = modelName,
@@ -74,6 +89,14 @@ namespace BlazorWebApp.Services
             {
                 _logger.LogError(ex, "Failed to send chat message to Ollama");
                 return null;
+            }
+            finally
+            {
+                // Remove progress bar
+                if (progressBar != null)
+                {
+                    _progress.Remove(progressBar.Id);
+                }
             }
         }
 
@@ -100,6 +123,64 @@ namespace BlazorWebApp.Services
         public void ClearAllSessions()
         {
             _sessionCache.Clear();
+        }
+
+        /// <summary>
+        /// Get default system prompt templates for seeding database
+        /// </summary>
+        public List<SystemPromptTemplate> GetDefaultTemplates()
+        {
+            return new List<SystemPromptTemplate>
+            {
+                new SystemPromptTemplate
+                {
+                    Name = "Enhance",
+                    Description = "Expand simple prompts with artistic details using few-shot examples",
+                    Messages = GetPositivePromptInstructions("{prompt}"),
+                    IsDefault = true
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "Simplify",
+                    Description = "Distill complex prompts to essential elements",
+                    Messages = GetSimplifyInstructions("{prompt}"),
+                    IsDefault = true
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "Negative Prompt",
+                    Description = "Expand negative prompts with quality issues to avoid",
+                    Messages = GetNegativePromptInstructions("{prompt}"),
+                    IsDefault = true
+                }
+            };
+        }
+
+        private List<OllamaChatMessage> GetSimplifyInstructions(string input)
+        {
+            return new List<OllamaChatMessage>
+            {
+                new OllamaChatMessage
+                {
+                    Role = "system",
+                    Content = "You are an expert at distilling complex prompts to their essential elements. Given a detailed prompt, identify and keep only the most important descriptors. Remove redundancy, excessive detail, and unnecessary modifiers. Output only the simplified prompt without explanation."
+                },
+                new OllamaChatMessage
+                {
+                    Role = "user",
+                    Content = "Simplify this complex prompt to its essential elements: \"A highly detailed, photorealistic digital painting of a majestic golden dragon with intricate scales, fierce glowing amber eyes, massive leathery wings spread wide, perched atop an ancient crumbling stone castle tower at sunset, with dramatic clouds in the background, volumetric lighting, 8k resolution, trending on artstation, hyperrealistic, cinematic composition\""
+                },
+                new OllamaChatMessage
+                {
+                    Role = "assistant",
+                    Content = "Golden dragon with glowing eyes and spread wings on castle tower at sunset, detailed scales, dramatic clouds"
+                },
+                new OllamaChatMessage
+                {
+                    Role = "user",
+                    Content = $"Simplify this prompt to its essential elements: \"{input}\""
+                }
+            };
         }
 
         private List<OllamaChatMessage> GetPositivePromptInstructions(string input)

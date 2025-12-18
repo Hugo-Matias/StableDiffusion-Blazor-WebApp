@@ -3,6 +3,7 @@ using System;
 using BlazorWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorWebApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251217154635_AddSystemPromptTemplates")]
+    partial class AddSystemPromptTemplates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.11");
@@ -493,13 +495,13 @@ namespace BlazorWebApp.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("MessagesJson")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Template")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")

@@ -1,0 +1,59 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@inject IInfoService InfoService
+@implements IAsyncDisposable
+
+<MudGrid Spacing="2">
+    @* Settings Sidebar *@
+    <MudItem xs="12" md="4" lg="3">
+        <LLMSettingsPanel @bind-SelectedModel="_selectedModel" />
+    </MudItem>
+    
+    @* Main Content Area *@
+    <MudItem xs="12" md="8" lg="9">
+        <LLMMainPanel SelectedModel="@_selectedModel" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    private string _selectedModel = string.Empty;
+
+    // Info content
+    private readonly InfoContent _infoContent = new(
+        Title: "LLM Tools - Quick Guide",
+        Overview: "Use AI language models to transform your image generation prompts with customizable templates. Configure model settings on the left, select a template from the toolbar, then process prompts individually or in batches.",
+        Shortcuts: new List<ShortcutInfo>
+        {
+            new("Ctrl+Enter", "Process prompt with selected template"),
+            new("Ctrl+Z", "Undo last operation"),
+            new("Ctrl+Y", "Redo undone operation"),
+        },
+        Tips: new List<string>
+        {
+            "Templates define the behavior (enhance, simplify, translate, etc.)",
+            "Select templates directly from the Process tab toolbar",
+            "Templates are shared across Single and Batch modes",
+            "Switch between Single and Batch mode with the mode toggle buttons",
+            "Single mode: Process one prompt at a time with real-time feedback",
+            "Batch mode: Select multiple prompts from your library to process at once",
+            "Process button color adapts to the selected template type",
+            "Adjust Temperature for more creative (higher) or focused (lower) results",
+            "Default templates provide few-shot learning examples for best results",
+            "History persists across sessions - restore any previous result with one click",
+            "Batch results are expandable - click to see original vs processed comparison",
+            "Save batch results to library individually with one click",
+            "Create custom templates in the Prompts page for specialized processing",
+            "Template selection determines the AI's behavior and output style"
+        }
+    );
+
+    protected override void OnInitialized()
+    {
+        InfoService.SetInfo(_infoContent);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        InfoService.ClearInfo();
+        return ValueTask.CompletedTask;
+    }
+}

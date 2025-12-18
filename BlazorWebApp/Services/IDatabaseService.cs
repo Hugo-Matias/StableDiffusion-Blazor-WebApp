@@ -145,5 +145,12 @@ namespace BlazorWebApp.Services
         Task<WildcardEntry> CreateWildcardEntry(WildcardEntry entry);
         Task<WildcardEntry> UpdateWildcardEntry(WildcardEntry entry);
         Task DeleteWildcardEntry(int id);
+
+        // System Prompt Template Operations
+        Task<List<SystemPromptTemplate>> GetSystemPromptTemplates();
+        Task<SystemPromptTemplate?> GetSystemPromptTemplate(int id);
+        Task<bool> CreateSystemPromptTemplate(SystemPromptTemplate template);
+        Task<bool> UpdateSystemPromptTemplate(SystemPromptTemplate template);
+        Task<bool> DeleteSystemPromptTemplate(int id);
     }
 }

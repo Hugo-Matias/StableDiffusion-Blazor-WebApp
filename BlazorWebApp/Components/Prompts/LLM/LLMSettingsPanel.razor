@@ -1,0 +1,192 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@inject IStateService State
+@inject ISettingsService Settings
+@inject OllamaService OllamaService
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+    <MudStack Spacing="3">
+        <div>
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Model</MudText>
+            @if (_isLoadingModels)
+            {
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="56px" />
+            }
+            else if (_availableModels != null && _availableModels.Any())
+            {
+                <MudSelect @bind-Value="SelectedModel"
+                          Variant="Variant.Outlined"
+                          AnchorOrigin="Origin.BottomLeft"
+                          TransformOrigin="Origin.TopLeft">
+                    @foreach (var model in _availableModels)
+                    {
+                        <MudSelectItem Value="@model.Name">
+                            <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                <span style="font-size: 0.9rem;">@model.Name</span>
+                                @if (!string.IsNullOrEmpty(model.Details?.ParameterSize))
+                                {
+                                    <MudChip Size="Size.Small" Color="Color.Info" Class="ml-2">
+                                        @model.Details.ParameterSize
+                                    </MudChip>
+                                }
+                            </div>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+                
+                <MudButton Variant="Variant.Text" 
+                           Size="Size.Small" 
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RefreshModels"
+                           Class="mt-1">
+                    Refresh Models
+                </MudButton>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense>
+                    No models available. Check Ollama connection.
+                </MudAlert>
+            }
+        </div>
+        
+        <MudDivider />
+        
+        @* Sampling Parameters *@
+        <div>
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Sampling</MudText>
+            
+            <MudStack Spacing="2">
+                @* Seed *@
+                <div class="d-flex gap-2 align-center">
+                    <MudNumericField @bind-Value="State.State.Generation.LLM.Options.Seed"
+                                    Label="Seed"
+                                    Variant="Variant.Outlined"
+                                    Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
+                                    Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max"
+                                    Style="flex: 1;" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Shuffle"
+                                  Size="Size.Small"
+                                  OnClick="RandomizeSeed"
+                                  Title="Randomize" />
+                </div>
+                
+                @* Temperature *@
+                <div>
+                    <MudText Typo="Typo.caption">
+                        Temperature: @State.State.Generation.LLM.Options.Temperature.ToString("F1")
+                    </MudText>
+                    <MudSlider @bind-Value="State.State.Generation.LLM.Options.Temperature"
+                               Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Min"
+                               Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Max"
+                               Step="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Step"
+                               Color="Color.Primary" />
+                </div>
+                
+                @* Top P *@
+                <div>
+                    <MudText Typo="Typo.caption">
+                        Top P: @State.State.Generation.LLM.Options.TopP.ToString("F2")
+                    </MudText>
+                    <MudSlider @bind-Value="State.State.Generation.LLM.Options.TopP"
+                               Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Min"
+                               Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Max"
+                               Step="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Step"
+                               Color="Color.Secondary" />
+                </div>
+            </MudStack>
+        </div>
+        
+        @* Advanced Parameters (Collapsible) *@
+        <MudExpansionPanels>
+            <MudExpansionPanel Text="Advanced Parameters" Dense>
+                <MudStack Spacing="2">
+                    <MudNumericField @bind-Value="State.State.Generation.LLM.Options.TopK"
+                                   Label="Top K"
+                                   Variant="Variant.Outlined"
+                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
+                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
+                    
+                    <MudNumericField @bind-Value="State.State.Generation.LLM.Options.MinP"
+                                   Label="Min P"
+                                   Variant="Variant.Outlined"
+                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
+                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
+                                   Step="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Step" />
+                    
+                    <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumPredict"
+                                   Label="Max Tokens"
+                                   Variant="Variant.Outlined"
+                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
+                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
+                    
+                    <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumCtx"
+                                   Label="Context Length"
+                                   Variant="Variant.Outlined"
+                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
+                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max" />
+                </MudStack>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public string SelectedModel { get; set; } = string.Empty;
+    
+    [Parameter]
+    public EventCallback<string> SelectedModelChanged { get; set; }
+
+    private List<OllamaModel>? _availableModels;
+    private bool _isLoadingModels;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadModels();
+    }
+
+    private async Task LoadModels()
+    {
+        _isLoadingModels = true;
+        try
+        {
+            _availableModels = await OllamaService.GetModels();
+            
+            if (_availableModels != null && _availableModels.Any())
+            {
+                // Use model from settings or first available
+                if (string.IsNullOrEmpty(SelectedModel))
+                {
+                    SelectedModel = Settings.Settings.Generation.Shared.LLMEnhancer.Model;
+                }
+                
+                if (!_availableModels.Any(m => m.Name == SelectedModel))
+                {
+                    SelectedModel = _availableModels[0].Name;
+                }
+                
+                await SelectedModelChanged.InvokeAsync(SelectedModel);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load models: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoadingModels = false;
+        }
+    }
+
+    private async Task RefreshModels()
+    {
+        await LoadModels();
+        Snackbar.Add("Models refreshed", Severity.Info);
+    }
+
+    private void RandomizeSeed()
+    {
+        State.State.Generation.LLM.Options.Seed = new Random().Next();
+    }
+}

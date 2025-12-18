@@ -1,0 +1,956 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@inject OllamaService OllamaService
+@inject IStateService State
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@inject IDatabaseService DB
+
+<MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+    <MudTabs @bind-ActivePanelIndex="_activeTab" 
+             Elevation="0" 
+             Rounded 
+             PanelClass="pt-4">
+        <MudTabPanel Text="Process" Icon="@Icons.Material.Filled.AutoAwesome">
+            <MudStack Spacing="3">
+                @* Inline Controls: Mode | Template | Process Button *@
+                <div class="d-flex gap-2 align-center flex-wrap">
+                    @* Mode Toggle - Vertical *@
+                    <MudButtonGroup VerticalAlign="true" Color="Color.Primary" Style="min-width: 72px;">
+                        <MudButton OnClick="@(() => SetMode(ProcessMode.Single))"
+                                   Variant="@(_processMode == ProcessMode.Single ? Variant.Filled : Variant.Outlined)"
+                                   Size="Size.Small"
+                                   Disabled="_isProcessing">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-1" />
+                            Single
+                        </MudButton>
+                        <MudButton OnClick="@(() => SetMode(ProcessMode.Batch))"
+                                   Variant="@(_processMode == ProcessMode.Batch ? Variant.Filled : Variant.Outlined)"
+                                   Size="Size.Small"
+                                   Disabled="_isProcessing">
+                            <MudIcon Icon="@Icons.Material.Filled.BatchPrediction" Size="Size.Small" Class="mr-1" />
+                            Batch
+                        </MudButton>
+                    </MudButtonGroup>
+                    
+                    <MudDivider Vertical FlexItem Style="height: 56px;" />
+                    
+                    @* Template Selector *@
+                    <MudSelect Value="_selectedTemplateId"
+                               ValueChanged="OnTemplateChanged"
+                               Label="Template"
+                               Variant="Variant.Outlined"
+                               Dense
+                               AnchorOrigin="Origin.BottomLeft"
+                               Style="min-width: 250px;"
+                               Disabled="_isProcessing"
+                               T="int">
+                        @if (_templates != null)
+                        {
+                            foreach (var template in _templates)
+                            {
+                                <MudSelectItem Value="@template.Id">
+                                    <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                        <span>@template.Name</span>
+                                        @if (template.IsDefault)
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Info">Default</MudChip>
+                                        }
+                                    </div>
+                                </MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                    
+                    @* Process Button - Match height with Select fields *@
+                    <MudButton Variant="Variant.Filled"
+                               Color="@GetTemplateColor()"
+                               OnClick="HandleProcessClick"
+                               Disabled="@GetProcessButtonDisabled()"
+                               StartIcon="@Icons.Material.Filled.PlayArrow"
+                               Style="height: 56px; padding: 0 16px;">
+                        @if (_isProcessing)
+                        {
+                            <div class="d-flex align-center gap-2">
+                                <MudProgressCircular Size="Size.Small" Color="Color.Inherit" Indeterminate />
+                                @if (_processMode == ProcessMode.Batch)
+                                {
+                                    <span>@_processedCount/@_selectedPrompts.Count</span>
+                                }
+                                else
+                                {
+                                    <span>Processing...</span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            @if (_processMode == ProcessMode.Batch)
+                            {
+                                <span>Process (@_selectedPrompts.Count)</span>
+                            }
+                            else
+                            {
+                                <span>Process</span>
+                            }
+                        }
+                    </MudButton>
+                    
+                    <MudSpacer />
+                    
+                    @if (_processMode == ProcessMode.Single)
+                    {
+                        @* History Controls - Single Mode Only *@
+                        <MudTooltip Text="Undo">
+                            <MudIconButton Icon="@Icons.Material.Filled.Undo"
+                                          Size="Size.Small"
+                                          OnClick="Undo"
+                                          Disabled="_isProcessing || _history.Count == 0" />
+                        </MudTooltip>
+                        <MudTooltip Text="Redo">
+                            <MudIconButton Icon="@Icons.Material.Filled.Redo"
+                                          Size="Size.Small"
+                                          OnClick="Redo"
+                                          Disabled="_isProcessing || _redoStack.Count == 0" />
+                        </MudTooltip>
+                    }
+                    else if (!_isProcessing && _selectedPrompts.Any())
+                    {
+                        @* Selection Info - Batch Mode Only *@
+                        <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                            @_selectedPrompts.Count selected
+                        </MudChip>
+                    }
+                </div>
+                
+                @if (_processMode == ProcessMode.Single)
+                {
+                    @* Single Prompt Mode *@
+                    @* Input Prompt - Below Controls *@
+                    <MudTextField @bind-Value="_inputPrompt"
+                                  Label="Input Prompt"
+                                  Variant="Variant.Outlined"
+                                  Lines="4"
+                                  Placeholder="Enter your prompt here..."
+                                  Disabled="_isProcessing"
+                                  Immediate />
+                    
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Dense Variant="Variant.Outlined">
+                            @_errorMessage
+                        </MudAlert>
+                    }
+                    
+                    @* Comparison Panel *@
+                    @if (!string.IsNullOrEmpty(_resultPrompt))
+                    {
+                        <PromptComparisonPanel OriginalPrompt="@_inputPrompt"
+                                               ResultPrompt="@_resultPrompt"
+                                               OperationType="@(_selectedTemplate?.Name ?? "Enhanced")"
+                                               OnApply="HandleApplyResult"
+                                               OnRegenerate="HandleRegenerateResult"
+                                               OnClear="HandleClearResult"
+                                               OnSaveToLibrary="HandleSaveToLibrary" />
+                    }
+                }
+                else
+                {
+                    @* Batch Processing Mode *@
+                    @if (_isLoadingPrompts)
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="min-height: 300px;">
+                            <MudProgressCircular Indeterminate Color="Color.Primary" />
+                            <MudText Typo="Typo.body1">Loading prompts...</MudText>
+                        </MudStack>
+                    }
+                    else if (_availablePrompts != null && _availablePrompts.Any())
+                    {
+                        @* Prompt Selection Cards *@
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">Select Prompts</MudText>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <MudGrid Spacing="2">
+                                @foreach (var prompt in _availablePrompts)
+                                {
+                                    var isSelected = _selectedPrompts.Contains(prompt);
+                                    <MudItem xs="12" md="6">
+                                        <MudCard Outlined="true" 
+                                                 Style="@($"cursor: pointer; border: 2px solid {(isSelected ? "var(--mud-palette-primary)" : "transparent")}; transition: all 0.2s;")"
+                                                 @onclick="@(() => TogglePromptSelection(prompt))">
+                                            <MudCardContent Class="pa-3">
+                                                <div class="d-flex align-center gap-2 mb-2">
+                                                    <MudCheckBox Checked="@isSelected" 
+                                                                 Color="Color.Primary" 
+                                                                 Dense 
+                                                                 ReadOnly />
+                                                    <MudText Typo="Typo.subtitle2" Style="flex: 1;">@prompt.Title</MudText>
+                                                    @if (!string.IsNullOrEmpty(prompt.Category))
+                                                    {
+                                                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                                                            @prompt.Category
+                                                        </MudChip>
+                                                    }
+                                                </div>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                                    @(prompt.Positive ?? "No content")
+                                                </MudText>
+                                            </MudCardContent>
+                                        </MudCard>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </div>
+                        
+                        @* Results *@
+                        @if (_batchResults.Any())
+                        {
+                            <MudDivider Class="my-3" />
+                            
+                            <div class="d-flex justify-space-between align-center mb-2">
+                                <MudText Typo="Typo.subtitle2">
+                                    Results (@_batchResults.Count)
+                                </MudText>
+                                <MudButton Variant="Variant.Text"
+                                           Size="Size.Small"
+                                           OnClick="ClearResults"
+                                           StartIcon="@Icons.Material.Filled.Clear"
+                                           Color="Color.Default">
+                                    Clear All
+                                </MudButton>
+                            </div>
+                            
+                            <div style="max-height: 400px; overflow-y: auto;">
+                                <MudStack Spacing="2">
+                                    @foreach (var result in _batchResults)
+                                    {
+                                        <MudCard Outlined="true">
+                                            <MudCardContent Class="pa-3">
+                                                <div class="d-flex align-center gap-2 mb-2">
+                                                    @if (result.IsSuccess)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" 
+                                                                 Color="Color.Success" 
+                                                                 Size="Size.Small" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.Error" 
+                                                                 Color="Color.Error" 
+                                                                 Size="Size.Small" />
+                                                    }
+                                                    <MudText Typo="Typo.subtitle2" Style="flex: 1;">
+                                                        @result.PromptTitle
+                                                    </MudText>
+                                                    <MudChip Size="Size.Small" 
+                                                             Variant="Variant.Text"
+                                                             Color="@(result.Operation == "Enhanced" ? Color.Primary : Color.Secondary)">
+                                                        @result.Operation
+                                                    </MudChip>
+                                                    @if (result.IsSuccess)
+                                                    {
+                                                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                                      Size="Size.Small"
+                                                                      Color="Color.Info"
+                                                                      OnClick="@(() => CopyResult(result.ResultText))"
+                                                                      Title="Copy" />
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                                                      Size="Size.Small"
+                                                                      Color="Color.Success"
+                                                                      OnClick="@(() => SaveResult(result))"
+                                                                      Title="Save to Library" />
+                                                    }
+                                                </div>
+                                                
+                                                @if (result.IsSuccess)
+                                                {
+                                                    <MudExpansionPanels Dense>
+                                                        <MudExpansionPanel Text="View Details" Dense>
+                                                            <MudGrid Spacing="2">
+                                                                <MudItem xs="12" md="5">
+                                                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">
+                                                                        Original:
+                                                                    </MudText>
+                                                                    <MudPaper Class="pa-2" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                                                                        <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 150px; overflow-y: auto;">
+                                                                            @result.OriginalText
+                                                                        </MudText>
+                                                                    </MudPaper>
+                                                                </MudItem>
+                                                                <MudItem xs="12" md="7">
+                                                                    <MudText Typo="Typo.caption" Color="Color.Success" Class="mb-1">
+                                                                        Result:
+                                                                    </MudText>
+                                                                    <MudPaper Class="pa-2" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
+                                                                        <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 150px; overflow-y: auto;">
+                                                                            @result.ResultText
+                                                                        </MudText>
+                                                                    </MudPaper>
+                                                                </MudItem>
+                                                            </MudGrid>
+                                                        </MudExpansionPanel>
+                                                    </MudExpansionPanels>
+                                                }
+                                                else
+                                                {
+                                                    <MudAlert Severity="Severity.Error" Dense Class="mt-2">
+                                                        @result.ErrorMessage
+                                                    </MudAlert>
+                                                }
+                                            </MudCardContent>
+                                        </MudCard>
+                                    }
+                                </MudStack>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="min-height: 300px;">
+                            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Large" Color="Color.Default" />
+                            <MudText Typo="Typo.h6" Color="Color.Default">No Prompts Available</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                                Add prompts to your library first to use batch processing
+                            </MudText>
+                        </MudStack>
+                    }
+                }
+            </MudStack>
+        </MudTabPanel>
+        
+        <MudTabPanel Text="System Prompts" Icon="@Icons.Material.Filled.Psychology">
+            <SystemPromptEditor @ref="_systemPromptEditor" 
+                                OnTemplateChanged="HandleSystemPromptTemplateChanged" />
+        </MudTabPanel>
+        
+        <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History"
+                     BadgeData="@(_history.Count > 0 ? _history.Count.ToString() : null)"
+                     BadgeColor="Color.Info">
+            @if (_history.Any())
+            {
+                <MudStack Spacing="2">
+                    <div class="d-flex gap-2 align-center">
+                        <MudText Typo="Typo.subtitle2">Recent Operations</MudText>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="ClearHistory"
+                                   StartIcon="@Icons.Material.Filled.Clear"
+                                   Color="Color.Error">
+                            Clear All
+                        </MudButton>
+                    </div>
+                    
+                    <MudList Clickable Dense>
+                        @foreach (var entry in _history)
+                        {
+                            <MudListItem OnClick="@(() => RestoreFromHistory(entry))">
+                                <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                    <div style="flex: 1;">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@GetOperationIcon(entry.Operation)" 
+                                                     Size="Size.Small" 
+                                                     Color="@GetOperationColor(entry.Operation)" />
+                                            <MudText Typo="Typo.body2">
+                                                @entry.Operation
+                                            </MudText>
+                                            <MudChip Size="Size.Small" Variant="Variant.Text">
+                                                @entry.ModelUsed
+                                            </MudChip>
+                                            @if (entry.IsSavedToDb)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.CloudDone" 
+                                                         Size="Size.Small" 
+                                                         Color="Color.Success"
+                                                         Title="Saved to library" />
+                                            }
+                                        </div>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @entry.Timestamp.ToString("HH:mm:ss") - @TruncateText(entry.OriginalPrompt, 80)
+                                        </MudText>
+                                    </div>
+                                    <MudIconButton Icon="@Icons.Material.Filled.RestorePage"
+                                                  Size="Size.Small"
+                                                  Color="Color.Info"
+                                                  Title="Restore"
+                                                  OnClick="@(() => RestoreFromHistory(entry))" />
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 300px;">
+                    <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.h6" Color="Color.Default">No History Yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                        Generate some prompts to see them here
+                    </MudText>
+                </MudStack>
+            }
+        </MudTabPanel>
+    </MudTabs>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public string SelectedModel { get; set; } = string.Empty;
+
+    private enum ProcessMode
+    {
+        Single,
+        Batch
+    }
+
+    private int _activeTab;
+    private ProcessMode _processMode = ProcessMode.Single;
+    private string _inputPrompt = string.Empty;
+    private string _resultPrompt = string.Empty;
+    private bool _isProcessing;
+    private string? _errorMessage;
+    
+    // Template management
+    private List<SystemPromptTemplate>? _templates;
+    private int _selectedTemplateId;
+    private SystemPromptTemplate? _selectedTemplate;
+    private SystemPromptEditor? _systemPromptEditor;
+    
+    // Batch processing
+    private List<Prompt>? _availablePrompts;
+    private HashSet<Prompt> _selectedPrompts = new();
+    private bool _isLoadingPrompts;
+    private int _processedCount;
+    private List<BatchProcessingResult> _batchResults = new();
+    
+    // History management
+    private List<PromptHistoryEntry> _history = new();
+    private Stack<PromptHistoryEntry> _redoStack = new();
+    private const int MaxHistorySize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistoryFromStorage();
+        await LoadTemplates();
+        await LoadPromptsForBatch();
+    }
+    
+    private async Task LoadTemplates()
+    {
+        try
+        {
+            _templates = await DB.GetSystemPromptTemplates();
+            
+            if (_templates != null && _templates.Any())
+            {
+                // Select first default template or just the first template
+                var defaultTemplate = _templates.FirstOrDefault(t => t.IsDefault) ?? _templates[0];
+                _selectedTemplateId = defaultTemplate.Id;
+                await LoadSelectedTemplate();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading templates: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    private async Task OnTemplateChanged(int templateId)
+    {
+        _selectedTemplateId = templateId;
+        await LoadSelectedTemplate();
+        StateHasChanged();
+    }
+    
+    private async Task LoadSelectedTemplate()
+    {
+        if (_selectedTemplateId <= 0) return;
+
+        try
+        {
+            _selectedTemplate = await DB.GetSystemPromptTemplate(_selectedTemplateId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading template: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    private async Task HandleSystemPromptTemplateChanged(List<OllamaChatMessage> messages)
+    {
+        // Reload templates when they are modified in the System Prompts tab
+        await LoadTemplates();
+        StateHasChanged();
+    }
+
+    private void SetMode(ProcessMode mode)
+    {
+        _processMode = mode;
+        _errorMessage = null;
+        _resultPrompt = string.Empty;
+    }
+
+    private async Task LoadPromptsForBatch()
+    {
+        _isLoadingPrompts = true;
+        try
+        {
+            _availablePrompts = await DB.GetPrompts();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading prompts: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoadingPrompts = false;
+        }
+    }
+
+    private void TogglePromptSelection(Prompt prompt)
+    {
+        if (_selectedPrompts.Contains(prompt))
+            _selectedPrompts.Remove(prompt);
+        else
+            _selectedPrompts.Add(prompt);
+    }
+
+    private async Task LoadHistoryFromStorage()
+    {
+        try
+        {
+            var historyJson = await JSRuntime.InvokeAsync<List<PromptHistoryEntry>>("PromptHistoryStorage.getHistory");
+            if (historyJson != null && historyJson.Any())
+            {
+                _history = historyJson;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not load history from LocalStorage: {ex.Message}");
+        }
+    }
+
+    private async Task SaveHistoryToStorage()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("PromptHistoryStorage.saveHistory", _history);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not save history to LocalStorage: {ex.Message}");
+        }
+    }
+
+    private async Task ProcessPrompt()
+    {
+        if (string.IsNullOrWhiteSpace(_inputPrompt))
+        {
+            _errorMessage = "Please enter a prompt first.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedModel))
+        {
+            _errorMessage = "Please select an LLM model first.";
+            return;
+        }
+
+        _isProcessing = true;
+        _errorMessage = null;
+        _resultPrompt = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            // Use selected template or fallback to default messages
+            var messages = _selectedTemplate != null 
+                ? _selectedTemplate.Messages 
+                : GetEnhanceMessages(); // Default to enhance if no template
+            
+            // Replace {prompt} placeholder in all messages
+            var processedMessages = messages.Select(m => new OllamaChatMessage
+            {
+                Role = m.Role,
+                Content = m.Content?.Replace("{prompt}", _inputPrompt) ?? ""
+            }).ToList();
+
+            var response = await OllamaService.SendChatMessage(
+                SelectedModel,
+                processedMessages,
+                State.State.Generation.LLM.Options.ToOllamaOptions());
+
+            if (response?.Message?.Content != null)
+            {
+                _resultPrompt = response.Message.Content;
+                
+                await AddToHistory(new PromptHistoryEntry
+                {
+                    Operation = _selectedTemplate?.Name ?? "Enhance",
+                    OriginalPrompt = _inputPrompt,
+                    ResultPrompt = _resultPrompt,
+                    TemplateName = _selectedTemplate?.Name ?? "Default",
+                    ModelUsed = SelectedModel
+                });
+            }
+            else
+            {
+                _errorMessage = "No response received from model.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error processing prompt: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ProcessBatch()
+    {
+        if (!_selectedPrompts.Any()) return;
+
+        _isProcessing = true;
+        _processedCount = 0;
+        _batchResults.Clear();
+
+        foreach (var prompt in _selectedPrompts)
+        {
+            var result = new BatchProcessingResult
+            {
+                PromptId = prompt.Id,
+                PromptTitle = prompt.Title,
+                OriginalText = prompt.Positive ?? "",
+                Operation = _selectedTemplate?.Name ?? "Enhance"
+            };
+
+            try
+            {
+                // Use selected template or fallback to default messages
+                var messages = _selectedTemplate != null 
+                    ? _selectedTemplate.Messages 
+                    : GetEnhanceMessages();
+                
+                var processedMessages = messages.Select(m => new OllamaChatMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content?.Replace("{prompt}", prompt.Positive ?? "") ?? ""
+                }).ToList();
+
+                var response = await OllamaService.SendChatMessage(
+                    SelectedModel,
+                    processedMessages,
+                    State.State.Generation.LLM.Options.ToOllamaOptions());
+
+                if (response?.Message?.Content != null)
+                {
+                    result.ResultText = response.Message.Content;
+                    result.IsSuccess = true;
+                }
+                else
+                {
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "No response received";
+                }
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = ex.Message;
+            }
+
+            _batchResults.Add(result);
+            _processedCount++;
+            StateHasChanged();
+        }
+
+        _isProcessing = false;
+        Snackbar.Add($"Batch processing complete! Processed {_processedCount} prompts.", Severity.Success);
+    }
+
+    private List<OllamaChatMessage> GetDefaultMessagesForOperation(string operation)
+    {
+        if (operation == "Enhanced")
+        {
+            return GetEnhanceMessages();
+        }
+        else // Simplified
+        {
+            return GetSimplifyMessages();
+        }
+    }
+
+    private List<OllamaChatMessage> GetEnhanceMessages()
+    {
+        return new List<OllamaChatMessage>
+        {
+            new() { Role = "system", Content = "You are an expert at expanding concise prompts into detailed, descriptive image generation prompts. Given a simple prompt, add artistic details, lighting, mood, composition elements, and sensory descriptions. Keep the core concept but make it vivid and specific. Output only the enhanced prompt without explanation." },
+            new() { Role = "user", Content = "{prompt}" }
+        };
+    }
+
+    private List<OllamaChatMessage> GetSimplifyMessages()
+    {
+        return new List<OllamaChatMessage>
+        {
+            new() { Role = "system", Content = "You are an expert at distilling complex prompts to their essential elements. Given a detailed prompt, identify and keep only the most important descriptors. Remove redundancy, excessive detail, and unnecessary modifiers. Output only the simplified prompt without explanation." },
+            new() { Role = "user", Content = "{prompt}" }
+        };
+    }
+
+    private async Task HandleApplyResult(string result)
+    {
+        _inputPrompt = result;
+        _resultPrompt = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task HandleRegenerateResult()
+    {
+        await ProcessPrompt();
+    }
+
+    private async Task HandleClearResult()
+    {
+        _resultPrompt = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task HandleSaveToLibrary(string result)
+    {
+        try
+        {
+            var newPrompt = new Prompt
+            {
+                Title = $"{_selectedTemplate?.Name ?? "Enhanced"} - {DateTime.Now:yyyy-MM-dd HH:mm}",
+                Positive = result,
+                Loras = new List<Lora>(),
+                Category = "LLM Generated",
+                Tags = new List<string> { _selectedTemplate?.Name ?? "Enhanced", "AI Generated" }
+            };
+            
+            await DB.CreatePrompt(newPrompt);
+            Snackbar.Add("Prompt saved to library successfully!", Severity.Success);
+            
+            if (_history.Any())
+            {
+                var latestEntry = _history[0];
+                latestEntry.IsSavedToDb = true;
+                await SaveHistoryToStorage();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving to library: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CopyResult(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add("Result copied to clipboard", Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add("Could not copy to clipboard", Severity.Warning);
+        }
+    }
+
+    private async Task SaveResult(BatchProcessingResult result)
+    {
+        try
+        {
+            var newPrompt = new Prompt
+            {
+                Title = $"{result.PromptTitle} ({result.Operation})",
+                Positive = result.ResultText,
+                Loras = new List<Lora>(),
+                Category = "Batch Processed"
+            };
+            
+            await DB.CreatePrompt(newPrompt);
+            Snackbar.Add("Result saved to library", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving result: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ClearResults()
+    {
+        _batchResults.Clear();
+        _selectedPrompts.Clear();
+        StateHasChanged();
+    }
+
+    private async Task AddToHistory(PromptHistoryEntry entry)
+    {
+        _history.Insert(0, entry);
+        _redoStack.Clear();
+        
+        if (_history.Count > MaxHistorySize)
+        {
+            _history = _history.Take(MaxHistorySize).ToList();
+        }
+        
+        await SaveHistoryToStorage();
+        StateHasChanged();
+    }
+
+    private async Task Undo()
+    {
+        if (_history.Count == 0) return;
+        
+        var entry = _history[0];
+        _history.RemoveAt(0);
+        _redoStack.Push(entry);
+        
+        if (_history.Count > 0)
+        {
+            var previousEntry = _history[0];
+            _inputPrompt = previousEntry.OriginalPrompt;
+            _resultPrompt = previousEntry.ResultPrompt;
+        }
+        else
+        {
+            _inputPrompt = string.Empty;
+            _resultPrompt = string.Empty;
+        }
+        
+        await SaveHistoryToStorage();
+        StateHasChanged();
+    }
+
+    private async Task Redo()
+    {
+        if (_redoStack.Count == 0) return;
+        
+        var entry = _redoStack.Pop();
+        _history.Insert(0, entry);
+        
+        _inputPrompt = entry.OriginalPrompt;
+        _resultPrompt = entry.ResultPrompt;
+        
+        await SaveHistoryToStorage();
+        StateHasChanged();
+    }
+
+    private async Task RestoreFromHistory(PromptHistoryEntry entry)
+    {
+        _inputPrompt = entry.OriginalPrompt;
+        _resultPrompt = entry.ResultPrompt;
+        
+        // Switch to single mode and Process tab
+        _processMode = ProcessMode.Single;
+        _activeTab = 0;
+        
+        Snackbar.Add($"Restored {entry.Operation} from history", Severity.Info);
+        StateHasChanged();
+    }
+
+    private async Task ClearHistory()
+    {
+        _history.Clear();
+        _redoStack.Clear();
+        
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("PromptHistoryStorage.clearHistory");
+            Snackbar.Add("History cleared", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not clear history from LocalStorage: {ex.Message}");
+        }
+        
+        StateHasChanged();
+    }
+
+    private string GetOperationIcon(string operation)
+    {
+        return operation switch
+        {
+            "Enhanced" => Icons.Material.Filled.TrendingUp,
+            "Simplified" => Icons.Material.Filled.TrendingDown,
+            _ => Icons.Material.Filled.Edit
+        };
+    }
+
+    private Color GetOperationColor(string operation)
+    {
+        return operation switch
+        {
+            "Enhanced" => Color.Primary,
+            "Simplified" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+    
+    private bool GetProcessButtonDisabled()
+    {
+        if (_isProcessing) return true;
+        
+        if (_processMode == ProcessMode.Single)
+        {
+            return string.IsNullOrWhiteSpace(_inputPrompt);
+        }
+        else
+        {
+            return !_selectedPrompts.Any();
+        }
+    }
+    
+    private async Task HandleProcessClick()
+    {
+        if (_processMode == ProcessMode.Single)
+        {
+            await ProcessPrompt();
+        }
+        else
+        {
+            await ProcessBatch();
+        }
+    }
+    
+    private Color GetTemplateColor()
+    {
+        if (_selectedTemplate == null) return Color.Primary;
+        
+        // Color based on template name hints
+        var name = _selectedTemplate.Name.ToLower();
+        if (name.Contains("simplif"))
+            return Color.Secondary;
+        else if (name.Contains("enhance") || name.Contains("expand"))
+            return Color.Primary;
+        else if (name.Contains("translate"))
+            return Color.Tertiary;
+        else
+            return Color.Info;
+    }
+    
+    public class BatchProcessingResult
+    {
+        public int PromptId { get; set; }
+        public string PromptTitle { get; set; } = string.Empty;
+        public string OriginalText { get; set; } = string.Empty;
+        public string? ResultText { get; set; }
+        public string Operation { get; set; } = string.Empty;
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+}
