@@ -9,6 +9,7 @@
   ],
   "Pipeline": [
     {
+      "id": "loader_qwen",
       "fragment": "load-diffusion-w-prompts.sbn",
       "parameters": {
         "latent_id": "latent_image",
@@ -24,12 +25,14 @@
       }
     },
     {
+      "id": "model_sampling",
       "fragment": "model-sampling-auraflow.sbn",
       "parameters": {
         "model_shift": {{ ModelShift ?? 3.10 | json }}
       }
     },
     {
+      "id": "main_sampler",
       "fragment": "sampler.sbn",
       "parameters": {
         "title": "Main Sampler",
@@ -42,10 +45,12 @@
        }
      },
      {
+       "id": "vae_decode",
        "fragment": "vae-decode.sbn",
        "parameters": {}
      },
     {
+      "id": "seed_vr2",
       "fragment": "upscale-seedvr2.sbn",
       "parameters": {
         "seedvr2_model": {{ SeedVR2.Model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
@@ -61,6 +66,7 @@
       }
     },
     {
+      "id": "loader_detailer",
       "fragment": "load-diffusion-w-prompts.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -78,6 +84,7 @@
       }
     },
     {
+      "id": "detailer",
       "fragment": "detailer-core.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -99,6 +106,7 @@
       }
     },
     {
+      "id": "save",
       "fragment": "save.sbn",
       "parameters": {}
     }

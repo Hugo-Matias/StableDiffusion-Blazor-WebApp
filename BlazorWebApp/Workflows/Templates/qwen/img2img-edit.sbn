@@ -7,8 +7,12 @@
     { "parameter": "Clip", "label": "CLIP", "type": "Clip", "default": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "order": 2, "columnSize": 4 },
     { "parameter": "Vae", "label": "VAE", "type": "Vae", "default": "qwen_image_vae.safetensors", "order": 3, "columnSize": 4 }
   ],
+  "Sources": [
+    { "id": "source_image", "label": "Source Image", "type": "image", "required": true }
+  ],
   "Pipeline": [
     {
+      "id": "load_image",
       "fragment": "load-image-scaled.sbn",
       "parameters": {
         "image": {{ Image | json }},
@@ -17,6 +21,7 @@
       }
     },
     {
+      "id": "loader_qwen_edit",
       "fragment": "qwen/load-qwen-edit.sbn",
       "parameters": {
         "unet_name": {{ Model | json }},
@@ -29,10 +34,12 @@
       }
     },
     {
+      "id": "vae_encode",
       "fragment": "vae-encode.sbn",
       "parameters": {}
     },
     {
+      "id": "encode_edit",
       "fragment": "qwen/encode-edit.sbn",
       "parameters": {
         "positive": {{ Prompt | json }},
@@ -40,6 +47,7 @@
       }
     },
     {
+      "id": "main_sampler",
       "fragment": "sampler-standard.sbn",
       "parameters": {
         "title": "KSampler",
@@ -53,10 +61,12 @@
       }
     },
     {
+      "id": "vae_decode",
       "fragment": "vae-decode.sbn",
       "parameters": {}
     },
     {
+      "id": "save",
       "fragment": "save.sbn",
       "parameters": {}
     }

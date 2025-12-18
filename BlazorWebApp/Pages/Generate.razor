@@ -202,6 +202,14 @@ else
             if (restoredWorkflow != null)
             {
                 _selectedWorkflow = restoredWorkflow;
+                
+                // Ensure sources are initialized if they're missing but workflow requires them
+                if (restoredWorkflow.Sources?.Count > 0 && Parameters.Sources.Count == 0)
+                {
+                    Logger.LogDebug("Workflow has sources but Parameters.Sources is empty, reinitializing from workflow");
+                    await ParameterService.InitializeFromWorkflowAsync(restoredWorkflow);
+                }
+                
                 CachePromptsFragment();
                 StateHasChanged();
                 return;

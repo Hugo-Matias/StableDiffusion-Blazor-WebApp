@@ -9,6 +9,7 @@
   ],
   "Pipeline": [
     {
+      "id": "loader_zimage",
       "fragment": "load-diffusion.sbn",
       "parameters": {
         "latent_id": "latent_image",
@@ -24,6 +25,7 @@
     {{~ if Loras && Loras.size > 0 ~}}
     {{~ for lora in Loras ~}}
     {
+      "id": "lora_{{ for.index }}",
       "fragment": "lora-loader.sbn",
       "parameters": {
         "lora_loader_id": "lora_loader_{{ for.index }}",
@@ -36,6 +38,7 @@
     ,
     {{~ end ~}}
     {
+      "id": "prompts",
       "fragment": "prompts.sbn",
       "parameters": {
         "positive": {{ Prompt | json }},
@@ -43,6 +46,7 @@
       }
     },
     {
+      "id": "seed_variance_enhancer",
       "fragment": "seed-variance-enhancer.sbn",
       "parameters": {
         "randomize_percent": {{ SeedVarianceEnhancer.RandomizePercent ?? 50 | json }},
@@ -56,12 +60,14 @@
       }
     },
     {
+      "id": "conditioning_variation",
       "fragment": "conditioning-variation.sbn",
       "parameters": {
         "switch_point": {{ ConditioningVariation.SwitchPoint ?? 0.2 | json }}
       }
     },   
     {
+      "id": "main_sampler",
       "fragment": "sampler.sbn",
       "parameters": {
         "title": "Main Sampler",
@@ -74,10 +80,12 @@
        }
      },
      {
+       "id": "vae_decode",
        "fragment": "vae-decode.sbn",
        "parameters": {}
      },
     {
+      "id": "seed_vr2",
       "fragment": "upscale-seedvr2.sbn",
       "parameters": {
         "seedvr2_model": {{ SeedVR2.Model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
@@ -93,6 +101,7 @@
       }
     },
     {
+      "id": "loader_detailer",
       "fragment": "load-diffusion-w-prompts.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -110,6 +119,7 @@
       }
     },
     {
+      "id": "detailer",
       "fragment": "detailer-core.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -131,6 +141,7 @@
       }
     },
     {
+      "id": "save",
       "fragment": "save.sbn",
       "parameters": {}
     }

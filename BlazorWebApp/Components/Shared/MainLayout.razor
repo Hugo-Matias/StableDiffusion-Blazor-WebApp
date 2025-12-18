@@ -118,8 +118,9 @@
 
     protected async override Task OnInitializedAsync() 
     { 
-        // Load persisted state from database
-        await State.LoadState();
+        // Load persisted state from database via Orchestrator
+        // This ensures workflows are refreshed from disk templates (not just from database)
+        await M.LoadState();
         
         // Check backend availability using BackendService
         var isBackendAvailable = await Backend.CheckBackendAvailability();

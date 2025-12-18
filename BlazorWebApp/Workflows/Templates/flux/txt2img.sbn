@@ -10,6 +10,7 @@
   ],
   "Pipeline": [
     {
+      "id": "loader_flux",
       "fragment": "flux/load-flux.sbn",
       "parameters": {
         "unet_name": {{ Model | json }},
@@ -28,6 +29,7 @@
       }
     },
     {
+      "id": "main_sampler",
       "fragment": "sampler.sbn",
       "parameters": {
         "title": "Main Sampler",
@@ -40,6 +42,7 @@
       }
     },
     {
+      "id": "upscale",
       "fragment": "upscale.sbn",
       "parameters": {
         "upscale_model": {{ Upscale.Model ?? "4x-UltraSharpV2.safetensors" | json }},
@@ -54,10 +57,12 @@
       }
     },
     {
+      "id": "vae_decode",
       "fragment": "vae-decode.sbn",
       "parameters": {}
     },
     {
+      "id": "loader_detailer",
       "fragment": "flux/load-flux.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -78,6 +83,7 @@
       }
     },
     {
+      "id": "detailer",
       "fragment": "detailer-core.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -99,6 +105,7 @@
       }
     },
     {
+      "id": "save",
       "fragment": "save.sbn",
       "parameters": {}
     }

@@ -56,6 +56,11 @@ namespace BlazorWebApp.Data
             modelBuilder.Ignore<GeneratedVideo>();
             modelBuilder.Ignore<GeneratedVideos>();
             
+            // New GenerationParameters and related types (Phase 6)
+            modelBuilder.Ignore<GenerationParameters>();
+            modelBuilder.Ignore<FragmentParameters>();
+            modelBuilder.Ignore<SourceAsset>();
+            
             // ComfyUI DTOs
             modelBuilder.Ignore<Data.Dtos.ComfyUI.Workflow.FrameInterpolationParameters>();
 
@@ -78,6 +83,9 @@ namespace BlazorWebApp.Data
             var img2imgConverter = new ValueConverter<Img2ImgParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Img2ImgParameters>(v, opt));
             var upscaleConverter = new ValueConverter<UpscaleParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<UpscaleParameters>(v, opt));
             var img2vidConverter = new ValueConverter<Img2VidParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Img2VidParameters>(v, opt));
+            var generationParamsConverter = new ValueConverter<GenerationParameters, string>(
+                v => JsonSerializer.Serialize(v, opt), 
+                v => JsonSerializer.Deserialize<GenerationParameters>(v, opt) ?? new GenerationParameters());
             var listIntConverter = new ValueConverter<List<int>, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<List<int>>(v, opt));
             var listIntComparer = new ValueComparer<List<int>>((c1, c2) => c1.SequenceEqual(c2), c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())), c => c.ToList());
             var loraListConverter = new ValueConverter<List<Lora>, string>(
@@ -121,6 +129,7 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<State>().Property(nameof(State.Img2ImgParameters)).HasConversion(img2imgConverter);
             modelBuilder.Entity<State>().Property(nameof(State.UpscaleParameters)).HasConversion(upscaleConverter);
             modelBuilder.Entity<State>().Property(nameof(State.Img2VidParameters)).HasConversion(img2vidConverter);
+            modelBuilder.Entity<State>().Property(nameof(State.GenerationParameters)).HasConversion(generationParamsConverter);
 
             // Wildcard entity configuration
             modelBuilder.Entity<WildcardCollection>()

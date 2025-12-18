@@ -7,6 +7,7 @@
   ],
   "Pipeline": [
     {
+      "id": "loader_sd",
       "fragment": "load-checkpoint.sbn",
       "parameters": {
         "loader_id": "model_loader",
@@ -20,6 +21,7 @@
       }
     },
     {
+      "id": "main_sampler",
       "fragment": "sampler.sbn",
       "parameters": {
         "title": "Main Sampler",
@@ -32,6 +34,7 @@
        }
      },
      {
+      "id": "upscale",
       "fragment": "upscale.sbn",
       "parameters": {
         "upscale_model": {{ Upscale.Model ?? "4x-UltraSharpV2.safetensors" | json }},
@@ -46,10 +49,12 @@
       }
     },
     {
+      "id": "vae_decode",
       "fragment": "vae-decode.sbn",
       "parameters": {}
     },
     {
+      "id": "seed_vr2",
       "fragment": "upscale-seedvr2.sbn",
       "parameters": {
         "seedvr2_model": {{ SeedVR2.Model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
@@ -65,6 +70,7 @@
       }
     },
     {
+      "id": "loader_detailer",
       "fragment": "load-checkpoint.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -80,6 +86,7 @@
       }
     },
     {
+      "id": "detailer",
       "fragment": "detailer-core.sbn",
       "parameters": {
         "scope": "detailer_",
@@ -101,6 +108,7 @@
       }
     },
     {
+      "id": "save",
       "fragment": "save.sbn",
       "parameters": {}
     }

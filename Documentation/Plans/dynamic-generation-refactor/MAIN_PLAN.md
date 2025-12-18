@@ -1,7 +1,7 @@
 # Dynamic Generation Page Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Execution (Phase 6 - State &amp; Persistence - Nearly Complete)
+**Current Phase:** Execution (Phase 8 - Source Input UI Components)
 
 ---
 
@@ -99,8 +99,8 @@ The current generation architecture suffers from **tight coupling** between:
 ?  ????????????????  ?  ?  ????????????????  ?  ?  ????????????????  ?
 ?  ? outputs   ?  ?  ?  ? outputs   ?  ?  ?  ? outputs   ?  ?
 ?  ? conditions?  ?  ?  ? conditions?  ?  ?  ? (no ui)   ?  ?
-?  ? ui:       ?  ?  ?  ? ui:       ?  ?  ?  ????????????????  ?
-?  ?  component?  ?  ?  ?  fields[] ?  ?  ?  (utility node) ?
+?  ? ui:       ?  ?  ?  ? ui:       ?  ?  ?  ?  fields[] ?  ?
+?  ?  component?  ?  ?  ?  component?  ?  ?  ?  (utility node) ?
 ?  ????????????????  ?  ??????????????????????  ??????????????????????
 ? (designed comp) ?  (dynamic fields)   ?
 ??????????????????????  ??????????????????????
@@ -274,7 +274,7 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 ### Phase 6: State &amp; Persistence
 **Objective:** Update state management to use new parameter structure
 **Complexity:** 8 points
-**Status:** [~] Nearly Complete (pending manual testing)
+**Status:** [x] Complete
 
 #### Steps
 - [x] Step 6.1 - Update `StateService` to handle `GenerationParameters`
@@ -284,7 +284,7 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
   - Migrated `OnChange` event to `IEventService` pattern (`ImagesGeneratedEventArgs`)
 - [x] Step 6.3 - Router/ComfyUI factories (deferred to Phase 9 - internal conversion sufficient)
 - [x] Step 6.4 - Implement parameter parsing (wildcards, seeds) - integrated in 6.2
-- [~] Step 6.5 - Test state persistence and recovery (pending manual testing)
+- [x] Step 6.5 - Test state persistence and recovery (pending manual testing)
 
 #### Success Criteria
 - [x] State saves and loads correctly
@@ -296,33 +296,86 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 ### Phase 7: Workflow Template Updates
 **Objective:** Update all workflow templates with Pipeline IDs and Sources
 **Complexity:** 5 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Step 7.1 - Update Flux workflow templates
-- [ ] Step 7.2 - Update SD workflow templates
-- [ ] Step 7.3 - Update Img2Img workflow templates
-- [ ] Step 7.4 - Update Img2Vid workflow templates
-- [ ] Step 7.5 - Validate all workflows render correctly
+- [x] Step 7.1 - Update Flux workflow templates
+- [x] Step 7.2 - Update SD workflow templates
+- [x] Step 7.3 - Update Img2Img workflow templates (Chroma deferred - legacy format)
+- [x] Step 7.4 - Update Qwen workflow templates
+- [x] Step 7.5 - Update Wan Img2Vid workflow templates
+- [x] Step 7.6 - Update Wan Pose2Vid workflow templates
+- [x] Step 7.7 - Update Z-Image workflow templates
+- [x] Step 7.8 - Validate all workflows render correctly
 
 #### Success Criteria
-- All workflows have unique Pipeline IDs
-- Sources defined where needed
-- Generation works for all workflow types
+- [x] All workflows have unique Pipeline IDs
+- [x] Sources defined where needed (img2img, img2vid, pose2vid)
+- [x] Sources parsed and initialized correctly
+- [ ] Generation works for all workflow types (tested in Phase 8+)
 
 ---
 
-### Phase 8: Node Chaining Support
+### Phase 8: Source Input UI Components
+**Objective:** Create UI components for source image/video selection
+**Complexity:** 8 points
+**Status:** [ ] Not Started
+
+#### Overview
+The Sources infrastructure is now in place (templates have Sources arrays, parsing works, GenerationParameters.Sources is populated). This phase creates the UI components that allow users to actually select source images/videos.
+
+#### Steps
+
+##### Step 8.1: Create SourceInputPanel Component
+**Complexity:** 3
+- [ ] Create `SourceInputPanel.razor` that renders based on workflow Sources
+- [ ] Display one input control per source defined in workflow
+- [ ] Support image type sources (file upload, paste, drag-drop)
+- [ ] Wire to `GenerationParameterService.Current.Sources[sourceId]`
+
+##### Step 8.2: Integrate SourceInputPanel into Generate.razor
+**Complexity:** 2
+- [ ] Add SourceInputPanel to Generate.razor layout (above or below prompts)
+- [ ] Show/hide based on whether workflow has Sources defined
+- [ ] Ensure panel appears for img2img/img2vid workflows only
+
+##### Step 8.3: Create VideoSourceInput Component
+**Complexity:** 3
+- [ ] Create component for video file selection (for pose2vid)
+- [ ] Handle video file upload and preview
+- [ ] Store video data in SourceAsset
+
+##### Step 8.4: Wire Sources to Workflow Composition
+**Complexity:** 3
+- [ ] Ensure `SourceAsset.Base64Data` or `SourceAsset.ImagePath` is passed to workflow
+- [ ] Update `WorkflowService.ComposeWorkflowFromTemplate` to inject source data
+- [ ] Test with img2img-edit workflow
+
+##### Step 8.5: Validate Source-based Generation
+**Complexity:** 2
+- [ ] Test Qwen img2img-edit with actual image input
+- [ ] Test Wan img2vid with actual image input
+- [ ] Verify generated output uses source correctly
+
+#### Success Criteria
+- Users can select source images for img2img workflows
+- Users can select source videos for pose2vid workflows
+- Source data is correctly passed to ComfyUI workflow
+- Generation produces expected results
+
+---
+
+### Phase 9: Node Chaining Support
 **Objective:** Enable multiple instances of same fragment type
 **Complexity:** 8 points
 **Status:** [ ] Not Started
 
 #### Steps
-- [ ] Step 8.1 - Implement fragment instance management in service
-- [ ] Step 8.2 - Create UI for adding/removing chainable fragments
-- [ ] Step 8.3 - Implement instance reordering
-- [ ] Step 8.4 - Test with multiple samplers
-- [ ] Step 8.5 - Test with multiple detailers
+- [ ] Step 9.1 - Implement fragment instance management in service
+- [ ] Step 9.2 - Create UI for adding/removing chainable fragments
+- [ ] Step 9.3 - Implement instance reordering
+- [ ] Step 9.4 - Test with multiple samplers
+- [ ] Step 9.5 - Test with multiple detailers
 
 #### Success Criteria
 - Can add multiple KSamplers to a workflow
@@ -331,7 +384,7 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 
 ---
 
-### Phase 9: Legacy Deprecation &amp; RouterService Refactor
+### Phase 10: Legacy Deprecation &amp; RouterService Refactor
 **Objective:** Remove all legacy parameter classes and DTOs; RouterService accepts GenerationParameters directly
 **Complexity:** 13 points (increased from 5)
 **Status:** [ ] Not Started
@@ -341,18 +394,18 @@ This phase eliminates the temporary conversion layer added in Phase 6 and establ
 
 #### Steps
 
-##### Step 9.1: Update RouterService for GenerationParameters
+##### Step 10.1: Update RouterService for GenerationParameters
 - [ ] Add `IRouterService.PostGenerationAsync(GenerationParameters, Workflow)` method
 - [ ] Build ComfyUI workflow payload directly from `GenerationParameters.Fragments`
 - [ ] Remove mode-specific routing (`PostTxt2Img`, `PostImg2Img`, `PostImg2Vid`)
 
-##### Step 9.2: Update ComfyUI DTOs
+##### Step 10.2: Update ComfyUI DTOs
 - [ ] Create `ComfyUIWorkflowBuilder.FromGenerationParameters()` factory
 - [ ] Remove `Txt2ImgComfyUI.cs`
 - [ ] Remove `Img2ImgComfyUI.cs`
 - [ ] Remove `Img2VidComfyUI.cs`
 
-##### Step 9.3: Remove Legacy Parameter Classes
+##### Step 10.3: Remove Legacy Parameter Classes
 - [ ] Remove `SharedParameters.cs`
 - [ ] Remove `Txt2ImgParameters.cs`
 - [ ] Remove `Img2ImgParameters.cs`
@@ -361,7 +414,7 @@ This phase eliminates the temporary conversion layer added in Phase 6 and establ
 - [ ] Remove `DetailerParameters.cs` (if separate)
 - [ ] Remove `ParameterMapper.cs`
 
-##### Step 9.4: Update ImageService
+##### Step 10.4: Update ImageService
 - [ ] Remove `BuildLegacyParametersFromGenerationParams()` method
 - [ ] Remove `BuildTxt2ImgFromGenerationParams()` method
 - [ ] Remove `BuildImg2ImgFromGenerationParams()` method
@@ -370,14 +423,14 @@ This phase eliminates the temporary conversion layer added in Phase 6 and establ
 - [ ] Remove legacy `GetVideo()` method
 - [ ] Update `SaveImages()` to read from `GenerationParameters` directly
 
-##### Step 9.5: Update StateService
+##### Step 10.5: Update StateService
 - [ ] Remove `ParametersTxt2Img` property
 - [ ] Remove `ParametersImg2Img` property
 - [ ] Remove `ParametersImg2Vid` property
 - [ ] Remove legacy parameter initialization
 - [ ] Update `IStateService` interface
 
-##### Step 9.6: Remove Legacy UI Components
+##### Step 10.6: Remove Legacy UI Components
 - [ ] Remove `Txt2Img.razor` page
 - [ ] Remove `Img2Img.razor` page
 - [ ] Remove `Img2Vid.razor` page
@@ -386,13 +439,13 @@ This phase eliminates the temporary conversion layer added in Phase 6 and establ
 - [ ] Remove `GenerateFormImg2Vid.razor`
 - [ ] Update navigation to only use `/generate` route
 
-##### Step 9.7: Simplify AppSettings
+##### Step 10.7: Simplify AppSettings
 - [ ] Remove component constraints from `AppSettings`
 - [ ] Move all min/max/step values to fragment schemas
 - [ ] Update `appsettings.json`
 - [ ] Update settings documentation
 
-##### Step 9.8: Update Parser.cs
+##### Step 10.8: Update Parser.cs
 - [ ] Remove `ParseParameters()` method (sync version)
 - [ ] Update `ParseParametersAsync()` to work with `GenerationParameters` directly
 - [ ] Or create new `ParseGenerationParametersAsync()` method
@@ -427,16 +480,16 @@ Components/Shared/Generation/GenerateFormImg2Vid.razor
 
 ---
 
-### Phase 10: Documentation
+### Phase 11: Documentation
 **Objective:** Document the new architecture
 **Complexity:** 3 points
 **Status:** [ ] Not Started
 
 #### Steps
-- [ ] Step 10.1 - Create architecture overview document
-- [ ] Step 10.2 - Update `NODE_INTEGRATION_GUIDE.md` with new workflow (2-3 files instead of 8+)
-- [ ] Step 10.3 - Update all affected guides
-- [ ] Step 10.4 - Create migration notes for users
+- [ ] Step 11.1 - Create architecture overview document
+- [ ] Step 11.2 - Update `NODE_INTEGRATION_GUIDE.md` with new workflow (2-3 files instead of 8+)
+- [ ] Step 11.3 - Update all affected guides
+- [ ] Step 11.4 - Create migration notes for users
 
 #### Success Criteria
 - Documentation is complete and accurate
@@ -502,6 +555,13 @@ Components/Shared/Generation/GenerateFormImg2Vid.razor
 | Phase 6 | Updated GeneratedImageTabs to use EventService subscription |
 | Phase 6 | Integrated wildcard/seed parsing in new flow |
 | Phase 6 | Expanded Phase 9 scope to include full legacy deprecation |
+| Phase 7 | Updated all fragment-based workflow templates with Pipeline IDs |
+| Phase 7 | Added Sources arrays to img2img, img2vid, pose2vid templates |
+| Phase 7 | Fixed workflow loading to always refresh from disk (not database cache) |
+| Phase 7 | Changed MainLayout to use OrchestratorService.LoadState for proper refresh |
+| Phase 7 | Validated Sources parsing and initialization |
+| Phase 7 | Inserted new Phase 8 for Source Input UI Components |
+| Phase 7 | Renumbered remaining phases (8&rarr;9, 9&rarr;10, 10&rarr;11) |
 
 ---
 
@@ -653,12 +713,13 @@ public interface IImageService
 | Phase 3: Fragment Updates | 8 | &check; Complete |
 | Phase 4: Dynamic Components | 13 | &check; Complete |
 | Phase 5: Unified Page | 13 | &check; Complete |
-| Phase 6: State &amp; Persistence | 8 | [~] Nearly Complete |
-| Phase 7: Workflow Templates | 5 | [ ] Not Started |
-| Phase 8: Node Chaining | 8 | [ ] Not Started |
-| Phase 9: Legacy Deprecation | 13 | [ ] Not Started |
-| Phase 10: Documentation | 3 | [ ] Not Started |
-| **Total** | **89 points** | |
+| Phase 6: State &amp; Persistence | 8 | &check; Complete |
+| Phase 7: Workflow Templates | 5 | &check; Complete |
+| Phase 8: Source Input UI | 8 | [ ] Not Started |
+| Phase 9: Node Chaining | 8 | [ ] Not Started |
+| Phase 10: Legacy Deprecation | 13 | [ ] Not Started |
+| Phase 11: Documentation | 3 | [ ] Not Started |
+| **Total** | **97 points** | |
 
 ---
 

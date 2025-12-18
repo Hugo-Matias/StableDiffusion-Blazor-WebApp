@@ -87,6 +87,16 @@ namespace BlazorWebApp.Services
                 if (dbState.AppState != null)
                 {
                     State = dbState.AppState;
+                    
+                    // IMPORTANT: Do NOT restore workflows from database state
+                    // Workflows must always be loaded fresh from disk template files
+                    // because they may have been updated (e.g., Sources added)
+                    // The caller (OrchestratorService.LoadState) will call RefreshWorkflows
+                    // to populate State.Generation.Workflows from disk
+                    if (State.Generation != null)
+                    {
+                        State.Generation.Workflows = null;
+                    }
                 }
 
                 // Load parameters if present

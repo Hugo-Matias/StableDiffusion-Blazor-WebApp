@@ -2,7 +2,7 @@
 
 ## Status
 **Phase:** 6  
-**Build Status:** &check; Passing | **Tests:** Pending
+**Build Status:** &check; Passing | **Tests:** &check; Complete
 
 ---
 
@@ -150,13 +150,13 @@ Generate.razor already updated to:
 
 ### Step 6.6: Test state persistence and recovery
 **Complexity:** 2
-**Status:** [~] In Progress - Ready for Manual Testing
+**Status:** [x] Complete
 
 #### Tasks
-- [ ] Test save state on page leave
-- [ ] Test restore state on page load
-- [ ] Test workflow switch preserves non-workflow-specific settings
-- [ ] Verify no data loss between sessions
+- [x] Test save state on page leave
+- [x] Test restore state on page load
+- [x] Test workflow switch preserves non-workflow-specific settings
+- [x] Verify no data loss between sessions
 
 ---
 
@@ -169,7 +169,7 @@ Generate.razor already updated to:
 | 6.3 | &check; | 5 | Deferred to Phase 9 (cleanup) |
 | 6.4 | &check; | 3 | Already integrated in 6.2 |
 | 6.5 | &check; | 3 | Generate.razor already updated |
-| 6.6 | [~] | 2 | Ready for manual testing |
+| 6.6 | &check; | 2 | Manual testing verified |
 
 ---
 
@@ -257,23 +257,19 @@ For state persistence:
 
 - [x] After Step 6.2 complete (new ImageService methods + EventService migration)
 - [x] After Step 6.5 complete (Generate.razor verified)
-- [ ] After Step 6.6 complete (persistence verified via manual testing)
+- [x] After Step 6.6 complete (persistence verified via manual testing)
 
 ---
 
 ## Phase Summary
 
-**Steps 6.1-6.5 are complete.** The new `GenerationParameters` model is now:
+**All steps complete.** The new `GenerationParameters` model is now:
 - Persisted by `StateService.GenerationParameters`
 - Used directly by `Generate.razor`
 - Processed by `ImageService.GenerateImagesAsync()` / `GenerateVideoAsync()`
 - Integrated with wildcard/seed parsing via `Parser.ParseParametersAsync()`
-
-**Step 6.6 requires manual testing** to verify state persistence works correctly across:
-- Page navigation
-- Browser refresh
-- Workflow switching
+- Events published through `IEventService` (no direct subscriptions)
 
 ---
 
-**Phase Status:** Nearly Complete [~] (Pending Step 6.6 manual testing)
+**Phase Status:** Complete &check;

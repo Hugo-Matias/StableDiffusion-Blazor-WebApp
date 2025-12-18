@@ -1,6 +1,7 @@
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -64,7 +65,7 @@ namespace BlazorWebApp.Services
             // Initialize sources from workflow definition
             InitializeSourcesFromWorkflow(workflow, current);
 
-            // Parse pipeline to extract fragments and their defaults
+            // Parse pipeline to extract fragments using regex (RawJson contains Scriban templates)
             try
             {
                 InitializeFragmentsFromPipeline(workflow, current);
@@ -78,57 +79,30 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Initializes source assets from workflow definition or RawJson.
+        /// Initializes source assets from workflow definition.
+        /// Sources are parsed by WorkflowService using regex since RawJson contains Scriban templates.
         /// </summary>
         private void InitializeSourcesFromWorkflow(Workflow workflow, GenerationParameters parameters)
         {
-            // First try from parsed Sources property
-            if (workflow.Sources != null && workflow.Sources.Count > 0)
+            // Sources must come from the parsed workflow.Sources property
+            // We cannot parse RawJson directly as it contains Scriban template syntax
+            if (workflow.Sources == null || workflow.Sources.Count == 0)
             {
-                foreach (var source in workflow.Sources)
-                {
-                    parameters.Sources[source.Id] = new SourceAsset
-                    {
-                        Label = source.Label,
-                        Type = source.Type
-                    };
-                    _logger.LogTrace("Initialized source '{SourceId}' ({Type}) from workflow definition", source.Id, source.Type);
-                }
+                _logger.LogDebug("No sources defined for workflow '{WorkflowTitle}'", workflow.Title);
                 return;
             }
 
-            // Fall back to parsing from RawJson
-            if (string.IsNullOrEmpty(workflow.RawJson))
-                return;
-
-            try
+            _logger.LogDebug("Initializing {Count} sources from workflow.Sources for '{WorkflowTitle}'", 
+                workflow.Sources.Count, workflow.Title);
+                
+            foreach (var source in workflow.Sources)
             {
-                using var doc = JsonDocument.Parse(workflow.RawJson);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("Sources", out var sourcesEl) && sourcesEl.ValueKind == JsonValueKind.Array)
+                parameters.Sources[source.Id] = new SourceAsset
                 {
-                    foreach (var sourceEl in sourcesEl.EnumerateArray())
-                    {
-                        var id = sourceEl.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? "" : "";
-                        var label = sourceEl.TryGetProperty("label", out var labelEl) ? labelEl.GetString() ?? id : id;
-                        var type = sourceEl.TryGetProperty("type", out var typeEl) ? typeEl.GetString() ?? "image" : "image";
-
-                        if (!string.IsNullOrEmpty(id))
-                        {
-                            parameters.Sources[id] = new SourceAsset
-                            {
-                                Label = label,
-                                Type = type
-                            };
-                            _logger.LogTrace("Initialized source '{SourceId}' ({Type}) from RawJson", id, type);
-                        }
-                    }
-                }
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning(ex, "Failed to parse sources from workflow RawJson");
+                    Label = source.Label,
+                    Type = source.Type
+                };
+                _logger.LogDebug("Initialized source '{SourceId}' ({Type}) from workflow definition", source.Id, source.Type);
             }
         }
 
@@ -140,113 +114,101 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Parses the workflow's RawJson to extract pipeline fragments and their default values.
+        /// Parses the workflow's RawJson to extract pipeline fragments using regex.
+        /// RawJson contains Scriban templates so we cannot use JSON parsing directly.
         /// </summary>
         private void InitializeFragmentsFromPipeline(Workflow workflow, GenerationParameters parameters)
         {
             if (string.IsNullOrEmpty(workflow.RawJson))
                 return;
 
-            try
+            // Use regex to find Pipeline array entries since RawJson contains Scriban templates
+            // Look for each step in the Pipeline that has an "id" and "fragment" field
+            var pipelineSteps = ParsePipelineStepsWithRegex(workflow.RawJson);
+            
+            int order = 0;
+            foreach (var step in pipelineSteps)
             {
-                using var doc = JsonDocument.Parse(workflow.RawJson);
-                var root = doc.RootElement;
-
-                if (!root.TryGetProperty("Pipeline", out var pipelineEl) || 
-                    pipelineEl.ValueKind != JsonValueKind.Array)
+                var fragmentId = step.Id;
+                
+                // If no ID, generate from fragment filename
+                if (string.IsNullOrEmpty(fragmentId))
                 {
-                    return;
+                    fragmentId = Path.GetFileNameWithoutExtension(step.Fragment).Replace("-", "_");
+                    
+                    // Make unique if already exists
+                    if (parameters.Fragments.ContainsKey(fragmentId))
+                    {
+                        fragmentId = $"{fragmentId}_{order}";
+                    }
                 }
 
-                int order = 0;
-                foreach (var stepEl in pipelineEl.EnumerateArray())
+                // Create fragment parameters
+                var fragment = new FragmentParameters
                 {
-                    // Get fragment ID (optional, we generate if missing)
-                    string fragmentId;
-                    if (stepEl.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String)
-                    {
-                        fragmentId = idEl.GetString() ?? $"fragment_{order}";
-                    }
-                    else
-                    {
-                        // Generate ID from fragment filename
-                        if (stepEl.TryGetProperty("fragment", out var fragEl) && fragEl.ValueKind == JsonValueKind.String)
-                        {
-                            var fragName = fragEl.GetString() ?? "";
-                            fragmentId = Path.GetFileNameWithoutExtension(fragName).Replace("-", "_");
-                            
-                            // Make unique if already exists
-                            if (parameters.Fragments.ContainsKey(fragmentId))
-                            {
-                                fragmentId = $"{fragmentId}_{order}";
-                            }
-                        }
-                        else
-                        {
-                            fragmentId = $"fragment_{order}";
-                        }
-                    }
+                    FragmentFile = step.Fragment,
+                    IsActive = true,
+                    Order = order++
+                };
 
-                    // Get fragment file
-                    string fragmentFile = "";
-                    if (stepEl.TryGetProperty("fragment", out var fragmentEl) && fragmentEl.ValueKind == JsonValueKind.String)
-                    {
-                        fragmentFile = fragmentEl.GetString() ?? "";
-                    }
-
-                    // Create fragment parameters
-                    var fragment = new FragmentParameters
-                    {
-                        FragmentFile = fragmentFile,
-                        IsActive = true,
-                        Order = order++
-                    };
-
-                    // Extract default parameter values
-                    // Note: These are Scriban templates with {{ }}, we need to evaluate them
-                    // For now, we extract literal values and skip template expressions
-                    if (stepEl.TryGetProperty("parameters", out var paramsEl) && paramsEl.ValueKind == JsonValueKind.Object)
-                    {
-                        foreach (var param in paramsEl.EnumerateObject())
-                        {
-                            var value = ExtractParameterValue(param.Value);
-                            if (value != null)
-                            {
-                                fragment.Values[param.Name] = value;
-                            }
-                        }
-                    }
-
-                    parameters.Fragments[fragmentId] = fragment;
-                    _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile}", fragmentId, fragmentFile);
-                }
+                parameters.Fragments[fragmentId] = fragment;
+                _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile}", fragmentId, step.Fragment);
             }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "Failed to parse workflow pipeline JSON");
-            }
+            
+            _logger.LogDebug("Initialized {Count} fragments for workflow '{WorkflowTitle}'", 
+                parameters.Fragments.Count, workflow.Title);
         }
 
         /// <summary>
-        /// Extracts a parameter value from JSON, handling different value types.
-        /// Skips Scriban template expressions.
+        /// Parses Pipeline steps from RawJson using regex to handle Scriban template syntax.
+        /// Returns a list of (Id, Fragment) tuples.
         /// </summary>
-        private object? ExtractParameterValue(JsonElement element)
+        private List<(string Id, string Fragment)> ParsePipelineStepsWithRegex(string rawJson)
         {
-            return element.ValueKind switch
+            var result = new List<(string Id, string Fragment)>();
+            
+            // Find the Pipeline array content
+            // The Pipeline array contains objects with "id" and "fragment" fields
+            // We need to handle that some content may contain Scriban syntax
+            
+            // Match each step object in Pipeline - look for "fragment": "..." patterns
+            // This regex finds objects that have a "fragment" field
+            var fragmentPattern = @"""fragment""\s*:\s*""([^""]+)""";
+            var idPattern = @"""id""\s*:\s*""([^""]+)""";
+            
+            // First, try to isolate the Pipeline section
+            var pipelineMatch = Regex.Match(rawJson, @"""Pipeline""\s*:\s*\[(.*?)\](?=\s*\})", RegexOptions.Singleline);
+            if (!pipelineMatch.Success)
             {
-                JsonValueKind.String => element.GetString(),
-                JsonValueKind.Number => element.TryGetInt32(out var intVal) 
-                    ? intVal 
-                    : (element.TryGetInt64(out var longVal) 
-                        ? longVal 
-                        : element.GetDouble()),
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.Null => null,
-                // Skip arrays and objects for now (complex types)
-                _ => null
-            };
+                _logger.LogDebug("No Pipeline array found in workflow");
+                return result;
+            }
+            
+            var pipelineContent = pipelineMatch.Groups[1].Value;
+            
+            // Find all step objects by matching opening and closing braces
+            // This is a simplified approach - we look for { ... } blocks that contain "fragment"
+            var stepMatches = Regex.Matches(pipelineContent, @"\{[^{}]*""fragment""[^{}]*\}", RegexOptions.Singleline);
+            
+            foreach (Match stepMatch in stepMatches)
+            {
+                var stepContent = stepMatch.Value;
+                
+                // Extract fragment
+                var fragMatch = Regex.Match(stepContent, fragmentPattern);
+                var fragment = fragMatch.Success ? fragMatch.Groups[1].Value : "";
+                
+                // Extract id (optional)
+                var idMatch = Regex.Match(stepContent, idPattern);
+                var id = idMatch.Success ? idMatch.Groups[1].Value : "";
+                
+                if (!string.IsNullOrEmpty(fragment))
+                {
+                    result.Add((id, fragment));
+                }
+            }
+            
+            return result;
         }
 
         /// <inheritdoc />

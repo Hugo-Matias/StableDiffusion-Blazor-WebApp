@@ -9,8 +9,13 @@
     { "parameter": "TextEncoder", "label": "Text Encoder", "type": "Clip", "default": "umt5_xxl_fp16.safetensors", "order": 4, "columnSize": 4 },
     { "parameter": "SpeedLora", "label": "Speed LoRA", "type": "Lora", "default": "Speed/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors", "order": 5, "columnSize": 4 }
   ],
+  "Sources": [
+    { "id": "source_video", "label": "Source Video", "type": "video", "required": true },
+    { "id": "reference_image", "label": "Reference Image", "type": "image", "required": false }
+  ],
   "Pipeline": [
     {
+      "id": "load_video",
       "fragment": "load-video.sbn",
       "parameters": {
         "video": {{ Video | json }},
@@ -23,18 +28,21 @@
       }
     },
     {
+      "id": "get_image_size",
       "fragment": "get-image-size.sbn",
       "parameters": {
         "image_ref": "video_frames"
       }
     },
     {
+      "id": "load_image",
       "fragment": "load-image.sbn",
       "parameters": {
         "image": {{ Image | json }}
       }
     },
     {
+      "id": "resize_subject",
       "fragment": "resize-image-kj.sbn",
       "parameters": {
         "node_id": "resize_subject",
@@ -43,6 +51,7 @@
       }
     },
     {
+      "id": "loader_wan",
       "fragment": "wan/load-wan-model.sbn",
       "parameters": {
         "model_name": {{ Model | json }},
@@ -51,18 +60,21 @@
       }
     },
     {
+      "id": "loader_vae",
       "fragment": "wan/load-wan-vae.sbn",
       "parameters": {
         "vae_name": {{ Vae | json }}
       }
     },
     {
+      "id": "clip_vision",
       "fragment": "load-clip-vision.sbn",
       "parameters": {
         "clip_vision_name": {{ ClipVision | json }}
       }
     },
     {
+      "id": "prompts",
       "fragment": "wan/text-encode-wan.sbn",
       "parameters": {
         "text_encoder_name": {{ TextEncoder | json }},
@@ -71,16 +83,19 @@
       }
     },
     {
+      "id": "pose_detection",
       "fragment": "wan/pose-detection.sbn",
       "parameters": {}
     },
     {
+      "id": "i2v_encode",
       "fragment": "wan/i2v-encode.sbn",
       "parameters": {
         "resized_image_ref": "resized_image"
       }
     },
     {
+      "id": "steadydancer_embeds",
       "fragment": "wan/steadydancer-embeds.sbn",
       "parameters": {
         "pose_strength_spatial": {{ PoseStrengthSpatial ?? 1 | json }},
@@ -88,6 +103,7 @@
       }
     },
     {
+      "id": "context_options",
       "fragment": "wan/context-options.sbn",
       "parameters": {
         "context_frames": {{ ContextFrames ?? 81 | json }},
@@ -95,6 +111,7 @@
       }
     },
     {
+      "id": "main_sampler",
       "fragment": "wan/sampler-wan.sbn",
       "parameters": {
         "steps": {{ Steps ?? 4 | json }},
@@ -105,14 +122,17 @@
       }
     },
     {
+      "id": "vae_decode",
       "fragment": "wan/decode-wan.sbn",
       "parameters": {}
     },
     {
+      "id": "concat_preview",
       "fragment": "concat-preview.sbn",
       "parameters": {}
     },
     {
+      "id": "video_save",
       "fragment": "save-video.sbn",
       "parameters": {
         "frame_rate": {{ OutputFrameRate ?? 24 | json }},
