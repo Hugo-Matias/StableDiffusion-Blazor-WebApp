@@ -1,3 +1,4 @@
+using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using System.Text.Json;
 
@@ -11,20 +12,20 @@ namespace BlazorWebApp.Services
     {
         private readonly ILogger<GenerationParameterService> _logger;
         private readonly IWorkflowService _workflowService;
+        private readonly IEventService _eventService;
         private GenerationParameters _current = new();
-
-        /// <inheritdoc />
-        public event Action? OnParametersChanged;
 
         /// <inheritdoc />
         public GenerationParameters Current => _current;
 
         public GenerationParameterService(
             ILogger<GenerationParameterService> logger,
-            IWorkflowService workflowService)
+            IWorkflowService workflowService,
+            IEventService eventService)
         {
             _logger = logger;
             _workflowService = workflowService;
+            _eventService = eventService;
         }
 
         /// <inheritdoc />
@@ -67,7 +68,7 @@ namespace BlazorWebApp.Services
             }
 
             _current = newParams;
-            NotifyChanged();
+            PublishChange(GenerationParametersChangedEventArgs.WorkflowChanged(workflow.Id));
         }
 
         /// <summary>
@@ -189,6 +190,13 @@ namespace BlazorWebApp.Services
         }
 
         /// <inheritdoc />
+        public void SetFragmentValueAndNotify(string fragmentId, string parameter, object? value)
+        {
+            SetFragmentValue(fragmentId, parameter, value);
+            PublishChange(GenerationParametersChangedEventArgs.FragmentValueChanged(fragmentId, parameter));
+        }
+
+        /// <inheritdoc />
         public T? GetFragmentValue<T>(string fragmentId, string parameter)
         {
             var fragment = _current.GetFragment(fragmentId);
@@ -205,6 +213,7 @@ namespace BlazorWebApp.Services
             {
                 fragment.IsActive = isActive;
                 _logger.LogDebug("Set fragment '{FragmentId}' active = {IsActive}", fragmentId, isActive);
+                PublishChange(GenerationParametersChangedEventArgs.FragmentActiveChanged(fragmentId, isActive));
             }
         }
 
@@ -242,6 +251,8 @@ namespace BlazorWebApp.Services
 
             _current.Fragments[fragmentId] = parameters;
             _logger.LogDebug("Added fragment instance '{FragmentId}' for {FragmentFile}", fragmentId, fragmentFile);
+            
+            PublishChange(GenerationParametersChangedEventArgs.FragmentAdded(fragmentId));
 
             return (fragmentId, parameters);
         }
@@ -253,6 +264,7 @@ namespace BlazorWebApp.Services
             if (removed)
             {
                 _logger.LogDebug("Removed fragment instance '{FragmentId}'", fragmentId);
+                PublishChange(GenerationParametersChangedEventArgs.FragmentRemoved(fragmentId));
             }
             return removed;
         }
@@ -268,6 +280,7 @@ namespace BlazorWebApp.Services
                     fragment.Order = order++;
                 }
             }
+            PublishChange(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.FragmentReordered));
         }
 
         /// <inheritdoc />
@@ -275,6 +288,13 @@ namespace BlazorWebApp.Services
         {
             _current.Assets[assetName] = value;
             _logger.LogTrace("Set asset {AssetName} = {Value}", assetName, value);
+        }
+
+        /// <inheritdoc />
+        public void SetAssetAndNotify(string assetName, string value)
+        {
+            SetAsset(assetName, value);
+            PublishChange(GenerationParametersChangedEventArgs.AssetChanged(assetName));
         }
 
         /// <inheritdoc />
@@ -291,6 +311,13 @@ namespace BlazorWebApp.Services
         }
 
         /// <inheritdoc />
+        public void SetSourceAndNotify(string sourceId, SourceAsset source)
+        {
+            SetSource(sourceId, source);
+            PublishChange(GenerationParametersChangedEventArgs.SourceChanged(sourceId));
+        }
+
+        /// <inheritdoc />
         public SourceAsset? GetSource(string sourceId)
         {
             return _current.Sources.GetValueOrDefault(sourceId);
@@ -302,6 +329,7 @@ namespace BlazorWebApp.Services
             if (_current.Sources.TryGetValue(sourceId, out var source))
             {
                 source.Clear();
+                PublishChange(GenerationParametersChangedEventArgs.SourceChanged(sourceId));
             }
         }
 
@@ -310,7 +338,7 @@ namespace BlazorWebApp.Services
         {
             _current = parameters ?? new GenerationParameters();
             _logger.LogDebug("Loaded generation parameters (WorkflowId: {WorkflowId})", _current.WorkflowId);
-            NotifyChanged();
+            PublishChange(GenerationParametersChangedEventArgs.ParametersLoaded());
         }
 
         /// <inheritdoc />
@@ -322,7 +350,15 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void NotifyChanged()
         {
-            OnParametersChanged?.Invoke();
+            PublishChange(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.Unknown));
+        }
+
+        /// <summary>
+        /// Publishes a change event through the event service.
+        /// </summary>
+        private void PublishChange(GenerationParametersChangedEventArgs args)
+        {
+            _eventService.Publish(args);
         }
     }
 }

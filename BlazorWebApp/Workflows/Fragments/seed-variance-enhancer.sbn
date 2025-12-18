@@ -5,6 +5,24 @@
   },
   "conditions": {
     "required": ["SeedVarianceEnhancer.IsActive"]
+  },
+  "ui": {
+    "component": "SeedVarianceEnhancerForm",
+    "title": "Seed Variance Enhancer",
+    "icon": "fa-solid fa-shuffle",
+    "order": 80,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "parameters": {
+      "randomize_percent": { "min": 0, "max": 100, "step": 5 },
+      "strength": { "min": 0, "max": 100, "step": 1 },
+      "noise_insert": { "options": ["noise on beginning steps", "noise on ending steps", "noise on all steps", "disabled"] },
+      "steps_switchover_percent": { "min": 0, "max": 100, "step": 5 },
+      "seed": { "min": -1 },
+      "mask_starts_at": { "options": ["beginning", "end"] },
+      "mask_percent": { "min": 0, "max": 100, "step": 5 },
+      "log_to_console": { }
+    }
   }
 }
 #end

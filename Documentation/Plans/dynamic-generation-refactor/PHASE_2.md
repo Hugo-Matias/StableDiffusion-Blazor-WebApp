@@ -168,6 +168,10 @@ Create the foundational C# types and services for dynamic parameters. This estab
 **Impact:** Build error in GetFragmentValue<T>
 **Resolution:** Changed from `fragment?.GetValue<T>()` to explicit null check with `return default`
 
+### Issue 2: Event notification pattern
+**Discussion:** Should we use EventService for OnParametersChanged?
+**Resolution:** Yes - created `GenerationParametersChangedEventArgs` and integrated with `IEventService` for proper subscribe/unsubscribe lifecycle. This follows existing patterns (e.g., `ParametersChangedEventArgs`).
+
 ---
 
 ## Commit Checkpoints
@@ -188,7 +192,9 @@ Create the foundational C# types and services for dynamic parameters. This estab
 5. Created `ComponentRegistry` service for fragment-to-component mapping
 6. Extended `WorkflowService` with schema parsing and caching
 7. Created `GenerationParameterService` for parameter CRUD operations
-8. Registered all new services in DI container
+8. Created `GenerationParametersChangedEventArgs` with typed change events
+9. Integrated with `IEventService` for proper event management
+10. Registered all new services in DI container
 
 ### Files Created
 | File | Purpose |
@@ -201,6 +207,7 @@ Create the foundational C# types and services for dynamic parameters. This estab
 | `Services/ComponentRegistry.cs` | Component registry implementation |
 | `Services/IGenerationParameterService.cs` | Parameter service interface |
 | `Services/GenerationParameterService.cs` | Parameter service implementation |
+| `Events/GenerationParametersChangedEventArgs.cs` | Typed event args for parameter changes |
 
 ### Files Modified
 | File | Changes |

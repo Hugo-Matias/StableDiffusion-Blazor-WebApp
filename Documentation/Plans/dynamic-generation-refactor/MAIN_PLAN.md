@@ -1,7 +1,7 @@
 # Dynamic Generation Page Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Execution (Phase 3)
+**Current Phase:** Execution (Phase 4)
 
 ---
 
@@ -424,6 +424,9 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 | Phase 2 | Created FragmentSchema, ParameterConstraints, FieldSchema models |
 | Phase 2 | Created ComponentRegistry and GenerationParameterService |
 | Phase 2 | Extended WorkflowService with schema parsing |
+| Phase 2 | Created GenerationParametersChangedEventArgs with IEventService integration |
+| Phase 3 | Updated 6 fragments with UI schema (prompts, sampler, upscale, detailer, etc.) |
+| Phase 3 | Added 10 unit tests for schema parsing - all passing |
 
 ---
 

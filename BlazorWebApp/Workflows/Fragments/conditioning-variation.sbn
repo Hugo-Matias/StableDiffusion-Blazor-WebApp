@@ -6,6 +6,17 @@
   },
   "conditions": {
     "required": ["ConditioningVariation.IsActive"]
+  },
+  "ui": {
+    "component": "ConditioningVariationForm",
+    "title": "Conditioning Variation",
+    "icon": "fa-solid fa-code-branch",
+    "order": 75,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "parameters": {
+      "switch_point": { "min": 0, "max": 1, "step": 0.05 }
+    }
   }
 }
 #end

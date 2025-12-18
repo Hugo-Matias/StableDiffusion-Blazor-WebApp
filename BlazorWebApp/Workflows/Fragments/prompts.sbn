@@ -3,6 +3,16 @@
   "outputs": {
     "positive_output": { "node": "positive_encode", "index": 0 },
     "negative_output": { "node": "negative_encode", "index": 0 }
+  },
+  "ui": {
+    "component": "PromptsForm",
+    "title": "Prompts",
+    "order": 10,
+    "collapsible": false,
+    "parameters": {
+      "positive": { },
+      "negative": { }
+    }
   }
 }
 #end
