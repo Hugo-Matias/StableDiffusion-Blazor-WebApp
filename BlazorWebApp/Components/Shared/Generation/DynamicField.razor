@@ -1,0 +1,260 @@
+@using BlazorWebApp.Models
+@using MudBlazor.Utilities
+@inject IBackendService Backend
+
+@* Renders a single field based on FieldSchema type *@
+
+@switch (Field.Type?.ToLowerInvariant())
+{
+    case "slider":
+        <MudSlider T="double"
+                   Value="@GetDoubleValue()"
+                   ValueChanged="@((double v) => SetValue(v))"
+                   Min="@(Field.Min ?? 0)"
+                   Max="@(Field.Max ?? 100)"
+                   Step="@(Field.Step ?? 1)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>@Field.Label:</small> @GetDisplayValue()
+        </MudSlider>
+        break;
+
+    case "numeric":
+        <MudNumericField T="double"
+                         Value="@GetDoubleValue()"
+                         ValueChanged="@((double v) => SetValue(v))"
+                         Label="@Field.Label"
+                         Min="@(Field.Min ?? double.MinValue)"
+                         Max="@(Field.Max ?? double.MaxValue)" />
+        break;
+
+    case "seed":
+        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.End">
+            <MudNumericField T="long"
+                             Value="@GetLongValue()"
+                             ValueChanged="@((long v) => SetValue(v))"
+                             Label="@Field.Label"
+                             Min="@((long)(Field.Min ?? -1))"
+                             Style="flex-grow: 1;" />
+            <MudIconButton Icon="@Icons.Material.Filled.Casino"
+                           Size="Size.Small"
+                           Title="Randomize"
+                           OnClick="@(() => SetValue(-1L))" />
+        </MudStack>
+        break;
+
+    case "select":
+        <MudSelect T="string"
+                   Value="@GetStringValue()"
+                   ValueChanged="@((string v) => SetValue(v))"
+                   Label="@Field.Label"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in GetSelectOptions())
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+        break;
+
+    case "text":
+        <MudTextField T="string"
+                      Value="@GetStringValue()"
+                      ValueChanged="@((string v) => SetValue(v))"
+                      Label="@Field.Label"
+                      Variant="Variant.Outlined" />
+        break;
+
+    case "textarea":
+        <MudTextField T="string"
+                      Value="@GetStringValue()"
+                      ValueChanged="@((string v) => SetValue(v))"
+                      Label="@Field.Label"
+                      Lines="@(Field.Rows ?? 3)"
+                      Variant="Variant.Outlined" />
+        break;
+
+    case "checkbox":
+        <MudCheckBox T="bool"
+                     Checked="@GetBoolValue()"
+                     CheckedChanged="@((bool v) => SetValue(v))"
+                     Label="@Field.Label" />
+        break;
+
+    case "switch":
+        <MudSwitch T="bool"
+                   Checked="@GetBoolValue()"
+                   CheckedChanged="@((bool v) => SetValue(v))"
+                   Label="@Field.Label" />
+        break;
+
+    case "color":
+        <MudColorPicker Value="@GetMudColor()"
+                        ValueChanged="@((MudColor c) => SetValue(c.ToString()))"
+                        Label="@Field.Label"
+                        DisableAlpha="true" />
+        break;
+
+    default:
+        <MudText Typo="Typo.caption" Color="Color.Warning">
+            Unknown field type: @Field.Type
+        </MudText>
+        break;
+}
+
+@if (!string.IsNullOrEmpty(Field.Tooltip))
+{
+    <MudTooltip Text="@Field.Tooltip" Placement="Placement.Top">
+        <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" Class="ml-1" Style="opacity: 0.5;" />
+    </MudTooltip>
+}
+
+@code {
+    /// <summary>
+    /// The field schema defining the field type and properties.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public FieldSchema Field { get; set; } = new();
+
+    /// <summary>
+    /// The values dictionary to read/write from.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, object?> Values { get; set; } = new();
+
+    /// <summary>
+    /// Callback when the value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string key, object? value)> OnValueChanged { get; set; }
+
+    private string ParameterKey => Field.Parameter;
+
+    #region Value Getters
+
+    private double GetDoubleValue()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            return Convert.ToDouble(value);
+        }
+        return 0;
+    }
+
+    private long GetLongValue()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            return Convert.ToInt64(value);
+        }
+        return -1;
+    }
+
+    private string GetStringValue()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            return value.ToString() ?? "";
+        }
+        return "";
+    }
+
+    private bool GetBoolValue()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            if (value is bool b) return b;
+            if (bool.TryParse(value.ToString(), out var parsed)) return parsed;
+        }
+        return false;
+    }
+
+    private MudColor GetMudColor()
+    {
+        var colorString = GetStringValue();
+        if (!string.IsNullOrEmpty(colorString))
+        {
+            try
+            {
+                return new MudColor(colorString);
+            }
+            catch
+            {
+                // Fallback to white
+            }
+        }
+        return new MudColor("#FFFFFF");
+    }
+
+    private string GetDisplayValue()
+    {
+        var value = GetDoubleValue();
+        // Format based on step precision
+        if (Field.Step.HasValue && Field.Step.Value < 1)
+        {
+            var decimals = (int)Math.Ceiling(-Math.Log10(Field.Step.Value));
+            return value.ToString($"F{decimals}");
+        }
+        return value.ToString("F0");
+    }
+
+    #endregion
+
+    #region Value Setters
+
+    private async Task SetValue(object? value)
+    {
+        Values[ParameterKey] = value;
+        await OnValueChanged.InvokeAsync((ParameterKey, value));
+    }
+
+    #endregion
+
+    #region Select Options
+
+    private IEnumerable<string> GetSelectOptions()
+    {
+        // First check for static options
+        if (Field.Options != null && Field.Options.Count > 0)
+        {
+            return Field.Options;
+        }
+
+        // Then check for source reference
+        if (!string.IsNullOrEmpty(Field.Source))
+        {
+            return ResolveSource(Field.Source);
+        }
+
+        return Enumerable.Empty<string>();
+    }
+
+    private IEnumerable<string> ResolveSource(string source)
+    {
+        // Parse source format: "Backend.Samplers"
+        var parts = source.Split('.');
+        if (parts.Length != 2)
+            return Enumerable.Empty<string>();
+
+        var service = parts[0];
+        var property = parts[1];
+
+        if (service.Equals("Backend", StringComparison.OrdinalIgnoreCase))
+        {
+            return property.ToLowerInvariant() switch
+            {
+                "samplers" => Backend.Samplers?.Select(s => s.Name) ?? Enumerable.Empty<string>(),
+                "schedulers" => Backend.Schedulers?.Select(s => s.Name) ?? Enumerable.Empty<string>(),
+                "upscalers" => Backend.Upscalers?.Select(u => u.Name) ?? Enumerable.Empty<string>(),
+                // TODO: Add these to IBackendService when available
+                // "vaes" => Backend.Vaes ?? Enumerable.Empty<string>(),
+                // "detectionmodels" => Backend.DetectionModels ?? Enumerable.Empty<string>(),
+                _ => Enumerable.Empty<string>()
+            };
+        }
+
+        return Enumerable.Empty<string>();
+    }
+
+    #endregion
+}

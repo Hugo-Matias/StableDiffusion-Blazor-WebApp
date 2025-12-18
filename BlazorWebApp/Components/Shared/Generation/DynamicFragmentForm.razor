@@ -1,0 +1,128 @@
+@using BlazorWebApp.Models
+
+@* Renders all fields from a FragmentSchema using DynamicField components *@
+
+<MudGrid>
+    @foreach (var field in GetVisibleFields())
+    {
+        @if (field.Type?.ToLowerInvariant() == "group")
+        {
+            <MudItem xs="12">
+                @if (field.Collapsible == true)
+                {
+                    <MudExpansionPanels>
+                        <MudExpansionPanel Text="@field.Label">
+                            <MudGrid>
+                                @if (field.Fields != null)
+                                {
+                                    @foreach (var nestedField in field.Fields)
+                                    {
+                                        <MudItem xs="@nestedField.Column">
+                                            <DynamicField Field="@nestedField"
+                                                          Values="@Values"
+                                                          OnValueChanged="@HandleValueChanged" />
+                                        </MudItem>
+                                    }
+                                }
+                            </MudGrid>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Class="pa-3 mb-2" Style="background: var(--mud-palette-background-grey);">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">@field.Label</MudText>
+                        <MudGrid>
+                            @if (field.Fields != null)
+                            {
+                                @foreach (var nestedField in field.Fields)
+                                {
+                                    <MudItem xs="@nestedField.Column">
+                                        <DynamicField Field="@nestedField"
+                                                      Values="@Values"
+                                                      OnValueChanged="@HandleValueChanged" />
+                                    </MudItem>
+                                }
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                }
+            </MudItem>
+        }
+        else
+        {
+            <MudItem xs="@field.Column">
+                <DynamicField Field="@field"
+                              Values="@Values"
+                              OnValueChanged="@HandleValueChanged" />
+            </MudItem>
+        }
+    }
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// The fragment schema containing field definitions.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public FragmentSchema Schema { get; set; } = new();
+
+    /// <summary>
+    /// The fragment parameters containing values.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public FragmentParameters Parameters { get; set; } = new();
+
+    /// <summary>
+    /// Callback when any value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string key, object? value)> OnValueChanged { get; set; }
+
+    /// <summary>
+    /// Gets the Values dictionary.
+    /// </summary>
+    private Dictionary<string, object?> Values => Parameters.Values;
+
+    /// <summary>
+    /// Gets the list of fields from the schema.
+    /// </summary>
+    private IEnumerable<FieldSchema> GetVisibleFields()
+    {
+        if (Schema.Fields == null)
+            return Enumerable.Empty<FieldSchema>();
+
+        return Schema.Fields.Where(IsFieldVisible);
+    }
+
+    /// <summary>
+    /// Checks if a field should be visible based on its visibility condition.
+    /// </summary>
+    private bool IsFieldVisible(FieldSchema field)
+    {
+        if (string.IsNullOrEmpty(field.Visible))
+            return true;
+
+        // Simple condition evaluation: check if a parameter is truthy
+        // Format: "parameter_name" or "!parameter_name" for negation
+        var condition = field.Visible.Trim();
+        var negate = condition.StartsWith("!");
+        if (negate) condition = condition.Substring(1);
+
+        var isTrue = false;
+        if (Values.TryGetValue(condition, out var value) && value != null)
+        {
+            if (value is bool b) isTrue = b;
+            else if (bool.TryParse(value.ToString(), out var parsed)) isTrue = parsed;
+            else isTrue = !string.IsNullOrEmpty(value.ToString());
+        }
+
+        return negate ? !isTrue : isTrue;
+    }
+
+    private async Task HandleValueChanged((string key, object? value) args)
+    {
+        await OnValueChanged.InvokeAsync(args);
+        await InvokeAsync(StateHasChanged); // Re-evaluate visibility conditions
+    }
+}

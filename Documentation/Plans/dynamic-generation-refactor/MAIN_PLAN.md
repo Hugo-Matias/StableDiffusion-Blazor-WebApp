@@ -1,7 +1,7 @@
 # Dynamic Generation Page Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Execution (Phase 4)
+**Current Phase:** Execution (Phase 5)
 
 ---
 
@@ -427,6 +427,14 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 | Phase 2 | Created GenerationParametersChangedEventArgs with IEventService integration |
 | Phase 3 | Updated 6 fragments with UI schema (prompts, sampler, upscale, detailer, etc.) |
 | Phase 3 | Added 10 unit tests for schema parsing - all passing |
+| Phase 3 | Aligned fragment constraints with AppSettings values |
+| Phase 4 | Created DynamicField.razor - 9 field types supported |
+| Phase 4 | Created DynamicFragmentForm.razor - grid layout with groups |
+| Phase 4 | Created FragmentFormContainer.razor - collapsible, chainable |
+| Phase 4 | Created SourcesPanel.razor + SourceItem.razor - reuses ImageInput |
+| Phase 4 | Created FragmentFormBase.cs - base class for designed components |
+| Phase 4 | Created 4 new stub components (PromptsFormNew, SamplerFormNew, etc.) |
+| Phase 4 | Updated ComponentRegistry with all registrations |
 
 ---
 

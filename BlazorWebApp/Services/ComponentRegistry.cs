@@ -1,3 +1,4 @@
+using BlazorWebApp.Components.Shared.Generation;
 using Microsoft.AspNetCore.Components;
 
 namespace BlazorWebApp.Services
@@ -22,19 +23,15 @@ namespace BlazorWebApp.Services
         /// </summary>
         private void RegisterDefaultComponents()
         {
-            // Note: Component types will be added as they are created in Phase 4
-            // For now, we register placeholders that will be replaced with actual types
+            // Existing components (already in codebase)
+            Register("ConditioningVariationForm", typeof(ConditioningVariationForm));
+            Register("SeedVarianceEnhancerForm", typeof(SeedVarianceEnhancerForm));
             
-            // These will be uncommented as components are implemented:
-            // Register("PromptsForm", typeof(Components.Generation.PromptsForm));
-            // Register("SamplerForm", typeof(Components.Generation.SamplerForm));
-            // Register("ResolutionForm", typeof(Components.Generation.ResolutionForm));
-            // Register("LoraForm", typeof(Components.Shared.Generation.LoraForm));
-            // Register("UpscaleForm", typeof(Components.Generation.UpscaleForm));
-            // Register("DetailerForm", typeof(Components.Generation.DetailerForm));
-            // Register("ConditioningVariationForm", typeof(Components.Shared.Generation.ConditioningVariationForm));
-            // Register("SeedVarianceEnhancerForm", typeof(Components.Shared.Generation.SeedVarianceEnhancerForm));
-            // Register("SeedVR2Form", typeof(Components.Generation.SeedVR2Form));
+            // New stub components (created for new architecture)
+            Register("PromptsForm", typeof(PromptsFormNew));
+            Register("SamplerForm", typeof(SamplerFormNew));
+            Register("DetailerForm", typeof(DetailerFormNew));
+            Register("SeedVR2Form", typeof(SeedVR2FormNew));
 
             _logger.LogDebug("ComponentRegistry initialized with {Count} default components", _components.Count);
         }

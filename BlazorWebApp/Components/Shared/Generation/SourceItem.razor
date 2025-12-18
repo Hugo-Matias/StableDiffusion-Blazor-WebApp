@@ -1,0 +1,139 @@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Components.Shared.Image
+
+@* Individual source input (image or video) - reuses ImageInput for images *@
+
+<div class="source-item">
+    @if (Source.Type?.ToLowerInvariant() == "video")
+    {
+        @* Video input - custom handling *@
+        <MudText Typo="Typo.caption" Class="mb-1">@Source.Label</MudText>
+        <MudFileUpload T="IBrowserFile" 
+                       Accept=".mp4,.webm,.mov,.avi"
+                       FilesChanged="HandleVideoUpload"
+                       Class="mb-2">
+            <ButtonTemplate>
+                <MudButton HtmlTag="label"
+                           Variant="Variant.Outlined" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.VideoFile"
+                           FullWidth="true"
+                           for="@context">
+                    @(string.IsNullOrEmpty(Source.Filename) ? "Upload Video" : Source.Filename)
+                </MudButton>
+            </ButtonTemplate>
+        </MudFileUpload>
+        
+        @if (!string.IsNullOrEmpty(Source.Data))
+        {
+            <div class="d-flex justify-space-between align-center">
+                <MudText Typo="Typo.caption" Color="Color.Success">
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                    Video loaded
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Clear" 
+                               Size="Size.Small" 
+                               Color="Color.Error"
+                               OnClick="ClearSource" />
+            </div>
+        }
+    }
+    else
+    {
+        @* Image input - reuse ImageInput component for drag/drop, clipboard, and editor *@
+        <ImageInput ImageData="@Source.Data"
+                    ImageDataChanged="HandleImageChanged"
+                    Title="@Source.Label"
+                    OnImageLoaded="HandleImageLoaded"
+                    OnEditClicked="HandleEditClicked"
+                    OnBlankCanvasClicked="HandleBlankCanvasClicked"
+                    MaxFileSizeMB="50"
+                    AutoResize="false" />
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The source asset to display/edit.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public SourceAsset Source { get; set; } = new();
+
+    /// <summary>
+    /// The source ID.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string SourceId { get; set; } = "";
+
+    /// <summary>
+    /// Callback when the source changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string sourceId, SourceAsset source)> OnSourceChanged { get; set; }
+
+    /// <summary>
+    /// Callback when edit is clicked (for image editor integration).
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnEditClicked { get; set; }
+
+    /// <summary>
+    /// Callback when blank canvas is clicked (for image editor integration).
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnBlankCanvasClicked { get; set; }
+
+    private async Task HandleImageChanged(string imageData)
+    {
+        Source.Data = imageData;
+        Source.Filename = null; // Clear filename since it's from drag/drop or clipboard
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private void HandleImageLoaded((int width, int height) dimensions)
+    {
+        // Store dimensions if needed for workflow processing
+        Source.Width = dimensions.width;
+        Source.Height = dimensions.height;
+    }
+
+    private async Task HandleEditClicked()
+    {
+        await OnEditClicked.InvokeAsync(SourceId);
+    }
+
+    private async Task HandleBlankCanvasClicked()
+    {
+        await OnBlankCanvasClicked.InvokeAsync(SourceId);
+    }
+
+    private async Task HandleVideoUpload(IBrowserFile file)
+    {
+        if (file == null) return;
+
+        try
+        {
+            // For videos, store as base64 for now
+            // In future, might want to save to temp file for large videos
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024).ReadAsync(buffer);
+            var base64 = Convert.ToBase64String(buffer);
+            var mimeType = file.ContentType;
+            
+            Source.Data = $"data:{mimeType};base64,{base64}";
+            Source.Filename = file.Name;
+            
+            await OnSourceChanged.InvokeAsync((SourceId, Source));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error uploading video: {ex.Message}");
+        }
+    }
+
+    private async Task ClearSource()
+    {
+        Source.Clear();
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+}

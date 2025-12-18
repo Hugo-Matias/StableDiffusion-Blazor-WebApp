@@ -1,0 +1,34 @@
+@inherits FragmentFormBase
+
+@* New Prompts Form - uses FragmentSchema for binding *@
+@* This is a stub component - will be fully implemented when Generate page is built *@
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudTextField T="string"
+                      Value="@GetString("positive")"
+                      ValueChanged="@((string v) => SetValue("positive", v))"
+                      Label="Prompt"
+                      Lines="5"
+                      Variant="Variant.Outlined"
+                      Placeholder="Enter your prompt..." />
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField T="string"
+                      Value="@GetString("negative")"
+                      ValueChanged="@((string v) => SetValue("negative", v))"
+                      Label="Negative Prompt"
+                      Lines="2"
+                      Variant="Variant.Outlined"
+                      Placeholder="Enter negative prompt..." />
+    </MudItem>
+</MudGrid>
+
+@code {
+    // PromptsFormNew extends FragmentFormBase
+    // Full implementation will include:
+    // - Wildcard support
+    // - Style integration
+    // - LLM enhancer button
+    // - Tag append functionality
+}
