@@ -152,6 +152,13 @@
                                    Size="Size.Small">
                             Rotate
                         </MudButton>
+                        <MudButton OnClick="ToggleLockAspectRatio"
+                                   StartIcon="@(_isAspectRatioLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open")"
+                                   Color="@(_isAspectRatioLocked ? Color.Success : Color.Default)"
+                                   Size="Size.Small"
+                                   Title="@(_isAspectRatioLocked ? "Unlock aspect ratio" : "Lock to square aspect ratio")">
+                            Lock
+                        </MudButton>
                         <MudButton OnClick="@(() => ScaleResolution(2.0))"
                                    StartIcon="fa-solid fa-expand"
                                    Size="Size.Small">
@@ -162,7 +169,7 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSlider T="int?" Value="State.ParametersImg2Vid.Width" 
-                           ValueChanged="@((int? v) => { State.ParametersImg2Vid.Width = v; NotifyChanged(); })"
+                           ValueChanged="@((int? v) => HandleWidthChanged(v))"
                            Min="GetResolutionSettings().Min" 
                            Max="GetResolutionSettings().Max" 
                            Step="GetResolutionSettings().Step" 
@@ -172,7 +179,7 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSlider T="int?" Value="State.ParametersImg2Vid.Height" 
-                           ValueChanged="@((int? v) => { State.ParametersImg2Vid.Height = v; NotifyChanged(); })"
+                           ValueChanged="@((int? v) => HandleHeightChanged(v))"
                            Min="GetResolutionSettings().Min" 
                            Max="GetResolutionSettings().Max" 
                            Step="GetResolutionSettings().Step" 
@@ -247,6 +254,8 @@ else
 }
 
 @code {
+    private bool _isAspectRatioLocked = false;
+
     protected override void OnInitialized()
     {
         EnsureFrameInterpolation();
@@ -293,6 +302,56 @@ else
         EnsureFrameInterpolation();
         State.ParametersImg2Vid.FrameInterpolation.IsActive = enabled;
         NotifyChanged();
+    }
+
+    private void ToggleLockAspectRatio()
+    {
+        _isAspectRatioLocked = !_isAspectRatioLocked;
+        
+        // When locking, set both dimensions to the larger of the two
+        if (_isAspectRatioLocked)
+        {
+            var currentWidth = State.ParametersImg2Vid.Width ?? 768;
+            var currentHeight = State.ParametersImg2Vid.Height ?? 768;
+            var largerDimension = Math.Max(currentWidth, currentHeight);
+            
+            State.ParametersImg2Vid.Width = largerDimension;
+            State.ParametersImg2Vid.Height = largerDimension;
+        }
+        
+        NotifyChanged();
+    }
+
+    private void HandleWidthChanged(int? value)
+    {
+        if (value.HasValue)
+        {
+            State.ParametersImg2Vid.Width = value;
+            
+            // If locked, update height to match width
+            if (_isAspectRatioLocked)
+            {
+                State.ParametersImg2Vid.Height = value;
+            }
+            
+            NotifyChanged();
+        }
+    }
+
+    private void HandleHeightChanged(int? value)
+    {
+        if (value.HasValue)
+        {
+            State.ParametersImg2Vid.Height = value;
+            
+            // If locked, update width to match height
+            if (_isAspectRatioLocked)
+            {
+                State.ParametersImg2Vid.Width = value;
+            }
+            
+            NotifyChanged();
+        }
     }
 
     private void SetRandomSeed()

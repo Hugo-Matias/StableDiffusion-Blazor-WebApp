@@ -55,7 +55,7 @@
                     <button class="action-btn @(Image.Favorite ? "active" : "")" @onclick="@(() => ToggleFavorite(!Image.Favorite))" title="@(Image.Favorite ? "Remove from Favorites" : "Add to Favorites")">
                         <i class="@(Image.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
                     </button>
-                    <button class="action-btn" @onclick="ShowImageInfoDialog" title="View Info">
+                    <button class="action-btn" @onclick="ToggleInfoDrawer" title="View Info">
                         <i class="fa-solid fa-info"></i>
                     </button>
                 </div>
@@ -189,6 +189,11 @@
     </div>
 </div>
 
+<!-- Info Drawer -->
+<AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" 
+                 Image="Image" 
+                 IsVideo="false" />
+
 @code {
     [Parameter] public Image Image { get; set; }
     [Parameter] public string Target { get; set; }
@@ -201,6 +206,7 @@
     private bool _isSelected;
     private bool _isHovered;
     private bool _isMenuOpen;
+    private bool _showInfoDrawer;
 
     protected override void OnInitialized()
     {
@@ -211,7 +217,6 @@
 
     protected override void OnParametersSet()
     {
-        // Update selection state whenever Image parameter changes (e.g., page navigation)
         UpdateSelectionState();
     }
 
@@ -250,7 +255,6 @@
 
     private void HandleMouseLeave()
     {
-        // Don't clear hover if menu is open
         if (!_isMenuOpen)
         {
             _isHovered = false;
@@ -259,20 +263,17 @@
 
     private bool HasWorkflowForMode(ModeType mode)
     {
-        // For ComfyUI, check if there's a workflow for the current model base and requested mode
         if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null)
         {
             var currentBase = State.State.Generation.WorkflowBase;
             return State.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
         }
-        
         return false;
     }
 
     private Workflow? GetWorkflowForMode(ModeType mode)
     {
         if (State.State.Generation.Workflows == null) return null;
-        
         var currentBase = State.State.Generation.WorkflowBase;
         return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
     }
@@ -310,7 +311,6 @@
         
         if (img2img)
         {
-            // For Img2Img, find the workflow and navigate
             var workflow = GetWorkflowForMode(ModeType.Img2Img);
             if (workflow != null)
             {
@@ -325,7 +325,6 @@
         }
         else
         {
-            // For Upscale (Extras mode) - currently no page exists, show message
             Snackbar.Add("Upscale page not yet implemented", Severity.Info);
         }
     }
@@ -335,7 +334,6 @@
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
         Session.Img2VidInputImage = data;
         
-        // Find the Img2Vid workflow for the current model base
         var workflow = GetWorkflowForMode(ModeType.Img2Vid);
         if (workflow != null)
         {
@@ -348,12 +346,9 @@
         }
     }
 
-    private void ShowImageInfoDialog()
+    private void ToggleInfoDrawer()
     {
-        var param = new DialogParameters();
-        param.Add("Image", Image);
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        DialogService.Show<ImageInfoDialog>("Image Info", param, options);
+        _showInfoDrawer = !_showInfoDrawer;
     }
 
     private async Task ShowSwitchProjectDialog()

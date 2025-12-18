@@ -402,21 +402,13 @@
     
     protected override void OnParametersSet()
     {
-        // When new videos are generated, add them to session and select the first
+        // Note: Videos are now added to session directly by ImageService.GetVideo()
+        // This method only needs to update the current video preview when new videos are available
+        
         if (GeneratedVideos?.Videos != null && GeneratedVideos.Videos.Count > 0)
         {
-            foreach (var video in GeneratedVideos.Videos)
-            {
-                // Check if video is already in session (avoid duplicates)
-                if (!Session.SessionGeneratedVideos.Videos.Any(v => v.FilePath == video.FilePath))
-                {
-                    Session.SessionGeneratedVideos.Videos.Insert(0, video);
-                }
-            }
-            
             // Select the first new video for preview
             _currentVideo = GeneratedVideos.Videos.First();
-            M.InvokeSessionVideosChanged();
         }
         
         // If current video is null but session has videos, select the first

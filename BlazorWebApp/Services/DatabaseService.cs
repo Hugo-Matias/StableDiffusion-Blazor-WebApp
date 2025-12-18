@@ -421,7 +421,13 @@ namespace BlazorWebApp.Services
                     query = state.OrderDescending ? query.OrderByDescending(i => i.DenoisingStrength) : query.OrderBy(i => i.DenoisingStrength);
                     break;
                 case GalleryOrderBy.Random:
-                    query = query.OrderBy(i => EF.Functions.Random());
+                    // For consistent random ordering across pagination, use a deterministic approach
+                    // SQLite can handle: ORDER BY (Id * seed) % prime
+                    // This produces consistent ordering for the same seed
+                    var seed = state.RandomSeed ?? 1;
+                    // Use modulo with the seed - simple arithmetic that SQLite can translate
+                    // The multiplication spreads IDs, modulo wraps them, creating pseudo-random order
+                    query = query.OrderBy(i => (i.Id * seed) % 1000003);
                     break;
             }
 
