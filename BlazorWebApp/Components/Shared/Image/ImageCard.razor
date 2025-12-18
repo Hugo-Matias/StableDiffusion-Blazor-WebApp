@@ -314,8 +314,8 @@
             var workflow = GetWorkflowForMode(ModeType.Img2Img);
             if (workflow != null)
             {
-                Session.CanvasImageData = data;
-                NavManager.NavigateTo($"/comfyui/img2img/{workflow.Id}");
+                Session.Img2ImgInputImage = data;
+                NavManager.NavigateTo($"/img2img/{workflow.Id}");
                 Snackbar.Add("Image sent to Img2Img", Severity.Success);
             }
             else
@@ -325,18 +325,8 @@
         }
         else
         {
-            // For Upscale, find the workflow and navigate
-            var workflow = GetWorkflowForMode(ModeType.Extras);
-            if (workflow != null)
-            {
-                Session.UpscaleImageData = data;
-                NavManager.NavigateTo($"/comfyui/upscale/{workflow.Id}");
-                Snackbar.Add("Image sent to Upscale", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add("No Upscale workflow found for current model base", Severity.Warning);
-            }
+            // For Upscale (Extras mode) - currently no page exists, show message
+            Snackbar.Add("Upscale page not yet implemented", Severity.Info);
         }
     }
 
@@ -349,7 +339,7 @@
         var workflow = GetWorkflowForMode(ModeType.Img2Vid);
         if (workflow != null)
         {
-            NavManager.NavigateTo($"/comfyui/img2vid/{workflow.Id}");
+            NavManager.NavigateTo($"/img2vid/{workflow.Id}");
             Snackbar.Add("Image sent to Img2Vid", Severity.Success);
         }
         else
