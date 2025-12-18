@@ -10,6 +10,7 @@
 @inject IWorkflowService WorkflowService
 @inject IImageService ImageService
 @inject NavigationManager NavManager
+@inject ILogger<Img2Vid> Logger
 @implements IDisposable
 
 @page "/img2vid/{id}"
@@ -24,9 +25,9 @@
                     PromptChanged="HandlePromptChanged"
                     NegativePrompt="@State.ParametersImg2Vid?.NegativePrompt"
                     NegativePromptChanged="HandleNegativePromptChanged"
-                    OnGenerate="Generate"
-                    OnSkip="Skip"
-                    OnInterrupt="Interrupt"
+                    OnGenerate="GenerateAsync"
+                    OnSkip="SkipAsync"
+                    OnInterrupt="InterruptAsync"
                     IsGenerateDisabled="@(string.IsNullOrWhiteSpace(Session.Img2VidInputImage))" />
 
 <MudGrid>
@@ -48,12 +49,34 @@
     [Parameter] public string Id { get; set; }
     
     private GeneratedVideos _generatedVideos;
+    private bool _hasInitializedResolution = false;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
         Events.Subscribe<ParametersChangedEventArgs>(OnImg2VidParametersChanged);
-        Events.Subscribe<InputImageChangedEventArgs>(OnImg2VidInputImageChanged);
+        Events.Subscribe<Img2VidInputImageChangedEventArgs>(OnImg2VidInputImageChanged);
+        
+        // Load the latest generated videos from ImageService
+        _generatedVideos = ImageService.GeneratedVideos;
+        
+        // Mark as initialized if we already have resolution values (from saved state)
+        if (State.ParametersImg2Vid != null && 
+            State.ParametersImg2Vid.Width > 0 && 
+            State.ParametersImg2Vid.Height > 0)
+        {
+            _hasInitializedResolution = true;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // When navigating to the page, ensure we reload any existing generated videos
+        if (ImageService.GeneratedVideos != null && ImageService.GeneratedVideos.Videos?.Count > 0)
+        {
+            _generatedVideos = ImageService.GeneratedVideos;
+            StateHasChanged();
+        }
     }
 
     private Workflow? GetCurrentWorkflow()
@@ -83,43 +106,79 @@
     
     private void HandleImageDataChanged(string value)
     {
+        // When a new image is loaded, allow resolution to be updated
+        if (value != Session.Img2VidInputImage)
+        {
+            _hasInitializedResolution = false;
+        }
         Session.Img2VidInputImage = value;
         StateHasChanged();
     }
 
-    private async void Generate()
+    private async Task GenerateAsync()
     {
         if (string.IsNullOrWhiteSpace(Session.Img2VidInputImage) || State.ParametersImg2Vid == null)
         {
             return;
         }
 
-        // Update parameters with current values and input image
-        State.ParametersImg2Vid.Image = Session.Img2VidInputImage;
-        State.ParametersImg2Vid.Comfy.Workflow = M.GetWorkflowById(Guid.Parse(Id));
-        
-        // Save state before generation
-        await State.SaveState();
-        
-        // Generate video
-        _generatedVideos = await ImageService.GetVideo();
-        
-        // Save state after generation (includes seed, etc.)
-        await State.SaveState();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            // Update parameters with current values and input image
+            State.ParametersImg2Vid.Image = Session.Img2VidInputImage;
+            State.ParametersImg2Vid.Comfy.Workflow = GetCurrentWorkflow();
+            
+            // Save state before generation
+            await State.SaveState();
+            
+            // Generate video
+            _generatedVideos = await ImageService.GetVideo();
+            
+            // Save state after generation (includes seed, etc.)
+            await State.SaveState();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during video generation");
+        }
     }
 
-    private async void Skip() => await API.PostClearQueue();
-
-    private async void Interrupt()
+    private async Task SkipAsync()
     {
-        State.State.Generation.IsInterrupted = true;
-        await API.PostInterrupt();
+        try
+        {
+            await API.PostClearQueue();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error skipping generation");
+        }
+    }
+
+    private async Task InterruptAsync()
+    {
+        try
+        {
+            State.State.Generation.IsInterrupted = true;
+            await API.PostInterrupt();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error interrupting generation");
+        }
     }
 
     private void HandleImageLoaded((int width, int height) dimensions)
     {
         if (State.ParametersImg2Vid == null) return;
+        
+        // Only auto-set resolution if we haven't already initialized it
+        // This prevents overwriting saved resolution when navigating back to the page
+        if (_hasInitializedResolution)
+        {
+            return;
+        }
         
         // Auto-set resolution based on input image while maintaining aspect ratio
         if (dimensions.width > 0 && dimensions.height > 0)
@@ -137,23 +196,45 @@
                 State.ParametersImg2Vid.Width = (dimensions.width / 8) * 8;
                 State.ParametersImg2Vid.Height = (dimensions.height / 8) * 8;
             }
+            
+            _hasInitializedResolution = true;
             StateHasChanged();
         }
     }
 
-    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
-    private void OnImg2VidParametersChanged(ParametersChangedEventArgs args) => Refresh();
-    private void OnImg2VidInputImageChanged(InputImageChangedEventArgs args) => Refresh();
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => HandleRefresh();
+    private void OnImg2VidParametersChanged(ParametersChangedEventArgs args) => HandleRefresh();
+    private void OnImg2VidInputImageChanged(Img2VidInputImageChangedEventArgs args) => HandleRefresh();
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async void HandleRefresh()
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component was disposed, ignore
+        }
+    }
 
     public void Dispose()
     {
         Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
         Events.Unsubscribe<ParametersChangedEventArgs>(OnImg2VidParametersChanged);
-        Events.Unsubscribe<InputImageChangedEventArgs>(OnImg2VidInputImageChanged);
+        Events.Unsubscribe<Img2VidInputImageChangedEventArgs>(OnImg2VidInputImageChanged);
         
-        // Save state on dispose
-        _ = State.SaveState();
+        // Fire and forget state save - acceptable in Dispose
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await State.SaveState();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to save state on dispose");
+            }
+        });
     }
 }

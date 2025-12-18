@@ -162,6 +162,13 @@
                                    Size="Size.Small">
                             Rotate
                         </MudButton>
+                        <MudButton OnClick="ToggleLockAspectRatio"
+                                   StartIcon="@(_isAspectRatioLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open")"
+                                   Color="@(_isAspectRatioLocked ? Color.Success : Color.Default)"
+                                   Size="Size.Small"
+                                   Title="@(_isAspectRatioLocked ? "Unlock aspect ratio" : "Lock to square aspect ratio")">
+                            Lock
+                        </MudButton>
                         <MudButton OnClick="@(() => ScaleResolution(2.0))"
                                    StartIcon="fa-solid fa-expand"
                                    Size="Size.Small">
@@ -172,7 +179,7 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSlider T="int?" Value="State.ParametersImg2Img.Width" 
-                           ValueChanged="@((int? v) => { State.ParametersImg2Img.Width = v; NotifyChanged(); })"
+                           ValueChanged="@((int? v) => HandleWidthChanged(v))"
                            Min="GetResolutionSettings().Min" 
                            Max="GetResolutionSettings().Max" 
                            Step="GetResolutionSettings().Step" 
@@ -182,7 +189,7 @@
             </MudItem>
             <MudItem xs="6">
                 <MudSlider T="int?" Value="State.ParametersImg2Img.Height" 
-                           ValueChanged="@((int? v) => { State.ParametersImg2Img.Height = v; NotifyChanged(); })"
+                           ValueChanged="@((int? v) => HandleHeightChanged(v))"
                            Min="GetResolutionSettings().Min" 
                            Max="GetResolutionSettings().Max" 
                            Step="GetResolutionSettings().Step" 
@@ -203,6 +210,8 @@ else
 }
 
 @code {
+    private bool _isAspectRatioLocked = false;
+
     // Settings getters with fallback defaults
     private StepsSettingsModel GetStepsSettings() => Settings.Settings?.Generation?.Shared?.Steps ?? new StepsSettingsModel { Min = 1, Max = 50, Step = 1, Value = 4 };
     private CfgScaleSettingsModel GetCfgSettings() => Settings.Settings?.Generation?.Shared?.CfgScale ?? new CfgScaleSettingsModel { Min = 1.0f, Max = 15.0f, Step = 0.5f, Value = 1.0f };
@@ -211,6 +220,56 @@ else
     private void NotifyChanged()
     {
         StateHasChanged();
+    }
+
+    private void ToggleLockAspectRatio()
+    {
+        _isAspectRatioLocked = !_isAspectRatioLocked;
+        
+        // When locking, set both dimensions to the larger of the two
+        if (_isAspectRatioLocked)
+        {
+            var currentWidth = State.ParametersImg2Img.Width ?? 768;
+            var currentHeight = State.ParametersImg2Img.Height ?? 768;
+            var largerDimension = Math.Max(currentWidth, currentHeight);
+            
+            State.ParametersImg2Img.Width = largerDimension;
+            State.ParametersImg2Img.Height = largerDimension;
+        }
+        
+        NotifyChanged();
+    }
+
+    private void HandleWidthChanged(int? value)
+    {
+        if (value.HasValue)
+        {
+            State.ParametersImg2Img.Width = value;
+            
+            // If locked, update height to match width
+            if (_isAspectRatioLocked)
+            {
+                State.ParametersImg2Img.Height = value;
+            }
+            
+            NotifyChanged();
+        }
+    }
+
+    private void HandleHeightChanged(int? value)
+    {
+        if (value.HasValue)
+        {
+            State.ParametersImg2Img.Height = value;
+            
+            // If locked, update width to match height
+            if (_isAspectRatioLocked)
+            {
+                State.ParametersImg2Img.Width = value;
+            }
+            
+            NotifyChanged();
+        }
     }
 
     private void SetRandomSeed()

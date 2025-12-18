@@ -275,10 +275,43 @@ namespace BlazorWebApp.Services
             await File.WriteAllBytesAsync(path, data);
         }
 
-        public async Task<string> ReadMetadata(string path)
+        public async Task<string?> ReadMetadata(string path)
         {
-            var directories = ImageMetadataReader.ReadMetadata(path);
-            return directories.Where(d => d.Name == "PNG-tEXt").FirstOrDefault().Tags[0].Description;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                return null;
+
+            try
+            {
+                var extension = Path.GetExtension(path)?.ToLowerInvariant();
+                var directories = ImageMetadataReader.ReadMetadata(path);
+
+                if (extension is ".mp4" or ".mov" or ".m4v")
+                {
+                    // No workflow details on the metadata for videos using QuickTime, return early
+                    return null;
+                }
+
+                // For PNG images, look for tEXt chunk
+                var pngTextDir = directories.FirstOrDefault(d => d.Name == "PNG-tEXt");
+                if (pngTextDir?.Tags?.Count > 0)
+                    return pngTextDir.Tags[0].Description;
+
+                // For JPEG/other images, try Exif or XMP
+                var exifDir = directories.FirstOrDefault(d => d.Name.Contains("Exif"));
+                if (exifDir != null)
+                {
+                    var userComment = exifDir.Tags.FirstOrDefault(t => t.Name == "User Comment");
+                    if (userComment != null && !string.IsNullOrWhiteSpace(userComment.Description))
+                        return userComment.Description;
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                // Failed to read metadata, return null
+                return null;
+            }
         }
 
         private void CheckDirectory(string path)

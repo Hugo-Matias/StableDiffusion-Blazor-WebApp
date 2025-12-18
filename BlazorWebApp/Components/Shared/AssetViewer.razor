@@ -34,7 +34,7 @@
                  @onmousemove="HandleMouseMove"
                  @onmouseup="HandleMouseUp"
                  @onmouseleave="HandleMouseUp">
-                @if (CurrentAsset != null)
+                @if (CurrentAsset != null && !_isLoadingPage)
                 {
                     @if (IsCurrentVideo)
                     {
@@ -58,118 +58,128 @@
                              @onclick:stopPropagation="true" />
                     }
                 }
+                @if (_isLoadingPage)
+                {
+                    <div class="loading-spinner">
+                        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                        <span class="loading-text">Loading page...</span>
+                    </div>
+                }
             </div>
 
             <!-- Bottom Control Bar -->
-            <div class="control-bar" @onclick:stopPropagation="true">
-                <!-- Left: Favorite & Rating -->
-                @if (CurrentAsset?.Id > 0)
-                {
-                    <div class="control-section">
-                        <button class="viewer-btn @(CurrentAsset.Favorite ? "active-fav" : "")" 
-                                @onclick="ToggleFavorite" 
-                                title="Favorite (F)">
-                            <MudIcon Icon="@(CurrentAsset.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
-                        </button>
-                        @if (TotalCount > 1)
-                        {
-                            <button class="viewer-btn fav-all-btn" @onclick="FavoriteAllOnPage" title="Favorite All on Page">
-                                <MudIcon Icon="fa-solid fa-heart-circle-check" />
-                            </button>
-                        }
-                        <div class="rating-container">
-                            <MudRating SelectedValue="CurrentAsset.Score" 
-                                       SelectedValueChanged="SetScore" 
-                                       MaxValue="3" 
-                                       Size="Size.Medium"
-                                       FullIcon="fa-solid fa-star"
-                                       EmptyIcon="fa-regular fa-star" />
-                        </div>
-                    </div>
-                }
-
-                <!-- Center: Navigation -->
-                <div class="control-section nav-section">
-                    <button class="viewer-btn nav-btn" 
-                            @onclick="Previous" 
-                            title="Previous (←)">
-                        <MudIcon Icon="fa-solid fa-chevron-left" />
-                    </button>
-                    
-                    <div class="counter">
-                        <div class="counter-main">
-                            <span class="counter-current">@(_currentIndex + 1)</span>
-                            <span class="counter-sep">/</span>
-                            <span class="counter-total">@Assets.Count</span>
-                            <span class="counter-dot">•</span>
-                            <span class="counter-total-label">@TotalCount</span>
-                        </div>
-                        @if (PageCount > 1)
-                        {
-                            <div class="counter-page-info">
-                                <span class="counter-page-label">Page @CurrentPage of @PageCount</span>
-                            </div>
-                        }
-                    </div>
-                    
-                    <button class="viewer-btn nav-btn" 
-                            @onclick="Next" 
-                            title="Next (→)">
-                        <MudIcon Icon="fa-solid fa-chevron-right" />
-                    </button>
-                </div>
-
-                <!-- Right: Actions -->
-                <div class="control-section actions-section">
-                    @if (Assets.Count > 1)
+            @if (!_isLoadingPage)
+            {
+                <div class="control-bar" @onclick:stopPropagation="true">
+                    <!-- Left: Favorite & Rating -->
+                    @if (CurrentAsset?.Id > 0)
                     {
-                        <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
-                            <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
-                                <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
+                        <div class="control-section">
+                            <button class="viewer-btn @(CurrentAsset.Favorite ? "active-fav" : "")" 
+                                    @onclick="ToggleFavorite" 
+                                    title="Favorite (F)">
+                                <MudIcon Icon="@(CurrentAsset.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
                             </button>
-                        </MudTooltip>
-                        <div class="slideshow-controls">
-                            <input type="number" 
-                                   class="slideshow-input" 
-                                   @bind="_autoPlayInterval" 
-                                   @bind:event="onchange"
-                                   min="1" 
-                                   max="60" 
-                                   step="0.5"
-                                   title="Slideshow interval (seconds)" />
-                            <span class="slideshow-unit">s</span>
+                            @if (TotalCount > 1)
+                            {
+                                <button class="viewer-btn fav-all-btn" @onclick="FavoriteAllOnPage" title="Favorite All on Page">
+                                    <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                                </button>
+                            }
+                            <div class="rating-container">
+                                <MudRating SelectedValue="CurrentAsset.Score" 
+                                           SelectedValueChanged="SetScore" 
+                                           MaxValue="3" 
+                                           Size="Size.Medium"
+                                           FullIcon="fa-solid fa-star"
+                                           EmptyIcon="fa-regular fa-star" />
+                            </div>
                         </div>
                     }
-                    
-                    @if (!IsCurrentVideo)
-                    {
-                        <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
-                            <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode" title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
-                                <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
-                            </button>
-                        </MudTooltip>
-                        @if (_isPanMode)
+
+                    <!-- Center: Navigation -->
+                    <div class="control-section nav-section">
+                        <button class="viewer-btn nav-btn" 
+                                @onclick="Previous" 
+                                title="Previous (←)">
+                            <MudIcon Icon="fa-solid fa-chevron-left" />
+                        </button>
+                        
+                        <div class="counter">
+                            <div class="counter-main">
+                                <span class="counter-current">@(_currentIndex + 1)</span>
+                                <span class="counter-sep">/</span>
+                                <span class="counter-total">@Assets.Count</span>
+                                <span class="counter-dot">•</span>
+                                <span class="counter-total-label">@TotalCount</span>
+                            </div>
+                            @if (PageCount > 1)
+                            {
+                                <div class="counter-page-info">
+                                    <span class="counter-page-label">Page @CurrentPage of @PageCount</span>
+                                </div>
+                            }
+                        </div>
+                        
+                        <button class="viewer-btn nav-btn" 
+                                @onclick="Next" 
+                                title="Next (→)">
+                            <MudIcon Icon="fa-solid fa-chevron-right" />
+                        </button>
+                    </div>
+
+                    <!-- Right: Actions -->
+                    <div class="control-section actions-section">
+                        @if (Assets.Count > 1)
                         {
-                            <MudTooltip Text="Reset View (R)" Delay="300">
-                                <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
-                                    <MudIcon Icon="fa-solid fa-crosshairs" />
+                            <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
+                                <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
+                                    <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
                                 </button>
                             </MudTooltip>
+                            <div class="slideshow-controls">
+                                <input type="number" 
+                                       class="slideshow-input" 
+                                       @bind="_autoPlayInterval" 
+                                       @bind:event="onchange"
+                                       min="1" 
+                                       max="60" 
+                                       step="0.5"
+                                       title="Slideshow interval (seconds)" />
+                                <span class="slideshow-unit">s</span>
+                            </div>
                         }
-                    }
+                        
+                        @if (!IsCurrentVideo)
+                        {
+                            <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
+                                <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode" title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
+                                    <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
+                                </button>
+                            </MudTooltip>
+                            @if (_isPanMode)
+                            {
+                                <MudTooltip Text="Reset View (R)" Delay="300">
+                                    <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
+                                        <MudIcon Icon="fa-solid fa-crosshairs" />
+                                    </button>
+                                </MudTooltip>
+                            }
+                        }
 
-                    <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
-                        <MudIcon Icon="fa-solid fa-circle-info" />
-                    </button>
-                    
-                    @if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path))
-                    {
-                        <button class="viewer-btn" @onclick="OpenInExplorer" title="Open in Explorer">
-                            <MudIcon Icon="fa-solid fa-folder-open" />
+                        <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
+                            <MudIcon Icon="fa-solid fa-circle-info" />
                         </button>
-                    }
+                        
+                        @if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path))
+                        {
+                            <button class="viewer-btn" @onclick="OpenInExplorer" title="Open in Explorer">
+                                <MudIcon Icon="fa-solid fa-folder-open" />
+                            </button>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
 
             <!-- Zoom indicator -->
             @if (_isPanMode && _showZoomIndicator)
@@ -180,194 +190,21 @@
             }
 
             <!-- Asset type indicator -->
-            <div class="asset-type-indicator">
-                <MudIcon Icon="@(IsCurrentVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
-            </div>
+            @if (!_isLoadingPage)
+            {
+                <div class="asset-type-indicator">
+                    <MudIcon Icon="@(IsCurrentVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
+                </div>
+            }
 
             <!-- Info Panel -->
             <div class="info-panel @(_showInfo ? "open" : "")">
-                <div class="info-panel-header">
-                    <MudIcon Icon="@(IsCurrentVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
-                    <span>@(IsCurrentVideo ? "Video" : "Image") Details</span>
-                    <button class="viewer-btn small" @onclick="ToggleInfo" title="Close">
-                        <MudIcon Icon="fa-solid fa-xmark" Size="Size.Small" />
-                    </button>
-                </div>
-                
-                <div class="info-panel-body">
-                    <div class="info-content">
-                        @if (CurrentAsset != null)
-                        {
-                            <!-- Send To Buttons (images only) -->
-                            @if (!IsCurrentVideo)
-                            {
-                                @* Only show "Send image to" section if there are available workflows *@
-                                @if (HasWorkflowForMode(ModeType.Img2Img) || HasWorkflowForMode(ModeType.Img2Vid) || HasWorkflowForMode(ModeType.Extras))
-                                {
-                                    <div class="send-to-section">
-                                        <span class="send-to-label">Send image to:</span>
-                                        <div class="send-to-buttons">
-                                            @if (HasWorkflowForMode(ModeType.Img2Img))
-                                            {
-                                                <button class="send-to-btn" @onclick="() => SendImageTo(img2img: true)" title="Send to Img2Img">
-                                                    <MudIcon Icon="fa-solid fa-image" Size="Size.Small" />
-                                                    <span>Img2Img</span>
-                                                </button>
-                                            }
-                                            @if (HasWorkflowForMode(ModeType.Img2Vid))
-                                            {
-                                                <button class="send-to-btn" @onclick="SendImageToImg2Vid" title="Send to Img2Vid">
-                                                    <MudIcon Icon="fa-solid fa-video" Size="Size.Small" />
-                                                    <span>Img2Vid</span>
-                                                </button>
-                                            }
-                                            @if (HasWorkflowForMode(ModeType.Extras))
-                                            {
-                                                <button class="send-to-btn" @onclick="() => SendImageTo(img2img: false)" title="Send to Upscale">
-                                                    <MudIcon Icon="fa-solid fa-panorama" Size="Size.Small" />
-                                                    <span>Upscale</span>
-                                                </button>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                                <div class="send-to-section">
-                                    <span class="send-to-label">Send parameters to:</span>
-                                    <div class="send-to-buttons">
-                                        <button class="send-to-btn" @onclick="() => SendSelectedTo(false)" title="Send to Txt2Img">
-                                            <MudIcon Icon="fa-solid fa-font" Size="Size.Small" />
-                                            <span>Txt2Img</span>
-                                        </button>
-                                        <button class="send-to-btn" @onclick="() => SendSelectedTo(true)" title="Send to Img2Img">
-                                            <MudIcon Icon="fa-solid fa-image" Size="Size.Small" />
-                                            <span>Img2Img</span>
-                                        </button>
-                                    </div>
-                                </div>
-                                <MudDivider />
-                            }
-
-                            <!-- Meta Items -->
-                            <div class="meta-grid">
-                                @if (CurrentAsset.Width > 0 && CurrentAsset.Height > 0)
-                                {
-                                    <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")" 
-                                         @onclick="@(() => ToggleParam("Width"))" title="Resolution">
-                                        <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
-                                        <span>@CurrentAsset.Width � @CurrentAsset.Height</span>
-                                    </div>
-                                }
-                                @if (CurrentAsset.Seed > 0)
-                                {
-                                    <div class="meta-item clickable @(_selectedParams.Contains("Seed") ? "selected" : "")" 
-                                         @onclick="@(() => ToggleParam("Seed"))" title="Seed">
-                                        <MudIcon Icon="fa-solid fa-seedling" Size="Size.Small" />
-                                        <span>@CurrentAsset.Seed</span>
-                                    </div>
-                                }
-                                @if (CurrentAsset.Steps > 0)
-                                {
-                                    <div class="meta-item clickable @(_selectedParams.Contains("Steps") ? "selected" : "")" 
-                                         @onclick="@(() => ToggleParam("Steps"))" title="Steps">
-                                        <MudIcon Icon="fa-solid fa-stairs" Size="Size.Small" />
-                                        <span>@CurrentAsset.Steps steps</span>
-                                    </div>
-                                }
-                                @if (CurrentAsset.CfgScale > 0)
-                                {
-                                    <div class="meta-item clickable @(_selectedParams.Contains("CfgScale") ? "selected" : "")" 
-                                         @onclick="@(() => ToggleParam("CfgScale"))" title="CFG">
-                                        <MudIcon Icon="fa-solid fa-scale-unbalanced" Size="Size.Small" />
-                                        <span>CFG @CurrentAsset.CfgScale</span>
-                                    </div>
-                                }
-                                @if (CurrentAsset.DenoisingStrength != null)
-                                {
-                                    <div class="meta-item clickable full-width @(_selectedParams.Contains("DenoisingStrength") ? "selected" : "")" 
-                                         @onclick="@(() => ToggleParam("DenoisingStrength"))" title="Denoising">
-                                        <MudIcon Icon="fa-solid fa-braille" Size="Size.Small" />
-                                        <span>Denoise @CurrentAsset.DenoisingStrength</span>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(_currentSampler))
-                                {
-                                    <div class="meta-item clickable @(_selectedParams.Contains("SamplerIndex") ? "selected" : "")" 
-                                         @onclick="@(() => ToggleParam("SamplerIndex"))" title="Sampler">
-                                        <MudIcon Icon="fa-solid fa-shuffle" Size="Size.Small" />
-                                        <span>@_currentSampler</span>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(CurrentAsset.Scheduler))
-                                {
-                                    <div class="meta-item clickable @(_selectedParams.Contains("Scheduler") ? "selected" : "")" 
-                                         @onclick="@(() => ToggleParam("Scheduler"))" title="Scheduler">
-                                        <MudIcon Icon="fa-solid fa-clock" Size="Size.Small" />
-                                        <span>@CurrentAsset.Scheduler</span>
-                                    </div>
-                                }
-                                @if (CurrentAsset.Model != null && !string.IsNullOrWhiteSpace(CurrentAsset.Model.Title))
-                                {
-                                    <div class="meta-item full-width" title="@CurrentAsset.Model.Title">
-                                        <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" />
-                                        <span class="text-truncate">@CurrentAsset.Model.Title</span>
-                                    </div>
-                                }
-                                <div class="meta-item full-width">
-                                    <MudIcon Icon="fa-solid fa-calendar" Size="Size.Small" />
-                                    <span>@CurrentAsset.DateCreated.ToString("MMM dd, yyyy HH:mm")</span>
-                                </div>
-                            </div>
-
-                            @if (!string.IsNullOrWhiteSpace(CurrentAsset.Prompt))
-                            {
-                                <div class="prompt-block">
-                                    <div class="prompt-header positive clickable @(_selectedParams.Contains("Prompt") ? "selected" : "")"
-                                         @onclick="@(() => ToggleParam("Prompt"))" title="Prompt">
-                                        <MudIcon Icon="fa-solid fa-plus" Size="Size.Small" />
-                                        <span>Prompt</span>
-                                        @if (_selectedParams.Contains("Prompt"))
-                                        {
-                                            <MudIcon Icon="fa-solid fa-check" Size="Size.Small" Class="ms-auto" />
-                                        }
-                                    </div>
-                                    <div class="prompt-text">@CurrentAsset.Prompt</div>
-                                </div>
-                            }
-                            
-                            @if (!string.IsNullOrWhiteSpace(CurrentAsset.NegativePrompt))
-                            {
-                                <div class="prompt-block">
-                                    <div class="prompt-header negative clickable @(_selectedParams.Contains("NegativePrompt") ? "selected" : "")"
-                                         @onclick="@(() => ToggleParam("NegativePrompt"))" title="Negative Prompt">
-                                        <MudIcon Icon="fa-solid fa-minus" Size="Size.Small" />
-                                        <span>Negative</span>
-                                        @if (_selectedParams.Contains("NegativePrompt"))
-                                        {
-                                            <MudIcon Icon="fa-solid fa-check" Size="Size.Small" Class="ms-auto" />
-                                        }
-                                    </div>
-                                    <div class="prompt-text negative">@CurrentAsset.NegativePrompt</div>
-                                </div>
-                            }
-                        }
-                    </div>
-
-                    <!-- Keyboard Shortcuts -->
-                    <div class="shortcuts-box">
-                        <div class="shortcuts-title">Keyboard Shortcuts</div>
-                        <div class="shortcut-row"><span>Navigate</span><span class="shortcut-key">? ?</span></div>
-                        <div class="shortcut-row"><span>Favorite</span><span class="shortcut-key">F</span></div>
-                        @if (!IsCurrentVideo)
-                        {
-                            <div class="shortcut-row"><span>Pan & Zoom</span><span class="shortcut-key">Z</span></div>
-                            <div class="shortcut-row"><span>Reset View</span><span class="shortcut-key">R</span></div>
-                            <div class="shortcut-row"><span>Zoom In/Out</span><span class="shortcut-key">+ / -</span></div>
-                        }
-                        <div class="shortcut-row"><span>Slideshow</span><span class="shortcut-key">Space</span></div>
-                        <div class="shortcut-row"><span>Details</span><span class="shortcut-key">I</span></div>
-                        <div class="shortcut-row"><span>Close</span><span class="shortcut-key">Esc</span></div>
-                    </div>
-                </div>
+                <AssetInfoPanel Asset="CurrentAsset"
+                                IsVideo="IsCurrentVideo"
+                                ShowKeyboardShortcuts="true"
+                                SelectedParams="_selectedParams"
+                                SelectedParamsChanged="HandleSelectedParamsChanged"
+                                OnClose="ToggleInfo" />
             </div>
         </div>
     </div>
@@ -396,7 +233,6 @@
     private System.Timers.Timer? _autoPlayTimer;
     private float _autoPlayInterval = 5f;
     private bool _wasVisible;
-    private string? _currentSampler;
     private HashSet<string> _selectedParams = new();
 
     // Pan & Zoom state
@@ -417,14 +253,11 @@
     private const double MaxZoom = 5.0;
     private const double ZoomStep = 0.15;
 
-    private ImageEntity? CurrentAsset => Assets.Count > 0 && _currentIndex >= 0 && _currentIndex < Assets.Count 
+    private ImageEntity? CurrentAsset => _currentIndex >= 0 && _currentIndex < Assets.Count 
         ? Assets[_currentIndex] 
         : null;
 
     private bool IsCurrentVideo => CurrentAsset?.Path != null && IsVideoFile(CurrentAsset.Path);
-
-    private bool CanGoPrevious => _currentIndex > 0 || CurrentPage > 1;
-    private bool CanGoNext => _currentIndex < Assets.Count - 1 || CurrentPage < PageCount;
 
     private bool IsVideoFile(string path)
     {
@@ -433,56 +266,10 @@
         return VideoExtensions.Contains(extension);
     }
 
-    private bool HasWorkflowForMode(ModeType mode)
+    private void HandleSelectedParamsChanged(HashSet<string> selectedParams)
     {
-        // ComfyUI only - check if there's a workflow for the current model base and requested mode
-        if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null)
-        {
-            var currentBase = State.State.Generation.WorkflowBase;
-            return State.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
-        }
-        
-        return false;
-    }
-
-    private Workflow? GetWorkflowForMode(ModeType mode)
-    {
-        if (State.State.Generation.Workflows == null) return null;
-        
-        var currentBase = State.State.Generation.WorkflowBase;
-        return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
-    }
-
-    private void SendImageTo(bool img2img)
-    {
-        if (CurrentAsset == null) return;
-
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(CurrentAsset.Path)}";
-        if (img2img) Session.CanvasImageData = data;
-        else Session.UpscaleImageData = data;
-
-        var target = img2img ? "Img2Img" : "Upscale";
-        Snackbar.Add($"Image sent to {target}", Severity.Success);
-    }
-
-    private void SendImageToImg2Vid()
-    {
-        if (CurrentAsset == null) return;
-
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(CurrentAsset.Path)}";
-        Session.Img2VidInputImage = data;
-        
-        // Find the Img2Vid workflow for the current model base
-        var workflow = GetWorkflowForMode(ModeType.Img2Vid);
-        if (workflow != null)
-        {
-            NavManager.NavigateTo($"/comfyui/img2vid/{workflow.Id}");
-            Snackbar.Add("Image sent to Img2Vid", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add("No Img2Vid workflow found for current model base", Severity.Warning);
-        }
+        _selectedParams = selectedParams;
+        StateHasChanged();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -491,7 +278,7 @@
         {
             _currentIndex = Math.Clamp(StartIndex, 0, Assets.Count - 1);
             ResetZoom();
-            await LoadAssetMetadata();
+            _selectedParams.Clear();
         }
     }
 
@@ -510,16 +297,6 @@
         _wasVisible = IsVisible;
     }
 
-    private async Task LoadAssetMetadata()
-    {
-        if (CurrentAsset == null) return;
-
-        if (CurrentAsset.SamplerId > 0)
-            _currentSampler = await DB.GetSampler(CurrentAsset.SamplerId);
-        else
-            _currentSampler = null;
-    }
-
     private string GetAssetUrl(ImageEntity asset)
     {
         if (string.IsNullOrWhiteSpace(asset?.Path)) return string.Empty;
@@ -532,37 +309,6 @@
         {
             return string.Empty;
         }
-    }
-
-    private void ToggleParam(string param)
-    {
-        if (_selectedParams.Contains(param))
-            _selectedParams.Remove(param);
-        else
-            _selectedParams.Add(param);
-        
-        if (param == "Width" && _selectedParams.Contains("Width"))
-            _selectedParams.Add("Height");
-        else if (param == "Width")
-            _selectedParams.Remove("Height");
-    }
-
-    private void SendSelectedTo(bool isImg2Img)
-    {
-        if (CurrentAsset == null || _selectedParams.Count == 0)
-        {
-            Snackbar.Add("Select parameters to send by clicking on them", Severity.Warning);
-            return;
-        }
-
-        foreach (var param in _selectedParams)
-        {
-            M.SetGenerationParameter(CurrentAsset, param, isImg2Img);
-        }
-
-        var target = isImg2Img ? "Img2Img" : "Txt2Img";
-        Snackbar.Add($"Sent {_selectedParams.Count} parameter(s) to {target}", Severity.Success);
-        _selectedParams.Clear();
     }
 
     private async Task SetBodyScrollLock(bool locked)
@@ -611,8 +357,11 @@
         }
         else if (CurrentPage < PageCount)
         {
-            // Load next page and go to first item
+            // Set index to -1 temporarily to hide current asset during page load
             _isLoadingPage = true;
+            _currentIndex = -1;
+            StateHasChanged(); // Force re-render with no asset showing
+            await Task.Delay(10); // Small delay to ensure render completes
             await OnPageChange.InvokeAsync(CurrentPage + 1);
             _currentIndex = 0;
             _isLoadingPage = false;
@@ -620,10 +369,13 @@
         }
         else
         {
-            // Cycle back to the first page and first item
+            // Cycle back to first page
             if (PageCount > 1)
             {
                 _isLoadingPage = true;
+                _currentIndex = -1;
+                StateHasChanged();
+                await Task.Delay(10);
                 await OnPageChange.InvokeAsync(1);
                 _isLoadingPage = false;
             }
@@ -643,8 +395,11 @@
         }
         else if (CurrentPage > 1)
         {
-            // Load previous page and go to last item
+            // Set index to -1 temporarily to hide current asset during page load
             _isLoadingPage = true;
+            _currentIndex = -1;
+            StateHasChanged(); // Force re-render with no asset showing
+            await Task.Delay(10); // Small delay to ensure render completes
             await OnPageChange.InvokeAsync(CurrentPage - 1);
             _currentIndex = Assets.Count - 1;
             _isLoadingPage = false;
@@ -652,10 +407,13 @@
         }
         else
         {
-            // Cycle back to the last page and last item
+            // Cycle back to last page
             if (PageCount > 1)
             {
                 _isLoadingPage = true;
+                _currentIndex = -1;
+                StateHasChanged();
+                await Task.Delay(10);
                 await OnPageChange.InvokeAsync(PageCount);
                 _isLoadingPage = false;
             }
@@ -668,7 +426,6 @@
     {
         ResetZoom();
         _selectedParams.Clear();
-        await LoadAssetMetadata();
     }
 
     private void ToggleInfo() => _showInfo = !_showInfo;

@@ -56,7 +56,7 @@
                     <button class="action-btn @(Video.Favorite ? "active" : "")" @onclick="ToggleFavorite" title="@(Video.Favorite ? "Remove from Favorites" : "Add to Favorites")">
                         <i class="@(Video.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
                     </button>
-                    <button class="action-btn" @onclick="ShowVideoInfo" title="View Info">
+                    <button class="action-btn" @onclick="ToggleInfoDrawer" title="View Info">
                         <i class="fa-solid fa-info"></i>
                     </button>
                 </div>
@@ -70,7 +70,7 @@
                         {
                             <span class="info-item">
                                 <i class="fa-solid fa-expand"></i>
-                                @Video.Width�@Video.Height
+                                @Video.Width×@Video.Height
                             </span>
                         }
                         @if (Video.FrameCount > 0)
@@ -155,6 +155,11 @@
     </div>
 </div>
 
+<!-- Info Drawer -->
+<AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" 
+                 Image="_imageEntity" 
+                 IsVideo="true" />
+
 @code {
     [Parameter] public GeneratedVideo Video { get; set; }
     [Parameter] public int Index { get; set; }
@@ -170,6 +175,8 @@
     private bool _isSelected;
     private bool _isHovered;
     private bool _isMenuOpen;
+    private bool _showInfoDrawer;
+    private Data.Entities.Image? _imageEntity;
 
     protected override void OnInitialized()
     {
@@ -179,7 +186,6 @@
 
     protected override void OnParametersSet()
     {
-        // Update selection state whenever Video parameter changes (e.g., page navigation)
         UpdateSelectionState();
     }
 
@@ -220,13 +226,11 @@
 
     private string GetVideoUrl()
     {
-        // Prefer base64 data for display
         if (!string.IsNullOrWhiteSpace(Video.VideoData))
         {
             return $"data:video/mp4;base64,{Video.VideoData}";
         }
         
-        // Fall back to file path
         if (!string.IsNullOrWhiteSpace(Video.FilePath))
         {
             try
@@ -257,7 +261,6 @@
 
     private async Task HandleMouseLeave()
     {
-        // Don't clear hover if menu is open
         if (!_isMenuOpen)
         {
             _isHovered = false;
@@ -286,7 +289,6 @@
             Video.Score = 3;
         }
         
-        // Update in database if persisted
         if (Video.Id > 0)
         {
             var image = await DB.GetImageById(Video.Id);
@@ -306,7 +308,6 @@
     {
         Video.Score = score;
         
-        // Update in database if persisted
         if (Video.Id > 0)
         {
             var image = await DB.GetImageById(Video.Id);
@@ -321,12 +322,34 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private void ShowVideoInfo()
+    private async Task ToggleInfoDrawer()
     {
-        var parameters = new DialogParameters();
-        parameters.Add("Video", Video);
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        DialogService.Show<VideoInfoDialog>("Video Info", parameters, options);
+        // Load image entity from database if available
+        if (Video.Id > 0 && _imageEntity == null)
+        {
+            _imageEntity = await DB.GetImageById(Video.Id);
+        }
+        
+        // For session videos without database entry, create a temporary entity
+        if (_imageEntity == null)
+        {
+            _imageEntity = new Data.Entities.Image
+            {
+                Path = Video.FilePath,
+                Width = Video.Width,
+                Height = Video.Height,
+                Prompt = Video.Prompt,
+                NegativePrompt = Video.NegativePrompt,
+                Seed = Video.Seed,
+                Steps = Video.Steps,
+                CfgScale = Video.CfgScale,
+                DateCreated = Video.DateCreated,
+                Favorite = Video.Favorite,
+                Score = Video.Score
+            };
+        }
+        
+        _showInfoDrawer = !_showInfoDrawer;
     }
 
     private void OpenFileInExplorer()
@@ -346,7 +369,6 @@
     {
         _isSelected = isChecked;
         
-        // Integrate with the unified selection system (same as ImageCard)
         if (Video.Id > 0)
         {
             if (isChecked)
@@ -374,7 +396,6 @@
     {
         if (Video.Id > 0)
         {
-            // Convert GeneratedVideo back to Image for the dialog
             var image = await DB.GetImageById(Video.Id);
             if (image != null)
             {
@@ -391,9 +412,7 @@
                         await DB.UpdateImage(img);
                     }
                     
-                    // Notify that the video has been updated
                     await OnVideoChanged.InvokeAsync(Video);
-                    
                     Snackbar.Add("Video project was changed.", Severity.Success);
                 }
             }

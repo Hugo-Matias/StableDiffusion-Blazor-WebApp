@@ -166,30 +166,54 @@ namespace BlazorWebApp.Services
             {
                 _img2vidParams = _state.ParametersImg2Vid;
 
-                // Ensure seed is set
-                if (_img2vidParams.Seed == -1)
-                {
-                    _img2vidParams.Seed = new Random().Next(0, int.MaxValue);
-                }
+                // Generate random seed ONLY for API call, don't update UI
+                var actualSeed = _img2vidParams.Seed == -1 
+                    ? new Random().Next(0, int.MaxValue) 
+                    : (long)_img2vidParams.Seed;
 
-                GeneratedVideos = await _router.PostImg2Vid(_img2vidParams);
+                // Create a copy of parameters with the actual seed for the API
+                var paramsForGeneration = new Img2VidParameters
+                {
+                    Prompt = _img2vidParams.Prompt,
+                    NegativePrompt = _img2vidParams.NegativePrompt,
+                    Image = _img2vidParams.Image,
+                    Seed = actualSeed,
+                    Steps = _img2vidParams.Steps,
+                    CfgScale = _img2vidParams.CfgScale,
+                    Width = _img2vidParams.Width,
+                    Height = _img2vidParams.Height,
+                    Length = _img2vidParams.Length,
+                    FrameRate = _img2vidParams.FrameRate,
+                    MotionAmplitude = _img2vidParams.MotionAmplitude,
+                    Shift = _img2vidParams.Shift,
+                    SamplerName = _img2vidParams.SamplerName,
+                    Scheduler = _img2vidParams.Scheduler,
+                    Loras = _img2vidParams.Loras,
+                    FrameInterpolation = _img2vidParams.FrameInterpolation,
+                    Comfy = _img2vidParams.Comfy
+                };
+
+                GeneratedVideos = await _router.PostImg2Vid(paramsForGeneration);
 
                 if (_state.State.Generation.IsInterrupted)
                 {
                     throw new Exception("Generation Canceled!");
                 }
 
-                // Store the seed used for this generation
-                _state.State.Generation.Seed = (long)_img2vidParams.Seed;
+                // Store the actual seed used (not -1)
+                _state.State.Generation.Seed = actualSeed;
 
                 if (_backend.OutputPaths.SaveSamples && GeneratedVideos?.Videos?.Count > 0)
                 {
-                    await SaveVideos(GeneratedVideos);
+                    await SaveVideos(GeneratedVideos, actualSeed);
+                    
+                    // Add videos to session for history display
+                    _session.AddSessionVideos(GeneratedVideos.Videos);
                 }
             }
             catch (Exception e)
             {
-                await Console.Out.WriteLineAsync($"Video generation error: {e}");
+                _logger.LogError(e, "Video generation error");
             }
 
             _progress.IsConverging = false;
@@ -202,7 +226,7 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Saves generated videos to the output directory
         /// </summary>
-        private async Task SaveVideos(GeneratedVideos videos)
+        private async Task SaveVideos(GeneratedVideos videos, long actualSeed)
         {
             var saveDir = _io.CreateDirectory(GetVideoSaveFolder());
             var fileIndex = GetVideoFileIndex(saveDir.FullName);
@@ -210,7 +234,7 @@ namespace BlazorWebApp.Services
             foreach (var video in videos.Videos)
             {
                 fileIndex++;
-                var filename = GenerateVideoFilename(fileIndex);
+                var filename = GenerateVideoFilename(fileIndex, actualSeed);
                 var videoPath = Path.Combine(saveDir.FullName, filename);
 
                 // If video data is available as base64, decode and save
@@ -227,11 +251,11 @@ namespace BlazorWebApp.Services
                     video.FilePath = videoPath;
                 }
 
-                // Update video metadata
+                // Update video metadata with actual seed used
                 video.Filename = filename;
                 video.Prompt = _img2vidParams.Prompt;
                 video.NegativePrompt = _img2vidParams.NegativePrompt;
-                video.Seed = (long)_img2vidParams.Seed;
+                video.Seed = actualSeed;
                 video.Steps = (int)_img2vidParams.Steps;
                 video.CfgScale = (float)_img2vidParams.CfgScale;
                 video.Sampler = _img2vidParams.SamplerName;
@@ -321,7 +345,7 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Generates a filename for the video based on parameters
         /// </summary>
-        private string GenerateVideoFilename(int fileIndex)
+        private string GenerateVideoFilename(int fileIndex, long actualSeed)
         {
             var pattern = _backend.OutputPaths.FilenamePattern;
             var filename = $"{fileIndex.ToString().PadLeft(5, '0')}";
@@ -329,7 +353,7 @@ namespace BlazorWebApp.Services
             if (!string.IsNullOrWhiteSpace(pattern))
             {
                 filename += "-" + pattern
-                    .Replace("[seed]", _img2vidParams.Seed.ToString())
+                    .Replace("[seed]", actualSeed.ToString())
                     .Replace("[steps]", _img2vidParams.Steps.ToString())
                     .Replace("[cfg]", _img2vidParams.CfgScale.ToString())
                     .Replace("[sampler]", _img2vidParams.SamplerName ?? "euler");

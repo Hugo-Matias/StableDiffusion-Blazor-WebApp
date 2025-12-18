@@ -91,6 +91,13 @@
                                    Size="Size.Small">
                             Rotate
                         </MudButton>
+                        <MudButton OnClick="ToggleLockAspectRatio"
+                                   StartIcon="@(_isAspectRatioLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open")"
+                                   Color="@(_isAspectRatioLocked ? Color.Success : Color.Default)"
+                                   Size="Size.Small"
+                                   Title="@(_isAspectRatioLocked ? "Unlock aspect ratio" : "Lock to square aspect ratio")">
+                            Lock
+                        </MudButton>
                         <MudButton OnClick="@(() => ScaleResolution(2.0))"
                                    StartIcon="fa-solid fa-expand"
                                    Size="Size.Small">
@@ -222,6 +229,7 @@
     private MarkupString _resizeInfo;
     private MarkupString _seedVR2ResizeInfo;
     private List<ModelBase> _guidanceBases = new() { ModelBase.Flux };
+    private bool _isAspectRatioLocked = false;
 
     protected async override Task OnInitializedAsync()
     {
@@ -329,10 +337,47 @@
         }
     }
 
+    private void ToggleLockAspectRatio()
+    {
+        _isAspectRatioLocked = !_isAspectRatioLocked;
+        
+        // When locking, set both dimensions to the larger of the two
+        if (_isAspectRatioLocked)
+        {
+            var currentWidth = Parameters.Width ?? 512;
+            var currentHeight = Parameters.Height ?? 512;
+            var largerDimension = Math.Max(currentWidth, currentHeight);
+            
+            Parameters.Width = largerDimension;
+            Parameters.Height = largerDimension;
+            RefreshHighresInfo();
+            RefreshSeedVR2Info();
+        }
+        
+        StateHasChanged();
+    }
+
     private void HandleResolutionChanged(int value, bool isWidth)
     {
-        if (isWidth) Parameters.Width = value;
-        else Parameters.Height = value;
+        if (isWidth)
+        {
+            Parameters.Width = value;
+            // If locked, update height to match width
+            if (_isAspectRatioLocked)
+            {
+                Parameters.Height = value;
+            }
+        }
+        else
+        {
+            Parameters.Height = value;
+            // If locked, update width to match height
+            if (_isAspectRatioLocked)
+            {
+                Parameters.Width = value;
+            }
+        }
+        
         RefreshHighresInfo();
         RefreshSeedVR2Info();
     }
