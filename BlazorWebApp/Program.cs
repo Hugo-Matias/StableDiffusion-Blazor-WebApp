@@ -54,12 +54,10 @@ builder.Services.AddSingleton<ISessionService, SessionService>();
 
 // Orchestrator service - interface-only (no consumers need concrete type)
 builder.Services.AddSingleton<IOrchestratorService, OrchestratorService>();
-
-// Image service - interface-only (IImageService.Progress has setter for WebSocket updates)
+// Image service - interface-only (IImageService.Progress has setter for WebSocket updates)
 builder.Services.AddSingleton<IImageService, ImageService>();
 
 builder.Services.AddSingleton<CsvService>();
-
 // Progress service - interface-only
 builder.Services.AddSingleton<IProgressService, ProgressService>();
 
@@ -71,6 +69,12 @@ builder.Services.AddSingleton<IRouterService, RouterService>();
 
 // Workflow service - interface-only
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
+
+// Component registry for fragment-to-component mapping
+builder.Services.AddSingleton<IComponentRegistry, ComponentRegistry>();
+
+// Generation parameter service for dynamic parameter management
+builder.Services.AddScoped<IGenerationParameterService, GenerationParameterService>();
 
 builder.Services.AddSingleton<DynamicPromptsService>();
 

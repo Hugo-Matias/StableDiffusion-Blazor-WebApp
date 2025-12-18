@@ -61,5 +61,29 @@ namespace BlazorWebApp.Services
             SubgraphContext context, 
             Dictionary<string, object> globalParams, 
             Func<string, Task<string>>? loraPathResolver = null);
+
+        /// <summary>
+        /// Parses the UI schema from a fragment's #meta block.
+        /// Returns null if no UI schema is defined.
+        /// </summary>
+        FragmentSchema? ParseFragmentSchema(string fragmentText);
+
+        /// <summary>
+        /// Gets the UI schema for a fragment file.
+        /// Uses cached schemas when available.
+        /// </summary>
+        FragmentSchema? GetFragmentSchema(string fragmentFile);
+
+        /// <summary>
+        /// Gets all fragment schemas for a workflow's pipeline.
+        /// Returns a dictionary keyed by fragment ID.
+        /// </summary>
+        Dictionary<string, FragmentSchema> GetWorkflowFragmentSchemas(Workflow workflow);
+
+        /// <summary>
+        /// Clears the fragment schema cache.
+        /// Call after fragments are modified.
+        /// </summary>
+        void ClearSchemaCache();
     }
 }

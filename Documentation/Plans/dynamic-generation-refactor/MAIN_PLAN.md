@@ -1,7 +1,7 @@
 # Dynamic Generation Page Refactor - Implementation Plan
 
 ## Status
-**Current Phase:** Planning
+**Current Phase:** Execution (Phase 3)
 
 ---
 
@@ -418,6 +418,12 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 | Planning | Removed legacy support - clean migration only |
 | Planning | Clarified fragment-to-component linking rules |
 | Planning | Added AppSettings simplification to goals |
+| Phase 1 | Created FRAGMENT_SCHEMA_GUIDE.md |
+| Phase 1 | Defined 12 field types, 8 initial components |
+| Phase 2 | Created GenerationParameters, FragmentParameters, SourceAsset models |
+| Phase 2 | Created FragmentSchema, ParameterConstraints, FieldSchema models |
+| Phase 2 | Created ComponentRegistry and GenerationParameterService |
+| Phase 2 | Extended WorkflowService with schema parsing |
 
 ---
 
