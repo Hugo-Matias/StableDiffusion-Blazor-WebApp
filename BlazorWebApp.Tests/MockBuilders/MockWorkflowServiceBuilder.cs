@@ -11,12 +11,16 @@ namespace BlazorWebApp.Tests.MockBuilders;
 public class MockWorkflowServiceBuilder
 {
     private Mock<ILogger<WorkflowService>> _mockLogger;
+    private Mock<ILogger<WorkflowTemplateParser>> _mockParserLogger;
+    private Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
     private IOService _ioService;
     private string _tempPath;
 
     public MockWorkflowServiceBuilder()
     {
         _mockLogger = new Mock<ILogger<WorkflowService>>();
+        _mockParserLogger = new Mock<ILogger<WorkflowTemplateParser>>();
+        _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
         _tempPath = Path.Combine(Path.GetTempPath(), $"WorkflowTests_{Guid.NewGuid()}");
     }
 
@@ -48,12 +52,16 @@ public class MockWorkflowServiceBuilder
         var mockConfig = new Mock<IConfiguration>();
         _ioService = new IOService(mockConfig.Object);
 
+        // Create the parser and schema service
+        var templateParser = new WorkflowTemplateParser(_mockParserLogger.Object);
+        var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
+
         // Note: WorkflowService uses hardcoded path from AppContext.BaseDirectory
         // For testing, we'd need to either:
         // 1. Make the path injectable
         // 2. Create files in the expected location
         // 3. Use reflection to override
-        return new WorkflowService(_ioService, _mockLogger.Object);
+        return new WorkflowService(_ioService, _mockLogger.Object, templateParser, fragmentSchemaService);
     }
 
     public void Cleanup()

@@ -6,9 +6,9 @@
 *@
 @inject ISettingsService Settings
 
-<ResolutionPanel Width="@Width"
+<ResolutionPanel Width="@_localWidth"
                  WidthChanged="HandleWidthChanged"
-                 Height="@Height"
+                 Height="@_localHeight"
                  HeightChanged="HandleHeightChanged" />
 
 <MudItem xs="6">
@@ -54,21 +54,28 @@
     /// </summary>
     [Parameter] public EventCallback OnChanged { get; set; }
     
+    // Local state that syncs with parameters
+    private int _localWidth;
+    private int _localHeight;
     private int _localBatchSize;
     
     protected override void OnParametersSet()
     {
+        _localWidth = Width;
+        _localHeight = Height;
         _localBatchSize = BatchSize;
     }
     
     private async Task HandleWidthChanged(int value)
     {
+        _localWidth = value;
         await WidthChanged.InvokeAsync(value);
         await OnChanged.InvokeAsync();
     }
     
     private async Task HandleHeightChanged(int value)
     {
+        _localHeight = value;
         await HeightChanged.InvokeAsync(value);
         await OnChanged.InvokeAsync();
     }

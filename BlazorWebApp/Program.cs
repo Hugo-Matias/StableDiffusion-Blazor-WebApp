@@ -68,6 +68,8 @@ builder.Services.AddSingleton<IResourcesService, ResourcesService>();
 builder.Services.AddSingleton<IRouterService, RouterService>();
 
 // Workflow service - interface-only
+builder.Services.AddSingleton<WorkflowTemplateParser>();
+builder.Services.AddSingleton<IFragmentSchemaService, FragmentSchemaService>();
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 
 // Component registry for fragment-to-component mapping

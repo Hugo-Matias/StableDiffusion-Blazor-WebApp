@@ -12,8 +12,8 @@
     <div class="d-flex align-items-center pa-2" 
          style="@($"cursor: {(_localIsActive ? "pointer" : "default")};")">
         <MudSwitch T="bool" 
-                   Value="@_localIsActive"
-                   ValueChanged="OnActiveToggled"
+                   @bind-Checked="_localIsActive"
+                   @bind-Checked:after="OnActiveToggled"
                    Color="Color.Primary"
                    Class="mr-2" />
         
@@ -83,23 +83,37 @@
     
     private bool _localIsActive;
     private bool _isExpanded;
+    private bool _isInitialized = false;
     
     protected override void OnParametersSet()
     {
+        var previousIsActive = _localIsActive;
         _localIsActive = IsActive;
-        // Keep expanded state in sync - if not active, ensure collapsed
+        
+        // On first initialization, use DefaultExpanded
+        if (!_isInitialized)
+        {
+            _isExpanded = _localIsActive && DefaultExpanded;
+            _isInitialized = true;
+        }
+        // If IsActive changed from parent (not from user click)
+        else if (previousIsActive != _localIsActive)
+        {
+            // Expand when activating, collapse when deactivating
+            _isExpanded = _localIsActive;
+        }
+        
+        // Ensure collapsed if not active
         if (!_localIsActive)
         {
             _isExpanded = false;
         }
     }
     
-    private async Task OnActiveToggled(bool newValue)
+    private async Task OnActiveToggled()
     {
-        _localIsActive = newValue;
-        
         // Expand when activating, collapse when deactivating
-        _isExpanded = newValue;
+        _isExpanded = _localIsActive;
         
         await IsActiveChanged.InvokeAsync(_localIsActive);
     }

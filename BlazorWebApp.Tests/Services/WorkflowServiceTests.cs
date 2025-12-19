@@ -11,10 +11,21 @@ namespace BlazorWebApp.Tests.Services;
 public class WorkflowServiceTests
 {
     private readonly Mock<ILogger<WorkflowService>> _mockLogger;
+    private readonly Mock<ILogger<WorkflowTemplateParser>> _mockParserLogger;
+    private readonly Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
 
     public WorkflowServiceTests()
     {
         _mockLogger = new Mock<ILogger<WorkflowService>>();
+        _mockParserLogger = new Mock<ILogger<WorkflowTemplateParser>>();
+        _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
+    }
+
+    private WorkflowService CreateWorkflowService(IIOService ioService)
+    {
+        var templateParser = new WorkflowTemplateParser(_mockParserLogger.Object);
+        var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
+        return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService);
     }
 
     #region Workflow Model Tests
@@ -103,7 +114,7 @@ public class WorkflowServiceTests
         var ioService = new IOService(mockConfig.Object);
 
         // Act & Assert - Constructor should not throw
-        var service = new WorkflowService(ioService, _mockLogger.Object);
+        var service = CreateWorkflowService(ioService);
         Assert.NotNull(service);
     }
 
@@ -225,7 +236,7 @@ public class WorkflowServiceTests
         // Arrange
         var mockConfig = new Mock<IConfiguration>();
         var ioService = new IOService(mockConfig.Object);
-        var service = new WorkflowService(ioService, _mockLogger.Object);
+        var service = CreateWorkflowService(ioService);
 
         var fragmentText = @"
 #meta
@@ -280,7 +291,7 @@ public class WorkflowServiceTests
         // Arrange
         var mockConfig = new Mock<IConfiguration>();
         var ioService = new IOService(mockConfig.Object);
-        var service = new WorkflowService(ioService, _mockLogger.Object);
+        var service = CreateWorkflowService(ioService);
 
         var fragmentText = @"
 #meta
@@ -306,7 +317,7 @@ public class WorkflowServiceTests
         // Arrange
         var mockConfig = new Mock<IConfiguration>();
         var ioService = new IOService(mockConfig.Object);
-        var service = new WorkflowService(ioService, _mockLogger.Object);
+        var service = CreateWorkflowService(ioService);
 
         var fragmentText = @"{ ""test"": ""node"" }";
 
@@ -323,7 +334,7 @@ public class WorkflowServiceTests
         // Arrange
         var mockConfig = new Mock<IConfiguration>();
         var ioService = new IOService(mockConfig.Object);
-        var service = new WorkflowService(ioService, _mockLogger.Object);
+        var service = CreateWorkflowService(ioService);
 
         var fragmentText = @"
 #meta
@@ -380,7 +391,7 @@ public class WorkflowServiceTests
         // Arrange
         var mockConfig = new Mock<IConfiguration>();
         var ioService = new IOService(mockConfig.Object);
-        var service = new WorkflowService(ioService, _mockLogger.Object);
+        var service = CreateWorkflowService(ioService);
 
         var fragmentText = @"
 #meta
