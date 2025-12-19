@@ -1,532 +1,303 @@
 # Fragment UI Schema Guide
 
-This guide documents the UI schema format used in fragment `#meta` blocks to define how fragments render in the generation page.
+This guide documents the complete workflow template and fragment system, including the UI schema format used in fragment `#meta` blocks. It serves as the primary reference for creating new workflow templates and understanding the data flow from Scriban templates to the Generate page.
+
+**Last Updated:** Phase 12 - Service Cleanup &amp; Optimization
 
 ---
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Schema Structure](#schema-structure)
-3. [UI Object Properties](#ui-object-properties)
-4. [Parameters Object (Designed Components)](#parameters-object-designed-components)
-5. [Fields Array (Dynamic Rendering)](#fields-array-dynamic-rendering)
-6. [Field Types Reference](#field-types-reference)
-7. [Source References](#source-references)
+1. [Architecture Overview](#architecture-overview)
+2. [Data Flow Summary](#data-flow-summary)
+3. [Workflow Template Structure](#workflow-template-structure)
+4. [Fragment Structure](#fragment-structure)
+5. [UI Schema Reference](#ui-schema-reference)
+6. [FragmentType Enum](#fragmenttype-enum)
+7. [Service Responsibilities](#service-responsibilities)
 8. [Component Registry](#component-registry)
-9. [Examples](#examples)
-10. [Migration Guide](#migration-guide)
+9. [Default Value Resolution](#default-value-resolution)
+10. [Complete Examples](#complete-examples)
+11. [Creating New Features](#creating-new-features)
+12. [Known Issues &amp; Future Improvements](#known-issues--future-improvements)
 
 ---
 
-## Overview
+## Architecture Overview
 
-The UI schema enables workflow-driven component rendering. Each fragment declares:
-- **What component** renders it (or dynamic fields as fallback)
-- **Constraints** for parameters (min, max, step)
-- **Behavior flags** (collapsible, chainable)
-- **Data sources** for select fields
+```
++-----------------------------------------------------------------+
+|                   Workflow Template (.sbn)                      |
+|  +---------+ +----------+ +-----------------------------------+ |
+|  | Assets  | | Sources  | |           Pipeline[]              | |
+|  | (models)| |(img/vid) | |  id, fragment, parameters(def)   | |
+|  +---------+ +----------+ +-----------------------------------+ |
++-----------------------------------------------------------------+
+                              |
+         +--------------------+--------------------+
+         |                    |                    |
+         v                    v                    v
++--------------------+ +--------------------+ +--------------------+
+|  Fragment #meta   | |  Fragment #meta   | |  Fragment #meta   |
+|  +--------------+ | |  +--------------+ | |  +--------------+ |
+|  | type        | | |  | type        | | |  | (no ui)     | |
+|  | outputs     | | |  | outputs     | | |  | outputs     | |
+|  | conditions  | | |  | conditions  | | |  |             | |
+|  | ui: {...}   | | |  | ui: {...}   | | |  |             | |
+|  +--------------+ | +--------------------+ +--------------------+
+| (designed comp)  |  (dynamic fields)      (utility fragment)
++--------------------+
+         |                    |
+         v                    v
++-----------------------------------------------------------------+
+|                    GenerationParameters                          |
+|  +---------------+ +---------------+ +---------------+ +------+ |
+|  |  Fragments    | |    Assets     | |   Sources     | | Loras| |
+|  | Dict<id,val>  | | Dict<id,val>  | | Dict<id,val>  | | List | |
+|  +---------------+ +---------------+ +---------------+ +------+ |
++-----------------------------------------------------------------+
+                              |
+                              v
++-----------------------------------------------------------------+
+|                    ImageService / RouterService                  |
+|  GenerationParameters -> ComfyUI Workflow API -> Generated Output |
++-----------------------------------------------------------------+
+```
 
 ### Key Principles
 
 | Principle | Description |
 |-----------|-------------|
 | **Single Source of Truth** | Fragment defines both node JSON and UI schema |
-| **Hybrid Rendering** | Designed components for mature nodes, dynamic fields for new/experimental |
 | **Template Owns Defaults** | Pipeline `parameters` provide default values, not the schema |
 | **Schema Owns Constraints** | Min/max/step live in schema, not AppSettings |
+| **Type-Based Discovery** | `FragmentType` enum replaces string heuristics |
+| **Hybrid Rendering** | Designed components for mature nodes, dynamic fields for experimental |
 
 ---
 
-## Schema Structure
+## Data Flow Summary
 
-The UI schema lives in the fragment's `#meta` block under the `ui` property:
+### 1. Workflow Loading (Application Start)
 
 ```
-#meta
-{
-  "outputs": { ... },
-  "conditions": { ... },
-  "ui": {
-    // UI schema goes here
-  }
-}
-#end
-
-// Fragment node JSON below...
+WorkflowService.GetWorkflows()
+    +-- For each .sbn in Templates/
+        |-- ParseWorkflowTemplate() -> Workflow object
+        |-- ParseAssetsFromTemplate() -> workflow.Assets
+        |-- ParseSourcesFromTemplate() -> workflow.Sources
+        +-- ParsePipelineFromTemplate() -> workflow.Pipeline (IDs + fragment refs)
 ```
 
-### Complete Schema Structure
+### 2. Workflow Selection (User navigates to /generate/{id})
+
+```
+Generate.razor.OnWorkflowSelected()
+    +-- GenerationParameterService.InitializeFromWorkflow(workflow)
+        |-- Clear existing Fragments, Assets, Sources
+        |-- Initialize Assets from workflow.Assets[].DefaultValue
+        |-- Initialize Sources from workflow.Sources[]
+        +-- InitializeFragmentsFromPipeline(workflow)
+            +-- WorkflowService.GetPipelineSteps(workflow) [CACHED]
+                +-- For each step:
+                    |-- Create FragmentParameters
+                    |-- Priority 1: step.DefaultValues (from template)
+                    |-- Priority 2: ParseFragmentDefaults(fragmentFile)
+                    +-- Set IsActive = !schema.DefaultCollapsed
+```
+
+### 3. Fragment Discovery (Generate.razor)
+
+```
+DiscoverFragments()
+    +-- For each Parameters.Fragments:
+        |-- WorkflowService.GetFragmentSchema(fragmentFile) [CACHED]
+        +-- Switch on schema.Type:
+            |-- FragmentType.Sampler -> _samplerFragmentId
+            |-- FragmentType.Latent -> _latentFragmentId
+            |-- FragmentType.Prompts -> _promptsFragmentId
+            +-- FragmentType.Enhancement -> optional fragments
+```
+
+### 4. Generation (User clicks Generate)
+
+```
+ImageService.GenerateImagesAsync(parameters, workflow)
+    |-- BuildLegacyParametersFromGenerationParams() [TEMPORARY - Phase 10 removes]
+    |   +-- Extract values from fragments -> SharedParameters
+    |-- RouterService.PostTxt2Img(legacyParams)
+    |   +-- ComfyUIService.PostTxt2Img(dto, clientId, workflow)
+    |       +-- WorkflowService.ComposeWorkflowFromTemplate(workflow, dto)
+    |           +-- For each Pipeline step:
+    |               |-- Merge globalParams + step.parameters
+    |               |-- RenderFragment(fragmentText, context)
+    |               |   |-- Extract #meta block
+    |               |   |-- EvaluateConditions()
+    |               |   +-- Render Scriban template
+    |               +-- composer.AddRenderedFragment()
+    +-- SaveImages() -> Database
+```
+
+---
+
+## Workflow Template Structure
+
+Workflow templates are Scriban files (`.sbn`) in `Workflows/Templates/`.
+
+### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Title` | string | Display name in UI |
+| `Base` | enum | Model base: `Flux`, `SD`, `ZImage`, `Wan`, `Qwen` |
+| `Mode` | enum | Generation mode: `txt2img`, `img2img`, `img2vid` |
+| `Pipeline` | array | Ordered list of fragment steps |
+
+### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Assets` | array | Model/resource selections |
+| `Sources` | array | Input images/videos required |
+
+### Complete Template Example
 
 ```json
 {
-  "ui": {
-    "component": "ComponentName | null",
-    "title": "Display Title",
-    "icon": "fa-solid fa-icon-name",
-    "collapsible": true,
-    "defaultCollapsed": false,
-    "chainable": false,
-    "order": 100,
-    
-    // For designed components:
-    "parameters": {
-      "param_name": { 
-        "min": 0, 
-        "max": 100, 
-        "step": 1,
-        "source": "Backend.Samplers"
+  "Title": "Txt2Img",
+  "Base": "ZImage",
+  "Mode": "txt2img",
+  "Assets": [
+    { 
+      "parameter": "Model", 
+      "label": "Model", 
+      "type": "DiffusionModel", 
+      "default": "z_image_turbo.safetensors", 
+      "order": 1, 
+      "columnSize": 4 
+    },
+    { 
+      "parameter": "Clip", 
+      "label": "CLIP", 
+      "type": "Clip", 
+      "default": "qwen_3_4b.safetensors", 
+      "order": 2, 
+      "columnSize": 4 
+    },
+    { 
+      "parameter": "Vae", 
+      "label": "VAE", 
+      "type": "Vae", 
+      "default": "ae.safetensors", 
+      "order": 3, 
+      "columnSize": 4 
+    }
+  ],
+  "Sources": [
+    { 
+      "id": "source_image", 
+      "label": "Input Image", 
+      "type": "image", 
+      "required": true,
+      "parameter": "Image" 
+    }
+  ],
+  "Pipeline": [
+    {
+      "id": "loader_zimage",
+      "fragment": "load-diffusion.sbn",
+      "parameters": {
+        "unet_name": {{ Model | json }},
+        "clip_name": {{ Clip | json }},
+        "clip_type": "lumina2",
+        "vae_name": {{ Vae | json }}
       }
     },
-    
-    // For dynamic rendering (when component is null):
-    "fields": [
-      { "parameter": "...", "type": "...", ... }
-    ]
-  }
-}
-```
-
----
-
-## UI Object Properties
-
-### Required Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `title` | string | Display title shown in the UI |
-
-### Optional Properties
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `component` | string \| null | null | Blazor component name. If null, uses dynamic fields |
-| `icon` | string | null | FontAwesome icon class for the header |
-| `collapsible` | boolean | true | Whether the form section can collapse |
-| `defaultCollapsed` | boolean | false | Initial collapsed state |
-| `chainable` | boolean | false | Whether multiple instances can be added |
-| `order` | integer | 100 | Display order (lower = higher) |
-| `parameters` | object | {} | Parameter constraints for designed components |
-| `fields` | array | [] | Field definitions for dynamic rendering |
-
-### Behavior Flags
-
-#### `collapsible`
-When true, renders with an expand/collapse header. Recommended for optional or advanced features.
-
-#### `chainable`
-When true, shows "Add Another" button. Used for samplers, detailers, ControlNets, etc.
-Each instance gets a unique ID: `main_sampler`, `refiner_sampler`, etc.
-
-#### `order`
-Controls display order in the parameters panel. Suggested ranges:
-- 0-49: Core inputs (prompts, sources)
-- 50-99: Primary generation (sampler, resolution)
-- 100-149: Enhancement (upscale, detailer)
-- 150+: Advanced/experimental
-
----
-
-## Parameters Object (Designed Components)
-
-When using a designed component (`component` is not null), the `parameters` object provides constraints that the component reads at runtime.
-
-### Structure
-
-```json
-"parameters": {
-  "parameter_name": {
-    "min": number,
-    "max": number,
-    "step": number,
-    "source": "string"
-  }
-}
-```
-
-### Properties
-
-| Property | Type | Used By | Description |
-|----------|------|---------|-------------|
-| `min` | number | slider, numeric | Minimum allowed value |
-| `max` | number | slider, numeric | Maximum allowed value |
-| `step` | number | slider, numeric | Increment step |
-| `source` | string | select | Data source reference (see [Source References](#source-references)) |
-
-### Example
-
-```json
-"parameters": {
-  "steps": { "min": 1, "max": 150, "step": 1 },
-  "cfg": { "min": 1, "max": 30, "step": 0.5 },
-  "sampler_name": { "source": "Backend.Samplers" },
-  "scheduler": { "source": "Backend.Schedulers" },
-  "seed": { "min": -1 }
-}
-```
-
-### Component Usage
-
-The designed component receives the schema and reads constraints:
-
-```razor
-@* SamplerForm.razor *@
-<MudSlider T="int" 
-           @bind-Value="Values.Steps"
-           Min="@Schema.Parameters["steps"].Min"
-           Max="@Schema.Parameters["steps"].Max"
-           Step="@Schema.Parameters["steps"].Step">
-    Steps: @Values.Steps
-</MudSlider>
-```
-
----
-
-## Fields Array (Dynamic Rendering)
-
-When `component` is null, the `fields` array defines what UI elements to render dynamically.
-
-### Structure
-
-```json
-"fields": [
-  {
-    "parameter": "string",      // Required: maps to fragment parameter
-    "label": "string",          // Required: display label
-    "type": "string",           // Required: field type
-    "column": 6,                // Optional: grid column width (1-12)
-    // Type-specific properties...
-  }
-]
-```
-
-### Common Properties
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `parameter` | string | ? | Fragment parameter name |
-| `label` | string | ? | Display label |
-| `type` | string | ? | Field type (see [Field Types](#field-types-reference)) |
-| `column` | integer | | Grid column width (1-12), default 6 |
-| `tooltip` | string | | Help text shown on hover |
-| `visible` | string | | Condition expression for visibility |
-
----
-
-## Field Types Reference
-
-### `slider`
-
-Numeric slider with min/max range.
-
-```json
-{
-  "parameter": "steps",
-  "label": "Steps",
-  "type": "slider",
-  "min": 1,
-  "max": 150,
-  "step": 1,
-  "column": 6
-}
-```
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `min` | number | ? | Minimum value |
-| `max` | number | ? | Maximum value |
-| `step` | number | | Increment step, default 1 |
-
----
-
-### `numeric`
-
-Numeric input field.
-
-```json
-{
-  "parameter": "seed",
-  "label": "Seed",
-  "type": "numeric",
-  "min": -1,
-  "column": 6
-}
-```
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `min` | number | | Minimum value |
-| `max` | number | | Maximum value |
-
----
-
-### `seed`
-
-Specialized seed input with randomize/restore buttons.
-
-```json
-{
-  "parameter": "seed",
-  "label": "Seed",
-  "type": "seed",
-  "column": 6
-}
-```
-
-Renders a numeric field with -1 minimum and action buttons.
-
----
-
-### `select`
-
-Dropdown selection.
-
-```json
-{
-  "parameter": "sampler_name",
-  "label": "Sampler",
-  "type": "select",
-  "source": "Backend.Samplers",
-  "column": 6
-}
-```
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `source` | string | ?* | Data source reference |
-| `options` | array | ?* | Static options array |
-
-*One of `source` or `options` is required.
-
-**Static options:**
-```json
-{
-  "parameter": "mode",
-  "label": "Mode",
-  "type": "select",
-  "options": ["fast", "quality", "balanced"],
-  "column": 6
-}
-```
-
----
-
-### `text`
-
-Single-line text input.
-
-```json
-{
-  "parameter": "prefix",
-  "label": "Filename Prefix",
-  "type": "text",
-  "column": 12
-}
-```
-
----
-
-### `textarea`
-
-Multi-line text input.
-
-```json
-{
-  "parameter": "prompt",
-  "label": "Prompt",
-  "type": "textarea",
-  "rows": 4,
-  "column": 12
-}
-```
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `rows` | integer | | Number of visible rows, default 3 |
-
----
-
-### `checkbox`
-
-Boolean toggle.
-
-```json
-{
-  "parameter": "log_to_console",
-  "label": "Log to Console",
-  "type": "checkbox",
-  "column": 6
-}
-```
-
----
-
-### `switch`
-
-Boolean toggle (alternative style).
-
-```json
-{
-  "parameter": "enabled",
-  "label": "Enable Feature",
-  "type": "switch",
-  "column": 12
-}
-```
-
----
-
-### `color`
-
-Color picker.
-
-```json
-{
-  "parameter": "tint_color",
-  "label": "Tint Color",
-  "type": "color",
-  "column": 6
-}
-```
-
----
-
-### `file`
-
-File selection (for models, images, etc.).
-
-```json
-{
-  "parameter": "model",
-  "label": "Model",
-  "type": "file",
-  "source": "Backend.Upscalers",
-  "column": 6
-}
-```
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `source` | string | ? | Asset type source |
-
----
-
-### `resolution`
-
-Paired width/height sliders with aspect ratio controls.
-
-```json
-{
-  "parameter": "resolution",
-  "label": "Resolution",
-  "type": "resolution",
-  "min": 64,
-  "max": 4096,
-  "step": 8,
-  "column": 12
-}
-```
-
-Maps to two values: `{parameter}_width` and `{parameter}_height`.
-
----
-
-### `group`
-
-Visual grouping of related fields (no parameter).
-
-```json
-{
-  "type": "group",
-  "label": "Advanced Settings",
-  "collapsible": true,
-  "fields": [
-    { "parameter": "...", ... },
-    { "parameter": "...", ... }
+    {
+      "id": "latent",
+      "fragment": "empty-latent.sbn",
+      "parameters": {
+        "width": {{ Width ?? 872 | json }},
+        "height": {{ Height ?? 1248 | json }},
+        "batch_size": {{ BatchSize ?? 1 | json }},
+        "latent_class": "EmptySD3LatentImage"
+      }
+    },
+    {
+      "id": "prompts",
+      "fragment": "prompts.sbn",
+      "parameters": {
+        "positive": {{ Prompt | json }},
+        "negative": {{ NegativePrompt | json }}
+      }
+    },
+    {
+      "id": "main_sampler",
+      "fragment": "sampler.sbn",
+      "parameters": {
+        "sampler_id": "sampler_main",
+        "sampler_name": {{ SamplerName ?? "euler" | json }},
+        "scheduler": {{ Scheduler ?? "simple" | json }},
+        "steps": {{ Steps ?? 9 | json }},
+        "cfg": {{ CfgScale ?? 1 | json }},
+        "seed": {{ Seed ?? 42 | json }}
+      }
+    },
+    {
+      "id": "vae_decode",
+      "fragment": "vae-decode.sbn",
+      "parameters": {}
+    },
+    {
+      "id": "save",
+      "fragment": "save.sbn",
+      "parameters": {}
+    }
   ]
 }
 ```
 
----
+### Asset Types
 
-## Source References
+| Type | Description | ComfyUI Model Path |
+|------|-------------|-------------------|
+| `DiffusionModel` | UNET/DiT models | `diffusion_models/` |
+| `Checkpoint` | Full checkpoint | `checkpoints/` |
+| `Clip` | Text encoder | `text_encoders/` |
+| `Vae` | VAE model | `vae/` |
+| `Lora` | LoRA adapter | `loras/` |
+| `ControlNet` | ControlNet model | `controlnet/` |
+| `Upscaler` | Upscale model | `upscale_models/` |
 
-Source references link select fields to data from services.
+### Source Definition
 
-### Format
+Sources define input images/videos for img2img/img2vid workflows:
 
-```
-ServiceName.PropertyName
-```
-
-### Available Sources
-
-| Source | Description |
-|--------|-------------|
-| `Backend.Samplers` | List of available samplers |
-| `Backend.Schedulers` | List of available schedulers |
-| `Backend.Upscalers` | List of upscale models |
-| `Backend.Models` | List of checkpoint models |
-| `Backend.Vaes` | List of VAE models |
-| `Backend.Clips` | List of CLIP models |
-| `Backend.Loras` | List of LoRA models |
-| `Backend.ControlNets` | List of ControlNet models |
-| `Backend.DetectionModels` | List of detection models (YOLO, etc.) |
-
-### Custom Sources
-
-For fragment-specific options, use static `options` array instead of `source`.
-
----
-
-## Component Registry
-
-### Naming Conventions
-
-- Component names match the Blazor component filename without extension
-- Use PascalCase: `SamplerForm`, `DetailerForm`, `UpscaleForm`
-- Suffix with `Form` for clarity
-
-### Registered Components
-
-| Component Name | Fragment(s) | Description |
-|----------------|-------------|-------------|
-| `PromptsForm` | prompts.sbn | Positive/negative prompt fields with autocomplete |
-| `SamplerForm` | sampler.sbn | Sampler, scheduler, steps, CFG, seed |
-| `ResolutionForm` | (embedded) | Width/height with quick presets |
-| `LoraForm` | (embedded) | LoRA selection and strength |
-| `UpscaleForm` | upscale.sbn, upscale-seedvr2.sbn | Upscale model and settings |
-| `DetailerForm` | detailer-core.sbn | Face/hand detailer settings |
-| `ConditioningVariationForm` | conditioning-variation.sbn | CV switch point |
-| `SeedVarianceEnhancerForm` | seed-variance-enhancer.sbn | SVE settings |
-
-### Registration
-
-Components are registered in `ComponentRegistry.cs`:
-
-```csharp
-public class ComponentRegistry
+```json
 {
-    private readonly Dictionary<string, Type> _components = new()
-    {
-        ["PromptsForm"] = typeof(PromptsForm),
-        ["SamplerForm"] = typeof(SamplerForm),
-        // ... etc
-    };
-    
-    public Type? GetComponent(string name) 
-        => _components.GetValueOrDefault(name);
+  "id": "source_image",
+  "label": "Input Image",
+  "type": "image",
+  "required": true,
+  "parameter": "Image"
 }
 ```
 
+- `id`: Unique ID, used as key in `GenerationParameters.Sources`
+- `label`: Display label in UI
+- `type`: `"image"` or `"video"`
+- `required`: Whether generation requires this input
+- `parameter`: Maps to template variable (e.g., `{{ Image | json }}`)
+
 ---
 
-## Examples
+## Fragment Structure
 
-### Example 1: Designed Component (Sampler)
+Fragments are reusable Scriban files in `Workflows/Fragments/`.
 
-```json
+### Complete Fragment Example
+
+```scriban
 #meta
 {
   "outputs": {
@@ -536,15 +307,16 @@ public class ComponentRegistry
     "required": ["Fragments.{{ sampler_id }}.IsActive"]
   },
   "ui": {
+    "type": "sampler",
     "component": "SamplerForm",
     "title": "Sampler",
     "icon": "fa-solid fa-dice",
+    "order": 50,
     "collapsible": true,
     "chainable": true,
-    "order": 50,
     "parameters": {
-      "sampler_name": { "source": "Backend.Samplers" },
-      "scheduler": { "source": "Backend.Schedulers" },
+      "sampler_name": { "source": "KSampler", "input_name": "sampler_name" },
+      "scheduler": { "source": "KSampler", "input_name": "scheduler" },
       "steps": { "min": 1, "max": 150, "step": 1 },
       "cfg": { "min": 1, "max": 30, "step": 0.5 },
       "seed": { "min": -1 }
@@ -552,248 +324,534 @@ public class ComponentRegistry
   }
 }
 #end
-```
 
-### Example 2: Dynamic Fields (Experimental Node)
-
-```json
-#meta
 {
-  "outputs": {
-    "image_output": {"node": "experimental_node", "index": 0}
-  },
-  "conditions": {
-    "required": ["Fragments.experimental.IsActive"]
-  },
-  "ui": {
-    "component": null,
-    "title": "Experimental Feature",
-    "icon": "fa-solid fa-flask",
-    "collapsible": true,
-    "order": 150,
-    "fields": [
-      {
-        "parameter": "strength",
-        "label": "Effect Strength",
-        "type": "slider",
-        "min": 0,
-        "max": 1,
-        "step": 0.01,
-        "column": 6
-      },
-      {
-        "parameter": "mode",
-        "label": "Processing Mode",
-        "type": "select",
-        "options": ["fast", "quality", "balanced"],
-        "column": 6
-      },
-      {
-        "parameter": "iterations",
-        "label": "Iterations",
-        "type": "numeric",
-        "min": 1,
-        "max": 10,
-        "column": 6
-      },
-      {
-        "parameter": "debug",
-        "label": "Debug Output",
-        "type": "checkbox",
-        "column": 6
-      }
-    ]
-  }
-}
-#end
-```
-
-### Example 3: Utility Fragment (No UI)
-
-```json
-#meta
-{
-  "outputs": {
-    "model_output": {"node": "model_loader", "index": 0},
-    "clip_output": {"node": "model_loader", "index": 1},
-    "vae_output": {"node": "model_loader", "index": 2}
-  }
-}
-#end
-```
-
-No `ui` block = no form rendered. Used for loaders, wiring, save nodes, etc.
-
-### Example 4: Prompts Fragment
-
-```json
-#meta
-{
-  "outputs": {
-    "positive_output": {"node": "text_positive", "index": 0},
-    "negative_output": {"node": "text_negative", "index": 0}
-  },
-  "ui": {
-    "component": "PromptsForm",
-    "title": "Prompts",
-    "order": 10,
-    "collapsible": false,
-    "parameters": {
-      "positive": { },
-      "negative": { }
+  "{{ sampler_id }}": {
+    "inputs": {
+      "sampler_name": {{ sampler_name | json }},
+      "scheduler": {{ scheduler | json }},
+      "steps": {{ steps | json }},
+      "cfg": {{ cfg | json }},
+      "seed": {{ seed | json }},
+      "model": {{ get_ref ((scope ?? "") + "model_output") }},
+      "positive": {{ get_ref ((scope ?? "") + "positive_output") }},
+      "negative": {{ get_ref ((scope ?? "") + "negative_output") }},
+      "latent_image": {{ get_ref ((scope ?? "") + "latent_output") }}
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": {{ title ?? "Sampler" | json }}
     }
   }
 }
-#end
 ```
 
-### Example 5: Chainable Detailer
+### #meta Block Properties
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `outputs` | Yes | Maps output names to node references |
+| `conditions` | No | Conditional inclusion rules |
+| `ui` | No | UI rendering configuration |
+
+### outputs Object
+
+Registers fragment outputs for `get_ref()` function:
 
 ```json
-#meta
-{
-  "outputs": {
-    "image_output": {"node": "{{ scope }}detailer", "index": 0}
-  },
-  "conditions": {
-    "required": ["Fragments.{{ scope }}detailer.IsActive"]
-  },
-  "ui": {
-    "component": "DetailerForm",
-    "title": "Detailer",
-    "icon": "fa-solid fa-face-smile",
-    "collapsible": true,
-    "defaultCollapsed": true,
-    "chainable": true,
-    "order": 120,
-    "parameters": {
-      "detailer_detection_model": { "source": "Backend.DetectionModels" },
-      "detailer_sampler": { "source": "Backend.Samplers" },
-      "detailer_scheduler": { "source": "Backend.Schedulers" },
-      "detailer_steps": { "min": 1, "max": 100, "step": 1 },
-      "detailer_cfg": { "min": 1, "max": 30, "step": 0.5 },
-      "detailer_denoise": { "min": 0, "max": 1, "step": 0.01 },
-      "detailer_seed": { "min": -1 }
-    }
+"outputs": {
+  "model_output": { "node": "unet_loader", "index": 0 },
+  "clip_output": { "node": "clip_loader", "index": 0 }
+}
+```
+
+- `node`: The node ID within this fragment
+- `index`: Output slot index (usually 0)
+
+### conditions Object
+
+Controls fragment inclusion based on runtime state:
+
+```json
+"conditions": {
+  "required": ["Fragments.seed_vr2.IsActive", "SeedVR2.IsActive"],
+  "excluded_if": ["DisableUpscale"]
+}
+```
+
+- `required`: ALL conditions must be true for fragment to render
+- `excluded_if`: ANY condition being true excludes the fragment
+
+### Scriban Functions Available
+
+| Function | Usage | Description |
+|----------|-------|-------------|
+| `json` | `{{ value \| json }}` | Serializes value to JSON |
+| `get_ref` | `{{ get_ref "output_name" }}` | Gets `[nodeId, index]` array |
+
+---
+
+## UI Schema Reference
+
+The `ui` object in `#meta` defines how the fragment renders in the Generate page.
+
+### UI Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `type` | string | `"unknown"` | Fragment purpose (see [FragmentType](#fragmenttype-enum)) |
+| `component` | string | `null` | Designed component name, or null for dynamic |
+| `title` | string | Required | Display title |
+| `icon` | string | `null` | FontAwesome icon class |
+| `collapsible` | bool | `true` | Can be collapsed |
+| `defaultCollapsed` | bool | `false` | Initial state; if `true`, fragment starts inactive |
+| `chainable` | bool | `false` | Multiple instances allowed |
+| `order` | int | `100` | Display order (lower = higher) |
+| `parameters` | object | `{}` | Constraints for designed components |
+| `fields` | array | `null` | Field definitions for dynamic rendering |
+
+### Order Ranges
+
+| Range | Purpose | Examples |
+|-------|---------|----------|
+| 0-49 | Core inputs | Prompts (10), LoRAs (15) |
+| 50-99 | Primary generation | Latent (20), Sampler (50) |
+| 100-149 | Enhancement | Upscale (100), Detailer (120) |
+| 150+ | Advanced/experimental | Custom nodes |
+
+### Dynamic Source Configuration
+
+For select fields that query ComfyUI:
+
+```json
+"parameters": {
+  "sampler_name": { 
+    "source": "KSampler",
+    "input_name": "sampler_name"
   }
 }
-#end
+```
+
+- `source`: ComfyUI node class_type to query
+- `input_name`: The node input field name
+
+The service calls ComfyUI's `/object_info/{source}` API and extracts options from `input.required.{input_name}` or `input.optional.{input_name}`.
+
+---
+
+## FragmentType Enum
+
+Added in Phase 12 for schema-based fragment discovery.
+
+```csharp
+public enum FragmentType
+{
+    Unknown = 0,     // Default
+    Loader,          // Model loading (no direct UI)
+    Prompts,         // Positive/negative prompts
+    Latent,          // Resolution/latent image settings
+    Sampler,         // KSampler, sampling settings
+    Conditioning,    // CLIP text encode, conditioning
+    Enhancement,     // Upscale, detailer, etc.
+    Output,          // Save, preview nodes
+    Utility          // Helper fragments with no UI
+}
+```
+
+### Usage in Fragment Schema
+
+```json
+"ui": {
+  "type": "sampler",
+  "component": "SamplerForm",
+  ...
+}
+```
+
+### Discovery in Generate.razor
+
+```csharp
+switch (schema.Type)
+{
+    case FragmentType.Sampler:
+        _samplerFragmentId ??= fragmentId;
+        break;
+    case FragmentType.Latent:
+        _latentFragmentId ??= fragmentId;
+        break;
+    case FragmentType.Enhancement:
+        // Renders as optional collapsible section
+        break;
+}
 ```
 
 ---
 
-## Migration Guide
+## Service Responsibilities
 
-### From Current System to Schema-Based
+### WorkflowService
 
-#### Before (NODE_INTEGRATION_GUIDE approach)
+**Responsibility:** Template parsing, fragment loading, workflow composition
 
-1. Create fragment file
-2. Create `*Parameters.cs` model
-3. Add property to `Txt2ImgParameters.cs`
-4. Add property to `Txt2ImgComfyUI.cs`
-5. Update `ParameterMapper.cs`
-6. Create `*Form.razor` component
-7. Add to `GenerateFormTxt2Img.razor`
-8. Update `ImageService.cs`
+| Method | Purpose |
+|--------|---------|
+| `GetWorkflows()` | Load all workflow templates from disk |
+| `RefreshWorkflows()` | Reload templates, clear caches |
+| `ComposeWorkflowFromTemplate()` | Render complete ComfyUI workflow JSON |
+| `ParseFragmentSchema()` | Extract UI schema from fragment |
+| `GetFragmentSchema()` | Get cached schema for fragment file |
+| `ParsePipelineSteps()` | Extract pipeline steps from template |
+| `GetPipelineSteps()` | Get cached pipeline steps for workflow |
+| `ParseFragmentDefaults()` | Extract default values from fragment body |
+| `ClearSchemaCache()` | Invalidate schema cache |
+| `ClearPipelineCache()` | Invalidate pipeline cache |
 
-#### After (Schema-Based approach)
+### GenerationParameterService
 
-1. Create fragment file with `#meta.ui` schema
-2. (Optional) Create designed component if complex UI needed
-3. (Optional) Register component in `ComponentRegistry.cs`
+**Responsibility:** Runtime parameter state management
 
-**That's it!** Parameters flow automatically through `GenerationParameters.Fragments`.
+| Method | Purpose |
+|--------|---------|
+| `InitializeFromWorkflow()` | Set up parameters from workflow template |
+| `SetFragmentValue()` | Update a fragment parameter value |
+| `SetFragmentActive()` | Enable/disable a fragment |
+| `GetFragmentValue&lt;T&gt;()` | Read a typed parameter value |
+| `ResolveSourceOptionsAsync()` | Query ComfyUI for dynamic select options |
+| `CreateSnapshot()` | Clone current state for persistence |
+| `LoadParameters()` | Restore state from snapshot |
 
-### Adding a New Node
+### ImageService
 
-1. **Create the fragment** with complete `#meta` block:
+**Responsibility:** Generation orchestration, file saving, database persistence
+
+| Method | Purpose |
+|--------|---------|
+| `GenerateImagesAsync()` | New unified image generation |
+| `GenerateVideoAsync()` | New unified video generation |
+| `GetImages()` | Legacy image generation (to be removed) |
+| `GetVideo()` | Legacy video generation (to be removed) |
+| `SaveImages()` | Save to disk and database |
+
+### RouterService
+
+**Responsibility:** Route generation requests to ComfyUI
+
+| Method | Purpose |
+|--------|---------|
+| `PostTxt2Img()` | Route text-to-image request |
+| `PostImg2Img()` | Route image-to-image request |
+| `PostImg2Vid()` | Route image-to-video request |
+
+---
+
+## Component Registry
+
+Designed components are registered in `ComponentRegistry.cs`:
+
+```csharp
+private readonly Dictionary<string, Type> _components = new()
+{
+    ["PromptsForm"] = typeof(PromptsForm),
+    ["SamplerForm"] = typeof(SamplerForm),
+    ["LatentForm"] = typeof(LatentForm),
+    ["LoraForm"] = typeof(LoraForm),
+    ["SeedVR2Form"] = typeof(SeedVR2Form),
+    ["DetailerForm"] = typeof(DetailerForm),
+    ["ConditioningVariationForm"] = typeof(ConditioningVariationForm),
+    ["SeedVarianceEnhancerForm"] = typeof(SeedVarianceEnhancerForm),
+};
+```
+
+### Component Naming Convention
+
+- Match fragment file: `sampler.sbn` &rarr; `SamplerForm`
+- PascalCase with `Form` suffix
+- Located in `Components/Shared/Generation/Fragments/`
+
+---
+
+## Default Value Resolution
+
+**Priority Order** (documented in `IGenerationParameterService`):
+
+1. **Step Parameters** - Values from workflow template's Pipeline step
    ```json
+   "parameters": {
+     "steps": {{ Steps ?? 20 | json }}
+   }
+   ```
+
+2. **Fragment Defaults** - Values from fragment template body
+   ```scriban
+   "steps": {{ steps ?? 20 | json }}
+   ```
+
+3. **Dynamic Options (UI only)** - First available option from ComfyUI
+   - Handled in UI components, not service
+   - Requires async API calls
+
+### Why Dynamic Options in UI?
+
+- `InitializeFromWorkflow()` is synchronous for simplicity
+- ComfyUI API calls are async
+- UI components handle async naturally in `OnInitializedAsync()`
+
+---
+
+## Complete Examples
+
+### Example 1: Utility Fragment (No UI)
+
+```scriban
+#meta
+{
+  "outputs": {
+    "model_output": { "node": "unet_loader", "index": 0 },
+    "clip_output": { "node": "clip_loader", "index": 0 },
+    "vae_output": { "node": "vae_loader", "index": 0 }
+  }
+}
+#end
+
+{
+  "unet_loader": {
+    "inputs": {
+      "unet_name": {{ unet_name | json }},
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": { "title": "Load Diffusion Model" }
+  },
+  ...
+}
+```
+
+### Example 2: Enhancement Fragment (Optional)
+
+```scriban
+#meta
+{
+  "outputs": {
+    "image_output": { "node": "seedvr2_upscaler", "index": 0 }
+  },
+  "conditions": {
+    "required": ["SeedVR2.IsActive"]
+  },
+  "ui": {
+    "type": "enhancement",
+    "component": "SeedVR2Form",
+    "title": "SeedVR2 Upscale",
+    "icon": "fa-solid fa-expand",
+    "order": 100,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "parameters": {
+      "seedvr2_model": { "source": "SeedVR2LoadDiTModel", "input_name": "model" },
+      "seedvr2_resolution": { "min": 512, "max": 4096, "step": 64 }
+    }
+  }
+}
+#end
+...
+```
+
+### Example 3: Dynamic Fields (No Designed Component)
+
+```json
+"ui": {
+  "type": "enhancement",
+  "component": null,
+  "title": "Experimental Feature",
+  "collapsible": true,
+  "fields": [
+    {
+      "parameter": "strength",
+      "label": "Effect Strength",
+      "type": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "column": 6
+    },
+    {
+      "parameter": "mode",
+      "label": "Mode",
+      "type": "select",
+      "options": ["fast", "quality"],
+      "column": 6
+    }
+  ]
+}
+```
+
+---
+
+## Creating New Features
+
+### Adding a New Node (2-3 files)
+
+1. **Create the fragment** (`Workflows/Fragments/my-node.sbn`):
+   ```scriban
    #meta
    {
-     "outputs": { ... },
-     "conditions": { "required": ["Fragments.my_node.IsActive"] },
+     "outputs": {
+       "image_output": { "node": "my_node", "index": 0 }
+     },
+     "conditions": {
+       "required": ["MyNode.IsActive"]
+     },
      "ui": {
+       "type": "enhancement",
        "component": null,
        "title": "My New Node",
        "collapsible": true,
-       "fields": [ ... ]
+       "defaultCollapsed": true,
+       "fields": [
+         { "parameter": "strength", "label": "Strength", "type": "slider", "min": 0, "max": 1, "step": 0.01, "column": 6 }
+       ]
      }
    }
    #end
+   
+   {
+     "my_node": {
+       "inputs": {
+         "strength": {{ strength ?? 0.5 | json }},
+         "image": {{ get_ref "image_output" }}
+       },
+       "class_type": "MyCustomNode",
+       "_meta": { "title": "My Node" }
+     }
+   }
    ```
 
-2. **Add to workflow template**:
+2. **Add to workflow template** (`Workflows/Templates/.../txt2img.sbn`):
    ```json
    {
      "id": "my_node",
      "fragment": "my-node.sbn",
      "parameters": {
-       "strength": 0.5,
-       "mode": "quality"
+       "strength": {{ MyNode.Strength ?? 0.5 | json }}
      }
    }
    ```
 
-3. **Done!** The UI renders automatically.
+3. **(Optional) Create designed component** if complex UI needed:
+   - Create `MyNodeForm.razor`
+   - Register in `ComponentRegistry.cs`
+   - Update fragment: `"component": "MyNodeForm"`
 
 ### Upgrading to Designed Component
 
 When a node matures and needs custom UI:
 
-1. Create `MyNodeForm.razor` component
+1. Create `Components/Shared/Generation/Fragments/MyNodeForm.razor`
 2. Register in `ComponentRegistry.cs`
 3. Update fragment schema: `"component": "MyNodeForm"`
-4. Move field definitions to `"parameters"` object
+4. Move field definitions to `"parameters"` object with constraints
 
 ---
 
-## Validation Rules
+## Known Issues &amp; Future Improvements
 
-### Schema Validation
+### Current Limitations
 
-The `WorkflowService` validates schemas on parse:
+| Issue | Impact | Planned Resolution |
+|-------|--------|-------------------|
+| Legacy *Parameters classes | Tight coupling | Phase 10: Remove entirely |
+| ImageService builds legacy DTOs | Extra conversion layer | Phase 10: RouterService accepts GenerationParameters |
+| Dynamic options require async | Fallback in UI, not service | Acceptable trade-off |
+| Some hardcoded fragment IDs | `"prompts"`, `"main_sampler"` | Phase 8: Use FragmentType discovery |
 
-| Rule | Error |
-|------|-------|
-| `title` is required | "Fragment UI schema missing required 'title' property" |
-| `fields` required when `component` is null | "Dynamic rendering requires 'fields' array" |
-| Field `parameter` is required | "Field missing required 'parameter' property" |
-| Field `type` is required | "Field missing required 'type' property" |
-| Field `type` must be valid | "Unknown field type: {type}" |
-| Slider fields need `min` and `max` | "Slider field '{parameter}' requires 'min' and 'max'" |
-| Select fields need `source` or `options` | "Select field '{parameter}' requires 'source' or 'options'" |
+### Phase 10: Legacy Deprecation
 
-### Runtime Validation
+Will remove:
+- `Txt2ImgParameters`, `Img2ImgParameters`, `Img2VidParameters`
+- `Txt2ImgComfyUI`, `Img2ImgComfyUI`, `Img2VidComfyUI`
+- `SharedParameters`
+- `ParameterMapper.cs`
+- Legacy generation pages
 
-Components validate values against schema constraints:
+### Abstraction Improvements Needed
 
-```csharp
-// In DynamicField.razor
-if (value < field.Min || value > field.Max)
+1. **Generate.razor hardcoding** - Still has some hardcoded fragment ID lookups
+   - Solution: Use `FragmentType` enum exclusively
+
+2. **ImageService legacy bridge** - `BuildLegacyParametersFromGenerationParams()`
+   - Solution: Phase 10 removes this entirely
+
+3. **Sampler/Scheduler sources** - Still use `Backend.Samplers` magic strings
+   - Solution: Standardize to ComfyUI node queries
+
+### State Improvements Needed
+
+1. **Async initialization** - Consider making `InitializeFromWorkflow` async
+   - Would allow dynamic option resolution in service
+
+2. **State versioning** - No version number in persisted state
+   - Could cause issues on schema changes
+
+### Isolation Improvements Needed
+
+1. **RouterService still uses typed DTOs**
+   - Solution: Phase 10 - Accept `GenerationParameters` directly
+
+2. **ImageService knows about fragment IDs**
+   - Some coupling via `GetFragment("prompts")` etc.
+   - Acceptable for now, could be abstracted later
+
+---
+
+## Quick Reference
+
+### Fragment #meta Template
+
+```json
+#meta
 {
-    // Show validation error
+  "outputs": {
+    "output_name": { "node": "node_id", "index": 0 }
+  },
+  "conditions": {
+    "required": ["FeatureName.IsActive"]
+  },
+  "ui": {
+    "type": "enhancement",
+    "component": "ComponentName",
+    "title": "Display Title",
+    "icon": "fa-solid fa-icon",
+    "order": 100,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "chainable": false,
+    "parameters": {
+      "param_name": { "min": 0, "max": 100, "step": 1 }
+    }
+  }
 }
+#end
 ```
 
+### FragmentType Values
+
+| Type | Use For |
+|------|---------|
+| `loader` | Model loading fragments |
+| `prompts` | Prompt encoding |
+| `latent` | Resolution/latent settings |
+| `sampler` | Sampling settings |
+| `conditioning` | CLIP/conditioning |
+| `enhancement` | Upscale/detailer/optional features |
+| `output` | Save/preview nodes |
+| `utility` | Helper fragments, no UI |
+
+### Source Reference Formats
+
+| Format | Example | Description |
+|--------|---------|-------------|
+| Node query | `"source": "KSampler", "input_name": "sampler_name"` | Query ComfyUI object_info |
+| Static | `"options": ["a", "b", "c"]` | Hardcoded options |
+
 ---
 
-## Best Practices
-
-1. **Start with dynamic fields** for new nodes, upgrade to designed component when UI matures
-
-2. **Use meaningful parameter names** that match the fragment's input names
-
-3. **Group related fields** using `column` widths that sum to 12
-
-4. **Set sensible order values** to ensure logical UI flow
-
-5. **Make advanced features collapsible** with `defaultCollapsed: true`
-
-6. **Document constraints** in the schema even for designed components
-
-7. **Keep utility fragments clean** - no `ui` block needed for loaders/savers
-
----
-
-*Last Updated: Based on Dynamic Generation Refactor planning*
+*This guide is the authoritative reference for the workflow template and fragment system. Update this document when making architectural changes.*

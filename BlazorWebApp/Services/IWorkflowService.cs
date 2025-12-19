@@ -5,6 +5,21 @@ using static BlazorWebApp.Data.Enums;
 namespace BlazorWebApp.Services
 {
     /// <summary>
+    /// Represents a parsed pipeline step from a workflow template.
+    /// Contains all data needed to initialize a fragment in GenerationParameters.
+    /// </summary>
+    /// <param name="Id">The unique step ID (from "id" field in Pipeline)</param>
+    /// <param name="Fragment">The fragment file path (from "fragment" field)</param>
+    /// <param name="DefaultValues">Default parameter values extracted from the step's parameters block</param>
+    /// <param name="Order">The order of this step in the pipeline</param>
+    public record ParsedPipelineStep(
+        string Id,
+        string Fragment,
+        Dictionary<string, object?> DefaultValues,
+        int Order
+    );
+
+    /// <summary>
     /// Service for managing workflow templates and rendering.
     /// </summary>
     public interface IWorkflowService
@@ -87,6 +102,29 @@ namespace BlazorWebApp.Services
         /// <param name="fragmentFile">The fragment file path (relative to Fragments folder)</param>
         /// <returns>Dictionary of parameter names to their default values</returns>
         Dictionary<string, object?> ParseFragmentDefaults(string fragmentFile);
+
+        /// <summary>
+        /// Parses pipeline steps from a workflow's RawJson.
+        /// Extracts step IDs, fragment files, and default parameter values.
+        /// Handles Scriban template syntax using regex.
+        /// </summary>
+        /// <param name="rawJson">The workflow's RawJson content</param>
+        /// <returns>List of parsed pipeline steps with all extracted data</returns>
+        List<ParsedPipelineStep> ParsePipelineSteps(string rawJson);
+
+        /// <summary>
+        /// Gets cached pipeline steps for a workflow.
+        /// Parses and caches on first access; returns cached result on subsequent calls.
+        /// </summary>
+        /// <param name="workflow">The workflow to get pipeline steps for</param>
+        /// <returns>List of parsed pipeline steps</returns>
+        List<ParsedPipelineStep> GetPipelineSteps(Workflow workflow);
+
+        /// <summary>
+        /// Clears the pipeline step cache.
+        /// Called automatically when workflows are refreshed.
+        /// </summary>
+        void ClearPipelineCache();
 
         /// <summary>
         /// Clears the fragment schema cache.

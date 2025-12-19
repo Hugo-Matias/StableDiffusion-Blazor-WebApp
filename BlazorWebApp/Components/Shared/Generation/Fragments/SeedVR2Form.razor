@@ -178,24 +178,24 @@
     
     /// <summary>
     /// Initializes local state from fragment parameters.
-    /// Values come from:
-    /// 1. Workflow template's pipeline step parameters (e.g., {{ SeedVR2.Model ?? "default" | json }})
-    /// 2. Fragment template defaults (fallback)
-    /// If still no value, falls back to first available option from dynamic source.
+    /// 
+    /// Default value priority (see IGenerationParameterService for full documentation):
+    /// 1. Workflow template's pipeline step parameters
+    /// 2. Fragment template defaults
+    /// 3. First dynamic option (for fields with ComfyUI sources) - handled here in UI
     /// </summary>
     private void InitializeFromFragment()
     {
         var fragment = ParameterService.Current.GetFragment(FragmentId);
         if (fragment == null) return;
         
-        // For model fields with dynamic options, use first option as fallback if not set
+        // Model fields with dynamic sources: apply first-option fallback if no default
         _localModel = fragment.GetValueOrDefault<string>("seedvr2_model", null);
         if (string.IsNullOrEmpty(_localModel))
         {
-            var modelOptions = GetOptions("seedvr2_model");
-            if (modelOptions.Count > 0)
+            _localModel = GetOptions("seedvr2_model").FirstOrDefault();
+            if (_localModel != null)
             {
-                _localModel = modelOptions[0];
                 ParameterService.SetFragmentValue(FragmentId, "seedvr2_model", _localModel);
             }
         }
@@ -203,14 +203,14 @@
         _localVaeModel = fragment.GetValueOrDefault<string>("seedvr2_vae_model", null);
         if (string.IsNullOrEmpty(_localVaeModel))
         {
-            var vaeOptions = GetOptions("seedvr2_vae_model");
-            if (vaeOptions.Count > 0)
+            _localVaeModel = GetOptions("seedvr2_vae_model").FirstOrDefault();
+            if (_localVaeModel != null)
             {
-                _localVaeModel = vaeOptions[0];
                 ParameterService.SetFragmentValue(FragmentId, "seedvr2_vae_model", _localVaeModel);
             }
         }
         
+        // Numeric fields: use fragment defaults (priority 1 & 2 handled by service)
         _localResolution = fragment.GetValueOrDefault("seedvr2_resolution", 2048);
         _localBatchSize = fragment.GetValueOrDefault("seedvr2_batch_size", 1);
         _localBlocksToSwap = fragment.GetValueOrDefault("blocks_to_swap", 36);

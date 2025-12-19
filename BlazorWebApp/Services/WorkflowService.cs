@@ -16,7 +16,9 @@ namespace BlazorWebApp.Services
         private readonly IIOService _io;
         private readonly ILogger<WorkflowService> _logger;
         private readonly Dictionary<string, FragmentSchema?> _schemaCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<Guid, List<ParsedPipelineStep>> _pipelineCache = new();
         private readonly object _schemaCacheLock = new();
+        private readonly object _pipelineCacheLock = new();
 
         public WorkflowService(IIOService io, ILogger<WorkflowService> logger)
         {
@@ -42,6 +44,7 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Refreshes workflows from disk template files and attempts to preserve the current selection.
         /// This ensures that any changes to workflow templates are picked up.
+        /// Also clears schema and pipeline caches to ensure fresh data is loaded.
         /// </summary>
         /// <param name="currentWorkflowBase">The currently selected workflow base (to preserve selection)</param>
         /// <param name="currentWorkflowId">The currently selected workflow ID (to preserve selection)</param>
@@ -50,6 +53,10 @@ namespace BlazorWebApp.Services
             ModelBase? currentWorkflowBase = null,
             Guid? currentWorkflowId = null)
         {
+            // Clear caches when refreshing workflows to pick up any template changes
+            ClearSchemaCache();
+            ClearPipelineCache();
+
             try
             {
                 // Load workflows from disk
@@ -985,6 +992,16 @@ namespace BlazorWebApp.Services
         {
             var schema = new FragmentSchema();
 
+            // Optional: type (fragment purpose/category)
+            if (uiEl.TryGetProperty("type", out var typeEl) && typeEl.ValueKind == JsonValueKind.String)
+            {
+                var typeStr = typeEl.GetString();
+                if (!string.IsNullOrEmpty(typeStr) && Enum.TryParse<FragmentType>(typeStr, ignoreCase: true, out var fragmentType))
+                {
+                    schema.Type = fragmentType;
+                }
+            }
+
             // Required: title
             if (uiEl.TryGetProperty("title", out var titleEl) && titleEl.ValueKind == JsonValueKind.String)
             {
@@ -1285,7 +1302,18 @@ namespace BlazorWebApp.Services
         /// </summary>
         private List<(string Id, string Fragment)> ParsePipelineStepsFromRawJson(string rawJson)
         {
-            var result = new List<(string Id, string Fragment)>();
+            // Delegate to the public method for consistency
+            var steps = ParsePipelineSteps(rawJson);
+            return steps.Select(s => (s.Id, s.Fragment)).ToList();
+        }
+
+        /// <inheritdoc />
+        public List<ParsedPipelineStep> ParsePipelineSteps(string rawJson)
+        {
+            var result = new List<ParsedPipelineStep>();
+            
+            if (string.IsNullOrEmpty(rawJson))
+                return result;
             
             // Match each step object in Pipeline - look for "fragment": "..." patterns
             var fragmentPattern = @"""fragment""\s*:\s*""([^""]+)""";
@@ -1316,6 +1344,7 @@ namespace BlazorWebApp.Services
             // Find each step by using brace counting to handle nested objects
             var stepStart = -1;
             var braceDepth = 0;
+            var order = 0;
             
             for (var i = 0; i < pipelineContent.Length; i++)
             {
@@ -1347,8 +1376,12 @@ namespace BlazorWebApp.Services
                             var idMatch = Regex.Match(stepContent, idPattern);
                             var id = idMatch.Success ? idMatch.Groups[1].Value : "";
                             
-                            result.Add((id, fragment));
-                            _logger.LogTrace("Parsed pipeline step: id='{Id}', fragment='{Fragment}'", id, fragment);
+                            // Extract parameter defaults from step
+                            var defaults = ParseStepParameterDefaults(stepContent);
+                            
+                            result.Add(new ParsedPipelineStep(id, fragment, defaults, order++));
+                            _logger.LogTrace("Parsed pipeline step: id='{Id}', fragment='{Fragment}', defaults={DefaultCount}", 
+                                id, fragment, defaults.Count);
                         }
                         
                         stepStart = -1;
@@ -1358,6 +1391,94 @@ namespace BlazorWebApp.Services
             
             _logger.LogDebug("Parsed {Count} pipeline steps from workflow", result.Count);
             return result;
+        }
+
+        /// <summary>
+        /// Parses default values from a pipeline step's parameters object.
+        /// Handles Scriban template expressions like {{ Param ?? "default" | json }}
+        /// </summary>
+        private Dictionary<string, object?> ParseStepParameterDefaults(string stepContent)
+        {
+            var defaults = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            
+            // Find the parameters block within the step
+            var paramsMatch = Regex.Match(stepContent, @"""parameters""\s*:\s*\{", RegexOptions.Singleline);
+            if (!paramsMatch.Success)
+                return defaults;
+            
+            // Extract parameters block content using brace counting
+            var startIndex = paramsMatch.Index + paramsMatch.Length;
+            var braceCount = 1;
+            var endIndex = startIndex;
+            
+            for (var i = startIndex; i < stepContent.Length && braceCount > 0; i++)
+            {
+                if (stepContent[i] == '{') braceCount++;
+                else if (stepContent[i] == '}') braceCount--;
+                endIndex = i;
+            }
+            
+            var paramsContent = stepContent.Substring(startIndex, endIndex - startIndex);
+            
+            // Pattern to match parameter definitions with defaults:
+            // "param_name": {{ SomeVar ?? "default" | json }}
+            // "param_name": {{ SomeVar ?? 123 | json }}
+            // "param_name": {{ SomeVar ?? true | json }}
+            var paramPattern = @"""(\w+)""\s*:\s*\{\{\s*[\w.]+\s*\?\?\s*([^|]+?)\s*\|";
+            
+            var matches = Regex.Matches(paramsContent, paramPattern);
+            foreach (Match match in matches)
+            {
+                var paramName = match.Groups[1].Value.Trim();
+                var defaultValueStr = match.Groups[2].Value.Trim();
+                
+                if (string.IsNullOrEmpty(paramName) || defaults.ContainsKey(paramName))
+                    continue;
+                
+                var parsedValue = ParseScribanDefaultValue(defaultValueStr);
+                if (parsedValue != null)
+                {
+                    defaults[paramName] = parsedValue;
+                }
+            }
+            
+            return defaults;
+        }
+
+        /// <inheritdoc />
+        public List<ParsedPipelineStep> GetPipelineSteps(Workflow workflow)
+        {
+            if (workflow == null || string.IsNullOrEmpty(workflow.RawJson))
+                return new List<ParsedPipelineStep>();
+
+            lock (_pipelineCacheLock)
+            {
+                if (_pipelineCache.TryGetValue(workflow.Id, out var cached))
+                {
+                    _logger.LogTrace("Returning cached pipeline steps for workflow {WorkflowId}", workflow.Id);
+                    return cached;
+                }
+            }
+
+            var steps = ParsePipelineSteps(workflow.RawJson);
+
+            lock (_pipelineCacheLock)
+            {
+                _pipelineCache[workflow.Id] = steps;
+            }
+
+            _logger.LogDebug("Cached {Count} pipeline steps for workflow {WorkflowId}", steps.Count, workflow.Id);
+            return steps;
+        }
+
+        /// <inheritdoc />
+        public void ClearPipelineCache()
+        {
+            lock (_pipelineCacheLock)
+            {
+                _pipelineCache.Clear();
+            }
+            _logger.LogDebug("Pipeline cache cleared");
         }
 
         /// <inheritdoc />

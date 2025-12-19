@@ -1,8 +1,6 @@
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using System.Collections.Concurrent;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services
 {
@@ -77,7 +75,7 @@ namespace BlazorWebApp.Services
             // Initialize sources from workflow definition
             InitializeSourcesFromWorkflow(workflow, current);
 
-            // Parse pipeline to extract fragments using regex (RawJson contains Scriban templates)
+            // Parse pipeline to extract fragments (delegates to WorkflowService)
             try
             {
                 InitializeFragmentsFromPipeline(workflow, current);
@@ -126,22 +124,22 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Parses the workflow's RawJson to extract pipeline fragments using regex.
-        /// RawJson contains Scriban templates so we cannot use JSON parsing directly.
-        /// Also populates fragment Values with defaults from both:
-        /// 1. The workflow template's pipeline step parameters (e.g., {{ SeedVR2.Model ?? "default" | json }})
-        /// 2. The fragment template itself (fallback)
+        /// Initializes fragment parameters from the workflow's pipeline.
+        /// Uses WorkflowService.GetPipelineSteps() for cached, consolidated parsing logic.
+        /// 
+        /// Default value priority (see IGenerationParameterService interface for full docs):
+        /// 1. Workflow template's pipeline step parameters ({{ Param ?? "default" | json }})
+        /// 2. Fragment template defaults ({{ param ?? "fallback" | json }} in fragment body)
+        /// 3. Dynamic options - NOT handled here (requires async UI calls)
         /// </summary>
         private void InitializeFragmentsFromPipeline(Workflow workflow, GenerationParameters parameters)
         {
             if (string.IsNullOrEmpty(workflow.RawJson))
                 return;
 
-            // Use regex to find Pipeline array entries since RawJson contains Scriban templates
-            // Look for each step in the Pipeline that has an "id" and "fragment" field
-            var pipelineSteps = ParsePipelineStepsWithRegex(workflow.RawJson);
+            // Use cached pipeline steps from WorkflowService
+            var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
             
-            int order = 0;
             foreach (var step in pipelineSteps)
             {
                 var fragmentId = step.Id;
@@ -154,7 +152,7 @@ namespace BlazorWebApp.Services
                     // Make unique if already exists
                     if (parameters.Fragments.ContainsKey(fragmentId))
                     {
-                        fragmentId = $"{fragmentId}_{order}";
+                        fragmentId = $"{fragmentId}_{step.Order}";
                     }
                 }
                 
@@ -169,18 +167,16 @@ namespace BlazorWebApp.Services
                 {
                     FragmentFile = step.Fragment,
                     IsActive = !isOptional,
-                    Order = order++
+                    Order = step.Order
                 };
 
                 // Priority 1: Use defaults from workflow template's pipeline step parameters
-                // These are the {{ SeedVR2.Model ?? "default" | json }} expressions
-                foreach (var kvp in step.Parameters)
+                foreach (var kvp in step.DefaultValues)
                 {
                     fragment.Values[kvp.Key] = kvp.Value;
                 }
 
                 // Priority 2: Fill in any missing values from fragment template defaults
-                // These are the {{ param ?? "default" | json }} expressions in the fragment itself
                 var fragmentDefaults = _workflowService.ParseFragmentDefaults(step.Fragment);
                 foreach (var kvp in fragmentDefaults)
                 {
@@ -191,193 +187,16 @@ namespace BlazorWebApp.Services
                     }
                 }
 
+                // Note: Priority 3 (dynamic options) is handled by UI components
+                // because it requires async calls to ComfyUI API
+
                 parameters.Fragments[fragmentId] = fragment;
-                _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile} (IsActive: {IsActive}, DefaultCollapsed: {DefaultCollapsed}, Values: {ValueCount})", 
-                    fragmentId, step.Fragment, fragment.IsActive, isOptional, fragment.Values.Count);
+                _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile} (IsActive: {IsActive}, Values: {ValueCount})", 
+                    fragmentId, step.Fragment, fragment.IsActive, fragment.Values.Count);
             }
             
             _logger.LogDebug("Initialized {Count} fragments for workflow '{WorkflowTitle}'", 
                 parameters.Fragments.Count, workflow.Title);
-        }
-
-        /// <summary>
-        /// Parses Pipeline steps from RawJson using regex to handle Scriban template syntax.
-        /// Returns a list of (Id, Fragment, Parameters) tuples.
-        /// Parameters contains default values extracted from the pipeline step.
-        /// </summary>
-        private List<(string Id, string Fragment, Dictionary<string, object?> Parameters)> ParsePipelineStepsWithRegex(string rawJson)
-        {
-            var result = new List<(string Id, string Fragment, Dictionary<string, object?> Parameters)>();
-            
-            // Match each step object in Pipeline - look for "fragment": "..." patterns
-            var fragmentPattern = @"""fragment""\s*:\s*""([^""]+)""";
-            var idPattern = @"""id""\s*:\s*""([^""]+)""";
-            
-            // First, try to isolate the Pipeline section
-            var pipelineMatch = Regex.Match(rawJson, @"""Pipeline""\s*:\s*\[", RegexOptions.Singleline);
-            if (!pipelineMatch.Success)
-            {
-                _logger.LogDebug("No Pipeline array found in workflow");
-                return result;
-            }
-            
-            // Find the Pipeline array content by counting brackets
-            var startIndex = pipelineMatch.Index + pipelineMatch.Length;
-            var bracketCount = 1;
-            var endIndex = startIndex;
-            
-            for (var i = startIndex; i < rawJson.Length && bracketCount > 0; i++)
-            {
-                if (rawJson[i] == '[') bracketCount++;
-                else if (rawJson[i] == ']') bracketCount--;
-                endIndex = i;
-            }
-            
-            var pipelineContent = rawJson.Substring(startIndex, endIndex - startIndex);
-            
-            // Find each step by using brace counting
-            var stepStart = -1;
-            var braceDepth = 0;
-            
-            for (var i = 0; i < pipelineContent.Length; i++)
-            {
-                var c = pipelineContent[i];
-                
-                if (c == '{')
-                {
-                    if (braceDepth == 0)
-                    {
-                        stepStart = i;
-                    }
-                    braceDepth++;
-                }
-                else if (c == '}')
-                {
-                    braceDepth--;
-                    if (braceDepth == 0 && stepStart >= 0)
-                    {
-                        // Extract the step content
-                        var stepContent = pipelineContent.Substring(stepStart, i - stepStart + 1);
-                        
-                        // Extract fragment (required)
-                        var fragMatch = Regex.Match(stepContent, fragmentPattern);
-                        if (fragMatch.Success)
-                        {
-                            var fragment = fragMatch.Groups[1].Value;
-                            
-                            // Extract id (optional)
-                            var idMatch = Regex.Match(stepContent, idPattern);
-                            var id = idMatch.Success ? idMatch.Groups[1].Value : "";
-                            
-                            // Extract parameter defaults from step parameters
-                            var parameters = ParseStepParameterDefaults(stepContent);
-                            
-                            result.Add((id, fragment, parameters));
-                            _logger.LogTrace("Parsed pipeline step: id='{Id}', fragment='{Fragment}', params={ParamCount}", 
-                                id, fragment, parameters.Count);
-                        }
-                        
-                        stepStart = -1;
-                    }
-                }
-            }
-            
-            _logger.LogDebug("Parsed {Count} pipeline steps from workflow", result.Count);
-            return result;
-        }
-
-        /// <summary>
-        /// Parses default values from a pipeline step's parameters object.
-        /// Handles Scriban template expressions like {{ Param ?? "default" | json }}
-        /// </summary>
-        private Dictionary<string, object?> ParseStepParameterDefaults(string stepContent)
-        {
-            var defaults = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-            
-            // Find the parameters block within the step
-            var paramsMatch = Regex.Match(stepContent, @"""parameters""\s*:\s*\{", RegexOptions.Singleline);
-            if (!paramsMatch.Success)
-                return defaults;
-            
-            // Extract parameters block content using brace counting
-            var startIndex = paramsMatch.Index + paramsMatch.Length;
-            var braceCount = 1;
-            var endIndex = startIndex;
-            
-            for (var i = startIndex; i < stepContent.Length && braceCount > 0; i++)
-            {
-                if (stepContent[i] == '{') braceCount++;
-                else if (stepContent[i] == '}') braceCount--;
-                endIndex = i;
-            }
-            
-            var paramsContent = stepContent.Substring(startIndex, endIndex - startIndex);
-            
-            // Pattern to match parameter definitions with defaults:
-            // "param_name": {{ SomeVar ?? "default" | json }}
-            // "param_name": {{ SomeVar ?? 123 | json }}
-            var paramPattern = @"""(\w+)""\s*:\s*\{\{\s*[\w.]+\s*\?\?\s*([^|]+?)\s*\|";
-            
-            var matches = Regex.Matches(paramsContent, paramPattern);
-            foreach (Match match in matches)
-            {
-                var paramName = match.Groups[1].Value.Trim();
-                var defaultValueStr = match.Groups[2].Value.Trim();
-                
-                if (string.IsNullOrEmpty(paramName) || defaults.ContainsKey(paramName))
-                    continue;
-                
-                var parsedValue = ParseScribanDefaultValue(defaultValueStr);
-                if (parsedValue != null)
-                {
-                    defaults[paramName] = parsedValue;
-                    _logger.LogTrace("Parsed step parameter default for '{Param}': {Value}", paramName, parsedValue);
-                }
-            }
-            
-            return defaults;
-        }
-
-        /// <summary>
-        /// Parses a Scriban default value expression into a CLR object.
-        /// Handles strings ("value"), numbers (123, 1.5), booleans (true/false), and null.
-        /// </summary>
-        private object? ParseScribanDefaultValue(string valueStr)
-        {
-            if (string.IsNullOrWhiteSpace(valueStr))
-                return null;
-
-            valueStr = valueStr.Trim();
-
-            // Handle quoted strings
-            if ((valueStr.StartsWith("\"") && valueStr.EndsWith("\"")) ||
-                (valueStr.StartsWith("'") && valueStr.EndsWith("'")))
-            {
-                return valueStr.Substring(1, valueStr.Length - 2);
-            }
-
-            // Handle booleans
-            if (valueStr.Equals("true", StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            // Handle null
-            if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase) ||
-                valueStr.Equals("nil", StringComparison.OrdinalIgnoreCase))
-                return null;
-
-            // Handle integers
-            if (long.TryParse(valueStr, out var longVal))
-                return longVal;
-
-            // Handle decimals/floats
-            if (double.TryParse(valueStr, System.Globalization.NumberStyles.Any, 
-                System.Globalization.CultureInfo.InvariantCulture, out var doubleVal))
-                return doubleVal;
-
-            // If nothing else, return as string (could be a variable reference)
-            return valueStr;
         }
 
         /// <inheritdoc />
@@ -423,6 +242,9 @@ namespace BlazorWebApp.Services
             return fragment?.IsActive ?? false;
         }
 
+        // TODO: Phase 9 - Node Chaining Support
+        // These methods are placeholders for chainable fragment functionality.
+        
         /// <inheritdoc />
         public (string fragmentId, FragmentParameters parameters) AddFragmentInstance(string fragmentFile, string? baseId = null)
         {

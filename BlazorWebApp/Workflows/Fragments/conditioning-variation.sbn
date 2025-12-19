@@ -8,6 +8,7 @@
     "required": ["ConditioningVariation.IsActive"]
   },
   "ui": {
+    "type": "enhancement",
     "component": "ConditioningVariationForm",
     "title": "Conditioning Variation",
     "icon": "fa-solid fa-code-branch",

@@ -1,11 +1,73 @@
 namespace BlazorWebApp.Models
 {
     /// <summary>
+    /// Identifies the purpose/category of a fragment.
+    /// Used for programmatic fragment discovery instead of string heuristics.
+    /// </summary>
+    public enum FragmentType
+    {
+        /// <summary>
+        /// Unknown or unspecified fragment type.
+        /// </summary>
+        Unknown = 0,
+
+        /// <summary>
+        /// Model loading fragment (checkpoint, CLIP, VAE loaders).
+        /// Typically has no direct UI - parameters come from Assets.
+        /// </summary>
+        Loader,
+
+        /// <summary>
+        /// Prompt encoding fragment (positive/negative text).
+        /// </summary>
+        Prompts,
+
+        /// <summary>
+        /// Resolution and latent image settings.
+        /// Includes empty latent, latent from image, etc.
+        /// </summary>
+        Latent,
+
+        /// <summary>
+        /// KSampler and sampling-related settings.
+        /// </summary>
+        Sampler,
+
+        /// <summary>
+        /// CLIP text encoding and conditioning nodes.
+        /// </summary>
+        Conditioning,
+
+        /// <summary>
+        /// Enhancement features like upscale, detailer, refinement.
+        /// Typically optional (defaultCollapsed = true).
+        /// </summary>
+        Enhancement,
+
+        /// <summary>
+        /// Output nodes like save, preview, display.
+        /// </summary>
+        Output,
+
+        /// <summary>
+        /// Utility/helper fragments with no UI.
+        /// </summary>
+        Utility
+    }
+
+    /// <summary>
     /// Represents the parsed UI schema from a fragment's #meta block.
     /// Used to determine how a fragment should be rendered in the UI.
     /// </summary>
     public class FragmentSchema
     {
+        /// <summary>
+        /// The type/purpose of this fragment.
+        /// Used for programmatic fragment discovery (e.g., finding the sampler fragment).
+        /// Parsed from #meta.ui.type field.
+        /// </summary>
+        public FragmentType Type { get; set; } = FragmentType.Unknown;
+
         /// <summary>
         /// Blazor component name to render this fragment.
         /// If null, dynamic field rendering is used based on Fields array.

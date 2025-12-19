@@ -5,6 +5,7 @@
     "negative_output": { "node": "negative_encode", "index": 0 }
   },
   "ui": {
+    "type": "prompts",
     "component": "PromptsForm",
     "title": "Prompts",
     "order": 10,

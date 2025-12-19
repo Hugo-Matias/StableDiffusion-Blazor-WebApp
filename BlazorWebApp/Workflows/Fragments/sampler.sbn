@@ -4,6 +4,7 @@
     "latent_output": {"node": "{{ sampler_id }}", "index": 0}
   },
   "ui": {
+    "type": "sampler",
     "component": "SamplerForm",
     "title": "Sampler",
     "icon": "fa-solid fa-dice",

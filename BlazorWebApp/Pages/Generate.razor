@@ -280,36 +280,57 @@ else
     }
 
     /// <summary>
-    /// Discovers fragment IDs from the workflow pipeline.
-    /// Looks for fragments that contain sampler or resolution parameters.
+    /// Discovers fragment IDs from the workflow pipeline using FragmentType metadata.
+    /// This replaces the previous string-based heuristics with schema-based discovery.
     /// </summary>
     private void DiscoverFragments()
     {
         _latentFragmentId = null;
         _samplerFragmentId = null;
         
-        // Discover from Parameters.Fragments - look for fragments by their file or content
         foreach (var kvp in Parameters.Fragments)
         {
-            var fragmentFile = Path.GetFileName(kvp.Value.FragmentFile).ToLowerInvariant();
             var fragmentId = kvp.Key;
+            var fragment = kvp.Value;
             
-            // Identifier sampler fragments
-            if (fragmentFile == "sampler.sbn" || fragmentId.Contains("sampler"))
-            {
-                _samplerFragmentId = fragmentId;
-            }
+            // Get schema to access FragmentType
+            var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
+            if (schema == null) continue;
             
-            // Identify latent/resolution fragments
-            // These can be in loader fragments (like load-flux.sbn) or empty-latent.sbn
-            if (fragmentFile.Contains("latent") || fragmentFile.Contains("empty"))
+            switch (schema.Type)
             {
-                _latentFragmentId = fragmentId;
+                case FragmentType.Sampler:
+                    // Use first sampler found (for multi-sampler workflows, this gets the main one)
+                    _samplerFragmentId ??= fragmentId;
+                    break;
+                    
+                case FragmentType.Latent:
+                    _latentFragmentId ??= fragmentId;
+                    break;
+                    
+                case FragmentType.Loader:
+                    // Loader fragments often contain width/height/batch_size but no dedicated latent
+                    // Only use if we haven't found a dedicated latent fragment
+                    if (_latentFragmentId == null && 
+                        fragment.Values.ContainsKey("width") || 
+                        fragment.Values.ContainsKey("height"))
+                    {
+                        _latentFragmentId = fragmentId;
+                    }
+                    break;
             }
-            // Loader fragments often contain width/height/batch_size
-            else if (fragmentFile.Contains("load") && _latentFragmentId == null)
+        }
+        
+        // Fallback: If no latent fragment found by type, check for loader with resolution params
+        if (_latentFragmentId == null)
+        {
+            foreach (var kvp in Parameters.Fragments)
             {
-                _latentFragmentId = fragmentId;
+                if (kvp.Value.Values.ContainsKey("width") && kvp.Value.Values.ContainsKey("height"))
+                {
+                    _latentFragmentId = kvp.Key;
+                    break;
+                }
             }
         }
         
@@ -589,7 +610,7 @@ else
 
     /// <summary>
     /// Gets the optional fragments that should be rendered with CollapsibleFeatureSection.
-    /// Dynamically determines optional fragments by checking schema.DefaultCollapsed == true.
+    /// Uses FragmentType.Enhancement to identify optional features like upscale, detailer, etc.
     /// </summary>
     private IEnumerable<(string Id, string Title, string? Icon, FragmentSchema? Schema, FragmentParameters Fragment)> GetOptionalFragments()
     {
@@ -598,18 +619,20 @@ else
             var fragmentId = kvp.Key;
             var fragment = kvp.Value;
             
-            // Get the fragment schema to check if it's an optional (collapsible) fragment
+            // Get the fragment schema
             var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
+            if (schema == null) continue;
             
             // A fragment is optional if:
-            // 1. It has a schema with DefaultCollapsed = true (fragment starts inactive by default)
-            // 2. OR it has Collapsible = true AND is not a core fragment (sampler, latent, prompts)
-            var isOptional = schema?.DefaultCollapsed == true;
+            // 1. It's an Enhancement type (upscale, detailer, etc.)
+            // 2. OR it has DefaultCollapsed = true (explicitly marked as optional)
+            var isOptional = schema.Type == FragmentType.Enhancement || 
+                             schema.DefaultCollapsed == true;
             
             if (isOptional)
             {
-                var title = schema?.Title ?? Path.GetFileNameWithoutExtension(fragment.FragmentFile);
-                var icon = schema?.Icon;
+                var title = schema.Title ?? Path.GetFileNameWithoutExtension(fragment.FragmentFile);
+                var icon = schema.Icon;
                 yield return (fragmentId, title, icon, schema, fragment);
             }
         }

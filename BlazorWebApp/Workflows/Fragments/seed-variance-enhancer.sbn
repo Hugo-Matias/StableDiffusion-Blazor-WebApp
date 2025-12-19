@@ -7,6 +7,7 @@
     "required": ["SeedVarianceEnhancer.IsActive"]
   },
   "ui": {
+    "type": "enhancement",
     "component": "SeedVarianceEnhancerForm",
     "title": "Seed Variance Enhancer",
     "icon": "fa-solid fa-shuffle",

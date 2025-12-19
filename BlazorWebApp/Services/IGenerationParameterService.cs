@@ -7,6 +7,24 @@ namespace BlazorWebApp.Services
     /// Provides CRUD operations and workflow initialization.
     /// Subscribe to GenerationParametersChangedEventArgs via IEventService for change notifications.
     /// </summary>
+    /// <remarks>
+    /// <para><strong>Default Value Priority Order:</strong></para>
+    /// <para>When initializing fragments from a workflow, values are resolved in this priority order:</para>
+    /// <list type="number">
+    ///   <item>
+    ///     <term>Step Parameters</term>
+    ///     <description>Values from workflow template's Pipeline step parameters (e.g., {{ Param ?? "default" | json }})</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Fragment Defaults</term>
+    ///     <description>Values from fragment template body (e.g., {{ param ?? "fallback" | json }})</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Dynamic Options (UI only)</term>
+    ///     <description>For fields with dynamic sources (ComfyUI node queries), UI components may select the first available option if no default is set. This is handled in UI components, not the service, because it requires async API calls.</description>
+    ///   </item>
+    /// </list>
+    /// </remarks>
     public interface IGenerationParameterService
     {
         /// <summary>
@@ -16,7 +34,8 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Initializes parameters from a workflow template.
-        /// Sets up fragments with default values from the pipeline.
+        /// Sets up fragments with default values from the pipeline using the priority order
+        /// documented in the interface remarks.
         /// Publishes GenerationParametersChangedEventArgs.WorkflowChanged event.
         /// </summary>
         void InitializeFromWorkflow(Workflow workflow);

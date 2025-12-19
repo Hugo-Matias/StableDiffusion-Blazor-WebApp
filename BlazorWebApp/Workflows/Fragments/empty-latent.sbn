@@ -4,6 +4,7 @@
     "{{ scope ?? '' }}latent_output": { "node": "{{ scope ?? '' }}empty_latent", "index": 0 }
   },
   "ui": {
+    "type": "latent",
     "component": "LatentForm",
     "title": "Resolution",
     "icon": "fa-solid fa-expand",
