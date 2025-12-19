@@ -137,9 +137,27 @@ namespace BlazorWebApp.Services
             var uniqueString = $"{wf.Title}_{wf.Base}_{wf.Mode}";
             wf.Id = GenerateDeterministicGuid(uniqueString);
 
-            wf.Pipeline = null;
+            // Parse Pipeline from workflow template
+            wf.Pipeline = ParsePipelineFromTemplate(templateText);
 
             return wf;
+        }
+
+        /// <summary>
+        /// Parses Pipeline steps from the workflow template using regex.
+        /// Since templates contain Scriban syntax, we can't use JSON parsing directly.
+        /// </summary>
+        private List<WorkflowStep>? ParsePipelineFromTemplate(string templateText)
+        {
+            var steps = ParsePipelineStepsFromRawJson(templateText);
+            if (steps.Count == 0)
+                return null;
+
+            return steps.Select(s => new WorkflowStep
+            {
+                Id = s.Id,
+                Fragment = s.Fragment
+            }).ToList();
         }
 
         /// <summary>
@@ -1051,9 +1069,29 @@ namespace BlazorWebApp.Services
                         constraints.Step = stepEl.GetDouble();
                     }
 
+                    // Parse default value - can be string, number, or boolean
+                    if (prop.Value.TryGetProperty("default", out var defaultEl))
+                    {
+                        constraints.Default = defaultEl.ValueKind switch
+                        {
+                            JsonValueKind.String => defaultEl.GetString(),
+                            JsonValueKind.Number => defaultEl.TryGetInt64(out var intVal) ? intVal : defaultEl.GetDouble(),
+                            JsonValueKind.True => true,
+                            JsonValueKind.False => false,
+                            _ => null
+                        };
+                    }
+
+                    // Parse source - contains node class_type for dynamic options
                     if (prop.Value.TryGetProperty("source", out var sourceEl) && sourceEl.ValueKind == JsonValueKind.String)
                     {
                         constraints.Source = sourceEl.GetString();
+                    }
+
+                    // Parse input_name - the node input field to query
+                    if (prop.Value.TryGetProperty("input_name", out var inputNameEl) && inputNameEl.ValueKind == JsonValueKind.String)
+                    {
+                        constraints.InputName = inputNameEl.GetString();
                     }
 
                     if (prop.Value.TryGetProperty("options", out var optionsEl) && optionsEl.ValueKind == JsonValueKind.Array)
@@ -1127,9 +1165,16 @@ namespace BlazorWebApp.Services
                     field.Step = stepEl.GetDouble();
                 }
 
+                // Parse source - contains node class_type for dynamic options
                 if (fieldEl.TryGetProperty("source", out var sourceEl) && sourceEl.ValueKind == JsonValueKind.String)
                 {
                     field.Source = sourceEl.GetString();
+                }
+
+                // Parse input_name - the node input field to query
+                if (fieldEl.TryGetProperty("input_name", out var inputNameEl) && inputNameEl.ValueKind == JsonValueKind.String)
+                {
+                    field.InputName = inputNameEl.GetString();
                 }
 
                 if (fieldEl.TryGetProperty("options", out var optionsEl) && optionsEl.ValueKind == JsonValueKind.Array)
@@ -1236,6 +1281,7 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Parses Pipeline steps from RawJson using regex to handle Scriban template syntax.
         /// Returns a list of (Id, Fragment) tuples.
+        /// Uses bracket counting to properly handle nested objects in step parameters.
         /// </summary>
         private List<(string Id, string Fragment)> ParsePipelineStepsFromRawJson(string rawJson)
         {
@@ -1245,39 +1291,72 @@ namespace BlazorWebApp.Services
             var fragmentPattern = @"""fragment""\s*:\s*""([^""]+)""";
             var idPattern = @"""id""\s*:\s*""([^""]+)""";
             
-            // Try to isolate the Pipeline section - match until end of array
-            // This handles the case where } appears in the closing
-            var pipelineMatch = Regex.Match(rawJson, @"""Pipeline""\s*:\s*\[(.*)\]", RegexOptions.Singleline);
+            // First, find the start of the Pipeline array
+            var pipelineMatch = Regex.Match(rawJson, @"""Pipeline""\s*:\s*\[", RegexOptions.Singleline);
             if (!pipelineMatch.Success)
             {
                 _logger.LogDebug("No Pipeline array found in workflow");
                 return result;
             }
             
-            var pipelineContent = pipelineMatch.Groups[1].Value;
+            // Find the Pipeline array content by counting brackets
+            var startIndex = pipelineMatch.Index + pipelineMatch.Length;
+            var bracketCount = 1;
+            var endIndex = startIndex;
             
-            // Find all step objects by matching opening and closing braces
-            // Look for { ... "fragment" ... } blocks
-            var stepMatches = Regex.Matches(pipelineContent, @"\{[^{}]*""fragment""[^{}]*\}", RegexOptions.Singleline);
-            
-            foreach (Match stepMatch in stepMatches)
+            for (var i = startIndex; i < rawJson.Length && bracketCount > 0; i++)
             {
-                var stepContent = stepMatch.Value;
+                if (rawJson[i] == '[') bracketCount++;
+                else if (rawJson[i] == ']') bracketCount--;
+                endIndex = i;
+            }
+            
+            var pipelineContent = rawJson.Substring(startIndex, endIndex - startIndex);
+            
+            // Find each step by using brace counting to handle nested objects
+            var stepStart = -1;
+            var braceDepth = 0;
+            
+            for (var i = 0; i < pipelineContent.Length; i++)
+            {
+                var c = pipelineContent[i];
                 
-                // Extract fragment
-                var fragMatch = Regex.Match(stepContent, fragmentPattern);
-                var fragment = fragMatch.Success ? fragMatch.Groups[1].Value : "";
-                
-                // Extract id (optional)
-                var idMatch = Regex.Match(stepContent, idPattern);
-                var id = idMatch.Success ? idMatch.Groups[1].Value : "";
-                
-                if (!string.IsNullOrEmpty(fragment))
+                if (c == '{')
                 {
-                    result.Add((id, fragment));
+                    if (braceDepth == 0)
+                    {
+                        stepStart = i;
+                    }
+                    braceDepth++;
+                }
+                else if (c == '}')
+                {
+                    braceDepth--;
+                    if (braceDepth == 0 && stepStart >= 0)
+                    {
+                        // Extract the step content
+                        var stepContent = pipelineContent.Substring(stepStart, i - stepStart + 1);
+                        
+                        // Extract fragment (required)
+                        var fragMatch = Regex.Match(stepContent, fragmentPattern);
+                        if (fragMatch.Success)
+                        {
+                            var fragment = fragMatch.Groups[1].Value;
+                            
+                            // Extract id (optional)
+                            var idMatch = Regex.Match(stepContent, idPattern);
+                            var id = idMatch.Success ? idMatch.Groups[1].Value : "";
+                            
+                            result.Add((id, fragment));
+                            _logger.LogTrace("Parsed pipeline step: id='{Id}', fragment='{Fragment}'", id, fragment);
+                        }
+                        
+                        stepStart = -1;
+                    }
                 }
             }
             
+            _logger.LogDebug("Parsed {Count} pipeline steps from workflow", result.Count);
             return result;
         }
 
@@ -1289,6 +1368,98 @@ namespace BlazorWebApp.Services
                 _schemaCache.Clear();
             }
             _logger.LogDebug("Fragment schema cache cleared");
+        }
+
+        /// <inheritdoc />
+        public Dictionary<string, object?> ParseFragmentDefaults(string fragmentFile)
+        {
+            var defaults = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+            if (string.IsNullOrWhiteSpace(fragmentFile))
+                return defaults;
+
+            // Load fragment file
+            var fragPath = Path.Combine(_workflowPath, "Fragments", fragmentFile.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(fragPath))
+            {
+                _logger.LogWarning("Fragment file not found for defaults parsing: {FragmentFile}", fragmentFile);
+                return defaults;
+            }
+
+            var fragmentText = File.ReadAllText(fragPath);
+
+            // Remove #meta block to avoid parsing its content
+            fragmentText = Regex.Replace(fragmentText, @"#meta\s*\{.*?\}\s*#end", "", RegexOptions.Singleline);
+
+            // Pattern to match Scriban expressions with defaults:
+            // {{ param ?? default_value | json }}
+            // {{ param ?? "string_default" | json }}
+            // {{ param ?? 123 | json }}
+            // {{ param ?? true | json }}
+            var defaultPattern = @"\{\{\s*(\w+)\s*\?\?\s*([^|]+?)\s*\|";
+
+            var matches = Regex.Matches(fragmentText, defaultPattern);
+
+            foreach (Match match in matches)
+            {
+                var paramName = match.Groups[1].Value.Trim();
+                var defaultValueStr = match.Groups[2].Value.Trim();
+
+                if (string.IsNullOrEmpty(paramName) || defaults.ContainsKey(paramName))
+                    continue;
+
+                var parsedValue = ParseScribanDefaultValue(defaultValueStr);
+                if (parsedValue != null)
+                {
+                    defaults[paramName] = parsedValue;
+                    _logger.LogTrace("Parsed default for '{Param}': {Value}", paramName, parsedValue);
+                }
+            }
+
+            _logger.LogDebug("Parsed {Count} defaults from fragment '{FragmentFile}'", defaults.Count, fragmentFile);
+            return defaults;
+        }
+
+        /// <summary>
+        /// Parses a Scriban default value expression into a CLR object.
+        /// Handles strings ("value"), numbers (123, 1.5), booleans (true/false), and null.
+        /// </summary>
+        private object? ParseScribanDefaultValue(string valueStr)
+        {
+            if (string.IsNullOrWhiteSpace(valueStr))
+                return null;
+
+            valueStr = valueStr.Trim();
+
+            // Handle quoted strings
+            if ((valueStr.StartsWith("\"") && valueStr.EndsWith("\"")) ||
+                (valueStr.StartsWith("'") && valueStr.EndsWith("'")))
+            {
+                return valueStr.Substring(1, valueStr.Length - 2);
+            }
+
+            // Handle booleans
+            if (valueStr.Equals("true", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            // Handle null
+            if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+                valueStr.Equals("nil", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            // Handle integers
+            if (long.TryParse(valueStr, out var longVal))
+                return longVal;
+
+            // Handle decimals/floats
+            if (double.TryParse(valueStr, System.Globalization.NumberStyles.Any, 
+                System.Globalization.CultureInfo.InvariantCulture, out var doubleVal))
+                return doubleVal;
+
+            // If nothing else, return as string (could be a variable reference)
+            return valueStr;
         }
 
         #endregion

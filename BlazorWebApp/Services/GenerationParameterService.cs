@@ -1,5 +1,6 @@
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -15,6 +16,12 @@ namespace BlazorWebApp.Services
         private readonly IWorkflowService _workflowService;
         private readonly IEventService _eventService;
         private readonly IStateService _stateService;
+        private readonly IComfyUIService _comfyUIService;
+
+        /// <summary>
+        /// Cache for resolved source options. Key format: "{classType}:{inputName}"
+        /// </summary>
+        private readonly ConcurrentDictionary<string, List<string>> _sourceOptionsCache = new(StringComparer.OrdinalIgnoreCase);
 
         /// <inheritdoc />
         public GenerationParameters Current => _stateService.GenerationParameters;
@@ -23,12 +30,14 @@ namespace BlazorWebApp.Services
             ILogger<GenerationParameterService> logger,
             IWorkflowService workflowService,
             IEventService eventService,
-            IStateService stateService)
+            IStateService stateService,
+            IComfyUIService comfyUIService)
         {
             _logger = logger;
             _workflowService = workflowService;
             _eventService = eventService;
             _stateService = stateService;
+            _comfyUIService = comfyUIService;
         }
 
         /// <inheritdoc />
@@ -41,6 +50,9 @@ namespace BlazorWebApp.Services
             }
 
             _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle}", workflow.Title);
+
+            // Clear source options cache on workflow change
+            ClearSourceCache();
 
             // Clear existing parameters and reinitialize
             var current = Current;
@@ -116,6 +128,9 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Parses the workflow's RawJson to extract pipeline fragments using regex.
         /// RawJson contains Scriban templates so we cannot use JSON parsing directly.
+        /// Also populates fragment Values with defaults from both:
+        /// 1. The workflow template's pipeline step parameters (e.g., {{ SeedVR2.Model ?? "default" | json }})
+        /// 2. The fragment template itself (fallback)
         /// </summary>
         private void InitializeFragmentsFromPipeline(Workflow workflow, GenerationParameters parameters)
         {
@@ -142,17 +157,43 @@ namespace BlazorWebApp.Services
                         fragmentId = $"{fragmentId}_{order}";
                     }
                 }
+                
+                // Get the fragment schema to determine if this is an optional fragment
+                // Optional fragments have defaultCollapsed = true in their UI schema
+                var schema = _workflowService.GetFragmentSchema(step.Fragment);
+                var isOptional = schema?.DefaultCollapsed ?? false;
 
                 // Create fragment parameters
+                // Optional fragments (defaultCollapsed = true) default to inactive (not included in generation)
                 var fragment = new FragmentParameters
                 {
                     FragmentFile = step.Fragment,
-                    IsActive = true,
+                    IsActive = !isOptional,
                     Order = order++
                 };
 
+                // Priority 1: Use defaults from workflow template's pipeline step parameters
+                // These are the {{ SeedVR2.Model ?? "default" | json }} expressions
+                foreach (var kvp in step.Parameters)
+                {
+                    fragment.Values[kvp.Key] = kvp.Value;
+                }
+
+                // Priority 2: Fill in any missing values from fragment template defaults
+                // These are the {{ param ?? "default" | json }} expressions in the fragment itself
+                var fragmentDefaults = _workflowService.ParseFragmentDefaults(step.Fragment);
+                foreach (var kvp in fragmentDefaults)
+                {
+                    // Only add if not already set by step parameters
+                    if (!fragment.Values.ContainsKey(kvp.Key))
+                    {
+                        fragment.Values[kvp.Key] = kvp.Value;
+                    }
+                }
+
                 parameters.Fragments[fragmentId] = fragment;
-                _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile}", fragmentId, step.Fragment);
+                _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile} (IsActive: {IsActive}, DefaultCollapsed: {DefaultCollapsed}, Values: {ValueCount})", 
+                    fragmentId, step.Fragment, fragment.IsActive, isOptional, fragment.Values.Count);
             }
             
             _logger.LogDebug("Initialized {Count} fragments for workflow '{WorkflowTitle}'", 
@@ -161,54 +202,182 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Parses Pipeline steps from RawJson using regex to handle Scriban template syntax.
-        /// Returns a list of (Id, Fragment) tuples.
+        /// Returns a list of (Id, Fragment, Parameters) tuples.
+        /// Parameters contains default values extracted from the pipeline step.
         /// </summary>
-        private List<(string Id, string Fragment)> ParsePipelineStepsWithRegex(string rawJson)
+        private List<(string Id, string Fragment, Dictionary<string, object?> Parameters)> ParsePipelineStepsWithRegex(string rawJson)
         {
-            var result = new List<(string Id, string Fragment)>();
-            
-            // Find the Pipeline array content
-            // The Pipeline array contains objects with "id" and "fragment" fields
-            // We need to handle that some content may contain Scriban syntax
+            var result = new List<(string Id, string Fragment, Dictionary<string, object?> Parameters)>();
             
             // Match each step object in Pipeline - look for "fragment": "..." patterns
-            // This regex finds objects that have a "fragment" field
             var fragmentPattern = @"""fragment""\s*:\s*""([^""]+)""";
             var idPattern = @"""id""\s*:\s*""([^""]+)""";
             
             // First, try to isolate the Pipeline section
-            var pipelineMatch = Regex.Match(rawJson, @"""Pipeline""\s*:\s*\[(.*?)\](?=\s*\})", RegexOptions.Singleline);
+            var pipelineMatch = Regex.Match(rawJson, @"""Pipeline""\s*:\s*\[", RegexOptions.Singleline);
             if (!pipelineMatch.Success)
             {
                 _logger.LogDebug("No Pipeline array found in workflow");
                 return result;
             }
             
-            var pipelineContent = pipelineMatch.Groups[1].Value;
+            // Find the Pipeline array content by counting brackets
+            var startIndex = pipelineMatch.Index + pipelineMatch.Length;
+            var bracketCount = 1;
+            var endIndex = startIndex;
             
-            // Find all step objects by matching opening and closing braces
-            // This is a simplified approach - we look for { ... } blocks that contain "fragment"
-            var stepMatches = Regex.Matches(pipelineContent, @"\{[^{}]*""fragment""[^{}]*\}", RegexOptions.Singleline);
-            
-            foreach (Match stepMatch in stepMatches)
+            for (var i = startIndex; i < rawJson.Length && bracketCount > 0; i++)
             {
-                var stepContent = stepMatch.Value;
+                if (rawJson[i] == '[') bracketCount++;
+                else if (rawJson[i] == ']') bracketCount--;
+                endIndex = i;
+            }
+            
+            var pipelineContent = rawJson.Substring(startIndex, endIndex - startIndex);
+            
+            // Find each step by using brace counting
+            var stepStart = -1;
+            var braceDepth = 0;
+            
+            for (var i = 0; i < pipelineContent.Length; i++)
+            {
+                var c = pipelineContent[i];
                 
-                // Extract fragment
-                var fragMatch = Regex.Match(stepContent, fragmentPattern);
-                var fragment = fragMatch.Success ? fragMatch.Groups[1].Value : "";
-                
-                // Extract id (optional)
-                var idMatch = Regex.Match(stepContent, idPattern);
-                var id = idMatch.Success ? idMatch.Groups[1].Value : "";
-                
-                if (!string.IsNullOrEmpty(fragment))
+                if (c == '{')
                 {
-                    result.Add((id, fragment));
+                    if (braceDepth == 0)
+                    {
+                        stepStart = i;
+                    }
+                    braceDepth++;
+                }
+                else if (c == '}')
+                {
+                    braceDepth--;
+                    if (braceDepth == 0 && stepStart >= 0)
+                    {
+                        // Extract the step content
+                        var stepContent = pipelineContent.Substring(stepStart, i - stepStart + 1);
+                        
+                        // Extract fragment (required)
+                        var fragMatch = Regex.Match(stepContent, fragmentPattern);
+                        if (fragMatch.Success)
+                        {
+                            var fragment = fragMatch.Groups[1].Value;
+                            
+                            // Extract id (optional)
+                            var idMatch = Regex.Match(stepContent, idPattern);
+                            var id = idMatch.Success ? idMatch.Groups[1].Value : "";
+                            
+                            // Extract parameter defaults from step parameters
+                            var parameters = ParseStepParameterDefaults(stepContent);
+                            
+                            result.Add((id, fragment, parameters));
+                            _logger.LogTrace("Parsed pipeline step: id='{Id}', fragment='{Fragment}', params={ParamCount}", 
+                                id, fragment, parameters.Count);
+                        }
+                        
+                        stepStart = -1;
+                    }
                 }
             }
             
+            _logger.LogDebug("Parsed {Count} pipeline steps from workflow", result.Count);
             return result;
+        }
+
+        /// <summary>
+        /// Parses default values from a pipeline step's parameters object.
+        /// Handles Scriban template expressions like {{ Param ?? "default" | json }}
+        /// </summary>
+        private Dictionary<string, object?> ParseStepParameterDefaults(string stepContent)
+        {
+            var defaults = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            
+            // Find the parameters block within the step
+            var paramsMatch = Regex.Match(stepContent, @"""parameters""\s*:\s*\{", RegexOptions.Singleline);
+            if (!paramsMatch.Success)
+                return defaults;
+            
+            // Extract parameters block content using brace counting
+            var startIndex = paramsMatch.Index + paramsMatch.Length;
+            var braceCount = 1;
+            var endIndex = startIndex;
+            
+            for (var i = startIndex; i < stepContent.Length && braceCount > 0; i++)
+            {
+                if (stepContent[i] == '{') braceCount++;
+                else if (stepContent[i] == '}') braceCount--;
+                endIndex = i;
+            }
+            
+            var paramsContent = stepContent.Substring(startIndex, endIndex - startIndex);
+            
+            // Pattern to match parameter definitions with defaults:
+            // "param_name": {{ SomeVar ?? "default" | json }}
+            // "param_name": {{ SomeVar ?? 123 | json }}
+            var paramPattern = @"""(\w+)""\s*:\s*\{\{\s*[\w.]+\s*\?\?\s*([^|]+?)\s*\|";
+            
+            var matches = Regex.Matches(paramsContent, paramPattern);
+            foreach (Match match in matches)
+            {
+                var paramName = match.Groups[1].Value.Trim();
+                var defaultValueStr = match.Groups[2].Value.Trim();
+                
+                if (string.IsNullOrEmpty(paramName) || defaults.ContainsKey(paramName))
+                    continue;
+                
+                var parsedValue = ParseScribanDefaultValue(defaultValueStr);
+                if (parsedValue != null)
+                {
+                    defaults[paramName] = parsedValue;
+                    _logger.LogTrace("Parsed step parameter default for '{Param}': {Value}", paramName, parsedValue);
+                }
+            }
+            
+            return defaults;
+        }
+
+        /// <summary>
+        /// Parses a Scriban default value expression into a CLR object.
+        /// Handles strings ("value"), numbers (123, 1.5), booleans (true/false), and null.
+        /// </summary>
+        private object? ParseScribanDefaultValue(string valueStr)
+        {
+            if (string.IsNullOrWhiteSpace(valueStr))
+                return null;
+
+            valueStr = valueStr.Trim();
+
+            // Handle quoted strings
+            if ((valueStr.StartsWith("\"") && valueStr.EndsWith("\"")) ||
+                (valueStr.StartsWith("'") && valueStr.EndsWith("'")))
+            {
+                return valueStr.Substring(1, valueStr.Length - 2);
+            }
+
+            // Handle booleans
+            if (valueStr.Equals("true", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            // Handle null
+            if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+                valueStr.Equals("nil", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            // Handle integers
+            if (long.TryParse(valueStr, out var longVal))
+                return longVal;
+
+            // Handle decimals/floats
+            if (double.TryParse(valueStr, System.Globalization.NumberStyles.Any, 
+                System.Globalization.CultureInfo.InvariantCulture, out var doubleVal))
+                return doubleVal;
+
+            // If nothing else, return as string (could be a variable reference)
+            return valueStr;
         }
 
         /// <inheritdoc />
@@ -410,5 +579,63 @@ namespace BlazorWebApp.Services
         {
             _eventService.Publish(args);
         }
+
+        #region Source Options Resolution
+
+        /// <inheritdoc />
+        public void ClearSourceCache()
+        {
+            _sourceOptionsCache.Clear();
+            _logger.LogDebug("Cleared source options cache");
+        }
+
+        /// <inheritdoc />
+        public async Task<List<string>> ResolveSourceOptionsAsync(ParameterConstraints constraints)
+        {
+            if (constraints == null)
+                return new List<string>();
+
+            // If static options are defined, return them directly
+            if (constraints.Options?.Count > 0)
+                return constraints.Options;
+
+            // If no dynamic source is defined, return empty
+            if (!constraints.HasDynamicSource)
+                return new List<string>();
+
+            // Source contains the node class_type, InputName contains the input field name
+            return await ResolveNodeSourceAsync(constraints.Source!, constraints.InputName!);
+        }
+
+        /// <summary>
+        /// Resolves a node source by querying ComfyUI's object_info API.
+        /// </summary>
+        /// <param name="classType">The node class_type (e.g., "SeedVR2LoadDiTModel")</param>
+        /// <param name="inputName">The input field name (e.g., "model")</param>
+        private async Task<List<string>> ResolveNodeSourceAsync(string classType, string inputName)
+        {
+            var cacheKey = $"{classType}:{inputName}";
+
+            if (_sourceOptionsCache.TryGetValue(cacheKey, out var cached))
+            {
+                _logger.LogTrace("Returning cached options for {CacheKey}", cacheKey);
+                return cached;
+            }
+
+            try
+            {
+                var options = await _comfyUIService.GetNodeInputOptionsAsync(classType, inputName);
+                _sourceOptionsCache[cacheKey] = options;
+                _logger.LogDebug("Resolved {Count} options for {ClassType}.{InputName}", options.Count, classType, inputName);
+                return options;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to resolve source {ClassType}.{InputName}", classType, inputName);
+                return new List<string>();
+            }
+        }
+
+        #endregion
     }
 }

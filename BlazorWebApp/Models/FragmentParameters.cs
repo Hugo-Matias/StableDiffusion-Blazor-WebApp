@@ -49,9 +49,18 @@ namespace BlazorWebApp.Models
                 return ConvertJsonElement<T>(jsonElement);
             }
 
-            // Try conversion
+            // Try conversion for numeric types
             try
             {
+                var targetType = typeof(T);
+                var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+                
+                // Handle numeric conversions more robustly
+                if (IsNumericType(underlyingType) && IsNumericType(value.GetType()))
+                {
+                    return (T)Convert.ChangeType(value, underlyingType);
+                }
+                
                 return (T)Convert.ChangeType(value, typeof(T));
             }
             catch
@@ -62,11 +71,55 @@ namespace BlazorWebApp.Models
 
         /// <summary>
         /// Gets a value with a fallback if not found or null.
+        /// For value types, also returns default if the key doesn't exist.
         /// </summary>
         public T GetValueOrDefault<T>(string key, T defaultValue)
         {
-            var value = GetValue<T>(key);
-            return value ?? defaultValue;
+            if (!Values.TryGetValue(key, out var value) || value == null)
+                return defaultValue;
+
+            // Direct type match
+            if (value is T typedValue)
+                return typedValue;
+
+            // Handle JsonElement (from deserialization)
+            if (value is JsonElement jsonElement)
+            {
+                var converted = ConvertJsonElement<T>(jsonElement);
+                if (converted != null)
+                    return converted;
+                return defaultValue;
+            }
+
+            // Try conversion for numeric types
+            try
+            {
+                var targetType = typeof(T);
+                var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+                
+                // Handle numeric conversions more robustly
+                if (IsNumericType(underlyingType) && IsNumericType(value.GetType()))
+                {
+                    return (T)Convert.ChangeType(value, underlyingType);
+                }
+                
+                return (T)Convert.ChangeType(value, targetType);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        
+        /// <summary>
+        /// Checks if a type is a numeric type.
+        /// </summary>
+        private static bool IsNumericType(Type type)
+        {
+            return type == typeof(int) || type == typeof(long) || type == typeof(float) ||
+                   type == typeof(double) || type == typeof(decimal) || type == typeof(short) ||
+                   type == typeof(byte) || type == typeof(uint) || type == typeof(ulong) ||
+                   type == typeof(ushort) || type == typeof(sbyte);
         }
 
         /// <summary>

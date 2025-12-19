@@ -12,16 +12,22 @@
       "id": "loader_qwen",
       "fragment": "load-diffusion-w-prompts.sbn",
       "parameters": {
-        "latent_id": "latent_image",
         "unet_name": {{ Model | json }},
         "clip_name": {{ Clip | json }},
         "clip_type": "qwen_image",
         "vae_name": {{ Vae | json }},
         "positive": {{ Prompt | json }},
-        "negative": {{ NegativePrompt | json }},
+        "negative": {{ NegativePrompt | json }}
+      }
+    },
+    {
+      "id": "latent",
+      "fragment": "empty-latent.sbn",
+      "parameters": {
         "width": {{ Width ?? 872 | json }},
         "height": {{ Height ?? 1248 | json }},
-        "batch_size": {{ BatchSize ?? 1 | json }}
+        "batch_size": {{ BatchSize ?? 1 | json }},
+        "latent_class": "EmptySD3LatentImage"
       }
     },
     {

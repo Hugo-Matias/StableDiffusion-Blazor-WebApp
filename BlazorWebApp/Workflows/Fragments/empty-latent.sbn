@@ -1,0 +1,33 @@
+#meta
+{
+  "outputs": {
+    "{{ scope ?? '' }}latent_output": { "node": "{{ scope ?? '' }}empty_latent", "index": 0 }
+  },
+  "ui": {
+    "component": "LatentForm",
+    "title": "Resolution",
+    "icon": "fa-solid fa-expand",
+    "order": 20,
+    "collapsible": true,
+    "parameters": {
+      "width": { "min": 64, "max": 4096, "step": 8 },
+      "height": { "min": 64, "max": 4096, "step": 8 },
+      "batch_size": { "min": 1, "max": 16, "step": 1 }
+    }
+  }
+}
+#end
+
+{
+  "{{ scope ?? '' }}empty_latent": {
+    "inputs": {
+      "width": {{ width | json }},
+      "height": {{ height | json }},
+      "batch_size": {{ batch_size | json }}
+    },
+    "class_type": {{ latent_class ?? "EmptySD3LatentImage" | json }},
+    "_meta": {
+      "title": "{{ scope_title ?? '' }}Empty Latent Image"
+    }
+  }
+}

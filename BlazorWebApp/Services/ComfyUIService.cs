@@ -308,6 +308,12 @@ namespace BlazorWebApp.Services
 
         public async Task<List<string>> GetDetailerSchedulers() => await GetNodeInputOptions<string>("FaceDetailer", "scheduler", name => name);
 
+        /// <inheritdoc />
+        public async Task<List<string>> GetNodeInputOptionsAsync(string classType, string inputName)
+        {
+            return await GetNodeInputOptions<string>(classType, inputName, name => name);
+        }
+
         private async Task<List<T>> GetNodeInputOptions<T>(string node, string inputName, Func<string, T> mapFunc)
         {
             var response = await _httpClient.GetAsync($"/object_info/{node}");
@@ -318,21 +324,64 @@ namespace BlazorWebApp.Services
 
             var root = doc.RootElement;
 
-            // Navigate: root[samplerKey]["input"]["required"][fieldName][0]
-            if (root.TryGetProperty(node, out var samplerNode) &&
-                samplerNode.TryGetProperty("input", out var inputNode) &&
-                inputNode.TryGetProperty("required", out var requiredNode) &&
-                requiredNode.TryGetProperty(inputName, out var fieldNode) &&
-                fieldNode.ValueKind == JsonValueKind.Array &&
-                fieldNode[0].ValueKind == JsonValueKind.Array)
+            // Navigate: root[node]["input"]["required"][inputName]
+            if (!root.TryGetProperty(node, out var nodeElement) ||
+                !nodeElement.TryGetProperty("input", out var inputNode))
             {
-                return fieldNode[0]
+                _logger.LogWarning("Node {Node} or input section not found", node);
+                return new List<T>();
+            }
+
+            // Check both required and optional sections
+            JsonElement? fieldNode = null;
+            
+            if (inputNode.TryGetProperty("required", out var requiredNode) &&
+                requiredNode.TryGetProperty(inputName, out var reqField))
+            {
+                fieldNode = reqField;
+            }
+            else if (inputNode.TryGetProperty("optional", out var optionalNode) &&
+                     optionalNode.TryGetProperty(inputName, out var optField))
+            {
+                fieldNode = optField;
+            }
+
+            if (fieldNode == null || fieldNode.Value.ValueKind != JsonValueKind.Array)
+            {
+                _logger.LogWarning("Input {InputName} not found in node {Node}", inputName, node);
+                return new List<T>();
+            }
+
+            var field = fieldNode.Value;
+            
+            // Format 1: Direct array of options - [["option1", "option2", ...], {...}]
+            // First element is an array of strings
+            if (field.GetArrayLength() >= 1 && field[0].ValueKind == JsonValueKind.Array)
+            {
+                return field[0]
+                    .EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => mapFunc(e.GetString()!))
+                    .ToList();
+            }
+            
+            // Format 2: COMBO type - ["COMBO", {"options": ["option1", ...], ...}]
+            // First element is "COMBO" string, second is object with options
+            if (field.GetArrayLength() >= 2 && 
+                field[0].ValueKind == JsonValueKind.String &&
+                field[0].GetString() == "COMBO" &&
+                field[1].ValueKind == JsonValueKind.Object &&
+                field[1].TryGetProperty("options", out var optionsEl) &&
+                optionsEl.ValueKind == JsonValueKind.Array)
+            {
+                return optionsEl
                     .EnumerateArray()
                     .Where(e => e.ValueKind == JsonValueKind.String)
                     .Select(e => mapFunc(e.GetString()!))
                     .ToList();
             }
 
+            _logger.LogWarning("Unknown input format for {Node}.{InputName}", node, inputName);
             return new List<T>();
         }
 

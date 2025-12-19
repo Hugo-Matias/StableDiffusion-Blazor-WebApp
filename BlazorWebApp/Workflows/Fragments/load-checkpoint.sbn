@@ -4,7 +4,6 @@
     "{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}lora_positive", "index": 0 },
     "{{ scope ?? '' }}clip_output": { "node": "{{ scope ?? '' }}lora_positive", "index": 1 },
     "{{ scope ?? '' }}vae_output": { "node": "{{ scope ?? '' }}{{ loader_id }}", "index": 2 },
-    "{{ scope ?? '' }}latent_output": { "node": "{{ scope ?? '' }}{{ latent_id }}", "index": 0 },
     "{{ scope ?? '' }}positive_output": { "node": "{{ scope ?? '' }}encode_positive", "index": 0 },
     "{{ scope ?? '' }}negative_output": { "node": "{{ scope ?? '' }}encode_negative", "index": 0 }
   }
@@ -79,17 +78,6 @@
     "class_type": "PCLazyTextEncode",
     "_meta": {
       "title": "{{ scope_title ?? '' }}Encode Negative"
-    }
-  },
-  "{{ scope ?? '' }}{{ latent_id }}": {
-    "inputs": {
-      "width": {{ width | json }},
-      "height": {{ height | json }},
-      "batch_size": {{ batch_size | json }}
-    },
-    "class_type": "EmptyLatentImage",
-    "_meta": {
-      "title": "{{ scope_title ?? '' }}Empty Latent Image"
     }
   }
 }

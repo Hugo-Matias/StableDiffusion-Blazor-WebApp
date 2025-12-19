@@ -1,0 +1,115 @@
+@* 
+    CollapsibleFeatureSection - A toggleable, collapsible section for optional features.
+    
+    Behavior:
+    - When disabled (IsActive=false): Section is collapsed and cannot be expanded
+    - When enabled (IsActive=true): Section can be expanded/collapsed freely
+    - Activating: Automatically expands the section
+    - Deactivating: Automatically collapses the section
+*@
+
+<MudPaper Elevation="1" Class="mb-3">
+    <div class="d-flex align-items-center pa-2" 
+         style="@($"cursor: {(_localIsActive ? "pointer" : "default")};")">
+        <MudSwitch T="bool" 
+                   Value="@_localIsActive"
+                   ValueChanged="OnActiveToggled"
+                   Color="Color.Primary"
+                   Class="mr-2" />
+        
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <MudIcon Icon="@Icon" Size="Size.Small" Class="mr-2" Style="opacity: 0.6;" />
+        }
+        
+        <div @onclick="ToggleExpanded" @onclick:stopPropagation="true" 
+             class="d-flex align-items-center flex-grow-1"
+             style="@($"cursor: {(_localIsActive ? "pointer" : "default")};")">
+            <MudText Typo="Typo.subtitle2" Style="@(_localIsActive ? "" : "opacity: 0.5;")">
+                @Title
+            </MudText>
+            
+            <MudSpacer />
+            
+            @if (_localIsActive)
+            {
+                <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" 
+                         Size="Size.Small" 
+                         Style="opacity: 0.5;" />
+            }
+        </div>
+    </div>
+    
+    <MudCollapse Expanded="@(_isExpanded && _localIsActive)">
+        <MudDivider />
+        <div class="pa-3">
+            @ChildContent
+        </div>
+    </MudCollapse>
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Display title shown in the header.
+    /// </summary>
+    [Parameter] public string Title { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Optional FontAwesome icon class for the header.
+    /// </summary>
+    [Parameter] public string? Icon { get; set; }
+    
+    /// <summary>
+    /// Whether this feature is currently active/enabled.
+    /// Controls whether the feature is included in generation.
+    /// </summary>
+    [Parameter] public bool IsActive { get; set; }
+    
+    /// <summary>
+    /// Callback when IsActive changes.
+    /// </summary>
+    [Parameter] public EventCallback<bool> IsActiveChanged { get; set; }
+    
+    /// <summary>
+    /// Whether to start expanded when first enabled.
+    /// Maps to FragmentSchema.DefaultCollapsed (inverted).
+    /// </summary>
+    [Parameter] public bool DefaultExpanded { get; set; } = true;
+    
+    /// <summary>
+    /// The settings content to render when active and expanded.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    private bool _localIsActive;
+    private bool _isExpanded;
+    
+    protected override void OnParametersSet()
+    {
+        _localIsActive = IsActive;
+        // Keep expanded state in sync - if not active, ensure collapsed
+        if (!_localIsActive)
+        {
+            _isExpanded = false;
+        }
+    }
+    
+    private async Task OnActiveToggled(bool newValue)
+    {
+        _localIsActive = newValue;
+        
+        // Expand when activating, collapse when deactivating
+        _isExpanded = newValue;
+        
+        await IsActiveChanged.InvokeAsync(_localIsActive);
+    }
+    
+    private void ToggleExpanded()
+    {
+        // Only allow toggle when active
+        if (_localIsActive)
+        {
+            _isExpanded = !_isExpanded;
+        }
+    }
+}

@@ -1,0 +1,457 @@
+@*
+    PromptsForm - Form for prompt input
+    
+    Replaces the generic PromptFields<T> with a simpler string-based API.
+    Handles: prompt, negative prompt, styles, LoRAs, generate button
+    
+    Note: LoRA and Style selections are emitted via callbacks to parent component.
+*@
+@using System.Text.Json
+@using static BlazorWebApp.Data.Enums
+@using BlazorWebApp.Events
+@inject IIOService IO
+@inject IStateService State
+@inject IBackendService Backend
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@implements IDisposable
+
+<div @ref="_containerRef" tabindex="-1">
+    <MudPaper Class="pa-6 mb-5 mt-n4">
+        <MudGrid>
+            <MudItem xs="9">
+                <MudStack>
+                    <MudStack>
+                        <TextFieldAutocomplete 
+                            Class="prompt" 
+                            Lines="_promptLines" 
+                            Label="Prompt" 
+                            Value="@Prompt"
+                            ValueChanged="HandlePromptValueChanged"
+                            OnAdornmentClick="() => PromptDrawer.Visible = true" 
+                            AdornmentIcon="fa-solid fa-tags"
+                            MinCharsToTrigger="2"
+                            MaxSuggestions="15"
+                            EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                            EnableDictionary="true" 
+                            EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
+                            IsNegative="false"
+                            OnLoraSelected="HandleLoraSelected"
+                            OnStyleSelected="HandleStyleSelected" />
+                        
+                        <TextFieldAutocomplete 
+                            Class="negative-prompt" 
+                            Lines="_negativePromptLines" 
+                            Label="Negative Prompt" 
+                            Value="@NegativePrompt"
+                            ValueChanged="HandleNegativePromptValueChanged"
+                            OnAdornmentClick="() => NegativePromptDrawer.Visible = true" 
+                            AdornmentIcon="fa-solid fa-tags"
+                            Disabled="Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase)"
+                            MinCharsToTrigger="2"
+                            MaxSuggestions="15"
+                            EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                            EnableDictionary="true"
+                            EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
+                            IsNegative="true"
+                            OnLoraSelected="HandleLoraSelected"
+                            OnStyleSelected="HandleStyleSelected" />
+                    </MudStack>
+                    <MudStack Row=true Spacing="2">
+                        <MudTooltip Text="Toggle autocomplete suggestions">
+                            <MudSwitch Checked="State.State.Generation.Autocomplete.IsEnabled" 
+                                       CheckedChanged="@((bool value) => HandleAutocompleteChanged(value))"
+                                       Color="Color.Primary" 
+                                       Label="Autocomplete"/>
+                        </MudTooltip>
+                        <MudTooltip Text="Toggle fuzzy subsequence matching (e.g., 'cascl' matches 'casual clothing')">
+                            <MudSwitch Checked="State.State.Generation.Autocomplete.EnableFuzzySearch" 
+                                       CheckedChanged="@((bool value) => HandleFuzzySearchChanged(value))"
+                                       Color="Color.Primary" 
+                                       Label="Fuzzy Search" 
+                                       Disabled="!State.State.Generation.Autocomplete.IsEnabled" />
+                        </MudTooltip>
+                    </MudStack>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="3">
+                <MudStack Class="h-100 w-100">
+                    <MudChipSet Style="height: 10vh; overflow: scroll;" ReadOnly>
+                        @if (State.State.Generation.Styles != null && State.State.Generation.Styles.Count() > 0)
+                        {
+                            @foreach (var style in State.State.Generation.Styles)
+                            {
+                                <MudChip Color="Color.Primary">@style.Name</MudChip>
+                            }
+                        }
+                    </MudChipSet>
+                    <MudStack Row=true>
+                        <MudSelect Label="Styles" Text="" SelectedValues="State.State.Generation.Styles" SelectedValuesChanged=HandleStylesSelectionChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesSelectionChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
+                            @if (_availableStyles != null)
+                            {
+                                @foreach (var style in _availableStyles)
+                                {
+                                    if (!(string.IsNullOrWhiteSpace(style.Prompt) && string.IsNullOrWhiteSpace(style.NegativePrompt)))
+                                    {
+                                        <MudSelectItem Value=style T="PromptStyle">@style.Name</MudSelectItem>
+                                    }
+                                }
+                            }
+                        </MudSelect>
+                        <MudTooltip Delay="1600" Duration="600" Text="Write selected styles to the prompts and clear the list." Placement="Placement.Start">
+                            <MudIconButton Icon="fa-solid fa-pencil" OnClick="WritePrompts" />
+                        </MudTooltip>
+                    </MudStack>
+                    <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" IsDisabled="ButtonDisabled" />
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+</div>
+
+<TagDrawer @ref="PromptDrawer" OnAppendTags="HandlePromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="HandleNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true" />
+
+@code {
+    #region Parameters
+    
+    /// <summary>
+    /// Fragment ID this form is associated with.
+    /// </summary>
+    [Parameter] public string FragmentId { get; set; } = "prompts";
+    
+    /// <summary>
+    /// Current prompt value.
+    /// </summary>
+    [Parameter] public string? Prompt { get; set; }
+    [Parameter] public EventCallback<string> PromptChanged { get; set; }
+    
+    /// <summary>
+    /// Current negative prompt value.
+    /// </summary>
+    [Parameter] public string? NegativePrompt { get; set; }
+    [Parameter] public EventCallback<string> NegativePromptChanged { get; set; }
+    
+    /// <summary>
+    /// Called when generate button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback OnGenerate { get; set; }
+    
+    /// <summary>
+    /// Called when skip button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback OnSkip { get; set; }
+    
+    /// <summary>
+    /// Called when interrupt button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback OnInterrupt { get; set; }
+    
+    /// <summary>
+    /// Called when styles selection changes.
+    /// </summary>
+    [Parameter] public EventCallback OnStylesChanged { get; set; }
+    
+    /// <summary>
+    /// Called when a LoRA is selected from autocomplete.
+    /// Parent should add to its LoRA list.
+    /// </summary>
+    [Parameter] public EventCallback<Lora> OnLoraSelected { get; set; }
+    
+    /// <summary>
+    /// Called when tags are appended to the prompt.
+    /// </summary>
+    [Parameter] public EventCallback<AppendedTags> OnPromptTagAppended { get; set; }
+    
+    /// <summary>
+    /// Called when tags are appended to the negative prompt.
+    /// </summary>
+    [Parameter] public EventCallback<AppendedTags> OnNegativePromptTagAppended { get; set; }
+    
+    /// <summary>
+    /// Whether the generate button is disabled.
+    /// </summary>
+    [Parameter] public bool ButtonDisabled { get; set; }
+    
+    /// <summary>
+    /// Reference to the prompt drawer (can be set externally).
+    /// </summary>
+    [Parameter] public TagDrawer? PromptDrawer { get; set; }
+    
+    /// <summary>
+    /// Reference to the negative prompt drawer (can be set externally).
+    /// </summary>
+    [Parameter] public TagDrawer? NegativePromptDrawer { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #endregion
+    
+    #region Private Fields
+    
+    private int _promptLines = 6;
+    private int _negativePromptLines = 4;
+    private bool _isConverging = false;
+    private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux, ModelBase.Qwen };
+    private List<PromptStyle>? _availableStyles;
+    private PromptButton? _buttonTags;
+    private ElementReference _containerRef;
+    private GenerateButton? _generateButtonRef;
+    private IJSObjectReference? _jsModule;
+    private DotNetObjectReference<PromptsForm>? _dotNetRef;
+    
+    #endregion
+    
+    #region Lifecycle
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Load button tags from IOService
+        LoadButtonTags();
+        
+        // Load styles from database
+        await LoadStyles();
+        
+        _dotNetRef = DotNetObjectReference.Create(this);
+        
+        // Subscribe to state changes to update styles when they're loaded
+        Events.Subscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Subscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Input.js");
+                await _jsModule.InvokeVoidAsync("initializePromptFieldsKeyboard", _containerRef, _dotNetRef);
+            }
+            catch (Exception)
+            {
+                // Keyboard shortcut initialization failed, but component still works
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task HandlePromptValueChanged(string value)
+    {
+        await PromptChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task HandleNegativePromptValueChanged(string value)
+    {
+        await NegativePromptChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+    
+    /// <summary>
+    /// Handles LoRA selection from autocomplete trigger.
+    /// Emits to parent to add to LoRA list.
+    /// </summary>
+    private async Task HandleLoraSelected(Lora lora)
+    {
+        await OnLoraSelected.InvokeAsync(lora);
+    }
+
+    /// <summary>
+    /// Handles style selection from autocomplete trigger.
+    /// Adds the style to the generation state styles list.
+    /// </summary>
+    private async Task HandleStyleSelected(PromptStyle style)
+    {
+        // Get current styles or initialize empty list
+        var currentStyles = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        
+        // Check if style already exists (avoid duplicates)
+        if (!currentStyles.Any(s => s.Name.Equals(style.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            currentStyles.Add(style);
+            State.State.Generation.Styles = currentStyles;
+            await OnStylesChanged.InvokeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleStylesSelectionChanged(IEnumerable<PromptStyle> styles) 
+    { 
+        State.State.Generation.Styles = styles;
+        await OnStylesChanged.InvokeAsync();
+    }
+
+    private async Task HandleLLMPromptApplied(string prompt, bool isNegative)
+    {
+        if (isNegative)
+        {
+            await NegativePromptChanged.InvokeAsync(prompt);
+        }
+        else
+        {
+            await PromptChanged.InvokeAsync(prompt);
+        }
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task HandlePromptTagAppended(AppendedTags tags)
+    {
+        await OnPromptTagAppended.InvokeAsync(tags);
+    }
+    
+    private async Task HandleNegativePromptTagAppended(AppendedTags tags)
+    {
+        await OnNegativePromptTagAppended.InvokeAsync(tags);
+    }
+
+    private async Task WritePrompts()
+    {
+        // Apply styles to current prompts and emit new values
+        var styles = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        
+        if (styles.Any())
+        {
+            var newPrompt = Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
+            var newNegative = NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(), true);
+            
+            await PromptChanged.InvokeAsync(newPrompt);
+            await NegativePromptChanged.InvokeAsync(newNegative);
+            await OnChanged.InvokeAsync();
+            
+            // Clear styles after writing
+            await HandleStylesSelectionChanged(Array.Empty<PromptStyle>());
+        }
+    }
+
+    private async Task HandleAutocompleteChanged(bool value)
+    {
+        State.State.Generation.Autocomplete.IsEnabled = value;
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task HandleFuzzySearchChanged(bool value)
+    {
+        State.State.Generation.Autocomplete.EnableFuzzySearch = value;
+        await State.SaveState();
+        StateHasChanged();
+    }
+    
+    #endregion
+    
+    #region State & Styles
+    
+    private async Task LoadStyles()
+    {
+        try
+        {
+            // Load prompts from database and convert to styles
+            var promptResources = await DB.GetPrompts();
+            var styles = new List<PromptStyle>();
+            
+            foreach (var prompt in promptResources)
+            {
+                styles.Add(new PromptStyle(prompt));
+            }
+            
+            // Update available styles list
+            _availableStyles = styles;
+            
+            // If there are currently selected styles in state, preserve them if they still exist
+            if (State.State.Generation.Styles != null && State.State.Generation.Styles.Any())
+            {
+                var currentStyles = State.State.Generation.Styles.ToList();
+                State.State.Generation.Styles = styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
+            }
+            else
+            {
+                // Initialize to empty list if null
+                State.State.Generation.Styles = new List<PromptStyle>();
+            }
+        }
+        catch (Exception)
+        {
+            // If styles loading fails, initialize to empty list
+            _availableStyles = new List<PromptStyle>();
+            State.State.Generation.Styles ??= new List<PromptStyle>();
+        }
+    }
+
+    private async void HandleStateChanged(StateChangedEventArgs args)
+    {
+        // Reload styles from database when state changes (in case new prompts were added)
+        await LoadStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleStylesChangedEvent(StylesChangedEventArgs args)
+    {
+        // Skip reload if this was triggered by our own LoadStyles (would cause infinite recursion)
+        // Only reload when external changes happen (e.g., prompts added/updated/deleted from other components)
+        if (args.ChangeType == "Loaded")
+            return;
+            
+        // Reload styles from database when prompts are added/updated/deleted
+        await LoadStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadButtonTags()
+    {
+        try
+        {
+            var json = IO.GetJsonAsString("Data/example.json");
+            _buttonTags = JsonSerializer.Deserialize<PromptButton>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+        }
+        catch
+        {
+            _buttonTags = null;
+        }
+    }
+    
+    #endregion
+    
+    #region Keyboard Shortcuts
+    
+    [JSInvokable]
+    public async Task HandleCtrlEnter()
+    {
+        if (!ButtonDisabled && !_isConverging && _generateButtonRef != null)
+        {
+            _generateButtonRef.Generate();
+        }
+    }
+    
+    #endregion
+    
+    #region Dispose
+    
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Unsubscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        
+        _dotNetRef?.Dispose();
+        if (_jsModule != null)
+        {
+            await _jsModule.DisposeAsync();
+        }
+    }
+    
+    #endregion
+}

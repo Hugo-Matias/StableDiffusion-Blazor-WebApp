@@ -81,6 +81,14 @@ namespace BlazorWebApp.Services
         Dictionary<string, FragmentSchema> GetWorkflowFragmentSchemas(Workflow workflow);
 
         /// <summary>
+        /// Parses default values from a fragment's template body.
+        /// Extracts defaults from Scriban syntax like {{ param ?? "default" | json }}.
+        /// </summary>
+        /// <param name="fragmentFile">The fragment file path (relative to Fragments folder)</param>
+        /// <returns>Dictionary of parameter names to their default values</returns>
+        Dictionary<string, object?> ParseFragmentDefaults(string fragmentFile);
+
+        /// <summary>
         /// Clears the fragment schema cache.
         /// Call after fragments are modified.
         /// </summary>

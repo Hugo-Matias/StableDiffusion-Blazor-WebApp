@@ -14,8 +14,8 @@
     "collapsible": true,
     "defaultCollapsed": true,
     "parameters": {
-      "seedvr2_model": { "source": "Backend.Upscalers" },
-      "seedvr2_vae_model": { "source": "Backend.Vaes" },
+      "seedvr2_model": { "source": "SeedVR2LoadDiTModel", "input_name": "model" },
+      "seedvr2_vae_model": { "source": "SeedVR2LoadVAEModel", "input_name": "model" },
       "seedvr2_seed": { "min": -1 },
       "seedvr2_resolution": { "min": 512, "max": 4096, "step": 64 },
       "seedvr2_batch_size": { "min": 1, "max": 10, "step": 1 },

@@ -1,0 +1,81 @@
+@*
+    LatentForm - Form for empty-latent.sbn fragment
+    
+    Handles: width, height, batch_size
+    Uses ResolutionPanel as sub-component for resolution controls.
+*@
+@inject ISettingsService Settings
+
+<ResolutionPanel Width="@Width"
+                 WidthChanged="HandleWidthChanged"
+                 Height="@Height"
+                 HeightChanged="HandleHeightChanged" />
+
+<MudItem xs="6">
+    <MudSlider T="int" 
+               @bind-Value="_localBatchSize"
+               @bind-Value:after="OnBatchSizeChanged"
+               Min="Settings.Settings.Generation.Shared.Batch.Size.Min" 
+               Max="Settings.Settings.Generation.Shared.Batch.Size.Max" 
+               Step="Settings.Settings.Generation.Shared.Batch.Size.Step" 
+               Variant="Variant.Filled" 
+               ValueLabel 
+               TickMarks>
+        <small>Batch Size:</small> @_localBatchSize
+    </MudSlider>
+</MudItem>
+
+@code {
+    /// <summary>
+    /// Fragment ID this form is associated with.
+    /// </summary>
+    [Parameter] public string FragmentId { get; set; } = "empty-latent";
+    
+    /// <summary>
+    /// Current width value.
+    /// </summary>
+    [Parameter] public int Width { get; set; } = 1024;
+    [Parameter] public EventCallback<int> WidthChanged { get; set; }
+    
+    /// <summary>
+    /// Current height value.
+    /// </summary>
+    [Parameter] public int Height { get; set; } = 1024;
+    [Parameter] public EventCallback<int> HeightChanged { get; set; }
+    
+    /// <summary>
+    /// Current batch size.
+    /// </summary>
+    [Parameter] public int BatchSize { get; set; } = 1;
+    [Parameter] public EventCallback<int> BatchSizeChanged { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    private int _localBatchSize;
+    
+    protected override void OnParametersSet()
+    {
+        _localBatchSize = BatchSize;
+    }
+    
+    private async Task HandleWidthChanged(int value)
+    {
+        await WidthChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task HandleHeightChanged(int value)
+    {
+        await HeightChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnBatchSizeChanged()
+    {
+        await BatchSizeChanged.InvokeAsync(_localBatchSize);
+        await OnChanged.InvokeAsync();
+    }
+}

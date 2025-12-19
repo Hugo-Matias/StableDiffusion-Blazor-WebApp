@@ -59,6 +59,12 @@ namespace BlazorWebApp.Models
 
     public class WorkflowStep
     {
+        /// <summary>
+        /// Unique identifier for this step in the pipeline.
+        /// Used as the key in GenerationParameters.Fragments.
+        /// </summary>
+        public string Id { get; set; } = string.Empty;
+        
         public string Fragment { get; set; }
         public string RawParameters { get; set; }
         public Dictionary<string, object> Parameters { get; set; }

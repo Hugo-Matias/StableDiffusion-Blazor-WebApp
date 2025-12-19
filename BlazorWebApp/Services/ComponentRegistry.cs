@@ -1,4 +1,5 @@
 using BlazorWebApp.Components.Shared.Generation;
+using BlazorWebApp.Components.Shared.Generation.Fragments;
 using Microsoft.AspNetCore.Components;
 
 namespace BlazorWebApp.Services
@@ -23,15 +24,14 @@ namespace BlazorWebApp.Services
         /// </summary>
         private void RegisterDefaultComponents()
         {
-            // Existing components (already in codebase)
+            // Fragment form components (in Fragments/ folder)
             Register("ConditioningVariationForm", typeof(ConditioningVariationForm));
             Register("SeedVarianceEnhancerForm", typeof(SeedVarianceEnhancerForm));
-            
-            // New stub components (created for new architecture)
-            Register("PromptsForm", typeof(PromptsFormNew));
-            Register("SamplerForm", typeof(SamplerFormNew));
-            Register("DetailerForm", typeof(DetailerFormNew));
-            Register("SeedVR2Form", typeof(SeedVR2FormNew));
+            Register("SamplerForm", typeof(SamplerForm));
+            Register("LatentForm", typeof(LatentForm));
+            Register("UpscaleForm", typeof(UpscaleForm));
+            Register("SeedVR2Form", typeof(SeedVR2Form));
+            Register("PromptsForm", typeof(PromptsForm));
 
             _logger.LogDebug("ComponentRegistry initialized with {Count} default components", _components.Count);
         }

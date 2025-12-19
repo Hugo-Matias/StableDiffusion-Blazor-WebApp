@@ -1,0 +1,274 @@
+@*
+    SamplerForm - Form for sampler.sbn fragment
+    
+    Handles: sampler_name, scheduler, steps, cfg/guidance, denoise, seed
+    
+    Note: CFG vs Guidance is determined by UseGuidance parameter.
+    Flux models use Guidance, other models use CFG Scale.
+*@
+@using static BlazorWebApp.Data.Enums
+@inject ISettingsService Settings
+@inject IBackendService Backend
+@inject IImageService ImageService
+
+<MudItem xs="6">
+    <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName" @bind-Value:after="OnSamplerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+        @if (Backend.Samplers != null)
+        {
+            @foreach (var sampler in Backend.Samplers)
+            {
+                <MudSelectItem Value="@sampler.Name" />
+            }
+        }
+    </MudSelect>
+</MudItem>
+<MudItem xs="6">
+    <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+        @if (Backend.Schedulers != null)
+        {
+            @foreach (var scheduler in Backend.Schedulers)
+            {
+                <MudSelectItem Value="@scheduler.Name" />
+            }
+        }
+    </MudSelect>
+</MudItem>
+<MudItem xs="6">
+    <MudSlider T="int" 
+               @bind-Value="_localSteps"
+               @bind-Value:after="OnStepsChanged"
+               Min="Settings.Settings.Generation.Shared.Steps.Min" 
+               Max="Settings.Settings.Generation.Shared.Steps.Max" 
+               Step="Settings.Settings.Generation.Shared.Steps.Step" 
+               Variant="Variant.Filled" 
+               ValueLabel>
+        <small>Steps:</small> @_localSteps
+    </MudSlider>
+</MudItem>
+<MudItem xs="5">
+    <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1" Max="long.MaxValue" />
+</MudItem>
+<MudItem xs="1">
+    <MudButtonGroup Variant="Variant.Text" VerticalAlign>
+        <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" ButtonType="ButtonType.Button" Class="icon" Title="Random seed" />
+        <MudIconButton OnClick="RestoreSeed" Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" Title="Restore seed from last generation" />
+    </MudButtonGroup>
+</MudItem>
+@if (UseGuidance)
+{
+    <MudItem xs="6">
+        <MudSlider T="float" 
+                   @bind-Value="_localGuidance"
+                   @bind-Value:after="OnGuidanceChanged"
+                   Min="Settings.Settings.Generation.Shared.DistilledCfg.Min" 
+                   Max="Settings.Settings.Generation.Shared.DistilledCfg.Max" 
+                   Step="Settings.Settings.Generation.Shared.DistilledCfg.Step" 
+                   Variant="Variant.Filled" 
+                   ValueLabel 
+                   TickMarks>
+            <small>Guidance:</small> @_localGuidance
+        </MudSlider>
+    </MudItem>
+}
+else
+{
+    <MudItem xs="6">
+        <MudSlider T="float" 
+                   @bind-Value="_localCfgScale"
+                   @bind-Value:after="OnCfgScaleChanged"
+                   Min="Settings.Settings.Generation.Shared.CfgScale.Min" 
+                   Max="Settings.Settings.Generation.Shared.CfgScale.Max" 
+                   Step="Settings.Settings.Generation.Shared.CfgScale.Step" 
+                   Variant="Variant.Filled" 
+                   ValueLabel 
+                   TickMarks>
+            <small>CFG Scale:</small> @_localCfgScale
+        </MudSlider>
+    </MudItem>
+}
+<MudItem xs="6">
+    <MudSlider T="float" 
+               @bind-Value="_localDenoise"
+               @bind-Value:after="OnDenoiseChanged"
+               Min="(float)Settings.Settings.Generation.Shared.Denoising.Min" 
+               Max="(float)Settings.Settings.Generation.Shared.Denoising.Max" 
+               Step="(float)Settings.Settings.Generation.Shared.Denoising.Step" 
+               Variant="Variant.Filled" 
+               ValueLabel 
+               TickMarks>
+        <small>Denoise:</small> @_localDenoise.ToString("F2")
+    </MudSlider>
+</MudItem>
+
+@code {
+    #region Parameters
+    
+    /// <summary>
+    /// Fragment ID this form is associated with.
+    /// </summary>
+    [Parameter] public string FragmentId { get; set; } = "sampler";
+    
+    /// <summary>
+    /// Current sampler name.
+    /// </summary>
+    [Parameter] public string? SamplerName { get; set; }
+    [Parameter] public EventCallback<string> SamplerNameChanged { get; set; }
+    
+    /// <summary>
+    /// Current scheduler name.
+    /// </summary>
+    [Parameter] public string? Scheduler { get; set; }
+    [Parameter] public EventCallback<string> SchedulerChanged { get; set; }
+    
+    /// <summary>
+    /// Current steps value.
+    /// </summary>
+    [Parameter] public int Steps { get; set; } = 20;
+    [Parameter] public EventCallback<int> StepsChanged { get; set; }
+    
+    /// <summary>
+    /// Current seed value.
+    /// </summary>
+    [Parameter] public long Seed { get; set; } = -1;
+    [Parameter] public EventCallback<long> SeedChanged { get; set; }
+    
+    /// <summary>
+    /// CFG Scale for non-Flux models.
+    /// </summary>
+    [Parameter] public float CfgScale { get; set; } = 7.0f;
+    [Parameter] public EventCallback<float> CfgScaleChanged { get; set; }
+    
+    /// <summary>
+    /// Guidance for Flux models (distilled CFG).
+    /// </summary>
+    [Parameter] public float Guidance { get; set; } = 3.5f;
+    [Parameter] public EventCallback<float> GuidanceChanged { get; set; }
+    
+    /// <summary>
+    /// Denoise strength.
+    /// </summary>
+    [Parameter] public float Denoise { get; set; } = 1.0f;
+    [Parameter] public EventCallback<float> DenoiseChanged { get; set; }
+    
+    /// <summary>
+    /// Whether to show Guidance slider (Flux) instead of CFG Scale.
+    /// </summary>
+    [Parameter] public bool UseGuidance { get; set; } = false;
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #endregion
+    
+    #region Local State
+    
+    private string? _localSamplerName;
+    private string? _localScheduler;
+    private int _localSteps;
+    private long _localSeed;
+    private float _localCfgScale;
+    private float _localGuidance;
+    private float _localDenoise;
+    
+    protected override void OnParametersSet()
+    {
+        _localSamplerName = SamplerName;
+        _localScheduler = Scheduler;
+        _localSteps = Steps;
+        _localSeed = Seed;
+        _localCfgScale = CfgScale;
+        _localGuidance = Guidance;
+        _localDenoise = Denoise;
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task OnSamplerChanged()
+    {
+        await SamplerNameChanged.InvokeAsync(_localSamplerName);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnSchedulerChanged()
+    {
+        await SchedulerChanged.InvokeAsync(_localScheduler);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnStepsChanged()
+    {
+        await StepsChanged.InvokeAsync(_localSteps);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnSeedChanged()
+    {
+        await SeedChanged.InvokeAsync(_localSeed);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnCfgScaleChanged()
+    {
+        await CfgScaleChanged.InvokeAsync(_localCfgScale);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnGuidanceChanged()
+    {
+        await GuidanceChanged.InvokeAsync(_localGuidance);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnDenoiseChanged()
+    {
+        await DenoiseChanged.InvokeAsync(_localDenoise);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task SetRandomSeed()
+    {
+        _localSeed = -1;
+        await SeedChanged.InvokeAsync(-1);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task RestoreSeed()
+    {
+        // Try to restore seed from last generation (ComfyUI workflow info)
+        if (Backend.IsBackendAvailable && !string.IsNullOrWhiteSpace(ImageService.Images?.Info))
+        {
+            var info = ImageService.Images.Info;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(info);
+                var root = doc.RootElement;
+
+                foreach (var nodeProperty in root.EnumerateObject())
+                {
+                    if (nodeProperty.Value.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                        inputs.TryGetProperty("seed", out var seedEl))
+                    {
+                        if (seedEl.ValueKind == System.Text.Json.JsonValueKind.Number && seedEl.TryGetInt64(out var seedValue))
+                        {
+                            _localSeed = seedValue;
+                            await SeedChanged.InvokeAsync(seedValue);
+                            await OnChanged.InvokeAsync();
+                            break;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If parsing fails, do nothing
+            }
+        }
+    }
+    
+    #endregion
+}

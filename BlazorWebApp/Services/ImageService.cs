@@ -749,18 +749,34 @@ namespace BlazorWebApp.Services
             FragmentParameters? promptsFragment,
             FragmentParameters? samplerFragment)
         {
-            // Extract values from fragments
+            // Extract values from fragments - look in all fragments since different workflows
+            // may have different fragment structures (loader vs sampler, etc.)
             var prompt = promptsFragment?.GetValueOrDefault<string>("positive", "") ?? "";
             var negativePrompt = promptsFragment?.GetValueOrDefault<string>("negative", "") ?? "";
+            
+            // Sampler values
             var steps = samplerFragment?.GetValueOrDefault("steps", 20) ?? 20;
             var cfg = samplerFragment?.GetValueOrDefault("cfg", 7.0) ?? 7.0;
             var seed = samplerFragment?.GetValueOrDefault("seed", -1L) ?? -1L;
             var samplerName = samplerFragment?.GetValueOrDefault<string>("sampler_name", "euler") ?? "euler";
             var scheduler = samplerFragment?.GetValueOrDefault<string>("scheduler", "normal") ?? "normal";
             var denoise = samplerFragment?.GetValueOrDefault("denoise", 1.0) ?? 1.0;
-            var width = samplerFragment?.GetValueOrDefault("width", 1024) ?? 1024;
-            var height = samplerFragment?.GetValueOrDefault("height", 1024) ?? 1024;
-            var batchSize = samplerFragment?.GetValueOrDefault("batch_size", 1) ?? 1;
+            
+            // Resolution and batch - search through all fragments since these may be in loader or latent fragments
+            int width = 1024;
+            int height = 1024;
+            int batchSize = 1;
+            
+            foreach (var fragment in parameters.Fragments.Values)
+            {
+                // Check for width/height/batch_size in any fragment
+                if (fragment.HasValue("width"))
+                    width = fragment.GetValueOrDefault("width", width);
+                if (fragment.HasValue("height"))
+                    height = fragment.GetValueOrDefault("height", height);
+                if (fragment.HasValue("batch_size"))
+                    batchSize = fragment.GetValueOrDefault("batch_size", batchSize);
+            }
 
             // Build base SharedParameters
             var legacyParams = new SharedParameters

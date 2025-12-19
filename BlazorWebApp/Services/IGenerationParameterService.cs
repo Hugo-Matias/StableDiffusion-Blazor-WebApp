@@ -129,5 +129,21 @@ namespace BlazorWebApp.Services
         /// Use after batch updates via Set* methods (without notify).
         /// </summary>
         void NotifyChanged();
+
+        /// <summary>
+        /// Resolves a data source to a list of string options.
+        /// Uses constraint.Source (node class_type) and constraint.InputName (input field) 
+        /// to query ComfyUI's object_info API.
+        /// Results are cached and refreshed on workflow change.
+        /// </summary>
+        /// <param name="constraints">The parameter constraints containing source and input_name</param>
+        /// <returns>List of available options, or empty list if source cannot be resolved</returns>
+        Task<List<string>> ResolveSourceOptionsAsync(ParameterConstraints constraints);
+
+        /// <summary>
+        /// Clears the source options cache.
+        /// Called automatically on workflow change.
+        /// </summary>
+        void ClearSourceCache();
     }
 }

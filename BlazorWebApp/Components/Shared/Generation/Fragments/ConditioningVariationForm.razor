@@ -1,0 +1,108 @@
+@*
+    ConditioningVariationForm - Form for conditioning-variation.sbn fragment
+    
+    Handles: switch_point
+    
+    This is an optional feature that renders the first X% of steps with an empty prompt,
+    then switches to the actual prompt for the remaining steps.
+    Values are read from FragmentParameters.Values and synced back on change.
+*@
+@inject IGenerationParameterService ParameterService
+@inject IWorkflowService WorkflowService
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudSlider T="float" 
+                   @bind-Value="_localSwitchPoint"
+                   @bind-Value:after="OnSwitchPointChanged"
+                   Min="@_constraints.switch_point.GetMin(0f)"
+                   Max="@_constraints.switch_point.GetMax(1f)"
+                   Step="@_constraints.switch_point.GetStep(0.05f)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Empty Prompt Duration:</small> @((_localSwitchPoint * 100).ToString("F0"))% (@_localSwitchPoint.ToString("F2"))
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+            <MudText Typo="Typo.caption">
+                <strong>Conditioning Variation</strong> renders the first <strong>@((_localSwitchPoint * 100).ToString("F0"))%</strong> of steps with an empty prompt,
+                then switches to your actual prompt for the remaining steps. This provides output variability while maintaining the core concept.
+                <br /><br />
+                <em>Tip: Lower values (10-20%) add subtle variation, higher values (30-40%) create more diverse outputs.</em>
+            </MudText>
+        </MudAlert>
+    </MudItem>
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// Fragment ID this form is associated with.
+    /// Used to read/write values from FragmentParameters.
+    /// </summary>
+    [Parameter] public string FragmentId { get; set; } = "conditioning_variation";
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #region Local State
+    
+    private float _localSwitchPoint;
+    
+    // Cached constraints from schema
+    private (ParameterConstraints switch_point, int _) _constraints;
+    
+    protected override void OnInitialized()
+    {
+        LoadConstraints();
+        InitializeFromFragment();
+    }
+    
+    protected override void OnParametersSet()
+    {
+        InitializeFromFragment();
+    }
+    
+    /// <summary>
+    /// Loads parameter constraints from the fragment schema.
+    /// </summary>
+    private void LoadConstraints()
+    {
+        var fragment = ParameterService.Current.GetFragment(FragmentId);
+        if (fragment == null) 
+        {
+            _constraints = (new(), 0);
+            return;
+        }
+        
+        var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
+        if (schema?.Parameters == null)
+        {
+            _constraints = (new(), 0);
+            return;
+        }
+        
+        _constraints = (schema.GetConstraints("switch_point"), 0);
+    }
+    
+    /// <summary>
+    /// Initializes local state from fragment parameters.
+    /// </summary>
+    private void InitializeFromFragment()
+    {
+        var fragment = ParameterService.Current.GetFragment(FragmentId);
+        if (fragment == null) return;
+        
+        _localSwitchPoint = fragment.GetValueOrDefault("switch_point", 0.2f);
+    }
+    
+    #endregion
+    
+    private async Task OnSwitchPointChanged()
+    {
+        ParameterService.SetFragmentValue(FragmentId, "switch_point", _localSwitchPoint);
+        await OnChanged.InvokeAsync();
+    }
+}

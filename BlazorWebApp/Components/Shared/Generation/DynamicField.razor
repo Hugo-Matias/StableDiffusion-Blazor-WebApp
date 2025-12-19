@@ -8,8 +8,8 @@
 {
     case "slider":
         <MudSlider T="double"
-                   Value="@GetDoubleValue()"
-                   ValueChanged="@((double v) => SetValue(v))"
+                   @bind-Value="_localDoubleValue"
+                   @bind-Value:after="OnDoubleValueChanged"
                    Min="@(Field.Min ?? 0)"
                    Max="@(Field.Max ?? 100)"
                    Step="@(Field.Step ?? 1)"
@@ -21,8 +21,8 @@
 
     case "numeric":
         <MudNumericField T="double"
-                         Value="@GetDoubleValue()"
-                         ValueChanged="@((double v) => SetValue(v))"
+                         @bind-Value="_localDoubleValue"
+                         @bind-Value:after="OnDoubleValueChanged"
                          Label="@Field.Label"
                          Min="@(Field.Min ?? double.MinValue)"
                          Max="@(Field.Max ?? double.MaxValue)" />
@@ -31,22 +31,22 @@
     case "seed":
         <MudStack Row="true" Spacing="1" AlignItems="AlignItems.End">
             <MudNumericField T="long"
-                             Value="@GetLongValue()"
-                             ValueChanged="@((long v) => SetValue(v))"
+                             @bind-Value="_localLongValue"
+                             @bind-Value:after="OnLongValueChanged"
                              Label="@Field.Label"
                              Min="@((long)(Field.Min ?? -1))"
                              Style="flex-grow: 1;" />
             <MudIconButton Icon="@Icons.Material.Filled.Casino"
                            Size="Size.Small"
                            Title="Randomize"
-                           OnClick="@(() => SetValue(-1L))" />
+                           OnClick="RandomizeSeed" />
         </MudStack>
         break;
 
     case "select":
         <MudSelect T="string"
-                   Value="@GetStringValue()"
-                   ValueChanged="@((string v) => SetValue(v))"
+                   @bind-Value="_localStringValue"
+                   @bind-Value:after="OnStringValueChanged"
                    Label="@Field.Label"
                    AnchorOrigin="Origin.BottomLeft"
                    TransformOrigin="Origin.TopLeft">
@@ -59,16 +59,16 @@
 
     case "text":
         <MudTextField T="string"
-                      Value="@GetStringValue()"
-                      ValueChanged="@((string v) => SetValue(v))"
+                      @bind-Value="_localStringValue"
+                      @bind-Value:after="OnStringValueChanged"
                       Label="@Field.Label"
                       Variant="Variant.Outlined" />
         break;
 
     case "textarea":
         <MudTextField T="string"
-                      Value="@GetStringValue()"
-                      ValueChanged="@((string v) => SetValue(v))"
+                      @bind-Value="_localStringValue"
+                      @bind-Value:after="OnStringValueChanged"
                       Label="@Field.Label"
                       Lines="@(Field.Rows ?? 3)"
                       Variant="Variant.Outlined" />
@@ -76,21 +76,21 @@
 
     case "checkbox":
         <MudCheckBox T="bool"
-                     Checked="@GetBoolValue()"
-                     CheckedChanged="@((bool v) => SetValue(v))"
+                     @bind-Value="_localBoolValue"
+                     @bind-Value:after="OnBoolValueChanged"
                      Label="@Field.Label" />
         break;
 
     case "switch":
         <MudSwitch T="bool"
-                   Checked="@GetBoolValue()"
-                   CheckedChanged="@((bool v) => SetValue(v))"
+                   @bind-Value="_localBoolValue"
+                   @bind-Value:after="OnBoolValueChanged"
                    Label="@Field.Label" />
         break;
 
     case "color":
-        <MudColorPicker Value="@GetMudColor()"
-                        ValueChanged="@((MudColor c) => SetValue(c.ToString()))"
+        <MudColorPicker @bind-Value="_localColorValue"
+                        @bind-Value:after="OnColorValueChanged"
                         Label="@Field.Label"
                         DisableAlpha="true" />
         break;
@@ -130,27 +130,79 @@
 
     private string ParameterKey => Field.Parameter;
 
-    #region Value Getters
+    #region Local State
+    
+    // Local state variables that sync with Values dictionary
+    private double _localDoubleValue;
+    private long _localLongValue;
+    private string _localStringValue = "";
+    private bool _localBoolValue;
+    private MudColor _localColorValue = new MudColor("#FFFFFF");
+    
+    protected override void OnParametersSet()
+    {
+        // Sync local state from Values dictionary based on field type
+        switch (Field.Type?.ToLowerInvariant())
+        {
+            case "slider":
+            case "numeric":
+                _localDoubleValue = GetDoubleValueFromDict();
+                break;
+            case "seed":
+                _localLongValue = GetLongValueFromDict();
+                break;
+            case "select":
+            case "text":
+            case "textarea":
+                _localStringValue = GetStringValueFromDict();
+                break;
+            case "checkbox":
+            case "switch":
+                _localBoolValue = GetBoolValueFromDict();
+                break;
+            case "color":
+                _localColorValue = GetMudColorFromDict();
+                break;
+        }
+    }
+    
+    #endregion
 
-    private double GetDoubleValue()
+    #region Value Getters (from Dictionary)
+
+    private double GetDoubleValueFromDict()
     {
         if (Values.TryGetValue(ParameterKey, out var value) && value != null)
         {
-            return Convert.ToDouble(value);
+            try
+            {
+                return Convert.ToDouble(value);
+            }
+            catch
+            {
+                return 0;
+            }
         }
         return 0;
     }
 
-    private long GetLongValue()
+    private long GetLongValueFromDict()
     {
         if (Values.TryGetValue(ParameterKey, out var value) && value != null)
         {
-            return Convert.ToInt64(value);
+            try
+            {
+                return Convert.ToInt64(value);
+            }
+            catch
+            {
+                return -1;
+            }
         }
         return -1;
     }
 
-    private string GetStringValue()
+    private string GetStringValueFromDict()
     {
         if (Values.TryGetValue(ParameterKey, out var value) && value != null)
         {
@@ -159,7 +211,7 @@
         return "";
     }
 
-    private bool GetBoolValue()
+    private bool GetBoolValueFromDict()
     {
         if (Values.TryGetValue(ParameterKey, out var value) && value != null)
         {
@@ -169,9 +221,9 @@
         return false;
     }
 
-    private MudColor GetMudColor()
+    private MudColor GetMudColorFromDict()
     {
-        var colorString = GetStringValue();
+        var colorString = GetStringValueFromDict();
         if (!string.IsNullOrEmpty(colorString))
         {
             try
@@ -188,24 +240,55 @@
 
     private string GetDisplayValue()
     {
-        var value = GetDoubleValue();
         // Format based on step precision
         if (Field.Step.HasValue && Field.Step.Value < 1)
         {
             var decimals = (int)Math.Ceiling(-Math.Log10(Field.Step.Value));
-            return value.ToString($"F{decimals}");
+            return _localDoubleValue.ToString($"F{decimals}");
         }
-        return value.ToString("F0");
+        return _localDoubleValue.ToString("F0");
     }
 
     #endregion
 
-    #region Value Setters
+    #region Value Changed Handlers
 
-    private async Task SetValue(object? value)
+    private async Task OnDoubleValueChanged()
     {
-        Values[ParameterKey] = value;
-        await OnValueChanged.InvokeAsync((ParameterKey, value));
+        Values[ParameterKey] = _localDoubleValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localDoubleValue));
+    }
+
+    private async Task OnLongValueChanged()
+    {
+        Values[ParameterKey] = _localLongValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localLongValue));
+    }
+
+    private async Task OnStringValueChanged()
+    {
+        Values[ParameterKey] = _localStringValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localStringValue));
+    }
+
+    private async Task OnBoolValueChanged()
+    {
+        Values[ParameterKey] = _localBoolValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localBoolValue));
+    }
+
+    private async Task OnColorValueChanged()
+    {
+        var colorString = _localColorValue.ToString();
+        Values[ParameterKey] = colorString;
+        await OnValueChanged.InvokeAsync((ParameterKey, colorString));
+    }
+
+    private async Task RandomizeSeed()
+    {
+        _localLongValue = -1;
+        Values[ParameterKey] = -1L;
+        await OnValueChanged.InvokeAsync((ParameterKey, -1L));
     }
 
     #endregion

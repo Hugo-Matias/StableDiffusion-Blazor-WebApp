@@ -12,14 +12,20 @@
       "id": "loader_zimage",
       "fragment": "load-diffusion.sbn",
       "parameters": {
-        "latent_id": "latent_image",
         "unet_name": {{ Model | json }},
         "clip_name": {{ Clip | json }},
         "clip_type": "lumina2",
-        "vae_name": {{ Vae | json }},
+        "vae_name": {{ Vae | json }}
+      }
+    },
+    {
+      "id": "latent",
+      "fragment": "empty-latent.sbn",
+      "parameters": {
         "width": {{ Width ?? 872 | json }},
         "height": {{ Height ?? 1248 | json }},
-        "batch_size": {{ BatchSize ?? 1 | json }}
+        "batch_size": {{ BatchSize ?? 1 | json }},
+        "latent_class": "EmptySD3LatentImage"
       }
     },
     {{~ if Loras && Loras.size > 0 ~}}

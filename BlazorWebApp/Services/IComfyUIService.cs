@@ -28,6 +28,15 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetDetailerSamplers();
         Task<List<string>> GetDetailerSchedulers();
 
+        /// <summary>
+        /// Gets input options for a specific node input from ComfyUI's object_info API.
+        /// Used to dynamically fetch available options for node parameters (e.g., model lists).
+        /// </summary>
+        /// <param name="classType">The node class_type (e.g., "SeedVR2LoadDiTModel")</param>
+        /// <param name="inputName">The input field name (e.g., "model")</param>
+        /// <returns>List of available option strings for the input</returns>
+        Task<List<string>> GetNodeInputOptionsAsync(string classType, string inputName);
+
         // History & File Operations
         Task<List<string>> GetFilenameFromHistory(Guid promptId);
         Task<List<string>> GetVideoFilenameFromHistory(Guid promptId);

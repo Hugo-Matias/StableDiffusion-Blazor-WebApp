@@ -11,13 +11,19 @@
       "fragment": "load-checkpoint.sbn",
       "parameters": {
         "loader_id": "model_loader",
-        "latent_id": "latent_image",
         "ckpt_name": {{ Model | json }},
         "prompt": {{ Prompt | json }},
-        "negative": {{ NegativePrompt | json }},
-        "width": {{ Width ?? 872 | json }},
-        "height": {{ Height ?? 1248 | json }},
-        "batch_size": {{ BatchSize ?? 1 | json }}
+        "negative": {{ NegativePrompt | json }}
+      }
+    },
+    {
+      "id": "latent",
+      "fragment": "empty-latent.sbn",
+      "parameters": {
+        "width": {{ Width ?? 512 | json }},
+        "height": {{ Height ?? 768 | json }},
+        "batch_size": {{ BatchSize ?? 1 | json }},
+        "latent_class": "EmptyLatentImage"
       }
     },
     {
@@ -38,8 +44,8 @@
       "fragment": "upscale.sbn",
       "parameters": {
         "upscale_model": {{ Upscale.Model ?? "4x-UltraSharpV2.safetensors" | json }},
-        "upscale_width": {{ Upscale.Width ?? 1744 | json }},
-        "upscale_height": {{ Upscale.Height ?? 2496 | json }},
+        "upscale_width": {{ Upscale.Width ?? 1024 | json }},
+        "upscale_height": {{ Upscale.Height ?? 1536 | json }},
         "upscale_steps": {{ Upscale.Steps ?? 20 | json }},
         "upscale_denoise": {{ Upscale.Denoise ?? 1 | json }},
         "sampler_name": {{ SamplerName ?? "multistep/res_2m" | json }},

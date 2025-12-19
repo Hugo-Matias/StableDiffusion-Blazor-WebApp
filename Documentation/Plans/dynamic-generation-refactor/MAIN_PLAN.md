@@ -39,6 +39,49 @@
 - **User permission required** before moving to next phase
 - **All events must use IEventService** - no direct event subscriptions
 
+### MudBlazor Component Binding Pattern
+When creating form components with MudBlazor controls (sliders, selects, numeric fields, etc.), use the **local state with `@bind-Value:after`** pattern:
+
+```razor
+@code {
+    // Parameters from parent
+    [Parameter] public int Steps { get; set; } = 20;
+    [Parameter] public EventCallback<int> StepsChanged { get; set; }
+    
+    // Local state that syncs with parameters
+    private int _localSteps;
+    
+    protected override void OnParametersSet()
+    {
+        _localSteps = Steps;
+    }
+    
+    private async Task OnStepsChanged()
+    {
+        await StepsChanged.InvokeAsync(_localSteps);
+    }
+}
+
+<!-- In markup -->
+<MudSlider T="int" 
+           @bind-Value="_localSteps"
+           @bind-Value:after="OnStepsChanged"
+           Min="1" Max="150" Step="1" />
+```
+
+**Why this pattern is required:**
+1. `@bind-Value` updates the local state immediately when the control changes
+2. `@bind-Value:after` fires after the local state is updated, notifying the parent
+3. `OnParametersSet` syncs local state when parent re-renders with new values
+4. Avoids race conditions where the control snaps back to old values
+
+**Anti-pattern to avoid:**
+```razor
+<!-- DON'T use Value + ValueChanged directly with parent state -->
+<MudSlider T="int" Value="Steps" ValueChanged="HandleStepsChanged" />
+```
+This causes the slider to snap back because the parent's state isn't updated before the re-render.
+
 ### Documentation Requirements
 - Create `PHASE_{#}.md` when entering a new phase
 - Update phase document after each step completion
@@ -99,7 +142,7 @@ The current generation architecture suffers from **tight coupling** between:
 ?  ????????????????  ?  ?  ????????????????  ?  ?  ????????????????  ?
 ?  ? outputs   ?  ?  ?  ? outputs   ?  ?  ?  ? outputs   ?  ?
 ?  ? conditions?  ?  ?  ? conditions?  ?  ?  ? (no ui)   ?  ?
-?  ? ui:       ?  ?  ?  ? ui:       ?  ?  ?  ?  fields[] ?  ?
+?  ? ui:       ?  ?  ?  ?  component?  ?  ?  ?  component?  ?
 ?  ?  component?  ?  ?  ?  component?  ?  ?  ?  (utility node) ?
 ?  ????????????????  ?  ??????????????????????  ??????????????????????
 ? (designed comp) ?  (dynamic fields)   ?
@@ -316,52 +359,45 @@ If nodes are logically coupled (e.g., sampler + upscale in HiRes), create a **co
 
 ---
 
-### Phase 8: Source Input UI Components
-**Objective:** Create UI components for source image/video selection
-**Complexity:** 8 points
+### Phase 8: Unified Generate Page Layout
+**Objective:** Make Generate.razor match current Txt2Img/Img2Img/Img2Vid page layout with all parameter components rendering correctly
+**Complexity:** 25 points (revised from 8)
 **Status:** [ ] Not Started
 
 #### Overview
-The Sources infrastructure is now in place (templates have Sources arrays, parsing works, GenerationParameters.Sources is populated). This phase creates the UI components that allow users to actually select source images/videos.
+The unified `/generate` page needs to match the layout and functionality of the existing generation pages. This includes proper navigation via navbar workflow buttons, and extracting reusable components for resolution, sampler settings, and toggleable features.
 
 #### Steps
+- [ ] Step 8.1 - Update NavBar workflow links to `/generate/{id}`
+- [ ] Step 8.2 - Create ResolutionPanel component (extract from GenerateFormTxt2Img)
+- [ ] Step 8.3 - Create SamplerSettingsPanel component (extract from GenerateFormTxt2Img)
+- [ ] Step 8.4 - Create ToggleableFeaturesPanel component (Upscale, SeedVR2, etc.)
+- [ ] Step 8.5 - Rewrite Generate.razor layout to match old pages
+- [ ] Step 8.6 - Wire PromptFields to GenerationParameters
+- [ ] Step 8.7 - Wire Sources to workflow composition
+- [ ] Step 8.8 - Test all workflow types (Flux, SD, Qwen, Wan)
 
-##### Step 8.1: Create SourceInputPanel Component
-**Complexity:** 3
-- [ ] Create `SourceInputPanel.razor` that renders based on workflow Sources
-- [ ] Display one input control per source defined in workflow
-- [ ] Support image type sources (file upload, paste, drag-drop)
-- [ ] Wire to `GenerationParameterService.Current.Sources[sourceId]`
-
-##### Step 8.2: Integrate SourceInputPanel into Generate.razor
-**Complexity:** 2
-- [ ] Add SourceInputPanel to Generate.razor layout (above or below prompts)
-- [ ] Show/hide based on whether workflow has Sources defined
-- [ ] Ensure panel appears for img2img/img2vid workflows only
-
-##### Step 8.3: Create VideoSourceInput Component
-**Complexity:** 3
-- [ ] Create component for video file selection (for pose2vid)
-- [ ] Handle video file upload and preview
-- [ ] Store video data in SourceAsset
-
-##### Step 8.4: Wire Sources to Workflow Composition
-**Complexity:** 3
-- [ ] Ensure `SourceAsset.Base64Data` or `SourceAsset.ImagePath` is passed to workflow
-- [ ] Update `WorkflowService.ComposeWorkflowFromTemplate` to inject source data
-- [ ] Test with img2img-edit workflow
-
-##### Step 8.5: Validate Source-based Generation
-**Complexity:** 2
-- [ ] Test Qwen img2img-edit with actual image input
-- [ ] Test Wan img2vid with actual image input
-- [ ] Verify generated output uses source correctly
+#### Target Layout
+```
+???????????????????????????????????????????????????????????????
+?                    WorkflowAssetsPanel                       ?
+???????????????????????????????????????????????????????????????
+?  PromptFields + Generate Button (full width)                ?
+???????????????????????????????????????????????????????????????
+?  LoraForm                  ?                                ?
+?  Sources (if any)          ?   GeneratedImageTabs /         ?
+?  Resolution Panel          ?   GeneratedVideoTabs           ?
+?  Sampler Settings          ?                                ?
+?  Toggleable Features       ?                                ?
+???????????????????????????????????????????????????????????????
+```
 
 #### Success Criteria
-- Users can select source images for img2img workflows
-- Users can select source videos for pose2vid workflows
-- Source data is correctly passed to ComfyUI workflow
-- Generation produces expected results
+- NavBar workflow buttons link to `/generate/{id}`
+- Generate page layout matches Txt2Img.razor pattern
+- All parameter components render and bind correctly
+- Sources work for img2img/img2vid workflows
+- Generation works for all workflow types
 
 ---
 
@@ -498,6 +534,43 @@ Components/Shared/Generation/GenerateFormImg2Vid.razor
 
 ---
 
+### Phase 12: Service Cleanup &amp; Optimization
+**Objective:** Eliminate redundancies and clarify responsibilities between WorkflowService and GenerationParameterService
+**Complexity:** 21 points
+**Status:** [ ] Not Started
+**Can Run In Parallel With:** Phase 8
+
+#### Overview
+Addresses technical debt identified in [SERVICE_ANALYSIS.md](./SERVICE_ANALYSIS.md). Consolidates duplicate code, adds metadata-based fragment discovery, and establishes clearer service boundaries.
+
+#### Key Problems Being Solved
+| Problem | Solution |
+|---------|----------|
+| Default values parsed in 3 places | Consolidate to single source in WorkflowService |
+| Duplicate pipeline parsing regex | Single `ParsePipelineSteps()` in WorkflowService |
+| Heuristic fragment discovery | `FragmentType` enum in schema metadata |
+| No caching for parsed data | Add pipeline step caching |
+
+#### Steps
+- [ ] Step 12.1 - Add `FragmentType` enum to schema (3 points)
+- [ ] Step 12.2 - Consolidate pipeline parsing to WorkflowService (5 points)
+- [ ] Step 12.3 - Consolidate default value resolution (3 points)
+- [ ] Step 12.4 - Update Generate.razor to use FragmentType (3 points)
+- [ ] Step 12.5 - Mark unused chainable fragment methods for Phase 9 (2 points)
+- [ ] Step 12.6 - Add pipeline step caching (3 points)
+- [ ] Step 12.7 - Add cache invalidation triggers (2 points)
+
+#### Success Criteria
+- Single source for pipeline parsing (WorkflowService)
+- FragmentType used instead of string heuristics
+- Clear default value priority (documented)
+- Proper caching with invalidation
+- All existing tests pass
+
+See: [PHASE_12_SERVICE_CLEANUP.md](./PHASE_12_SERVICE_CLEANUP.md) for detailed breakdown.
+
+---
+
 ## Stress Points &amp; Risks
 
 | Risk | Mitigation | Complexity |
@@ -562,6 +635,38 @@ Components/Shared/Generation/GenerateFormImg2Vid.razor
 | Phase 7 | Validated Sources parsing and initialization |
 | Phase 7 | Inserted new Phase 8 for Source Input UI Components |
 | Phase 7 | Renumbered remaining phases (8&rarr;9, 9&rarr;10, 10&rarr;11) |
+| Phase 8 | Updated NavBar workflow links to `/generate/{id}` |
+| Phase 8 | Created ResolutionPanel component (extract from GenerateFormTxt2Img) |
+| Phase 8 | Created SamplerSettingsPanel component (extract from GenerateFormTxt2Img) |
+| Phase 8 | Created ToggleableFeaturesPanel component (Upscale, SeedVR2, etc.) |
+| Phase 8 | Rewrote Generate.razor layout to match old pages |
+| Phase 8 | Wired PromptFields to GenerationParameters |
+| Phase 8 | Wired Sources to workflow composition |
+| Phase 8 | Tested all workflow types (Flux, SD, Qwen, Wan) - pending manual verification |
+| Phase 9 | Implemented fragment instance management in service |
+| Phase 9 | Created UI for adding/removing chainable fragments |
+| Phase 9 | Implemented instance reordering |
+| Phase 9 | Tested with multiple samplers |
+| Phase 9 | Tested with multiple detailers |
+| Phase 10 | Update RouterService for GenerationParameters |
+| Phase 10 | Update ComfyUI DTOs |
+| Phase 10 | Remove Legacy Parameter Classes |
+| Phase 10 | Update ImageService |
+| Phase 10 | Update StateService |
+| Phase 10 | Remove Legacy UI Components |
+| Phase 10 | Simplify AppSettings |
+| Phase 10 | Update Parser.cs |
+| Phase 11 | Created architecture overview document |
+| Phase 11 | Updated `NODE_INTEGRATION_GUIDE.md` with new workflow (2-3 files instead of 8+) |
+| Phase 11 | Updated all affected guides |
+| Phase 11 | Created migration notes for users |
+| Phase 12 | Add `FragmentType` enum to schema |
+| Phase 12 | Consolidate pipeline parsing to WorkflowService |
+| Phase 12 | Consolidate default value resolution |
+| Phase 12 | Update Generate.razor to use FragmentType |
+| Phase 12 | Mark unused chainable fragment methods for Phase 9 |
+| Phase 12 | Add pipeline step caching |
+| Phase 12 | Add cache invalidation triggers |
 
 ---
 
@@ -715,11 +820,12 @@ public interface IImageService
 | Phase 5: Unified Page | 13 | &check; Complete |
 | Phase 6: State &amp; Persistence | 8 | &check; Complete |
 | Phase 7: Workflow Templates | 5 | &check; Complete |
-| Phase 8: Source Input UI | 8 | [ ] Not Started |
+| Phase 8: Generate Page Layout | 25 | [ ] Not Started |
 | Phase 9: Node Chaining | 8 | [ ] Not Started |
 | Phase 10: Legacy Deprecation | 13 | [ ] Not Started |
 | Phase 11: Documentation | 3 | [ ] Not Started |
-| **Total** | **97 points** | |
+| Phase 12: Service Cleanup | 21 | [ ] Not Started |
+| **Total** | **135 points** | |
 
 ---
 

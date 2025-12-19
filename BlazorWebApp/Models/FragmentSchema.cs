@@ -107,16 +107,35 @@ namespace BlazorWebApp.Models
         public double? Step { get; set; }
 
         /// <summary>
-        /// Data source reference for select fields.
-        /// Format: "ServiceName.PropertyName" (e.g., "Backend.Samplers")
+        /// Default value for the parameter.
+        /// Parsed from schema "default" property or extracted from fragment template.
+        /// </summary>
+        public object? Default { get; set; }
+
+        /// <summary>
+        /// Dynamic data source for select fields.
+        /// Contains the ComfyUI node class_type to query for available options.
+        /// Example: "SeedVR2LoadDiTModel", "KSampler"
         /// </summary>
         public string? Source { get; set; }
+
+        /// <summary>
+        /// The input name to query from the node's object_info.
+        /// Used with Source to specify which input field to get options for.
+        /// Example: "model", "sampler_name"
+        /// </summary>
+        public string? InputName { get; set; }
 
         /// <summary>
         /// Static options for select fields.
         /// Used when Source is not specified.
         /// </summary>
         public List<string>? Options { get; set; }
+
+        /// <summary>
+        /// Returns true if this constraint has a dynamic source (node class_type).
+        /// </summary>
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
 
         /// <summary>
         /// Gets the min value as the specified type.
@@ -143,6 +162,23 @@ namespace BlazorWebApp.Models
         {
             if (Step == null) return defaultValue;
             return (T)Convert.ChangeType(Step.Value, typeof(T));
+        }
+
+        /// <summary>
+        /// Gets the default value as the specified type.
+        /// </summary>
+        public T? GetDefault<T>()
+        {
+            if (Default == null) return default;
+            try
+            {
+                if (Default is T typedValue) return typedValue;
+                return (T)Convert.ChangeType(Default, typeof(T));
+            }
+            catch
+            {
+                return default;
+            }
         }
     }
 
@@ -197,9 +233,19 @@ namespace BlazorWebApp.Models
         public double? Step { get; set; }
 
         /// <summary>
-        /// Data source reference (for select, file).
+        /// Dynamic data source for select/file fields.
+        /// Contains the ComfyUI node class_type to query for available options.
+        /// The Parameter property is used as the input name when querying.
+        /// Example: "SeedVR2LoadDiTModel", "KSampler"
         /// </summary>
         public string? Source { get; set; }
+
+        /// <summary>
+        /// The input name to query from the node's object_info.
+        /// Used with Source to specify which input field to get options for.
+        /// Example: "model", "sampler_name"
+        /// </summary>
+        public string? InputName { get; set; }
 
         /// <summary>
         /// Static options (for select).
@@ -220,6 +266,27 @@ namespace BlazorWebApp.Models
         /// Nested fields (for group type).
         /// </summary>
         public List<FieldSchema>? Fields { get; set; }
+
+        /// <summary>
+        /// Returns true if this field has a dynamic source (node class_type + input name).
+        /// </summary>
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
+
+        /// <summary>
+        /// Converts this FieldSchema to ParameterConstraints for source resolution.
+        /// </summary>
+        public ParameterConstraints ToConstraints()
+        {
+            return new ParameterConstraints
+            {
+                Min = Min,
+                Max = Max,
+                Step = Step,
+                Source = Source,
+                InputName = InputName,
+                Options = Options
+            };
+        }
 
         /// <summary>
         /// Validates this field schema.
@@ -244,12 +311,16 @@ namespace BlazorWebApp.Models
 
                 case "select":
                     if (string.IsNullOrEmpty(Source) && (Options == null || Options.Count == 0))
-                        errors.Add($"Select field '{Parameter}' requires 'source' or 'options'");
+                        errors.Add($"Select field '{Parameter}' requires 'source' (node class_type) or 'options'");
+                    if (!string.IsNullOrEmpty(Source) && string.IsNullOrEmpty(InputName))
+                        errors.Add($"Select field '{Parameter}' with 'source' requires 'input_name'");
                     break;
 
                 case "file":
                     if (string.IsNullOrEmpty(Source))
-                        errors.Add($"File field '{Parameter}' requires 'source'");
+                        errors.Add($"File field '{Parameter}' requires 'source' (node class_type)");
+                    if (!string.IsNullOrEmpty(Source) && string.IsNullOrEmpty(InputName))
+                        errors.Add($"File field '{Parameter}' with 'source' requires 'input_name'");
                     break;
 
                 case "group":

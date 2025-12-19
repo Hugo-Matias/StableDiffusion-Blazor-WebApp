@@ -1,0 +1,240 @@
+@*
+    UpscaleForm - Form for upscale.sbn fragment
+    
+    Handles: upscale_model, upscale_width, upscale_height, upscale_steps, upscale_denoise, upscale_scale
+    
+    This is an optional feature that adds a second-pass upscale after initial generation.
+    Values are read from FragmentParameters.Values and synced back on change.
+*@
+@inject IGenerationParameterService ParameterService
+@inject IWorkflowService WorkflowService
+@inject IBackendService Backend
+
+<MudGrid>
+    <MudItem xs="12" Class="align-items-center justify-content-center d-flex">
+        <MudText Typo="Typo.overline">@_resizeInfo</MudText>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSelect T="string" Label="Upscaler" @bind-Value="_localUpscaleModel" @bind-Value:after="OnUpscaleModelChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @if (Backend.Upscalers != null && Backend.Upscalers.Count > 0)
+            {
+                @foreach (var upscaler in Backend.Upscalers)
+                {
+                    <MudSelectItem Value="@upscaler.Name" />
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" @bind-Value="_localUpscaleSteps" @bind-Value:after="OnUpscaleStepsChanged"
+                   Min="@_constraints.upscale_steps.GetMin(0)" 
+                   Max="@_constraints.upscale_steps.GetMax(150)" 
+                   Step="@_constraints.upscale_steps.GetStep(1)" 
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Steps:</small> @(_localUpscaleSteps > 0 ? _localUpscaleSteps.ToString() : "Original")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="float" @bind-Value="_localUpscaleDenoise" @bind-Value:after="OnUpscaleDenoiseChanged"
+                   Min="@_constraints.upscale_denoise.GetMin(0f)" 
+                   Max="@_constraints.upscale_denoise.GetMax(1f)" 
+                   Step="@_constraints.upscale_denoise.GetStep(0.01f)" 
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Denoising:</small> @_localUpscaleDenoise.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="float" @bind-Value="_localUpscaleScale" @bind-Value:after="OnUpscaleScaleChanged"
+                   Min="@_constraints.upscale_scale.GetMin(1f)" 
+                   Max="@_constraints.upscale_scale.GetMax(4f)" 
+                   Step="@_constraints.upscale_scale.GetStep(0.25f)" 
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Scale Multiplier:</small> @(_localUpscaleScale)x
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" @bind-Value="_localUpscaleWidth" @bind-Value:after="OnUpscaleWidthChanged"
+                   Min="@_constraints.upscale_width.GetMin(64)" 
+                   Max="@_constraints.upscale_width.GetMax(4096)" 
+                   Step="@_constraints.upscale_width.GetStep(8)" 
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Width:</small> @(_localUpscaleWidth)px
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" @bind-Value="_localUpscaleHeight" @bind-Value:after="OnUpscaleHeightChanged"
+                   Min="@_constraints.upscale_height.GetMin(64)" 
+                   Max="@_constraints.upscale_height.GetMax(4096)" 
+                   Step="@_constraints.upscale_height.GetStep(8)" 
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Height:</small> @(_localUpscaleHeight)px
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// Fragment ID this form is associated with.
+    /// Used to read/write values from FragmentParameters.
+    /// </summary>
+    [Parameter] public string FragmentId { get; set; } = "upscale";
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #region Local State
+    
+    private string? _localUpscaleModel;
+    private int _localUpscaleSteps;
+    private float _localUpscaleDenoise;
+    private float _localUpscaleScale;
+    private int _localUpscaleWidth;
+    private int _localUpscaleHeight;
+    private MarkupString _resizeInfo = new();
+    
+    // Cached constraints from schema
+    private (ParameterConstraints upscale_model, ParameterConstraints upscale_steps, 
+             ParameterConstraints upscale_denoise, ParameterConstraints upscale_scale,
+             ParameterConstraints upscale_width, ParameterConstraints upscale_height) _constraints;
+    
+    protected override void OnInitialized()
+    {
+        LoadConstraints();
+        InitializeFromFragment();
+    }
+    
+    protected override void OnParametersSet()
+    {
+        // Re-read values when FragmentId changes
+        InitializeFromFragment();
+    }
+    
+    /// <summary>
+    /// Loads parameter constraints from the fragment schema.
+    /// </summary>
+    private void LoadConstraints()
+    {
+        var fragment = ParameterService.Current.GetFragment(FragmentId);
+        if (fragment == null) 
+        {
+            _constraints = (new(), new(), new(), new(), new(), new());
+            return;
+        }
+        
+        var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
+        if (schema?.Parameters == null)
+        {
+            _constraints = (new(), new(), new(), new(), new(), new());
+            return;
+        }
+        
+        _constraints = (
+            schema.GetConstraints("upscale_model"),
+            schema.GetConstraints("upscale_steps"),
+            schema.GetConstraints("upscale_denoise"),
+            schema.GetConstraints("upscale_scale"),
+            schema.GetConstraints("upscale_width"),
+            schema.GetConstraints("upscale_height")
+        );
+    }
+    
+    /// <summary>
+    /// Initializes local state from fragment parameters.
+    /// Values come from the fragment template defaults parsed during initialization.
+    /// </summary>
+    private void InitializeFromFragment()
+    {
+        var fragment = ParameterService.Current.GetFragment(FragmentId);
+        if (fragment == null) return;
+        
+        _localUpscaleModel = fragment.GetValueOrDefault<string>("upscale_model", null);
+        _localUpscaleSteps = fragment.GetValueOrDefault("upscale_steps", 20);
+        _localUpscaleDenoise = fragment.GetValueOrDefault("upscale_denoise", 1.0f);
+        _localUpscaleScale = fragment.GetValueOrDefault("upscale_scale", 2.0f);
+        _localUpscaleWidth = fragment.GetValueOrDefault("upscale_width", 1744);
+        _localUpscaleHeight = fragment.GetValueOrDefault("upscale_height", 2496);
+        
+        RefreshResizeInfo();
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task OnUpscaleModelChanged()
+    {
+        ParameterService.SetFragmentValue(FragmentId, "upscale_model", _localUpscaleModel);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnUpscaleStepsChanged()
+    {
+        ParameterService.SetFragmentValue(FragmentId, "upscale_steps", _localUpscaleSteps);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnUpscaleDenoiseChanged()
+    {
+        ParameterService.SetFragmentValue(FragmentId, "upscale_denoise", _localUpscaleDenoise);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnUpscaleScaleChanged()
+    {
+        ParameterService.SetFragmentValue(FragmentId, "upscale_scale", _localUpscaleScale);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnUpscaleWidthChanged()
+    {
+        ParameterService.SetFragmentValue(FragmentId, "upscale_width", _localUpscaleWidth);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnUpscaleHeightChanged()
+    {
+        ParameterService.SetFragmentValue(FragmentId, "upscale_height", _localUpscaleHeight);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+    
+    #endregion
+    
+    private void RefreshResizeInfo()
+    {
+        // Get base dimensions from latent fragment if available
+        var baseWidth = 1024;
+        var baseHeight = 1024;
+        
+        // Try to read base dimensions from a latent fragment
+        foreach (var kvp in ParameterService.Current.Fragments)
+        {
+            var fragmentFile = Path.GetFileName(kvp.Value.FragmentFile).ToLowerInvariant();
+            if (fragmentFile.Contains("latent") || fragmentFile.Contains("load"))
+            {
+                baseWidth = kvp.Value.GetValueOrDefault("width", 1024);
+                baseHeight = kvp.Value.GetValueOrDefault("height", 1024);
+                break;
+            }
+        }
+        
+        if (_localUpscaleWidth > 0 && _localUpscaleHeight > 0)
+        {
+            _resizeInfo = new MarkupString($"From: {baseWidth}x{baseHeight} px &rarr; To: <strong>{_localUpscaleWidth}x{_localUpscaleHeight} px</strong>");
+        }
+        else if (_localUpscaleScale > 0)
+        {
+            var targetWidth = (int)(baseWidth * _localUpscaleScale);
+            var targetHeight = (int)(baseHeight * _localUpscaleScale);
+            _resizeInfo = new MarkupString($"From: {baseWidth}x{baseHeight} px &rarr; To: <strong>{targetWidth}x{targetHeight} px</strong> ({_localUpscaleScale}x)");
+        }
+        else
+        {
+            _resizeInfo = new MarkupString(string.Empty);
+        }
+    }
+}

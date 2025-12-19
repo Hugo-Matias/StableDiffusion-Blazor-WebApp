@@ -2,6 +2,7 @@
 @page "/generate/{WorkflowId}"
 @using BlazorWebApp.Events
 @using BlazorWebApp.Components.Shared.Generation
+@using BlazorWebApp.Components.Shared.Generation.Fragments
 @using BlazorWebApp.Components.ImageEditor
 @using static BlazorWebApp.Data.Enums
 @inject IComfyUIService API
@@ -13,127 +14,104 @@
 @inject IImageService ImageService
 @inject IGenerationParameterService ParameterService
 @inject IComponentRegistry ComponentRegistry
+@inject IBackendService Backend
 @inject NavigationManager NavManager
 @inject ILogger<Generate> Logger
 @implements IDisposable
 
-@* Workflow Selection and Assets *@
-<MudGrid Class="mb-3">
-    <MudItem xs="8">
-        <MudSelect T="Workflow" 
-                   Value="_selectedWorkflow" 
-                   ValueChanged="OnWorkflowSelected"
-                   Label="Workflow"
-                   AnchorOrigin="Origin.BottomLeft"
-                   TransformOrigin="Origin.TopLeft"
-                   Adornment="Adornment.Start"
-                   AdornmentIcon="@Icons.Material.Filled.AccountTree">
-            @if (_workflows != null)
-            {
-                @foreach (var group in _workflows.GroupBy(w => w.Mode))
-                {
-                    <MudSelectItem T="Workflow" Disabled="true" Value="null">
-                        <MudText Typo="Typo.overline">@group.Key</MudText>
-                    </MudSelectItem>
-                    @foreach (var workflow in group)
-                    {
-                        <MudSelectItem T="Workflow" Value="@workflow">
-                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="@GetModeColor(workflow.Mode)">
-                                    @workflow.Base
-                                </MudChip>
-                                @workflow.Title
-                            </MudStack>
-                        </MudSelectItem>
-                    }
-                }
-            }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="4">
-        @if (_selectedWorkflow != null)
-        {
-            <MudChip Color="@GetModeColor(_selectedWorkflow.Mode)" Variant="Variant.Filled">
-                @_selectedWorkflow.Mode
-            </MudChip>
-            <MudChip Color="Color.Default" Variant="Variant.Outlined">
-                @_selectedWorkflow.Base
-            </MudChip>
-        }
-    </MudItem>
-</MudGrid>
-
 @if (_selectedWorkflow != null)
 {
-    @* Workflow Assets Panel *@
+    @* Workflow Assets Panel - Full width before prompts *@
     <WorkflowAssetsPanel Mode="@_selectedWorkflow.Mode" 
                          Workflow="@_selectedWorkflow"
                          Columns="3"
                          IsInitiallyExpanded="false" />
 
-    @* Main Content Grid *@
+    @* Prompts + Generate Button (full width) *@
+    <PromptsForm 
+        Prompt="@_prompt"
+        PromptChanged="HandlePromptChanged"
+        NegativePrompt="@_negativePrompt"
+        NegativePromptChanged="HandleNegativePromptChanged"
+        OnGenerate="GenerateAsync"
+        OnSkip="SkipAsync"
+        OnInterrupt="InterruptAsync"
+        OnLoraSelected="HandleLoraAdded"
+        OnStylesChanged="HandleStylesChanged"
+        OnPromptTagAppended="HandlePromptTagAppended"
+        OnNegativePromptTagAppended="HandleNegativePromptTagAppended"
+        ButtonDisabled="@_isGenerating" />
+
+    @* Two-column layout *@
     <MudGrid>
         @* Left Column - Parameters *@
         <MudItem xs="6">
-            <MudStack Spacing="3">
-                @* Prompt Fields *@
-                @if (_promptsFragment != null)
-                {
-                    <MudPaper Elevation="0" Class="pa-3">
-                        <PromptsFormNew Schema="@_promptsSchema" 
-                                        Parameters="@_promptsFragment" 
-                                        OnValueChanged="HandleValueChanged" />
-                    </MudPaper>
-                }
+            @* LoRAs *@
+            <LoraForm Loras="Parameters.Loras" 
+                      Backend="Data.Enums.Backend.ComfyUI" 
+                      OnLorasUpdated="HandleLorasUpdated" />
 
-                @* Sources Panel (if workflow has sources) *@
-                @if (Parameters?.Sources?.Count > 0)
-                {
-                    <SourcesPanel Sources="@Parameters.Sources"
-                                  OnSourceChanged="HandleSourceChanged"
-                                  OnEditClicked="HandleEditClicked"
-                                  OnBlankCanvasClicked="HandleBlankCanvasClicked" />
-                }
+            @* Sources (if workflow has sources) *@
+            @if (HasSources)
+            {
+                <SourcesPanel Sources="@Parameters.Sources"
+                              OnSourceChanged="HandleSourceChanged"
+                              OnEditClicked="HandleEditClicked"
+                              OnBlankCanvasClicked="HandleBlankCanvasClicked" />
+            }
 
-                @* Fragment Forms - sorted by order *@
-                @foreach (var fragmentEntry in GetOrderedFragments())
-                {
-                    var fragmentId = fragmentEntry.Key;
-                    var fragment = fragmentEntry.Value;
-                    var schema = GetFragmentSchema(fragment.FragmentFile);
-                    
-                    @if (schema != null && schema.HasUI && fragmentId != "prompts")
-                    {
-                        <FragmentFormContainer Schema="@schema"
-                                               Parameters="@fragment"
-                                               FragmentId="@fragmentId"
-                                               OnActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentId, active))"
-                                               OnAddInstance="@(() => HandleAddFragmentInstance(fragmentId))">
-                            @if (schema.HasDesignedComponent && ComponentRegistry.IsRegistered(schema.Component))
-                            {
-                                @RenderDesignedComponent(schema.Component, fragment, schema, fragmentId)
-                            }
-                            else if (schema.UsesDynamicFields)
-                            {
-                                <DynamicFragmentForm Schema="@schema"
-                                                     Parameters="@fragment"
-                                                     OnValueChanged="HandleValueChanged" />
-                            }
-                        </FragmentFormContainer>
-                    }
-                }
+            @* Latent/Resolution (if present in pipeline) *@
+            @if (_latentFragmentId != null)
+            {
+                <LatentForm 
+                    FragmentId="@_latentFragmentId"
+                    Width="@_width"
+                    WidthChanged="HandleWidthChanged"
+                    Height="@_height"
+                    HeightChanged="HandleHeightChanged"
+                    BatchSize="@_batchSize"
+                    BatchSizeChanged="HandleBatchSizeChanged"
+                    OnChanged="HandleFragmentValueChanged" />
+            }
 
-                @* Generate Button *@
-                <GenerateButton OnGenerateClicked="GenerateAsync"
-                                OnSkip="SkipAsync"
-                                OnInterrupt="InterruptAsync"
-                                IsDisabled="@(!CanGenerate())" />
-            </MudStack>
+            @* Sampler (if present in pipeline) *@
+            @if (_samplerFragmentId != null)
+            {
+                <SamplerForm 
+                    FragmentId="@_samplerFragmentId"
+                    SamplerName="@_samplerName"
+                    SamplerNameChanged="HandleSamplerNameChanged"
+                    Scheduler="@_scheduler"
+                    SchedulerChanged="HandleSchedulerChanged"
+                    Steps="@_steps"
+                    StepsChanged="HandleStepsChanged"
+                    Seed="@_seed"
+                    SeedChanged="HandleSeedChanged"
+                    CfgScale="@_cfgScale"
+                    CfgScaleChanged="HandleCfgScaleChanged"
+                    Denoise="@_denoise"
+                    DenoiseChanged="HandleDenoiseChanged"
+                    UseGuidance="@UseGuidance"
+                    OnChanged="HandleFragmentValueChanged" />
+            }
+
+            @* Optional Features (wrapped in CollapsibleFeatureSection) *@
+            @foreach (var optFrag in GetOptionalFragments())
+            {
+                <CollapsibleFeatureSection 
+                    Title="@optFrag.Title"
+                    Icon="@optFrag.Icon"
+                    IsActive="@optFrag.Fragment.IsActive"
+                    IsActiveChanged="@((active) => HandleFragmentActiveChanged(optFrag.Id, active))"
+                    DefaultExpanded="false">
+                    @RenderOptionalFragmentForm(optFrag.Id, optFrag.Fragment, optFrag.Schema)
+                </CollapsibleFeatureSection>
+            }
         </MudItem>
 
         @* Right Column - Output *@
         <MudItem xs="6">
-            @if (_selectedWorkflow.Mode == ModeType.Img2Vid)
+            @if (IsVideoMode)
             {
                 <GeneratedVideoTabs GeneratedVideos="@ImageService.GeneratedVideos" />
             }
@@ -147,7 +125,7 @@
 else
 {
     <MudAlert Severity="Severity.Info" Class="mt-4">
-        Select a workflow to begin generating.
+        Select a workflow from the navigation bar to begin generating.
     </MudAlert>
 }
 
@@ -159,24 +137,55 @@ else
 @code {
     [Parameter] public string? WorkflowId { get; set; }
 
-    // State
+    #region State & References
+    
     private List<Workflow>? _workflows;
     private Workflow? _selectedWorkflow;
+    private bool _isGenerating = false;
     
     /// <summary>
     /// Reference to the State.GenerationParameters for convenience.
-    /// This is the same object persisted by StateService.
     /// </summary>
     private GenerationParameters Parameters => State.GenerationParameters;
-    
-    // Cached fragment data
-    private FragmentParameters? _promptsFragment;
-    private FragmentSchema? _promptsSchema;
-    private Dictionary<string, FragmentSchema> _schemaCache = new();
     
     // Editor
     private ImageEditorModal? _editorModal;
     private string? _editingSourceId;
+    
+    #endregion
+    
+    #region Local State (synced with fragments)
+    
+    // Prompts - local state synced to fragment
+    private string _prompt = "";
+    private string _negativePrompt = "";
+    
+    // Latent/Resolution fragment
+    private string? _latentFragmentId;
+    private int _width = 1024;
+    private int _height = 1024;
+    private int _batchSize = 1;
+    
+    // Sampler fragment
+    private string? _samplerFragmentId;
+    private string? _samplerName;
+    private string? _scheduler;
+    private int _steps = 20;
+    private long _seed = -1;
+    private float _cfgScale = 7.0f;
+    private float _denoise = 1.0f;
+    
+    #endregion
+    
+    #region Computed Properties
+    
+    private bool HasSources => _selectedWorkflow?.Sources?.Count > 0;
+    private bool IsVideoMode => _selectedWorkflow?.Mode == ModeType.Img2Vid;
+    private bool UseGuidance => _selectedWorkflow?.Base == ModelBase.Flux;
+    
+    #endregion
+
+    #region Lifecycle
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,7 +193,7 @@ else
         Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
         
-        // Load all workflows by combining all modes
+        // Load all workflows
         _workflows = new List<Workflow>();
         foreach (var mode in new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid })
         {
@@ -194,50 +203,52 @@ else
                 _workflows.AddRange(modeWorkflows);
             }
         }
-        
-        // Check if Parameters already has a workflow (from state restore)
-        if (Parameters.WorkflowId.HasValue)
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        // Handle URL parameter changes
+        await InitializeFromUrl();
+    }
+    
+    private async Task InitializeFromUrl()
+    {
+        // Check if we have a workflow ID in the URL
+        if (!string.IsNullOrEmpty(WorkflowId) && Guid.TryParse(WorkflowId, out var workflowGuid))
         {
-            var restoredWorkflow = _workflows.FirstOrDefault(w => w.Id == Parameters.WorkflowId.Value);
+            // Only reinitialize if workflow changed
+            if (_selectedWorkflow?.Id != workflowGuid)
+            {
+                var workflow = _workflows?.FirstOrDefault(w => w.Id == workflowGuid);
+                if (workflow != null)
+                {
+                    await OnWorkflowSelected(workflow);
+                    return;
+                }
+            }
+        }
+        
+        // If no URL parameter, try to restore from state
+        if (_selectedWorkflow == null && Parameters.WorkflowId.HasValue)
+        {
+            var restoredWorkflow = _workflows?.FirstOrDefault(w => w.Id == Parameters.WorkflowId.Value);
             if (restoredWorkflow != null)
             {
-                _selectedWorkflow = restoredWorkflow;
-                
-                // Ensure sources are initialized if they're missing but workflow requires them
-                if (restoredWorkflow.Sources?.Count > 0 && Parameters.Sources.Count == 0)
-                {
-                    Logger.LogDebug("Workflow has sources but Parameters.Sources is empty, reinitializing from workflow");
-                    await ParameterService.InitializeFromWorkflowAsync(restoredWorkflow);
-                }
-                
-                CachePromptsFragment();
-                StateHasChanged();
+                await OnWorkflowSelected(restoredWorkflow);
                 return;
             }
         }
         
-        // Initialize from URL parameter or state
-        if (!string.IsNullOrEmpty(WorkflowId) && Guid.TryParse(WorkflowId, out var workflowGuid))
+        // If still no workflow and we have some, select the first
+        if (_selectedWorkflow == null && _workflows?.Count > 0)
         {
-            var workflow = _workflows.FirstOrDefault(w => w.Id == workflowGuid);
-            if (workflow != null)
-            {
-                await OnWorkflowSelected(workflow);
-            }
-        }
-        else if (State.State?.Generation?.CurrentWorkflowId.HasValue == true)
-        {
-            var workflow = _workflows.FirstOrDefault(w => w.Id == State.State.Generation.CurrentWorkflowId.Value);
-            if (workflow != null)
-            {
-                await OnWorkflowSelected(workflow);
-            }
-        }
-        else if (_workflows.Count > 0)
-        {
-            await OnWorkflowSelected(_workflows.First());
+            // Don't auto-select - let user choose from navbar
         }
     }
+
+    #endregion
+
+    #region Workflow Selection
 
     private async Task OnWorkflowSelected(Workflow workflow)
     {
@@ -252,11 +263,14 @@ else
             State.State.Generation.WorkflowBase = workflow.Base;
         }
         
-        // Initialize parameters from workflow (updates State.GenerationParameters)
+        // Initialize parameters from workflow
         await ParameterService.InitializeFromWorkflowAsync(workflow);
         
-        // Cache prompts fragment for direct binding
-        CachePromptsFragment();
+        // Find fragment IDs from pipeline
+        DiscoverFragments();
+        
+        // Initialize local state from fragments
+        InitializeLocalStateFromFragments();
         
         // Update URL without full navigation
         var newUrl = $"/generate/{workflow.Id}";
@@ -265,95 +279,420 @@ else
         StateHasChanged();
     }
 
-    private void CachePromptsFragment()
+    /// <summary>
+    /// Discovers fragment IDs from the workflow pipeline.
+    /// Looks for fragments that contain sampler or resolution parameters.
+    /// </summary>
+    private void DiscoverFragments()
     {
-        if (Parameters.Fragments.TryGetValue("prompts", out var prompts))
-        {
-            _promptsFragment = prompts;
-            _promptsSchema = GetFragmentSchema(prompts.FragmentFile);
-        }
-        else
-        {
-            _promptsFragment = null;
-            _promptsSchema = null;
-        }
-    }
-
-    private FragmentSchema? GetFragmentSchema(string fragmentFile)
-    {
-        if (string.IsNullOrEmpty(fragmentFile)) return null;
+        _latentFragmentId = null;
+        _samplerFragmentId = null;
         
-        if (!_schemaCache.TryGetValue(fragmentFile, out var schema))
+        // Discover from Parameters.Fragments - look for fragments by their file or content
+        foreach (var kvp in Parameters.Fragments)
         {
-            schema = WorkflowService.GetFragmentSchema(fragmentFile);
-            if (schema != null)
+            var fragmentFile = Path.GetFileName(kvp.Value.FragmentFile).ToLowerInvariant();
+            var fragmentId = kvp.Key;
+            
+            // Identifier sampler fragments
+            if (fragmentFile == "sampler.sbn" || fragmentId.Contains("sampler"))
             {
-                _schemaCache[fragmentFile] = schema;
+                _samplerFragmentId = fragmentId;
+            }
+            
+            // Identify latent/resolution fragments
+            // These can be in loader fragments (like load-flux.sbn) or empty-latent.sbn
+            if (fragmentFile.Contains("latent") || fragmentFile.Contains("empty"))
+            {
+                _latentFragmentId = fragmentId;
+            }
+            // Loader fragments often contain width/height/batch_size
+            else if (fragmentFile.Contains("load") && _latentFragmentId == null)
+            {
+                _latentFragmentId = fragmentId;
             }
         }
         
-        return schema;
+        Logger.LogDebug("Discovered fragments - Latent: {Latent}, Sampler: {Sampler}", 
+            _latentFragmentId, _samplerFragmentId);
     }
 
-    private IEnumerable<KeyValuePair<string, FragmentParameters>> GetOrderedFragments()
+    /// <summary>
+    /// Initializes local state variables from fragment values.
+    /// Also ensures fragment Values dictionary is populated with defaults.
+    /// </summary>
+    private void InitializeLocalStateFromFragments()
     {
-        return Parameters.Fragments
-            .Select(kvp => new { 
-                Entry = kvp, 
-                Order = GetFragmentSchema(kvp.Value.FragmentFile)?.Order ?? 999 
-            })
-            .OrderBy(x => x.Order)
-            .Select(x => x.Entry);
-    }
-
-    private RenderFragment RenderDesignedComponent(string componentName, FragmentParameters fragment, FragmentSchema schema, string fragmentId)
-    {
-        var componentType = ComponentRegistry.GetComponent(componentName);
-        if (componentType == null)
+        // Initialize prompts from fragment - create if doesn't exist
+        var promptsFragment = Parameters.GetOrCreateFragment("prompts", "prompts.sbn");
+        _prompt = promptsFragment.GetValueOrDefault<string>("positive", "") ?? "";
+        _negativePrompt = promptsFragment.GetValueOrDefault<string>("negative", "") ?? "";
+        
+        // Ensure prompt values are set in fragment
+        promptsFragment.SetValue("positive", _prompt);
+        promptsFragment.SetValue("negative", _negativePrompt);
+        
+        // Initialize latent/resolution values from discovered fragment
+        if (_latentFragmentId != null && Parameters.Fragments.TryGetValue(_latentFragmentId, out var latentFrag))
         {
-            return builder => builder.AddContent(0, $"Component '{componentName}' not found");
+            // Read existing values or use defaults
+            _width = latentFrag.GetValueOrDefault("width", 1024);
+            _height = latentFrag.GetValueOrDefault("height", 1024);
+            _batchSize = latentFrag.GetValueOrDefault("batch_size", 1);
+            
+            // Always write back to ensure Values dictionary is populated
+            latentFrag.SetValue("width", _width);
+            latentFrag.SetValue("height", _height);
+            latentFrag.SetValue("batch_size", _batchSize);
         }
-
-        return builder =>
+        
+        // Initialize sampler values from discovered fragment
+        if (_samplerFragmentId != null && Parameters.Fragments.TryGetValue(_samplerFragmentId, out var samplerFrag))
         {
-            builder.OpenComponent(0, componentType);
-            builder.AddAttribute(1, "Schema", schema);
-            builder.AddAttribute(2, "Parameters", fragment);
-            builder.AddAttribute(3, "OnValueChanged", EventCallback.Factory.Create<(string, object?)>(this, HandleValueChanged));
-            builder.AddAttribute(4, "FragmentId", fragmentId);
-            builder.CloseComponent();
-        };
+            // Read existing values or use defaults
+            _samplerName = samplerFrag.GetValueOrDefault<string>("sampler_name", "euler") ?? "euler";
+            _scheduler = samplerFrag.GetValueOrDefault<string>("scheduler", "normal") ?? "normal";
+            _steps = samplerFrag.GetValueOrDefault("steps", 20);
+            _seed = samplerFrag.GetValueOrDefault("seed", -1L);
+            _cfgScale = samplerFrag.GetValueOrDefault("cfg", 7.0f);
+            _denoise = samplerFrag.GetValueOrDefault("denoise", 1.0f);
+            
+            // Always write back to ensure Values dictionary is populated
+            samplerFrag.SetValue("sampler_name", _samplerName);
+            samplerFrag.SetValue("scheduler", _scheduler);
+            samplerFrag.SetValue("steps", _steps);
+            samplerFrag.SetValue("seed", _seed);
+            samplerFrag.SetValue("cfg", _cfgScale);
+            samplerFrag.SetValue("denoise", _denoise);
+        }
+        
+        Logger.LogDebug("Initialized local state - Width: {Width}, Height: {Height}, Steps: {Steps}, Seed: {Seed}",
+            _width, _height, _steps, _seed);
     }
 
-    #region Event Handlers
+    #endregion
 
-    private void HandleValueChanged((string key, object? value) args)
+    #region Fragment Value Helpers
+
+    private T? GetFragmentValue<T>(string fragmentId, string key) where T : class
     {
-        // Value already updated in fragment, just trigger save
-        _ = State.SaveState();
+        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment) &&
+            fragment.Values.TryGetValue(key, out var value))
+        {
+            try
+            {
+                if (value is T typedValue) return typedValue;
+                if (value is System.Text.Json.JsonElement jsonEl)
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<T>(jsonEl.GetRawText());
+                }
+                return (T)Convert.ChangeType(value, typeof(T));
+            }
+            catch
+            {
+                return default;
+            }
+        }
+        return default;
+    }
+    
+    private T? GetFragmentValueNullable<T>(string fragmentId, string key) where T : struct
+    {
+        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment) &&
+            fragment.Values.TryGetValue(key, out var value))
+        {
+            try
+            {
+                if (value is T typedValue) return typedValue;
+                if (value is System.Text.Json.JsonElement jsonEl)
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<T>(jsonEl.GetRawText());
+                }
+                return (T)Convert.ChangeType(value, typeof(T));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        return null;
     }
 
-    private void HandleSourceChanged((string sourceId, SourceAsset source) args)
+    private void SetFragmentValue(string fragmentId, string key, object? value)
+    {
+        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment))
+        {
+            fragment.Values[key] = value;
+        }
+    }
+
+    #endregion
+
+    #region Prompt Handlers
+
+    private async Task HandlePromptChanged(string value)
+    {
+        _prompt = value;
+        SetFragmentValue("prompts", "positive", value);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleNegativePromptChanged(string value)
+    {
+        _negativePrompt = value;
+        SetFragmentValue("prompts", "negative", value);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandlePromptTagAppended(AppendedTags tags)
+    {
+        if (tags.IsPrefix)
+            _prompt = tags.Tags + (string.IsNullOrEmpty(_prompt) ? "" : ", " + _prompt);
+        else
+            _prompt += (string.IsNullOrEmpty(_prompt) ? "" : ", ") + tags.Tags;
+        
+        SetFragmentValue("prompts", "positive", _prompt);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleNegativePromptTagAppended(AppendedTags tags)
+    {
+        if (tags.IsPrefix)
+            _negativePrompt = tags.Tags + (string.IsNullOrEmpty(_negativePrompt) ? "" : ", " + _negativePrompt);
+        else
+            _negativePrompt += (string.IsNullOrEmpty(_negativePrompt) ? "" : ", ") + tags.Tags;
+        
+        SetFragmentValue("prompts", "negative", _negativePrompt);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    #endregion
+
+    #region LoRA Handlers
+
+    private async Task HandleLoraAdded(Lora lora)
+    {
+        if (!Parameters.Loras.Any(l => l.Name.Equals(lora.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            Parameters.Loras.Add(lora);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task HandleLorasUpdated()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    #endregion
+
+    #region Style Handlers
+
+    private async Task HandleStylesChanged()
+    {
+        // Styles are managed by PromptsForm via State.State.Generation.Styles
+        // Apply style LoRAs to our LoRA list
+        foreach (var style in State.State.Generation.Styles ?? Enumerable.Empty<PromptStyle>())
+        {
+            foreach (var lora in style.Loras ?? Enumerable.Empty<Lora>())
+            {
+                if (!Parameters.Loras.Any(l => l.Name == lora.Name))
+                {
+                    Parameters.Loras.Add(lora);
+                }
+            }
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    #endregion
+
+    #region Latent/Resolution Handlers
+
+    private async Task HandleWidthChanged(int value)
+    {
+        _width = value;
+        if (_latentFragmentId != null)
+            SetFragmentValue(_latentFragmentId, "width", value);
+        // EventCallback automatically triggers StateHasChanged on parent
+    }
+
+    private async Task HandleHeightChanged(int value)
+    {
+        _height = value;
+        if (_latentFragmentId != null)
+            SetFragmentValue(_latentFragmentId, "height", value);
+    }
+
+    private async Task HandleBatchSizeChanged(int value)
+    {
+        _batchSize = value;
+        if (_latentFragmentId != null)
+            SetFragmentValue(_latentFragmentId, "batch_size", value);
+    }
+
+    #endregion
+
+    #region Sampler Handlers
+
+    private async Task HandleSamplerNameChanged(string? value)
+    {
+        _samplerName = value;
+        if (_samplerFragmentId != null)
+            SetFragmentValue(_samplerFragmentId, "sampler_name", value);
+    }
+
+    private async Task HandleSchedulerChanged(string? value)
+    {
+        _scheduler = value;
+        if (_samplerFragmentId != null)
+            SetFragmentValue(_samplerFragmentId, "scheduler", value);
+    }
+
+    private async Task HandleStepsChanged(int value)
+    {
+        _steps = value;
+        if (_samplerFragmentId != null)
+            SetFragmentValue(_samplerFragmentId, "steps", value);
+    }
+
+    private async Task HandleSeedChanged(long value)
+    {
+        _seed = value;
+        if (_samplerFragmentId != null)
+            SetFragmentValue(_samplerFragmentId, "seed", value);
+    }
+
+    private async Task HandleCfgScaleChanged(float value)
+    {
+        _cfgScale = value;
+        if (_samplerFragmentId != null)
+            SetFragmentValue(_samplerFragmentId, "cfg", value);
+    }
+
+    private async Task HandleDenoiseChanged(float value)
+    {
+        _denoise = value;
+        if (_samplerFragmentId != null)
+            SetFragmentValue(_samplerFragmentId, "denoise", value);
+    }
+
+    private async Task HandleFragmentValueChanged()
+    {
+        // Generic handler for when any fragment value changes
+        await State.SaveState();
+    }
+
+    #endregion
+
+    #region Optional Fragments
+
+    /// <summary>
+    /// Gets the optional fragments that should be rendered with CollapsibleFeatureSection.
+    /// Dynamically determines optional fragments by checking schema.DefaultCollapsed == true.
+    /// </summary>
+    private IEnumerable<(string Id, string Title, string? Icon, FragmentSchema? Schema, FragmentParameters Fragment)> GetOptionalFragments()
+    {
+        foreach (var kvp in Parameters.Fragments)
+        {
+            var fragmentId = kvp.Key;
+            var fragment = kvp.Value;
+            
+            // Get the fragment schema to check if it's an optional (collapsible) fragment
+            var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
+            
+            // A fragment is optional if:
+            // 1. It has a schema with DefaultCollapsed = true (fragment starts inactive by default)
+            // 2. OR it has Collapsible = true AND is not a core fragment (sampler, latent, prompts)
+            var isOptional = schema?.DefaultCollapsed == true;
+            
+            if (isOptional)
+            {
+                var title = schema?.Title ?? Path.GetFileNameWithoutExtension(fragment.FragmentFile);
+                var icon = schema?.Icon;
+                yield return (fragmentId, title, icon, schema, fragment);
+            }
+        }
+    }
+
+    private async Task HandleFragmentActiveChanged(string fragmentId, bool active)
+    {
+        // Notify the parameter service so the change is tracked (this also sets fragment.IsActive)
+        ParameterService.SetFragmentActive(fragmentId, active);
+        
+        Logger.LogDebug("Fragment '{FragmentId}' IsActive changed to {IsActive}", fragmentId, active);
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Dynamically renders a fragment form using the schema's Component property.
+    /// Falls back to a placeholder if no component is registered.
+    /// </summary>
+    private RenderFragment RenderOptionalFragmentForm(string fragmentId, FragmentParameters fragment, FragmentSchema? schema)
+    {
+        // Get component name from schema, or derive from fragment file
+        var componentName = schema?.Component;
+        
+        if (string.IsNullOrEmpty(componentName))
+        {
+            // Try to derive component name from fragment file: "upscale.sbn" -> "UpscaleForm"
+            var baseName = Path.GetFileNameWithoutExtension(fragment.FragmentFile);
+            componentName = ToPascalCase(baseName) + "Form";
+        }
+        
+        // Look up component type in registry
+        var componentType = ComponentRegistry.GetComponent(componentName);
+        
+        if (componentType != null)
+        {
+            return builder =>
+            {
+                builder.OpenComponent(0, componentType);
+                builder.AddAttribute(1, "FragmentId", fragmentId);
+                builder.CloseComponent();
+            };
+        }
+        
+        // Check if schema has dynamic fields defined
+        if (schema?.UsesDynamicFields == true)
+        {
+            // TODO: Implement dynamic field rendering based on schema.Fields
+            return builder => builder.AddContent(0, 
+                $"Dynamic fields for '{schema.Title}' - field rendering not yet implemented");
+        }
+        
+        // No component found and no dynamic fields
+        Logger.LogWarning("No component found for fragment '{FragmentId}' (tried '{ComponentName}')", 
+            fragmentId, componentName);
+        
+        return builder => builder.AddContent(0, 
+            $"No form component registered for '{componentName}'");
+    }
+    
+    /// <summary>
+    /// Converts a kebab-case or snake_case string to PascalCase.
+    /// </summary>
+    private static string ToPascalCase(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        
+        var parts = input.Split(new[] { '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Select(p => 
+            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p.Substring(1).ToLowerInvariant() : "")));
+    }
+
+    #endregion
+
+    #region Source Handlers
+
+    private async Task HandleSourceChanged((string sourceId, SourceAsset source) args)
     {
         if (Parameters.Sources.ContainsKey(args.sourceId))
         {
             Parameters.Sources[args.sourceId] = args.source;
         }
-        StateHasChanged();
-    }
-
-    private void HandleFragmentActiveChanged(string fragmentId, bool active)
-    {
-        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment))
-        {
-            fragment.IsActive = active;
-        }
-    }
-
-    private void HandleAddFragmentInstance(string fragmentId)
-    {
-        // TODO: Implement fragment chaining in Phase 8
-        Logger.LogInformation("Add fragment instance requested for: {FragmentId}", fragmentId);
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleEditClicked(string sourceId)
@@ -370,16 +709,16 @@ else
         _editingSourceId = sourceId;
         if (_editorModal != null)
         {
-            await _editorModal.OpenBlank(1024, 1024);
+            await _editorModal.OpenBlank(_width, _height);
         }
     }
 
-    private void HandleEditorApply((string image, string? mask) result)
+    private async Task HandleEditorApply((string image, string? mask) result)
     {
         if (!string.IsNullOrEmpty(_editingSourceId) && Parameters.Sources.TryGetValue(_editingSourceId, out var source))
         {
             source.Data = result.image;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
         _editingSourceId = null;
     }
@@ -402,7 +741,6 @@ else
         {
             foreach (var sourceDefinition in _selectedWorkflow.Sources)
             {
-                // Check if source is required (from workflow definition)
                 if (sourceDefinition.Required && 
                     (!Parameters.Sources.TryGetValue(sourceDefinition.Id, out var source) || 
                      !source.HasData))
@@ -417,10 +755,13 @@ else
 
     private async Task GenerateAsync()
     {
-        if (_selectedWorkflow == null) return;
+        if (_selectedWorkflow == null || !CanGenerate()) return;
 
         try
         {
+            _isGenerating = true;
+            StateHasChanged();
+            
             // Save state before generation
             await State.SaveState();
 
@@ -442,11 +783,15 @@ else
 
             // Save state after generation
             await State.SaveState();
-            StateHasChanged();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error during generation");
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
         }
     }
 
@@ -477,18 +822,25 @@ else
 
     #endregion
 
-    #region Helpers
-
-    private Color GetModeColor(ModeType mode) => mode switch
-    {
-        ModeType.Txt2Img => Color.Primary,
-        ModeType.Img2Img => Color.Secondary,
-        ModeType.Img2Vid => Color.Tertiary,
-        _ => Color.Default
-    };
+    #region Event Handlers
 
     private void OnStateChanged(StateChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
-    private void OnParametersChanged(GenerationParametersChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
+    
+    private void OnParametersChanged(GenerationParametersChangedEventArgs args)
+    {
+        // Reinitialize local state when parameters change externally
+        if (args.ChangeType == GenerationParameterChangeType.ParametersLoaded ||
+            args.ChangeType == GenerationParameterChangeType.WorkflowChanged)
+        {
+            DiscoverFragments();
+            InitializeLocalStateFromFragments();
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    #endregion
+
+    #region Dispose
 
     public void Dispose()
     {
