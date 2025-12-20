@@ -80,7 +80,7 @@
       "fragment": "wan/model-sampling-sd3.sbn",
       "parameters": {
         "sampler_id": "high_model_sampling",
-        "shift": {{ Shift ?? 5 | json }},
+        "shift": {{ shift ?? 5 | json }},
         {{~ has_high_lora = false ~}}
         {{~ if Loras && Loras.size > 0 ~}}
         {{~ for lora in Loras ~}}
@@ -103,7 +103,7 @@
       "fragment": "wan/model-sampling-sd3.sbn",
       "parameters": {
         "sampler_id": "low_model_sampling",
-        "shift": {{ Shift ?? 5 | json }},
+        "shift": {{ shift ?? 5 | json }},
         {{~ has_low_lora = false ~}}
         {{~ if Loras && Loras.size > 0 ~}}
         {{~ for lora in Loras ~}}
@@ -125,9 +125,9 @@
       "id": "load_image",
       "fragment": "wan/load-image.sbn",
       "parameters": {
-        "image_path": {{ Image | json }},
-        "width": {{ Width ?? 768 | json }},
-        "height": {{ Height ?? 768 | json }}
+        "image_path": {{ image | json }},
+        "width": {{ width ?? 768 | json }},
+        "height": {{ height ?? 768 | json }}
       }
     },
     {
@@ -141,17 +141,17 @@
       "id": "prompts",
       "fragment": "wan/prompts.sbn",
       "parameters": {
-        "positive": {{ Prompt | json }},
-        "negative": {{ NegativePrompt ?? "???,????,??,??,??,??,??,??,??,??,??,??,??,??,??,??,JPEG??,????,???,???,??,??,??,??,????,????,????" | json }}
+        "positive": {{ positive | json }},
+        "negative": {{ negative ?? "???,????,??,??,??,??,??,??,??,??,??,??,??,??,??,??,JPEG??,????,???,???,??,??,??,??,????,????,????" | json }}
       }
     },
     {
       "id": "video_settings",
       "fragment": "wan/painter-i2v.sbn",
       "parameters": {
-        "length": {{ Length ?? 81 | json }},
-        "batch_size": {{ BatchSize ?? 1 | json }},
-        "motion_amplitude": {{ MotionAmplitude ?? 1.1 | json }}
+        "length": {{ video_length ?? 81 | json }},
+        "batch_size": {{ batch_size ?? 1 | json }},
+        "motion_amplitude": {{ motion_amplitude ?? 1.1 | json }}
       }
     },
     {
@@ -159,13 +159,13 @@
       "fragment": "wan/sampler-advanced.sbn",
       "parameters": {
         "sampler_id": "sampler_high",
-        "seed": {{ Seed ?? 42 | json }},
-        "steps": {{ Steps ?? 8 | json }},
-        "cfg": {{ CfgScale ?? 1 | json }},
-        "sampler_name": {{ SamplerName ?? "euler" | json }},
-        "scheduler": {{ Scheduler ?? "simple" | json }},
+        "seed": {{ seed ?? 42 | json }},
+        "steps": {{ steps ?? 8 | json }},
+        "cfg": {{ cfg ?? 1 | json }},
+        "sampler_name": {{ sampler_name ?? "euler" | json }},
+        "scheduler": {{ scheduler ?? "simple" | json }},
         "start_at_step": 0,
-        "end_at_step": {{ (Steps ?? 8) / 2 | math.round | json }},
+        "end_at_step": {{ (steps ?? 8) / 2 | math.round | json }},
         "add_noise": "enable",
         "return_with_leftover_noise": "enable",
         "model_input_name": "high_sampled_model_output",
@@ -178,11 +178,11 @@
       "parameters": {
         "sampler_id": "sampler_low",
         "seed": 0,
-        "steps": {{ Steps ?? 8 | json }},
-        "cfg": {{ CfgScale ?? 1 | json }},
-        "sampler_name": {{ SamplerName ?? "euler" | json }},
-        "scheduler": {{ Scheduler ?? "simple" | json }},
-        "start_at_step": {{ (Steps ?? 8) / 2 | math.round | json }},
+        "steps": {{ steps ?? 8 | json }},
+        "cfg": {{ cfg ?? 1 | json }},
+        "sampler_name": {{ sampler_name ?? "euler" | json }},
+        "scheduler": {{ scheduler ?? "simple" | json }},
+        "start_at_step": {{ (steps ?? 8) / 2 | math.round | json }},
         "end_at_step": 10000,
         "add_noise": "disable",
         "return_with_leftover_noise": "disable",
@@ -212,9 +212,9 @@
       "id": "frame_interpolation",
       "fragment": "wan/frame-interpolation.sbn",
       "parameters": {
-        "scale_by": {{ FrameInterpolation.ScaleBy ?? 2.0 | json }},
-        "frame_multiplier": {{ FrameInterpolation.Multiplier ?? 2 | json }},
-        "rife_model": {{ FrameInterpolation.RifeModel ?? "rife49.pth" | json }}
+        "scale_by": {{ frame_interpolation.scale_by ?? 2.0 | json }},
+        "frame_multiplier": {{ frame_interpolation.multiplier ?? 2 | json }},
+        "rife_model": {{ frame_interpolation.rife_model ?? "rife49.pth" | json }}
       }
     },
     {
@@ -222,11 +222,11 @@
       "fragment": "video-save.sbn",
       "parameters": {
         "node_id": "video_output",
-        {{~ if FrameInterpolation && FrameInterpolation.IsActive ~}}
-        "frame_rate": {{ (FrameRate ?? 16) * (FrameInterpolation.Multiplier ?? 2) | json }},
+        {{~ if frame_interpolation && frame_interpolation.is_active ~}}
+        "frame_rate": {{ (frame_rate ?? 16) * (frame_interpolation.multiplier ?? 2) | json }},
         "image_input_name": "frames_output",
         {{~ else ~}}
-        "frame_rate": {{ FrameRate ?? 16 | json }},
+        "frame_rate": {{ frame_rate ?? 16 | json }},
         "image_input_name": "image_output",
         {{~ end ~}}
         "filename_prefix": "tmp/vid",

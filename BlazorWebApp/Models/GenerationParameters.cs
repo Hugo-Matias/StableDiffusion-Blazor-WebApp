@@ -2,8 +2,7 @@ namespace BlazorWebApp.Models
 {
     /// <summary>
     /// Unified parameter storage for all generation workflows.
-    /// Replaces mode-specific parameter classes (Txt2ImgParameters, Img2ImgParameters, etc.)
-    /// with a flexible dictionary-based structure driven by workflow templates.
+    /// Uses a flexible dictionary-based structure driven by workflow templates.
     /// </summary>
     public class GenerationParameters
     {
@@ -104,14 +103,28 @@ namespace BlazorWebApp.Models
         }
 
         /// <summary>
+        /// Finds the first fragment containing a specific parameter key.
+        /// </summary>
+        public FragmentParameters? FindFragmentByParameter(string parameterKey)
+        {
+            foreach (var fragment in Fragments.Values)
+            {
+                if (fragment.Values.ContainsKey(parameterKey))
+                    return fragment;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Flattens all fragment values into a single dictionary for Scriban template rendering.
         /// Later fragments override earlier ones if keys conflict.
+        /// Fragment parameters use snake_case which matches template expectations.
         /// </summary>
         public Dictionary<string, object?> FlattenForTemplateRendering()
         {
             var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 
-            // Add assets
+            // Add assets - these use PascalCase as defined in workflow templates
             foreach (var asset in Assets)
             {
                 result[asset.Key] = asset.Value;
@@ -120,13 +133,21 @@ namespace BlazorWebApp.Models
             // Add fragment values (ordered, so later fragments can override)
             foreach (var fragment in GetActiveFragments())
             {
+                // Add all parameter values from the fragment
                 foreach (var value in fragment.Value.Values)
                 {
                     result[value.Key] = value.Value;
                 }
 
-                // Also expose the fragment itself for condition evaluation
+                // Expose the fragment itself for condition evaluation (e.g., SeedVR2.IsActive)
                 result[fragment.Key] = fragment.Value;
+            }
+            
+            // Also add fragments that are NOT active so conditions can check them
+            foreach (var fragment in Fragments.Where(f => !f.Value.IsActive))
+            {
+                if (!result.ContainsKey(fragment.Key))
+                    result[fragment.Key] = fragment.Value;
             }
 
             // Add Loras

@@ -1,3 +1,4 @@
+@using BlazorWebApp.Models
 @using System.Diagnostics;
 @inject IStateService State
 @inject IOrchestratorService M
@@ -117,42 +118,34 @@
 
     private void LoadSettings(ModeType mode)
     {
-        if (mode == ModeType.Txt2Img)
-        {
-            M.InitializeParameters(new ModeType[1] { ModeType.Txt2Img });
-            State.ParametersTxt2Img.Prompt = Image.Meta.Prompt;
-            State.ParametersTxt2Img.NegativePrompt = Image.Meta.NegativePrompt;
-            State.ParametersTxt2Img.Seed = Image.Meta.Seed;
-            State.ParametersTxt2Img.SamplerIndex = Image.Meta.Sampler;
-            State.ParametersTxt2Img.Steps = Image.Meta.Steps;
-            State.ParametersTxt2Img.CfgScale = Image.Meta.CfgScale;
-            State.ParametersTxt2Img.Width = Image.Width;
-            State.ParametersTxt2Img.Height = Image.Height;
-            // if (Image.HiresUpscale != null)
-            // {
-            //     State.ParametersTxt2Img.EnableHR = true;
-            //     State.ParametersTxt2Img.HRUpscaler = Image.HiresUpscaler;
-            //     State.ParametersTxt2Img.HRScale = double.Parse(Image.HiresUpscale);
-            //     if (Image.HiresSteps != null)
-            //         State.ParametersTxt2Img.HRSecondPassSteps = int.Parse(Image.HiresSteps);
-            //     else
-            //         State.ParametersTxt2Img.HRSecondPassSteps = 0;
-            //     State.ParametersTxt2Img.DenoisingStrength = double.Parse(Image.DenoisingStrength);
-            // }
-        }
-        else if (mode == ModeType.Img2Img)
-        {
-            M.InitializeParameters(new ModeType[1] { ModeType.Img2Img });
-            State.ParametersImg2Img.Prompt = Image.Meta.Prompt;
-            State.ParametersImg2Img.NegativePrompt = Image.Meta.NegativePrompt;
-            State.ParametersImg2Img.Seed = Image.Meta.Seed;
-            State.ParametersImg2Img.SamplerIndex = Image.Meta.Sampler;
-            State.ParametersImg2Img.Steps = Image.Meta.Steps;
-            State.ParametersImg2Img.CfgScale = Image.Meta.CfgScale;
-            State.ParametersImg2Img.DenoisingStrength = double.Parse(Image.Meta.DenoisingStrength);
-            State.ParametersImg2Img.Width = Image.Width;
-            State.ParametersImg2Img.Height = Image.Height;
-        }
+        // Update GenerationParameters (primary)
+        UpdateGenerationParameters();
+        
         Snackbar.Add($"Settings copied to {mode}", Severity.Success);
+    }
+    
+    private void UpdateGenerationParameters()
+    {
+        // Update prompts fragment
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, Image.Meta.Prompt ?? "");
+        promptsFragment.SetValue(FragmentKeys.Params.Negative, Image.Meta.NegativePrompt ?? "");
+        
+        // Update sampler fragment
+        var samplerFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+        samplerFragment.SetValue(FragmentKeys.Params.Seed, Image.Meta.Seed);
+        samplerFragment.SetValue(FragmentKeys.Params.Steps, Image.Meta.Steps);
+        samplerFragment.SetValue(FragmentKeys.Params.Cfg, (double)Image.Meta.CfgScale);
+        samplerFragment.SetValue(FragmentKeys.Params.SamplerName, Image.Meta.Sampler ?? "euler");
+        
+        if (!string.IsNullOrEmpty(Image.Meta.DenoisingStrength) && double.TryParse(Image.Meta.DenoisingStrength, out var denoise))
+        {
+            samplerFragment.SetValue(FragmentKeys.Params.Denoise, denoise);
+        }
+        
+        // Update latent fragment
+        var latentFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.Latent);
+        latentFragment.SetValue(FragmentKeys.Params.Width, Image.Width);
+        latentFragment.SetValue(FragmentKeys.Params.Height, Image.Height);
     }
 }

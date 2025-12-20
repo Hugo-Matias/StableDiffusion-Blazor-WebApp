@@ -489,13 +489,8 @@
                     await DB.DeletePrompt(prompt.Id);
                     break;
                 case "Txt2Img":
-                    State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
-                    State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
-                    await DB.UpdatePromptUsage(prompt.Id);
-                    break;
                 case "Img2Img":
-                    State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, prompt.Positive);
-                    State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, prompt.Negative);
+                    UpdateGenerationParametersPrompts(prompt.Positive, prompt.Negative);
                     await DB.UpdatePromptUsage(prompt.Id);
                     break;
             }
@@ -539,27 +534,28 @@
     
     private async Task HandleApply((Prompt prompt, bool isImg2Img) args)
     {
-        if (args.isImg2Img)
-        {
-            State.ParametersImg2Img.Prompt = Parser.ParseStyle(State.ParametersImg2Img.Prompt, args.prompt.Positive);
-            State.ParametersImg2Img.NegativePrompt = Parser.ParseStyle(State.ParametersImg2Img.NegativePrompt, args.prompt.Negative);
-        }
-        else
-        {
-            State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, args.prompt.Positive);
-            State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, args.prompt.Negative);
-        }
+        // Update GenerationParameters (primary)
+        UpdateGenerationParametersPrompts(args.prompt.Positive, args.prompt.Negative);
         
         await OnPromptChanged.InvokeAsync();
     }
     
     private async Task HandleQuickApply(Prompt prompt)
     {
-        // Quick apply to Txt2Img
-        State.ParametersTxt2Img.Prompt = Parser.ParseStyle(State.ParametersTxt2Img.Prompt, prompt.Positive);
-        State.ParametersTxt2Img.NegativePrompt = Parser.ParseStyle(State.ParametersTxt2Img.NegativePrompt, prompt.Negative);
+        // Update GenerationParameters (primary)
+        UpdateGenerationParametersPrompts(prompt.Positive, prompt.Negative);
+        
         await DB.UpdatePromptUsage(prompt.Id);
         await OnPromptChanged.InvokeAsync();
+    }
+    
+    private void UpdateGenerationParametersPrompts(string? positive, string? negative)
+    {
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
+        var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, positive));
+        promptsFragment.SetValue(FragmentKeys.Params.Negative, Parser.ParseStyle(currentNegative, negative));
     }
     
     private async Task HandleUnpin(Prompt prompt)

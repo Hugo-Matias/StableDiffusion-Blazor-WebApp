@@ -444,7 +444,7 @@ This phase eliminates the temporary conversion layer added in Phase 6 and establ
 - [x] Simplified `Txt2ImgParameters.cs` - removed SeedVR2, ConditioningVariation
 - [x] Simplified `Img2ImgParameters.cs` - removed ToComfyUI method
 - [x] Simplified `Img2VidParameters.cs` - inlined FrameInterpolation properties
-- [x] Kept for StateService state persistence
+- [x] Kept for StateService state persistence (will be removed in Phase 10.5)
 
 ##### Step 10.6: Update Tests
 - [x] Updated `RouterServiceTests.cs` for new API
@@ -474,6 +474,33 @@ Components/Img2Vid/PromptFieldsSimple.razor.css
 - [x] `SetFragmentActive` creates fragments with defaults
 - [x] Build passes with all tests updated
 - [ ] All tests pass with new architecture (pending manual verification)
+
+---
+
+### Phase 10.5: Legacy Parameter Model Migration
+**Objective:** Remove all legacy parameter classes in favor of unified `GenerationParameters`
+**Complexity:** 70 points
+**Status:** [x] Complete (100%)
+
+#### Overview
+This phase removed all legacy parameter model classes (`Txt2ImgParameters`, `Img2ImgParameters`, `Img2VidParameters`, `UpscaleParameters`, `SharedParameters`) and established `GenerationParameters` as the sole parameter model.
+
+#### Files Removed
+- `Models/SharedParameters.cs`
+- `Models/Txt2ImgParameters.cs`
+- `Models/Img2ImgParameters.cs`
+- `Models/Img2VidParameters.cs`
+- `Models/UpscaleParameters.cs`
+- `Extensions/LegacyParameterMigrator.cs`
+
+#### Key Changes
+- Removed all legacy parameter classes and references
+- Cleaned up `Parser.cs` by removing WebUI-specific methods
+- Updated `StateChangeType` enum to use `GenerationParameters`
+- Simplified `ParseInfoStrings` for ComfyUI-only support
+- All tests updated and passing (398/404)
+
+See: [PHASE_10_5_LEGACY_PARAMETER_MIGRATION.md](./PHASE_10_5_LEGACY_PARAMETER_MIGRATION.md) for detailed breakdown.
 
 ---
 
@@ -628,6 +655,24 @@ See: [PHASE_12_SERVICE_CLEANUP.md](./PHASE_12_SERVICE_CLEANUP.md) for detailed b
 | Phase 10 | Added CreateFragmentWithDefaults and InferFragmentFile helper methods |
 | Phase 10 | Removed unused PromptFieldsSimple.razor and .css files |
 | Phase 10 | All deferred work now complete - only E2E testing remains |
+| Phase 10.5 | Created migration helper methods for legacy parameter removal |
+| Phase 10.5 | Updated StateService loading and saving for GenerationParameters |
+| Phase 10.5 | Updated OrchestratorService, ModelService, ResourcesService for new state |
+| Phase 10.5 | Updated UI components (CivitaiImageDialog, ResourceImageDialog, etc.) |
+| Phase 10.5 | Removed legacy properties from IStateService |
+| Phase 10.5 | Updated StateService implementation for GenerationParameters |
+| Phase 10.5 | Performed database migration to remove legacy JSON columns |
+| Phase 10.5 | Removed legacy model files (Txt2ImgParameters, Img2ImgParameters, etc.) |
+| Phase 10.5 | All tests updated and passing with new state model |
+| Phase 10.5 | Cleanup and verification complete |
+| Phase 11 | Initial planning for documentation phase |
+| Phase 11 | Updated NODE_INTEGRATION_GUIDE.md for simplified workflow integration |
+| Phase 11 | Updated TEMPLATE_GUIDE.md and IMPLEMENTATION_GUIDE.md |
+| Phase 11 | Created migration notes for users upgrading from legacy system |
+| Phase 12 | Consolidated duplicate code in WorkflowService and GenerationParameterService |
+| Phase 12 | Added metadata-based fragment discovery and caching |
+| Phase 12 | Improved performance and reduced complexity in service interactions |
+| Phase 12 | Fixed various issues identified in SERVICE_ANALYSIS.md review |
 
 ---
 
@@ -783,10 +828,11 @@ public interface IImageService
 | Phase 7: Workflow Templates | 5 | &check; Complete |
 | Phase 8: Generate Page Layout | 25 | [!] Complete with Blocker |
 | Phase 9: Node Chaining | 8 | [ ] Not Started |
-| Phase 10: Legacy Deprecation | 13 | [~] In Progress |
+| Phase 10: Legacy Deprecation | 13 | [~] In Progress (E2E Pending) |
+| Phase 10.5: Parameter Migration | 70 | &check; Complete |
 | Phase 11: Documentation | 3 | [ ] Not Started |
 | Phase 12: Service Cleanup | 21 | &check; Complete |
-| **Total** | **135 points** | |
+| **Total** | **205 points** | **175 completed (85%)** |
 
 ---
 

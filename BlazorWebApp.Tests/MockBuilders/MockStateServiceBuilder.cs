@@ -12,10 +12,7 @@ namespace BlazorWebApp.Tests.MockBuilders
     {
         private readonly Mock<IStateService> _mock;
         private AppState? _state;
-        private Txt2ImgParameters? _txt2ImgParams;
-        private Img2ImgParameters? _img2ImgParams;
-        private Img2VidParameters? _img2VidParams;
-        private UpscaleParameters? _upscaleParams;
+        private GenerationParameters? _generationParameters;
 
         public MockStateServiceBuilder()
         {
@@ -32,26 +29,41 @@ namespace BlazorWebApp.Tests.MockBuilders
                 }
             };
 
-            // Set up default parameters
-            _txt2ImgParams = new Txt2ImgParameters
+            // Set up default GenerationParameters
+            _generationParameters = new GenerationParameters();
+            
+            // Create default fragments
+            var promptsFragment = new FragmentParameters
             {
-                WorkflowAssets = new Dictionary<string, string>()
+                FragmentFile = FragmentKeys.Files.Prompts,
+                IsActive = true
             };
-
-            _img2ImgParams = new Img2ImgParameters
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
+            promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
+            _generationParameters.Fragments[FragmentKeys.Fragments.Prompts] = promptsFragment;
+            
+            var samplerFragment = new FragmentParameters
             {
-                WorkflowAssets = new Dictionary<string, string>()
+                FragmentFile = FragmentKeys.Files.Sampler,
+                IsActive = true
             };
-
-            _img2VidParams = new Img2VidParameters
+            samplerFragment.SetValue(FragmentKeys.Params.Seed, -1L);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, 30);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, 7.5);
+            samplerFragment.SetValue(FragmentKeys.Params.SamplerName, "euler");
+            samplerFragment.SetValue(FragmentKeys.Params.Scheduler, "normal");
+            samplerFragment.SetValue(FragmentKeys.Params.Denoise, 0.52);
+            _generationParameters.Fragments[FragmentKeys.Fragments.MainSampler] = samplerFragment;
+            
+            var latentFragment = new FragmentParameters
             {
-                WorkflowAssets = new Dictionary<string, string>()
+                FragmentFile = FragmentKeys.Files.EmptyLatent,
+                IsActive = true
             };
-
-            _upscaleParams = new UpscaleParameters
-            {
-                WorkflowAssets = new Dictionary<string, string>()
-            };
+            latentFragment.SetValue(FragmentKeys.Params.Width, 512);
+            latentFragment.SetValue(FragmentKeys.Params.Height, 768);
+            latentFragment.SetValue(FragmentKeys.Params.BatchSize, 4);
+            _generationParameters.Fragments[FragmentKeys.Fragments.Latent] = latentFragment;
         }
 
         /// <summary>
@@ -94,47 +106,64 @@ namespace BlazorWebApp.Tests.MockBuilders
         }
 
         /// <summary>
-        /// Sets Txt2Img parameters
+        /// Sets GenerationParameters
         /// </summary>
-        public MockStateServiceBuilder WithTxt2ImgParameters(Txt2ImgParameters parameters)
+        public MockStateServiceBuilder WithGenerationParameters(GenerationParameters parameters)
         {
-            _txt2ImgParams = parameters;
+            _generationParameters = parameters;
             return this;
         }
 
         /// <summary>
-        /// Sets Img2Img parameters
+        /// Sets workflow assets
         /// </summary>
-        public MockStateServiceBuilder WithImg2ImgParameters(Img2ImgParameters parameters)
+        public MockStateServiceBuilder WithWorkflowAssets(Dictionary<string, string> assets)
         {
-            _img2ImgParams = parameters;
+            foreach (var kvp in assets)
+                _generationParameters.Assets[kvp.Key] = kvp.Value;
             return this;
         }
 
         /// <summary>
-        /// Sets Img2Vid parameters
+        /// Sets prompt values
         /// </summary>
-        public MockStateServiceBuilder WithImg2VidParameters(Img2VidParameters parameters)
+        public MockStateServiceBuilder WithPrompts(string positive, string negative = "")
         {
-            _img2VidParams = parameters;
+            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, positive);
+            promptsFragment.SetValue(FragmentKeys.Params.Negative, negative);
             return this;
         }
 
         /// <summary>
-        /// Sets Upscale parameters
+        /// Sets sampler values
         /// </summary>
-        public MockStateServiceBuilder WithUpscaleParameters(UpscaleParameters parameters)
+        public MockStateServiceBuilder WithSamplerSettings(int steps, double cfg, long seed = -1)
         {
-            _upscaleParams = parameters;
+            var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, steps);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, cfg);
+            samplerFragment.SetValue(FragmentKeys.Params.Seed, seed);
             return this;
         }
 
         /// <summary>
-        /// Sets workflow assets for Txt2Img
+        /// Sets resolution values
         /// </summary>
-        public MockStateServiceBuilder WithTxt2ImgWorkflowAssets(Dictionary<string, string> assets)
+        public MockStateServiceBuilder WithResolution(int width, int height)
         {
-            _txt2ImgParams.WorkflowAssets = assets;
+            var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+            latentFragment.SetValue(FragmentKeys.Params.Width, width);
+            latentFragment.SetValue(FragmentKeys.Params.Height, height);
+            return this;
+        }
+
+        /// <summary>
+        /// Adds LoRAs
+        /// </summary>
+        public MockStateServiceBuilder WithLoras(List<Lora> loras)
+        {
+            _generationParameters.Loras = loras;
             return this;
         }
 
@@ -146,11 +175,8 @@ namespace BlazorWebApp.Tests.MockBuilders
             // Setup state property
             _mock.Setup(x => x.State).Returns(_state);
 
-            // Setup parameters properties
-            _mock.Setup(x => x.ParametersTxt2Img).Returns(_txt2ImgParams);
-            _mock.Setup(x => x.ParametersImg2Img).Returns(_img2ImgParams);
-            _mock.Setup(x => x.ParametersImg2Vid).Returns(_img2VidParams);
-            _mock.Setup(x => x.ParametersUpscale).Returns(_upscaleParams);
+            // Setup GenerationParameters property
+            _mock.Setup(x => x.GenerationParameters).Returns(_generationParameters);
 
             // Setup SaveState method
             _mock.Setup(x => x.SaveState()).Returns(Task.CompletedTask);

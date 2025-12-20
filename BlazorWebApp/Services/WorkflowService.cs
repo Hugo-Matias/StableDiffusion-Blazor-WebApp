@@ -333,10 +333,13 @@ namespace BlazorWebApp.Services
             Dictionary<string, (string, int)> outputs = new();
             Dictionary<string, JsonElement>? conditions = null;
 
-            var metaMatch = Regex.Match(fragmentText, @"#meta\s*(\{.*?\})\s*#end", RegexOptions.Singleline);
+            // Match #meta ... #end block - use [\s\S] to match any character including newlines
+            // The pattern captures everything between #meta and #end
+            var metaMatch = Regex.Match(fragmentText, @"#meta\s*([\s\S]*?)\s*#end");
+            
             if (metaMatch.Success)
             {
-                var metaJson = metaMatch.Groups[1].Value;
+                var metaJson = metaMatch.Groups[1].Value.Trim();
 
                 string renderedMeta;
                 try
@@ -534,17 +537,33 @@ namespace BlazorWebApp.Services
             {
                 if (current is IDictionary<string, object> dict)
                 {
-                    if (!dict.TryGetValue(part, out current!))
+                    // Case-insensitive key lookup
+                    var match = dict.Keys.FirstOrDefault(k => k.Equals(part, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
                     {
-                        var match = dict.Keys.FirstOrDefault(k => k.Equals(part, StringComparison.OrdinalIgnoreCase));
-                        if (match != null)
-                            current = dict[match];
-                        else
-                            return false;
+                        current = dict[match];
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else if (current is Dictionary<string, object?> nullableDict)
+                {
+                    // Handle Dictionary<string, object?> which doesn't implement IDictionary<string, object>
+                    var match = nullableDict.Keys.FirstOrDefault(k => k.Equals(part, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                    {
+                        current = nullableDict[match]!;
+                    }
+                    else
+                    {
+                        return false;
                     }
                 }
                 else if (current != null)
                 {
+                    // Try reflection for object properties (case-insensitive)
                     var prop = current.GetType().GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                     if (prop == null)
                         return false;

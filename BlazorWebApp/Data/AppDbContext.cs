@@ -41,29 +41,18 @@ namespace BlazorWebApp.Data
             modelBuilder.Ignore<SubgraphContext>();
             modelBuilder.Ignore<NodeRegistry>();
             
-            // Parameter models (used for JSON serialization, not as entities)
-            modelBuilder.Ignore<SharedParameters>();
-            modelBuilder.Ignore<SharedParameters.ComfySharedParameters>();
-            modelBuilder.Ignore<Txt2ImgParameters>();
-            // modelBuilder.Ignore<Txt2ImgScriptParameters>();
-            modelBuilder.Ignore<Img2ImgParameters>();
-            // modelBuilder.Ignore<Img2ImgScriptParameters>();
-            modelBuilder.Ignore<UpscaleParameters>();
-            modelBuilder.Ignore<Img2VidParameters>();
-            modelBuilder.Ignore<Img2VidParameters.ComfyImg2VidParameters>();
+            // State and generation models
             modelBuilder.Ignore<Lora>();
             modelBuilder.Ignore<AppState>();
             modelBuilder.Ignore<GeneratedVideo>();
             modelBuilder.Ignore<GeneratedVideos>();
             
-            // New GenerationParameters and related types (Phase 6)
+            // GenerationParameters and related types
             modelBuilder.Ignore<GenerationParameters>();
             modelBuilder.Ignore<FragmentParameters>();
             modelBuilder.Ignore<SourceAsset>();
 
             // Uses Json serialization to store List<string>, the converter and comparer keep the domain class unclutered.
-            // Doc: https://stackoverflow.com/a/52499249/12173765
-            //      https://learn.microsoft.com/en-us/ef/core/modeling/value-comparers?tabs=ef5
             var listStringConverter = new ValueConverter<List<string>, string>(
                 v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                 v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions)null));
@@ -76,10 +65,6 @@ namespace BlazorWebApp.Data
 
             var opt = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
             var stateConverter = new ValueConverter<AppState, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<AppState>(v, opt));
-            var txt2imgConverter = new ValueConverter<Txt2ImgParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Txt2ImgParameters>(v, opt));
-            var img2imgConverter = new ValueConverter<Img2ImgParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Img2ImgParameters>(v, opt));
-            var upscaleConverter = new ValueConverter<UpscaleParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<UpscaleParameters>(v, opt));
-            var img2vidConverter = new ValueConverter<Img2VidParameters, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<Img2VidParameters>(v, opt));
             var generationParamsConverter = new ValueConverter<GenerationParameters, string>(
                 v => JsonSerializer.Serialize(v, opt), 
                 v => JsonSerializer.Deserialize<GenerationParameters>(v, opt) ?? new GenerationParameters());
@@ -122,10 +107,6 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<Prompt>().Property(p => p.Loras).HasConversion(loraListConverter, loraListComparer);
             modelBuilder.Entity<Prompt>().Property(p => p.Tags).HasConversion(listStringConverter, listStringComparer);
             modelBuilder.Entity<State>().Property(nameof(State.AppState)).HasConversion(stateConverter);
-            modelBuilder.Entity<State>().Property(nameof(State.Txt2ImgParameters)).HasConversion(txt2imgConverter);
-            modelBuilder.Entity<State>().Property(nameof(State.Img2ImgParameters)).HasConversion(img2imgConverter);
-            modelBuilder.Entity<State>().Property(nameof(State.UpscaleParameters)).HasConversion(upscaleConverter);
-            modelBuilder.Entity<State>().Property(nameof(State.Img2VidParameters)).HasConversion(img2vidConverter);
             modelBuilder.Entity<State>().Property(nameof(State.GenerationParameters)).HasConversion(generationParamsConverter);
 
             // Wildcard entity configuration

@@ -27,14 +27,18 @@ namespace BlazorWebApp.Services
             if (string.IsNullOrWhiteSpace(fragmentText))
                 return null;
 
-            var metaMatch = Regex.Match(fragmentText, @"#meta\s*(\{.*?\})\s*#end", RegexOptions.Singleline);
+            // Match #meta ... #end block - use [\s\S] to match any character including newlines
+            var metaMatch = Regex.Match(fragmentText, @"#meta\s*([\s\S]*?)\s*#end");
             if (!metaMatch.Success)
                 return null;
 
-            var metaJson = metaMatch.Groups[1].Value;
+            var metaJson = metaMatch.Groups[1].Value.Trim();
 
             try
             {
+                // Clean up trailing commas before parsing
+                metaJson = Regex.Replace(metaJson, @",\s*(\}|])", "$1", RegexOptions.Singleline);
+                
                 using var doc = JsonDocument.Parse(metaJson);
                 var root = doc.RootElement;
 
@@ -133,8 +137,8 @@ namespace BlazorWebApp.Services
 
             var fragmentText = File.ReadAllText(fragPath);
 
-            // Remove #meta block
-            fragmentText = Regex.Replace(fragmentText, @"#meta\s*\{.*?\}\s*#end", "", RegexOptions.Singleline);
+            // Remove #meta block - use [\s\S] to match any character including newlines
+            fragmentText = Regex.Replace(fragmentText, @"#meta\s*[\s\S]*?\s*#end", "", RegexOptions.None);
 
             var defaultPattern = @"\{\{\s*(\w+)\s*\?\?\s*([^|]+?)\s*\|";
             var matches = Regex.Matches(fragmentText, defaultPattern);

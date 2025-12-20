@@ -9,7 +9,7 @@ namespace BlazorWebApp.Models
         /// <summary>
         /// The parameter name that maps to the workflow template variable.
         /// Example: "HighModel", "LowModel", "Vae", "Clip"
-        /// This name must match the property in the mode's parameter class (e.g., Img2VidParameters.HighModel)
+        /// This name is used as the key in GenerationParameters.Assets dictionary.
         /// </summary>
         public string Parameter { get; set; } = string.Empty;
 

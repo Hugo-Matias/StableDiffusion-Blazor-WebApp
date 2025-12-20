@@ -1,25 +1,25 @@
 #meta
 {
   "outputs": {
-    "{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}unet_loader", "index": 0 },
-    "{{ scope ?? '' }}clip_output": { "node": "{{ scope ?? '' }}clip_loader", "index": 0 },
-    "{{ scope ?? '' }}vae_output": { "node": "{{ scope ?? '' }}vae_loader", "index": 0 }
+    "{{ if scope }}{{ scope }}{{ end }}model_output": { "node": "{{ if scope }}{{ scope }}{{ end }}unet_loader", "index": 0 },
+    "{{ if scope }}{{ scope }}{{ end }}clip_output": { "node": "{{ if scope }}{{ scope }}{{ end }}clip_loader", "index": 0 },
+    "{{ if scope }}{{ scope }}{{ end }}vae_output": { "node": "{{ if scope }}{{ scope }}{{ end }}vae_loader", "index": 0 }
   }
 }
 #end
 
 {
-  "{{ scope ?? '' }}unet_loader": {
+  "{{ if scope }}{{ scope }}{{ end }}unet_loader": {
     "inputs": {
       "unet_name": {{ unet_name | json }},
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Load Diffusion Model"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Load Diffusion Model"
     }
   },
-  "{{ scope ?? '' }}clip_loader": {
+  "{{ if scope }}{{ scope }}{{ end }}clip_loader": {
     "inputs": {
       "clip_name": {{ clip_name | json }},
       "type": {{ clip_type | json }},
@@ -27,16 +27,16 @@
     },
     "class_type": "CLIPLoader",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Load CLIP"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Load CLIP"
     }
   },
-  "{{ scope ?? '' }}vae_loader": {
+  "{{ if scope }}{{ scope }}{{ end }}vae_loader": {
     "inputs": {
       "vae_name": {{ vae_name | json }}
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Load VAE"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Load VAE"
     }
   }
 }

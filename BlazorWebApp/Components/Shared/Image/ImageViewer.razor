@@ -387,22 +387,19 @@
 
             string? modelName = null;
 
-            if (info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase))
+            // ComfyUI format: workflow JSON
+            if (info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase) ||
+                info.TrimStart().StartsWith("{"))
             {
-                // ComfyUI format
-                info = info.Replace("prompt: ", "");
-                using var doc = System.Text.Json.JsonDocument.Parse(info);
+                var jsonInfo = info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase) 
+                    ? info.Replace("prompt: ", "") 
+                    : info;
+                    
+                using var doc = System.Text.Json.JsonDocument.Parse(jsonInfo);
                 
                 modelName = Parser.FindJsonValueByKey<string>(doc.RootElement, "ckpt_name");
                 if (string.IsNullOrWhiteSpace(modelName))
                     modelName = Parser.FindJsonValueByKey<string>(doc.RootElement, "unet_name");
-            }
-            else if (info.StartsWith("parameters", StringComparison.InvariantCultureIgnoreCase))
-            {
-                // WebUI format
-                var parameters = Parser.ParseWebUIInfoParameters(info);
-                if (parameters != null && parameters.TryGetValue("Model", out var model))
-                    modelName = model;
             }
 
             if (!string.IsNullOrWhiteSpace(modelName))

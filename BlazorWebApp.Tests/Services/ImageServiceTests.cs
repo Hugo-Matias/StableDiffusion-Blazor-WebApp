@@ -25,6 +25,7 @@ public class ImageServiceTests
     private readonly Mock<IWildcardService> _mockWildcardService;
     private readonly Mock<IEventService> _mockEvents;
     private readonly MagickService _magickService;
+    private readonly GenerationParameters _generationParameters;
 
     public ImageServiceTests()
     {
@@ -55,6 +56,23 @@ public class ImageServiceTests
         _mockSettings.Setup(s => s.Settings).Returns(appSettings);
         _magickService = new MagickService(_mockSettings.Object);
 
+        // Setup GenerationParameters
+        _generationParameters = new GenerationParameters();
+        
+        var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, "test prompt");
+        promptsFragment.SetValue(FragmentKeys.Params.Negative, "bad quality");
+        
+        var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+        samplerFragment.SetValue(FragmentKeys.Params.Steps, 20);
+        samplerFragment.SetValue(FragmentKeys.Params.Cfg, 7.0);
+        samplerFragment.SetValue(FragmentKeys.Params.SamplerName, "euler");
+        samplerFragment.SetValue(FragmentKeys.Params.Seed, 12345L);
+        
+        var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+        latentFragment.SetValue(FragmentKeys.Params.Width, 512);
+        latentFragment.SetValue(FragmentKeys.Params.Height, 512);
+
         // Default setup
         SetupDefaultMocks();
     }
@@ -68,44 +86,9 @@ public class ImageServiceTests
             Gallery = new AppStateGallery { ProjectId = 1 }
         };
         _mockState.Setup(s => s.State).Returns(appState);
-
-        // Setup default parameters
-        var txt2ImgParams = new Txt2ImgParameters
-        {
-            Prompt = "test prompt",
-            NegativePrompt = "bad quality",
-            Width = 512,
-            Height = 512,
-            Steps = 20,
-            CfgScale = 7,
-            SamplerName = "euler",
-            Seed = 12345
-        };
-        _mockState.Setup(s => s.ParametersTxt2Img).Returns(txt2ImgParams);
-
-        var img2ImgParams = new Img2ImgParameters
-        {
-            Prompt = "test prompt",
-            Width = 512,
-            Height = 512,
-            SamplerIndex = "euler"
-        };
-        _mockState.Setup(s => s.ParametersImg2Img).Returns(img2ImgParams);
-
-        var img2VidParams = new Img2VidParameters
-        {
-            Prompt = "test prompt",
-            Width = 768,
-            Height = 768,
-            Steps = 8,
-            CfgScale = 1,
-            SamplerName = "euler",
-            Scheduler = "simple",
-            Seed = -1,
-            Length = 81,
-            FrameRate = 16
-        };
-        _mockState.Setup(s => s.ParametersImg2Vid).Returns(img2VidParams);
+        
+        // Setup GenerationParameters
+        _mockState.Setup(s => s.GenerationParameters).Returns(_generationParameters);
 
         // Setup default output paths
         var outputPaths = new OutputPathsOptions
@@ -291,49 +274,43 @@ public class ImageServiceTests
     }
 
     [Fact]
-    public void ConvertPathPattern_WithStepsTag_Txt2Img_ShouldReplaceSteps()
+    public void ConvertPathPattern_WithStepsTag_NoActiveGeneration_ShouldReturnDefault()
     {
-        // Arrange
-        var txt2ImgParams = new Txt2ImgParameters { Steps = 30 };
-        _mockState.Setup(s => s.ParametersTxt2Img).Returns(txt2ImgParams);
+        // Arrange - when no generation is active, _currentGenerationParams is null
+        // so the service returns defaults
         var service = CreateService();
 
         // Act
         var result = service.ConvertPathPattern("[steps]", ModeType.Txt2Img);
 
-        // Assert
-        Assert.Equal("30", result);
+        // Assert - defaults to 20 when no active generation
+        Assert.Equal("20", result);
     }
 
     [Fact]
-    public void ConvertPathPattern_WithCfgTag_Img2Img_ShouldReplaceCfg()
+    public void ConvertPathPattern_WithCfgTag_NoActiveGeneration_ShouldReturnDefault()
     {
-        // Arrange
-        var img2ImgParams = new Img2ImgParameters { CfgScale = 7.5f };
-        _mockState.Setup(s => s.ParametersImg2Img).Returns(img2ImgParams);
+        // Arrange - when no generation is active, _currentGenerationParams is null
         var service = CreateService();
 
         // Act
-        var result = service.ConvertPathPattern("[cfg]", ModeType.Img2Img);
+        var result = service.ConvertPathPattern("[cfg]", ModeType.Txt2Img);
 
-        // Assert - Use culture-invariant expected value
-        var expected = 7.5f.ToString(CultureInfo.CurrentCulture);
-        Assert.Equal(expected, result);
+        // Assert - defaults to 7 when no active generation
+        Assert.Equal("7", result);
     }
 
     [Fact]
-    public void ConvertPathPattern_WithSamplerTag_ShouldReplaceSampler()
+    public void ConvertPathPattern_WithSamplerTag_NoActiveGeneration_ShouldReturnDefault()
     {
-        // Arrange
-        var txt2ImgParams = new Txt2ImgParameters { SamplerName = "dpm_2m" };
-        _mockState.Setup(s => s.ParametersTxt2Img).Returns(txt2ImgParams);
+        // Arrange - when no generation is active, _currentGenerationParams is null
         var service = CreateService();
 
         // Act
         var result = service.ConvertPathPattern("[sampler]", ModeType.Txt2Img);
 
-        // Assert
-        Assert.Equal("dpm_2m", result);
+        // Assert - defaults to euler when no active generation
+        Assert.Equal("euler", result);
     }
 
     [Fact]
@@ -356,11 +333,9 @@ public class ImageServiceTests
         // Arrange
         var appState = new AppState { Generation = new AppStateGeneration { Seed = 12345 } };
         _mockState.Setup(s => s.State).Returns(appState);
-        var txt2ImgParams = new Txt2ImgParameters { Steps = 20, CfgScale = 7 };
-        _mockState.Setup(s => s.ParametersTxt2Img).Returns(txt2ImgParams);
         var service = CreateService();
 
-        // Act
+        // Act - when no active generation, steps and cfg use defaults
         var result = service.ConvertPathPattern("[seed]_[steps]_[cfg]", ModeType.Txt2Img);
 
         // Assert
@@ -470,52 +445,6 @@ public class ImageServiceTests
         // We can verify the event service is set up correctly
         // The actual publishing happens internally through NotifyStateChanged
         _mockEvents.Verify(e => e.Publish(It.IsAny<ImagesGeneratedEventArgs>()), Times.Never);
-    }
-
-    #endregion
-
-    #region Mode-Specific Pattern Tests
-
-    [Fact]
-    public void ConvertPathPattern_Img2Vid_ShouldUseImg2VidParameters()
-    {
-        // Arrange
-        var img2VidParams = new Img2VidParameters
-        {
-            Steps = 8,
-            CfgScale = 1.5f,
-            SamplerName = "euler_a"
-        };
-        _mockState.Setup(s => s.ParametersImg2Vid).Returns(img2VidParams);
-        var service = CreateService();
-
-        // Act
-        var stepsResult = service.ConvertPathPattern("[steps]", ModeType.Img2Vid);
-        var cfgResult = service.ConvertPathPattern("[cfg]", ModeType.Img2Vid);
-        var samplerResult = service.ConvertPathPattern("[sampler]", ModeType.Img2Vid);
-
-        // Assert - Use culture-sensitive comparison for float
-        Assert.Equal("8", stepsResult);
-        Assert.Equal(1.5f.ToString(CultureInfo.CurrentCulture), cfgResult);
-        Assert.Equal("euler_a", samplerResult);
-    }
-
-    [Fact]
-    public void ConvertPathPattern_WithNullParameters_ShouldReturnDefaults()
-    {
-        // Arrange
-        _mockState.Setup(s => s.ParametersTxt2Img).Returns((Txt2ImgParameters)null);
-        var service = CreateService();
-
-        // Act
-        var stepsResult = service.ConvertPathPattern("[steps]", ModeType.Txt2Img);
-        var cfgResult = service.ConvertPathPattern("[cfg]", ModeType.Txt2Img);
-        var samplerResult = service.ConvertPathPattern("[sampler]", ModeType.Txt2Img);
-
-        // Assert
-        Assert.Equal("20", stepsResult); // Default
-        Assert.Equal("7", cfgResult); // Default
-        Assert.Equal("euler", samplerResult); // Default
     }
 
     #endregion

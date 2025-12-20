@@ -1,4 +1,3 @@
-using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
@@ -9,10 +8,11 @@ using Moq;
 namespace BlazorWebApp.Tests.Extensions
 {
     /// <summary>
-    /// Unit tests for Parser extension methods, focusing on Phase 4 additions:
-    /// - ParseParametersAsync (with wildcard expansion)
+    /// Unit tests for Parser extension methods focusing on:
     /// - ExpandWildcardsAsync
     /// - DetectWildcards
+    /// - LoRA extraction
+    /// - Style parsing
     /// </summary>
     public class ParserTests
     {
@@ -33,21 +33,6 @@ namespace BlazorWebApp.Tests.Extensions
                 .ReturnsAsync((string input) => input); // Default: no replacement
             
             return mock;
-        }
-
-        private SharedParameters CreateTestParameters(string prompt = "test prompt", string negativePrompt = "")
-        {
-            return new SharedParameters
-            {
-                Prompt = prompt,
-                NegativePrompt = negativePrompt,
-                Seed = 12345,
-                Steps = 20,
-                CfgScale = 7.0f,
-                Width = 512,
-                Height = 512,
-                Loras = new List<Lora>()
-            };
         }
 
         private List<PromptStyle> CreateTestStyles()
@@ -306,303 +291,223 @@ namespace BlazorWebApp.Tests.Extensions
 
         #endregion
 
-        #region ParseParametersAsync Tests
+        #region ExtractLorasFromPrompt Tests
 
         [Fact]
-        public async Task ParseParametersAsync_NullWildcardService_SkipsWildcardExpansion()
+        public void ExtractLorasFromPrompt_NullInput_ReturnsEmptyList()
         {
-            // Arrange
-            var parameters = CreateTestParameters("Test prompt");
-            var styles = new List<PromptStyle>();
-
             // Act
-            var result = await Parser.ParseParametersAsync(parameters, styles, null);
+            var result = Parser.ExtractLorasFromPrompt(null, out var cleanedPrompt, false);
 
             // Assert
-            result.Prompt.Should().Be("Test prompt");
-            result.Seed.Should().NotBe(-1); // Should still process seed
+            result.Should().BeEmpty();
+            cleanedPrompt.Should().BeNullOrEmpty();
         }
 
         [Fact]
-        public async Task ParseParametersAsync_WithWildcards_ExpandsBeforeStyles()
+        public void ExtractLorasFromPrompt_EmptyInput_ReturnsEmptyList()
         {
-            // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters("__clothing/tops__, {prompt}", ""); // Empty negative prompt
-            var styles = CreateTestStyles();
-            
-            // Mock wildcard expansion - only prompt is expanded (empty negative returns early from ExpandWildcardsAsync)
-            mockService.Setup(x => x.ParseWildcards("__clothing/tops__, {prompt}"))
-                .ReturnsAsync("blue shirt, {prompt}");
-
             // Act
-            var result = await Parser.ParseParametersAsync(parameters, styles, mockService.Object);
+            var result = Parser.ExtractLorasFromPrompt("", out var cleanedPrompt, false);
 
             // Assert
-            result.Prompt.Should().Contain("blue shirt");
-            result.Prompt.Should().Contain("masterpiece"); // From style expansion
-            // Only verify prompt was called - empty strings don't call ParseWildcards in ExpandWildcardsAsync
-            mockService.Verify(x => x.ParseWildcards("__clothing/tops__, {prompt}"), Times.Once);
+            result.Should().BeEmpty();
+            cleanedPrompt.Should().BeEmpty();
         }
 
         [Fact]
-        public async Task ParseParametersAsync_ExpandsPositiveAndNegativePrompts()
+        public void ExtractLorasFromPrompt_NoLoras_ReturnsEmptyList()
         {
             // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters(
-                prompt: "1girl, __clothing/tops__",
-                negativePrompt: "__quality/bad__"
-            );
-            
-            mockService.Setup(x => x.ParseWildcards("1girl, __clothing/tops__"))
-                .ReturnsAsync("1girl, blue shirt");
-            mockService.Setup(x => x.ParseWildcards("__quality/bad__"))
-                .ReturnsAsync("blurry, low quality");
+            var input = "A beautiful girl with long hair";
 
             // Act
-            var result = await Parser.ParseParametersAsync(parameters, new List<PromptStyle>(), mockService.Object);
+            var result = Parser.ExtractLorasFromPrompt(input, out var cleanedPrompt, false);
 
             // Assert
-            result.Prompt.Should().Be("1girl, blue shirt");
-            result.NegativePrompt.Should().Be("blurry, low quality");
+            result.Should().BeEmpty();
+            cleanedPrompt.Should().Be(input);
         }
 
         [Fact]
-        public async Task ParseParametersAsync_GeneratesSeedIfNegative()
+        public void ExtractLorasFromPrompt_SingleLora_ExtractsCorrectly()
         {
             // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters("test");
-            parameters.Seed = -1;
-            
-            mockService.Setup(x => x.ParseWildcards("test"))
-                .ReturnsAsync("test");
-            mockService.Setup(x => x.ParseWildcards(""))
-                .ReturnsAsync("");
+            var input = "A girl <lora:detail:0.8>";
 
             // Act
-            var result = await Parser.ParseParametersAsync(parameters, new List<PromptStyle>(), mockService.Object);
+            var result = Parser.ExtractLorasFromPrompt(input, out var cleanedPrompt, false);
 
             // Assert
-            result.Seed.Should().NotBe(-1);
-            result.Seed.Should().BeGreaterThan(0);
+            result.Should().ContainSingle();
+            result[0].Name.Should().Be("detail");
+            result[0].Strength.Should().BeApproximately(0.8f, 0.01f);
+            result[0].IsEnabled.Should().BeTrue();
+            result[0].IsNegative.Should().BeFalse();
+            cleanedPrompt.Should().Be("A girl");
         }
 
         [Fact]
-        public async Task ParseParametersAsync_PreservesSeedIfSet()
+        public void ExtractLorasFromPrompt_MultipleLoras_ExtractsAll()
         {
             // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters("test");
-            parameters.Seed = 12345;
-            
-            mockService.Setup(x => x.ParseWildcards("test"))
-                .ReturnsAsync("test");
-            mockService.Setup(x => x.ParseWildcards(""))
-                .ReturnsAsync("");
+            var input = "A girl <lora:detail:0.8> wearing <lora:clothing:1.2>";
 
             // Act
-            var result = await Parser.ParseParametersAsync(parameters, new List<PromptStyle>(), mockService.Object);
+            var result = Parser.ExtractLorasFromPrompt(input, out var cleanedPrompt, false);
 
             // Assert
-            result.Seed.Should().Be(12345);
+            result.Should().HaveCount(2);
+            result[0].Name.Should().Be("detail");
+            result[1].Name.Should().Be("clothing");
+            cleanedPrompt.Should().Be("A girl wearing");
         }
 
         [Fact]
-        public async Task ParseParametersAsync_AppliesStylesAfterWildcards()
+        public void ExtractLorasFromPrompt_NegativePrompt_SetsIsNegative()
         {
             // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters("__clothing/tops__");
-            var styles = new List<PromptStyle>
-            {
-                new PromptStyle
-                {
-                    Name = "Test",
-                    Prompt = "{prompt}, high quality",
-                    NegativePrompt = "low quality"
-                }
-            };
-            
-            mockService.Setup(x => x.ParseWildcards("__clothing/tops__"))
-                .ReturnsAsync("blue shirt");
-            mockService.Setup(x => x.ParseWildcards(""))
-                .ReturnsAsync("");
+            var input = "bad quality <lora:fix:0.5>";
 
             // Act
-            var result = await Parser.ParseParametersAsync(parameters, styles, mockService.Object);
+            var result = Parser.ExtractLorasFromPrompt(input, out var cleanedPrompt, isNegative: true);
 
             // Assert
-            result.Prompt.Should().Contain("blue shirt");
-            result.Prompt.Should().Contain("high quality");
-        }
-
-        [Fact]
-        public async Task ParseParametersAsync_HandlesMultipleWildcardsAndStyles()
-        {
-            // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters(
-                prompt: "__characters/hair-color__ girl wearing __clothing/tops__",
-                negativePrompt: "__quality/bad__"
-            );
-            var styles = new List<PromptStyle>
-            {
-                new PromptStyle
-                {
-                    Name = "Quality",
-                    Prompt = "{prompt}, masterpiece",
-                    NegativePrompt = "{np}, worst quality"
-                }
-            };
-            
-            mockService.Setup(x => x.ParseWildcards("__characters/hair-color__ girl wearing __clothing/tops__"))
-                .ReturnsAsync("blonde girl wearing blue shirt");
-            mockService.Setup(x => x.ParseWildcards("__quality/bad__"))
-                .ReturnsAsync("blurry");
-
-            // Act
-            var result = await Parser.ParseParametersAsync(parameters, styles, mockService.Object);
-
-            // Assert
-            result.Prompt.Should().Contain("blonde girl wearing blue shirt");
-            result.Prompt.Should().Contain("masterpiece");
-            result.NegativePrompt.Should().Contain("blurry");
-            result.NegativePrompt.Should().Contain("worst quality");
-        }
-
-        [Fact]
-        public async Task ParseParametersAsync_EmptyPrompts_HandlesGracefully()
-        {
-            // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters("", "");
-            
-            mockService.Setup(x => x.ParseWildcards(""))
-                .ReturnsAsync("");
-
-            // Act
-            var result = await Parser.ParseParametersAsync(parameters, new List<PromptStyle>(), mockService.Object);
-
-            // Assert
-            result.Prompt.Should().BeEmpty();
-            result.NegativePrompt.Should().BeEmpty();
-        }
-
-        [Fact]
-        public async Task ParseParametersAsync_NullPrompts_HandlesGracefully()
-        {
-            // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = new SharedParameters
-            {
-                Prompt = null,
-                NegativePrompt = null,
-                Seed = 12345,
-                Loras = new List<Lora>() // Initialize Loras to prevent null reference
-            };
-            
-            mockService.Setup(x => x.ParseWildcards(It.IsAny<string>()))
-                .ReturnsAsync((string? input) => input ?? "");
-
-            // Act
-            var result = await Parser.ParseParametersAsync(parameters, new List<PromptStyle>(), mockService.Object);
-
-            // Assert
-            result.Prompt.Should().BeNullOrEmpty();
-            result.NegativePrompt.Should().BeNullOrEmpty();
-        }
-
-        [Fact]
-        public async Task ParseParametersAsync_WildcardServiceError_ContinuesProcessing()
-        {
-            // Arrange
-            var mockService = CreateMockWildcardService();
-            mockService.Setup(x => x.ParseWildcards(It.IsAny<string>()))
-                .ReturnsAsync((string input) => input); // Fallback behavior on error
-            
-            var parameters = CreateTestParameters("__test__");
-            var styles = CreateTestStyles();
-
-            // Act
-            var result = await Parser.ParseParametersAsync(parameters, styles, mockService.Object);
-
-            // Assert - Should still process styles even if wildcard fails
-            result.Prompt.Should().Contain("__test__"); // Wildcard unchanged
-            result.Seed.Should().NotBe(-1); // Other processing continues
+            result.Should().ContainSingle();
+            result[0].IsNegative.Should().BeTrue();
         }
 
         #endregion
 
-        #region Backward Compatibility Tests
+        #region ParseStyles Tests
 
         [Fact]
-        public void ParseParameters_SyncVersion_StillWorks()
+        public void ParseStyles_NullStyles_ReturnsOriginalPrompt()
         {
             // Arrange
-            var parameters = CreateTestParameters("test prompt");
-            var styles = CreateTestStyles();
+            var prompt = "test prompt";
 
             // Act
-            var result = Parser.ParseParameters(parameters, styles);
+            var result = prompt.ParseStyles(null, false);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Seed.Should().NotBe(-1);
+            result.Should().Be(prompt);
         }
 
         [Fact]
-        public void ParseParameters_SyncVersion_DoesNotExpandWildcards()
+        public void ParseStyles_EmptyStyles_ReturnsOriginalPrompt()
         {
             // Arrange
-            var parameters = CreateTestParameters("__clothing/tops__");
+            var prompt = "test prompt";
 
             // Act
-            var result = Parser.ParseParameters(parameters, new List<PromptStyle>());
+            var result = prompt.ParseStyles(new List<PromptStyle>(), false);
 
             // Assert
-            result.Prompt.Should().Contain("__clothing/tops__"); // Should remain unchanged
+            result.Should().Be(prompt);
+        }
+
+        [Fact]
+        public void ParseStyles_WithPromptPlaceholder_ReplacesCorrectly()
+        {
+            // Arrange
+            var prompt = "test prompt";
+            var styles = new List<PromptStyle>
+            {
+                new PromptStyle { Prompt = "masterpiece, {prompt}, high quality" }
+            };
+
+            // Act
+            var result = prompt.ParseStyles(styles, false);
+
+            // Assert
+            result.Should().Be("masterpiece, test prompt, high quality");
+        }
+
+        [Fact]
+        public void ParseStyles_WithoutPlaceholder_AppendsStyle()
+        {
+            // Arrange
+            var prompt = "test prompt";
+            var styles = new List<PromptStyle>
+            {
+                new PromptStyle { Prompt = ", masterpiece" }
+            };
+
+            // Act
+            var result = prompt.ParseStyles(styles, false);
+
+            // Assert
+            result.Should().Be("test prompt, masterpiece");
         }
 
         #endregion
 
-        #region Integration Tests
+        #region ParseLoras Tests
 
         [Fact]
-        public async Task FullWorkflow_WildcardsStylesLoRAs_ProcessesInCorrectOrder()
+        public void ParseLoras_EmptyList_ReturnsEmptyStrings()
         {
             // Arrange
-            var mockService = CreateMockWildcardService();
-            var parameters = CreateTestParameters(
-                prompt: "__clothing/tops__, <lora:detail:1.0>, {prompt}",
-                negativePrompt: "__quality/bad__"
-            );
-            var styles = new List<PromptStyle>
-            {
-                new PromptStyle
-                {
-                    Name = "Quality",
-                    Prompt = "masterpiece, {prompt}",
-                    NegativePrompt = "{np}, worst quality"
-                }
-            };
-            
-            mockService.Setup(x => x.ParseWildcards("__clothing/tops__, <lora:detail:1.0>, {prompt}"))
-                .ReturnsAsync("blue shirt, <lora:detail:1.0>, {prompt}");
-            mockService.Setup(x => x.ParseWildcards("__quality/bad__"))
-                .ReturnsAsync("blurry");
+            var loras = new List<Lora>();
 
             // Act
-            var result = await Parser.ParseParametersAsync(parameters, styles, mockService.Object);
+            var (prompt, negative) = loras.ParseLoras();
 
-            // Assert - Order: Wildcards -> Styles -> LoRAs -> Seed
-            result.Prompt.Should().Contain("blue shirt"); // Wildcard expanded first
-            result.Prompt.Should().Contain("masterpiece"); // Style applied second
-            // Note: LoRA parsing happens in the sync part of ParseParameters
-            result.NegativePrompt.Should().Contain("blurry");
-            result.NegativePrompt.Should().Contain("worst quality");
-            result.Seed.Should().NotBe(-1);
+            // Assert
+            prompt.Should().BeEmpty();
+            negative.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ParseLoras_EnabledLora_ReturnsLoraString()
+        {
+            // Arrange
+            var loras = new List<Lora>
+            {
+                new Lora { Name = "test", Strength = 0.8f, IsEnabled = true, IsNegative = false }
+            };
+
+            // Act
+            var (prompt, negative) = loras.ParseLoras();
+
+            // Assert
+            prompt.Should().Contain("<lora:test:0.80>");
+            negative.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ParseLoras_DisabledLora_IsIgnored()
+        {
+            // Arrange
+            var loras = new List<Lora>
+            {
+                new Lora { Name = "test", Strength = 0.8f, IsEnabled = false, IsNegative = false }
+            };
+
+            // Act
+            var (prompt, negative) = loras.ParseLoras();
+
+            // Assert
+            prompt.Should().BeEmpty();
+            negative.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ParseLoras_NegativeLora_GoesToNegativePrompt()
+        {
+            // Arrange
+            var loras = new List<Lora>
+            {
+                new Lora { Name = "test", Strength = 0.5f, IsEnabled = true, IsNegative = true }
+            };
+
+            // Act
+            var (prompt, negative) = loras.ParseLoras();
+
+            // Assert
+            prompt.Should().BeEmpty();
+            negative.Should().Contain("<lora:test:0.50>");
         }
 
         #endregion

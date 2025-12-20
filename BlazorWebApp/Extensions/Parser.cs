@@ -37,54 +37,6 @@ namespace BlazorWebApp.Extensions
             return input;
         }
 
-        public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
-        {
-            param.Prompt = param.Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
-            param.NegativePrompt = param.NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(), true);
-
-            (var prompt, var negative) = param.Loras.ParseLoras();
-            param.Prompt += prompt;
-            param.NegativePrompt += negative;
-
-            if (param.Seed == -1) param.Seed = new Random().Next(0, int.MaxValue);
-            return param;
-        }
-
-        /// <summary>
-        /// Parses parameters with wildcard expansion support.
-        /// Order of operations:
-        /// 1. Expand wildcards (first, uses database for random selection)
-        /// 2. Apply styles (second, uses template strings)
-        /// 3. Parse LoRAs (third, extracts tags)
-        /// 4. Generate seed if -1
-        /// </summary>
-        public static async Task<SharedParameters> ParseParametersAsync(
-            this SharedParameters param, 
-            IEnumerable<PromptStyle> styles,
-            IWildcardService? wildcardService = null)
-        {
-            // STEP 1: Expand wildcards FIRST (before styles, as wildcards can contain style references)
-            if (wildcardService != null)
-            {
-                param.Prompt = await ExpandWildcardsAsync(param.Prompt, wildcardService);
-                param.NegativePrompt = await ExpandWildcardsAsync(param.NegativePrompt, wildcardService);
-            }
-            
-            // STEP 2: Apply styles (existing logic)
-            param.Prompt = param.Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
-            param.NegativePrompt = param.NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(), true);
-
-            // STEP 3: Parse LoRAs (existing logic)
-            (var prompt, var negative) = param.Loras.ParseLoras();
-            param.Prompt += prompt;
-            param.NegativePrompt += negative;
-
-            // STEP 4: Handle seed (existing logic)
-            if (param.Seed == -1) param.Seed = new Random().Next(0, int.MaxValue);
-            
-            return param;
-        }
-
         /// <summary>
         /// Expands all wildcards in the input string using the WildcardService.
         /// Wildcards are in the format: __category/collection__ or __collection__
@@ -118,6 +70,7 @@ namespace BlazorWebApp.Extensions
                 .Distinct()
                 .ToList();
         }
+
         public static (string prompt, string negative) ParseLoras(this List<Lora> loras)
         {
             string prompt = string.Empty;
@@ -152,87 +105,53 @@ namespace BlazorWebApp.Extensions
         }
 
         /// <summary>
-        /// Parses the info text lines returned from the WebUI after inference.
+        /// Parses prompt and negative prompt from ComfyUI workflow JSON.
         /// </summary>
-        /// <param name="info">Info text</param>
-        /// <param name="mode">ModeType to unsure that Upscale generations are properly parsed</param>
-        /// <returns>Dictionary key values ["prompt", "negative", "param"] </returns>
-        public static Dictionary<string, string>? ParseInfoStrings(this string info, ModeType mode, bool isComfyui)
+        /// <param name="info">Workflow JSON info</param>
+        /// <param name="mode">ModeType for context</param>
+        /// <returns>Dictionary with keys ["prompt", "negative", "param"]</returns>
+        public static Dictionary<string, string>? ParseInfoStrings(this string info, ModeType mode)
         {
             if (string.IsNullOrWhiteSpace(info)) return null;
 
             var prompt = string.Empty;
             var negative = string.Empty;
-            var param = string.Empty;
+            var param = info;
 
-            if (isComfyui)
+            try
             {
-                param = info;
-                try
+                using var doc = JsonDocument.Parse(info);
+                var root = doc.RootElement;
+
+                // Search for prompt nodes (conventionally named like "text_positive", "detailer_text_positive", etc.)
+                foreach (var nodeProperty in root.EnumerateObject())
                 {
-                    using var doc = JsonDocument.Parse(info);
-                    var root = doc.RootElement;
-
-                    // Search for prompt nodes (conventionally named like "text_positive", "detailer_text_positive", etc.)
-                    foreach (var nodeProperty in root.EnumerateObject())
+                    if (nodeProperty.Value.ValueKind == JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                        inputs.TryGetProperty("value", out var valueEl) &&
+                        valueEl.ValueKind == JsonValueKind.String)
                     {
-                        if (nodeProperty.Value.ValueKind == JsonValueKind.Object &&
-                            nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
-                            inputs.TryGetProperty("value", out var valueEl) &&
-                            valueEl.ValueKind == JsonValueKind.String)
-                        {
-                            var nodeName = nodeProperty.Name.ToLowerInvariant();
+                        var nodeName = nodeProperty.Name.ToLowerInvariant();
 
-                            if (nodeName.Contains("text_positive") || nodeName.Contains("positive"))
-                            {
-                                if (string.IsNullOrEmpty(prompt))
-                                    prompt = valueEl.GetString() ?? string.Empty;
-                            }
-                            else if (nodeName.Contains("text_negative") || nodeName.Contains("negative"))
-                            {
-                                if (string.IsNullOrEmpty(negative))
-                                    negative = valueEl.GetString() ?? string.Empty;
-                            }
+                        if (nodeName.Contains("text_positive") || nodeName.Contains("positive"))
+                        {
+                            if (string.IsNullOrEmpty(prompt))
+                                prompt = valueEl.GetString() ?? string.Empty;
+                        }
+                        else if (nodeName.Contains("text_negative") || nodeName.Contains("negative"))
+                        {
+                            if (string.IsNullOrEmpty(negative))
+                                negative = valueEl.GetString() ?? string.Empty;
                         }
                     }
                 }
-                catch
-                {
-                    throw new Exception("Failed to parse prompt/negative prompt from image info.");
-                }
             }
-            else
+            catch
             {
-                if (mode == ModeType.Extras) param = info;
-                else
-                {
-                    var lines = info.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                    foreach (var line in lines)
-                    {
-                        if (line.StartsWith("Negative prompt:", StringComparison.InvariantCultureIgnoreCase)) negative = Regex.Replace(line, @"^Negative prompt: ", "");
-                        else if (line.StartsWith("Steps: ", StringComparison.InvariantCultureIgnoreCase)) param = line;
-                        else if (!string.IsNullOrWhiteSpace(line)) prompt = line;
-                    }
-                }
+                throw new Exception("Failed to parse prompt/negative prompt from image info.");
             }
+            
             return new Dictionary<string, string>() { { "prompt", prompt }, { "negative", negative }, { "param", param } };
-        }
-
-        public static Dictionary<string, string>? ParseWebUIInfoParameters(this string param)
-        {
-            if (string.IsNullOrWhiteSpace(param)) return null;
-
-            Dictionary<string, string>? parameters = new();
-            // Adding ", " to comply with the pattern
-            var groups = Regex.Matches(param + ", ", @"((.+?): ([^"",\n]*|""([^""]*|"")*""), )");
-            foreach (Match group in groups)
-            {
-                if (group.Groups.Count != 5) Console.WriteLine($"[ImageService:ParseInfoParameters] Incorrect group match: {group.Value} | {group.Groups.Count}");
-                var key = group.Groups[2].Value;
-                var value = group.Groups[3].Value;
-                parameters.Add(key, value);
-            }
-            return parameters;
         }
 
         public static JsonTreeNode ParseComfyUIInfoParameters(this string json)
@@ -290,13 +209,6 @@ namespace BlazorWebApp.Extensions
             return prompt.Replace("\n", "");
         }
 
-        public static MarkupString ParseHighresFixResizeInfo(this Txt2ImgParameters param)
-        {
-            var currentRes = $"{param.Width}x{param.Height} px";
-            var resizeRes = ParseHighresResolution((int)param.Width, (int)param.Height, param.HRWidth, param.HRHeight, param.HRScale);
-            return new MarkupString($"From: {currentRes} | To: <strong>{resizeRes.Item1}x{resizeRes.Item2} px</strong>");
-        }
-
         public static (int, int) ParseHighresResolution(int width, int height, int hrWidth = 0, int hrHeight = 0, double scale = 0)
         {
             var ar = (float)width / height;
@@ -308,36 +220,6 @@ namespace BlazorWebApp.Extensions
                 return ((int)(hrHeight * ar), hrHeight);
             else
                 return (hrWidth, hrHeight);
-        }
-
-        public static ImageInfo ParseImageInfoString(this ImageInfo image)
-        {
-            foreach (var line in image.InfoString)
-            {
-                if (line.StartsWith("Negative prompt:"))
-                    image.NegativePrompt = line.Replace("Negative prompt: ", "");
-
-                else if (line.StartsWith("Steps:"))
-                    image.ParseImageInfoParameters(line);
-
-                else
-                    image.Prompt = line;
-            }
-
-            return image;
-        }
-
-        public static ImageInfo ParseImageInfoParameters(this ImageInfo image, string info)
-        {
-            image.Steps = int.Parse(Regex.Match(info, @"(Steps: )(\d+)").Groups[2].Value);
-            image.Sampler = Regex.Match(info, @"(Sampler: )(.+?),").Groups[2].Value;
-            image.CfgScale = float.Parse(Regex.Match(info, @"(CFG scale: )(.+?),").Groups[2].Value);
-            image.Seed = long.Parse(Regex.Match(info, @"(Seed: )(\d+)").Groups[2].Value);
-            var size = Regex.Match(info, @"(Size: )(\d+)x(\d+)");
-            image.Width = int.Parse(size.Groups[2].Value);
-            image.Height = int.Parse(size.Groups[3].Value);
-
-            return image;
         }
 
         /// <summary>
@@ -379,28 +261,6 @@ namespace BlazorWebApp.Extensions
             // collapse multiple spaces and trim
             cleanedPrompt = Regex.Replace(result, @"\s{2,}", "").Trim();
             return loras;
-        }
-
-        public static string ParseResizeModeValue(this int value)
-        {
-            return value switch
-            {
-                1 => "Crop and Resize",
-                2 => "Resize and Fill",
-                3 => "Just Resize (latent upscale)",
-                _ => "Just Resize",
-            };
-        }
-
-        public static string ParseInpaintingFillValue(this int value)
-        {
-            return value switch
-            {
-                1 => "Original",
-                2 => "Latent Noise",
-                3 => "Latent Nothing",
-                _ => "Fill",
-            };
         }
 
         public static Tag ParseCsvTag(this Tag tag) => new Tag()
@@ -489,6 +349,7 @@ namespace BlazorWebApp.Extensions
             }
             return splitUrl + width.ToString();
         }
+
         public static string ParseCivitaiImageGenerationProcess(this string process)
         {
             return process switch

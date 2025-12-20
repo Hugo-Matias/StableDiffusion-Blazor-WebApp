@@ -1,4 +1,3 @@
-using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
@@ -64,22 +63,16 @@ namespace BlazorWebApp.Services
         }
 
         #region Event Publishing
-        
+
         public void InvokeParametersChanged(bool isImg2Img) => _events.Publish(new ParametersChangedEventArgs(isImg2Img ? "Img2Img" : "Txt2Img"));
         public void InvokeSessionVideosChanged() => _events.Publish(new SessionVideosChangedEventArgs());
-        
-        #endregion
 
-        #region Parameter Initialization
-        
-        public void InitializeParameters(ModeType[] modes) => _state.InitializeParameters(modes);
-        
         #endregion
 
         #region Model Management
-        
+
         public async Task GetWorkflowModels(bool refresh = false) => await _models.GetWorkflowModels(refresh);
-        
+
         public List<SDModel> GetCurrentWorkflowModels()
         {
             var workflow = GetCurrentWorkflow();
@@ -87,32 +80,32 @@ namespace BlazorWebApp.Services
                 return _models.DiffusionModels ?? new List<SDModel>();
             return _models.CheckpointModels ?? new List<SDModel>();
         }
-        
+
         public async Task GetSDVAEs() => await _models.GetVAEModels();
         public async Task GetSDADetailerModels() => await _models.GetADetailerModels();
         public List<SDModel> GetModelsForAssetType(AssetType assetType) => _models.GetModelsForAssetType(assetType);
         public async Task<List<string>> GetAssetOptions(AssetType assetType) => await _models.GetAssetOptions(assetType);
         public string GetCurrentModel(ModeType? mode = null) => _models.GetCurrentModel(mode);
-        
+
         public async Task SetCurrentModel(string modelTitle, ModeType? mode = null)
         {
             await _models.SetCurrentModel(modelTitle, mode);
             await SaveState();
         }
-        
+
         public async Task SetSDModel(string modelTitle) => await SetCurrentModel(modelTitle);
         public string? GetCurrentVae(ModeType? mode = null) => GetWorkflowAsset("Vae", mode);
-        
+
         public async Task SetCurrentVae(string vae, ModeType? mode = null)
         {
             SetWorkflowAsset("Vae", vae, mode);
             await SaveState();
         }
-        
+
         #endregion
 
         #region Workflow Management
-        
+
         public Workflow? GetCurrentWorkflow()
         {
             if (_state.State?.Generation?.Workflows == null || _state.State.Generation.Workflows.Count == 0)
@@ -129,9 +122,9 @@ namespace BlazorWebApp.Services
 
             return _state.State.Generation.Workflows.FirstOrDefault();
         }
-        
+
         public Workflow GetWorkflowById(Guid id) => _state.State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
-        
+
         public List<Workflow> GetWorkflowsForMode(ModeType mode)
         {
             if (_state.State?.Generation?.Workflows == null)
@@ -139,9 +132,9 @@ namespace BlazorWebApp.Services
 
             return _state.State.Generation.Workflows.Where(w => w.Mode == mode).OrderBy(w => w.Title).ToList();
         }
-        
+
         public void GetComfyWorkflows() => _state.State.Generation.Workflows = _workflow.GetWorkflows();
-        
+
         /// <summary>
         /// Force refresh workflows from disk, reloading all template files.
         /// Use this after editing workflow template files during development.
@@ -152,7 +145,7 @@ namespace BlazorWebApp.Services
                 _state.State?.Generation?.WorkflowBase,
                 _state.State?.Generation?.CurrentWorkflowId
             );
-            
+
             if (_state.State?.Generation != null)
             {
                 _state.State.Generation.Workflows = workflows;
@@ -161,10 +154,10 @@ namespace BlazorWebApp.Services
             }
 
             _events.Publish(new WorkflowChangedEventArgs(
-                _state.State?.Generation?.CurrentWorkflowId ?? Guid.Empty, 
+                _state.State?.Generation?.CurrentWorkflowId ?? Guid.Empty,
                 "RefreshFromDisk"));
         }
-        
+
         public void SetCurrentWorkflow(Guid workflowId, ModeType? mode = null)
         {
             var workflow = GetWorkflowById(workflowId);
@@ -176,7 +169,7 @@ namespace BlazorWebApp.Services
             _events.Publish(new StateChangedEventArgs());
             _events.Publish(new WorkflowChangedEventArgs(workflowId, "Set"));
         }
-        
+
         public async Task<bool> SetCurrentWorkflowAsync(Guid workflowId, IAssetResolverService assetResolver, ModeType? mode = null)
         {
             var workflow = GetWorkflowById(workflowId);
@@ -198,14 +191,14 @@ namespace BlazorWebApp.Services
             await SaveState();
             return assetsInitialized;
         }
-        
+
         public void SetWorkflowBase(ModelBase workflowBase)
         {
             _state.SetWorkflowBase(workflowBase);
             _events.Publish(new StateChangedEventArgs());
             SetDefaultBaseModel();
         }
-        
+
         public void ResetCurrentWorkflow()
         {
             _state.State.Generation.CurrentWorkflowId = null;
@@ -213,16 +206,16 @@ namespace BlazorWebApp.Services
 
             foreach (var mode in new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras })
                 GetOrCreateWorkflowAssetsForMode(mode).Clear();
-            
+
             _events.Publish(new WorkflowChangedEventArgs(Guid.Empty, "Reset"));
         }
-        
+
         public void SetDefaultBaseModel()
         {
             var modelKeys = new[] { "ckpt_name", "unet_name" };
             var workflow = _state.State.Generation.Workflows?.FirstOrDefault(w => w.Base == _state.State.Generation.WorkflowBase);
             if (workflow?.Pipeline == null) return;
-            
+
             var defaultModel = workflow.Pipeline
                 .Select(s => modelKeys.FirstOrDefault(k => s.Parameters?.ContainsKey(k) == true))
                 .Where(k => k != null)
@@ -230,69 +223,72 @@ namespace BlazorWebApp.Services
                 .FirstOrDefault()?
                 .GetDefaultModelFromWorkflow();
 
-            if (!string.IsNullOrWhiteSpace(defaultModel) && _state.ParametersTxt2Img != null)
+            if (!string.IsNullOrWhiteSpace(defaultModel))
             {
-                _state.ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
-                _state.ParametersTxt2Img.WorkflowAssets["Model"] = defaultModel;
+                // Update GenerationParameters.Assets (unified model)
+                _state.GenerationParameters.Assets["Model"] = defaultModel;
                 _events.Publish(new ModelsChangedEventArgs());
             }
         }
-        
+
         #endregion
 
         #region Workflow Assets
-        
-        public string? GetWorkflowAsset(string parameter, ModeType? mode = null) => GetWorkflowAssetsForMode(mode)?.GetValueOrDefault(parameter);
-        
-        public void SetWorkflowAsset(string parameter, string value, ModeType? mode = null) => GetOrCreateWorkflowAssetsForMode(mode)[parameter] = value;
-        
+
+        public string? GetWorkflowAsset(string parameter, ModeType? mode = null)
+        {
+            // Use GenerationParameters.Assets (unified model)
+            if (_state.GenerationParameters?.Assets?.TryGetValue(parameter, out var value) == true)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+            return null;
+        }
+
+        public void SetWorkflowAsset(string parameter, string value, ModeType? mode = null)
+        {
+            // Update GenerationParameters.Assets (unified model)
+            _state.GenerationParameters.Assets[parameter] = value;
+        }
+
         public Dictionary<string, string>? GetWorkflowAssetsForMode(ModeType? mode)
         {
-            return mode switch
-            {
-                ModeType.Img2Img => _state.ParametersImg2Img?.WorkflowAssets,
-                ModeType.Img2Vid => _state.ParametersImg2Vid?.WorkflowAssets,
-                ModeType.Extras => _state.ParametersUpscale?.WorkflowAssets,
-                _ => _state.ParametersTxt2Img?.WorkflowAssets
-            };
+            // Return GenerationParameters.Assets (unified model)
+            return _state.GenerationParameters?.Assets;
         }
-        
+
         private Dictionary<string, string> GetOrCreateWorkflowAssetsForMode(ModeType? mode)
         {
-            return mode switch
-            {
-                ModeType.Img2Img => _state.ParametersImg2Img.WorkflowAssets ??= new(),
-                ModeType.Img2Vid => _state.ParametersImg2Vid.WorkflowAssets ??= new(),
-                ModeType.Extras => _state.ParametersUpscale.WorkflowAssets ??= new(),
-                _ => _state.ParametersTxt2Img.WorkflowAssets ??= new()
-            };
+            // Return GenerationParameters.Assets (unified model)
+            return _state.GenerationParameters.Assets;
         }
-        
+
         public List<WorkflowAsset>? GetCurrentWorkflowAssets() => GetCurrentWorkflow()?.Assets?.OrderBy(a => a.Order).ToList();
-        
+
         #endregion
 
         #region Backend
-        
+
         public async Task LoadBackendDependentResources()
         {
             await _backend.LoadBackendDependentResources();
             await _models.GetADetailerModels();
             _events.Publish(new SamplersSchedulersChangedEventArgs());
         }
-        
+
         #endregion
 
         #region Gallery
-        
+
         public async Task GetFolders() => await _gallery.GetFolders();
-        
+
         public async Task GetProjects()
         {
             await _gallery.GetProjects(_state.State.Gallery.FolderId);
             if (_state.State.Gallery.GalleriesOrderDescending) _gallery.Projects.Reverse();
         }
-        
+
         public async Task SetCurrentFolder(int id)
         {
             if (id > 0)
@@ -309,49 +305,47 @@ namespace BlazorWebApp.Services
             SaveState();
             await GetProjects();
         }
-        
+
         public async Task SetCurrentProject(int id)
         {
             await GetFolders();
             await GetProjects();
             await _gallery.SetCurrentProject(id);
         }
-        
+
         public void ReplaceSelectedImages(List<int> ids) => _gallery.ReplaceSelectedImages(ids);
         public void AddSelectedImage(int id) => _gallery.AddSelectedImage(id);
         public void RemoveSelectedImage(int id) => _gallery.RemoveSelectedImage(id);
         public void ClearSelectedImages() => _gallery.ClearSelectedImages();
-        
+
         #endregion
 
         #region Session
-        
+
         public void ResetImageEditorState() => _session.ResetImageEditorState();
         public void SetImg2ImgInputImage(string imageData, bool resetEditorState) => _session.SetImg2ImgInputImage(imageData, resetEditorState);
         public void AddSessionVideo(GeneratedVideo video) => _session.AddSessionVideo(video);
         public void AddSessionVideos(IEnumerable<GeneratedVideo> videos) => _session.AddSessionVideos(videos);
         public void ClearSessionVideos() => _session.ClearSessionVideos();
         public void RemoveSessionVideo(GeneratedVideo video) => _session.RemoveSessionVideo(video);
-        
+
         #endregion
 
         #region Styles & Prompts
-        
+
         public void SetLoras(IEnumerable<Lora> loras, bool isImg2Img)
         {
             if (loras == null || _state.State?.Generation == null) return;
 
-            var parametersLoras = isImg2Img ? _state.ParametersImg2Img.Loras : _state.ParametersTxt2Img.Loras;
-            parametersLoras ??= [];
-
+            // Update GenerationParameters.Loras (unified model)
             foreach (var l in loras)
             {
                 if (string.IsNullOrWhiteSpace(l.Name)) continue;
-                if (!parametersLoras.Any(x => string.Equals(x.Name, l.Name, StringComparison.InvariantCultureIgnoreCase)))
-                    parametersLoras.Add(new Lora(l));
+                if (!_state.GenerationParameters.Loras.Any(x => string.Equals(x.Name, l.Name, StringComparison.InvariantCultureIgnoreCase)))
+                    _state.GenerationParameters.Loras.Add(new Lora(l));
             }
         }
-        
+
         public string ParseAndCleanCopiedPrompt(string prompt, bool isNegative, bool isImg2Img)
         {
             var loras = Parser.ExtractLorasFromPrompt(prompt, out var cleanedFromLoras, isNegative);
@@ -378,75 +372,76 @@ namespace BlazorWebApp.Services
 
             return cleanedFromStyles;
         }
-        
+
         #endregion
 
         #region Parameter Loading
-        
+
         public async Task LoadImageInfoParameters(Image image, ModeType mode)
         {
-            bool isImg2Img = mode == ModeType.Img2Img;
-            var param = isImg2Img ? (SharedParameters)_state.ParametersImg2Img : _state.ParametersTxt2Img;
-            
-            param.Prompt = ParseAndCleanCopiedPrompt(image.Prompt ?? string.Empty, false, isImg2Img);
-            param.NegativePrompt = ParseAndCleanCopiedPrompt(image.NegativePrompt ?? string.Empty, true, isImg2Img);
-            param.SamplerIndex = await _db.GetSampler(image.SamplerId);
-            param.Steps = image.Steps;
-            param.Seed = image.Seed;
-            param.CfgScale = image.CfgScale;
-            param.Width = image.Width;
-            param.Height = image.Height;
-            param.DenoisingStrength = image.DenoisingStrength;
+            // Update GenerationParameters (unified model)
+            await _state.LoadGenerationParametersFromImage(image);
         }
-        
+
         public void SetGenerationParameter(Image source, string parameter, bool isImg2Img)
         {
-            SharedParameters param = isImg2Img ? _state.ParametersImg2Img : _state.ParametersTxt2Img;
-            
             switch (parameter)
             {
-                case nameof(SharedParameters.Prompt):
-                    param.Prompt = ParseAndCleanCopiedPrompt(source.Prompt, false, isImg2Img);
+                case "Prompt":
+                    var cleanedPrompt = ParseAndCleanCopiedPrompt(source.Prompt, false, isImg2Img);
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Positive, cleanedPrompt);
                     break;
-                case nameof(SharedParameters.NegativePrompt):
-                    param.NegativePrompt = ParseAndCleanCopiedPrompt(source.NegativePrompt, true, isImg2Img);
+                case "NegativePrompt":
+                    var cleanedNegative = ParseAndCleanCopiedPrompt(source.NegativePrompt, true, isImg2Img);
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Negative, cleanedNegative);
                     break;
-                case nameof(SharedParameters.SamplerIndex):
-                    param.SamplerIndex = _db.GetSampler(source.SamplerId).Result;
+                case "SamplerIndex":
+                    var sampler = _db.GetSampler(source.SamplerId).Result;
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.SamplerName, sampler);
                     break;
-                case nameof(SharedParameters.Scheduler):
-                    param.Scheduler = source.Scheduler;
+                case "Scheduler":
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Scheduler, source.Scheduler);
                     break;
-                case nameof(SharedParameters.Seed):
-                    param.Seed = source.Seed;
+                case "Seed":
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Seed, source.Seed);
                     break;
-                case nameof(SharedParameters.Steps):
-                    param.Steps = source.Steps;
+                case "Steps":
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Steps, source.Steps);
                     break;
-                case nameof(SharedParameters.CfgScale):
-                    param.CfgScale = source.CfgScale;
+                case "CfgScale":
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Cfg, (double?)source.CfgScale);
                     break;
-                case nameof(SharedParameters.Width):
-                    param.Width = source.Width;
+                case "Width":
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Params.Width, source.Width);
                     break;
-                case nameof(SharedParameters.Height):
-                    param.Height = source.Height;
+                case "Height":
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Params.Height, source.Height);
                     break;
-                case nameof(SharedParameters.DenoisingStrength):
-                    param.DenoisingStrength = source.DenoisingStrength;
+                case "DenoisingStrength":
+                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Denoise, source.DenoisingStrength);
                     break;
             }
 
             _events.Publish(new ParametersChangedEventArgs(isImg2Img ? "Img2Img" : "Txt2Img"));
         }
-        
+
+        /// <summary>
+        /// Sets a value in a GenerationParameters fragment.
+        /// Creates the fragment if it doesn't exist.
+        /// </summary>
+        private void SetGenerationParameterFragment(string fragmentId, string key, object? value)
+        {
+            var fragment = _state.GenerationParameters.GetOrCreateFragment(fragmentId);
+            fragment.SetValue(key, value);
+        }
+
         #endregion
 
         #region State & Settings
-        
+
         public void LoadSettings() => _settings.LoadSettings();
         public void SaveSettings() => _settings.SaveSettings();
-        
+
         public async Task LoadState(State? state = null)
         {
             if (state != null)
@@ -455,12 +450,12 @@ namespace BlazorWebApp.Services
                 await _state.LoadState();
 
             _state.MigrateLegacySettings();
-            
+
             var (workflows, suggestedBase, suggestedId) = _workflow.RefreshWorkflows(
                 _state.State?.Generation?.WorkflowBase,
                 _state.State?.Generation?.CurrentWorkflowId
             );
-            
+
             if (_state.State?.Generation != null)
             {
                 _state.State.Generation.Workflows = workflows;
@@ -472,7 +467,7 @@ namespace BlazorWebApp.Services
             _events.Publish(new ParametersChangedEventArgs("Img2Img"));
             _events.Publish(new StateChangedEventArgs());
         }
-        
+
         public async Task SaveState(State? state = null)
         {
             if (state == null)
@@ -480,7 +475,7 @@ namespace BlazorWebApp.Services
             else
                 await _db.UpdateState(state);
         }
-        
+
         #endregion
     }
 }

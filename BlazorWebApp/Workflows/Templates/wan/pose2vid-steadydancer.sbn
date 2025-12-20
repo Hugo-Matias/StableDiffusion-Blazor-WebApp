@@ -18,13 +18,13 @@
       "id": "load_video",
       "fragment": "load-video.sbn",
       "parameters": {
-        "video": {{ Video | json }},
-        "force_rate": {{ VideoForceRate ?? 16 | json }},
-        "custom_width": {{ VideoWidth ?? 480 | json }},
-        "custom_height": {{ VideoHeight ?? 832 | json }},
-        "frame_load_cap": {{ FrameLoadCap ?? 176 | json }},
-        "skip_first_frames": {{ SkipFirstFrames ?? 0 | json }},
-        "select_every_nth": {{ SelectEveryNth ?? 1 | json }}
+        "video": {{ video | json }},
+        "force_rate": {{ video_force_rate ?? 16 | json }},
+        "custom_width": {{ video_width ?? 480 | json }},
+        "custom_height": {{ video_height ?? 832 | json }},
+        "frame_load_cap": {{ frame_load_cap ?? 176 | json }},
+        "skip_first_frames": {{ skip_first_frames ?? 0 | json }},
+        "select_every_nth": {{ select_every_nth ?? 1 | json }}
       }
     },
     {
@@ -38,7 +38,7 @@
       "id": "load_image",
       "fragment": "load-image.sbn",
       "parameters": {
-        "image": {{ Image | json }}
+        "image": {{ image | json }}
       }
     },
     {
@@ -56,7 +56,7 @@
       "parameters": {
         "model_name": {{ Model | json }},
         "lora_name": {{ SpeedLora | json }},
-        "lora_strength": {{ LoraStrength ?? 1 | json }}
+        "lora_strength": {{ lora_strength ?? 1 | json }}
       }
     },
     {
@@ -78,8 +78,8 @@
       "fragment": "wan/text-encode-wan.sbn",
       "parameters": {
         "text_encoder_name": {{ TextEncoder | json }},
-        "positive": {{ Prompt | json }},
-        "negative": {{ NegativePrompt ?? "" | json }}
+        "positive": {{ positive | json }},
+        "negative": {{ negative ?? "" | json }}
       }
     },
     {
@@ -98,27 +98,27 @@
       "id": "steadydancer_embeds",
       "fragment": "wan/steadydancer-embeds.sbn",
       "parameters": {
-        "pose_strength_spatial": {{ PoseStrengthSpatial ?? 1 | json }},
-        "pose_strength_temporal": {{ PoseStrengthTemporal ?? 1 | json }}
+        "pose_strength_spatial": {{ pose_strength_spatial ?? 1 | json }},
+        "pose_strength_temporal": {{ pose_strength_temporal ?? 1 | json }}
       }
     },
     {
       "id": "context_options",
       "fragment": "wan/context-options.sbn",
       "parameters": {
-        "context_frames": {{ ContextFrames ?? 81 | json }},
-        "context_overlap": {{ ContextOverlap ?? 16 | json }}
+        "context_frames": {{ context_frames ?? 81 | json }},
+        "context_overlap": {{ context_overlap ?? 16 | json }}
       }
     },
     {
       "id": "main_sampler",
       "fragment": "wan/sampler-wan.sbn",
       "parameters": {
-        "steps": {{ Steps ?? 4 | json }},
-        "cfg": {{ CfgScale ?? 1 | json }},
-        "shift": {{ Shift ?? 5 | json }},
-        "seed": {{ Seed ?? 42 | json }},
-        "scheduler": {{ Scheduler ?? "dpm++_sde" | json }}
+        "steps": {{ steps ?? 4 | json }},
+        "cfg": {{ cfg ?? 1 | json }},
+        "shift": {{ shift ?? 5 | json }},
+        "seed": {{ seed ?? 42 | json }},
+        "scheduler": {{ scheduler ?? "dpm++_sde" | json }}
       }
     },
     {
@@ -135,9 +135,9 @@
       "id": "video_save",
       "fragment": "save-video.sbn",
       "parameters": {
-        "frame_rate": {{ OutputFrameRate ?? 24 | json }},
+        "frame_rate": {{ output_frame_rate ?? 24 | json }},
         "filename_prefix": "wan/steadydancer",
-        {{~ if AppendPreview ~}}
+        {{~ if append_preview ~}}
         "image_ref": "preview_concat"
         {{~ else ~}}
         "image_ref": "image_output"

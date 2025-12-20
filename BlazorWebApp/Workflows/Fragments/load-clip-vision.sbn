@@ -1,19 +1,19 @@
 #meta
 {
   "outputs": {
-    "{{ scope ?? '' }}clip_vision_output": { "node": "{{ scope ?? '' }}clip_vision_loader", "index": 0 }
+    "{{ if scope }}{{ scope }}{{ end }}clip_vision_output": { "node": "{{ if scope }}{{ scope }}{{ end }}clip_vision_loader", "index": 0 }
   }
 }
 #end
 
 {
-  "{{ scope ?? '' }}clip_vision_loader": {
+  "{{ if scope }}{{ scope }}{{ end }}clip_vision_loader": {
     "inputs": {
       "clip_name": {{ clip_vision_name | json }}
     },
     "class_type": "CLIPVisionLoader",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Load CLIP Vision"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Load CLIP Vision"
     }
   }
 }

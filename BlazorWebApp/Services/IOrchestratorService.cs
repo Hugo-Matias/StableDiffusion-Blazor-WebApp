@@ -24,15 +24,6 @@ namespace BlazorWebApp.Services
 
         #endregion
 
-        #region Parameter Initialization
-
-        /// <summary>
-        /// Initializes parameters for the specified modes.
-        /// </summary>
-        void InitializeParameters(ModeType[] modes);
-
-        #endregion
-
         #region Model Management
 
         /// <summary>

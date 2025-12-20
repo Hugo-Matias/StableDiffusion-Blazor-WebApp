@@ -18,6 +18,7 @@ namespace BlazorWebApp.Tests.Services
         private readonly Mock<IBackendService> _mockBackend;
         private readonly Mock<IStateService> _mockState;
         private readonly Mock<IEventService> _mockEvents;
+        private readonly GenerationParameters _generationParameters;
 
         public ModelServiceTests()
         {
@@ -36,22 +37,10 @@ namespace BlazorWebApp.Tests.Services
                     CurrentWorkflowId = null
                 }
             });
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(new Txt2ImgParameters 
-            { 
-                WorkflowAssets = new Dictionary<string, string>() 
-            });
-            _mockState.Setup(x => x.ParametersImg2Img).Returns(new Img2ImgParameters 
-            { 
-                WorkflowAssets = new Dictionary<string, string>() 
-            });
-            _mockState.Setup(x => x.ParametersImg2Vid).Returns(new Img2VidParameters 
-            { 
-                WorkflowAssets = new Dictionary<string, string>() 
-            });
-            _mockState.Setup(x => x.ParametersUpscale).Returns(new UpscaleParameters 
-            { 
-                WorkflowAssets = new Dictionary<string, string>() 
-            });
+            
+            // Setup GenerationParameters
+            _generationParameters = new GenerationParameters();
+            _mockState.Setup(x => x.GenerationParameters).Returns(_generationParameters);
         }
 
         private ModelService CreateService()
@@ -269,8 +258,7 @@ namespace BlazorWebApp.Tests.Services
         public void GetCurrentModel_WhenModelSet_ReturnsModelName()
         {
             // Arrange
-            var assets = new Dictionary<string, string> { { "Model", "sd_xl_base_1.0.safetensors" } };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(new Txt2ImgParameters { WorkflowAssets = assets });
+            _generationParameters.Assets["Model"] = "sd_xl_base_1.0.safetensors";
             var service = CreateService();
 
             // Act
@@ -284,7 +272,6 @@ namespace BlazorWebApp.Tests.Services
         public void GetCurrentModel_WhenModelNotSet_ReturnsLoadingMessage()
         {
             // Arrange
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(new Txt2ImgParameters { WorkflowAssets = new Dictionary<string, string>() });
             var service = CreateService();
 
             // Act
@@ -298,8 +285,7 @@ namespace BlazorWebApp.Tests.Services
         public void GetCurrentModel_ForImg2Vid_ReturnsHighModel()
         {
             // Arrange
-            var assets = new Dictionary<string, string> { { "HighModel", "wan22_high.safetensors" } };
-            _mockState.Setup(x => x.ParametersImg2Vid).Returns(new Img2VidParameters { WorkflowAssets = assets });
+            _generationParameters.Assets["HighModel"] = "wan22_high.safetensors";
             var service = CreateService();
 
             // Act
@@ -315,13 +301,12 @@ namespace BlazorWebApp.Tests.Services
             // Arrange
             _mockBackend.Setup(x => x.IsBackendAvailable).Returns(false);
             var service = CreateService();
-            var initialAssets = _mockState.Object.ParametersTxt2Img.WorkflowAssets;
 
             // Act
             await service.SetCurrentModel("test-model.safetensors");
 
             // Assert
-            initialAssets.Should().NotContainKey("Model");
+            _generationParameters.Assets.Should().NotContainKey("Model");
             _mockState.Verify(x => x.SaveState(), Times.Never);
         }
 
@@ -349,8 +334,8 @@ namespace BlazorWebApp.Tests.Services
             await service.SetCurrentModel("realisticVision");
 
             // Assert
-            _mockState.Object.ParametersTxt2Img.WorkflowAssets.Should().ContainKey("Model");
-            _mockState.Object.ParametersTxt2Img.WorkflowAssets["Model"].Should().Be("realisticVisionV60B1_v51VAE.safetensors");
+            _generationParameters.Assets.Should().ContainKey("Model");
+            _generationParameters.Assets["Model"].Should().Be("realisticVisionV60B1_v51VAE.safetensors");
         }
 
         [Fact]
@@ -375,8 +360,7 @@ namespace BlazorWebApp.Tests.Services
         public void GetCurrentVae_WhenVaeSet_ReturnsVaeName()
         {
             // Arrange
-            var assets = new Dictionary<string, string> { { "Vae", "sdxl_vae.safetensors" } };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(new Txt2ImgParameters { WorkflowAssets = assets });
+            _generationParameters.Assets["Vae"] = "sdxl_vae.safetensors";
             var service = CreateService();
 
             // Act
@@ -390,7 +374,6 @@ namespace BlazorWebApp.Tests.Services
         public void GetCurrentVae_WhenVaeNotSet_ReturnsNull()
         {
             // Arrange
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(new Txt2ImgParameters { WorkflowAssets = new Dictionary<string, string>() });
             var service = CreateService();
 
             // Act
@@ -410,8 +393,8 @@ namespace BlazorWebApp.Tests.Services
             await service.SetCurrentVae("test-vae.safetensors");
 
             // Assert
-            _mockState.Object.ParametersTxt2Img.WorkflowAssets.Should().ContainKey("Vae");
-            _mockState.Object.ParametersTxt2Img.WorkflowAssets["Vae"].Should().Be("test-vae.safetensors");
+            _generationParameters.Assets.Should().ContainKey("Vae");
+            _generationParameters.Assets["Vae"].Should().Be("test-vae.safetensors");
         }
 
         [Fact]

@@ -1,7 +1,7 @@
 #meta
 {
   "outputs": {
-    "{{ scope ?? '' }}latent_output": { "node": "{{ scope ?? '' }}empty_latent", "index": 0 }
+    "{{ if scope }}{{ scope }}{{ end }}latent_output": { "node": "{{ if scope }}{{ scope }}{{ end }}empty_latent", "index": 0 }
   },
   "ui": {
     "type": "latent",
@@ -20,7 +20,7 @@
 #end
 
 {
-  "{{ scope ?? '' }}empty_latent": {
+  "{{ if scope }}{{ scope }}{{ end }}empty_latent": {
     "inputs": {
       "width": {{ width | json }},
       "height": {{ height | json }},
@@ -28,7 +28,7 @@
     },
     "class_type": {{ latent_class ?? "EmptySD3LatentImage" | json }},
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Empty Latent Image"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Empty Latent Image"
     }
   }
 }
