@@ -38,14 +38,6 @@ namespace BlazorWebApp.Services
         #region Generation Methods
 
         /// <summary>
-        /// Generates images based on the specified mode (Txt2Img, Img2Img, or Extras/Upscale).
-        /// Uses legacy parameter classes from StateService.
-        /// </summary>
-        /// <param name="mode">The generation mode to use.</param>
-        /// <returns>DTO containing generated image information and metadata.</returns>
-        Task<ImagesDto> GetImages(ModeType mode);
-
-        /// <summary>
         /// Generates images using the new GenerationParameters model.
         /// Automatically determines mode from the workflow.
         /// </summary>
@@ -55,13 +47,6 @@ namespace BlazorWebApp.Services
         Task<ImagesDto> GenerateImagesAsync(GenerationParameters parameters, Workflow workflow);
 
         /// <summary>
-        /// Generates a video from an image using Img2Vid parameters.
-        /// Uses legacy parameter classes from StateService.
-        /// </summary>
-        /// <returns>Generated video result.</returns>
-        Task<GeneratedVideos> GetVideo();
-
-        /// <summary>
         /// Generates a video using the new GenerationParameters model.
         /// </summary>
         /// <param name="parameters">The unified generation parameters.</param>
@@ -69,13 +54,9 @@ namespace BlazorWebApp.Services
         /// <returns>Generated video result.</returns>
         Task<GeneratedVideos> GenerateVideoAsync(GenerationParameters parameters, Workflow workflow);
 
-        /// <summary>
-        /// Saves generated images to disk and database.
-        /// </summary>
-        /// <param name="outdirSamples">Output directory for sample images.</param>
-        /// <param name="scriptName">Name of the script used (if any).</param>
-        /// <returns>DTO containing saved image information.</returns>
-        Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName);
+        #endregion
+
+        #region Utility Methods
 
         /// <summary>
         /// Downloads an image from a URL and saves it as PNG.

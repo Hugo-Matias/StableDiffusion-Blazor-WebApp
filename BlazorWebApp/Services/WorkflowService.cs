@@ -1,5 +1,4 @@
-﻿using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
-using BlazorWebApp.Data.Entities;
+﻿using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using Scriban;
 using Scriban.Runtime;
@@ -51,6 +50,13 @@ namespace BlazorWebApp.Services
             }
 
             return workflows;
+        }
+
+        /// <inheritdoc />
+        public Workflow? GetWorkflowById(Guid workflowId)
+        {
+            var workflows = GetWorkflows();
+            return workflows.FirstOrDefault(w => w.Id == workflowId);
         }
 
         public (List<Workflow> workflows, ModelBase? suggestedBase, Guid? suggestedId) RefreshWorkflows(
@@ -127,33 +133,49 @@ namespace BlazorWebApp.Services
 
         #region Workflow Composition
 
-        public string ComposeWorkflowFromTemplate(Workflow template, Txt2ImgComfyUI param)
-            => ComposeWorkflowFromTemplateInternal(template, param);
-
-        public string ComposeWorkflowFromTemplate(Workflow template, Img2ImgComfyUI param)
-            => ComposeWorkflowFromTemplateInternal(template, param);
-
-        public string ComposeWorkflowFromTemplate(Workflow template, Img2VidComfyUI param)
-            => ComposeWorkflowFromTemplateInternal(template, param);
-
-        private string ComposeWorkflowFromTemplateInternal<T>(Workflow template, T param) where T : class
+        /// <inheritdoc />
+        public string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters)
         {
             var composer = new WorkflowComposer();
-            var globalParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-
-            // Use reflection to get all properties from param
-            foreach (var prop in param.GetType().GetProperties())
+            
+            // Build global parameters from GenerationParameters
+            var globalParams = parameters.FlattenForTemplateRendering();
+            
+            // Inject any remaining workflow asset defaults that aren't in parameters
+            if (template.Assets != null)
             {
-                var value = prop.GetValue(param);
-
-                if (prop.Name.Equals("Loras", StringComparison.OrdinalIgnoreCase) && value is List<Lora> loras)
-                    value = loras.Where(l => l.IsEnabled && !l.IsNegative).ToList();
-
-                globalParams[prop.Name] = value!;
+                foreach (var asset in template.Assets)
+                {
+                    if (!globalParams.ContainsKey(asset.Parameter) ||
+                        globalParams[asset.Parameter] == null ||
+                        string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
+                    {
+                        if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                        {
+                            globalParams[asset.Parameter] = asset.DefaultValue;
+                            _logger.LogDebug("Injected Asset default for '{Parameter}': '{Value}'", asset.Parameter, asset.DefaultValue);
+                        }
+                    }
+                }
             }
 
-            InjectWorkflowAssets(param, template, globalParams);
-            InjectWorkflowSources(param, template, globalParams);
+            // Inject sources from GenerationParameters
+            foreach (var source in parameters.Sources)
+            {
+                if (source.Value?.HasData == true && !string.IsNullOrWhiteSpace(source.Value.Data))
+                {
+                    // Use source ID as parameter name, also add common aliases
+                    globalParams[source.Key] = source.Value.Data;
+                    
+                    // Add "Image" alias for the first source_image
+                    if (source.Key.Equals("source_image", StringComparison.OrdinalIgnoreCase))
+                    {
+                        globalParams["Image"] = source.Value.Data;
+                    }
+                    
+                    _logger.LogDebug("Injected source '{SourceId}' into globalParams", source.Key);
+                }
+            }
 
             var templateContext = new TemplateContext
             {
@@ -198,8 +220,28 @@ namespace BlazorWebApp.Services
                         continue;
 
                     var fragmentName = fragmentEl.GetString();
-                    var mergedParams = new Dictionary<string, object>(globalParams, StringComparer.OrdinalIgnoreCase);
+                    
+                    // Check if this fragment should be skipped (inactive optional fragment)
+                    var fragmentId = GetFragmentIdFromStep(stepEl, fragmentName);
+                    if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParams))
+                    {
+                        if (!fragmentParams.IsActive)
+                        {
+                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}'", fragmentId);
+                            continue;
+                        }
+                    }
+                    
+                    var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                    
+                    // Copy global params
+                    foreach (var kvp in globalParams)
+                    {
+                        if (kvp.Value != null)
+                            mergedParams[kvp.Key] = kvp.Value;
+                    }
 
+                    // Override with step parameters from rendered template
                     if (stepEl.TryGetProperty("parameters", out var paramsEl))
                     {
                         foreach (var prop in paramsEl.EnumerateObject())
@@ -235,7 +277,7 @@ namespace BlazorWebApp.Services
                         if (File.Exists(fragPath))
                         {
                             var fragmentText = File.ReadAllText(fragPath);
-                            var (rendered, outputs) = RenderFragment(fragmentText, context, globalParams);
+                            var (rendered, outputs) = RenderFragment(fragmentText, context, mergedParams);
 
                             if (string.IsNullOrWhiteSpace(rendered))
                                 continue;
@@ -256,6 +298,26 @@ namespace BlazorWebApp.Services
             }
 
             return composer.BuildFinalWorkflow();
+        }
+
+        /// <summary>
+        /// Extracts the fragment ID from a pipeline step.
+        /// </summary>
+        private static string? GetFragmentIdFromStep(JsonElement stepEl, string? fragmentName)
+        {
+            // First try to get explicit ID
+            if (stepEl.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String)
+            {
+                return idEl.GetString();
+            }
+            
+            // Fall back to generating ID from fragment filename
+            if (!string.IsNullOrEmpty(fragmentName))
+            {
+                return Path.GetFileNameWithoutExtension(fragmentName).Replace("-", "_");
+            }
+            
+            return null;
         }
 
         #endregion
@@ -495,107 +557,6 @@ namespace BlazorWebApp.Services
             }
 
             return current is bool boolValue && boolValue;
-        }
-
-        #endregion
-
-        #region Asset/Source Injection
-
-        private void InjectWorkflowAssets<T>(T param, Workflow workflow, Dictionary<string, object> globalParams) where T : class
-        {
-            var workflowAssetsProp = param.GetType().GetProperty("WorkflowAssets");
-            var workflowAssets = workflowAssetsProp?.GetValue(param) as Dictionary<string, string>;
-
-            if (workflowAssets != null)
-            {
-                foreach (var kvp in workflowAssets)
-                {
-                    if (!string.IsNullOrWhiteSpace(kvp.Value))
-                        globalParams[kvp.Key] = kvp.Value;
-                }
-            }
-
-            if (workflow?.Assets != null)
-            {
-                foreach (var asset in workflow.Assets)
-                {
-                    if (!globalParams.ContainsKey(asset.Parameter) ||
-                        globalParams[asset.Parameter] == null ||
-                        string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
-                    {
-                        if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
-                        {
-                            globalParams[asset.Parameter] = asset.DefaultValue;
-                            _logger.LogDebug("Injected Asset default for '{Parameter}': '{Value}'", asset.Parameter, asset.DefaultValue);
-                        }
-                    }
-                }
-            }
-        }
-
-        private void InjectWorkflowSources<T>(T param, Workflow workflow, Dictionary<string, object> globalParams) where T : class
-        {
-            var imageProp = param.GetType().GetProperty("Image");
-            if (imageProp != null)
-            {
-                var imageValue = imageProp.GetValue(param) as string;
-                if (!string.IsNullOrWhiteSpace(imageValue))
-                {
-                    globalParams["Image"] = imageValue;
-                    _logger.LogDebug("Injected source: Image");
-                }
-            }
-
-            var initImagesProp = param.GetType().GetProperty("InitImages");
-            if (initImagesProp != null)
-            {
-                var initImages = initImagesProp.GetValue(param) as List<string>;
-                if (initImages != null && initImages.Count > 0)
-                {
-                    globalParams["Image"] = initImages[0];
-                    globalParams["InitImages"] = initImages;
-                    _logger.LogDebug("Injected source: InitImages");
-                }
-            }
-
-            var maskProp = param.GetType().GetProperty("Mask");
-            if (maskProp != null)
-            {
-                var maskValue = maskProp.GetValue(param) as string;
-                if (!string.IsNullOrWhiteSpace(maskValue))
-                {
-                    globalParams["Mask"] = maskValue;
-                    _logger.LogDebug("Injected source: Mask");
-                }
-            }
-
-            if (workflow?.Sources != null)
-            {
-                foreach (var source in workflow.Sources)
-                {
-                    if (string.IsNullOrWhiteSpace(source.Parameter))
-                        continue;
-
-                    if (globalParams.ContainsKey(source.Parameter))
-                        continue;
-
-                    var sourcesProp = param.GetType().GetProperty("Sources");
-                    if (sourcesProp != null)
-                    {
-                        var sourcesDict = sourcesProp.GetValue(param) as Dictionary<string, object>;
-                        if (sourcesDict != null && sourcesDict.TryGetValue(source.Id, out var sourceObj))
-                        {
-                            var dataProp = sourceObj?.GetType().GetProperty("Data");
-                            var sourceData = dataProp?.GetValue(sourceObj) as string;
-                            if (!string.IsNullOrWhiteSpace(sourceData))
-                            {
-                                globalParams[source.Parameter] = sourceData;
-                                _logger.LogDebug("Injected workflow source '{SourceId}' -> '{Parameter}'", source.Id, source.Parameter);
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         #endregion

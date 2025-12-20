@@ -62,36 +62,5 @@ namespace BlazorWebApp.Models
             ScriptName = clone.ScriptName;
             ScriptArgs = clone.ScriptArgs;
         }
-
-        /// <summary>
-        /// Converts to Img2ImgComfyUI DTO for workflow rendering
-        /// </summary>
-        public Img2ImgComfyUI ToComfyUI()
-        {
-            return new Img2ImgComfyUI
-            {
-                Prompt = Prompt,
-                NegativePrompt = NegativePrompt,
-                Seed = Seed,
-                Steps = Steps,
-                CfgScale = CfgScale,
-                SamplerName = SamplerName,
-                Scheduler = Scheduler,
-                Width = Width,
-                Height = Height,
-                BatchSize = BatchSize,
-                Image = Image,
-                Model = WorkflowAssets?.GetValueOrDefault("Model"),
-                Clip = WorkflowAssets?.GetValueOrDefault("Clip"),
-                Vae = WorkflowAssets?.GetValueOrDefault("Vae"),
-                Megapixels = Megapixels,
-                LightningLora = LightningLora,
-                LoraStrength = LoraStrength,
-                ModelShift = ModelShift,
-                CfgNormStrength = CfgNormStrength,
-                Denoise = Denoise,
-                Loras = Loras?.Where(l => l.IsEnabled && !l.IsNegative).ToList()
-            };
-        }
     }
 }

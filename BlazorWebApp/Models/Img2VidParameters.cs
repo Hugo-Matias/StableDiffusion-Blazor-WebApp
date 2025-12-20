@@ -36,8 +36,11 @@ namespace BlazorWebApp.Models
         public int? Shift { get; set; } = 5;
         public int? FrameRate { get; set; } = 16;
 
-        // Frame interpolation
-        public FrameInterpolationParameters FrameInterpolation { get; set; } = new();
+        // Frame interpolation (simple inline version)
+        public bool? FrameInterpolationActive { get; set; } = true;
+        public double? FrameInterpolationScaleBy { get; set; } = 2.0;
+        public int? FrameInterpolationMultiplier { get; set; } = 2;
+        public string? FrameInterpolationRifeModel { get; set; } = "rife49.pth";
 
         public Img2VidParameters() { }
 
@@ -63,45 +66,10 @@ namespace BlazorWebApp.Models
             MotionAmplitude = clone.MotionAmplitude;
             Shift = clone.Shift;
             FrameRate = clone.FrameRate;
-            FrameInterpolation = new FrameInterpolationParameters
-            {
-                IsActive = clone.FrameInterpolation?.IsActive,
-                ScaleBy = clone.FrameInterpolation?.ScaleBy,
-                Multiplier = clone.FrameInterpolation?.Multiplier,
-                RifeModel = clone.FrameInterpolation?.RifeModel
-            };
-        }
-
-        /// <summary>
-        /// Converts to Img2VidComfyUI DTO for workflow rendering
-        /// </summary>
-        public Img2VidComfyUI ToComfyUI()
-        {
-            return new Img2VidComfyUI
-            {
-                Prompt = Prompt,
-                NegativePrompt = NegativePrompt,
-                Seed = Seed,
-                Steps = Steps,
-                CfgScale = CfgScale,
-                SamplerName = SamplerName,
-                Scheduler = Scheduler,
-                Width = Width,
-                Height = Height,
-                BatchSize = BatchSize,
-                Image = Image,
-                HighModel = WorkflowAssets?.GetValueOrDefault("HighModel"),
-                LowModel = WorkflowAssets?.GetValueOrDefault("LowModel"),
-                Clip = WorkflowAssets?.GetValueOrDefault("Clip"),
-                ClipVision = WorkflowAssets?.GetValueOrDefault("ClipVision"),
-                Vae = WorkflowAssets?.GetValueOrDefault("Vae"),
-                Loras = Loras?.Where(l => l.IsEnabled && !l.IsNegative).ToList(),
-                Length = Length,
-                MotionAmplitude = MotionAmplitude,
-                Shift = Shift,
-                FrameRate = FrameRate,
-                FrameInterpolation = FrameInterpolation
-            };
+            FrameInterpolationActive = clone.FrameInterpolationActive;
+            FrameInterpolationScaleBy = clone.FrameInterpolationScaleBy;
+            FrameInterpolationMultiplier = clone.FrameInterpolationMultiplier;
+            FrameInterpolationRifeModel = clone.FrameInterpolationRifeModel;
         }
 
         public class ComfyImg2VidParameters

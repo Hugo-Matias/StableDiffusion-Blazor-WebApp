@@ -1,5 +1,4 @@
 ﻿using BlazorWebApp.Data.Entities;
-using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using static BlazorWebApp.Data.Enums;
 
@@ -12,16 +11,12 @@ namespace BlazorWebApp.Services
     {
         private readonly IComfyUIService _capi;
         private readonly IBackendService _backend;
-        private readonly IStateService _state;
-        private readonly IModelService _models;
         private readonly ILogger<RouterService> _logger;
 
-        public RouterService(IComfyUIService capi, IBackendService backend, IStateService state, IModelService models, ILogger<RouterService> logger)
+        public RouterService(IComfyUIService capi, IBackendService backend, ILogger<RouterService> logger)
         {
             _capi = capi;
             _backend = backend;
-            _state = state;
-            _models = models;
             _logger = logger;
         }
 
@@ -37,78 +32,46 @@ namespace BlazorWebApp.Services
             return string.IsNullOrEmpty(search) ? await _capi.GetLoras() : await _capi.SearchLoras(search);
         }
 
-        /// <summary>
-        /// Routes a text-to-image generation request to ComfyUI backend.
-        /// </summary>
-        /// <param name="parameters">The generation parameters.</param>
-        /// <returns>The generated images result.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when ComfyUI is not available.</exception>
-        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters)
+        /// <inheritdoc />
+        public async Task<GeneratedImages> PostGenerationAsync(GenerationParameters parameters, Workflow workflow)
         {
             if (!_backend.IsBackendAvailable)
             {
-                _logger.LogError("ComfyUI backend not available for Txt2Img generation");
+                _logger.LogError("ComfyUI backend not available for generation");
                 throw new InvalidOperationException("ComfyUI backend not available");
             }
 
-            _logger.LogInformation("Routing Txt2Img request to ComfyUI backend");
-            var model = _models.GetCurrentModel(ModeType.Txt2Img);
-            var vae = _models.GetCurrentVae(ModeType.Txt2Img);
-            var workflow = parameters.Comfy.Workflow ?? _state.ParametersTxt2Img.Comfy.Workflow;
-            _logger.LogDebug("Using model: {Model}, VAE: {Vae}, Workflow: {WorkflowId}", model, vae, workflow?.Id);
-            return await _capi.PostTxt2Img(parameters.ToTxt2ImgComfyUI(model, vae), _backend.ComfyWSClientId, workflow);
-        }
-
-        /// <summary>
-        /// Routes an image-to-image generation request to ComfyUI backend.
-        /// </summary>
-        /// <param name="parameters">The generation parameters including input image.</param>
-        /// <returns>The generated images result.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when ComfyUI is not available or no workflow is configured.</exception>
-        public async Task<GeneratedImages> PostImg2Img(Img2ImgParameters parameters)
-        {
-            if (!_backend.IsBackendAvailable)
-            {
-                _logger.LogError("ComfyUI backend not available for Img2Img generation");
-                throw new InvalidOperationException("ComfyUI backend not available");
-            }
-
-            _logger.LogInformation("Routing Img2Img request to ComfyUI backend");
-            var workflow = parameters.Comfy.Workflow ?? _state.ParametersImg2Img.Comfy.Workflow;
             if (workflow == null)
             {
-                _logger.LogError("No workflow configured for Img2Img generation on ComfyUI");
-                throw new InvalidOperationException("No workflow configured for Img2Img generation");
+                _logger.LogError("No workflow provided for generation");
+                throw new ArgumentNullException(nameof(workflow), "Workflow is required for generation");
             }
 
-            _logger.LogDebug("Using workflow: {WorkflowId}", workflow.Id);
-            return await _capi.PostImg2Img(parameters.ToComfyUI(), _backend.ComfyWSClientId, workflow);
+            _logger.LogInformation("Routing generation request to ComfyUI for workflow: {WorkflowTitle} (Mode: {Mode})", 
+                workflow.Title, workflow.Mode);
+
+            return await _capi.PostGenerationAsync(parameters, _backend.ComfyWSClientId, workflow);
         }
 
-        /// <summary>
-        /// Routes an image-to-video generation request to ComfyUI backend.
-        /// </summary>
-        /// <param name="parameters">The video generation parameters including input image.</param>
-        /// <returns>The generated video result.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when ComfyUI is not available or no workflow is configured.</exception>
-        public async Task<GeneratedVideos> PostImg2Vid(Img2VidParameters parameters)
+        /// <inheritdoc />
+        public async Task<GeneratedVideos> PostVideoGenerationAsync(GenerationParameters parameters, Workflow workflow)
         {
             if (!_backend.IsBackendAvailable)
             {
-                _logger.LogError("ComfyUI backend not available for Img2Vid generation");
+                _logger.LogError("ComfyUI backend not available for video generation");
                 throw new InvalidOperationException("ComfyUI backend not available");
             }
 
-            _logger.LogInformation("Routing Img2Vid request to ComfyUI backend");
-            var workflow = parameters.Comfy.Workflow ?? _state.ParametersImg2Vid.Comfy.Workflow;
             if (workflow == null)
             {
-                _logger.LogError("No workflow configured for Img2Vid generation on ComfyUI");
-                throw new InvalidOperationException("No workflow configured for Img2Vid generation");
+                _logger.LogError("No workflow provided for video generation");
+                throw new ArgumentNullException(nameof(workflow), "Workflow is required for video generation");
             }
 
-            _logger.LogDebug("Using workflow: {WorkflowId}", workflow.Id);
-            return await _capi.PostImg2Vid(parameters.ToComfyUI(), _backend.ComfyWSClientId, workflow);
+            _logger.LogInformation("Routing video generation request to ComfyUI for workflow: {WorkflowTitle}", 
+                workflow.Title);
+
+            return await _capi.PostVideoGenerationAsync(parameters, _backend.ComfyWSClientId, workflow);
         }
     }
 }

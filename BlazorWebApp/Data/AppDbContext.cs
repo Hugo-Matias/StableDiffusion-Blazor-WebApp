@@ -60,9 +60,6 @@ namespace BlazorWebApp.Data
             modelBuilder.Ignore<GenerationParameters>();
             modelBuilder.Ignore<FragmentParameters>();
             modelBuilder.Ignore<SourceAsset>();
-            
-            // ComfyUI DTOs
-            modelBuilder.Ignore<Data.Dtos.ComfyUI.Workflow.FrameInterpolationParameters>();
 
             // Uses Json serialization to store List<string>, the converter and comparer keep the domain class unclutered.
             // Doc: https://stackoverflow.com/a/52499249/12173765

@@ -1,4 +1,3 @@
-using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Models;
 using static BlazorWebApp.Data.Enums;
 
@@ -40,19 +39,13 @@ namespace BlazorWebApp.Services
             Guid? currentWorkflowId = null);
 
         /// <summary>
-        /// Composes a workflow from a template using Txt2Img parameters.
+        /// Composes a workflow from a template using the unified GenerationParameters model.
+        /// This is the preferred method that eliminates the need for legacy parameter classes.
         /// </summary>
-        string ComposeWorkflowFromTemplate(Workflow template, Txt2ImgComfyUI param);
-
-        /// <summary>
-        /// Composes a workflow from a template using Img2Img parameters.
-        /// </summary>
-        string ComposeWorkflowFromTemplate(Workflow template, Img2ImgComfyUI param);
-
-        /// <summary>
-        /// Composes a workflow from a template using Img2Vid parameters.
-        /// </summary>
-        string ComposeWorkflowFromTemplate(Workflow template, Img2VidComfyUI param);
+        /// <param name="template">The workflow template to compose</param>
+        /// <param name="parameters">The unified generation parameters containing all fragment values</param>
+        /// <returns>The rendered workflow JSON ready for ComfyUI</returns>
+        string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters);
 
         /// <summary>
         /// Saves the current asset values as defaults in the workflow template file.
@@ -94,6 +87,13 @@ namespace BlazorWebApp.Services
         /// Returns a dictionary keyed by fragment ID.
         /// </summary>
         Dictionary<string, FragmentSchema> GetWorkflowFragmentSchemas(Workflow workflow);
+
+        /// <summary>
+        /// Gets a workflow by its ID.
+        /// </summary>
+        /// <param name="workflowId">The workflow ID to find</param>
+        /// <returns>The workflow, or null if not found</returns>
+        Workflow? GetWorkflowById(Guid workflowId);
 
         /// <summary>
         /// Parses default values from a fragment's template body.

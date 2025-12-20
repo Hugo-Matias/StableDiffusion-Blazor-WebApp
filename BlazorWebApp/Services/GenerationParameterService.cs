@@ -227,6 +227,20 @@ namespace BlazorWebApp.Services
         public void SetFragmentActive(string fragmentId, bool isActive)
         {
             var fragment = Current.GetFragment(fragmentId);
+            
+            // If fragment doesn't exist and we're activating it, create it with defaults
+            if (fragment == null && isActive)
+            {
+                fragment = CreateFragmentWithDefaults(fragmentId);
+                if (fragment == null)
+                {
+                    _logger.LogWarning("Cannot activate fragment '{FragmentId}' - unable to determine defaults", fragmentId);
+                    return;
+                }
+                Current.Fragments[fragmentId] = fragment;
+                _logger.LogDebug("Created fragment '{FragmentId}' with defaults on activation", fragmentId);
+            }
+            
             if (fragment != null)
             {
                 fragment.IsActive = isActive;
@@ -458,6 +472,123 @@ namespace BlazorWebApp.Services
             }
         }
 
+        /// <summary>
+        /// Creates a fragment with default values based on the fragment ID.
+        /// Uses the current workflow's pipeline or common fragment conventions.
+        /// </summary>
+        /// <param name="fragmentId">The fragment ID to create</param>
+        /// <returns>A new FragmentParameters with defaults, or null if unable to determine</returns>
+        private FragmentParameters? CreateFragmentWithDefaults(string fragmentId)
+        {
+            // Try to find the fragment file from the current workflow
+            var workflowId = Current.WorkflowId;
+            Workflow? workflow = null;
+            
+            if (workflowId.HasValue)
+            {
+                workflow = _workflowService.GetWorkflowById(workflowId.Value);
+            }
+
+            string? fragmentFile = null;
+            Dictionary<string, object?>? pipelineDefaults = null;
+
+            // First, try to find it in the workflow's pipeline
+            if (workflow != null)
+            {
+                var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
+                var matchingStep = pipelineSteps.FirstOrDefault(s => 
+                    s.Id == fragmentId || 
+                    Path.GetFileNameWithoutExtension(s.Fragment).Replace("-", "_") == fragmentId);
+                
+                if (matchingStep != null)
+                {
+                    fragmentFile = matchingStep.Fragment;
+                    pipelineDefaults = matchingStep.DefaultValues;
+                }
+            }
+
+            // If not found in pipeline, try common fragment file conventions
+            if (string.IsNullOrEmpty(fragmentFile))
+            {
+                fragmentFile = InferFragmentFile(fragmentId);
+            }
+
+            if (string.IsNullOrEmpty(fragmentFile))
+            {
+                _logger.LogWarning("Could not determine fragment file for '{FragmentId}'", fragmentId);
+                return null;
+            }
+
+            // Create the fragment
+            var fragment = new FragmentParameters
+            {
+                FragmentFile = fragmentFile,
+                IsActive = true,
+                Order = Current.Fragments.Values.Any() ? Current.Fragments.Values.Max(f => f.Order) + 1 : 0
+            };
+
+            // Apply pipeline defaults if available
+            if (pipelineDefaults != null)
+            {
+                foreach (var kvp in pipelineDefaults)
+                {
+                    fragment.Values[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Apply fragment template defaults
+            var fragmentDefaults = _workflowService.ParseFragmentDefaults(fragmentFile);
+            foreach (var kvp in fragmentDefaults)
+            {
+                // Only add if not already set by pipeline
+                if (!fragment.Values.ContainsKey(kvp.Key))
+                {
+                    fragment.Values[kvp.Key] = kvp.Value;
+                }
+            }
+
+            _logger.LogDebug("Created fragment '{FragmentId}' with {ValueCount} default values from {FragmentFile}", 
+                fragmentId, fragment.Values.Count, fragmentFile);
+            
+            return fragment;
+        }
+
+        /// <summary>
+        /// Infers the fragment file name from the fragment ID using common conventions.
+        /// </summary>
+        private string? InferFragmentFile(string fragmentId)
+        {
+            // Common fragment ID to file mappings
+            var knownMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["prompts"] = "prompts.sbn",
+                ["main_sampler"] = "sampler.sbn",
+                ["refiner_sampler"] = "sampler.sbn",
+                ["latent"] = "empty-latent.sbn",
+                ["upscale"] = "upscale.sbn",
+                ["seed_vr2"] = "seed-vr2.sbn",
+                ["conditioning_variation"] = "conditioning-variation.sbn",
+                ["detailer"] = "detailer-core.sbn",
+                ["frame_interpolation"] = "frame-interpolation.sbn"
+            };
+
+            if (knownMappings.TryGetValue(fragmentId, out var fileName))
+            {
+                return fileName;
+            }
+
+            // Try converting ID back to filename: "some_fragment" -> "some-fragment.sbn"
+            var inferredName = fragmentId.Replace("_", "-") + ".sbn";
+            
+            // Check if the fragment file exists by trying to get its schema
+            var schema = _workflowService.GetFragmentSchema(inferredName);
+            if (schema != null)
+            {
+                return inferredName;
+            }
+
+            return null;
+        }
         #endregion
     }
 }

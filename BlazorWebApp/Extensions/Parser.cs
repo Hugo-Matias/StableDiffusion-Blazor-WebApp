@@ -1,5 +1,4 @@
 using BlazorWebApp.Data.Dtos;
-using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
@@ -119,13 +118,6 @@ namespace BlazorWebApp.Extensions
                 .Distinct()
                 .ToList();
         }
-        public static void ParseComfyDetailerLoras(this DetailerParameters detailer)
-        {
-            (var prompt, var negative) = detailer.Loras != null && detailer.Loras.Count > 0 ? detailer.Loras.ParseLoras() : (string.Empty, string.Empty);
-            detailer.Prompt += prompt;
-            detailer.NegativePrompt += negative;
-        }
-
         public static (string prompt, string negative) ParseLoras(this List<Lora> loras)
         {
             string prompt = string.Empty;
@@ -305,7 +297,7 @@ namespace BlazorWebApp.Extensions
             return new MarkupString($"From: {currentRes} | To: <strong>{resizeRes.Item1}x{resizeRes.Item2} px</strong>");
         }
 
-        public static (int, int) ParseHighresResolution(this int width, int height, int hrWidth = 0, int hrHeight = 0, double scale = 0)
+        public static (int, int) ParseHighresResolution(int width, int height, int hrWidth = 0, int hrHeight = 0, double scale = 0)
         {
             var ar = (float)width / height;
             if (hrWidth == 0 && hrHeight == 0)

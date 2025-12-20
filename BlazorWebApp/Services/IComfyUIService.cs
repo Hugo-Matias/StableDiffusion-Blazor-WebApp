@@ -44,10 +44,29 @@ namespace BlazorWebApp.Services
         // Image Upload
         Task<string> UploadImageAsync(string base64Data, Guid? promptId = null);
 
-        // Generation Operations
-        Task<GeneratedImages> PostTxt2Img(Txt2ImgComfyUI param, string clientId, Workflow workflow);
-        Task<GeneratedImages> PostImg2Img(Img2ImgComfyUI param, string clientId, Workflow workflow);
-        Task<GeneratedVideos> PostImg2Vid(Img2VidComfyUI param, string clientId, Workflow workflow);
+        #region New GenerationParameters-based Methods
+
+        /// <summary>
+        /// Executes image generation using the unified GenerationParameters model.
+        /// Builds the ComfyUI workflow payload directly from fragments.
+        /// </summary>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="clientId">The WebSocket client ID for progress tracking.</param>
+        /// <param name="workflow">The workflow template to execute.</param>
+        /// <returns>The generated images result.</returns>
+        Task<GeneratedImages> PostGenerationAsync(GenerationParameters parameters, string clientId, Workflow workflow);
+
+        /// <summary>
+        /// Executes video generation using the unified GenerationParameters model.
+        /// Builds the ComfyUI workflow payload directly from fragments.
+        /// </summary>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="clientId">The WebSocket client ID for progress tracking.</param>
+        /// <param name="workflow">The workflow template to execute.</param>
+        /// <returns>The generated video result.</returns>
+        Task<GeneratedVideos> PostVideoGenerationAsync(GenerationParameters parameters, string clientId, Workflow workflow);
+
+        #endregion
 
         // Queue Operations
         Task<string> PostInterrupt();

@@ -278,11 +278,10 @@ namespace BlazorWebApp.Tests.Services
         [Fact]
         public void ParametersImg2Vid_ShouldHaveFrameInterpolationInitialized()
         {
-            // Assert
-            _sut.ParametersImg2Vid.FrameInterpolation.Should().NotBeNull();
-            _sut.ParametersImg2Vid.FrameInterpolation.IsActive.Should().BeTrue();
-            _sut.ParametersImg2Vid.FrameInterpolation.ScaleBy.Should().Be(2.0);
-            _sut.ParametersImg2Vid.FrameInterpolation.Multiplier.Should().Be(2);
+            // Assert - Frame interpolation properties are now inlined
+            _sut.ParametersImg2Vid.FrameInterpolationActive.Should().BeTrue();
+            _sut.ParametersImg2Vid.FrameInterpolationScaleBy.Should().Be(2.0);
+            _sut.ParametersImg2Vid.FrameInterpolationMultiplier.Should().Be(2);
         }
 
         #endregion
@@ -641,8 +640,7 @@ namespace BlazorWebApp.Tests.Services
             _sut.ParametersTxt2Img.EnableHR.Should().BeFalse();
             _sut.ParametersTxt2Img.HRUpscaler.Should().Be("Latent");
             _sut.ParametersTxt2Img.HRScale.Should().Be(2.0);
-            _sut.ParametersTxt2Img.SeedVR2.Should().NotBeNull();
-            _sut.ParametersTxt2Img.ConditioningVariation.Should().NotBeNull();
+            // Note: SeedVR2 and ConditioningVariation were moved to fragment-based system
 
             // Assert - Img2Img specific properties
             _sut.ParametersImg2Img.MaskBlur.Should().Be(4);

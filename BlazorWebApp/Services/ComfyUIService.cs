@@ -1,5 +1,4 @@
 ﻿using BlazorWebApp.Data.Dtos.ComfyUI;
-using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Collections.Concurrent;
@@ -660,105 +659,6 @@ namespace BlazorWebApp.Services
         }
 
 
-        public async Task<GeneratedImages> PostTxt2Img(Txt2ImgComfyUI param, string clientId, Workflow workflow)
-        {
-            var workflowJson = _workflow.ComposeWorkflowFromTemplate(workflow, param);
-            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
-
-            var payload = new { prompt = workflowObject, client_id = clientId };
-            return await PostPromptAsync<GeneratedImages>(payload);
-        }
-
-        public async Task<GeneratedImages> PostImg2Img(Img2ImgComfyUI param, string clientId, Workflow workflow)
-        {
-            // Generate a temporary prompt ID for tracking uploads
-            // We'll get the real one after submission
-            var tempId = Guid.NewGuid();
-
-            // Upload the image first if it's base64 data
-            if (!string.IsNullOrEmpty(param.Image) && (param.Image.StartsWith("data:") || param.Image.Length > 260))
-            {
-                var uploadedFilename = await UploadImageAsync(param.Image, tempId);
-                param.Image = uploadedFilename;
-                _logger.LogDebug("Uploaded image for Img2Img: {Filename}", uploadedFilename);
-            }
-
-            var workflowJson = _workflow.ComposeWorkflowFromTemplate(workflow, param);
-            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
-
-            var payload = new { prompt = workflowObject, client_id = clientId };
-
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = true
-            });
-
-            await File.WriteAllTextAsync("payload_img2img.json", json);
-
-            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
-            response.EnsureSuccessStatusCode();
-
-            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
-            var promptId = Guid.Parse(submit.PromptId);
-
-            // Transfer the uploaded images tracking from temp ID to real prompt ID
-            if (_uploadedImages.TryRemove(tempId, out var uploadedFiles))
-            {
-                _uploadedImages[promptId] = uploadedFiles;
-            }
-
-            var tcs = new TaskCompletionSource<GeneratedImages>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _pendingJobs[promptId] = tcs;
-
-            return await tcs.Task;
-        }
-
-        public async Task<GeneratedVideos> PostImg2Vid(Img2VidComfyUI param, string clientId, Workflow workflow)
-        {
-            // Generate a temporary prompt ID for tracking uploads
-            // We'll get the real one after submission
-            var tempId = Guid.NewGuid();
-
-            // Upload the image first if it's base64 data
-            if (!string.IsNullOrEmpty(param.Image) && (param.Image.StartsWith("data:") || param.Image.Length > 260))
-            {
-                var uploadedFilename = await UploadImageAsync(param.Image, tempId);
-                param.Image = uploadedFilename;
-                _logger.LogDebug("Uploaded image for Img2Vid: {Filename}", uploadedFilename);
-            }
-
-            var workflowJson = _workflow.ComposeWorkflowFromTemplate(workflow, param);
-            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
-
-            var payload = new { prompt = workflowObject, client_id = clientId };
-
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = true
-            });
-
-            await File.WriteAllTextAsync("payload_img2vid.json", json);
-
-            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
-            response.EnsureSuccessStatusCode();
-
-            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
-            var promptId = Guid.Parse(submit.PromptId);
-
-            // Transfer the uploaded images tracking from temp ID to real prompt ID
-            if (_uploadedImages.TryRemove(tempId, out var uploadedFiles))
-            {
-                _uploadedImages[promptId] = uploadedFiles;
-            }
-
-            var tcs = new TaskCompletionSource<GeneratedVideos>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _pendingJobs[promptId] = tcs;
-
-            return await tcs.Task;
-        }
-
         public async Task<string> PostInterrupt()
         {
             using var response = await _httpClient.PostAsync("/interrupt", null);
@@ -827,6 +727,114 @@ namespace BlazorWebApp.Services
             return await tcs.Task;
         }
         #endregion
+
+        #region New GenerationParameters-based Methods
+
+        /// <inheritdoc />
+        public async Task<GeneratedImages> PostGenerationAsync(GenerationParameters parameters, string clientId, Workflow workflow)
+        {
+            // Generate a temporary prompt ID for tracking uploads
+            var tempId = Guid.NewGuid();
+
+            // Upload any source images that are base64 data
+            await UploadSourceImagesAsync(parameters, tempId);
+
+            // Compose workflow from template using GenerationParameters
+            var workflowJson = _workflow.ComposeWorkflowFromGenerationParameters(workflow, parameters);
+            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
+
+            var payload = new { prompt = workflowObject, client_id = clientId };
+
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync("payload_generation.json", json);
+
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            response.EnsureSuccessStatusCode();
+
+            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            var promptId = Guid.Parse(submit.PromptId);
+
+            // Transfer the uploaded images tracking from temp ID to real prompt ID
+            if (_uploadedImages.TryRemove(tempId, out var uploadedFiles))
+            {
+                _uploadedImages[promptId] = uploadedFiles;
+            }
+
+            var tcs = new TaskCompletionSource<GeneratedImages>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingJobs[promptId] = tcs;
+
+            return await tcs.Task;
+        }
+
+        /// <inheritdoc />
+        public async Task<GeneratedVideos> PostVideoGenerationAsync(GenerationParameters parameters, string clientId, Workflow workflow)
+        {
+            // Generate a temporary prompt ID for tracking uploads
+            var tempId = Guid.NewGuid();
+
+            // Upload any source images that are base64 data
+            await UploadSourceImagesAsync(parameters, tempId);
+
+            // Compose workflow from template using GenerationParameters
+            var workflowJson = _workflow.ComposeWorkflowFromGenerationParameters(workflow, parameters);
+            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
+
+            var payload = new { prompt = workflowObject, client_id = clientId };
+
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync("payload_video_generation.json", json);
+
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            response.EnsureSuccessStatusCode();
+
+            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            var promptId = Guid.Parse(submit.PromptId);
+
+            // Transfer the uploaded images tracking from temp ID to real prompt ID
+            if (_uploadedImages.TryRemove(tempId, out var uploadedFiles))
+            {
+                _uploadedImages[promptId] = uploadedFiles;
+            }
+
+            var tcs = new TaskCompletionSource<GeneratedVideos>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingJobs[promptId] = tcs;
+
+            return await tcs.Task;
+        }
+
+        /// <summary>
+        /// Uploads all source images from GenerationParameters to ComfyUI.
+        /// Updates the SourceAsset.Data with the uploaded filename.
+        /// </summary>
+        private async Task UploadSourceImagesAsync(GenerationParameters parameters, Guid tempId)
+        {
+            foreach (var source in parameters.Sources.Values)
+            {
+                if (source.HasData && !string.IsNullOrEmpty(source.Data))
+                {
+                    // Check if it's base64 data (not already an uploaded filename)
+                    if (source.Data.StartsWith("data:") || source.Data.Length > 260)
+                    {
+                        var uploadedFilename = await UploadImageAsync(source.Data, tempId);
+                        source.Data = uploadedFilename;
+                        _logger.LogDebug("Uploaded source image: {Filename}", uploadedFilename);
+                    }
+                }
+            }
+        }
+
+        #endregion
+
     }
 
     /// <summary>

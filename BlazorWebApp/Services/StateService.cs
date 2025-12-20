@@ -26,6 +26,52 @@ namespace BlazorWebApp.Services
         
         /// <inheritdoc />
         public GenerationParameters GenerationParameters { get; private set; } = new();
+        
+        /// <summary>
+        /// Initializes GenerationParameters with default values from settings.
+        /// Called when starting fresh (no saved state) or resetting parameters.
+        /// </summary>
+        public void InitializeGenerationParameters()
+        {
+            var settings = _settings.Settings;
+            
+            GenerationParameters = new GenerationParameters();
+            
+            // Create default prompts fragment
+            var promptsFragment = new FragmentParameters
+            {
+                FragmentFile = "prompts.sbn",
+                IsActive = true
+            };
+            promptsFragment.SetValue("positive", "");
+            promptsFragment.SetValue("negative", "");
+            GenerationParameters.Fragments["prompts"] = promptsFragment;
+            
+            // Create default main_sampler fragment with settings defaults
+            var samplerFragment = new FragmentParameters
+            {
+                FragmentFile = "sampler.sbn",
+                IsActive = true
+            };
+            samplerFragment.SetValue("seed", (long)settings.Generation.Shared.Seed);
+            samplerFragment.SetValue("steps", settings.Generation.Shared.Steps.Value);
+            samplerFragment.SetValue("cfg", (double)settings.Generation.Shared.CfgScale.Value);
+            samplerFragment.SetValue("sampler_name", settings.Generation.Shared.Sampler);
+            samplerFragment.SetValue("scheduler", "normal");
+            samplerFragment.SetValue("denoise", settings.Generation.Shared.Denoising.Value);
+            GenerationParameters.Fragments["main_sampler"] = samplerFragment;
+            
+            // Create default latent/resolution fragment
+            var latentFragment = new FragmentParameters
+            {
+                FragmentFile = "latent.sbn",
+                IsActive = true
+            };
+            latentFragment.SetValue("width", settings.Generation.Shared.Resolution.Width);
+            latentFragment.SetValue("height", settings.Generation.Shared.Resolution.Height);
+            latentFragment.SetValue("batch_size", settings.Generation.Shared.Batch.Size.Value);
+            GenerationParameters.Fragments["latent"] = latentFragment;
+        }
 
         public StateService(
             IDatabaseService db,
@@ -306,18 +352,84 @@ namespace BlazorWebApp.Services
                 Height = 768,
                 Seed = -1,
                 BatchSize = 1,
-                FrameInterpolation = new FrameInterpolationParameters
-                {
-                    IsActive = true,
-                    ScaleBy = 2.0,
-                    Multiplier = 2,
-                    RifeModel = "rife49.pth"
-                },
+                FrameInterpolationActive = true,
+                FrameInterpolationScaleBy = 2.0,
+                FrameInterpolationMultiplier = 2,
+                FrameInterpolationRifeModel = "rife49.pth",
                 Loras = new List<Lora>()
             };
         }
 
         #region Parameter Loading from Images
+
+        /// <summary>
+        /// Loads all parameters from an image entity into GenerationParameters (new flow).
+        /// This populates the fragments with values from the saved image.
+        /// </summary>
+        public async Task LoadGenerationParametersFromImage(Image image)
+        {
+            // Ensure fragments exist
+            if (!GenerationParameters.Fragments.ContainsKey("prompts"))
+            {
+                GenerationParameters.Fragments["prompts"] = new FragmentParameters 
+                { 
+                    FragmentFile = "prompts.sbn", 
+                    IsActive = true 
+                };
+            }
+            if (!GenerationParameters.Fragments.ContainsKey("main_sampler"))
+            {
+                GenerationParameters.Fragments["main_sampler"] = new FragmentParameters 
+                { 
+                    FragmentFile = "sampler.sbn", 
+                    IsActive = true 
+                };
+            }
+            
+            var promptsFragment = GenerationParameters.Fragments["prompts"];
+            var samplerFragment = GenerationParameters.Fragments["main_sampler"];
+            
+            // Set prompts
+            promptsFragment.SetValue("positive", image.Prompt ?? "");
+            promptsFragment.SetValue("negative", image.NegativePrompt ?? "");
+            
+            // Set sampler values
+            var samplerName = await _db.GetSampler(image.SamplerId);
+            samplerFragment.SetValue("seed", image.Seed);
+            samplerFragment.SetValue("steps", image.Steps);
+            samplerFragment.SetValue("cfg", (double)image.CfgScale);
+            samplerFragment.SetValue("sampler_name", samplerName ?? "euler");
+            samplerFragment.SetValue("scheduler", image.Scheduler ?? "normal");
+            samplerFragment.SetValue("denoise", image.DenoisingStrength);
+            
+            // Set resolution in any fragment that has it (latent, loader, etc.)
+            foreach (var fragment in GenerationParameters.Fragments.Values)
+            {
+                if (fragment.HasValue("width") || fragment.HasValue("height"))
+                {
+                    fragment.SetValue("width", image.Width);
+                    fragment.SetValue("height", image.Height);
+                }
+            }
+            
+            // If no fragment has width/height, create/update latent fragment
+            if (!GenerationParameters.Fragments.Values.Any(f => f.HasValue("width")))
+            {
+                if (!GenerationParameters.Fragments.ContainsKey("latent"))
+                {
+                    GenerationParameters.Fragments["latent"] = new FragmentParameters 
+                    { 
+                        FragmentFile = "latent.sbn", 
+                        IsActive = true 
+                    };
+                }
+                GenerationParameters.Fragments["latent"].SetValue("width", image.Width);
+                GenerationParameters.Fragments["latent"].SetValue("height", image.Height);
+            }
+            
+            // Publish event
+            _events.Publish(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
+        }
 
         /// <summary>
         /// Loads all parameters from an image entity into the appropriate parameter set.
