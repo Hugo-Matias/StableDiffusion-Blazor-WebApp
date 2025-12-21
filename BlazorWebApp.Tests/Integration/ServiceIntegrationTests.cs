@@ -1,7 +1,6 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
-using BlazorWebApp.Models.Fragments;
 using BlazorWebApp.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -17,34 +16,6 @@ namespace BlazorWebApp.Tests.Integration
     /// </summary>
     public class ServiceIntegrationTests
     {
-        #region Test Helpers
-
-        /// <summary>
-        /// Helper method to create a test prompts fragment
-        /// </summary>
-        private static PromptsFragment CreateTestPromptsFragment()
-        {
-            return new PromptsFragment { Id = FragmentKeys.Fragments.Prompts, IsActive = true };
-        }
-
-        /// <summary>
-        /// Helper method to create a test sampler fragment
-        /// </summary>
-        private static SamplerFragment CreateTestSamplerFragment()
-        {
-            return new SamplerFragment { Id = FragmentKeys.Fragments.MainSampler, IsActive = true };
-        }
-
-        /// <summary>
-        /// Helper method to create a test latent fragment
-        /// </summary>
-        private static LatentFragment CreateTestLatentFragment()
-        {
-            return new LatentFragment { Id = FragmentKeys.Fragments.Latent, IsActive = true };
-        }
-
-        #endregion
-
         #region State Persistence Round-Trip Tests
 
         /// <summary>
@@ -70,18 +41,18 @@ namespace BlazorWebApp.Tests.Integration
             var stateService = new StateService(mockDb.Object, mockConfig.Object, mockEvents.Object, mockSettings.Object);
 
             // Set up specific parameter values using GenerationParameters
-            var promptsFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.Prompts) as PromptsFragment;
-            promptsFragment!.Positive = "test prompt for round-trip";
-            promptsFragment.Negative = "test negative prompt";
+            var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, "test prompt for round-trip");
+            promptsFragment.SetValue(FragmentKeys.Params.Negative, "test negative prompt");
             
-            var samplerFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment!.Steps = 42;
-            samplerFragment.Cfg = 8.5f;
-            samplerFragment.Seed = 12345L;
+            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, 42);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, 8.5);
+            samplerFragment.SetValue(FragmentKeys.Params.Seed, 12345L);
             
-            var latentFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.Latent) as LatentFragment;
-            latentFragment!.Width = 768;
-            latentFragment.Height = 1024;
+            var latentFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+            latentFragment.SetValue(FragmentKeys.Params.Width, 768);
+            latentFragment.SetValue(FragmentKeys.Params.Height, 1024);
             
             stateService.GenerationParameters.Assets["Model"] = "test_model.safetensors";
             stateService.GenerationParameters.Assets["Vae"] = "test_vae.safetensors";
@@ -102,21 +73,18 @@ namespace BlazorWebApp.Tests.Integration
             await newStateService.LoadState();
 
             // Assert - Verify all parameters survived the round-trip
-            var loadedPrompts = newStateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.Prompts) as PromptsFragment;
-            loadedPrompts.Should().NotBeNull();
-            loadedPrompts!.Positive.Should().Be("test prompt for round-trip");
-            loadedPrompts.Negative.Should().Be("test negative prompt");
+            var loadedPrompts = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
+            loadedPrompts.GetValue<string>(FragmentKeys.Params.Positive).Should().Be("test prompt for round-trip");
+            loadedPrompts.GetValue<string>(FragmentKeys.Params.Negative).Should().Be("test negative prompt");
             
-            var loadedSampler = newStateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            loadedSampler.Should().NotBeNull();
-            loadedSampler!.Steps.Should().Be(42);
-            loadedSampler.Cfg.Should().BeApproximately(8.5f, 0.01f);
-            loadedSampler.Seed.Should().Be(12345L);
+            var loadedSampler = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            loadedSampler.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(42);
+            loadedSampler.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(8.5);
+            loadedSampler.GetValue<long>(FragmentKeys.Params.Seed).Should().Be(12345L);
             
-            var loadedLatent = newStateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.Latent) as LatentFragment;
-            loadedLatent.Should().NotBeNull();
-            loadedLatent!.Width.Should().Be(768);
-            loadedLatent!.Height.Should().Be(1024);
+            var loadedLatent = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
+            loadedLatent.GetValue<int>(FragmentKeys.Params.Width).Should().Be(768);
+            loadedLatent.GetValue<int>(FragmentKeys.Params.Height).Should().Be(1024);
             
             newStateService.GenerationParameters.Assets.Should().ContainKey("Model");
             newStateService.GenerationParameters.Assets["Model"].Should().Be("test_model.safetensors");
@@ -148,22 +116,18 @@ namespace BlazorWebApp.Tests.Integration
             var stateService = new StateService(mockDb.Object, mockConfig.Object, mockEvents.Object, mockSettings.Object);
 
             // Set up video generation parameters using GenerationParameters
-            var promptsFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.Prompts) as PromptsFragment;
-            promptsFragment!.Positive = "video generation prompt";
+            var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, "video generation prompt");
             
-            // Add a video settings fragment (using WanSamplerFragment as an example video fragment)
-            var wanSamplerFragment = new WanSamplerFragment
-            {
-                Id = "video_settings",
-                IsActive = true,
-                Steps = 12,
-                Shift = 7
-            };
-            stateService.GenerationParameters.Fragments["video_settings"] = wanSamplerFragment;
+            var videoFragment = stateService.GenerationParameters.GetOrCreateFragment("video_settings", "video.sbn");
+            videoFragment.SetValue("length", 97);
+            videoFragment.SetValue("frame_rate", 24);
+            videoFragment.SetValue("motion_amplitude", 1.5f);
             
-            var samplerFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment!.Steps = 12;
-            samplerFragment.Cfg = 2.5f;
+            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, 12);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, 2.5);
+            samplerFragment.SetValue("shift", 7);
             
             stateService.GenerationParameters.Assets["HighModel"] = "wan_high.safetensors";
             stateService.GenerationParameters.Assets["LowModel"] = "wan_low.safetensors";
@@ -177,18 +141,15 @@ namespace BlazorWebApp.Tests.Integration
             await newStateService.LoadState();
 
             // Assert
-            var loadedPrompts = newStateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.Prompts) as PromptsFragment;
-            loadedPrompts.Should().NotBeNull();
-            loadedPrompts!.Positive.Should().Be("video generation prompt");
+            var loadedPrompts = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
+            loadedPrompts.GetValue<string>(FragmentKeys.Params.Positive).Should().Be("video generation prompt");
             
-            var loadedVideo = newStateService.GenerationParameters.GetFragment("video_settings") as WanSamplerFragment;
-            loadedVideo.Should().NotBeNull();
-            loadedVideo!.Steps.Should().Be(12);
-            loadedVideo.Shift.Should().Be(7);
+            var loadedVideo = newStateService.GenerationParameters.GetOrCreateFragment("video_settings");
+            loadedVideo.GetValue<int>("length").Should().Be(97);
+            loadedVideo.GetValue<int>("frame_rate").Should().Be(24);
             
-            var loadedSampler = newStateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            loadedSampler.Should().NotBeNull();
-            loadedSampler!.Steps.Should().Be(12);
+            var loadedSampler = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            loadedSampler.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(12);
             
             newStateService.GenerationParameters.Assets["HighModel"].Should().Be("wan_high.safetensors");
             newStateService.GenerationParameters.Assets["LowModel"].Should().Be("wan_low.safetensors");
@@ -556,15 +517,13 @@ namespace BlazorWebApp.Tests.Integration
             var stateService = new StateService(mockDb.Object, mockConfig.Object, mockEvents.Object, mockSettings.Object);
 
             // Assert - Defaults should come from custom settings
-            var samplerFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment.Should().NotBeNull();
-            samplerFragment!.Steps.Should().Be(100);
-            samplerFragment.Cfg.Should().BeApproximately(15.0f, 0.01f);
+            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            samplerFragment.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(100);
+            samplerFragment.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(15.0);
             
-            var latentFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.Latent) as LatentFragment;
-            latentFragment.Should().NotBeNull();
-            latentFragment!.Width.Should().Be(2048);
-            latentFragment!.Height.Should().Be(2048);
+            var latentFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
+            latentFragment.GetValue<int>(FragmentKeys.Params.Width).Should().Be(2048);
+            latentFragment.GetValue<int>(FragmentKeys.Params.Height).Should().Be(2048);
         }
 
         /// <summary>
@@ -605,18 +564,16 @@ namespace BlazorWebApp.Tests.Integration
             mockConfig.Setup(c => c["StateVersion"]).Returns("1");
 
             var stateService = new StateService(mockDb.Object, mockConfig.Object, mockEvents.Object, mockSettings.Object);
-            var samplerFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment.Should().NotBeNull();
-            samplerFragment!.Steps.Should().Be(30);
+            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            samplerFragment.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(30);
 
             // Act - Change settings and reinitialize
             mockSettings.Setup(s => s.Settings).Returns(updatedSettings);
             stateService.InitializeGenerationParameters();
 
             // Assert
-            samplerFragment = stateService.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment.Should().NotBeNull();
-            samplerFragment!.Steps.Should().Be(75);
+            samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            samplerFragment.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(75);
         }
 
         #endregion

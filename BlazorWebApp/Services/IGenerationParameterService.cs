@@ -1,5 +1,4 @@
 using BlazorWebApp.Models;
-using BlazorWebApp.Models.Fragments;
 
 namespace BlazorWebApp.Services
 {
@@ -92,10 +91,10 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Adds a new instance of a chainable fragment.
-        /// Returns the new fragment with a unique ID.
+        /// Returns the new fragment parameters with a unique ID.
         /// Publishes GenerationParametersChangedEventArgs.FragmentAdded event.
         /// </summary>
-        (string fragmentId, FragmentBase parameters) AddFragmentInstance(string fragmentFile, string? baseId = null);
+        (string fragmentId, FragmentParameters parameters) AddFragmentInstance(string fragmentFile, string? baseId = null);
 
         /// <summary>
         /// Removes a fragment instance.

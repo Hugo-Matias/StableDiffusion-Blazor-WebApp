@@ -2,7 +2,6 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
-using BlazorWebApp.Models.Fragments;
 using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
@@ -33,40 +32,40 @@ namespace BlazorWebApp.Services
             
             GenerationParameters = new GenerationParameters();
             
-            // Create default prompts fragment using typed class
-            var prompts = new PromptsFragment
+            // Create default prompts fragment
+            var promptsFragment = new FragmentParameters
             {
-                Id = FragmentKeys.Fragments.Prompts,
-                IsActive = true,
-                Positive = "",
-                Negative = ""
+                FragmentFile = FragmentKeys.Files.Prompts,
+                IsActive = true
             };
-            GenerationParameters.Fragments[FragmentKeys.Fragments.Prompts] = prompts;
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
+            promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
+            GenerationParameters.Fragments[FragmentKeys.Fragments.Prompts] = promptsFragment;
             
-            // Create default main_sampler fragment with settings defaults using typed class
-            var sampler = new SamplerFragment
+            // Create default main_sampler fragment with settings defaults
+            var samplerFragment = new FragmentParameters
             {
-                Id = FragmentKeys.Fragments.MainSampler,
-                IsActive = true,
-                Seed = settings.Generation.Shared.Seed,
-                Steps = settings.Generation.Shared.Steps.Value,
-                Cfg = settings.Generation.Shared.CfgScale.Value,
-                SamplerName = settings.Generation.Shared.Sampler,
-                Scheduler = "normal",
-                Denoise = (float)settings.Generation.Shared.Denoising.Value
+                FragmentFile = FragmentKeys.Files.Sampler,
+                IsActive = true
             };
-            GenerationParameters.Fragments[FragmentKeys.Fragments.MainSampler] = sampler;
+            samplerFragment.SetValue(FragmentKeys.Params.Seed, (long)settings.Generation.Shared.Seed);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, settings.Generation.Shared.Steps.Value);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, (double)settings.Generation.Shared.CfgScale.Value);
+            samplerFragment.SetValue(FragmentKeys.Params.SamplerName, settings.Generation.Shared.Sampler);
+            samplerFragment.SetValue(FragmentKeys.Params.Scheduler, "normal");
+            samplerFragment.SetValue(FragmentKeys.Params.Denoise, settings.Generation.Shared.Denoising.Value);
+            GenerationParameters.Fragments[FragmentKeys.Fragments.MainSampler] = samplerFragment;
             
-            // Create default latent/resolution fragment using typed class
-            var latent = new LatentFragment
+            // Create default latent/resolution fragment
+            var latentFragment = new FragmentParameters
             {
-                Id = FragmentKeys.Fragments.Latent,
-                IsActive = true,
-                Width = settings.Generation.Shared.Resolution.Width,
-                Height = settings.Generation.Shared.Resolution.Height,
-                BatchSize = settings.Generation.Shared.Batch.Size.Value
+                FragmentFile = FragmentKeys.Files.EmptyLatent,
+                IsActive = true
             };
-            GenerationParameters.Fragments[FragmentKeys.Fragments.Latent] = latent;
+            latentFragment.SetValue(FragmentKeys.Params.Width, settings.Generation.Shared.Resolution.Width);
+            latentFragment.SetValue(FragmentKeys.Params.Height, settings.Generation.Shared.Resolution.Height);
+            latentFragment.SetValue(FragmentKeys.Params.BatchSize, settings.Generation.Shared.Batch.Size.Value);
+            GenerationParameters.Fragments[FragmentKeys.Fragments.Latent] = latentFragment;
         }
 
         public StateService(
@@ -190,48 +189,39 @@ namespace BlazorWebApp.Services
         /// </summary>
         public async Task LoadGenerationParametersFromImage(Image image)
         {
-            // Ensure fragments exist using typed access
-            var prompts = GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
-            var sampler = GenerationParameters.GetOrCreateFragment<SamplerFragment>(FragmentKeys.Fragments.MainSampler);
+            // Ensure fragments exist
+            var promptsFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var samplerFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
             
             // Set prompts
-            prompts.Positive = image.Prompt ?? "";
-            prompts.Negative = image.NegativePrompt ?? "";
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, image.Prompt ?? "");
+            promptsFragment.SetValue(FragmentKeys.Params.Negative, image.NegativePrompt ?? "");
             
             // Set sampler values
             var samplerName = await _db.GetSampler(image.SamplerId);
-            sampler.Seed = image.Seed;
-            sampler.Steps = image.Steps;
-            sampler.Cfg = image.CfgScale;
-            sampler.SamplerName = samplerName ?? "euler";
-            sampler.Scheduler = image.Scheduler ?? "normal";
-            sampler.Denoise = (float)image.DenoisingStrength;
+            samplerFragment.SetValue(FragmentKeys.Params.Seed, image.Seed);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, image.Steps);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, (double)image.CfgScale);
+            samplerFragment.SetValue(FragmentKeys.Params.SamplerName, samplerName ?? "euler");
+            samplerFragment.SetValue(FragmentKeys.Params.Scheduler, image.Scheduler ?? "normal");
+            samplerFragment.SetValue(FragmentKeys.Params.Denoise, image.DenoisingStrength);
             
-            // Set resolution - try to find latent fragment or create one
-            var latent = GenerationParameters.GetFragment<LatentFragment>(FragmentKeys.Fragments.Latent);
-            if (latent == null)
+            // Set resolution in any fragment that has it (latent, loader, etc.)
+            foreach (var fragment in GenerationParameters.Fragments.Values)
             {
-                // Check other fragments by type
-                latent = GenerationParameters.Fragments.Values.OfType<LatentFragment>().FirstOrDefault();
-            }
-            
-            if (latent != null)
-            {
-                latent.Width = image.Width;
-                latent.Height = image.Height;
-            }
-            else
-            {
-                // Create new latent fragment
-                latent = new LatentFragment
+                if (fragment.HasValue(FragmentKeys.Params.Width) || fragment.HasValue(FragmentKeys.Params.Height))
                 {
-                    Id = FragmentKeys.Fragments.Latent,
-                    IsActive = true,
-                    Width = image.Width,
-                    Height = image.Height,
-                    BatchSize = 1
-                };
-                GenerationParameters.Fragments[FragmentKeys.Fragments.Latent] = latent;
+                    fragment.SetValue(FragmentKeys.Params.Width, image.Width);
+                    fragment.SetValue(FragmentKeys.Params.Height, image.Height);
+                }
+            }
+            
+            // If no fragment has width/height, create/update latent fragment
+            if (!GenerationParameters.Fragments.Values.Any(f => f.HasValue(FragmentKeys.Params.Width)))
+            {
+                var latentFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+                latentFragment.SetValue(FragmentKeys.Params.Width, image.Width);
+                latentFragment.SetValue(FragmentKeys.Params.Height, image.Height);
             }
             
             // Publish event
@@ -244,7 +234,9 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Sets the workflow base and resets workflow assets to defaults if the base changes.
+        /// Publishes StateChangedEventArgs to notify components.
         /// </summary>
+        /// <param name="workflowBase">The new workflow base to set</param>
         public void SetWorkflowBase(ModelBase workflowBase)
         {
             var previousBase = State.Generation.WorkflowBase;
@@ -254,19 +246,6 @@ namespace BlazorWebApp.Services
             if (previousBase != workflowBase)
             {
                 ResetWorkflowAssetsToDefaults();
-
-                // Update CurrentWorkflowId to the first workflow matching the new base
-                var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
-                if (defaultWorkflow != null)
-                {
-                    State.Generation.CurrentWorkflowId = defaultWorkflow.Id;
-                    GenerationParameters.WorkflowId = defaultWorkflow.Id;
-                }
-                else
-                {
-                    State.Generation.CurrentWorkflowId = null;
-                    GenerationParameters.WorkflowId = null;
-                }
             }
 
             // Publish StateChangedEventArgs for components using EventService
@@ -279,6 +258,7 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Resets all workflow assets to use the workflow template defaults.
+        /// This is called when WorkflowBase changes to ensure the correct models are loaded.
         /// </summary>
         private void ResetWorkflowAssetsToDefaults()
         {
@@ -324,6 +304,7 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Migrates legacy SDModel and Vae from AppState to GenerationParameters.Assets.
+        /// Call this after loading state to ensure backward compatibility with old save files.
         /// </summary>
         public void MigrateLegacySettings()
         {

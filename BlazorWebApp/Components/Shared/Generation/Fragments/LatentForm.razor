@@ -4,7 +4,6 @@
     Handles: width, height, batch_size
     Uses ResolutionPanel as sub-component for resolution controls.
 *@
-@using static BlazorWebApp.Models.FragmentKeys
 @inject ISettingsService Settings
 
 <MudGrid Spacing="2">
@@ -31,9 +30,8 @@
 @code {
     /// <summary>
     /// Fragment ID this form is associated with.
-    /// Uses FragmentKeys.Fragments.EmptyLatent as default.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = Fragments.EmptyLatent;
+    [Parameter] public string FragmentId { get; set; } = "empty-latent";
     
     /// <summary>
     /// Current width value.

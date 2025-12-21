@@ -44,21 +44,6 @@ namespace BlazorWebApp.Services
                 _logger.LogDebug("No saved state found for workflow {WorkflowId}", workflowId);
                 return null;
             }
-            catch (System.Text.Json.JsonException jsonEx)
-            {
-                // JSON deserialization failed - likely old data without type discriminators
-                _logger.LogWarning("Workflow state for {WorkflowId} has incompatible format, deleting stale data: {Message}", 
-                    workflowId, jsonEx.Message);
-                await DeleteWorkflowStateAsync(workflowId);
-                return null;
-            }
-            catch (NotSupportedException nsEx) when (nsEx.Message.Contains("type discriminator"))
-            {
-                // Polymorphic deserialization failed - old data without $type property
-                _logger.LogWarning("Workflow state for {WorkflowId} missing type discriminators, deleting stale data", workflowId);
-                await DeleteWorkflowStateAsync(workflowId);
-                return null;
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading workflow state for {WorkflowId}", workflowId);
@@ -73,51 +58,28 @@ namespace BlazorWebApp.Services
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
 
-                // First, check if we need to delete incompatible old data
-                bool deletedOldData = false;
-                try
-                {
-                    // Try to load existing state - this may fail if old format
-                    var existingState = await context.WorkflowStates
-                        .FirstOrDefaultAsync(ws => ws.WorkflowId == workflowId);
+                var existingState = await context.WorkflowStates
+                    .FirstOrDefaultAsync(ws => ws.WorkflowId == workflowId);
 
-                    if (existingState != null)
+                if (existingState != null)
+                {
+                    // Update existing state
+                    existingState.Parameters = parameters.Clone();
+                    existingState.LastModified = DateTime.UtcNow;
+                    _logger.LogDebug("Updating existing state for workflow {WorkflowId}", workflowId);
+                }
+                else
+                {
+                    // Create new state
+                    var newState = new WorkflowState
                     {
-                        // Update existing state
-                        existingState.Parameters = parameters.Clone();
-                        existingState.LastModified = DateTime.UtcNow;
-                        _logger.LogDebug("Updating existing state for workflow {WorkflowId}", workflowId);
-                        await context.SaveChangesAsync();
-                        _logger.LogDebug("Saved workflow state for {WorkflowId}", workflowId);
-                        return;
-                    }
+                        WorkflowId = workflowId,
+                        Parameters = parameters.Clone(),
+                        LastModified = DateTime.UtcNow
+                    };
+                    context.WorkflowStates.Add(newState);
+                    _logger.LogDebug("Creating new state for workflow {WorkflowId}", workflowId);
                 }
-                catch (NotSupportedException nsEx) when (nsEx.Message.Contains("type discriminator"))
-                {
-                    // Can't load existing state due to old format - delete it
-                    _logger.LogWarning("Existing workflow state for {WorkflowId} has incompatible format, deleting and recreating", workflowId);
-                    await DeleteWorkflowStateInternalAsync(context, workflowId);
-                    deletedOldData = true;
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    // JSON format issue - delete and recreate
-                    _logger.LogWarning("Existing workflow state for {WorkflowId} has invalid JSON, deleting and recreating", workflowId);
-                    await DeleteWorkflowStateInternalAsync(context, workflowId);
-                    deletedOldData = true;
-                }
-
-                // Create new state (either no existing state, or we just deleted incompatible data)
-                var newState = new WorkflowState
-                {
-                    WorkflowId = workflowId,
-                    Parameters = parameters.Clone(),
-                    LastModified = DateTime.UtcNow
-                };
-                context.WorkflowStates.Add(newState);
-                _logger.LogDebug("Creating new state for workflow {WorkflowId}{Reason}", 
-                    workflowId, 
-                    deletedOldData ? " (replaced incompatible data)" : "");
 
                 await context.SaveChangesAsync();
                 _logger.LogDebug("Saved workflow state for {WorkflowId}", workflowId);
@@ -134,20 +96,21 @@ namespace BlazorWebApp.Services
             try
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
-                await DeleteWorkflowStateInternalAsync(context, workflowId);
+
+                var state = await context.WorkflowStates
+                    .FirstOrDefaultAsync(ws => ws.WorkflowId == workflowId);
+
+                if (state != null)
+                {
+                    context.WorkflowStates.Remove(state);
+                    await context.SaveChangesAsync();
+                    _logger.LogDebug("Deleted workflow state for {WorkflowId}", workflowId);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting workflow state for {WorkflowId}", workflowId);
             }
-        }
-
-        private async Task DeleteWorkflowStateInternalAsync(AppDbContext context, Guid workflowId)
-        {
-            // Use raw SQL to delete without loading the entity (avoids deserialization issues)
-            await context.Database.ExecuteSqlInterpolatedAsync(
-                $"DELETE FROM WorkflowStates WHERE WorkflowId = {workflowId.ToString()}");
-            _logger.LogDebug("Deleted workflow state for {WorkflowId}", workflowId);
         }
 
         /// <inheritdoc />

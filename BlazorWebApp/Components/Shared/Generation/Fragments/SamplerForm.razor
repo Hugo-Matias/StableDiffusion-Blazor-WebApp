@@ -7,7 +7,6 @@
     Flux models use Guidance, other models use CFG Scale.
 *@
 @using static BlazorWebApp.Data.Enums
-@using static BlazorWebApp.Models.FragmentKeys
 @inject ISettingsService Settings
 @inject IBackendService Backend
 @inject IImageService ImageService
@@ -106,9 +105,8 @@
     
     /// <summary>
     /// Fragment ID this form is associated with.
-    /// Uses FragmentKeys.Fragments.Sampler as default.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = Fragments.Sampler;
+    [Parameter] public string FragmentId { get; set; } = "sampler";
     
     /// <summary>
     /// Current sampler name.

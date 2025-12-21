@@ -5,7 +5,7 @@
     "negative_output": { "node": "conditioning_zero_out", "index": 0 }
   },
   "conditions": {
-    "required": ["conditioning_variation.IsActive"]
+    "required": ["ConditioningVariation.IsActive"]
   },
   "ui": {
     "type": "enhancement",

@@ -8,7 +8,6 @@
 *@
 @using System.Text.Json
 @using static BlazorWebApp.Data.Enums
-@using static BlazorWebApp.Models.FragmentKeys
 @using BlazorWebApp.Events
 @inject IIOService IO
 @inject IStateService State
@@ -120,9 +119,8 @@
     
     /// <summary>
     /// Fragment ID this form is associated with.
-    /// Uses FragmentKeys.Fragments.Prompts as default.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = Fragments.Prompts;
+    [Parameter] public string FragmentId { get; set; } = "prompts";
     
     /// <summary>
     /// Current prompt value.

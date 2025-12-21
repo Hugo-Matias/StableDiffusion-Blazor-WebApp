@@ -1,7 +1,6 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
-using BlazorWebApp.Models.Fragments;
 using BlazorWebApp.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -39,34 +38,6 @@ namespace BlazorWebApp.Tests.Services
             _sut = new StateService(_mockDb.Object, _mockConfig.Object, _mockEvents.Object, _mockSettings.Object);
         }
 
-        #region Test Helpers
-
-        /// <summary>
-        /// Helper method to create a test sampler fragment
-        /// </summary>
-        private static SamplerFragment CreateTestSamplerFragment(string id = FragmentKeys.Fragments.MainSampler)
-        {
-            return new SamplerFragment { Id = id, IsActive = true };
-        }
-
-        /// <summary>
-        /// Helper method to create a test latent fragment
-        /// </summary>
-        private static LatentFragment CreateTestLatentFragment(string id = FragmentKeys.Fragments.Latent)
-        {
-            return new LatentFragment { Id = id, IsActive = true };
-        }
-
-        /// <summary>
-        /// Helper method to create a test prompts fragment
-        /// </summary>
-        private static PromptsFragment CreateTestPromptsFragment(string id = FragmentKeys.Fragments.Prompts)
-        {
-            return new PromptsFragment { Id = id, IsActive = true };
-        }
-
-        #endregion
-
         #region Constructor and Initialization Tests
 
         [Fact]
@@ -82,15 +53,13 @@ namespace BlazorWebApp.Tests.Services
         public void Constructor_ShouldInitializeGenerationParametersWithDefaults()
         {
             // Assert - These should match AppSettings defaults
-            var samplerFragment = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment.Should().NotBeNull();
-            samplerFragment!.Steps.Should().Be(30); // AppSettings default
-            samplerFragment.Cfg.Should().BeApproximately(7.5f, 0.01f); // AppSettings default
+            var samplerFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            samplerFragment.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(30); // AppSettings default
+            samplerFragment.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(7.5); // AppSettings default
             
-            var latentFragment = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.Latent) as LatentFragment;
-            latentFragment.Should().NotBeNull();
-            latentFragment!.Width.Should().Be(512);
-            latentFragment!.Height.Should().Be(768); // AppSettings default height
+            var latentFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
+            latentFragment.GetValue<int>(FragmentKeys.Params.Width).Should().Be(512);
+            latentFragment.GetValue<int>(FragmentKeys.Params.Height).Should().Be(768); // AppSettings default height
         }
 
         [Fact]
@@ -118,9 +87,8 @@ namespace BlazorWebApp.Tests.Services
         {
             // Arrange
             var savedGenParams = new GenerationParameters();
-            var samplerFragment = CreateTestSamplerFragment();
-            samplerFragment.Steps = 30;
-            savedGenParams.Fragments[FragmentKeys.Fragments.MainSampler] = samplerFragment;
+            var samplerFragment = savedGenParams.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, 30);
             
             var savedState = new State
             {
@@ -136,9 +104,8 @@ namespace BlazorWebApp.Tests.Services
 
             // Assert
             _sut.State.Should().BeSameAs(savedState.AppState);
-            var loadedSampler = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            loadedSampler.Should().NotBeNull();
-            loadedSampler!.Steps.Should().Be(30);
+            var loadedSampler = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            loadedSampler.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(30);
         }
 
         [Fact]
@@ -261,39 +228,36 @@ namespace BlazorWebApp.Tests.Services
         public void GenerationParameters_ShouldHaveCorrectDefaultSamplerValues()
         {
             // Arrange
-            var samplerFragment = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment.Should().NotBeNull();
+            var samplerFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
 
             // Assert - These should match AppSettings.Generation.Shared defaults
-            samplerFragment!.Steps.Should().Be(30); // AppSettings default
-            samplerFragment.Seed.Should().Be(-1);
-            samplerFragment.Cfg.Should().BeApproximately(7.5f, 0.01f); // AppSettings default
-            samplerFragment.Denoise.Should().BeApproximately(0.52f, 0.01f); // AppSettings Denoising.Value
+            samplerFragment.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(30); // AppSettings default
+            samplerFragment.GetValue<long>(FragmentKeys.Params.Seed).Should().Be(-1);
+            samplerFragment.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(7.5); // AppSettings default
+            samplerFragment.GetValue<double>(FragmentKeys.Params.Denoise).Should().Be(0.52); // AppSettings Denoising.Value
         }
 
         [Fact]
         public void GenerationParameters_ShouldHaveCorrectDefaultLatentValues()
         {
             // Arrange
-            var latentFragment = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.Latent) as LatentFragment;
-            latentFragment.Should().NotBeNull();
+            var latentFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
 
             // Assert
-            latentFragment!.Width.Should().Be(512);
-            latentFragment!.Height.Should().Be(768); // AppSettings default
-            latentFragment!.BatchSize.Should().Be(4); // Batch.Size.Value
+            latentFragment.GetValue<int>(FragmentKeys.Params.Width).Should().Be(512);
+            latentFragment.GetValue<int>(FragmentKeys.Params.Height).Should().Be(768); // AppSettings default
+            latentFragment.GetValue<int>(FragmentKeys.Params.BatchSize).Should().Be(4); // Batch.Size.Value
         }
 
         [Fact]
         public void GenerationParameters_ShouldHaveEmptyPromptsByDefault()
         {
             // Arrange
-            var promptsFragment = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.Prompts) as PromptsFragment;
-            promptsFragment.Should().NotBeNull();
+            var promptsFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
 
             // Assert
-            promptsFragment!.Positive.Should().BeEmpty();
-            promptsFragment!.Negative.Should().BeEmpty();
+            promptsFragment.GetValue<string>(FragmentKeys.Params.Positive).Should().BeEmpty();
+            promptsFragment.GetValue<string>(FragmentKeys.Params.Negative).Should().BeEmpty();
         }
 
         #endregion
@@ -389,10 +353,9 @@ namespace BlazorWebApp.Tests.Services
         public async Task SaveState_PersistsFragments()
         {
             // Arrange
-            var samplerFragment = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment.Should().NotBeNull();
-            samplerFragment!.Steps = 50;
-            samplerFragment.Cfg = 10.0f;
+            var samplerFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, 50);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, 10.0);
 
             State capturedState = null;
             _mockDb.Setup(db => db.UpdateState(It.IsAny<State>()))
@@ -405,9 +368,8 @@ namespace BlazorWebApp.Tests.Services
             // Assert
             capturedState.Should().NotBeNull();
             capturedState.GenerationParameters.Fragments.Should().ContainKey(FragmentKeys.Fragments.MainSampler);
-            var savedSampler = capturedState.GenerationParameters.Fragments[FragmentKeys.Fragments.MainSampler] as SamplerFragment;
-            savedSampler.Should().NotBeNull();
-            savedSampler!.Steps.Should().Be(50);
+            var savedSampler = capturedState.GenerationParameters.Fragments[FragmentKeys.Fragments.MainSampler];
+            savedSampler.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(50);
         }
 
         [Fact]
@@ -415,10 +377,9 @@ namespace BlazorWebApp.Tests.Services
         {
             // Arrange
             var savedGenParams = new GenerationParameters();
-            var samplerFragment = CreateTestSamplerFragment();
-            samplerFragment.Steps = 75;
-            samplerFragment.Cfg = 12.0f;
-            savedGenParams.Fragments[FragmentKeys.Fragments.MainSampler] = samplerFragment;
+            var samplerFragment = savedGenParams.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            samplerFragment.SetValue(FragmentKeys.Params.Steps, 75);
+            samplerFragment.SetValue(FragmentKeys.Params.Cfg, 12.0);
             
             var savedState = new State
             {
@@ -433,10 +394,9 @@ namespace BlazorWebApp.Tests.Services
             await _sut.LoadState();
 
             // Assert
-            var loadedSampler = _sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            loadedSampler.Should().NotBeNull();
-            loadedSampler!.Steps.Should().Be(75);
-            loadedSampler.Cfg.Should().BeApproximately(12.0f, 0.01f);
+            var loadedSampler = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            loadedSampler.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(75);
+            loadedSampler.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(12.0);
         }
 
         #endregion
@@ -482,17 +442,15 @@ namespace BlazorWebApp.Tests.Services
             var sut = new StateService(_mockDb.Object, _mockConfig.Object, _mockEvents.Object, _mockSettings.Object);
 
             // Assert
-            var samplerFragment = sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.MainSampler) as SamplerFragment;
-            samplerFragment.Should().NotBeNull();
-            samplerFragment!.Steps.Should().Be(50);
-            samplerFragment.Cfg.Should().BeApproximately(10.0f, 0.01f);
-            samplerFragment.Denoise.Should().BeApproximately(0.75f, 0.01f);
+            var samplerFragment = sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
+            samplerFragment.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(50);
+            samplerFragment.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(10.0);
+            samplerFragment.GetValue<double>(FragmentKeys.Params.Denoise).Should().Be(0.75);
             
-            var latentFragment = sut.GenerationParameters.GetFragment(FragmentKeys.Fragments.Latent) as LatentFragment;
-            latentFragment.Should().NotBeNull();
-            latentFragment!.Width.Should().Be(1024);
-            latentFragment!.Height.Should().Be(1024);
-            latentFragment!.BatchSize.Should().Be(8);
+            var latentFragment = sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
+            latentFragment.GetValue<int>(FragmentKeys.Params.Width).Should().Be(1024);
+            latentFragment.GetValue<int>(FragmentKeys.Params.Height).Should().Be(1024);
+            latentFragment.GetValue<int>(FragmentKeys.Params.BatchSize).Should().Be(8);
         }
 
         #endregion

@@ -95,7 +95,6 @@ namespace BlazorWebApp.Models
             public const string UpscaleHeight = "upscale_height";
             public const string UpscaleSteps = "upscale_steps";
             public const string UpscaleDenoise = "upscale_denoise";
-            public const string UpscaleScale = "upscale_scale";
 
             // Detailer parameters
             public const string DetailerDetectionModel = "detailer_detection_model";
@@ -122,13 +121,6 @@ namespace BlazorWebApp.Models
             public const string BaseShift = "base_shift";
 
             // SeedVR2 parameters
-            public const string SeedVR2Model = "seedvr2_model";
-            public const string SeedVR2VaeModel = "seedvr2_vae_model";
-            public const string SeedVR2Resolution = "seedvr2_resolution";
-            public const string SeedVR2BatchSize = "seedvr2_batch_size";
-            public const string SeedVR2Seed = "seedvr2_seed";
-            public const string SeedVR2InputNoiseScale = "seedvr2_input_noise_scale";
-            public const string SeedVR2LatentNoiseScale = "seedvr2_latent_noise_scale";
             public const string BlocksToSwap = "blocks_to_swap";
             public const string VaeTileSize = "vae_tile_size";
             public const string VaeTileOverlap = "vae_tile_overlap";
@@ -146,7 +138,6 @@ namespace BlazorWebApp.Models
             public const string StepsSwitchoverPercent = "steps_switchover_percent";
             public const string MaskStartsAt = "mask_starts_at";
             public const string MaskPercent = "mask_percent";
-            public const string LogToConsole = "log_to_console";
 
             // Video/Wan parameters
             public const string VideoLength = "video_length";

@@ -4,7 +4,7 @@
     "positive_output": { "node": "seed_variance_enhancer", "index": 0 }
   },
   "conditions": {
-    "required": ["seed_variance_enhancer.IsActive"]
+    "required": ["SeedVarianceEnhancer.IsActive"]
   },
   "ui": {
     "type": "enhancement",

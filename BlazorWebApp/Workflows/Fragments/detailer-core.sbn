@@ -4,7 +4,7 @@
     "image_output": { "node": "detailer", "index": 0 }
   },
   "conditions": {
-    "required": ["detailer.IsActive"]
+    "required": ["Detailer.IsActive"]
   },
   "ui": {
     "type": "enhancement",

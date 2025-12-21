@@ -4,20 +4,21 @@
     Handles: randomize_percent, strength, noise_insert, steps_switchover_percent, 
              seed, mask_starts_at, mask_percent
     
-    Uses strongly-typed SeedVarianceEnhancerFragment for direct property access.
+    This is an optional feature that modifies prompt embedding values with noise
+    to create variation while maintaining the core concept.
+    Values are read from FragmentParameters.Values and synced back on change.
 *@
-@using static BlazorWebApp.Models.FragmentKeys
-@using BlazorWebApp.Models.Fragments
 @inject IGenerationParameterService ParameterService
+@inject IWorkflowService WorkflowService
 
 <MudGrid>
     <MudItem xs="6">
         <MudSlider T="int" 
                    @bind-Value="_localRandomizePercent"
                    @bind-Value:after="OnRandomizePercentChanged"
-                   Min="0"
-                   Max="100"
-                   Step="5"
+                   Min="@_constraints.randomize_percent.GetMin(0)"
+                   Max="@_constraints.randomize_percent.GetMax(100)"
+                   Step="@_constraints.randomize_percent.GetStep(5)"
                    Variant="Variant.Filled"
                    ValueLabel>
             <small>Randomize:</small> @(_localRandomizePercent)%
@@ -27,9 +28,9 @@
         <MudSlider T="int" 
                    @bind-Value="_localStrength"
                    @bind-Value:after="OnStrengthChanged"
-                   Min="0"
-                   Max="100"
-                   Step="1"
+                   Min="@_constraints.strength.GetMin(0)"
+                   Max="@_constraints.strength.GetMax(100)"
+                   Step="@_constraints.strength.GetStep(1)"
                    Variant="Variant.Filled"
                    ValueLabel>
             <small>Strength:</small> @_localStrength
@@ -47,9 +48,9 @@
         <MudSlider T="int" 
                    @bind-Value="_localStepsSwitchoverPercent"
                    @bind-Value:after="OnStepsSwitchoverPercentChanged"
-                   Min="0"
-                   Max="100"
-                   Step="5"
+                   Min="@_constraints.steps_switchover_percent.GetMin(0)"
+                   Max="@_constraints.steps_switchover_percent.GetMax(100)"
+                   Step="@_constraints.steps_switchover_percent.GetStep(5)"
                    Variant="Variant.Filled"
                    ValueLabel>
             <small>Steps Switchover:</small> @(_localStepsSwitchoverPercent)%
@@ -70,9 +71,9 @@
         <MudSlider T="int" 
                    @bind-Value="_localMaskPercent"
                    @bind-Value:after="OnMaskPercentChanged"
-                   Min="0"
-                   Max="100"
-                   Step="5"
+                   Min="@_constraints.mask_percent.GetMin(0)"
+                   Max="@_constraints.mask_percent.GetMax(100)"
+                   Step="@_constraints.mask_percent.GetStep(5)"
                    Variant="Variant.Filled"
                    ValueLabel>
             <small>Mask:</small> @(_localMaskPercent)%
@@ -93,8 +94,9 @@
 @code {
     /// <summary>
     /// Fragment ID this form is associated with.
+    /// Used to read/write values from FragmentParameters.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = Fragments.SeedVarianceEnhancer;
+    [Parameter] public string FragmentId { get; set; } = "seed_variance_enhancer";
     
     /// <summary>
     /// Optional callback when any value changes.
@@ -111,18 +113,19 @@
     private string _localMaskStartsAt = "beginning";
     private int _localMaskPercent;
     
-    // Options for dropdowns
+    // Options from schema
     private List<string> _noiseInsertOptions = new() { "noise on beginning steps", "noise on ending steps", "noise on all steps", "disabled" };
     private List<string> _maskStartsAtOptions = new() { "beginning", "end" };
     
-    /// <summary>
-    /// Gets the typed fragment for direct property access.
-    /// </summary>
-    private SeedVarianceEnhancerFragment? Fragment => 
-        ParameterService.Current.GetFragment<SeedVarianceEnhancerFragment>(FragmentId);
+    // Cached constraints from schema
+    private (ParameterConstraints randomize_percent, ParameterConstraints strength, 
+             ParameterConstraints noise_insert, ParameterConstraints steps_switchover_percent,
+             ParameterConstraints seed, ParameterConstraints mask_starts_at,
+             ParameterConstraints mask_percent) _constraints;
     
     protected override void OnInitialized()
     {
+        LoadConstraints();
         InitializeFromFragment();
     }
     
@@ -132,20 +135,56 @@
     }
     
     /// <summary>
-    /// Initializes local state from typed fragment properties.
+    /// Loads parameter constraints from the fragment schema.
+    /// </summary>
+    private void LoadConstraints()
+    {
+        var fragment = ParameterService.Current.GetFragment(FragmentId);
+        if (fragment == null) 
+        {
+            _constraints = (new(), new(), new(), new(), new(), new(), new());
+            return;
+        }
+        
+        var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
+        if (schema?.Parameters == null)
+        {
+            _constraints = (new(), new(), new(), new(), new(), new(), new());
+            return;
+        }
+        
+        _constraints = (
+            schema.GetConstraints("randomize_percent"),
+            schema.GetConstraints("strength"),
+            schema.GetConstraints("noise_insert"),
+            schema.GetConstraints("steps_switchover_percent"),
+            schema.GetConstraints("seed"),
+            schema.GetConstraints("mask_starts_at"),
+            schema.GetConstraints("mask_percent")
+        );
+        
+        // Load options from schema if available
+        if (_constraints.noise_insert.Options?.Count > 0)
+            _noiseInsertOptions = _constraints.noise_insert.Options;
+        if (_constraints.mask_starts_at.Options?.Count > 0)
+            _maskStartsAtOptions = _constraints.mask_starts_at.Options;
+    }
+    
+    /// <summary>
+    /// Initializes local state from fragment parameters.
     /// </summary>
     private void InitializeFromFragment()
     {
-        var fragment = Fragment;
+        var fragment = ParameterService.Current.GetFragment(FragmentId);
         if (fragment == null) return;
         
-        _localRandomizePercent = fragment.RandomizePercent;
-        _localStrength = fragment.Strength;
-        _localNoiseInsert = fragment.NoiseInsert;
-        _localStepsSwitchoverPercent = fragment.StepsSwitchoverPercent;
-        _localSeed = fragment.Seed;
-        _localMaskStartsAt = fragment.MaskStartsAt;
-        _localMaskPercent = fragment.MaskPercent;
+        _localRandomizePercent = fragment.GetValueOrDefault("randomize_percent", 50);
+        _localStrength = fragment.GetValueOrDefault("strength", 20);
+        _localNoiseInsert = fragment.GetValueOrDefault<string>("noise_insert", "noise on beginning steps") ?? "noise on beginning steps";
+        _localStepsSwitchoverPercent = fragment.GetValueOrDefault("steps_switchover_percent", 20);
+        _localSeed = fragment.GetValueOrDefault("seed", 0L);
+        _localMaskStartsAt = fragment.GetValueOrDefault<string>("mask_starts_at", "beginning") ?? "beginning";
+        _localMaskPercent = fragment.GetValueOrDefault("mask_percent", 0);
     }
     
     #endregion
@@ -154,50 +193,43 @@
     
     private async Task OnRandomizePercentChanged()
     {
-        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVarianceEnhancerFragment>(FragmentId);
-        fragment.RandomizePercent = _localRandomizePercent;
+        ParameterService.SetFragmentValue(FragmentId, "randomize_percent", _localRandomizePercent);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnStrengthChanged()
     {
-        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVarianceEnhancerFragment>(FragmentId);
-        fragment.Strength = _localStrength;
+        ParameterService.SetFragmentValue(FragmentId, "strength", _localStrength);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnNoiseInsertChanged()
     {
-        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVarianceEnhancerFragment>(FragmentId);
-        fragment.NoiseInsert = _localNoiseInsert;
+        ParameterService.SetFragmentValue(FragmentId, "noise_insert", _localNoiseInsert);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnStepsSwitchoverPercentChanged()
     {
-        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVarianceEnhancerFragment>(FragmentId);
-        fragment.StepsSwitchoverPercent = _localStepsSwitchoverPercent;
+        ParameterService.SetFragmentValue(FragmentId, "steps_switchover_percent", _localStepsSwitchoverPercent);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnSeedChanged()
     {
-        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVarianceEnhancerFragment>(FragmentId);
-        fragment.Seed = _localSeed;
+        ParameterService.SetFragmentValue(FragmentId, "seed", _localSeed);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnMaskStartsAtChanged()
     {
-        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVarianceEnhancerFragment>(FragmentId);
-        fragment.MaskStartsAt = _localMaskStartsAt;
+        ParameterService.SetFragmentValue(FragmentId, "mask_starts_at", _localMaskStartsAt);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnMaskPercentChanged()
     {
-        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVarianceEnhancerFragment>(FragmentId);
-        fragment.MaskPercent = _localMaskPercent;
+        ParameterService.SetFragmentValue(FragmentId, "mask_percent", _localMaskPercent);
         await OnChanged.InvokeAsync();
     }
     

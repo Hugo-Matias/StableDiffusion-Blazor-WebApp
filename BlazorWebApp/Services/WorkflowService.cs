@@ -234,10 +234,11 @@ namespace BlazorWebApp.Services
                     
                     var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                     
-                    // Copy global params - include FragmentParameters objects for condition evaluation
+                    // Copy global params
                     foreach (var kvp in globalParams)
                     {
-                        mergedParams[kvp.Key] = kvp.Value;
+                        if (kvp.Value != null)
+                            mergedParams[kvp.Key] = kvp.Value;
                     }
 
                     // Override with step parameters from rendered template
@@ -536,7 +537,7 @@ namespace BlazorWebApp.Services
             {
                 if (current is IDictionary<string, object> dict)
                 {
-                    // First try exact case-insensitive match
+                    // Case-insensitive key lookup
                     var match = dict.Keys.FirstOrDefault(k => k.Equals(part, StringComparison.OrdinalIgnoreCase));
                     if (match != null)
                     {
@@ -544,25 +545,7 @@ namespace BlazorWebApp.Services
                     }
                     else
                     {
-                        // Try normalized key matching (convert both to snake_case for comparison)
-                        var normalizedPart = ToSnakeCase(part);
-                        var normalizedMatch = dict.Keys.FirstOrDefault(k => 
-                            ToSnakeCase(k).Equals(normalizedPart, StringComparison.OrdinalIgnoreCase));
-                        
-                        if (normalizedMatch != null)
-                        {
-                            current = dict[normalizedMatch];
-                        }
-                        else
-                        {
-                            // Try other casing conventions if normalization didn't work
-                            var pascalCase = ToPascalCase(part);
-                            var camelCase = ToCamelCase(part);
-                            
-                            if (dict.TryGetValue(pascalCase, out var pascalVal)) current = pascalVal;
-                            else if (dict.TryGetValue(camelCase, out var camelVal)) current = camelVal;
-                            else return false;
-                        }
+                        return false;
                     }
                 }
                 else if (current != null)
@@ -580,29 +563,6 @@ namespace BlazorWebApp.Services
             }
 
             return current is bool boolValue && boolValue;
-        }
-
-        private static string ToSnakeCase(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            return string.Concat(text.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
-        }
-
-        private static string ToPascalCase(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            if (text.Contains('_'))
-            {
-                return string.Concat(text.Split('_').Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1).ToLower()));
-            }
-            return char.ToUpperInvariant(text[0]) + text.Substring(1);
-        }
-
-        private static string ToCamelCase(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            var pascal = ToPascalCase(text);
-            return char.ToLowerInvariant(pascal[0]) + pascal.Substring(1);
         }
 
         #endregion

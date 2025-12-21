@@ -2,7 +2,6 @@ using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
-using BlazorWebApp.Models.Fragments;
 using BlazorWebApp.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -57,37 +56,22 @@ public class ImageServiceTests
         _mockSettings.Setup(s => s.Settings).Returns(appSettings);
         _magickService = new MagickService(_mockSettings.Object);
 
-        // Setup GenerationParameters using typed fragments
+        // Setup GenerationParameters
         _generationParameters = new GenerationParameters();
         
-        var promptsFragment = new PromptsFragment
-        {
-            Id = FragmentKeys.Fragments.Prompts,
-            IsActive = true,
-            Positive = "test prompt",
-            Negative = "bad quality"
-        };
-        _generationParameters.Fragments[FragmentKeys.Fragments.Prompts] = promptsFragment;
+        var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, "test prompt");
+        promptsFragment.SetValue(FragmentKeys.Params.Negative, "bad quality");
         
-        var samplerFragment = new SamplerFragment
-        {
-            Id = FragmentKeys.Fragments.MainSampler,
-            IsActive = true,
-            Steps = 20,
-            Cfg = 7.0f,
-            SamplerName = "euler",
-            Seed = 12345L
-        };
-        _generationParameters.Fragments[FragmentKeys.Fragments.MainSampler] = samplerFragment;
+        var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+        samplerFragment.SetValue(FragmentKeys.Params.Steps, 20);
+        samplerFragment.SetValue(FragmentKeys.Params.Cfg, 7.0);
+        samplerFragment.SetValue(FragmentKeys.Params.SamplerName, "euler");
+        samplerFragment.SetValue(FragmentKeys.Params.Seed, 12345L);
         
-        var latentFragment = new LatentFragment
-        {
-            Id = FragmentKeys.Fragments.Latent,
-            IsActive = true,
-            Width = 512,
-            Height = 512
-        };
-        _generationParameters.Fragments[FragmentKeys.Fragments.Latent] = latentFragment;
+        var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+        latentFragment.SetValue(FragmentKeys.Params.Width, 512);
+        latentFragment.SetValue(FragmentKeys.Params.Height, 512);
 
         // Default setup
         SetupDefaultMocks();

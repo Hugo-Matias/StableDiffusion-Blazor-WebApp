@@ -1,11 +1,9 @@
 @page "/generate"
 @page "/generate/{WorkflowId}"
-@using BlazorWebApp.Components.Img2Vid
 @using BlazorWebApp.Events
 @using BlazorWebApp.Components.Shared.Generation
 @using BlazorWebApp.Components.Shared.Generation.Fragments
 @using BlazorWebApp.Components.ImageEditor
-@using BlazorWebApp.Models.Fragments
 @using static BlazorWebApp.Data.Enums
 @using static BlazorWebApp.Models.FragmentKeys
 @inject IComfyUIService API
@@ -296,14 +294,44 @@ else
             var fragmentId = kvp.Key;
             var fragment = kvp.Value;
             
-            // Use fragment type to discover
-            if (fragment is LatentFragment)
+            // Get schema to access FragmentType
+            var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
+            if (schema == null) continue;
+            
+            switch (schema.Type)
             {
-                _latentFragmentId ??= fragmentId;
+                case FragmentType.Sampler:
+                    // Use first sampler found (for multi-sampler workflows, this gets the main one)
+                    _samplerFragmentId ??= fragmentId;
+                    break;
+                    
+                case FragmentType.Latent:
+                    _latentFragmentId ??= fragmentId;
+                    break;
+                    
+                case FragmentType.Loader:
+                    // Loader fragments often contain width/height/batch_size but no dedicated latent
+                    // Only use if we haven't found a dedicated latent fragment
+                    if (_latentFragmentId == null && 
+                        (fragment.Values.ContainsKey(Params.Width) || 
+                        fragment.Values.ContainsKey(Params.Height)))
+                    {
+                        _latentFragmentId = fragmentId;
+                    }
+                    break;
             }
-            else if (fragment is SamplerFragment)
+        }
+        
+        // Fallback: If no latent fragment found by type, check for loader with resolution params
+        if (_latentFragmentId == null)
+        {
+            foreach (var kvp in Parameters.Fragments)
             {
-                _samplerFragmentId ??= fragmentId;
+                if (kvp.Value.Values.ContainsKey(Params.Width) && kvp.Value.Values.ContainsKey(Params.Height))
+                {
+                    _latentFragmentId = kvp.Key;
+                    break;
+                }
             }
         }
         
@@ -312,44 +340,122 @@ else
     }
 
     /// <summary>
-    /// Initializes local state variables from typed fragment properties.
+    /// Initializes local state variables from fragment values.
+    /// Also ensures fragment Values dictionary is populated with defaults.
     /// </summary>
     private void InitializeLocalStateFromFragments()
     {
-        // Initialize prompts from fragment using typed access
-        var prompts = Parameters.GetOrCreateFragment<PromptsFragment>(Fragments.Prompts);
-        _prompt = prompts.Positive;
-        _negativePrompt = prompts.Negative;
+        // Initialize prompts from fragment - create if doesn't exist
+        var promptsFragment = Parameters.GetOrCreateFragment(Fragments.Prompts, Files.Prompts);
+        _prompt = promptsFragment.GetValueOrDefault<string>(Params.Positive, "") ?? "";
+        _negativePrompt = promptsFragment.GetValueOrDefault<string>(Params.Negative, "") ?? "";
+        
+        // Ensure prompt values are set in fragment
+        promptsFragment.SetValue(Params.Positive, _prompt);
+        promptsFragment.SetValue(Params.Negative, _negativePrompt);
         
         // Initialize latent/resolution values from discovered fragment
-        if (_latentFragmentId != null)
+        if (_latentFragmentId != null && Parameters.Fragments.TryGetValue(_latentFragmentId, out var latentFrag))
         {
-            var latent = Parameters.GetFragment<LatentFragment>(_latentFragmentId);
-            if (latent != null)
-            {
-                _width = latent.Width;
-                _height = latent.Height;
-                _batchSize = latent.BatchSize;
-            }
+            // Read existing values or use defaults
+            _width = latentFrag.GetValueOrDefault(Params.Width, 1024);
+            _height = latentFrag.GetValueOrDefault(Params.Height, 1024);
+            _batchSize = latentFrag.GetValueOrDefault(Params.BatchSize, 1);
+            
+            // Always write back to ensure Values dictionary is populated
+            latentFrag.SetValue(Params.Width, _width);
+            latentFrag.SetValue(Params.Height, _height);
+            latentFrag.SetValue(Params.BatchSize, _batchSize);
         }
         
         // Initialize sampler values from discovered fragment
-        if (_samplerFragmentId != null)
+        if (_samplerFragmentId != null && Parameters.Fragments.TryGetValue(_samplerFragmentId, out var samplerFrag))
         {
-            var sampler = Parameters.GetFragment<SamplerFragment>(_samplerFragmentId);
-            if (sampler != null)
-            {
-                _samplerName = sampler.SamplerName;
-                _scheduler = sampler.Scheduler;
-                _steps = sampler.Steps;
-                _seed = sampler.Seed;
-                _cfgScale = sampler.Cfg;
-                _denoise = sampler.Denoise;
-            }
+            // Read existing values or use defaults
+            _samplerName = samplerFrag.GetValueOrDefault<string>(Params.SamplerName, "euler") ?? "euler";
+            _scheduler = samplerFrag.GetValueOrDefault<string>(Params.Scheduler, "normal") ?? "normal";
+            _steps = samplerFrag.GetValueOrDefault(Params.Steps, 20);
+            _seed = samplerFrag.GetValueOrDefault(Params.Seed, -1L);
+            _cfgScale = samplerFrag.GetValueOrDefault(Params.Cfg, 7.0f);
+            _denoise = samplerFrag.GetValueOrDefault(Params.Denoise, 1.0f);
+            
+            // Always write back to ensure Values dictionary is populated
+            samplerFrag.SetValue(Params.SamplerName, _samplerName);
+            samplerFrag.SetValue(Params.Scheduler, _scheduler);
+            samplerFrag.SetValue(Params.Steps, _steps);
+            samplerFrag.SetValue(Params.Seed, _seed);
+            samplerFrag.SetValue(Params.Cfg, _cfgScale);
+            samplerFrag.SetValue(Params.Denoise, _denoise);
         }
         
         Logger.LogDebug("Initialized local state - Width: {Width}, Height: {Height}, Steps: {Steps}, Seed: {Seed}",
             _width, _height, _steps, _seed);
+    }
+
+    #endregion
+
+    #region Fragment Value Helpers
+
+    private T? GetFragmentValue<T>(string fragmentId, string key) where T : class
+    {
+        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment) &&
+            fragment.Values.TryGetValue(key, out var value))
+        {
+            try
+            {
+                if (value is T typedValue) return typedValue;
+                if (value is System.Text.Json.JsonElement jsonEl)
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<T>(jsonEl.GetRawText());
+                }
+                return (T)Convert.ChangeType(value, typeof(T));
+            }
+            catch
+            {
+                return default;
+            }
+        }
+        return default;
+    }
+    
+    private T? GetFragmentValueNullable<T>(string fragmentId, string key) where T : struct
+    {
+        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment) &&
+            fragment.Values.TryGetValue(key, out var value))
+        {
+            try
+            {
+                if (value is T typedValue) return typedValue;
+                if (value is System.Text.Json.JsonElement jsonEl)
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<T>(jsonEl.GetRawText());
+                }
+                return (T)Convert.ChangeType(value, typeof(T));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Sets a value in a fragment's Values dictionary.
+    /// The fragment must already exist in Parameters.Fragments (created during workflow initialization).
+    /// Logs a warning if the fragment doesn't exist.
+    /// </summary>
+    private void SetFragmentValue(string fragmentId, string key, object? value)
+    {
+        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment))
+        {
+            fragment.Values[key] = value;
+        }
+        else
+        {
+            Logger.LogWarning("Cannot set value for fragment '{FragmentId}' - fragment not found. " +
+                "Ensure the workflow pipeline includes this fragment.", fragmentId);
+        }
     }
 
     #endregion
@@ -359,18 +465,14 @@ else
     private async Task HandlePromptChanged(string value)
     {
         _prompt = value;
-        var prompts = Parameters.GetOrCreateFragment<PromptsFragment>(Fragments.Prompts);
-        prompts.Positive = value;
-        // Don't save on every keystroke - prompts are saved when generation runs or on explicit action
+        SetFragmentValue(Fragments.Prompts, Params.Positive, value);
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleNegativePromptChanged(string value)
     {
         _negativePrompt = value;
-        var prompts = Parameters.GetOrCreateFragment<PromptsFragment>(Fragments.Prompts);
-        prompts.Negative = value;
-        // Don't save on every keystroke - prompts are saved when generation runs or on explicit action
+        SetFragmentValue(Fragments.Prompts, Params.Negative, value);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -381,9 +483,8 @@ else
         else
             _prompt += (string.IsNullOrEmpty(_prompt) ? "" : ", ") + tags.Tags;
         
-        var prompts = Parameters.GetOrCreateFragment<PromptsFragment>(Fragments.Prompts);
-        prompts.Positive = _prompt;
-        await HandleFragmentValueChanged(); // Save on tag append (user action)
+        SetFragmentValue(Fragments.Prompts, Params.Positive, _prompt);
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleNegativePromptTagAppended(AppendedTags tags)
@@ -393,9 +494,8 @@ else
         else
             _negativePrompt += (string.IsNullOrEmpty(_negativePrompt) ? "" : ", ") + tags.Tags;
         
-        var prompts = Parameters.GetOrCreateFragment<PromptsFragment>(Fragments.Prompts);
-        prompts.Negative = _negativePrompt;
-        await HandleFragmentValueChanged(); // Save on tag append (user action)
+        SetFragmentValue(Fragments.Prompts, Params.Negative, _negativePrompt);
+        await InvokeAsync(StateHasChanged);
     }
 
     #endregion
@@ -407,13 +507,13 @@ else
         if (!Parameters.Loras.Any(l => l.Name.Equals(lora.Name, StringComparison.OrdinalIgnoreCase)))
         {
             Parameters.Loras.Add(lora);
-            await HandleFragmentValueChanged(); // Save on LoRA add
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     private async Task HandleLorasUpdated()
     {
-        await HandleFragmentValueChanged(); // Save on LoRA update
+        await InvokeAsync(StateHasChanged);
     }
 
     #endregion
@@ -434,7 +534,7 @@ else
                 }
             }
         }
-        await HandleFragmentValueChanged(); // Save on style change
+        await InvokeAsync(StateHasChanged);
     }
 
     #endregion
@@ -445,33 +545,22 @@ else
     {
         _width = value;
         if (_latentFragmentId != null)
-        {
-            var latent = Parameters.GetFragment<LatentFragment>(_latentFragmentId);
-            if (latent != null) latent.Width = value;
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_latentFragmentId, Params.Width, value);
+        // EventCallback automatically triggers StateHasChanged on parent
     }
 
     private async Task HandleHeightChanged(int value)
     {
         _height = value;
         if (_latentFragmentId != null)
-        {
-            var latent = Parameters.GetFragment<LatentFragment>(_latentFragmentId);
-            if (latent != null) latent.Height = value;
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_latentFragmentId, Params.Height, value);
     }
 
     private async Task HandleBatchSizeChanged(int value)
     {
         _batchSize = value;
         if (_latentFragmentId != null)
-        {
-            var latent = Parameters.GetFragment<LatentFragment>(_latentFragmentId);
-            if (latent != null) latent.BatchSize = value;
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_latentFragmentId, Params.BatchSize, value);
     }
 
     #endregion
@@ -482,74 +571,47 @@ else
     {
         _samplerName = value;
         if (_samplerFragmentId != null)
-        {
-            var sampler = Parameters.GetFragment<SamplerFragment>(_samplerFragmentId);
-            if (sampler != null) sampler.SamplerName = value ?? "euler";
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_samplerFragmentId, Params.SamplerName, value);
     }
 
     private async Task HandleSchedulerChanged(string? value)
     {
         _scheduler = value;
         if (_samplerFragmentId != null)
-        {
-            var sampler = Parameters.GetFragment<SamplerFragment>(_samplerFragmentId);
-            if (sampler != null) sampler.Scheduler = value ?? "normal";
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_samplerFragmentId, Params.Scheduler, value);
     }
 
     private async Task HandleStepsChanged(int value)
     {
         _steps = value;
         if (_samplerFragmentId != null)
-        {
-            var sampler = Parameters.GetFragment<SamplerFragment>(_samplerFragmentId);
-            if (sampler != null) sampler.Steps = value;
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_samplerFragmentId, Params.Steps, value);
     }
 
     private async Task HandleSeedChanged(long value)
     {
         _seed = value;
         if (_samplerFragmentId != null)
-        {
-            var sampler = Parameters.GetFragment<SamplerFragment>(_samplerFragmentId);
-            if (sampler != null) sampler.Seed = value;
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_samplerFragmentId, Params.Seed, value);
     }
 
     private async Task HandleCfgScaleChanged(float value)
     {
         _cfgScale = value;
         if (_samplerFragmentId != null)
-        {
-            var sampler = Parameters.GetFragment<SamplerFragment>(_samplerFragmentId);
-            if (sampler != null) sampler.Cfg = value;
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_samplerFragmentId, Params.Cfg, value);
     }
 
     private async Task HandleDenoiseChanged(float value)
     {
         _denoise = value;
         if (_samplerFragmentId != null)
-        {
-            var sampler = Parameters.GetFragment<SamplerFragment>(_samplerFragmentId);
-            if (sampler != null) sampler.Denoise = value;
-        }
-        // Note: OnChanged callback handles saving via HandleFragmentValueChanged
+            SetFragmentValue(_samplerFragmentId, Params.Denoise, value);
     }
 
     private async Task HandleFragmentValueChanged()
     {
-        // Save workflow-specific state to WorkflowStates table
-        await ParameterService.SaveCurrentWorkflowStateAsync();
-        
-        // Save global app state
+        // Generic handler for when any fragment value changes
         await State.SaveState();
     }
 
@@ -559,8 +621,9 @@ else
 
     /// <summary>
     /// Gets the optional fragments that should be rendered with CollapsibleFeatureSection.
+    /// Uses FragmentType.Enhancement to identify optional features like upscale, detailer, etc.
     /// </summary>
-    private IEnumerable<(string Id, string Title, string? Icon, FragmentSchema? Schema, FragmentBase Fragment)> GetOptionalFragments()
+    private IEnumerable<(string Id, string Title, string? Icon, FragmentSchema? Schema, FragmentParameters Fragment)> GetOptionalFragments()
     {
         foreach (var kvp in Parameters.Fragments)
         {
@@ -588,21 +651,19 @@ else
 
     private async Task HandleFragmentActiveChanged(string fragmentId, bool active)
     {
-        // Update fragment IsActive directly
-        if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment))
-        {
-            fragment.IsActive = active;
-        }
+        // Notify the parameter service so the change is tracked (this also sets fragment.IsActive)
+        ParameterService.SetFragmentActive(fragmentId, active);
         
         Logger.LogDebug("Fragment '{FragmentId}' IsActive changed to {IsActive}", fragmentId, active);
         
-        await HandleFragmentValueChanged(); // Save on fragment activation toggle
+        await InvokeAsync(StateHasChanged);
     }
 
     /// <summary>
     /// Dynamically renders a fragment form using the schema's Component property.
+    /// Falls back to a placeholder if no component is registered.
     /// </summary>
-    private RenderFragment RenderOptionalFragmentForm(string fragmentId, FragmentBase fragment, FragmentSchema? schema)
+    private RenderFragment RenderOptionalFragmentForm(string fragmentId, FragmentParameters fragment, FragmentSchema? schema)
     {
         // Get component name from schema, or derive from fragment file
         var componentName = schema?.Component;
@@ -630,6 +691,7 @@ else
         // Check if schema has dynamic fields defined
         if (schema?.UsesDynamicFields == true)
         {
+            // TODO: Implement dynamic field rendering based on schema.Fields
             return builder => builder.AddContent(0, 
                 $"Dynamic fields for '{schema.Title}' - field rendering not yet implemented");
         }
@@ -737,7 +799,7 @@ else
             // Save workflow state before generation (persists to WorkflowStates table)
             await ParameterService.SaveCurrentWorkflowStateAsync();
 
-            // Use the GenerationParameters-based methods
+            // Use the new GenerationParameters-based methods
             switch (_selectedWorkflow.Mode)
             {
                 case ModeType.Img2Vid:
@@ -799,26 +861,7 @@ else
 
     #region Event Handlers
 
-    private void OnStateChanged(StateChangedEventArgs args) 
-    {
-        // If workflow base changed externally (e.g. from navbar), we might need to reload
-        if (args.ChangeType == StateChangeType.WorkflowBase)
-        {
-            var currentWorkflowId = State.State?.Generation?.CurrentWorkflowId;
-            if (currentWorkflowId.HasValue && _selectedWorkflow?.Id != currentWorkflowId.Value)
-            {
-                // Workflow changed due to base change - reload
-                var workflow = _workflows?.FirstOrDefault(w => w.Id == currentWorkflowId.Value);
-                if (workflow != null)
-                {
-                    _ = OnWorkflowSelected(workflow);
-                    return;
-                }
-            }
-        }
-        
-        _ = InvokeAsync(StateHasChanged);
-    }
+    private void OnStateChanged(StateChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
     
     private void OnParametersChanged(GenerationParametersChangedEventArgs args)
     {
@@ -841,14 +884,22 @@ else
         Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
         
-        // Note: State should already be saved by HandleFragmentValueChanged calls
-        // and automatic saves on value changes. The synchronous Dispose cannot
-        // reliably await async operations in Blazor Server.
-        //
-        // For critical persistence, we rely on:
-        // 1. Saves triggered by generation
-        // 2. Periodic auto-save in StateService
-        // 3. Saves on navigation within the app
+        // Save workflow state and global state on dispose
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Save per-workflow state
+                await ParameterService.SaveCurrentWorkflowStateAsync();
+                
+                // Save global app state
+                await State.SaveState();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to save state on dispose");
+            }
+        });
     }
 
     #endregion

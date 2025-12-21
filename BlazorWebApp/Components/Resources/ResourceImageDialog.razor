@@ -1,5 +1,4 @@
 @using BlazorWebApp.Models
-@using BlazorWebApp.Models.Fragments
 @using System.Diagnostics;
 @inject IStateService State
 @inject IOrchestratorService M
@@ -98,7 +97,7 @@
 
     private void LoadSettings(ModeType mode)
     {
-        // Update GenerationParameters with typed fragments
+        // Update GenerationParameters (primary)
         UpdateGenerationParameters();
         
         Snackbar.Add($"Settings copied to {mode}", Severity.Success);
@@ -106,38 +105,38 @@
     
     private void UpdateGenerationParameters()
     {
-        // Update prompts fragment using typed access
-        var prompts = State.GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
-        prompts.Positive = Image.Prompt ?? "";
-        prompts.Negative = Image.NegativePrompt ?? "";
+        // Update prompts fragment
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, Image.Prompt ?? "");
+        promptsFragment.SetValue(FragmentKeys.Params.Negative, Image.NegativePrompt ?? "");
         
-        // Update sampler fragment using typed access
-        var sampler = State.GenerationParameters.GetOrCreateFragment<SamplerFragment>(FragmentKeys.Fragments.MainSampler);
-        sampler.Seed = Image.Seed ?? -1L;
-        sampler.Steps = Image.Steps ?? 20;
-        sampler.Cfg = Image.CfgScale ?? 7.0f;
-        sampler.SamplerName = Image.Sampler ?? "euler";
+        // Update sampler fragment
+        var samplerFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+        samplerFragment.SetValue(FragmentKeys.Params.Seed, Image.Seed ?? -1L);
+        samplerFragment.SetValue(FragmentKeys.Params.Steps, Image.Steps ?? 20);
+        samplerFragment.SetValue(FragmentKeys.Params.Cfg, (double)(Image.CfgScale ?? 7.0f));
+        samplerFragment.SetValue(FragmentKeys.Params.SamplerName, Image.Sampler ?? "euler");
         
-        if (!string.IsNullOrEmpty(Image.DenoisingStrength) && float.TryParse(Image.DenoisingStrength, out var denoise))
+        if (!string.IsNullOrEmpty(Image.DenoisingStrength) && double.TryParse(Image.DenoisingStrength, out var denoise))
         {
-            sampler.Denoise = denoise;
+            samplerFragment.SetValue(FragmentKeys.Params.Denoise, denoise);
         }
         
-        // Update latent fragment using typed access
-        var latent = State.GenerationParameters.GetOrCreateFragment<LatentFragment>(FragmentKeys.Fragments.Latent);
-        latent.Width = Image.Width ?? 1024;
-        latent.Height = Image.Height ?? 1024;
+        // Update latent fragment
+        var latentFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.Latent);
+        latentFragment.SetValue(FragmentKeys.Params.Width, Image.Width);
+        latentFragment.SetValue(FragmentKeys.Params.Height, Image.Height);
         
         // Update upscale fragment if HiRes was used
         if (Image.HiresUpscale != null)
         {
-            var upscale = State.GenerationParameters.GetOrCreateFragment<UpscaleFragment>(FragmentKeys.Fragments.Upscale);
-            upscale.IsActive = true;
-            upscale.Model = Image.HiresUpscaler ?? "";
-            if (float.TryParse(Image.HiresUpscale, out var scale))
-                upscale.Scale = scale;
+            var upscaleFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Upscale, FragmentKeys.Files.Upscale);
+            upscaleFragment.IsActive = true;
+            upscaleFragment.SetValue("upscaler", Image.HiresUpscaler);
+            if (double.TryParse(Image.HiresUpscale, out var scale))
+                upscaleFragment.SetValue("scale", scale);
             if (Image.HiresSteps != null && int.TryParse(Image.HiresSteps, out var steps))
-                upscale.Steps = steps;
+                upscaleFragment.SetValue(FragmentKeys.Params.Steps, steps);
         }
     }
 
