@@ -1,4 +1,5 @@
 using BlazorWebApp.Models;
+using BlazorWebApp.Models.Fragments;
 using BlazorWebApp.Services;
 using Moq;
 using static BlazorWebApp.Data.Enums;
@@ -32,37 +33,37 @@ namespace BlazorWebApp.Tests.MockBuilders
             // Set up default GenerationParameters
             _generationParameters = new GenerationParameters();
             
-            // Create default fragments
-            var promptsFragment = new FragmentParameters
+            // Create default fragments using typed fragments
+            var promptsFragment = new PromptsFragment
             {
-                FragmentFile = FragmentKeys.Files.Prompts,
-                IsActive = true
+                Id = FragmentKeys.Fragments.Prompts,
+                IsActive = true,
+                Positive = "",
+                Negative = ""
             };
-            promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
-            promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
             _generationParameters.Fragments[FragmentKeys.Fragments.Prompts] = promptsFragment;
             
-            var samplerFragment = new FragmentParameters
+            var samplerFragment = new SamplerFragment
             {
-                FragmentFile = FragmentKeys.Files.Sampler,
-                IsActive = true
+                Id = FragmentKeys.Fragments.MainSampler,
+                IsActive = true,
+                Seed = -1,
+                Steps = 30,
+                Cfg = 7.5f,
+                SamplerName = "euler",
+                Scheduler = "normal",
+                Denoise = 0.52f
             };
-            samplerFragment.SetValue(FragmentKeys.Params.Seed, -1L);
-            samplerFragment.SetValue(FragmentKeys.Params.Steps, 30);
-            samplerFragment.SetValue(FragmentKeys.Params.Cfg, 7.5);
-            samplerFragment.SetValue(FragmentKeys.Params.SamplerName, "euler");
-            samplerFragment.SetValue(FragmentKeys.Params.Scheduler, "normal");
-            samplerFragment.SetValue(FragmentKeys.Params.Denoise, 0.52);
             _generationParameters.Fragments[FragmentKeys.Fragments.MainSampler] = samplerFragment;
             
-            var latentFragment = new FragmentParameters
+            var latentFragment = new LatentFragment
             {
-                FragmentFile = FragmentKeys.Files.EmptyLatent,
-                IsActive = true
+                Id = FragmentKeys.Fragments.Latent,
+                IsActive = true,
+                Width = 512,
+                Height = 768,
+                BatchSize = 4
             };
-            latentFragment.SetValue(FragmentKeys.Params.Width, 512);
-            latentFragment.SetValue(FragmentKeys.Params.Height, 768);
-            latentFragment.SetValue(FragmentKeys.Params.BatchSize, 4);
             _generationParameters.Fragments[FragmentKeys.Fragments.Latent] = latentFragment;
         }
 
@@ -129,9 +130,9 @@ namespace BlazorWebApp.Tests.MockBuilders
         /// </summary>
         public MockStateServiceBuilder WithPrompts(string positive, string negative = "")
         {
-            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-            promptsFragment.SetValue(FragmentKeys.Params.Positive, positive);
-            promptsFragment.SetValue(FragmentKeys.Params.Negative, negative);
+            var promptsFragment = GetOrCreatePromptsFragment();
+            promptsFragment.Positive = positive;
+            promptsFragment.Negative = negative;
             return this;
         }
 
@@ -140,10 +141,10 @@ namespace BlazorWebApp.Tests.MockBuilders
         /// </summary>
         public MockStateServiceBuilder WithSamplerSettings(int steps, double cfg, long seed = -1)
         {
-            var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
-            samplerFragment.SetValue(FragmentKeys.Params.Steps, steps);
-            samplerFragment.SetValue(FragmentKeys.Params.Cfg, cfg);
-            samplerFragment.SetValue(FragmentKeys.Params.Seed, seed);
+            var samplerFragment = GetOrCreateSamplerFragment();
+            samplerFragment.Steps = steps;
+            samplerFragment.Cfg = (float)cfg;
+            samplerFragment.Seed = seed;
             return this;
         }
 
@@ -152,10 +153,49 @@ namespace BlazorWebApp.Tests.MockBuilders
         /// </summary>
         public MockStateServiceBuilder WithResolution(int width, int height)
         {
-            var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
-            latentFragment.SetValue(FragmentKeys.Params.Width, width);
-            latentFragment.SetValue(FragmentKeys.Params.Height, height);
+            var latentFragment = GetOrCreateLatentFragment();
+            latentFragment.Width = width;
+            latentFragment.Height = height;
             return this;
+        }
+
+        /// <summary>
+        /// Helper method to get or create a prompts fragment
+        /// </summary>
+        private PromptsFragment GetOrCreatePromptsFragment()
+        {
+            if (!_generationParameters!.Fragments.TryGetValue(FragmentKeys.Fragments.Prompts, out var fragment))
+            {
+                fragment = new PromptsFragment { Id = FragmentKeys.Fragments.Prompts, IsActive = true };
+                _generationParameters.Fragments[FragmentKeys.Fragments.Prompts] = fragment;
+            }
+            return (PromptsFragment)fragment;
+        }
+
+        /// <summary>
+        /// Helper method to get or create a sampler fragment
+        /// </summary>
+        private SamplerFragment GetOrCreateSamplerFragment()
+        {
+            if (!_generationParameters!.Fragments.TryGetValue(FragmentKeys.Fragments.MainSampler, out var fragment))
+            {
+                fragment = new SamplerFragment { Id = FragmentKeys.Fragments.MainSampler, IsActive = true };
+                _generationParameters.Fragments[FragmentKeys.Fragments.MainSampler] = fragment;
+            }
+            return (SamplerFragment)fragment;
+        }
+
+        /// <summary>
+        /// Helper method to get or create a latent fragment
+        /// </summary>
+        private LatentFragment GetOrCreateLatentFragment()
+        {
+            if (!_generationParameters!.Fragments.TryGetValue(FragmentKeys.Fragments.Latent, out var fragment))
+            {
+                fragment = new LatentFragment { Id = FragmentKeys.Fragments.Latent, IsActive = true };
+                _generationParameters.Fragments[FragmentKeys.Fragments.Latent] = fragment;
+            }
+            return (LatentFragment)fragment;
         }
 
         /// <summary>

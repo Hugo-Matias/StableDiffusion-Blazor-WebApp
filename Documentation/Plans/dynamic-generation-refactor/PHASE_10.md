@@ -246,6 +246,9 @@ Verify that the new unified flow works end-to-end.
 - [ ] Seeds are properly randomized when -1
 - [ ] Wildcards are expanded correctly
 - [ ] Generated images are saved to database correctly
+- [x] Workflow Base switching updates assets correctly (Fix for Z-image -> SD race condition)
+- [x] Optional fragments condition evaluation fixed (case-insensitive + snake_case fallback)
+- [x] Fragment objects exposed in template context (Fix for condition checks like `upscale.IsActive`)
 
 ---
 
@@ -306,6 +309,7 @@ Verify that the new unified flow works end-to-end.
 | Test files | Updated RouterServiceTests and StateServiceTests for new API |
 | PromptFieldsSimple.razor unused | Removed along with its CSS file |
 | GetWorkflowById missing | Added to IWorkflowService and WorkflowService |
+| Workflow Base Asset Sync | Fixed race condition in StateService.SetWorkflowBase to update WorkflowId and notify listeners |
 
 ---
 

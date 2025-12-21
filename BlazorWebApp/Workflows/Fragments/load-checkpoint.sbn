@@ -8,7 +8,7 @@
     "{{ if scope }}{{ scope }}{{ end }}negative_output": { "node": "{{ if scope }}{{ scope }}{{ end }}encode_negative", "index": 0 }
   }{{~ if scope && scope | string.contains "detailer" ~}},
   "conditions": {
-    "required": ["Detailer.IsActive"]
+    "required": ["detailer.IsActive"]
   }{{~ end ~}}
 }
 #end

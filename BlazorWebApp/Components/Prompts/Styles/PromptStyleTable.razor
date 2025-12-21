@@ -1,6 +1,7 @@
 @using BlazorWebApp.Data.Entities
 @using BlazorWebApp.Extensions
 @using BlazorWebApp.Models
+@using BlazorWebApp.Models.Fragments
 @using BlazorWebApp.Components.Prompts
 @inject IDatabaseService DB
 @inject IDialogService DialogService
@@ -551,11 +552,9 @@
     
     private void UpdateGenerationParametersPrompts(string? positive, string? negative)
     {
-        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-        var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
-        var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
-        promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, positive));
-        promptsFragment.SetValue(FragmentKeys.Params.Negative, Parser.ParseStyle(currentNegative, negative));
+        var prompts = State.GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
+        prompts.Positive = Parser.ParseStyle(prompts.Positive, positive);
+        prompts.Negative = Parser.ParseStyle(prompts.Negative, negative);
     }
     
     private async Task HandleUnpin(Prompt prompt)

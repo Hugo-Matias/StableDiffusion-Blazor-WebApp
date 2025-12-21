@@ -4,6 +4,7 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using BlazorWebApp.Models.Fragments;
 using System.Text.RegularExpressions;
 using static BlazorWebApp.Data.Enums;
 using static BlazorWebApp.Models.FragmentKeys;
@@ -558,7 +559,7 @@ namespace BlazorWebApp.Services
             return maxIndex;
         }
 
-        private string GenerateVideoFilename(int fileIndex, long actualSeed, FragmentParameters? samplerFragment)
+        private string GenerateVideoFilename(int fileIndex, long actualSeed, FragmentBase? samplerFragment)
         {
             var pattern = _backend.OutputPaths.FilenamePattern;
             var filename = $"{fileIndex.ToString().PadLeft(5, '0')}";

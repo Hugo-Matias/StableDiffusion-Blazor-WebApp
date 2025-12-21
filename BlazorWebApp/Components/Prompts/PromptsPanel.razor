@@ -4,6 +4,7 @@
 @using BlazorWebApp.Extensions
 @using BlazorWebApp.Components.Prompts.Styles
 @using BlazorWebApp.Models
+@using BlazorWebApp.Models.Fragments
 @inject IStateService State
 @inject IEventService Events
 @inject IDatabaseService DB
@@ -117,12 +118,10 @@
             {
                 var prompt = pinnedPrompts[index];
                 
-                // Update GenerationParameters (primary)
-                var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-                var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
-                var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
-                promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, prompt.Positive));
-                promptsFragment.SetValue(FragmentKeys.Params.Negative, Parser.ParseStyle(currentNegative, prompt.Negative));
+                // Update GenerationParameters using typed fragment access
+                var prompts = State.GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
+                prompts.Positive = Parser.ParseStyle(prompts.Positive, prompt.Positive);
+                prompts.Negative = Parser.ParseStyle(prompts.Negative, prompt.Negative);
                 
                 // Update usage tracking
                 await DB.UpdatePromptUsage(prompt.Id);
@@ -149,12 +148,10 @@
             {
                 var prompt = pinnedPrompts[index];
                 
-                // Update GenerationParameters (primary)
-                var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-                var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
-                var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
-                promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, prompt.Positive));
-                promptsFragment.SetValue(FragmentKeys.Params.Negative, Parser.ParseStyle(currentNegative, prompt.Negative));
+                // Update GenerationParameters using typed fragment access
+                var prompts = State.GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
+                prompts.Positive = Parser.ParseStyle(prompts.Positive, prompt.Positive);
+                prompts.Negative = Parser.ParseStyle(prompts.Negative, prompt.Negative);
                 
                 // Update usage tracking
                 await DB.UpdatePromptUsage(prompt.Id);

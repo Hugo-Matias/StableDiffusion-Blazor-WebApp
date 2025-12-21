@@ -1,17 +1,22 @@
+using BlazorWebApp.Models.Fragments;
+using System.Text.Json.Serialization;
+
 namespace BlazorWebApp.Models
 {
     /// <summary>
     /// Unified parameter storage for all generation workflows.
-    /// Uses a flexible dictionary-based structure driven by workflow templates.
+    /// Uses strongly-typed fragment classes for compile-time safety.
     /// </summary>
     public class GenerationParameters
     {
         /// <summary>
-        /// All parameters organized by fragment instance ID.
+        /// All fragments organized by instance ID.
         /// Keys match Pipeline[].id in the workflow template.
         /// Example: "main_sampler", "refiner_sampler", "prompts", "upscale"
+        /// 
+        /// Uses polymorphic JSON serialization for derived fragment types.
         /// </summary>
-        public Dictionary<string, FragmentParameters> Fragments { get; set; } = new();
+        public Dictionary<string, FragmentBase> Fragments { get; set; } = new();
 
         /// <summary>
         /// Workflow assets (models, VAEs, CLIPs).
@@ -38,6 +43,67 @@ namespace BlazorWebApp.Models
         /// </summary>
         public Guid? WorkflowId { get; set; }
 
+        #region Typed Fragment Accessors
+
+        /// <summary>
+        /// Gets the prompts fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public PromptsFragment? Prompts => GetFragment<PromptsFragment>("prompts");
+
+        /// <summary>
+        /// Gets the main sampler fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public SamplerFragment? MainSampler => GetFragment<SamplerFragment>("main_sampler");
+
+        /// <summary>
+        /// Gets the latent fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public LatentFragment? Latent => GetFragment<LatentFragment>("empty_latent");
+
+        /// <summary>
+        /// Gets the SeedVR2 fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public SeedVR2Fragment? SeedVR2 => GetFragment<SeedVR2Fragment>("seed_vr2");
+
+        /// <summary>
+        /// Gets the upscale fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public UpscaleFragment? Upscale => GetFragment<UpscaleFragment>("upscale");
+
+        /// <summary>
+        /// Gets the detailer fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public DetailerFragment? Detailer => GetFragment<DetailerFragment>("detailer");
+
+        /// <summary>
+        /// Gets the conditioning variation fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public ConditioningVariationFragment? ConditioningVariation => 
+            GetFragment<ConditioningVariationFragment>("conditioning_variation");
+
+        /// <summary>
+        /// Gets the seed variance enhancer fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public SeedVarianceEnhancerFragment? SeedVarianceEnhancer => 
+            GetFragment<SeedVarianceEnhancerFragment>("seed_variance_enhancer");
+
+        /// <summary>
+        /// Gets the frame interpolation fragment if present.
+        /// </summary>
+        [JsonIgnore]
+        public FrameInterpolationFragment? FrameInterpolation => 
+            GetFragment<FrameInterpolationFragment>("frame_interpolation");
+
+        #endregion
+
         /// <summary>
         /// Creates a deep copy of the generation parameters.
         /// </summary>
@@ -61,58 +127,54 @@ namespace BlazorWebApp.Models
                 }).ToList(),
                 Fragments = Fragments.ToDictionary(
                     kvp => kvp.Key,
-                    kvp => kvp.Value.Clone()
+                    kvp => kvp.Value.Clone(kvp.Key)
                 )
             };
         }
 
         /// <summary>
-        /// Gets a fragment by ID, or null if not found.
+        /// Gets a typed fragment by ID, or null if not found or wrong type.
         /// </summary>
-        public FragmentParameters? GetFragment(string fragmentId)
+        public T? GetFragment<T>(string fragmentId) where T : FragmentBase
+        {
+            return Fragments.TryGetValue(fragmentId, out var fragment) ? fragment as T : null;
+        }
+
+        /// <summary>
+        /// Gets a fragment by ID (untyped), or null if not found.
+        /// </summary>
+        public FragmentBase? GetFragment(string fragmentId)
         {
             return Fragments.GetValueOrDefault(fragmentId);
         }
 
         /// <summary>
-        /// Gets or creates a fragment with the specified ID.
+        /// Gets or creates a typed fragment with the specified ID.
+        /// If a fragment exists but is the wrong type, it will be replaced.
         /// </summary>
-        public FragmentParameters GetOrCreateFragment(string fragmentId, string fragmentFile = "")
+        public T GetOrCreateFragment<T>(string fragmentId) where T : FragmentBase, new()
         {
-            if (!Fragments.TryGetValue(fragmentId, out var fragment))
+            if (Fragments.TryGetValue(fragmentId, out var existing) && existing is T typed)
+                return typed;
+
+            var fragment = new T
             {
-                fragment = new FragmentParameters
-                {
-                    FragmentFile = fragmentFile,
-                    IsActive = true,
-                    Order = Fragments.Count
-                };
-                Fragments[fragmentId] = fragment;
-            }
+                Id = fragmentId,
+                IsActive = true,
+                Order = Fragments.Count
+            };
+            Fragments[fragmentId] = fragment;
             return fragment;
         }
 
         /// <summary>
         /// Gets all active fragments ordered by their Order property.
         /// </summary>
-        public IEnumerable<KeyValuePair<string, FragmentParameters>> GetActiveFragments()
+        public IEnumerable<KeyValuePair<string, FragmentBase>> GetActiveFragments()
         {
             return Fragments
                 .Where(f => f.Value.IsActive)
                 .OrderBy(f => f.Value.Order);
-        }
-
-        /// <summary>
-        /// Finds the first fragment containing a specific parameter key.
-        /// </summary>
-        public FragmentParameters? FindFragmentByParameter(string parameterKey)
-        {
-            foreach (var fragment in Fragments.Values)
-            {
-                if (fragment.Values.ContainsKey(parameterKey))
-                    return fragment;
-            }
-            return null;
         }
 
         /// <summary>
@@ -125,8 +187,7 @@ namespace BlazorWebApp.Models
         /// LoRAs are automatically appended to the positive/negative prompts in the format:
         /// &lt;lora:name:weight&gt;
         /// 
-        /// Scriban templates handle their own defaults via the ?? operator, so we don't need
-        /// to protect certain keys here - just provide all available values.
+        /// Scriban templates handle their own defaults via the ?? operator.
         /// </summary>
         public Dictionary<string, object?> FlattenForTemplateRendering()
         {
@@ -139,27 +200,26 @@ namespace BlazorWebApp.Models
             }
 
             // Add fragment values in pipeline order
-            // Later fragments can override earlier ones (this is intentional for things like
-            // detailer having its own sampler settings that differ from main sampler)
             foreach (var fragment in GetActiveFragments())
             {
-                foreach (var kvp in fragment.Value.Values)
+                // Use the fragment's ToDictionary method to get all properties
+                foreach (var kvp in fragment.Value.ToDictionary())
                 {
-                    // Only set if the value is meaningful (not null, not empty string for strings)
+                    // Only set if the value is meaningful
                     if (kvp.Value != null)
                     {
-                        // For string values, skip if empty - let earlier fragments or template defaults apply
+                        // For string values, skip if empty
                         if (kvp.Value is string strVal && string.IsNullOrEmpty(strVal))
                             continue;
-                            
+
                         result[kvp.Key] = kvp.Value;
                     }
                 }
 
-                // Expose the fragment itself for condition evaluation (e.g., upscale_seedvr2.IsActive)
+                // Expose the fragment itself for condition evaluation (e.g., seed_vr2.IsActive)
                 result[fragment.Key] = fragment.Value;
             }
-            
+
             // Also add inactive fragments so template conditions can check them
             foreach (var fragment in Fragments.Where(f => !f.Value.IsActive))
             {
@@ -167,7 +227,7 @@ namespace BlazorWebApp.Models
                     result[fragment.Key] = fragment.Value;
             }
 
-            // Add Loras as list (for templates that iterate over them)
+            // Add Loras as list
             var enabledLoras = Loras.Where(l => l.IsEnabled).ToList();
             result["Loras"] = enabledLoras;
 
@@ -175,21 +235,20 @@ namespace BlazorWebApp.Models
             if (enabledLoras.Count > 0)
             {
                 var (loraPositive, loraNegative) = ParseLorasToPromptStrings(enabledLoras);
-                
-                // Append lora strings to existing prompts
+
                 if (!string.IsNullOrEmpty(loraPositive))
                 {
                     var currentPositive = result.TryGetValue("positive", out var posVal) ? posVal?.ToString() ?? "" : "";
-                    result["positive"] = string.IsNullOrEmpty(currentPositive) 
-                        ? loraPositive.Trim() 
+                    result["positive"] = string.IsNullOrEmpty(currentPositive)
+                        ? loraPositive.Trim()
                         : currentPositive + loraPositive;
                 }
-                
+
                 if (!string.IsNullOrEmpty(loraNegative))
                 {
                     var currentNegative = result.TryGetValue("negative", out var negVal) ? negVal?.ToString() ?? "" : "";
-                    result["negative"] = string.IsNullOrEmpty(currentNegative) 
-                        ? loraNegative.Trim() 
+                    result["negative"] = string.IsNullOrEmpty(currentNegative)
+                        ? loraNegative.Trim()
                         : currentNegative + loraNegative;
                 }
             }
@@ -200,12 +259,11 @@ namespace BlazorWebApp.Models
         /// <summary>
         /// Parses enabled loras into prompt strings in the format: &lt;lora:name:weight&gt;
         /// </summary>
-        /// <returns>Tuple of (positive prompt loras, negative prompt loras)</returns>
         private static (string positive, string negative) ParseLorasToPromptStrings(List<Lora> loras)
         {
             string positive = string.Empty;
             string negative = string.Empty;
-            
+
             foreach (var lora in loras.Where(l => l.IsEnabled))
             {
                 var loraString = $" <lora:{lora.Name}:{lora.Strength:N2}>";
@@ -214,7 +272,7 @@ namespace BlazorWebApp.Models
                 else
                     positive += loraString;
             }
-            
+
             return (positive, negative);
         }
     }

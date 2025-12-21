@@ -1,5 +1,6 @@
 @page "/danbooru"
 @using BlazorWebApp.Models
+@using BlazorWebApp.Models.Fragments
 @using System.Text.RegularExpressions
 @inject DanbooruService Api
 @inject IStateService State
@@ -229,11 +230,10 @@ else if (!_initialLoading && (Posts == null || Posts.Count == 0))
         tags.AddRange(post.TagsGeneral);
         var tagsString = string.Join(", ", tags.Where(v => !blacklistTags.Contains(v)));
         
-        // Update GenerationParameters (primary)
-        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-        var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
-        var extractedLoras = string.Join(" ", Regex.Matches(currentPositive, _loraRegex));
-        promptsFragment.SetValue(FragmentKeys.Params.Positive, extractedLoras + " " + tagsString);
+        // Update GenerationParameters using typed fragment access
+        var prompts = State.GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
+        var extractedLoras = string.Join(" ", Regex.Matches(prompts.Positive, _loraRegex));
+        prompts.Positive = extractedLoras + " " + tagsString;
     }
 
     private void ShowImageViewerDialog(DanbooruPost post)

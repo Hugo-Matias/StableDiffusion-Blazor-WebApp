@@ -1,4 +1,5 @@
 @using BlazorWebApp.Models
+@using BlazorWebApp.Models.Fragments
 @using System.Diagnostics;
 @inject IStateService State
 @inject IOrchestratorService M
@@ -40,7 +41,7 @@
                                 {
                                     @if (Image.Meta.HiresUpscale != null)
                                     {
-                                        <MudTextField Label="Upscaler" Value=@Image.Meta.HiresUpscaler T="string"
+                                        <MudTextField Label="Upscaler" Value=@Image.Meta.HiresUpscale T="string"
                                                                 ReadOnly />
                                     }
                                     @if (Image.Meta.HiresUpscale != null)
@@ -118,7 +119,7 @@
 
     private void LoadSettings(ModeType mode)
     {
-        // Update GenerationParameters (primary)
+        // Update GenerationParameters with typed fragments
         UpdateGenerationParameters();
         
         Snackbar.Add($"Settings copied to {mode}", Severity.Success);
@@ -126,26 +127,26 @@
     
     private void UpdateGenerationParameters()
     {
-        // Update prompts fragment
-        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-        promptsFragment.SetValue(FragmentKeys.Params.Positive, Image.Meta.Prompt ?? "");
-        promptsFragment.SetValue(FragmentKeys.Params.Negative, Image.Meta.NegativePrompt ?? "");
+        // Update prompts fragment using typed access
+        var prompts = State.GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
+        prompts.Positive = Image.Meta.Prompt ?? "";
+        prompts.Negative = Image.Meta.NegativePrompt ?? "";
         
-        // Update sampler fragment
-        var samplerFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
-        samplerFragment.SetValue(FragmentKeys.Params.Seed, Image.Meta.Seed);
-        samplerFragment.SetValue(FragmentKeys.Params.Steps, Image.Meta.Steps);
-        samplerFragment.SetValue(FragmentKeys.Params.Cfg, (double)Image.Meta.CfgScale);
-        samplerFragment.SetValue(FragmentKeys.Params.SamplerName, Image.Meta.Sampler ?? "euler");
+        // Update sampler fragment using typed access
+        var sampler = State.GenerationParameters.GetOrCreateFragment<SamplerFragment>(FragmentKeys.Fragments.MainSampler);
+        sampler.Seed = Image.Meta.Seed;
+        sampler.Steps = Image.Meta.Steps;
+        sampler.Cfg = (float)Image.Meta.CfgScale;
+        sampler.SamplerName = Image.Meta.Sampler ?? "euler";
         
-        if (!string.IsNullOrEmpty(Image.Meta.DenoisingStrength) && double.TryParse(Image.Meta.DenoisingStrength, out var denoise))
+        if (!string.IsNullOrEmpty(Image.Meta.DenoisingStrength) && float.TryParse(Image.Meta.DenoisingStrength, out var denoise))
         {
-            samplerFragment.SetValue(FragmentKeys.Params.Denoise, denoise);
+            sampler.Denoise = denoise;
         }
         
-        // Update latent fragment
-        var latentFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.Latent);
-        latentFragment.SetValue(FragmentKeys.Params.Width, Image.Width);
-        latentFragment.SetValue(FragmentKeys.Params.Height, Image.Height);
+        // Update latent fragment using typed access
+        var latent = State.GenerationParameters.GetOrCreateFragment<LatentFragment>(FragmentKeys.Fragments.Latent);
+        latent.Width = (int)Image.Width;
+        latent.Height = (int)Image.Height;
     }
 }

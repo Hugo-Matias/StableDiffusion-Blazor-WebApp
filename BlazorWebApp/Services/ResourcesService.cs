@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using BlazorWebApp.Models.Fragments;
 
 namespace BlazorWebApp.Services
 {
@@ -158,11 +159,18 @@ namespace BlazorWebApp.Services
                 triggerWords += string.Join(", ", file.TriggerWords);
             }
 
-            // Update GenerationParameters prompts fragment (primary)
-            var promptsFragment = _state.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-            var promptKey = target.Item2 ? FragmentKeys.Params.Positive : FragmentKeys.Params.Negative;
-            var currentPrompt = promptsFragment.GetValue<string>(promptKey) ?? "";
-            promptsFragment.SetValue(promptKey, currentPrompt + $"{triggerWords}{keyword}");
+            // Update GenerationParameters prompts fragment using typed access
+            var prompts = _state.GenerationParameters.GetOrCreateFragment<PromptsFragment>(FragmentKeys.Fragments.Prompts);
+            if (target.Item2)
+            {
+                // Positive prompt
+                prompts.Positive = prompts.Positive + $"{triggerWords}{keyword}";
+            }
+            else
+            {
+                // Negative prompt
+                prompts.Negative = prompts.Negative + $"{triggerWords}{keyword}";
+            }
         }
 
         public async Task UpdateResource(Resource resource, string directory, string filename, int resourceId, bool isEnabled)

@@ -4,7 +4,7 @@
     "image_output": { "node": "seedvr2_upscaler", "index": 0 }
   },
   "conditions": {
-    "required": ["SeedVR2.IsActive"]
+    "required": ["seed_vr2.IsActive"]
   },
   "ui": {
     "type": "enhancement",

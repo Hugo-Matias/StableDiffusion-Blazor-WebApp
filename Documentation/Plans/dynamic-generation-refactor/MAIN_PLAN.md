@@ -673,6 +673,13 @@ See: [PHASE_12_SERVICE_CLEANUP.md](./PHASE_12_SERVICE_CLEANUP.md) for detailed b
 | Phase 12 | Added metadata-based fragment discovery and caching |
 | Phase 12 | Improved performance and reduced complexity in service interactions |
 | Phase 12 | Fixed various issues identified in SERVICE_ANALYSIS.md review |
+| Phase 13 | Initial planning for typed fragments phase |
+| Phase 13 | Added FragmentBase abstract class and initial derived classes |
+| Phase 13 | Added DynamicSource and Step attributes for metadata |
+| Phase 13 | Updated GenerationParameters to use polymorphic JSON |
+| Phase 13 | Rewrote all fragment forms to use typed properties |
+| Phase 13 | Updated state persistence for new fragment structure |
+| Phase 13 | Removed old dictionary-based code and types |
 
 ---
 
@@ -832,7 +839,45 @@ public interface IImageService
 | Phase 10.5: Parameter Migration | 70 | &check; Complete |
 | Phase 11: Documentation | 3 | [ ] Not Started |
 | Phase 12: Service Cleanup | 21 | &check; Complete |
-| **Total** | **205 points** | **175 completed (85%)** |
+| **Phase 13: Typed Fragments** | **42** | **[ ] HIGHEST PRIORITY** |
+| **Total** | **247 points** | **175 completed (71%)** |
+
+---
+
+### Phase 13: Strongly-Typed Fragment Classes
+**Objective:** Replace dictionary-based `FragmentParameters` with strongly-typed C# classes
+**Complexity:** 42 points
+**Status:** [ ] HIGHEST PRIORITY - Execute before any other work
+**Prerequisite:** Phase 10 complete
+
+#### Overview
+This phase eliminates the string-based dictionary approach entirely, replacing it with:
+- Abstract `FragmentBase` class with typed derived classes
+- C# attributes for constraints (`[Range]`, `[Step]`) and dynamic sources (`[DynamicSource]`)
+- Clean removal of all old dictionary-based code
+
+#### Key Benefits
+- **Compile-time safety** - Typos become build errors
+- **IntelliSense** - Full autocomplete for all properties
+- **Simplified forms** - Direct property binding, no string keys
+- **Trivial condition checking** - Just `fragment.IsActive`
+- **Reduced maintenance** - No more `FragmentKeys.Params` synchronization
+
+#### Steps (Summary)
+- 13.1: Create custom attributes (DynamicSource, Step)
+- 13.2: Create FragmentBase abstract class
+- 13.3: Create core fragment classes (Sampler, Prompts, Latent)
+- 13.4: Create enhancement fragments (SeedVR2, Upscale, Detailer, etc.)
+- 13.5: Create Wan/Video fragments
+- 13.6: Create FragmentRegistry service
+- 13.7: Update GenerationParameters (polymorphic JSON)
+- 13.8: Update GenerationParameterService (remove string methods)
+- 13.9: Rewrite all fragment forms
+- 13.10: Simplify WorkflowService conditions
+- 13.11: Update state persistence
+- 13.12: Remove old code (FragmentParameters, FragmentSchema, etc.)
+
+See: [PHASE_13_TYPED_FRAGMENTS.md](./PHASE_13_TYPED_FRAGMENTS.md) for detailed breakdown.
 
 ---
 

@@ -1,5 +1,6 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using BlazorWebApp.Models.Fragments;
 using BlazorWebApp.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
@@ -39,11 +40,16 @@ namespace BlazorWebApp.Tests.Services
                 Resources = new AppStateResources { Weight = 1.0f, LoadTriggerWords = true }
             });
             
-            // Setup GenerationParameters
+            // Setup GenerationParameters using typed fragments
             _generationParameters = new GenerationParameters();
-            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-            promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
-            promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
+            var promptsFragment = new PromptsFragment
+            {
+                Id = FragmentKeys.Fragments.Prompts,
+                IsActive = true,
+                Positive = "",
+                Negative = ""
+            };
+            _generationParameters.Fragments[FragmentKeys.Fragments.Prompts] = promptsFragment;
             _mockState.Setup(x => x.GenerationParameters).Returns(_generationParameters);
 
             _service = new ResourcesService(_mockState.Object, _mockIO.Object, _mockDb.Object, _mockConfig.Object);
@@ -366,10 +372,10 @@ namespace BlazorWebApp.Tests.Services
             await _service.LoadPrompt(file, "LORA", (ModeType.Txt2Img, true));
 
             // Assert
-            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
-            var positive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive);
-            positive.Should().Contain("word1");
-            positive.Should().Contain("word2");
+            var promptsFragment = _generationParameters.GetFragment(FragmentKeys.Fragments.Prompts) as PromptsFragment;
+            promptsFragment.Should().NotBeNull();
+            promptsFragment!.Positive.Should().Contain("word1");
+            promptsFragment.Positive.Should().Contain("word2");
         }
 
         #endregion

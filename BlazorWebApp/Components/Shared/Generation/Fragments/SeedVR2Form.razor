@@ -4,11 +4,13 @@
     Handles: seedvr2_model, seedvr2_vae_model, seedvr2_resolution, seedvr2_batch_size, blocks_to_swap,
              vae_tile_size, vae_tile_overlap, seedvr2_input_noise_scale, seedvr2_latent_noise_scale
     
-    This is an optional feature for high-quality video/image upscaling using SeedVR2.
-    Values are read from FragmentParameters.Values and synced back on change.
+    Uses strongly-typed SeedVR2Fragment for direct property access.
+    Constraints are read from the fragment's #meta schema (single source of truth).
 *@
+@using static BlazorWebApp.Models.FragmentKeys
+@using BlazorWebApp.Models.Fragments
 @inject IGenerationParameterService ParameterService
-@inject IWorkflowService WorkflowService
+@inject IFragmentSchemaService SchemaService
 
 <MudGrid>
     <MudItem xs="12" Class="align-items-center justify-content-center d-flex">
@@ -16,7 +18,7 @@
     </MudItem>
     <MudItem xs="6">
         <MudSelect T="string" Label="DiT Model" @bind-Value="_localModel" @bind-Value:after="OnModelChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var model in GetOptions("seedvr2_model"))
+            @foreach (var model in _modelOptions)
             {
                 <MudSelectItem Value="@model" />
             }
@@ -24,7 +26,7 @@
     </MudItem>
     <MudItem xs="6">
         <MudSelect T="string" Label="VAE Model" @bind-Value="_localVaeModel" @bind-Value:after="OnVaeModelChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var model in GetOptions("seedvr2_vae_model"))
+            @foreach (var model in _vaeModelOptions)
             {
                 <MudSelectItem Value="@model" />
             }
@@ -32,9 +34,9 @@
     </MudItem>
     <MudItem xs="4">
         <MudSlider T="int" @bind-Value="_localResolution" @bind-Value:after="OnResolutionChanged"
-                   Min="@GetConstraint("seedvr2_resolution").GetMin(512)" 
-                   Max="@GetConstraint("seedvr2_resolution").GetMax(4096)" 
-                   Step="@GetConstraint("seedvr2_resolution").GetStep(64)" 
+                   Min="@GetConstraints("seedvr2_resolution").GetMin(512)" 
+                   Max="@GetConstraints("seedvr2_resolution").GetMax(4096)" 
+                   Step="@GetConstraints("seedvr2_resolution").GetStep(64)" 
                    Variant="Variant.Filled" ValueLabel>
             <small>Resolution:</small> @(_localResolution)px
         </MudSlider>
@@ -42,48 +44,46 @@
     <MudItem xs="2">
         <MudNumericField T="int" @bind-Value="_localBatchSize" @bind-Value:after="OnBatchSizeChanged"
                          Label="Batch Size" 
-                         Min="@GetConstraint("seedvr2_batch_size").GetMin(1)" 
-                         Max="@GetConstraint("seedvr2_batch_size").GetMax(10)" 
-                         Step="@GetConstraint("seedvr2_batch_size").GetStep(1)" />
+                         Min="@GetConstraints("seedvr2_batch_size").GetMin(1)" 
+                         Max="@GetConstraints("seedvr2_batch_size").GetMax(10)" 
+                         Step="@GetConstraints("seedvr2_batch_size").GetStep(1)" />
     </MudItem>
     <MudItem xs="6">
         <MudNumericField T="int" @bind-Value="_localBlocksToSwap" @bind-Value:after="OnBlocksToSwapChanged"
                          Label="Blocks to Swap" 
-                         Min="@GetConstraint("blocks_to_swap").GetMin(0)" 
-                         Max="@GetConstraint("blocks_to_swap").GetMax(36)" 
-                         Step="@GetConstraint("blocks_to_swap").GetStep(1)" />
+                         Min="@GetConstraints("blocks_to_swap").GetMin(0)" 
+                         Max="@GetConstraints("blocks_to_swap").GetMax(36)" 
+                         Step="@GetConstraints("blocks_to_swap").GetStep(1)" />
     </MudItem>
     <MudItem xs="3">
         <MudNumericField T="int" @bind-Value="_localVaeTileSize" @bind-Value:after="OnVaeTileSizeChanged"
                          Label="VAE Tile Size" 
-                         Min="@GetConstraint("vae_tile_size").GetMin(128)" 
-                         Max="@GetConstraint("vae_tile_size").GetMax(2048)" 
-                         Step="@GetConstraint("vae_tile_size").GetStep(64)" />
+                         Min="@GetConstraints("vae_tile_size").GetMin(128)" 
+                         Max="@GetConstraints("vae_tile_size").GetMax(2048)" 
+                         Step="@GetConstraints("vae_tile_size").GetStep(64)" />
     </MudItem>
     <MudItem xs="3">
         <MudNumericField T="int" @bind-Value="_localVaeTileOverlap" @bind-Value:after="OnVaeTileOverlapChanged"
                          Label="VAE Tile Overlap" 
-                         Min="@GetConstraint("vae_tile_overlap").GetMin(0)" 
-                         Max="@GetConstraint("vae_tile_overlap").GetMax(512)" 
-                         Step="@GetConstraint("vae_tile_overlap").GetStep(32)" />
+                         Min="@GetConstraints("vae_tile_overlap").GetMin(0)" 
+                         Max="@GetConstraints("vae_tile_overlap").GetMax(512)" 
+                         Step="@GetConstraints("vae_tile_overlap").GetStep(32)" />
     </MudItem>
     <MudItem xs="6">
         <MudSlider T="float" @bind-Value="_localInputNoiseScale" @bind-Value:after="OnInputNoiseScaleChanged"
-                   Min="@GetConstraint("seedvr2_input_noise_scale").GetMin(0f)" 
-                   Max="@GetConstraint("seedvr2_input_noise_scale").GetMax(1f)" 
-                   Step="@GetConstraint("seedvr2_input_noise_scale").GetStep(0.01f)" 
-                   Variant="Variant.Filled" 
-                   ValueLabel>
+                   Min="@GetConstraints("seedvr2_input_noise_scale").GetMin(0f)" 
+                   Max="@GetConstraints("seedvr2_input_noise_scale").GetMax(1f)" 
+                   Step="@GetConstraints("seedvr2_input_noise_scale").GetStep(0.01f)" 
+                   Variant="Variant.Filled" ValueLabel>
             <small>Input Noise Scale:</small> @_localInputNoiseScale.ToString("F2")
         </MudSlider>
     </MudItem>
     <MudItem xs="6">
         <MudSlider T="float" @bind-Value="_localLatentNoiseScale" @bind-Value:after="OnLatentNoiseScaleChanged"
-                   Min="@GetConstraint("seedvr2_latent_noise_scale").GetMin(0f)" 
-                   Max="@GetConstraint("seedvr2_latent_noise_scale").GetMax(1f)" 
-                   Step="@GetConstraint("seedvr2_latent_noise_scale").GetStep(0.01f)" 
-                   Variant="Variant.Filled" 
-                   ValueLabel>
+                   Min="@GetConstraints("seedvr2_latent_noise_scale").GetMin(0f)" 
+                   Max="@GetConstraints("seedvr2_latent_noise_scale").GetMax(1f)" 
+                   Step="@GetConstraints("seedvr2_latent_noise_scale").GetStep(0.01f)" 
+                   Variant="Variant.Filled" ValueLabel>
             <small>Latent Noise Scale:</small> @_localLatentNoiseScale.ToString("F2")
         </MudSlider>
     </MudItem>
@@ -92,19 +92,33 @@
 @code {
     /// <summary>
     /// Fragment ID this form is associated with.
-    /// Used to read/write values from FragmentParameters.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = "upscale_seedvr2";
+    [Parameter] public string FragmentId { get; set; } = Fragments.SeedVR2;
     
     /// <summary>
     /// Optional callback when any value changes.
     /// </summary>
     [Parameter] public EventCallback OnChanged { get; set; }
     
+    #region Schema & Constraints
+    
+    private FragmentSchema? _schema;
+    
+    /// <summary>
+    /// Gets constraints for a parameter from the fragment schema.
+    /// Falls back to empty constraints if schema not loaded.
+    /// </summary>
+    private ParameterConstraints GetConstraints(string parameterName)
+    {
+        return _schema?.GetConstraints(parameterName) ?? new ParameterConstraints();
+    }
+    
+    #endregion
+    
     #region Local State
     
-    private string? _localModel;
-    private string? _localVaeModel;
+    private string _localModel = string.Empty;
+    private string _localVaeModel = string.Empty;
     private int _localResolution;
     private int _localBatchSize;
     private int _localBlocksToSwap;
@@ -114,110 +128,85 @@
     private float _localLatentNoiseScale;
     private MarkupString _resizeInfo = new();
     
-    // Cached constraints from schema - Dictionary preserves parameter names as keys
-    private Dictionary<string, ParameterConstraints> _constraints = new();
+    // Dynamic options from ComfyUI
+    private List<string> _modelOptions = new();
+    private List<string> _vaeModelOptions = new();
     
-    // Dynamic options from ComfyUI - keyed by parameter name
-    private Dictionary<string, List<string>> _dynamicOptions = new();
+    /// <summary>
+    /// Gets the typed fragment for direct property access.
+    /// </summary>
+    private SeedVR2Fragment? Fragment => 
+        ParameterService.Current.GetFragment<SeedVR2Fragment>(FragmentId);
     
     protected override async Task OnInitializedAsync()
     {
-        LoadConstraints();
+        // Load schema from the .sbn file (single source of truth for constraints)
+        _schema = SchemaService.GetFragmentSchema("upscale-seedvr2.sbn");
+        
         await LoadDynamicOptionsAsync();
         InitializeFromFragment();
     }
     
     protected override void OnParametersSet()
     {
-        // Re-read values when FragmentId changes
         InitializeFromFragment();
     }
     
     /// <summary>
-    /// Gets constraint for a parameter, returning empty constraint if not found.
-    /// </summary>
-    private ParameterConstraints GetConstraint(string parameterName)
-        => _constraints.GetValueOrDefault(parameterName) ?? new ParameterConstraints();
-    
-    /// <summary>
-    /// Gets dynamic options for a parameter, returning empty list if not found.
-    /// </summary>
-    private List<string> GetOptions(string parameterName)
-        => _dynamicOptions.GetValueOrDefault(parameterName) ?? new List<string>();
-    
-    /// <summary>
-    /// Loads parameter constraints from the fragment schema.
-    /// </summary>
-    private void LoadConstraints()
-    {
-        var fragment = ParameterService.Current.GetFragment(FragmentId);
-        if (fragment == null) return;
-        
-        var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
-        if (schema?.Parameters == null) return;
-        
-        // Store entire Parameters dictionary - preserves parameter names as keys
-        _constraints = schema.Parameters;
-    }
-    
-    /// <summary>
-    /// Loads dynamic options from ComfyUI for all parameters with dynamic sources.
-    /// Iterates over constraints dictionary - source and input_name are in the constraint itself.
+    /// Loads dynamic options from ComfyUI for model fields.
     /// </summary>
     private async Task LoadDynamicOptionsAsync()
     {
-        foreach (var (parameterName, constraint) in _constraints)
+        // Load options from ComfyUI using the schema's source definitions
+        var modelConstraints = GetConstraints("seedvr2_model");
+        var vaeConstraints = GetConstraints("seedvr2_vae_model");
+        
+        if (modelConstraints.HasDynamicSource)
         {
-            if (constraint.HasDynamicSource)
-            {
-                var options = await ParameterService.ResolveSourceOptionsAsync(constraint);
-                _dynamicOptions[parameterName] = options;
-            }
+            _modelOptions = await ParameterService.ResolveSourceOptionsAsync(modelConstraints);
         }
+        
+        if (vaeConstraints.HasDynamicSource)
+        {
+            _vaeModelOptions = await ParameterService.ResolveSourceOptionsAsync(vaeConstraints);
+        }
+        
+        // Fallback if no options loaded
+        if (_modelOptions.Count == 0)
+            _modelOptions = new List<string> { "seedvr2_ema_7b-Q4_K_M.gguf" };
+        if (_vaeModelOptions.Count == 0)
+            _vaeModelOptions = new List<string> { "ema_vae_fp16.safetensors" };
     }
     
     /// <summary>
-    /// Initializes local state from fragment parameters.
-    /// 
-    /// Default value priority (see IGenerationParameterService for full documentation):
-    /// 1. Workflow template's pipeline step parameters
-    /// 2. Fragment template defaults
-    /// 3. First dynamic option (for fields with ComfyUI sources) - handled here in UI
+    /// Initializes local state from typed fragment properties.
     /// </summary>
     private void InitializeFromFragment()
     {
-        var fragment = ParameterService.Current.GetFragment(FragmentId);
+        var fragment = Fragment;
         if (fragment == null) return;
         
-        // Model fields with dynamic sources: apply first-option fallback if no default
-        _localModel = fragment.GetValueOrDefault<string>("seedvr2_model", null);
-        if (string.IsNullOrEmpty(_localModel))
+        _localModel = fragment.Model;
+        if (string.IsNullOrEmpty(_localModel) && _modelOptions.Count > 0)
         {
-            _localModel = GetOptions("seedvr2_model").FirstOrDefault();
-            if (_localModel != null)
-            {
-                ParameterService.SetFragmentValue(FragmentId, "seedvr2_model", _localModel);
-            }
+            _localModel = _modelOptions.First();
+            fragment.Model = _localModel;
         }
         
-        _localVaeModel = fragment.GetValueOrDefault<string>("seedvr2_vae_model", null);
-        if (string.IsNullOrEmpty(_localVaeModel))
+        _localVaeModel = fragment.VaeModel;
+        if (string.IsNullOrEmpty(_localVaeModel) && _vaeModelOptions.Count > 0)
         {
-            _localVaeModel = GetOptions("seedvr2_vae_model").FirstOrDefault();
-            if (_localVaeModel != null)
-            {
-                ParameterService.SetFragmentValue(FragmentId, "seedvr2_vae_model", _localVaeModel);
-            }
+            _localVaeModel = _vaeModelOptions.First();
+            fragment.VaeModel = _localVaeModel;
         }
         
-        // Numeric fields: use fragment defaults (priority 1 & 2 handled by service)
-        _localResolution = fragment.GetValueOrDefault("seedvr2_resolution", 2048);
-        _localBatchSize = fragment.GetValueOrDefault("seedvr2_batch_size", 1);
-        _localBlocksToSwap = fragment.GetValueOrDefault("blocks_to_swap", 36);
-        _localVaeTileSize = fragment.GetValueOrDefault("vae_tile_size", 1024);
-        _localVaeTileOverlap = fragment.GetValueOrDefault("vae_tile_overlap", 128);
-        _localInputNoiseScale = fragment.GetValueOrDefault("seedvr2_input_noise_scale", 0f);
-        _localLatentNoiseScale = fragment.GetValueOrDefault("seedvr2_latent_noise_scale", 0f);
+        _localResolution = fragment.Resolution;
+        _localBatchSize = fragment.BatchSize;
+        _localBlocksToSwap = fragment.BlocksToSwap;
+        _localVaeTileSize = fragment.VaeTileSize;
+        _localVaeTileOverlap = fragment.VaeTileOverlap;
+        _localInputNoiseScale = fragment.InputNoiseScale;
+        _localLatentNoiseScale = fragment.LatentNoiseScale;
         
         RefreshResizeInfo();
     }
@@ -228,56 +217,65 @@
     
     private async Task OnModelChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_model", _localModel);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.Model = _localModel;
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnVaeModelChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_vae_model", _localVaeModel);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.VaeModel = _localVaeModel;
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnResolutionChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_resolution", _localResolution);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.Resolution = _localResolution;
         RefreshResizeInfo();
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnBatchSizeChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_batch_size", _localBatchSize);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.BatchSize = _localBatchSize;
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnBlocksToSwapChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "blocks_to_swap", _localBlocksToSwap);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.BlocksToSwap = _localBlocksToSwap;
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnVaeTileSizeChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "vae_tile_size", _localVaeTileSize);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.VaeTileSize = _localVaeTileSize;
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnVaeTileOverlapChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "vae_tile_overlap", _localVaeTileOverlap);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.VaeTileOverlap = _localVaeTileOverlap;
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnInputNoiseScaleChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_input_noise_scale", _localInputNoiseScale);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.InputNoiseScale = _localInputNoiseScale;
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnLatentNoiseScaleChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_latent_noise_scale", _localLatentNoiseScale);
+        var fragment = ParameterService.Current.GetOrCreateFragment<SeedVR2Fragment>(FragmentId);
+        fragment.LatentNoiseScale = _localLatentNoiseScale;
         await OnChanged.InvokeAsync();
     }
     
@@ -286,20 +284,9 @@
     private void RefreshResizeInfo()
     {
         // Get base dimensions from latent fragment if available
-        var baseWidth = 1024;
-        var baseHeight = 1024;
-        
-        // Try to read base dimensions from a latent fragment
-        foreach (var kvp in ParameterService.Current.Fragments)
-        {
-            var fragmentFile = Path.GetFileName(kvp.Value.FragmentFile).ToLowerInvariant();
-            if (fragmentFile.Contains("latent") || fragmentFile.Contains("load"))
-            {
-                baseWidth = kvp.Value.GetValueOrDefault("width", 1024);
-                baseHeight = kvp.Value.GetValueOrDefault("height", 1024);
-                break;
-            }
-        }
+        var latent = ParameterService.Current.GetFragment<LatentFragment>(Fragments.Latent);
+        var baseWidth = latent?.Width ?? 1024;
+        var baseHeight = latent?.Height ?? 1024;
         
         // SeedVR2 uses resolution (smallest side) to scale proportionally
         var aspectRatio = (float)baseWidth / baseHeight;

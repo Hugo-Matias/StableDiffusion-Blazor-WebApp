@@ -78,6 +78,9 @@ builder.Services.AddSingleton<IWorkflowStateService, WorkflowStateService>();
 // Component registry for fragment-to-component mapping
 builder.Services.AddSingleton<IComponentRegistry, ComponentRegistry>();
 
+// Fragment registry for mapping fragment files to typed classes
+builder.Services.AddSingleton<IFragmentRegistry, FragmentRegistry>();
+
 // Generation parameter service for dynamic parameter management
 builder.Services.AddScoped<IGenerationParameterService, GenerationParameterService>();
 
