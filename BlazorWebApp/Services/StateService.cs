@@ -246,6 +246,20 @@ namespace BlazorWebApp.Services
             if (previousBase != workflowBase)
             {
                 ResetWorkflowAssetsToDefaults();
+
+                // Update CurrentWorkflowId to the first workflow matching the new base
+                // This ensures the UI switches to the correct workflow and doesn't display stale assets
+                var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
+                if (defaultWorkflow != null)
+                {
+                    State.Generation.CurrentWorkflowId = defaultWorkflow.Id;
+                    GenerationParameters.WorkflowId = defaultWorkflow.Id;
+                }
+                else
+                {
+                    State.Generation.CurrentWorkflowId = null;
+                    GenerationParameters.WorkflowId = null;
+                }
             }
 
             // Publish StateChangedEventArgs for components using EventService

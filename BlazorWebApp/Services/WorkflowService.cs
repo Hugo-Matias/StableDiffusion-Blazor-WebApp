@@ -545,7 +545,15 @@ namespace BlazorWebApp.Services
                     }
                     else
                     {
-                        return false;
+                        // Try to find the key with different casing conventions if direct match fails
+                        var snakeCase = ToSnakeCase(part);
+                        var pascalCase = ToPascalCase(part);
+                        var camelCase = ToCamelCase(part);
+                        
+                        if (dict.TryGetValue(snakeCase, out var snakeVal)) current = snakeVal;
+                        else if (dict.TryGetValue(pascalCase, out var pascalVal)) current = pascalVal;
+                        else if (dict.TryGetValue(camelCase, out var camelVal)) current = camelVal;
+                        else return false;
                     }
                 }
                 else if (current != null)
@@ -563,6 +571,29 @@ namespace BlazorWebApp.Services
             }
 
             return current is bool boolValue && boolValue;
+        }
+
+        private static string ToSnakeCase(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            return string.Concat(text.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
+        }
+
+        private static string ToPascalCase(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            if (text.Contains('_'))
+            {
+                return string.Concat(text.Split('_').Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1).ToLower()));
+            }
+            return char.ToUpperInvariant(text[0]) + text.Substring(1);
+        }
+
+        private static string ToCamelCase(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            var pascal = ToPascalCase(text);
+            return char.ToLowerInvariant(pascal[0]) + pascal.Substring(1);
         }
 
         #endregion

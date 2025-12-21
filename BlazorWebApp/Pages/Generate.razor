@@ -861,7 +861,26 @@ else
 
     #region Event Handlers
 
-    private void OnStateChanged(StateChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
+    private void OnStateChanged(StateChangedEventArgs args) 
+    {
+        // If workflow base changed externally (e.g. from navbar), we might need to reload
+        if (args.ChangeType == StateChangeType.WorkflowBase)
+        {
+            var currentWorkflowId = State.State?.Generation?.CurrentWorkflowId;
+            if (currentWorkflowId.HasValue && _selectedWorkflow?.Id != currentWorkflowId.Value)
+            {
+                // Workflow changed due to base change - reload
+                var workflow = _workflows?.FirstOrDefault(w => w.Id == currentWorkflowId.Value);
+                if (workflow != null)
+                {
+                    _ = OnWorkflowSelected(workflow);
+                    return;
+                }
+            }
+        }
+        
+        _ = InvokeAsync(StateHasChanged);
+    }
     
     private void OnParametersChanged(GenerationParametersChangedEventArgs args)
     {

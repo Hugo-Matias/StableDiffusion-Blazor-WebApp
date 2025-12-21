@@ -177,6 +177,9 @@ namespace BlazorWebApp.Services
 
             _state.State.Generation.CurrentWorkflowId = workflowId;
             _state.State.Generation.WorkflowBase = workflow.Base;
+            
+            // Update GenerationParameters.WorkflowId to match
+            _state.GenerationParameters.WorkflowId = workflowId;
 
             bool assetsInitialized = true;
             if (workflow.Assets != null && workflow.Assets.Count > 0)
@@ -195,6 +198,15 @@ namespace BlazorWebApp.Services
         public void SetWorkflowBase(ModelBase workflowBase)
         {
             _state.SetWorkflowBase(workflowBase);
+            
+            // After setting base, ensure we have a valid workflow ID selected
+            // SetWorkflowBase in StateService now updates CurrentWorkflowId, so we just need to sync
+            var currentId = _state.State.Generation.CurrentWorkflowId;
+            if (currentId.HasValue)
+            {
+                _events.Publish(new WorkflowChangedEventArgs(currentId.Value, "SetBase"));
+            }
+            
             _events.Publish(new StateChangedEventArgs());
             SetDefaultBaseModel();
         }
