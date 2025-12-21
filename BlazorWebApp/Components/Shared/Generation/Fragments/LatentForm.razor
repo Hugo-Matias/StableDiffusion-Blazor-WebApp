@@ -6,24 +6,26 @@
 *@
 @inject ISettingsService Settings
 
-<ResolutionPanel Width="@_localWidth"
-                 WidthChanged="HandleWidthChanged"
-                 Height="@_localHeight"
-                 HeightChanged="HandleHeightChanged" />
+<MudGrid Spacing="2">
+    <ResolutionPanel Width="@_localWidth"
+                     WidthChanged="HandleWidthChanged"
+                     Height="@_localHeight"
+                     HeightChanged="HandleHeightChanged" />
 
-<MudItem xs="6">
-    <MudSlider T="int" 
-               @bind-Value="_localBatchSize"
-               @bind-Value:after="OnBatchSizeChanged"
-               Min="Settings.Settings.Generation.Shared.Batch.Size.Min" 
-               Max="Settings.Settings.Generation.Shared.Batch.Size.Max" 
-               Step="Settings.Settings.Generation.Shared.Batch.Size.Step" 
-               Variant="Variant.Filled" 
-               ValueLabel 
-               TickMarks>
-        <small>Batch Size:</small> @_localBatchSize
-    </MudSlider>
-</MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" 
+                   @bind-Value="_localBatchSize"
+                   @bind-Value:after="OnBatchSizeChanged"
+                   Min="Settings.Settings.Generation.Shared.Batch.Size.Min" 
+                   Max="Settings.Settings.Generation.Shared.Batch.Size.Max" 
+                   Step="Settings.Settings.Generation.Shared.Batch.Size.Step" 
+                   Variant="Variant.Filled" 
+                   ValueLabel 
+                   TickMarks>
+            <small>Batch Size:</small> @_localBatchSize
+        </MudSlider>
+    </MudItem>
+</MudGrid>
 
 @code {
     /// <summary>

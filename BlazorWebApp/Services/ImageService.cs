@@ -6,6 +6,7 @@ using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.RegularExpressions;
 using static BlazorWebApp.Data.Enums;
+using static BlazorWebApp.Models.FragmentKeys;
 
 namespace BlazorWebApp.Services
 {
@@ -142,6 +143,10 @@ namespace BlazorWebApp.Services
             _currentGenerationParams = parameters;
             _currentWorkflow = workflow;
             
+            // Capture original seed value to restore after generation (for random seed support)
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
+            
             try
             {
                 // Apply wildcard expansion and seed randomization directly to GenerationParameters
@@ -175,6 +180,16 @@ namespace BlazorWebApp.Services
             {
                 _logger.LogError(e, "Error during image generation for workflow: {WorkflowTitle}", workflow.Title);
             }
+            finally
+            {
+                // Restore original seed value if it was random (-1)
+                // This ensures the next generation will also get a new random seed
+                if (originalSeed == -1 && samplerFragment != null)
+                {
+                    samplerFragment.SetValue(Params.Seed, -1L);
+                    _logger.LogDebug("Restored seed to -1 for next random generation");
+                }
+            }
 
             _progress.IsConverging = false;
             _state.State.Generation.IsInterrupted = false;
@@ -190,11 +205,11 @@ namespace BlazorWebApp.Services
         private async Task PrepareGenerationParametersAsync(GenerationParameters parameters)
         {
             // Get prompts fragment
-            var promptsFragment = parameters.GetFragment("prompts");
+            var promptsFragment = parameters.GetFragment(Fragments.Prompts);
             if (promptsFragment != null)
             {
-                var prompt = promptsFragment.GetValueOrDefault<string>("positive", "") ?? "";
-                var negativePrompt = promptsFragment.GetValueOrDefault<string>("negative", "") ?? "";
+                var prompt = promptsFragment.GetValueOrDefault<string>(Params.Positive, "") ?? "";
+                var negativePrompt = promptsFragment.GetValueOrDefault<string>(Params.Negative, "") ?? "";
                 
                 // Apply wildcard expansion
                 prompt = await _wildcardService.ParseWildcards(prompt);
@@ -211,24 +226,30 @@ namespace BlazorWebApp.Services
                             : $"{negativePrompt}, {style.NegativePrompt}";
                 }
                 
-                promptsFragment.SetValue("positive", prompt);
-                promptsFragment.SetValue("negative", negativePrompt);
+                promptsFragment.SetValue(Params.Positive, prompt);
+                promptsFragment.SetValue(Params.Negative, negativePrompt);
+            }
+            else
+            {
+                _logger.LogWarning("No prompts fragment found for generation");
             }
             
             // Handle seed randomization for sampler fragment
-            var samplerFragment = parameters.GetFragment("main_sampler");
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
             if (samplerFragment != null)
             {
-                var seed = samplerFragment.GetValueOrDefault("seed", -1L);
-                if (seed == -1)
+                var fragmentSeed = samplerFragment.GetValueOrDefault(Params.Seed, -1L);
+                
+                // Generate new random seed if user wants random (-1 or <= 0)
+                if (fragmentSeed == -1 || fragmentSeed <= 0)
                 {
-                    var actualSeed = new Random().Next(0, int.MaxValue);
-                    samplerFragment.SetValue("seed", (long)actualSeed);
+                    var actualSeed = (long)new Random().Next(0, int.MaxValue);
+                    samplerFragment.SetValue(Params.Seed, actualSeed);
                     _state.State.Generation.Seed = actualSeed;
                 }
                 else
                 {
-                    _state.State.Generation.Seed = seed;
+                    _state.State.Generation.Seed = fragmentSeed;
                 }
             }
         }
@@ -248,22 +269,22 @@ namespace BlazorWebApp.Services
             var info = Parser.ParseInfoStrings(Images.Info, mode);
 
             // Extract parameters from GenerationParameters
-            var samplerFragment = parameters.GetFragment("main_sampler");
-            var promptsFragment = parameters.GetFragment("prompts");
-            var latentFragment = parameters.GetFragment("latent");
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var promptsFragment = parameters.GetFragment(Fragments.Prompts);
+            var latentFragment = parameters.GetFragment(Fragments.Latent);
             
-            var seed = samplerFragment?.GetValueOrDefault("seed", _state.State.Generation.Seed) ?? _state.State.Generation.Seed;
-            var steps = samplerFragment?.GetValueOrDefault("steps", 20) ?? 20;
-            var cfg = samplerFragment?.GetValueOrDefault("cfg", 7.0) ?? 7.0;
-            var samplerName = samplerFragment?.GetValue<string>("sampler_name") ?? "euler";
-            var scheduler = samplerFragment?.GetValue<string>("scheduler") ?? "normal";
-            var denoise = samplerFragment?.GetValueOrDefault("denoise", 1.0) ?? 1.0;
+            var seed = samplerFragment?.GetValueOrDefault(Params.Seed, _state.State.Generation.Seed) ?? _state.State.Generation.Seed;
+            var steps = samplerFragment?.GetValueOrDefault(Params.Steps, 20) ?? 20;
+            var cfg = samplerFragment?.GetValueOrDefault(Params.Cfg, 7.0) ?? 7.0;
+            var samplerName = samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler";
+            var scheduler = samplerFragment?.GetValue<string>(Params.Scheduler) ?? "normal";
+            var denoise = samplerFragment?.GetValueOrDefault(Params.Denoise, 1.0) ?? 1.0;
             
-            var prompt = promptsFragment?.GetValue<string>("positive") ?? info?["prompt"] ?? "";
-            var negativePrompt = promptsFragment?.GetValue<string>("negative") ?? info?["negative"] ?? "";
+            var prompt = promptsFragment?.GetValue<string>(Params.Positive) ?? info?["prompt"] ?? "";
+            var negativePrompt = promptsFragment?.GetValue<string>(Params.Negative) ?? info?["negative"] ?? "";
             
-            var width = latentFragment?.GetValueOrDefault("width", 1024) ?? 1024;
-            var height = latentFragment?.GetValueOrDefault("height", 1024) ?? 1024;
+            var width = latentFragment?.GetValueOrDefault(Params.Width, 1024) ?? 1024;
+            var height = latentFragment?.GetValueOrDefault(Params.Height, 1024) ?? 1024;
 
             for (int i = 0; i < Images.Images.Count; i++)
             {
@@ -343,28 +364,22 @@ namespace BlazorWebApp.Services
             _currentGenerationParams = parameters;
             _currentWorkflow = workflow;
 
+            // Capture original seed value to restore after generation (for random seed support)
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
+
             try
             {
                 // Apply wildcard expansion and seed randomization
                 await PrepareGenerationParametersAsync(parameters);
                 
                 // Get current model from assets
-                _currentModel = parameters.Assets.GetValueOrDefault("HighModel", "") 
-                    ?? parameters.Assets.GetValueOrDefault("Model", "") 
+                _currentModel = parameters.Assets.GetValueOrDefault(Assets.HighModel, "") 
+                    ?? parameters.Assets.GetValueOrDefault(Assets.Model, "") 
                     ?? _models.GetCurrentModel(ModeType.Img2Vid);
 
-                // Get the actual seed that will be used
-                var samplerFragment = parameters.GetFragment("main_sampler");
-                var seed = samplerFragment?.GetValueOrDefault("seed", -1L) ?? -1L;
-                var actualSeed = seed == -1 
-                    ? new Random().Next(0, int.MaxValue) 
-                    : seed;
-                
-                // Update the seed in the fragment so it gets passed to ComfyUI
-                if (samplerFragment != null)
-                {
-                    samplerFragment.SetValue("seed", actualSeed);
-                }
+                // Get the actual seed that will be used (already set by PrepareGenerationParametersAsync)
+                var actualSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
 
                 // Call the new unified router method
                 GeneratedVideos = await _router.PostVideoGenerationAsync(parameters, workflow);
@@ -374,8 +389,7 @@ namespace BlazorWebApp.Services
                     throw new Exception("Generation Canceled!");
                 }
 
-                // Store the actual seed used
-                _state.State.Generation.Seed = actualSeed;
+                // Store the actual seed used (already stored by PrepareGenerationParametersAsync)
 
                 if (_backend.OutputPaths.SaveSamples && GeneratedVideos?.Videos?.Count > 0)
                 {
@@ -388,6 +402,16 @@ namespace BlazorWebApp.Services
             catch (Exception e)
             {
                 _logger.LogError(e, "Error during video generation for workflow: {WorkflowTitle}", workflow.Title);
+            }
+            finally
+            {
+                // Restore original seed value if it was random (-1)
+                // This ensures the next generation will also get a new random seed
+                if (originalSeed == -1 && samplerFragment != null)
+                {
+                    samplerFragment.SetValue(Params.Seed, -1L);
+                    _logger.LogDebug("Restored seed to -1 for next random generation");
+                }
             }
 
             _progress.IsConverging = false;
@@ -435,29 +459,29 @@ namespace BlazorWebApp.Services
 
                 // Update video metadata with actual seed used
                 video.Filename = filename;
-                video.Prompt = promptsFragment?.GetValue<string>("positive") ?? "";
-                video.NegativePrompt = promptsFragment?.GetValue<string>("negative") ?? "";
+                video.Prompt = promptsFragment?.GetValue<string>(Params.Positive) ?? "";
+                video.NegativePrompt = promptsFragment?.GetValue<string>(Params.Negative) ?? "";
                 video.Seed = actualSeed;
-                video.Steps = samplerFragment?.GetValueOrDefault("steps", 20) ?? 20;
-                video.CfgScale = (float)(samplerFragment?.GetValueOrDefault("cfg", 1.0) ?? 1.0);
-                video.Sampler = samplerFragment?.GetValue<string>("sampler_name") ?? "euler";
-                video.Model = parameters.Assets.GetValueOrDefault("Model") ?? 
-                              parameters.Assets.GetValueOrDefault("HighModel") ?? "";
+                video.Steps = samplerFragment?.GetValueOrDefault(Params.Steps, 20) ?? 20;
+                video.CfgScale = (float)(samplerFragment?.GetValueOrDefault(Params.Cfg, 1.0) ?? 1.0);
+                video.Sampler = samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler";
+                video.Model = parameters.Assets.GetValueOrDefault(Assets.Model) ?? 
+                              parameters.Assets.GetValueOrDefault(Assets.HighModel) ?? "";
                 
                 var latentFragment = parameters.Fragments.Values.FirstOrDefault(f => 
                     f.FragmentFile.Contains("latent", StringComparison.OrdinalIgnoreCase));
-                video.Width = latentFragment?.GetValueOrDefault("width", 768) ?? 
-                              videoFragment?.GetValueOrDefault("width", 768) ?? 768;
-                video.Height = latentFragment?.GetValueOrDefault("height", 768) ?? 
-                               videoFragment?.GetValueOrDefault("height", 768) ?? 768;
+                video.Width = latentFragment?.GetValueOrDefault(Params.Width, 768) ?? 
+                              videoFragment?.GetValueOrDefault(Params.Width, 768) ?? 768;
+                video.Height = latentFragment?.GetValueOrDefault(Params.Height, 768) ?? 
+                               videoFragment?.GetValueOrDefault(Params.Height, 768) ?? 768;
                 
-                video.FrameCount = videoFragment?.GetValueOrDefault("length", 81) ?? 81;
-                video.FrameRate = videoFragment?.GetValueOrDefault("frame_rate", 16) ?? 16;
+                video.FrameCount = videoFragment?.GetValueOrDefault(Params.VideoLength, 81) ?? 81;
+                video.FrameRate = videoFragment?.GetValueOrDefault(Params.FrameRate, 16) ?? 16;
                 video.Duration = video.FrameRate > 0 ? (double)video.FrameCount / video.FrameRate : 0;
 
                 // Persist to database using Image entity
                 await AddVideoToDbFromParams(video, video.Steps, video.CfgScale, video.Sampler, 
-                    samplerFragment?.GetValue<string>("scheduler") ?? "simple", parameters);
+                    samplerFragment?.GetValue<string>(Params.Scheduler) ?? "simple", parameters);
             }
         }
 
@@ -543,9 +567,9 @@ namespace BlazorWebApp.Services
             {
                 filename += "-" + pattern
                     .Replace("[seed]", actualSeed.ToString())
-                    .Replace("[steps]", samplerFragment?.GetValueOrDefault("steps", 20).ToString() ?? "20")
-                    .Replace("[cfg]", samplerFragment?.GetValueOrDefault("cfg", 1.0).ToString() ?? "1")
-                    .Replace("[sampler]", samplerFragment?.GetValue<string>("sampler_name") ?? "euler");
+                    .Replace("[steps]", samplerFragment?.GetValueOrDefault(Params.Steps, 20).ToString() ?? "20")
+                    .Replace("[cfg]", samplerFragment?.GetValueOrDefault(Params.Cfg, 1.0).ToString() ?? "1")
+                    .Replace("[sampler]", samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler");
             }
 
             return filename + ".mp4";
@@ -591,10 +615,10 @@ namespace BlazorWebApp.Services
 
             return tag switch
             {
-                "[sampler]" => _currentGenerationParams?.GetFragment("main_sampler")?.GetValue<string>("sampler_name") ?? "euler",
+                "[sampler]" => _currentGenerationParams?.GetFragment(Fragments.MainSampler)?.GetValue<string>(Params.SamplerName) ?? "euler",
                 "[seed]" => _state.State.Generation.Seed.ToString(),
-                "[steps]" => _currentGenerationParams?.GetFragment("main_sampler")?.GetValueOrDefault("steps", 20).ToString() ?? "20",
-                "[cfg]" => _currentGenerationParams?.GetFragment("main_sampler")?.GetValueOrDefault("cfg", 7.0).ToString() ?? "7",
+                "[steps]" => _currentGenerationParams?.GetFragment(Fragments.MainSampler)?.GetValueOrDefault(Params.Steps, 20).ToString() ?? "20",
+                "[cfg]" => _currentGenerationParams?.GetFragment(Fragments.MainSampler)?.GetValueOrDefault(Params.Cfg, 7.0).ToString() ?? "7",
                 _ => string.Empty
             };
         }

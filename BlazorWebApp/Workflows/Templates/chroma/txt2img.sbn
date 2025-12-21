@@ -74,7 +74,7 @@
   },
   "41": {
     "inputs": {
-      "select": {{ upscale.is_active ?? false | json }},
+      "select": {{ upscale_is_active ?? false | json }},
       "value": [
         "7",
         0
@@ -100,7 +100,7 @@
   },
   "45": {
     "inputs": {
-      "select": {{ detailer.is_active ?? false | json }},
+      "select": {{ detailer_is_active ?? false | json }},
       "value": [
         "37",
         0
@@ -113,7 +113,7 @@
   },
   "46": {
     "inputs": {
-      "select": {{ detailer.is_active ?? false | json }},
+      "select": {{ detailer_is_active ?? false | json }},
       "value": [
         "36:840",
         0
@@ -291,7 +291,7 @@
   },
   "67:22": {
     "inputs": {
-      "value": {{ detailer.prompt | json }}
+      "value": {{ detailer_prompt | json }}
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
@@ -300,7 +300,7 @@
   },
   "67:26": {
     "inputs": {
-      "value": {{ detailer.negative_prompt | json }}
+      "value": {{ detailer_negative_prompt | json }}
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
@@ -521,7 +521,7 @@
   },
   "36:815": {
     "inputs": {
-      "model_name": {{ upscale.model ?? "4x-UltraSharpV2.safetensors" | json }}
+      "model_name": {{ upscale_model ?? "4x-UltraSharpV2.safetensors" | json }}
     },
     "class_type": "UpscaleModelLoader",
     "_meta": {
@@ -533,9 +533,9 @@
       "eta": 0.5,
       "sampler_name": {{ sampler_name ?? "multistep/res_2m" | json }},
       "scheduler": {{ scheduler ?? "beta" | json }},
-      "steps": {{ upscale.steps ?? 20 | json }},
-      "steps_to_run": {{ (upscale.steps ?? 20) | math.divided_by 2 | math.round | json }},
-      "denoise": {{ upscale.denoise ?? 1 | json }},
+      "steps": {{ upscale_steps ?? 20 | json }},
+      "steps_to_run": {{ (upscale_steps ?? 20) | math.divided_by 2 | math.round | json }},
+      "denoise": {{ upscale_denoise ?? 1 | json }},
       "cfg": 1,
       "seed": {{ seed ?? 42 | json }},
       "sampler_mode": "unsample",
@@ -566,7 +566,7 @@
     "inputs": {
       "eta": 0.5,
       "sampler_name": {{ sampler_name ?? "multistep/res_2m" | json }},
-      "steps_to_run": {{ (upscale.steps ?? 20) | math.divided_by 2 | math.round | json }},
+      "steps_to_run": {{ (upscale_steps ?? 20) | math.divided_by 2 | math.round | json }},
       "cfg": 1,
       "sampler_mode": "resample",
       "bongmath": true,
@@ -649,8 +649,8 @@
   "36:817": {
     "inputs": {
       "upscale_method": "lanczos",
-      "width": {{ upscale.width ?? 1744 | json }},
-      "height": {{ upscale.height ?? 2496 | json }},
+      "width": {{ upscale_width ?? 1744 | json }},
+      "height": {{ upscale_height ?? 2496 | json }},
       "crop": "disabled",
       "image": [
         "36:814",
@@ -680,7 +680,7 @@
   },
   "61:56": {
     "inputs": {
-      "model_name": {{ detailer.model ?? "bbox/face_yolov8m.pt" | json }}
+      "model_name": {{ detailer_model ?? "bbox/face_yolov8m.pt" | json }}
     },
     "class_type": "UltralyticsDetectorProvider",
     "_meta": {
@@ -689,30 +689,30 @@
   },
   "61:44": {
     "inputs": {
-      "guide_size": {{ detailer.guide_size ?? 512 | json }},
+      "guide_size": {{ detailer_guide_size ?? 512 | json }},
       "guide_size_for": true,
-      "max_size": {{ detailer.max_size ?? 1024 | json }},
-      "seed": {{ detailer.seed ?? 42 | json }},
-      "steps": {{ detailer.steps ?? 20 | json }},
-      "cfg": {{ detailer.cfg ?? 8 | json }},
-      "sampler_name": {{ detailer.sampler ?? "dpmpp_2m" | json }},
-      "scheduler": {{ detailer.scheduler ?? "beta" | json }},
-      "denoise": {{ detailer.denoise ?? 0.65 | json }},
-      "feather": {{ detailer.feather ?? 5 | json }},
+      "max_size": {{ detailer_max_size ?? 1024 | json }},
+      "seed": {{ detailer_seed ?? 42 | json }},
+      "steps": {{ detailer_steps ?? 20 | json }},
+      "cfg": {{ detailer_cfg @@ 8 | json }},
+      "sampler_name": {{ detailer_sampler ?? "dpmpp_2m" | json }},
+      "scheduler": {{ detailer_scheduler ?? "beta" | json }},
+      "denoise": {{ detailer_denoise ?? 0.65 | json }},
+      "feather": {{ detailer_feather ?? 5 | json }},
       "noise_mask": true,
       "force_inpaint": true,
-      "bbox_threshold": {{ detailer.bbox_threshold ?? 0.7 | json }},
-      "bbox_dilation": {{ detailer.bbox_dilation ?? 10 | json }},
-      "bbox_crop_factor": {{ detailer.bbox_crop_factor ?? 3 | json }},
+      "bbox_threshold": {{ detailer_bbox_threshold ?? 0.7 | json }},
+      "bbox_dilation": {{ detailer_bbox_dilation ?? 10 | json }},
+      "bbox_crop_factor": {{ detailer_bbox_crop_factor ?? 3 | json }},
       "sam_detection_hint": "center-1",
       "sam_dilation": 0,
       "sam_threshold": 0.93,
       "sam_bbox_expansion": 0,
       "sam_mask_hint_threshold": 0.7,
       "sam_mask_hint_use_negative": "False",
-      "drop_size": {{ detailer.drop_size ?? 70 | json }},
+      "drop_size": {{ detailer_drop_size ?? 70 | json }},
       "wildcard": "",
-      "cycle": {{ detailer.cycle ?? 1 | json }},
+      "cycle": {{ detailer_cycle ?? 1 | json }},
       "inpaint_model": false,
       "noise_mask_feather": 20,
       "tiled_encode": false,
@@ -753,7 +753,7 @@
   },
   "60:56": {
     "inputs": {
-      "model_name": {{ detailer.model ?? "bbox/face_yolov8m.pt" | json }}
+      "model_name": {{ detailer_model ?? "bbox/face_yolov8m.pt" | json }}
     },
     "class_type": "UltralyticsDetectorProvider",
     "_meta": {
@@ -762,30 +762,30 @@
   },
   "60:44": {
     "inputs": {
-      "guide_size": {{ detailer.guide_size ?? 512 | json }},
+      "guide_size": {{ detailer_guide_size ?? 512 | json }},
       "guide_size_for": true,
-      "max_size": {{ detailer.max_size ?? 1024 | json }},
-      "seed": {{ detailer.seed ?? 42 | json }},
-      "steps": {{ detailer.steps ?? 20 | json }},
-      "cfg": {{ detailer.cfg ?? 8 | json }},
-      "sampler_name": {{ detailer.sampler ?? "dpmpp_2m" | json }},
-      "scheduler": {{ detailer.scheduler ?? "beta" | json }},
-      "denoise": {{ detailer.denoise ?? 0.65 | json }},
-      "feather": {{ detailer.feather ?? 5 | json }},
+      "max_size": {{ detailer_max_size ?? 1024 | json }},
+      "seed": {{ detailer_seed ?? 42 | json }},
+      "steps": {{ detailer_steps ?? 20 | json }},
+      "cfg": {{ detailer_cfg @@ 8 | json }},
+      "sampler_name": {{ detailer_sampler ?? "dpmpp_2m" | json }},
+      "scheduler": {{ detailer_scheduler ?? "beta" | json }},
+      "denoise": {{ detailer_denoise ?? 0.65 | json }},
+      "feather": {{ detailer_feather ?? 5 | json }},
       "noise_mask": true,
       "force_inpaint": true,
-      "bbox_threshold": {{ detailer.bbox_threshold ?? 0.7 | json }},
-      "bbox_dilation": {{ detailer.bbox_dilation ?? 10 | json }},
-      "bbox_crop_factor": {{ detailer.bbox_crop_factor ?? 3 | json }},
+      "bbox_threshold": {{ detailer_bbox_threshold ?? 0.7 | json }},
+      "bbox_dilation": {{ detailer_bbox_dilation ?? 10 | json }},
+      "bbox_crop_factor": {{ detailer_bbox_crop_factor ?? 3 | json }},
       "sam_detection_hint": "center-1",
       "sam_dilation": 0,
       "sam_threshold": 0.93,
       "sam_bbox_expansion": 0,
       "sam_mask_hint_threshold": 0.7,
       "sam_mask_hint_use_negative": "False",
-      "drop_size": {{ detailer.drop_size ?? 70 | json }},
+      "drop_size": {{ detailer_drop_size ?? 70 | json }},
       "wildcard": "",
-      "cycle": {{ detailer.cycle ?? 1 | json }},
+      "cycle": {{ detailer_cycle ?? 1 | json }},
       "inpaint_model": false,
       "noise_mask_feather": 20,
       "tiled_encode": false,

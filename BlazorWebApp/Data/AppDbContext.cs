@@ -127,6 +127,15 @@ namespace BlazorWebApp.Data
 
             modelBuilder.Entity<WildcardEntry>()
                 .HasIndex(e => e.SortOrder);
+
+            // WorkflowState entity configuration
+            modelBuilder.Entity<WorkflowState>()
+                .HasIndex(ws => ws.WorkflowId)
+                .IsUnique();
+            
+            modelBuilder.Entity<WorkflowState>()
+                .Property(nameof(WorkflowState.Parameters))
+                .HasConversion(generationParamsConverter);
         }
 
         public DbSet<Image> Images { get; set; }
@@ -145,5 +154,6 @@ namespace BlazorWebApp.Data
         public DbSet<WildcardCollection> WildcardCollections { get; set; }
         public DbSet<WildcardEntry> WildcardEntries { get; set; }
         public DbSet<SystemPromptTemplate> SystemPromptTemplates { get; set; }
+        public DbSet<WorkflowState> WorkflowStates { get; set; }
     }
 }

@@ -12,6 +12,10 @@ namespace BlazorWebApp.Services
     /// <para>When initializing fragments from a workflow, values are resolved in this priority order:</para>
     /// <list type="number">
     ///   <item>
+    ///     <term>Saved State (Database)</term>
+    ///     <description>Previously saved parameters for this specific workflow</description>
+    ///   </item>
+    ///   <item>
     ///     <term>Step Parameters</term>
     ///     <description>Values from workflow template's Pipeline step parameters (e.g., {{ Param ?? "default" | json }})</description>
     ///   </item>
@@ -36,16 +40,27 @@ namespace BlazorWebApp.Services
         /// Initializes parameters from a workflow template.
         /// Sets up fragments with default values from the pipeline using the priority order
         /// documented in the interface remarks.
+        /// NOTE: This synchronous version does NOT load saved state from database.
+        /// Use InitializeFromWorkflowAsync for full functionality.
         /// Publishes GenerationParametersChangedEventArgs.WorkflowChanged event.
         /// </summary>
         void InitializeFromWorkflow(Workflow workflow);
 
         /// <summary>
         /// Initializes parameters from a workflow template asynchronously.
+        /// - Saves current workflow state before switching (if different workflow)
+        /// - Loads saved state from database if available
+        /// - Falls back to template defaults if no saved state
         /// Returns the initialized GenerationParameters.
         /// Publishes GenerationParametersChangedEventArgs.WorkflowChanged event.
         /// </summary>
         Task<GenerationParameters> InitializeFromWorkflowAsync(Workflow workflow);
+
+        /// <summary>
+        /// Saves the current workflow's parameters to the database.
+        /// Call this before switching workflows, on generation complete, or when explicitly saving.
+        /// </summary>
+        Task SaveCurrentWorkflowStateAsync();
 
         /// <summary>
         /// Sets a value for a fragment parameter (no event published).

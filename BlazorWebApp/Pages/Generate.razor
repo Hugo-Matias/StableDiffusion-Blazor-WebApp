@@ -5,6 +5,7 @@
 @using BlazorWebApp.Components.Shared.Generation.Fragments
 @using BlazorWebApp.Components.ImageEditor
 @using static BlazorWebApp.Data.Enums
+@using static BlazorWebApp.Models.FragmentKeys
 @inject IComfyUIService API
 @inject IOrchestratorService Orchestrator
 @inject IStateService State
@@ -312,8 +313,8 @@ else
                     // Loader fragments often contain width/height/batch_size but no dedicated latent
                     // Only use if we haven't found a dedicated latent fragment
                     if (_latentFragmentId == null && 
-                        fragment.Values.ContainsKey("width") || 
-                        fragment.Values.ContainsKey("height"))
+                        (fragment.Values.ContainsKey(Params.Width) || 
+                        fragment.Values.ContainsKey(Params.Height)))
                     {
                         _latentFragmentId = fragmentId;
                     }
@@ -326,7 +327,7 @@ else
         {
             foreach (var kvp in Parameters.Fragments)
             {
-                if (kvp.Value.Values.ContainsKey("width") && kvp.Value.Values.ContainsKey("height"))
+                if (kvp.Value.Values.ContainsKey(Params.Width) && kvp.Value.Values.ContainsKey(Params.Height))
                 {
                     _latentFragmentId = kvp.Key;
                     break;
@@ -345,46 +346,46 @@ else
     private void InitializeLocalStateFromFragments()
     {
         // Initialize prompts from fragment - create if doesn't exist
-        var promptsFragment = Parameters.GetOrCreateFragment("prompts", "prompts.sbn");
-        _prompt = promptsFragment.GetValueOrDefault<string>("positive", "") ?? "";
-        _negativePrompt = promptsFragment.GetValueOrDefault<string>("negative", "") ?? "";
+        var promptsFragment = Parameters.GetOrCreateFragment(Fragments.Prompts, Files.Prompts);
+        _prompt = promptsFragment.GetValueOrDefault<string>(Params.Positive, "") ?? "";
+        _negativePrompt = promptsFragment.GetValueOrDefault<string>(Params.Negative, "") ?? "";
         
         // Ensure prompt values are set in fragment
-        promptsFragment.SetValue("positive", _prompt);
-        promptsFragment.SetValue("negative", _negativePrompt);
+        promptsFragment.SetValue(Params.Positive, _prompt);
+        promptsFragment.SetValue(Params.Negative, _negativePrompt);
         
         // Initialize latent/resolution values from discovered fragment
         if (_latentFragmentId != null && Parameters.Fragments.TryGetValue(_latentFragmentId, out var latentFrag))
         {
             // Read existing values or use defaults
-            _width = latentFrag.GetValueOrDefault("width", 1024);
-            _height = latentFrag.GetValueOrDefault("height", 1024);
-            _batchSize = latentFrag.GetValueOrDefault("batch_size", 1);
+            _width = latentFrag.GetValueOrDefault(Params.Width, 1024);
+            _height = latentFrag.GetValueOrDefault(Params.Height, 1024);
+            _batchSize = latentFrag.GetValueOrDefault(Params.BatchSize, 1);
             
             // Always write back to ensure Values dictionary is populated
-            latentFrag.SetValue("width", _width);
-            latentFrag.SetValue("height", _height);
-            latentFrag.SetValue("batch_size", _batchSize);
+            latentFrag.SetValue(Params.Width, _width);
+            latentFrag.SetValue(Params.Height, _height);
+            latentFrag.SetValue(Params.BatchSize, _batchSize);
         }
         
         // Initialize sampler values from discovered fragment
         if (_samplerFragmentId != null && Parameters.Fragments.TryGetValue(_samplerFragmentId, out var samplerFrag))
         {
             // Read existing values or use defaults
-            _samplerName = samplerFrag.GetValueOrDefault<string>("sampler_name", "euler") ?? "euler";
-            _scheduler = samplerFrag.GetValueOrDefault<string>("scheduler", "normal") ?? "normal";
-            _steps = samplerFrag.GetValueOrDefault("steps", 20);
-            _seed = samplerFrag.GetValueOrDefault("seed", -1L);
-            _cfgScale = samplerFrag.GetValueOrDefault("cfg", 7.0f);
-            _denoise = samplerFrag.GetValueOrDefault("denoise", 1.0f);
+            _samplerName = samplerFrag.GetValueOrDefault<string>(Params.SamplerName, "euler") ?? "euler";
+            _scheduler = samplerFrag.GetValueOrDefault<string>(Params.Scheduler, "normal") ?? "normal";
+            _steps = samplerFrag.GetValueOrDefault(Params.Steps, 20);
+            _seed = samplerFrag.GetValueOrDefault(Params.Seed, -1L);
+            _cfgScale = samplerFrag.GetValueOrDefault(Params.Cfg, 7.0f);
+            _denoise = samplerFrag.GetValueOrDefault(Params.Denoise, 1.0f);
             
             // Always write back to ensure Values dictionary is populated
-            samplerFrag.SetValue("sampler_name", _samplerName);
-            samplerFrag.SetValue("scheduler", _scheduler);
-            samplerFrag.SetValue("steps", _steps);
-            samplerFrag.SetValue("seed", _seed);
-            samplerFrag.SetValue("cfg", _cfgScale);
-            samplerFrag.SetValue("denoise", _denoise);
+            samplerFrag.SetValue(Params.SamplerName, _samplerName);
+            samplerFrag.SetValue(Params.Scheduler, _scheduler);
+            samplerFrag.SetValue(Params.Steps, _steps);
+            samplerFrag.SetValue(Params.Seed, _seed);
+            samplerFrag.SetValue(Params.Cfg, _cfgScale);
+            samplerFrag.SetValue(Params.Denoise, _denoise);
         }
         
         Logger.LogDebug("Initialized local state - Width: {Width}, Height: {Height}, Steps: {Steps}, Seed: {Seed}",
@@ -439,11 +440,21 @@ else
         return null;
     }
 
+    /// <summary>
+    /// Sets a value in a fragment's Values dictionary.
+    /// The fragment must already exist in Parameters.Fragments (created during workflow initialization).
+    /// Logs a warning if the fragment doesn't exist.
+    /// </summary>
     private void SetFragmentValue(string fragmentId, string key, object? value)
     {
         if (Parameters.Fragments.TryGetValue(fragmentId, out var fragment))
         {
             fragment.Values[key] = value;
+        }
+        else
+        {
+            Logger.LogWarning("Cannot set value for fragment '{FragmentId}' - fragment not found. " +
+                "Ensure the workflow pipeline includes this fragment.", fragmentId);
         }
     }
 
@@ -454,14 +465,14 @@ else
     private async Task HandlePromptChanged(string value)
     {
         _prompt = value;
-        SetFragmentValue("prompts", "positive", value);
+        SetFragmentValue(Fragments.Prompts, Params.Positive, value);
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleNegativePromptChanged(string value)
     {
         _negativePrompt = value;
-        SetFragmentValue("prompts", "negative", value);
+        SetFragmentValue(Fragments.Prompts, Params.Negative, value);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -472,7 +483,7 @@ else
         else
             _prompt += (string.IsNullOrEmpty(_prompt) ? "" : ", ") + tags.Tags;
         
-        SetFragmentValue("prompts", "positive", _prompt);
+        SetFragmentValue(Fragments.Prompts, Params.Positive, _prompt);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -483,7 +494,7 @@ else
         else
             _negativePrompt += (string.IsNullOrEmpty(_negativePrompt) ? "" : ", ") + tags.Tags;
         
-        SetFragmentValue("prompts", "negative", _negativePrompt);
+        SetFragmentValue(Fragments.Prompts, Params.Negative, _negativePrompt);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -534,7 +545,7 @@ else
     {
         _width = value;
         if (_latentFragmentId != null)
-            SetFragmentValue(_latentFragmentId, "width", value);
+            SetFragmentValue(_latentFragmentId, Params.Width, value);
         // EventCallback automatically triggers StateHasChanged on parent
     }
 
@@ -542,14 +553,14 @@ else
     {
         _height = value;
         if (_latentFragmentId != null)
-            SetFragmentValue(_latentFragmentId, "height", value);
+            SetFragmentValue(_latentFragmentId, Params.Height, value);
     }
 
     private async Task HandleBatchSizeChanged(int value)
     {
         _batchSize = value;
         if (_latentFragmentId != null)
-            SetFragmentValue(_latentFragmentId, "batch_size", value);
+            SetFragmentValue(_latentFragmentId, Params.BatchSize, value);
     }
 
     #endregion
@@ -560,42 +571,42 @@ else
     {
         _samplerName = value;
         if (_samplerFragmentId != null)
-            SetFragmentValue(_samplerFragmentId, "sampler_name", value);
+            SetFragmentValue(_samplerFragmentId, Params.SamplerName, value);
     }
 
     private async Task HandleSchedulerChanged(string? value)
     {
         _scheduler = value;
         if (_samplerFragmentId != null)
-            SetFragmentValue(_samplerFragmentId, "scheduler", value);
+            SetFragmentValue(_samplerFragmentId, Params.Scheduler, value);
     }
 
     private async Task HandleStepsChanged(int value)
     {
         _steps = value;
         if (_samplerFragmentId != null)
-            SetFragmentValue(_samplerFragmentId, "steps", value);
+            SetFragmentValue(_samplerFragmentId, Params.Steps, value);
     }
 
     private async Task HandleSeedChanged(long value)
     {
         _seed = value;
         if (_samplerFragmentId != null)
-            SetFragmentValue(_samplerFragmentId, "seed", value);
+            SetFragmentValue(_samplerFragmentId, Params.Seed, value);
     }
 
     private async Task HandleCfgScaleChanged(float value)
     {
         _cfgScale = value;
         if (_samplerFragmentId != null)
-            SetFragmentValue(_samplerFragmentId, "cfg", value);
+            SetFragmentValue(_samplerFragmentId, Params.Cfg, value);
     }
 
     private async Task HandleDenoiseChanged(float value)
     {
         _denoise = value;
         if (_samplerFragmentId != null)
-            SetFragmentValue(_samplerFragmentId, "denoise", value);
+            SetFragmentValue(_samplerFragmentId, Params.Denoise, value);
     }
 
     private async Task HandleFragmentValueChanged()
@@ -785,8 +796,8 @@ else
             _isGenerating = true;
             StateHasChanged();
             
-            // Save state before generation
-            await State.SaveState();
+            // Save workflow state before generation (persists to WorkflowStates table)
+            await ParameterService.SaveCurrentWorkflowStateAsync();
 
             // Use the new GenerationParameters-based methods
             switch (_selectedWorkflow.Mode)
@@ -804,7 +815,10 @@ else
                     break;
             }
 
-            // Save state after generation
+            // Save workflow state after generation (captures any seed updates, etc.)
+            await ParameterService.SaveCurrentWorkflowStateAsync();
+            
+            // Also save global app state
             await State.SaveState();
         }
         catch (Exception ex)
@@ -870,10 +884,15 @@ else
         Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
         
+        // Save workflow state and global state on dispose
         _ = Task.Run(async () =>
         {
             try
             {
+                // Save per-workflow state
+                await ParameterService.SaveCurrentWorkflowStateAsync();
+                
+                // Save global app state
                 await State.SaveState();
             }
             catch (Exception ex)

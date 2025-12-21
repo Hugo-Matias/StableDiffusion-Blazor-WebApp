@@ -23,38 +23,38 @@ namespace BlazorWebApp.Models
             public const string EmptyLatent = "empty_latent";
             public const string LoadCheckpoint = "load_checkpoint";
             public const string LoadDiffusion = "load_diffusion";
-            
+
             // Primary fragments (order 50-99)
             public const string MainSampler = "main_sampler";
             public const string Sampler = "sampler";
             public const string SamplerStandard = "sampler_standard";
-            
+
             // Enhancement fragments (order 100-149)
             public const string Upscale = "upscale";
             public const string Detailer = "detailer";
             public const string DetailerCore = "detailer_core";
             public const string RefinerSampler = "refiner_sampler";
-            
+
             // Utility fragments (order 150+)
             public const string Save = "save";
             public const string VaeDecode = "vae_decode";
             public const string CleanVram = "clean_vram";
-            
+
             // Model-specific fragments
             public const string LoadFlux = "loader_flux";
             public const string LoadDetailer = "loader_detailer";
-            
+
             // Video generation fragments (Wan)
             public const string FrameInterpolation = "frame_interpolation";
             public const string LoadWanModel = "load_wan_model";
             public const string SamplerWan = "sampler_wan";
-            
+
             // Optional feature fragments
             public const string SeedVR2 = "seed_vr2";
             public const string ConditioningVariation = "conditioning_variation";
             public const string SeedVarianceEnhancer = "seed_variance_enhancer";
             public const string Llm = "llm";
-            
+
             // Qwen/Edit fragments
             public const string LoadQwenEdit = "load_qwen_edit";
             public const string EncodeEdit = "encode_edit";
@@ -69,7 +69,7 @@ namespace BlazorWebApp.Models
             // Prompts fragment parameters
             public const string Positive = "positive";
             public const string Negative = "negative";
-            
+
             // Sampler fragment parameters
             public const string SamplerName = "sampler_name";
             public const string Scheduler = "scheduler";
@@ -78,24 +78,24 @@ namespace BlazorWebApp.Models
             public const string Cfg = "cfg";
             public const string Denoise = "denoise";
             public const string Eta = "eta";
-            
+
             // Latent/Resolution fragment parameters
             public const string Width = "width";
             public const string Height = "height";
             public const string BatchSize = "batch_size";
-            
+
             // Common model parameters (used in load fragments)
             public const string UnetName = "unet_name";
             public const string ClipName = "clip_name";
             public const string VaeName = "vae_name";
-            
+
             // Upscale parameters
             public const string UpscaleModel = "upscale_model";
             public const string UpscaleWidth = "upscale_width";
             public const string UpscaleHeight = "upscale_height";
             public const string UpscaleSteps = "upscale_steps";
             public const string UpscaleDenoise = "upscale_denoise";
-            
+
             // Detailer parameters
             public const string DetailerDetectionModel = "detailer_detection_model";
             public const string DetailerSampler = "detailer_sampler";
@@ -112,14 +112,14 @@ namespace BlazorWebApp.Models
             public const string DetailerGuideSize = "detailer_guide_size";
             public const string DetailerMaxSize = "detailer_max_size";
             public const string DetailerCycle = "detailer_cycle";
-            
+
             // Flux-specific parameters
             public const string Guidance = "guidance";
             public const string RefluxEnabled = "reflux_enabled";
             public const string Scaling = "scaling";
             public const string MaxShift = "max_shift";
             public const string BaseShift = "base_shift";
-            
+
             // SeedVR2 parameters
             public const string BlocksToSwap = "blocks_to_swap";
             public const string VaeTileSize = "vae_tile_size";
@@ -127,10 +127,10 @@ namespace BlazorWebApp.Models
             public const string InputNoiseScale = "input_noise_scale";
             public const string LatentNoiseScale = "latent_noise_scale";
             public const string Scale = "scale";
-            
+
             // Conditioning variation parameters
             public const string SwitchPoint = "switch_point";
-            
+
             // Seed variance enhancer parameters
             public const string RandomizePercent = "randomize_percent";
             public const string Strength = "strength";
@@ -138,7 +138,7 @@ namespace BlazorWebApp.Models
             public const string StepsSwitchoverPercent = "steps_switchover_percent";
             public const string MaskStartsAt = "mask_starts_at";
             public const string MaskPercent = "mask_percent";
-            
+
             // Video/Wan parameters
             public const string VideoLength = "video_length";
             public const string FrameRate = "frame_rate";
@@ -147,7 +147,7 @@ namespace BlazorWebApp.Models
             public const string Multiplier = "multiplier";
             public const string RifeModel = "rife_model";
             public const string ScaleBy = "scale_by";
-            
+
             // Scope parameters (used for scoped fragments)
             public const string Scope = "scope";
             public const string ScopeTitle = "scope_title";
@@ -169,11 +169,11 @@ namespace BlazorWebApp.Models
             public const string Clip1 = "Clip1";
             public const string Clip2 = "Clip2";
             public const string ClipVision = "ClipVision";
-            
+
             // Wan/Video model assets
             public const string HighModel = "HighModel";
             public const string LowModel = "LowModel";
-            
+
             // Detailer assets
             public const string DetailerCheckpoint = "DetailerCheckpoint";
         }
@@ -211,18 +211,18 @@ namespace BlazorWebApp.Models
             public const string CleanVram = "clean-vram.sbn";
             public const string LoraLoader = "lora-loader.sbn";
             public const string VaeDecode = "vae-decode.sbn";
-            
+
             // Flux fragments
             public const string FluxLoad = "flux/load-flux.sbn";
-            
+
             // Wan fragments
             public const string WanLoadModel = "wan/load-wan-model.sbn";
             public const string WanSampler = "wan/sampler-wan.sbn";
             public const string WanFrameInterpolation = "wan/frame-interpolation.sbn";
             public const string WanPrompts = "wan/prompts.sbn";
-            
+
             // Optional feature fragments
-            public const string SeedVR2 = "seed-vr2.sbn";
+            public const string SeedVR2 = "upscale-seedvr2.sbn";
             public const string ConditioningVariation = "conditioning-variation.sbn";
             public const string SeedVarianceEnhancer = "seed-variance-enhancer.sbn";
             public const string Llm = "llm.sbn";

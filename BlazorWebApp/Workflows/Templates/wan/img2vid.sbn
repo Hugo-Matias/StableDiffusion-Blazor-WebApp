@@ -212,9 +212,9 @@
       "id": "frame_interpolation",
       "fragment": "wan/frame-interpolation.sbn",
       "parameters": {
-        "scale_by": {{ frame_interpolation.scale_by ?? 2.0 | json }},
-        "frame_multiplier": {{ frame_interpolation.multiplier ?? 2 | json }},
-        "rife_model": {{ frame_interpolation.rife_model ?? "rife49.pth" | json }}
+        "scale_by": {{ frame_interpolation_scale_by ?? 2.0 | json }},
+        "frame_multiplier": {{ frame_interpolation_multiplier ?? 2 | json }},
+        "rife_model": {{ frame_interpolation_rife_model ?? "rife49.pth" | json }}
       }
     },
     {
@@ -222,8 +222,8 @@
       "fragment": "video-save.sbn",
       "parameters": {
         "node_id": "video_output",
-        {{~ if frame_interpolation && frame_interpolation.is_active ~}}
-        "frame_rate": {{ (frame_rate ?? 16) * (frame_interpolation.multiplier ?? 2) | json }},
+        {{~ if frame_interpolation_is_active ~}}
+        "frame_rate": {{ (frame_rate ?? 16) * (frame_interpolation_multiplier ?? 2) | json }},
         "image_input_name": "frames_output",
         {{~ else ~}}
         "frame_rate": {{ frame_rate ?? 16 | json }},

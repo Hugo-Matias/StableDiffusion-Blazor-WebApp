@@ -318,6 +318,15 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Parses a Scriban default value expression into a CLR object.
+        /// 
+        /// Only parses unambiguous literals:
+        /// - Quoted strings: "euler", 'simple'
+        /// - Numbers: 20, 1.5, -1
+        /// - Booleans: true, false
+        /// - Null: null, nil
+        /// 
+        /// Unquoted identifiers (like positive, width, Model) are NOT stored as defaults.
+        /// They are variable references that Scriban will resolve at render time.
         /// </summary>
         public object? ParseScribanDefaultValue(string valueStr)
         {
@@ -326,19 +335,25 @@ namespace BlazorWebApp.Services
 
             valueStr = valueStr.Trim();
 
+            // 1. Quoted string literals - these are unambiguous defaults
             if ((valueStr.StartsWith("\"") && valueStr.EndsWith("\"")) ||
                 (valueStr.StartsWith("'") && valueStr.EndsWith("'")))
+            {
                 return valueStr.Substring(1, valueStr.Length - 2);
+            }
 
+            // 2. Boolean literals
             if (valueStr.Equals("true", StringComparison.OrdinalIgnoreCase))
                 return true;
             if (valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
                 return false;
 
+            // 3. Null literals
             if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase) ||
                 valueStr.Equals("nil", StringComparison.OrdinalIgnoreCase))
                 return null;
 
+            // 4. Numeric literals - try integer first, then floating point
             if (long.TryParse(valueStr, out var longVal))
                 return longVal;
 
@@ -346,7 +361,10 @@ namespace BlazorWebApp.Services
                 System.Globalization.CultureInfo.InvariantCulture, out var doubleVal))
                 return doubleVal;
 
-            return valueStr;
+            // 5. Anything else is an unquoted identifier - treat as variable reference
+            // Don't store it as a default; let Scriban resolve it at render time
+            _logger.LogTrace("Unquoted identifier '{Value}' treated as variable reference, not storing as default", valueStr);
+            return null;
         }
 
         /// <summary>

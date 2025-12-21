@@ -6,7 +6,10 @@
     "{{ if scope }}{{ scope }}{{ end }}vae_output": { "node": "{{ if scope }}{{ scope }}{{ end }}vae_loader", "index": 0 },
     "{{ if scope }}{{ scope }}{{ end }}positive_output": { "node": "{{ if scope }}{{ scope }}{{ end }}encode_positive", "index": 0 },
     "{{ if scope }}{{ scope }}{{ end }}negative_output": { "node": "{{ if scope }}{{ scope }}{{ end }}encode_negative", "index": 0 }
-  }
+  }{{~ if scope && scope | string.contains "detailer" ~}},
+  "conditions": {
+    "required": ["Detailer.IsActive"]
+  }{{~ end ~}}
 }
 #end
 

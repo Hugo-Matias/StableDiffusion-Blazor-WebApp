@@ -262,7 +262,10 @@ namespace BlazorWebApp.Services
         /// </summary>
         private void ResetWorkflowAssetsToDefaults()
         {
-            // Get the new workflow for each mode and reset assets to its defaults
+            // Clear existing assets first
+            GenerationParameters.Assets.Clear();
+            
+            // Get the new workflow for each mode and set assets to its defaults
             var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
 
             foreach (var mode in modes)
@@ -273,12 +276,11 @@ namespace BlazorWebApp.Services
                 if (workflow?.Assets == null || workflow.Assets.Count == 0)
                     continue;
 
-                // Clear existing assets and set to workflow defaults
-                GenerationParameters.Assets.Clear();
-
+                // Set to workflow defaults (merge, don't overwrite existing)
                 foreach (var asset in workflow.Assets)
                 {
-                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue) && 
+                        !GenerationParameters.Assets.ContainsKey(asset.Parameter))
                     {
                         GenerationParameters.Assets[asset.Parameter] = asset.DefaultValue;
                     }

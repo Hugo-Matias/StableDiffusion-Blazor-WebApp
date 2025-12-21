@@ -11,94 +11,94 @@
 @inject IBackendService Backend
 @inject IImageService ImageService
 
-<MudItem xs="6">
-    <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName" @bind-Value:after="OnSamplerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-        @if (Backend.Samplers != null)
-        {
-            @foreach (var sampler in Backend.Samplers)
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName" @bind-Value:after="OnSamplerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @if (Backend.Samplers != null)
             {
-                <MudSelectItem Value="@sampler.Name" />
+                @foreach (var sampler in Backend.Samplers)
+                {
+                    <MudSelectItem Value="@sampler.Name" />
+                }
             }
-        }
-    </MudSelect>
-</MudItem>
-<MudItem xs="6">
-    <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-        @if (Backend.Schedulers != null)
-        {
-            @foreach (var scheduler in Backend.Schedulers)
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @if (Backend.Schedulers != null)
             {
-                <MudSelectItem Value="@scheduler.Name" />
+                @foreach (var scheduler in Backend.Schedulers)
+                {
+                    <MudSelectItem Value="@scheduler.Name" />
+                }
             }
-        }
-    </MudSelect>
-</MudItem>
-<MudItem xs="6">
-    <MudSlider T="int" 
-               @bind-Value="_localSteps"
-               @bind-Value:after="OnStepsChanged"
-               Min="Settings.Settings.Generation.Shared.Steps.Min" 
-               Max="Settings.Settings.Generation.Shared.Steps.Max" 
-               Step="Settings.Settings.Generation.Shared.Steps.Step" 
-               Variant="Variant.Filled" 
-               ValueLabel>
-        <small>Steps:</small> @_localSteps
-    </MudSlider>
-</MudItem>
-<MudItem xs="5">
-    <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1" Max="long.MaxValue" />
-</MudItem>
-<MudItem xs="1">
-    <MudButtonGroup Variant="Variant.Text" VerticalAlign>
-        <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" ButtonType="ButtonType.Button" Class="icon" Title="Random seed" />
-        <MudIconButton OnClick="RestoreSeed" Icon="fa-solid fa-rotate-left" ButtonType="ButtonType.Button" Class="icon" Title="Restore seed from last generation" />
-    </MudButtonGroup>
-</MudItem>
-@if (UseGuidance)
-{
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" 
+                   @bind-Value="_localSteps"
+                   @bind-Value:after="OnStepsChanged"
+                   Min="Settings.Settings.Generation.Shared.Steps.Min" 
+                   Max="Settings.Settings.Generation.Shared.Steps.Max" 
+                   Step="Settings.Settings.Generation.Shared.Steps.Step" 
+                   Variant="Variant.Filled" 
+                   ValueLabel>
+            <small>Steps:</small> @_localSteps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1" Max="long.MaxValue" Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+            <MudIconButton OnClick="RestoreSeed" Icon="fa-solid fa-rotate-left" Size="Size.Small" Title="Restore seed from last generation" />
+        </MudStack>
+    </MudItem>
+    @if (UseGuidance)
+    {
+        <MudItem xs="6">
+            <MudSlider T="float" 
+                       @bind-Value="_localGuidance"
+                       @bind-Value:after="OnGuidanceChanged"
+                       Min="Settings.Settings.Generation.Shared.DistilledCfg.Min" 
+                       Max="Settings.Settings.Generation.Shared.DistilledCfg.Max" 
+                       Step="Settings.Settings.Generation.Shared.DistilledCfg.Step" 
+                       Variant="Variant.Filled" 
+                       ValueLabel 
+                       TickMarks>
+                <small>Guidance:</small> @_localGuidance
+            </MudSlider>
+        </MudItem>
+    }
+    else
+    {
+        <MudItem xs="6">
+            <MudSlider T="float" 
+                       @bind-Value="_localCfgScale"
+                       @bind-Value:after="OnCfgScaleChanged"
+                       Min="Settings.Settings.Generation.Shared.CfgScale.Min" 
+                       Max="Settings.Settings.Generation.Shared.CfgScale.Max" 
+                       Step="Settings.Settings.Generation.Shared.CfgScale.Step" 
+                       Variant="Variant.Filled" 
+                       ValueLabel 
+                       TickMarks>
+                <small>CFG Scale:</small> @_localCfgScale
+            </MudSlider>
+        </MudItem>
+    }
     <MudItem xs="6">
         <MudSlider T="float" 
-                   @bind-Value="_localGuidance"
-                   @bind-Value:after="OnGuidanceChanged"
-                   Min="Settings.Settings.Generation.Shared.DistilledCfg.Min" 
-                   Max="Settings.Settings.Generation.Shared.DistilledCfg.Max" 
-                   Step="Settings.Settings.Generation.Shared.DistilledCfg.Step" 
+                   @bind-Value="_localDenoise"
+                   @bind-Value:after="OnDenoiseChanged"
+                   Min="(float)Settings.Settings.Generation.Shared.Denoising.Min" 
+                   Max="(float)Settings.Settings.Generation.Shared.Denoising.Max" 
+                   Step="(float)Settings.Settings.Generation.Shared.Denoising.Step" 
                    Variant="Variant.Filled" 
                    ValueLabel 
                    TickMarks>
-            <small>Guidance:</small> @_localGuidance
+            <small>Denoise:</small> @_localDenoise.ToString("F2")
         </MudSlider>
     </MudItem>
-}
-else
-{
-    <MudItem xs="6">
-        <MudSlider T="float" 
-                   @bind-Value="_localCfgScale"
-                   @bind-Value:after="OnCfgScaleChanged"
-                   Min="Settings.Settings.Generation.Shared.CfgScale.Min" 
-                   Max="Settings.Settings.Generation.Shared.CfgScale.Max" 
-                   Step="Settings.Settings.Generation.Shared.CfgScale.Step" 
-                   Variant="Variant.Filled" 
-                   ValueLabel 
-                   TickMarks>
-            <small>CFG Scale:</small> @_localCfgScale
-        </MudSlider>
-    </MudItem>
-}
-<MudItem xs="6">
-    <MudSlider T="float" 
-               @bind-Value="_localDenoise"
-               @bind-Value:after="OnDenoiseChanged"
-               Min="(float)Settings.Settings.Generation.Shared.Denoising.Min" 
-               Max="(float)Settings.Settings.Generation.Shared.Denoising.Max" 
-               Step="(float)Settings.Settings.Generation.Shared.Denoising.Step" 
-               Variant="Variant.Filled" 
-               ValueLabel 
-               TickMarks>
-        <small>Denoise:</small> @_localDenoise.ToString("F2")
-    </MudSlider>
-</MudItem>
+</MudGrid>
 
 @code {
     #region Parameters

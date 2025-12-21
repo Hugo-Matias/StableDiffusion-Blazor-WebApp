@@ -55,21 +55,21 @@
       "id": "seed_variance_enhancer",
       "fragment": "seed-variance-enhancer.sbn",
       "parameters": {
-        "randomize_percent": {{ seed_variance_enhancer.randomize_percent ?? 50 | json }},
-        "strength": {{ seed_variance_enhancer.strength ?? 20 | json }},
-        "noise_insert": {{ seed_variance_enhancer.noise_insert ?? "noise on beginning steps" | json }},
-        "steps_switchover_percent": {{ seed_variance_enhancer.steps_switchover_percent ?? 20 | json }},
-        "seed": {{ seed_variance_enhancer.seed ?? 0 | json }},
-        "mask_starts_at": {{ seed_variance_enhancer.mask_starts_at ?? "beginning" | json }},
-        "mask_percent": {{ seed_variance_enhancer.mask_percent ?? 0 | json }},
-        "log_to_console": {{ seed_variance_enhancer.log_to_console ?? false | json }}
+        "randomize_percent": {{ seed_variance_enhancer_randomize_percent ?? 50 | json }},
+        "strength": {{ seed_variance_enhancer_strength ?? 20 | json }},
+        "noise_insert": {{ seed_variance_enhancer_noise_insert ?? "noise on beginning steps" | json }},
+        "steps_switchover_percent": {{ seed_variance_enhancer_steps_switchover_percent ?? 20 | json }},
+        "seed": {{ seed_variance_enhancer_seed ?? 0 | json }},
+        "mask_starts_at": {{ seed_variance_enhancer_mask_starts_at ?? "beginning" | json }},
+        "mask_percent": {{ seed_variance_enhancer_mask_percent ?? 0 | json }},
+        "log_to_console": {{ seed_variance_enhancer_log_to_console ?? false | json }}
       }
     },
     {
       "id": "conditioning_variation",
       "fragment": "conditioning-variation.sbn",
       "parameters": {
-        "switch_point": {{ conditioning_variation.switch_point ?? 0.2 | json }}
+        "switch_point": {{ conditioning_variation_switch_point ?? 0.2 | json }}
       }
     },   
     {
@@ -94,16 +94,16 @@
       "id": "seed_vr2",
       "fragment": "upscale-seedvr2.sbn",
       "parameters": {
-        "seedvr2_model": {{ seed_vr2.model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
-        "seedvr2_vae_model": {{ seed_vr2.vae_model ?? "ema_vae_fp16.safetensors" | json }},
+        "seedvr2_model": {{ seed_vr2_model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
+        "seedvr2_vae_model": {{ seed_vr2_vae_model ?? "ema_vae_fp16.safetensors" | json }},
         "seedvr2_seed": {{ seed ?? 42 | json }},
-        "seedvr2_resolution": {{ seed_vr2.resolution ?? 2048 | json }},
-        "seedvr2_batch_size": {{ seed_vr2.batch_size ?? 1 | json }},
-        "seedvr2_input_noise_scale": {{ seed_vr2.input_noise_scale ?? 0.0 | json }},
-        "seedvr2_latent_noise_scale": {{ seed_vr2.latent_noise_scale ?? 0.0 | json }},
-        "blocks_to_swap": {{ seed_vr2.blocks_to_swap ?? 36 | json }},
-        "vae_tile_size": {{ seed_vr2.vae_tile_size ?? 1024 | json }},
-        "vae_tile_overlap": {{ seed_vr2.vae_tile_overlap ?? 128 | json }}
+        "seedvr2_resolution": {{ seed_vr2_resolution ?? 2048 | json }},
+        "seedvr2_batch_size": {{ seed_vr2_batch_size ?? 1 | json }},
+        "seedvr2_input_noise_scale": {{ seed_vr2_input_noise_scale ?? 0.0 | json }},
+        "seedvr2_latent_noise_scale": {{ seed_vr2_latent_noise_scale ?? 0.0 | json }},
+        "blocks_to_swap": {{ seed_vr2_blocks_to_swap ?? 36 | json }},
+        "vae_tile_size": {{ seed_vr2_vae_tile_size ?? 1024 | json }},
+        "vae_tile_overlap": {{ seed_vr2_vae_tile_overlap ?? 128 | json }}
       }
     },
     {
@@ -113,12 +113,12 @@
         "scope": "detailer_",
         "scope_title": "Detailer ",
         "latent_id": "latent_image",
-        "unet_name": {{ detailer.checkpoint ?? Model ?? "z_image_turbo_bf16.safetensors" | json }},
+        "unet_name": {{ detailer_checkpoint ?? Model ?? "z_image_turbo_bf16.safetensors" | json }},
         "clip_name": {{ Clip ?? "qwen_3_4b.safetensors" | json }},
         "clip_type": "lumina2",
         "vae_name": {{ Vae ?? "ae.safetensors" | json }},
-        "positive": {{ detailer.prompt ?? positive | json }},
-        "negative": {{ detailer.negative_prompt ?? negative | json }},
+        "positive": {{ detailer_prompt ?? positive | json }},
+        "negative": {{ detailer_negative_prompt ?? negative | json }},
         "width": {{ width ?? 872 | json }},
         "height": {{ height ?? 1248 | json }},
         "batch_size": {{ batch_size ?? 1 | json }}
@@ -129,21 +129,21 @@
       "fragment": "detailer-core.sbn",
       "parameters": {
         "scope": "detailer_",
-        "detailer_detection_model": {{ detailer.model ?? "bbox/face_yolov8m.pt" | json }},
-        "detailer_sampler": {{ detailer.sampler ?? "dpmpp_2m" | json }},
-        "detailer_scheduler": {{ detailer.scheduler ?? "beta" | json }},
-        "detailer_seed": {{ detailer.seed ?? seed ?? 42 | json }},
-        "detailer_steps": {{ detailer.steps ?? 20 | json }},
-        "detailer_cfg": {{ detailer.cfg ?? 8 | json }},
-        "detailer_denoise": {{ detailer.denoise ?? 0.65 | json }},
-        "detailer_feather": {{ detailer.feather ?? 5 | json }},
-        "detailer_bbox_threshold": {{ detailer.bbox_threshold ?? 0.7 | json }},
-        "detailer_bbox_dilation": {{ detailer.bbox_dilation ?? 10 | json }},
-        "detailer_bbox_crop_factor": {{ detailer.bbox_crop_factor ?? 3 | json }},
-        "detailer_drop_size": {{ detailer.drop_size ?? 70 | json }},
-        "detailer_guide_size": {{ detailer.guide_size ?? 512 | json }},
-        "detailer_max_size": {{ detailer.max_size ?? 1024 | json }},
-        "detailer_cycle": {{ detailer.cycle ?? 1 | json }}
+        "detailer_detection_model": {{ detailer_model ?? "bbox/face_yolov8m.pt" | json }},
+        "detailer_sampler": {{ detailer_sampler ?? "dpmpp_2m" | json }},
+        "detailer_scheduler": {{ detailer_scheduler ?? "beta" | json }},
+        "detailer_seed": {{ detailer_seed ?? seed ?? 42 | json }},
+        "detailer_steps": {{ detailer_steps ?? 20 | json }},
+        "detailer_cfg": {{ detailer_cfg ?? 8 | json }},
+        "detailer_denoise": {{ detailer_denoise ?? 0.65 | json }},
+        "detailer_feather": {{ detailer_feather ?? 5 | json }},
+        "detailer_bbox_threshold": {{ detailer_bbox_threshold ?? 0.7 | json }},
+        "detailer_bbox_dilation": {{ detailer_bbox_dilation ?? 10 | json }},
+        "detailer_bbox_crop_factor": {{ detailer_bbox_crop_factor ?? 3 | json }},
+        "detailer_drop_size": {{ detailer_drop_size ?? 70 | json }},
+        "detailer_guide_size": {{ detailer_guide_size ?? 512 | json }},
+        "detailer_max_size": {{ detailer_max_size ?? 1024 | json }},
+        "detailer_cycle": {{ detailer_cycle ?? 1 | json }}
       }
     },
     {

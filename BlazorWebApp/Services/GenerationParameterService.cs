@@ -7,11 +7,13 @@ namespace BlazorWebApp.Services
     /// <summary>
     /// Service for managing generation parameters.
     /// Operates on StateService.GenerationParameters for state persistence.
+    /// Integrates with WorkflowStateService for per-workflow parameter persistence.
     /// </summary>
     public class GenerationParameterService : IGenerationParameterService
     {
         private readonly ILogger<GenerationParameterService> _logger;
         private readonly IWorkflowService _workflowService;
+        private readonly IWorkflowStateService _workflowStateService;
         private readonly IEventService _eventService;
         private readonly IStateService _stateService;
         private readonly IComfyUIService _comfyUIService;
@@ -27,12 +29,14 @@ namespace BlazorWebApp.Services
         public GenerationParameterService(
             ILogger<GenerationParameterService> logger,
             IWorkflowService workflowService,
+            IWorkflowStateService workflowStateService,
             IEventService eventService,
             IStateService stateService,
             IComfyUIService comfyUIService)
         {
             _logger = logger;
             _workflowService = workflowService;
+            _workflowStateService = workflowStateService;
             _eventService = eventService;
             _stateService = stateService;
             _comfyUIService = comfyUIService;
@@ -41,20 +45,206 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void InitializeFromWorkflow(Workflow workflow)
         {
+            // Synchronous version - just initializes from template defaults
+            // For full functionality including DB state, use InitializeFromWorkflowAsync
+            InitializeFromWorkflowInternal(workflow, savedState: null);
+        }
+
+        /// <inheritdoc />
+        public async Task<GenerationParameters> InitializeFromWorkflowAsync(Workflow workflow)
+        {
+            if (workflow == null)
+            {
+                _logger.LogWarning("Cannot initialize from null workflow");
+                return Current;
+            }
+
+            // Save current workflow state before switching (if we have a different workflow loaded)
+            var currentWorkflowId = Current.WorkflowId;
+            if (currentWorkflowId.HasValue && currentWorkflowId.Value != workflow.Id)
+            {
+                await SaveCurrentWorkflowStateAsync();
+            }
+
+            // Try to load saved state for the target workflow
+            var savedState = await _workflowStateService.LoadWorkflowStateAsync(workflow.Id);
+            
+            // Initialize from workflow, applying saved state if available
+            InitializeFromWorkflowInternal(workflow, savedState);
+
+            return Current;
+        }
+
+        /// <summary>
+        /// Saves the current workflow's parameters to the database.
+        /// Call this before switching workflows or when the user explicitly saves.
+        /// </summary>
+        public async Task SaveCurrentWorkflowStateAsync()
+        {
+            var workflowId = Current.WorkflowId;
+            if (!workflowId.HasValue)
+            {
+                _logger.LogDebug("No workflow selected, skipping state save");
+                return;
+            }
+
+            await _workflowStateService.SaveWorkflowStateAsync(workflowId.Value, Current);
+            _logger.LogDebug("Saved current workflow state for {WorkflowId}", workflowId.Value);
+        }
+
+        /// <summary>
+        /// Internal initialization that handles both fresh initialization and restoring saved state.
+        /// </summary>
+        private void InitializeFromWorkflowInternal(Workflow workflow, GenerationParameters? savedState)
+        {
             if (workflow == null)
             {
                 _logger.LogWarning("Cannot initialize from null workflow");
                 return;
             }
 
-            _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle}", workflow.Title);
+            _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle} (hasSavedState: {HasSaved})", 
+                workflow.Title, savedState != null);
 
             // Clear source options cache on workflow change
             ClearSourceCache();
 
-            // Clear existing parameters and reinitialize
             var current = Current;
             current.WorkflowId = workflow.Id;
+
+            if (savedState != null && savedState.Fragments.Count > 0)
+            {
+                // Restore from saved state
+                RestoreFromSavedState(workflow, current, savedState);
+            }
+            else
+            {
+                // Initialize fresh from workflow template
+                InitializeFreshFromWorkflow(workflow, current);
+            }
+
+            PublishChange(GenerationParametersChangedEventArgs.WorkflowChanged(workflow.Id));
+        }
+
+        /// <summary>
+        /// Restores parameters from saved state, merging with workflow template for any new fragments.
+        /// </summary>
+        private void RestoreFromSavedState(Workflow workflow, GenerationParameters current, GenerationParameters savedState)
+        {
+            _logger.LogDebug("Restoring saved state for workflow '{WorkflowTitle}'", workflow.Title);
+
+            // Start with saved state
+            current.Fragments.Clear();
+            foreach (var kvp in savedState.Fragments)
+            {
+                current.Fragments[kvp.Key] = kvp.Value.Clone();
+            }
+
+            current.Assets.Clear();
+            foreach (var kvp in savedState.Assets)
+            {
+                current.Assets[kvp.Key] = kvp.Value;
+            }
+
+            // Sources are workflow-specific and should come from saved state
+            // But we need to ensure all workflow-defined sources exist
+            current.Sources.Clear();
+            if (workflow.Sources != null)
+            {
+                foreach (var source in workflow.Sources)
+                {
+                    if (savedState.Sources.TryGetValue(source.Id, out var savedSource))
+                    {
+                        current.Sources[source.Id] = savedSource.Clone();
+                    }
+                    else
+                    {
+                        current.Sources[source.Id] = new SourceAsset
+                        {
+                            Label = source.Label,
+                            Type = source.Type
+                        };
+                    }
+                }
+            }
+
+            // Loras from saved state (if any)
+            current.Loras.Clear();
+            current.Loras.AddRange(savedState.Loras.Select(l => new Lora
+            {
+                Name = l.Name,
+                Path = l.Path,
+                Strength = l.Strength,
+                IsEnabled = l.IsEnabled,
+                IsNegative = l.IsNegative
+            }));
+
+            // Check for any new fragments in the workflow that weren't in saved state
+            var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
+            foreach (var step in pipelineSteps)
+            {
+                var fragmentId = step.Id;
+                if (string.IsNullOrEmpty(fragmentId))
+                {
+                    fragmentId = Path.GetFileNameWithoutExtension(step.Fragment).Replace("-", "_");
+                }
+
+                if (!current.Fragments.ContainsKey(fragmentId))
+                {
+                    // New fragment not in saved state - initialize from template
+                    var schema = _workflowService.GetFragmentSchema(step.Fragment);
+                    var isOptional = schema?.DefaultCollapsed ?? false;
+
+                    var fragment = new FragmentParameters
+                    {
+                        FragmentFile = step.Fragment,
+                        IsActive = !isOptional,
+                        Order = step.Order
+                    };
+
+                    foreach (var kvp in step.DefaultValues)
+                    {
+                        fragment.Values[kvp.Key] = kvp.Value;
+                    }
+
+                    var fragmentDefaults = _workflowService.ParseFragmentDefaults(step.Fragment);
+                    foreach (var kvp in fragmentDefaults)
+                    {
+                        if (!fragment.Values.ContainsKey(kvp.Key))
+                        {
+                            fragment.Values[kvp.Key] = kvp.Value;
+                        }
+                    }
+
+                    current.Fragments[fragmentId] = fragment;
+                    _logger.LogDebug("Added new fragment '{FragmentId}' from updated workflow template", fragmentId);
+                }
+            }
+
+            // Check for any new assets in the workflow that weren't in saved state
+            if (workflow.Assets != null)
+            {
+                foreach (var asset in workflow.Assets)
+                {
+                    if (!current.Assets.ContainsKey(asset.Parameter) && !string.IsNullOrWhiteSpace(asset.DefaultValue))
+                    {
+                        current.Assets[asset.Parameter] = asset.DefaultValue;
+                        _logger.LogDebug("Added new asset '{AssetName}' from updated workflow template", asset.Parameter);
+                    }
+                }
+            }
+
+            _logger.LogDebug("Restored {FragmentCount} fragments, {AssetCount} assets from saved state", 
+                current.Fragments.Count, current.Assets.Count);
+        }
+
+        /// <summary>
+        /// Initializes fresh from workflow template (no saved state).
+        /// </summary>
+        private void InitializeFreshFromWorkflow(Workflow workflow, GenerationParameters current)
+        {
+            _logger.LogDebug("Initializing fresh from workflow template '{WorkflowTitle}'", workflow.Title);
+
             current.Fragments.Clear();
             current.Assets.Clear();
             current.Sources.Clear();
@@ -75,7 +265,7 @@ namespace BlazorWebApp.Services
             // Initialize sources from workflow definition
             InitializeSourcesFromWorkflow(workflow, current);
 
-            // Parse pipeline to extract fragments (delegates to WorkflowService)
+            // Parse pipeline to extract fragments
             try
             {
                 InitializeFragmentsFromPipeline(workflow, current);
@@ -84,8 +274,6 @@ namespace BlazorWebApp.Services
             {
                 _logger.LogError(ex, "Error parsing pipeline for workflow {WorkflowTitle}", workflow.Title);
             }
-
-            PublishChange(GenerationParametersChangedEventArgs.WorkflowChanged(workflow.Id));
         }
 
         /// <summary>
@@ -114,13 +302,6 @@ namespace BlazorWebApp.Services
                 };
                 _logger.LogDebug("Initialized source '{SourceId}' ({Type}) from workflow definition", source.Id, source.Type);
             }
-        }
-
-        /// <inheritdoc />
-        public Task<GenerationParameters> InitializeFromWorkflowAsync(Workflow workflow)
-        {
-            InitializeFromWorkflow(workflow);
-            return Task.FromResult(Current);
         }
 
         /// <summary>
@@ -474,73 +655,59 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Creates a fragment with default values based on the fragment ID.
-        /// Uses the current workflow's pipeline or common fragment conventions.
+        /// 
+        /// IMPORTANT: Only fragments defined in the current workflow's Pipeline can be created.
+        /// This ensures we always have the correct FragmentFile and defaults.
         /// </summary>
         /// <param name="fragmentId">The fragment ID to create</param>
-        /// <returns>A new FragmentParameters with defaults, or null if unable to determine</returns>
+        /// <returns>A new FragmentParameters with defaults, or null if not found in pipeline</returns>
         private FragmentParameters? CreateFragmentWithDefaults(string fragmentId)
         {
-            // Try to find the fragment file from the current workflow
+            // Get the current workflow - required to find fragment definition
             var workflowId = Current.WorkflowId;
-            Workflow? workflow = null;
-            
-            if (workflowId.HasValue)
+            if (!workflowId.HasValue)
             {
-                workflow = _workflowService.GetWorkflowById(workflowId.Value);
-            }
-
-            string? fragmentFile = null;
-            Dictionary<string, object?>? pipelineDefaults = null;
-
-            // First, try to find it in the workflow's pipeline
-            if (workflow != null)
-            {
-                var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
-                var matchingStep = pipelineSteps.FirstOrDefault(s => 
-                    s.Id == fragmentId || 
-                    Path.GetFileNameWithoutExtension(s.Fragment).Replace("-", "_") == fragmentId);
-                
-                if (matchingStep != null)
-                {
-                    fragmentFile = matchingStep.Fragment;
-                    pipelineDefaults = matchingStep.DefaultValues;
-                }
-            }
-
-            // If not found in pipeline, try common fragment file conventions
-            if (string.IsNullOrEmpty(fragmentFile))
-            {
-                fragmentFile = InferFragmentFile(fragmentId);
-            }
-
-            if (string.IsNullOrEmpty(fragmentFile))
-            {
-                _logger.LogWarning("Could not determine fragment file for '{FragmentId}'", fragmentId);
+                _logger.LogWarning("Cannot create fragment '{FragmentId}' - no workflow selected", fragmentId);
                 return null;
             }
 
-            // Create the fragment
+            var workflow = _workflowService.GetWorkflowById(workflowId.Value);
+            if (workflow == null)
+            {
+                _logger.LogWarning("Cannot create fragment '{FragmentId}' - workflow {WorkflowId} not found", fragmentId, workflowId);
+                return null;
+            }
+
+            // Find the fragment in the workflow's pipeline
+            var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
+            var matchingStep = pipelineSteps.FirstOrDefault(s => 
+                s.Id.Equals(fragmentId, StringComparison.OrdinalIgnoreCase) || 
+                Path.GetFileNameWithoutExtension(s.Fragment).Replace("-", "_").Equals(fragmentId, StringComparison.OrdinalIgnoreCase));
+            
+            if (matchingStep == null)
+            {
+                _logger.LogWarning("Cannot create fragment '{FragmentId}' - not defined in workflow pipeline", fragmentId);
+                return null;
+            }
+
+            // Create the fragment using the pipeline step's fragment file
             var fragment = new FragmentParameters
             {
-                FragmentFile = fragmentFile,
+                FragmentFile = matchingStep.Fragment,
                 IsActive = true,
                 Order = Current.Fragments.Values.Any() ? Current.Fragments.Values.Max(f => f.Order) + 1 : 0
             };
 
-            // Apply pipeline defaults if available
-            if (pipelineDefaults != null)
+            // Apply pipeline defaults
+            foreach (var kvp in matchingStep.DefaultValues)
             {
-                foreach (var kvp in pipelineDefaults)
-                {
-                    fragment.Values[kvp.Key] = kvp.Value;
-                }
+                fragment.Values[kvp.Key] = kvp.Value;
             }
 
-            // Apply fragment template defaults
-            var fragmentDefaults = _workflowService.ParseFragmentDefaults(fragmentFile);
+            // Apply fragment template defaults for any missing values
+            var fragmentDefaults = _workflowService.ParseFragmentDefaults(matchingStep.Fragment);
             foreach (var kvp in fragmentDefaults)
             {
-                // Only add if not already set by pipeline
                 if (!fragment.Values.ContainsKey(kvp.Key))
                 {
                     fragment.Values[kvp.Key] = kvp.Value;
@@ -548,47 +715,11 @@ namespace BlazorWebApp.Services
             }
 
             _logger.LogDebug("Created fragment '{FragmentId}' with {ValueCount} default values from {FragmentFile}", 
-                fragmentId, fragment.Values.Count, fragmentFile);
+                fragmentId, fragment.Values.Count, matchingStep.Fragment);
             
             return fragment;
         }
 
-        /// <summary>
-        /// Infers the fragment file name from the fragment ID using common conventions.
-        /// </summary>
-        private string? InferFragmentFile(string fragmentId)
-        {
-            // Common fragment ID to file mappings
-            var knownMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["prompts"] = "prompts.sbn",
-                ["main_sampler"] = "sampler.sbn",
-                ["refiner_sampler"] = "sampler.sbn",
-                ["latent"] = "empty-latent.sbn",
-                ["upscale"] = "upscale.sbn",
-                ["seed_vr2"] = "seed-vr2.sbn",
-                ["conditioning_variation"] = "conditioning-variation.sbn",
-                ["detailer"] = "detailer-core.sbn",
-                ["frame_interpolation"] = "frame-interpolation.sbn"
-            };
-
-            if (knownMappings.TryGetValue(fragmentId, out var fileName))
-            {
-                return fileName;
-            }
-
-            // Try converting ID back to filename: "some_fragment" -> "some-fragment.sbn"
-            var inferredName = fragmentId.Replace("_", "-") + ".sbn";
-            
-            // Check if the fragment file exists by trying to get its schema
-            var schema = _workflowService.GetFragmentSchema(inferredName);
-            if (schema != null)
-            {
-                return inferredName;
-            }
-
-            return null;
-        }
         #endregion
     }
 }

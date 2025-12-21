@@ -548,19 +548,6 @@ namespace BlazorWebApp.Services
                         return false;
                     }
                 }
-                else if (current is Dictionary<string, object?> nullableDict)
-                {
-                    // Handle Dictionary<string, object?> which doesn't implement IDictionary<string, object>
-                    var match = nullableDict.Keys.FirstOrDefault(k => k.Equals(part, StringComparison.OrdinalIgnoreCase));
-                    if (match != null)
-                    {
-                        current = nullableDict[match]!;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
                 else if (current != null)
                 {
                     // Try reflection for object properties (case-insensitive)
