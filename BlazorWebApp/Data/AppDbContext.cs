@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Data.Entities;
+﻿using BlazorWebApp.Data.Converters;
+using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -63,11 +64,18 @@ namespace BlazorWebApp.Data
                 c => c.ToList()
                 );
 
+            // Custom JSON options with our converters to preserve value types
+            var generationParamsJsonOptions = new JsonSerializerOptions
+            { 
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Converters = { new GenerationParametersJsonConverter() }
+            };
+
             var opt = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
             var stateConverter = new ValueConverter<AppState, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<AppState>(v, opt));
             var generationParamsConverter = new ValueConverter<GenerationParameters, string>(
-                v => JsonSerializer.Serialize(v, opt), 
-                v => JsonSerializer.Deserialize<GenerationParameters>(v, opt) ?? new GenerationParameters());
+                v => JsonSerializer.Serialize(v, generationParamsJsonOptions), 
+                v => JsonSerializer.Deserialize<GenerationParameters>(v, generationParamsJsonOptions) ?? new GenerationParameters());
             var listIntConverter = new ValueConverter<List<int>, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<List<int>>(v, opt));
             var listIntComparer = new ValueComparer<List<int>>((c1, c2) => c1.SequenceEqual(c2), c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())), c => c.ToList());
             var loraListConverter = new ValueConverter<List<Lora>, string>(

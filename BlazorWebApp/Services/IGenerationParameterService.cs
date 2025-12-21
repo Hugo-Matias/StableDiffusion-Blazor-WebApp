@@ -20,12 +20,14 @@ namespace BlazorWebApp.Services
     ///     <description>Values from workflow template's Pipeline step parameters (e.g., {{ Param ?? "default" | json }})</description>
     ///   </item>
     ///   <item>
-    ///     <term>Fragment Defaults</term>
-    ///     <description>Values from fragment template body (e.g., {{ param ?? "fallback" | json }})</description>
+    ///     <term>Schema Defaults</term>
+    ///     <description>Values from fragment #meta.ui.parameters.*.default</description>
     ///   </item>
     ///   <item>
-    ///     <term>Dynamic Options (UI only)</term>
-    ///     <description>For fields with dynamic sources (ComfyUI node queries), UI components may select the first available option if no default is set. This is handled in UI components, not the service, because it requires async API calls.</description>
+    ///     <term>Dynamic Sources</term>
+    ///     <description>For fields with dynamic sources (ComfyUI node queries), the first available option 
+    ///     is set as default during InitializeFromWorkflowAsync. Pre-resolved options are accessible via 
+    ///     GetResolvedOptions for synchronous UI access.</description>
     ///   </item>
     /// </list>
     /// </remarks>
@@ -179,5 +181,16 @@ namespace BlazorWebApp.Services
         /// Called automatically on workflow change.
         /// </summary>
         void ClearSourceCache();
+
+        /// <summary>
+        /// Gets pre-resolved options for a fragment parameter.
+        /// Options are resolved during InitializeFromWorkflowAsync for all parameters 
+        /// with dynamic sources (constraint.Source + constraint.InputName).
+        /// This allows UI components to access options synchronously.
+        /// </summary>
+        /// <param name="fragmentId">The fragment ID</param>
+        /// <param name="parameterName">The parameter name</param>
+        /// <returns>List of available options, or empty list if not pre-resolved</returns>
+        List<string> GetResolvedOptions(string fragmentId, string parameterName);
     }
 }

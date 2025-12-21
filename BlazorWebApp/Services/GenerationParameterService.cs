@@ -23,6 +23,12 @@ namespace BlazorWebApp.Services
         /// </summary>
         private readonly ConcurrentDictionary<string, List<string>> _sourceOptionsCache = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// Cache for resolved options per fragment parameter. Key format: "{fragmentId}.{parameterName}"
+        /// Used by UI components to get pre-resolved options without async calls.
+        /// </summary>
+        private readonly ConcurrentDictionary<string, List<string>> _resolvedFragmentOptions = new(StringComparer.OrdinalIgnoreCase);
+
         /// <inheritdoc />
         public GenerationParameters Current => _stateService.GenerationParameters;
 
@@ -71,6 +77,9 @@ namespace BlazorWebApp.Services
             
             // Initialize from workflow, applying saved state if available
             InitializeFromWorkflowInternal(workflow, savedState);
+
+            // Pre-resolve dynamic source options for all fragments
+            await PreResolveDynamicSourcesAsync(workflow);
 
             return Current;
         }
@@ -202,19 +211,25 @@ namespace BlazorWebApp.Services
                         Order = step.Order
                     };
 
+                    // Priority 1: Pipeline step defaults
                     foreach (var kvp in step.DefaultValues)
                     {
                         fragment.Values[kvp.Key] = kvp.Value;
                     }
 
-                    var fragmentDefaults = _workflowService.ParseFragmentDefaults(step.Fragment);
-                    foreach (var kvp in fragmentDefaults)
+                    // Priority 2: Schema defaults
+                    if (schema?.Parameters != null)
                     {
-                        if (!fragment.Values.ContainsKey(kvp.Key))
+                        foreach (var (paramName, constraints) in schema.Parameters)
                         {
-                            fragment.Values[kvp.Key] = kvp.Value;
+                            if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                            {
+                                fragment.Values[paramName] = constraints.Default;
+                            }
                         }
                     }
+
+                    // Note: Fragment body defaults are NOT used - Scriban rendering fallbacks only
 
                     current.Fragments[fragmentId] = fragment;
                     _logger.LogDebug("Added new fragment '{FragmentId}' from updated workflow template", fragmentId);
@@ -309,9 +324,12 @@ namespace BlazorWebApp.Services
         /// Uses WorkflowService.GetPipelineSteps() for cached, consolidated parsing logic.
         /// 
         /// Default value priority (see IGenerationParameterService interface for full docs):
-        /// 1. Workflow template's pipeline step parameters ({{ Param ?? "default" | json }})
-        /// 2. Fragment template defaults ({{ param ?? "fallback" | json }} in fragment body)
-        /// 3. Dynamic options - NOT handled here (requires async UI calls)
+        /// 1. Workflow template's pipeline step parameters
+        /// 2. Fragment schema defaults (#meta.ui.parameters.*.default)
+        /// 3. Dynamic options - handled in PreResolveDynamicSourcesAsync
+        /// 
+        /// Note: Fragment body defaults ({{ param ?? "default" }}) are NOT used here.
+        /// Those are Scriban rendering fallbacks only.
         /// </summary>
         private void InitializeFragmentsFromPipeline(Workflow workflow, GenerationParameters parameters)
         {
@@ -338,7 +356,7 @@ namespace BlazorWebApp.Services
                 }
                 
                 // Get the fragment schema to determine if this is an optional fragment
-                // Optional fragments have defaultCollapsed = true in their UI schema
+                // and to get schema defaults
                 var schema = _workflowService.GetFragmentSchema(step.Fragment);
                 var isOptional = schema?.DefaultCollapsed ?? false;
 
@@ -357,19 +375,23 @@ namespace BlazorWebApp.Services
                     fragment.Values[kvp.Key] = kvp.Value;
                 }
 
-                // Priority 2: Fill in any missing values from fragment template defaults
-                var fragmentDefaults = _workflowService.ParseFragmentDefaults(step.Fragment);
-                foreach (var kvp in fragmentDefaults)
+                // Priority 2: Fill in any missing values from schema defaults
+                if (schema?.Parameters != null)
                 {
-                    // Only add if not already set by step parameters
-                    if (!fragment.Values.ContainsKey(kvp.Key))
+                    foreach (var (paramName, constraints) in schema.Parameters)
                     {
-                        fragment.Values[kvp.Key] = kvp.Value;
+                        if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                        {
+                            fragment.Values[paramName] = constraints.Default;
+                            _logger.LogTrace("Applied schema default for '{FragmentId}.{Param}' = {Value}", 
+                                fragmentId, paramName, constraints.Default);
+                        }
                     }
                 }
 
-                // Note: Priority 3 (dynamic options) is handled by UI components
-                // because it requires async calls to ComfyUI API
+                // Note: Priority 3 (dynamic options) is handled in PreResolveDynamicSourcesAsync
+                // Note: Fragment body defaults ({{ param ?? "default" }}) are NOT applied here
+                //       Those are Scriban rendering fallbacks only
 
                 parameters.Fragments[fragmentId] = fragment;
                 _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile} (IsActive: {IsActive}, Values: {ValueCount})", 
@@ -603,7 +625,141 @@ namespace BlazorWebApp.Services
         public void ClearSourceCache()
         {
             _sourceOptionsCache.Clear();
+            _resolvedFragmentOptions.Clear();
             _logger.LogDebug("Cleared source options cache");
+        }
+
+        /// <summary>
+        /// Pre-resolves all dynamic source options for the workflow's fragments.
+        /// This populates the cache and sets default values for parameters that have dynamic sources
+        /// but no value set yet.
+        /// </summary>
+        private async Task PreResolveDynamicSourcesAsync(Workflow workflow)
+        {
+            if (workflow == null) return;
+
+            var schemas = _workflowService.GetWorkflowFragmentSchemas(workflow);
+            var resolvedCount = 0;
+            var defaultsSetCount = 0;
+
+            foreach (var (fragmentId, schema) in schemas)
+            {
+                if (schema?.Parameters == null) continue;
+
+                var fragment = Current.GetFragment(fragmentId);
+                if (fragment == null) continue;
+
+                foreach (var (paramName, constraints) in schema.Parameters)
+                {
+                    if (!constraints.HasDynamicSource) continue;
+
+                    try
+                    {
+                        // Resolve options and cache them
+                        var options = await ResolveSourceOptionsAsync(constraints);
+                        resolvedCount++;
+
+                        // If fragment has no value set for this parameter and options are available,
+                        // set the first option as default
+                        if (options.Count > 0 && !fragment.HasValue(paramName))
+                        {
+                            fragment.SetValue(paramName, options[0]);
+                            defaultsSetCount++;
+                            _logger.LogDebug("Set default for {FragmentId}.{Parameter} = {Value} (from dynamic source)", 
+                                fragmentId, paramName, options[0]);
+                        }
+
+                        // Also store resolved options in fragment for UI access
+                        StoreResolvedOptions(fragmentId, paramName, options);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to pre-resolve source for {FragmentId}.{Parameter}", fragmentId, paramName);
+                    }
+                }
+
+                // Also check fields array for dynamic sources
+                if (schema.Fields != null)
+                {
+                    await PreResolveFieldSourcesAsync(fragmentId, fragment, schema.Fields);
+                }
+            }
+
+            if (resolvedCount > 0)
+            {
+                _logger.LogInformation("Pre-resolved {ResolvedCount} dynamic sources, set {DefaultsCount} default values for workflow '{WorkflowTitle}'",
+                    resolvedCount, defaultsSetCount, workflow.Title);
+            }
+        }
+
+        /// <summary>
+        /// Pre-resolves dynamic sources from field schemas (used when component is null and fields are defined).
+        /// </summary>
+        private async Task PreResolveFieldSourcesAsync(string fragmentId, FragmentParameters fragment, List<FieldSchema> fields)
+        {
+            foreach (var field in fields)
+            {
+                if (field.HasDynamicSource)
+                {
+                    try
+                    {
+                        var options = await ResolveNodeSourceAsync(field.Source!, field.InputName!);
+
+                        // Set default if not already set
+                        if (options.Count > 0 && !fragment.HasValue(field.Parameter))
+                        {
+                            fragment.SetValue(field.Parameter, options[0]);
+                            _logger.LogDebug("Set default for {FragmentId}.{Parameter} = {Value} (from field dynamic source)",
+                                fragmentId, field.Parameter, options[0]);
+                        }
+
+                        StoreResolvedOptions(fragmentId, field.Parameter, options);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to pre-resolve field source for {FragmentId}.{Parameter}", fragmentId, field.Parameter);
+                    }
+                }
+
+                // Recursively handle nested fields in groups
+                if (field.Fields != null)
+                {
+                    await PreResolveFieldSourcesAsync(fragmentId, fragment, field.Fields);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stores resolved options for later UI access.
+        /// Stores in both the service-level cache and the fragment's ResolvedOptions.
+        /// </summary>
+        private void StoreResolvedOptions(string fragmentId, string parameterName, List<string> options)
+        {
+            // Store in service-level cache for GetResolvedOptions fallback
+            var key = $"{fragmentId}.{parameterName}";
+            _resolvedFragmentOptions[key] = options;
+
+            // Also store directly in the fragment for easier access
+            var fragment = Current.GetFragment(fragmentId);
+            if (fragment != null)
+            {
+                fragment.ResolvedOptions[parameterName] = options;
+            }
+        }
+
+        /// <inheritdoc />
+        public List<string> GetResolvedOptions(string fragmentId, string parameterName)
+        {
+            // First check fragment's ResolvedOptions
+            var fragment = Current.GetFragment(fragmentId);
+            if (fragment?.ResolvedOptions.TryGetValue(parameterName, out var fragmentOptions) == true)
+            {
+                return fragmentOptions;
+            }
+
+            // Fall back to service-level cache
+            var key = $"{fragmentId}.{parameterName}";
+            return _resolvedFragmentOptions.GetValueOrDefault(key, new List<string>());
         }
 
         /// <inheritdoc />
@@ -658,6 +814,11 @@ namespace BlazorWebApp.Services
         /// 
         /// IMPORTANT: Only fragments defined in the current workflow's Pipeline can be created.
         /// This ensures we always have the correct FragmentFile and defaults.
+        /// 
+        /// Default priority:
+        /// 1. Pipeline step defaults
+        /// 2. Schema defaults (#meta.ui.parameters.*.default)
+        /// 3. Dynamic source defaults (handled by PreResolveDynamicSourcesAsync)
         /// </summary>
         /// <param name="fragmentId">The fragment ID to create</param>
         /// <returns>A new FragmentParameters with defaults, or null if not found in pipeline</returns>
@@ -690,6 +851,9 @@ namespace BlazorWebApp.Services
                 return null;
             }
 
+            // Get schema for defaults and constraints
+            var schema = _workflowService.GetFragmentSchema(matchingStep.Fragment);
+
             // Create the fragment using the pipeline step's fragment file
             var fragment = new FragmentParameters
             {
@@ -698,21 +862,26 @@ namespace BlazorWebApp.Services
                 Order = Current.Fragments.Values.Any() ? Current.Fragments.Values.Max(f => f.Order) + 1 : 0
             };
 
-            // Apply pipeline defaults
+            // Priority 1: Apply pipeline defaults
             foreach (var kvp in matchingStep.DefaultValues)
             {
                 fragment.Values[kvp.Key] = kvp.Value;
             }
 
-            // Apply fragment template defaults for any missing values
-            var fragmentDefaults = _workflowService.ParseFragmentDefaults(matchingStep.Fragment);
-            foreach (var kvp in fragmentDefaults)
+            // Priority 2: Apply schema defaults for any missing values
+            if (schema?.Parameters != null)
             {
-                if (!fragment.Values.ContainsKey(kvp.Key))
+                foreach (var (paramName, constraints) in schema.Parameters)
                 {
-                    fragment.Values[kvp.Key] = kvp.Value;
+                    if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                    {
+                        fragment.Values[paramName] = constraints.Default;
+                    }
                 }
             }
+
+            // Note: Fragment body defaults are NOT used - Scriban rendering fallbacks only
+            // Note: Priority 3 (dynamic sources) would require async, handled separately
 
             _logger.LogDebug("Created fragment '{FragmentId}' with {ValueCount} default values from {FragmentFile}", 
                 fragmentId, fragment.Values.Count, matchingStep.Fragment);

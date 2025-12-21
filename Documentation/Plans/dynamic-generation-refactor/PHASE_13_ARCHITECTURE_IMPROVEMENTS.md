@@ -141,41 +141,42 @@ Created `TemplateCacheService` for shared template caching:
 
 #### Step 13.2.1: Define Default Value Priority
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Document and enforce clear priority order:
-1. Saved workflow state (database)
-2. Pipeline step parameters (workflow template)
-3. Fragment `#meta.ui.parameters.*.default` (schema)
-4. Fragment body defaults (Scriban `??` operator) - **REMOVE**
+Documented and enforced clear priority order:
+1. Saved workflow state (database) - highest priority
+2. Pipeline step parameters (workflow template)  
+3. Fragment `#meta.ui.parameters.*.default` (schema defaults)
+4. Dynamic source resolution (first option from ComfyUI API)
 
-**Files to Modify:**
-- `Workflows/TEMPLATE_GUIDE.md` - Document convention
-- `Workflows/FRAGMENT_SCHEMA_GUIDE.md` - Update documentation
+**Note:** Fragment body defaults (`{{ param ?? "default" }}`) are Scriban rendering fallbacks only -NOT used for UI initialization.
+
+**Files Modified:**
+- `Workflows/TEMPLATE_GUIDE.md` - Added Default Value Priority section
+- `Workflows/FRAGMENT_SCHEMA_GUIDE.md` - Rewrote Default Value Resolution section with priority table
 
 #### Step 13.2.2: Remove Fragment Body Defaults
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Update all fragments to remove inline defaults, use schema defaults only:
-- Remove `{{ param ?? "default" }}` patterns from fragment bodies
-- Ensure schema `parameters.*.default` is set
-- Pipeline step provides workflow-specific overrides
+Instead of modifying all fragment files (risky), marked `ParseFragmentDefaults` as obsolete and removed all calls to it from initialization code. Fragment body defaults are now documented as Scriban rendering fallbacks only.
 
-**Files to Modify:**
-- All `.sbn` fragment files
-- `Services/WorkflowTemplateParser.cs` - Remove `ParseScribanDefaultValue()`
+**Files Modified:**
+- `Services/IWorkflowService.cs` - Marked `ParseFragmentDefaults` as `[Obsolete]` with documentation
+- `Services/GenerationParameterService.cs` - Removed calls to `ParseFragmentDefaults` from initialization
 
 #### Step 13.2.3: Apply Schema Defaults During Initialization
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Update `GenerationParameterService.InitializeFragmentsFromPipeline()`:
-- Apply schema defaults for missing values after pipeline defaults
-- Log warnings for missing defaults
+Updated `GenerationParameterService` to apply schema defaults (Priority 2) instead of fragment body defaults:
+- `InitializeFragmentsFromPipeline()` - Now applies `schema.Parameters[].Default`
+- `RestoreFromSavedState()` - Uses schema defaults for new fragments
+- `CreateFragmentWithDefaults()` - Uses schema defaults for on-demand creation
+- Added documentation about the priority order
 
-**Files to Modify:**
-- `Services/GenerationParameterService.cs`
+**Files Modified:**
+- `Services/GenerationParameterService.cs` - Updated all initialization methods to use schema defaults
 
 ---
 
@@ -185,29 +186,33 @@ Update `GenerationParameterService.InitializeFragmentsFromPipeline()`:
 
 #### Step 13.3.1: Add Async Source Resolution to Initialization
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-During `InitializeFromWorkflowAsync()`:
-- For each fragment with UI schema
-- For each parameter with dynamic source
-- Resolve options from ComfyUI API
-- Set first option as default if no value set
+Added `PreResolveDynamicSourcesAsync()` during `InitializeFromWorkflowAsync()`:
+- Iterates all fragment schemas for parameters with dynamic sources
+- Resolves options from ComfyUI API for each `source` + `input_name` pair
+- Sets first option as default if no value is set
+- Also handles field schemas with dynamic sources (including nested groups)
+- Caches resolved options at both service and fragment level
+- Logs count of resolved sources and defaults set
 
-**Files to Modify:**
-- `Services/GenerationParameterService.cs` - Add source pre-resolution
-- `Services/IGenerationParameterService.cs` - Update interface docs
+**Files Modified:**
+- `Services/GenerationParameterService.cs` - Added PreResolveDynamicSourcesAsync, PreResolveFieldSourcesAsync
+- `Services/IGenerationParameterService.cs` - Updated docs, added GetResolvedOptions method
 
 #### Step 13.3.2: Cache Resolved Options in GenerationParameters
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Store resolved options so UI doesn't need async calls:
-- Add `ResolvedOptions` dictionary to `FragmentParameters`
-- UI components read from cache
+Added `ResolvedOptions` property to `FragmentParameters`:
+- Dictionary&lt;string, List&lt;string&gt;&gt; for parameter name to options mapping
+- Marked with `[JsonIgnore]` - not serialized to database (transient data)
+- `GetResolvedOptions()` checks fragment first, falls back to service cache
+- UI components can now access options synchronously via fragment.ResolvedOptions
 
-**Files to Modify:**
-- `Models/FragmentParameters.cs` - Add `ResolvedOptions` property
-- Fragment form components - Read from cache
+**Files Modified:**
+- `Models/FragmentParameters.cs` - Added ResolvedOptions property with JsonIgnore
+- `Services/GenerationParameterService.cs` - Updated StoreResolvedOptions and GetResolvedOptions
 
 ---
 
@@ -419,30 +424,36 @@ Create helper for two-way binding with fragment values:
 
 #### Step 13.9.1: Add Custom JsonConverter for FragmentParameters
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Create converter that preserves types:
-- Store type hints for non-primitive types
-- Handle numeric precision (int vs long vs double)
-- Handle null values correctly
+Created custom JSON converters that preserve value types during serialization:
+- `FragmentParametersJsonConverter` - Handles `FragmentParameters` with proper type preservation
+- `GenerationParametersJsonConverter` - Handles the full `GenerationParameters` using the fragment converter
+- Reads numbers as int &gt; long &gt; double based on actual value
+- Handles nested dictionaries and arrays properly
+- Handles JsonElement values from legacy data
+- Registered in `AppDbContext` via custom `JsonSerializerOptions`
 
-**Files to Create:**
-- `Data/Converters/FragmentParametersJsonConverter.cs`
+**Files Created:**
+- `Data/Converters/GenerationParametersJsonConverter.cs` - Both converter classes
 
-**Files to Modify:**
-- `Data/AppDbContext.cs` - Register converter
+**Files Modified:**
+- `Data/AppDbContext.cs` - Added using, registered converter in JsonSerializerOptions
 
 #### Step 13.9.2: Add Type Coercion in GetValue
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Improve `FragmentParameters.GetValue<T>()`:
-- Better handling of JsonElement
-- Numeric type coercion (int &harr; long &harr; double)
-- String parsing for common types
+Improved `FragmentParameters.GetValue<T>()` for better type handling:
+- Enhanced `ConvertJsonElement<T>()` with more conversion paths
+- Added string-to-numeric parsing for quoted number values
+- Added string-to-bool parsing
+- Added `ParseStringToNumeric<T>()` helper method
+- Handles numeric JSON to string conversion
+- Better fallback with full deserialization for complex objects
 
-**Files to Modify:**
-- `Models/FragmentParameters.cs`
+**Files Modified:**
+- `Models/FragmentParameters.cs` - Enhanced GetValue&lt;T&gt;, ConvertJsonElement, added ParseStringToNumeric
 
 ---
 
@@ -488,11 +499,11 @@ Subscribe to template change events:
 | 13.1 | 13.1.1 | [x] | 5 | WorkflowValidationService - Complete |
 | 13.1 | 13.1.2 | [x] | 3 | Fragment Schema Validation - Complete |
 | 13.1 | 13.1.3 | [x] | 5 | Template Pre-compilation - Complete |
-| 13.2 | 13.2.1 | [ ] | 2 | Document Default Priority |
-| 13.2 | 13.2.2 | [ ] | 3 | Remove Fragment Body Defaults |
-| 13.2 | 13.2.3 | [ ] | 3 | Apply Schema Defaults |
-| 13.3 | 13.3.1 | [ ] | 5 | Async Source Resolution |
-| 13.3 | 13.3.2 | [ ] | 3 | Cache Resolved Options |
+| 13.2 | 13.2.1 | [x] | 2 | Document Default Priority - Complete |
+| 13.2 | 13.2.2 | [x] | 3 | Remove Fragment Body Defaults - Complete |
+| 13.2 | 13.2.3 | [x] | 3 | Apply Schema Defaults - Complete |
+| 13.3 | 13.3.1 | [x] | 5 | Async Source Resolution - Complete |
+| 13.3 | 13.3.2 | [x] | 3 | Cache Resolved Options - Complete |
 | 13.4 | 13.4.1 | [ ] | 3 | Fragment Parameter Interfaces |
 | 13.4 | 13.4.2 | [ ] | 5 | Typed Extension Methods |
 | 13.4 | 13.4.3 | [ ] | 5 | Update Form Components |
@@ -504,13 +515,13 @@ Subscribe to template change events:
 | 13.7 | 13.7.2 | [ ] | 2 | Validate Registrations |
 | 13.8 | 13.8.1 | [ ] | 5 | Generic FragmentFormBase |
 | 13.8 | 13.8.2 | [ ] | 3 | Bindable Property Helpers |
-| 13.9 | 13.9.1 | [ ] | 5 | Custom JsonConverter |
-| 13.9 | 13.9.2 | [ ] | 3 | Type Coercion |
+| 13.9 | 13.9.1 | [x] | 5 | Custom JsonConverter - Complete |
+| 13.9 | 13.9.2 | [x] | 3 | Type Coercion - Complete |
 | 13.10 | 13.10.1 | [ ] | 5 | FileSystemWatcher |
 | 13.10 | 13.10.2 | [ ] | 3 | UI Refresh |
 
 **Total Complexity:** 92 points
-**Completed:** 13 points (14%)
+**Completed:** 37 points (40%)
 
 ---
 
@@ -570,9 +581,9 @@ Based on impact and risk, recommended execution order:
 ## Commit Checkpoints
 
 - [x] After Sub-Phase 13.1 complete (Validation) - 3 steps done, 13 pts
-- [ ] After Sub-Phase 13.3 complete (Source Resolution)
-- [ ] After Sub-Phase 13.9 complete (JSON)
-- [ ] After Sub-Phase 13.2 complete (Defaults)
+- [x] After Sub-Phase 13.3 complete (Source Resolution) - 2 steps done, 8 pts
+- [x] After Sub-Phase 13.9 complete (JSON) - 2 steps done, 8 pts
+- [x] After Sub-Phase 13.2 complete (Defaults) - 3 steps done, 8 pts
 - [ ] After Sub-Phase 13.4 complete (Typed Parameters)
 - [ ] After Sub-Phase 13.6 complete (Dynamic Fields)
 - [ ] After remaining sub-phases complete

@@ -574,21 +574,71 @@ private readonly Dictionary<string, Type> _components = new()
 
 **Priority Order** (documented in `IGenerationParameterService`):
 
-1. **Step Parameters** - Values from workflow template's Pipeline step
-   ```json
-   "parameters": {
-     "steps": {{ Steps ?? 20 | json }}
-   }
-   ```
+When initializing fragment parameters, values are resolved in this strict priority order. **Higher priority overrides lower priority.**
 
-2. **Fragment Defaults** - Values from fragment template body
-   ```scriban
-   "steps": {{ steps ?? 20 | json }}
-   ```
+| Priority | Source | Description | Persisted |
+|----------|--------|-------------|-----------|
+| **1 (Highest)** | Saved Workflow State | Previously saved parameters for this workflow (database) | Yes |
+| **2** | Pipeline Step Parameters | Values from workflow template's Pipeline step `parameters` block | No |
+| **3** | Schema Defaults | Values from fragment `#meta.ui.parameters.*.default` | No |
+| **4** | Dynamic Source Resolution | First option from ComfyUI API query (for fields with `source`) | No |
 
-3. **Dynamic Options (UI only)** - First available option from ComfyUI
-   - Handled in UI components, not service
-   - Requires async API calls
+### Important Conventions
+
+1. **Template Pipeline is the primary default source**
+   - Each workflow template provides its own defaults in the Pipeline's `parameters` block
+   - This allows the same fragment to have different defaults per workflow
+
+2. **Schema defaults are fallbacks**
+   - The `#meta.ui.parameters.*.default` provides a fallback if Pipeline doesn't specify
+   - Good for rarely-changed values that are consistent across workflows
+
+3. **Fragment body defaults are NOT used for initialization**
+   - The `{{ param ?? "default" | json }}` syntax in fragment bodies is ONLY for Scriban rendering fallback
+   - Do NOT rely on these for UI initialization - they only apply during template rendering
+   - This prevents dual-source confusion
+
+4. **Dynamic sources set defaults during initialization**
+   - When `InitializeFromWorkflowAsync()` runs, dynamic sources are pre-resolved
+   - If no value is set from priorities 1-3, the first option from ComfyUI API is used
+   - Pre-resolved options are cached in `FragmentParameters.ResolvedOptions` for sync UI access
+
+### Example Priority Resolution
+
+```
+Fragment: sampler.sbn
+Parameter: steps
+
+Priority 1: Database saved state has steps=35 ? Use 35 ?
+Priority 2: (skipped)
+Priority 3: (skipped)
+
+---
+
+Fragment: sampler.sbn  
+Parameter: steps (no saved state)
+
+Priority 1: No saved state
+Priority 2: Pipeline has steps={{ Steps ?? 20 | json }} ? Use 20 ?
+Priority 3: (skipped)
+
+---
+
+Fragment: sampler.sbn
+Parameter: sampler_name (no saved state, no pipeline value)
+
+Priority 1: No saved state  
+Priority 2: No pipeline value
+Priority 3: Schema has "sampler_name": { "default": "euler" } ? Use "euler" ?
+
+---
+
+Fragment: sampler.sbn
+Parameter: sampler_name (no saved/pipeline/schema value)
+
+Priority 1-3: None
+Priority 4: ComfyUI returns ["euler", "euler_ancestral", ...] ? Use "euler" ?
+```
 
 ### Why Dynamic Options in UI?
 

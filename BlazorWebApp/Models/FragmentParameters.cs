@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BlazorWebApp.Models
 {
@@ -31,8 +32,18 @@ namespace BlazorWebApp.Models
         public Dictionary<string, object?> Values { get; set; } = new();
 
         /// <summary>
+        /// Pre-resolved options for parameters with dynamic sources.
+        /// Keys are parameter names, values are lists of available options.
+        /// Populated during workflow initialization, not serialized to database.
+        /// UI components should read from this for synchronous option access.
+        /// </summary>
+        [JsonIgnore]
+        public Dictionary<string, List<string>> ResolvedOptions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
         /// Gets a typed value from the parameters dictionary.
         /// Returns default(T) if the key doesn't exist or conversion fails.
+        /// Handles JsonElement values that result from JSON deserialization.
         /// </summary>
         public T? GetValue<T>(string key)
         {
@@ -46,10 +57,17 @@ namespace BlazorWebApp.Models
             // Handle JsonElement (from deserialization)
             if (value is JsonElement jsonElement)
             {
-                return ConvertJsonElement<T>(jsonElement);
+                var converted = ConvertJsonElement<T>(jsonElement);
+                if (converted != null)
+                {
+                    // Optionally materialize the value to avoid repeated conversions
+                    // Values[key] = converted; // Uncomment if performance is a concern
+                    return converted;
+                }
+                return default;
             }
 
-            // Try conversion for numeric types
+            // Try conversion for numeric types and other compatible types
             try
             {
                 var targetType = typeof(T);
@@ -61,12 +79,47 @@ namespace BlazorWebApp.Models
                     return (T)Convert.ChangeType(value, underlyingType);
                 }
                 
-                return (T)Convert.ChangeType(value, typeof(T));
+                // Handle string to numeric conversions
+                if (IsNumericType(underlyingType) && value is string stringValue)
+                {
+                    return ParseStringToNumeric<T>(stringValue, underlyingType);
+                }
+                
+                // Handle string to bool
+                if (underlyingType == typeof(bool) && value is string boolString)
+                {
+                    if (bool.TryParse(boolString, out var boolResult))
+                        return (T)(object)boolResult;
+                }
+                
+                return (T)Convert.ChangeType(value, targetType);
             }
             catch
             {
                 return default;
             }
+        }
+
+        /// <summary>
+        /// Parses a string value to a numeric type.
+        /// </summary>
+        private static T? ParseStringToNumeric<T>(string value, Type underlyingType)
+        {
+            try
+            {
+                if (underlyingType == typeof(int) && int.TryParse(value, out var intVal))
+                    return (T)(object)intVal;
+                if (underlyingType == typeof(long) && long.TryParse(value, out var longVal))
+                    return (T)(object)longVal;
+                if (underlyingType == typeof(float) && float.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var floatVal))
+                    return (T)(object)floatVal;
+                if (underlyingType == typeof(double) && double.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var doubleVal))
+                    return (T)(object)doubleVal;
+                if (underlyingType == typeof(decimal) && decimal.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var decimalVal))
+                    return (T)(object)decimalVal;
+            }
+            catch { }
+            return default;
         }
 
         /// <summary>
@@ -148,6 +201,7 @@ namespace BlazorWebApp.Models
 
         /// <summary>
         /// Creates a deep copy of this fragment parameters instance.
+        /// Note: ResolvedOptions is not cloned as it's transient runtime data.
         /// </summary>
         public FragmentParameters Clone()
         {
@@ -157,6 +211,7 @@ namespace BlazorWebApp.Models
                 IsActive = IsActive,
                 Order = Order,
                 Values = CloneValues(Values)
+                // ResolvedOptions intentionally not cloned - transient data
             };
         }
 
@@ -215,29 +270,62 @@ namespace BlazorWebApp.Models
                 var targetType = typeof(T);
                 var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
+                // Handle null
+                if (element.ValueKind == JsonValueKind.Null)
+                    return default;
+
+                // Handle common type conversions based on target type and JsonElement kind
                 return element.ValueKind switch
                 {
+                    // String conversions
                     JsonValueKind.String when underlyingType == typeof(string) 
                         => (T?)(object?)element.GetString(),
                     
+                    // String to numeric (JSON might have quoted numbers)
+                    JsonValueKind.String when IsNumericType(underlyingType)
+                        => ParseStringToNumeric<T>(element.GetString() ?? "", underlyingType),
+                    
+                    // String to bool
+                    JsonValueKind.String when underlyingType == typeof(bool)
+                        => bool.TryParse(element.GetString(), out var b) ? (T?)(object?)b : default,
+                    
+                    // Numeric to int (handles both int and long sources)
                     JsonValueKind.Number when underlyingType == typeof(int) 
-                        => (T?)(object?)element.GetInt32(),
+                        => element.TryGetInt32(out var i32) ? (T?)(object?)i32 : (T?)(object?)(int)element.GetDouble(),
                     
+                    // Numeric to long
                     JsonValueKind.Number when underlyingType == typeof(long) 
-                        => (T?)(object?)element.GetInt64(),
+                        => element.TryGetInt64(out var i64) ? (T?)(object?)i64 : (T?)(object?)(long)element.GetDouble(),
                     
+                    // Numeric to float
                     JsonValueKind.Number when underlyingType == typeof(float) 
                         => (T?)(object?)element.GetSingle(),
                     
+                    // Numeric to double
                     JsonValueKind.Number when underlyingType == typeof(double) 
                         => (T?)(object?)element.GetDouble(),
                     
+                    // Numeric to decimal
                     JsonValueKind.Number when underlyingType == typeof(decimal) 
                         => (T?)(object?)element.GetDecimal(),
                     
+                    // Numeric to string (for cases where we want string representation)
+                    JsonValueKind.Number when underlyingType == typeof(string)
+                        => (T?)(object?)element.GetRawText(),
+                    
+                    // Boolean
                     JsonValueKind.True or JsonValueKind.False when underlyingType == typeof(bool) 
                         => (T?)(object?)element.GetBoolean(),
                     
+                    // Boolean to string
+                    JsonValueKind.True or JsonValueKind.False when underlyingType == typeof(string)
+                        => (T?)(object?)(element.GetBoolean() ? "true" : "false"),
+                    
+                    // Complex objects - use full deserialization
+                    JsonValueKind.Object or JsonValueKind.Array 
+                        => JsonSerializer.Deserialize<T>(element.GetRawText()),
+                    
+                    // Fallback
                     _ => JsonSerializer.Deserialize<T>(element.GetRawText())
                 };
             }
