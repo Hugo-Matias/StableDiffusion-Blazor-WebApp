@@ -145,6 +145,86 @@ namespace BlazorWebApp.Models
         {
             return Parameters.GetValueOrDefault(parameterName) ?? new ParameterConstraints();
         }
+
+        /// <summary>
+        /// Validates this fragment schema for correctness.
+        /// Returns a list of validation errors, empty if valid.
+        /// </summary>
+        /// <param name="fragmentFile">The fragment file path for error context.</param>
+        /// <returns>List of validation error messages.</returns>
+        public List<string> Validate(string? fragmentFile = null)
+        {
+            var errors = new List<string>();
+            var context = string.IsNullOrEmpty(fragmentFile) ? "" : $" in '{fragmentFile}'";
+
+            // Validate parameter constraints
+            foreach (var (paramName, constraints) in Parameters)
+            {
+                var constraintErrors = ValidateConstraints(paramName, constraints);
+                errors.AddRange(constraintErrors.Select(e => $"{e}{context}"));
+            }
+
+            // Validate fields if present
+            if (Fields != null)
+            {
+                for (int i = 0; i < Fields.Count; i++)
+                {
+                    var field = Fields[i];
+                    var fieldErrors = field.Validate();
+                    errors.AddRange(fieldErrors.Select(e => $"Field #{i + 1}: {e}{context}"));
+
+                    // Recursively validate nested fields in groups
+                    if (field.Type == "group" && field.Fields != null)
+                    {
+                        for (int j = 0; j < field.Fields.Count; j++)
+                        {
+                            var nestedField = field.Fields[j];
+                            var nestedErrors = nestedField.Validate();
+                            errors.AddRange(nestedErrors.Select(e => $"Field #{i + 1}.{j + 1}: {e}{context}"));
+                        }
+                    }
+                }
+            }
+
+            // Validate UI consistency
+            if (HasDesignedComponent && UsesDynamicFields)
+            {
+                errors.Add($"Schema has both 'component' and 'fields' defined - only one should be used{context}");
+            }
+
+            return errors;
+        }
+
+        /// <summary>
+        /// Validates a single parameter's constraints.
+        /// </summary>
+        private static List<string> ValidateConstraints(string paramName, ParameterConstraints constraints)
+        {
+            var errors = new List<string>();
+
+            // Validate min < max
+            if (constraints.Min.HasValue && constraints.Max.HasValue)
+            {
+                if (constraints.Min.Value >= constraints.Max.Value)
+                {
+                    errors.Add($"Parameter '{paramName}' has invalid constraints: min ({constraints.Min}) must be less than max ({constraints.Max})");
+                }
+            }
+
+            // Validate step > 0
+            if (constraints.Step.HasValue && constraints.Step.Value <= 0)
+            {
+                errors.Add($"Parameter '{paramName}' has invalid step value: {constraints.Step} (must be greater than 0)");
+            }
+
+            // Validate dynamic source has input_name
+            if (!string.IsNullOrEmpty(constraints.Source) && string.IsNullOrEmpty(constraints.InputName))
+            {
+                errors.Add($"Parameter '{paramName}' has 'source' but no 'input_name' for dynamic resolution");
+            }
+
+            return errors;
+        }
     }
 
     /// <summary>

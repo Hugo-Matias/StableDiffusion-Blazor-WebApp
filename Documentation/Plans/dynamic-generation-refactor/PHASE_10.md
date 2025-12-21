@@ -306,6 +306,7 @@ Verify that the new unified flow works end-to-end.
 | Test files | Updated RouterServiceTests and StateServiceTests for new API |
 | PromptFieldsSimple.razor unused | Removed along with its CSS file |
 | GetWorkflowById missing | Added to IWorkflowService and WorkflowService |
+| Fragment objects exposed in template context | Fixed in workflow template processing |
 
 ---
 

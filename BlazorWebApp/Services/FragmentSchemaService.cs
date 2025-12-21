@@ -121,6 +121,96 @@ namespace BlazorWebApp.Services
         }
 
         /// <inheritdoc />
+        public List<string> ValidateFragmentSchema(string fragmentFile)
+        {
+            var errors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(fragmentFile))
+            {
+                errors.Add("Fragment file path is empty");
+                return errors;
+            }
+
+            var fragPath = Path.Combine(_fragmentsPath, fragmentFile.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(fragPath))
+            {
+                errors.Add($"Fragment file not found: {fragmentFile}");
+                return errors;
+            }
+
+            // Parse the schema
+            var schema = GetFragmentSchema(fragmentFile);
+            if (schema == null)
+            {
+                // No schema is valid for utility fragments
+                return errors;
+            }
+
+            // Validate the schema
+            var schemaErrors = schema.Validate(fragmentFile);
+            errors.AddRange(schemaErrors);
+
+            return errors;
+        }
+
+        /// <inheritdoc />
+        public List<string> GetAllFragmentFiles()
+        {
+            var fragments = new List<string>();
+
+            if (!Directory.Exists(_fragmentsPath))
+            {
+                _logger.LogWarning("Fragments directory not found: {Path}", _fragmentsPath);
+                return fragments;
+            }
+
+            try
+            {
+                var files = Directory.GetFiles(_fragmentsPath, "*.sbn", SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    // Get path relative to fragments folder
+                    var relativePath = Path.GetRelativePath(_fragmentsPath, file);
+                    // Normalize to forward slashes for consistency
+                    fragments.Add(relativePath.Replace(Path.DirectorySeparatorChar, '/'));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error enumerating fragment files in {Path}", _fragmentsPath);
+            }
+
+            return fragments;
+        }
+
+        /// <inheritdoc />
+        public Dictionary<string, List<string>> ValidateAllFragmentSchemas()
+        {
+            var results = new Dictionary<string, List<string>>();
+            var fragmentFiles = GetAllFragmentFiles();
+
+            foreach (var fragmentFile in fragmentFiles)
+            {
+                var errors = ValidateFragmentSchema(fragmentFile);
+                if (errors.Count > 0)
+                {
+                    results[fragmentFile] = errors;
+                }
+            }
+
+            if (results.Count > 0)
+            {
+                _logger.LogWarning("Fragment schema validation found errors in {Count} fragments", results.Count);
+            }
+            else
+            {
+                _logger.LogDebug("All {Count} fragment schemas validated successfully", fragmentFiles.Count);
+            }
+
+            return results;
+        }
+
+        /// <inheritdoc />
         public Dictionary<string, object?> ParseFragmentDefaults(string fragmentFile)
         {
             var defaults = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
@@ -387,5 +477,24 @@ namespace BlazorWebApp.Services
         /// Clears the schema cache.
         /// </summary>
         void ClearCache();
+
+        /// <summary>
+        /// Validates a fragment's schema and returns any errors found.
+        /// </summary>
+        /// <param name="fragmentFile">The fragment file path (relative to Fragments folder).</param>
+        /// <returns>List of validation error messages, empty if valid.</returns>
+        List<string> ValidateFragmentSchema(string fragmentFile);
+
+        /// <summary>
+        /// Gets all fragment files in the Fragments directory.
+        /// </summary>
+        /// <returns>List of fragment file paths relative to the Fragments folder.</returns>
+        List<string> GetAllFragmentFiles();
+
+        /// <summary>
+        /// Validates all fragment schemas in the Fragments directory.
+        /// </summary>
+        /// <returns>Dictionary of fragment file paths to their validation errors.</returns>
+        Dictionary<string, List<string>> ValidateAllFragmentSchemas();
     }
 }

@@ -20,6 +20,7 @@ namespace BlazorWebApp.Services
         private readonly ILogger<WorkflowService> _logger;
         private readonly WorkflowTemplateParser _templateParser;
         private readonly IFragmentSchemaService _fragmentSchemaService;
+        private readonly ITemplateCacheService _templateCache;
         private readonly Dictionary<Guid, List<ParsedPipelineStep>> _pipelineCache = new();
         private readonly object _pipelineCacheLock = new();
 
@@ -27,12 +28,14 @@ namespace BlazorWebApp.Services
             IIOService io,
             ILogger<WorkflowService> logger,
             WorkflowTemplateParser templateParser,
-            IFragmentSchemaService fragmentSchemaService)
+            IFragmentSchemaService fragmentSchemaService,
+            ITemplateCacheService templateCache)
         {
             _io = io;
             _logger = logger;
             _templateParser = templateParser;
             _fragmentSchemaService = fragmentSchemaService;
+            _templateCache = templateCache;
         }
 
         #region Workflow Loading
@@ -366,7 +369,9 @@ namespace BlazorWebApp.Services
 
         private string RenderTemplate(string templateText, SubgraphContext context, bool preserveFormatting, Func<string, Task<string>>? loraPathResolver = null)
         {
-            var template = Template.Parse(templateText);
+            // Use cached template if available via text hash, otherwise parse
+            var cacheKey = $"inline_{templateText.GetHashCode():X8}";
+            var template = _templateCache.GetOrCompile(cacheKey, templateText);
 
             if (template.HasErrors)
             {

@@ -97,6 +97,12 @@ builder.Services.AddSingleton<OllamaService>();
 // Wildcard service for prompt wildcard management
 builder.Services.AddSingleton<IWildcardService, WildcardService>();
 
+// Template cache service for compiled Scriban templates
+builder.Services.AddSingleton<ITemplateCacheService, TemplateCacheService>();
+
+// Workflow validation service for startup template validation
+builder.Services.AddSingleton<IWorkflowValidationService, WorkflowValidationService>();
+
 // Info service for contextual help/shortcuts across the app
 builder.Services.AddSingleton<IInfoService, InfoService>();
 
@@ -110,6 +116,46 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 var app = builder.Build();
+
+// Pre-compile and validate workflow templates at startup
+{
+    var templateCacheService = app.Services.GetRequiredService<ITemplateCacheService>();
+    var workflowPath = Path.Combine(AppContext.BaseDirectory, "Workflows");
+    
+    // Pre-compile all templates (always, for performance)
+    var templatesCompiled = templateCacheService.PrecompileAll(Path.Combine(workflowPath, "Templates"));
+    var fragmentsCompiled = templateCacheService.PrecompileAll(Path.Combine(workflowPath, "Fragments"));
+    
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Pre-compiled {Templates} workflow templates and {Fragments} fragments", 
+        templatesCompiled, fragmentsCompiled);
+
+    // Validate templates in Development mode only
+    if (app.Environment.IsDevelopment())
+    {
+        var validationService = app.Services.GetRequiredService<IWorkflowValidationService>();
+        var validationResult = validationService.ValidateAllTemplates();
+        
+        if (!validationResult.IsValid)
+        {
+            logger.LogWarning(
+                "Workflow template validation found {ErrorCount} errors. Check logs for details.",
+                validationResult.Errors.Count);
+        }
+        
+        // Log compilation errors from cache service
+        var compilationErrors = templateCacheService.CompilationErrors;
+        if (compilationErrors.Count > 0)
+        {
+            logger.LogWarning("Template compilation found {Count} errors:", compilationErrors.Count);
+            foreach (var error in compilationErrors)
+            {
+                var location = error.Line.HasValue ? $":{error.Line}" : "";
+                logger.LogWarning("  {Path}{Location}: {Message}", error.FilePath, location, error.Message);
+            }
+        }
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

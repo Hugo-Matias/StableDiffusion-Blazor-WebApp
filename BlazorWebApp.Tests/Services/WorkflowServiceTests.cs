@@ -13,19 +13,22 @@ public class WorkflowServiceTests
     private readonly Mock<ILogger<WorkflowService>> _mockLogger;
     private readonly Mock<ILogger<WorkflowTemplateParser>> _mockParserLogger;
     private readonly Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
+    private readonly Mock<ILogger<TemplateCacheService>> _mockCacheLogger;
 
     public WorkflowServiceTests()
     {
         _mockLogger = new Mock<ILogger<WorkflowService>>();
         _mockParserLogger = new Mock<ILogger<WorkflowTemplateParser>>();
         _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
+        _mockCacheLogger = new Mock<ILogger<TemplateCacheService>>();
     }
 
     private WorkflowService CreateWorkflowService(IIOService ioService)
     {
         var templateParser = new WorkflowTemplateParser(_mockParserLogger.Object);
         var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
-        return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService);
+        var templateCacheService = new TemplateCacheService(_mockCacheLogger.Object);
+        return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService);
     }
 
     #region Workflow Model Tests
