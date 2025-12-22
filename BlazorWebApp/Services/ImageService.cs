@@ -91,35 +91,6 @@ namespace BlazorWebApp.Services
             _events = events;
         }
 
-        #region Legacy Methods
-
-        /// <summary>
-        /// Generates images based on the specified mode (Txt2Img, Img2Img).
-        /// Handles the full generation workflow including API calls, file saving, and database persistence.
-        /// </summary>
-        /// <param name="mode">The generation mode to use.</param>
-        /// <returns>DTO containing generated image information and metadata.</returns>
-        [Obsolete("Use GenerateImagesAsync(GenerationParameters, Workflow) instead")]
-        public async Task<ImagesDto> GetImages(ModeType mode)
-        {
-            // Legacy method - no longer functional after Phase 10 cleanup
-            // Use GenerateImagesAsync(GenerationParameters, Workflow) instead
-            throw new NotSupportedException("GetImages(ModeType) is no longer supported. Use GenerateImagesAsync(GenerationParameters, Workflow) instead.");
-        }
-
-        /// <summary>
-        /// Generates a video from an image using Img2Vid parameters
-        /// </summary>
-        [Obsolete("Use GenerateVideoAsync(GenerationParameters, Workflow) instead")]
-        public async Task<GeneratedVideos> GetVideo()
-        {
-            // Legacy method - no longer functional after Phase 10 cleanup
-            // Use GenerateVideoAsync(GenerationParameters, Workflow) instead  
-            throw new NotSupportedException("GetVideo() is no longer supported. Use GenerateVideoAsync(GenerationParameters, Workflow) instead.");
-        }
-
-        #endregion
-
         #region Image Generation
 
         /// <summary>

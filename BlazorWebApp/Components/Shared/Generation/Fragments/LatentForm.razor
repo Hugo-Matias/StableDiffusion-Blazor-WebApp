@@ -3,10 +3,14 @@
     
     Handles: width, height, batch_size
     Uses ResolutionPanel as sub-component for resolution controls.
+    
+    Refactored in Phase 14.3 to use FragmentReference and write directly to ParameterService.
 *@
 @using BlazorWebApp.Attributes
+@using static BlazorWebApp.Models.FragmentKeys
 @attribute [FragmentComponent("LatentForm")]
 @inject ISettingsService Settings
+@inject IGenerationParameterService ParameterService
 
 <MudGrid Spacing="2">
     <ResolutionPanel Width="@_localWidth"
@@ -31,62 +35,55 @@
 
 @code {
     /// <summary>
-    /// Fragment ID this form is associated with.
+    /// Fragment reference containing the fragment ID, parameters, and schema.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = "empty-latent";
-    
-    /// <summary>
-    /// Current width value.
-    /// </summary>
-    [Parameter] public int Width { get; set; } = 1024;
-    [Parameter] public EventCallback<int> WidthChanged { get; set; }
-    
-    /// <summary>
-    /// Current height value.
-    /// </summary>
-    [Parameter] public int Height { get; set; } = 1024;
-    [Parameter] public EventCallback<int> HeightChanged { get; set; }
-    
-    /// <summary>
-    /// Current batch size.
-    /// </summary>
-    [Parameter] public int BatchSize { get; set; } = 1;
-    [Parameter] public EventCallback<int> BatchSizeChanged { get; set; }
+    [Parameter] public FragmentReference? Fragment { get; set; }
     
     /// <summary>
     /// Optional callback when any value changes.
     /// </summary>
     [Parameter] public EventCallback OnChanged { get; set; }
     
-    // Local state that syncs with parameters
+    // Local state for MudBlazor binding (prevents snap-back)
     private int _localWidth;
     private int _localHeight;
     private int _localBatchSize;
     
     protected override void OnParametersSet()
     {
-        _localWidth = Width;
-        _localHeight = Height;
-        _localBatchSize = BatchSize;
+        if (Fragment == null) return;
+        
+        // Sync local state FROM service
+        _localWidth = ParameterService.GetFragmentProperty(Fragment, Params.Width, 1024);
+        _localHeight = ParameterService.GetFragmentProperty(Fragment, Params.Height, 1024);
+        _localBatchSize = ParameterService.GetFragmentProperty(Fragment, Params.BatchSize, 1);
     }
     
     private async Task HandleWidthChanged(int value)
     {
         _localWidth = value;
-        await WidthChanged.InvokeAsync(value);
+        
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Width, value, notify: true);
+        
         await OnChanged.InvokeAsync();
     }
     
     private async Task HandleHeightChanged(int value)
     {
         _localHeight = value;
-        await HeightChanged.InvokeAsync(value);
+        
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Height, value, notify: true);
+        
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnBatchSizeChanged()
     {
-        await BatchSizeChanged.InvokeAsync(_localBatchSize);
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.BatchSize, _localBatchSize, notify: true);
+        
         await OnChanged.InvokeAsync();
     }
 }

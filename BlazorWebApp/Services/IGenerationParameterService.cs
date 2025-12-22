@@ -38,6 +38,68 @@ namespace BlazorWebApp.Services
         /// </summary>
         GenerationParameters Current { get; }
 
+        #region Fragment Discovery
+
+        /// <summary>
+        /// Gets the primary latent/resolution fragment for the current workflow.
+        /// This is the fragment containing width, height, and batch_size parameters.
+        /// Null if workflow has no latent fragment.
+        /// </summary>
+        FragmentReference? PrimaryLatentFragment { get; }
+
+        /// <summary>
+        /// Gets the primary sampler fragment for the current workflow.
+        /// This is the fragment containing steps, cfg, scheduler, sampler_name parameters.
+        /// Null if workflow has no sampler fragment.
+        /// </summary>
+        FragmentReference? PrimarySamplerFragment { get; }
+
+        /// <summary>
+        /// Gets the prompts fragment for the current workflow.
+        /// This is the fragment containing positive and negative prompts.
+        /// Null if workflow has no prompts fragment.
+        /// </summary>
+        FragmentReference? PromptsFragment { get; }
+
+        /// <summary>
+        /// Gets all optional/enhancement fragments (e.g., upscale, detailer, refiner).
+        /// These are fragments with FragmentType.Enhancement or schema.DefaultCollapsed = true.
+        /// Ordered by schema.Order property.
+        /// </summary>
+        IReadOnlyList<FragmentReference> OptionalFragments { get; }
+
+        #endregion
+
+        #region Fragment Property Helpers
+
+        /// <summary>
+        /// Gets a strongly-typed property from a fragment reference.
+        /// Convenience wrapper that handles null fragments and missing properties.
+        /// Returns defaultValue if fragment is null or property doesn't exist.
+        /// </summary>
+        /// <typeparam name="T">The property value type</typeparam>
+        /// <param name="fragment">The fragment reference (can be null)</param>
+        /// <param name="key">The property key</param>
+        /// <param name="defaultValue">The default value to return if not found</param>
+        /// <returns>The property value or defaultValue</returns>
+        T GetFragmentProperty<T>(FragmentReference? fragment, string key, T defaultValue);
+
+        /// <summary>
+        /// Sets a strongly-typed property on a fragment reference.
+        /// Convenience wrapper that handles null fragments.
+        /// Does nothing if fragment is null.
+        /// </summary>
+        /// <typeparam name="T">The property value type</typeparam>
+        /// <param name="fragment">The fragment reference (can be null)</param>
+        /// <param name="key">The property key</param>
+        /// <param name="value">The value to set</param>
+        /// <param name="notify">Whether to publish a change event (default: true)</param>
+        void SetFragmentProperty<T>(FragmentReference? fragment, string key, T value, bool notify = true);
+
+        #endregion
+
+        #region Workflow Initialization
+
         /// <summary>
         /// Initializes parameters from a workflow template.
         /// Sets up fragments with default values from the pipeline using the priority order
@@ -192,5 +254,7 @@ namespace BlazorWebApp.Services
         /// <param name="parameterName">The parameter name</param>
         /// <returns>List of available options, or empty list if not pre-resolved</returns>
         List<string> GetResolvedOptions(string fragmentId, string parameterName);
+
+        #endregion
     }
 }

@@ -30,8 +30,64 @@ namespace BlazorWebApp.Services
         /// </summary>
         private readonly ConcurrentDictionary<string, List<string>> _resolvedFragmentOptions = new(StringComparer.OrdinalIgnoreCase);
 
+        // Fragment discovery cache - updated when workflow changes
+        private FragmentReference? _primaryLatentFragment;
+        private FragmentReference? _primarySamplerFragment;
+        private FragmentReference? _promptsFragment;
+        private List<FragmentReference> _optionalFragments = new();
+
         /// <inheritdoc />
         public GenerationParameters Current => _stateService.GenerationParameters;
+
+        #region Fragment Discovery Properties
+
+        /// <inheritdoc />
+        public FragmentReference? PrimaryLatentFragment => _primaryLatentFragment;
+
+        /// <inheritdoc />
+        public FragmentReference? PrimarySamplerFragment => _primarySamplerFragment;
+
+        /// <inheritdoc />
+        public FragmentReference? PromptsFragment => _promptsFragment;
+
+        /// <inheritdoc />
+        public IReadOnlyList<FragmentReference> OptionalFragments => _optionalFragments.AsReadOnly();
+
+        #endregion
+
+        #region Fragment Property Helpers
+
+        /// <inheritdoc />
+        public T GetFragmentProperty<T>(FragmentReference? fragment, string key, T defaultValue)
+        {
+            if (fragment == null)
+                return defaultValue;
+
+            var fragmentParams = Current.GetFragment(fragment.Id);
+            if (fragmentParams == null)
+                return defaultValue;
+
+            return fragmentParams.GetValueOrDefault(key, defaultValue);
+        }
+
+        /// <inheritdoc />
+        public void SetFragmentProperty<T>(FragmentReference? fragment, string key, T value, bool notify = true)
+        {
+            if (fragment == null)
+            {
+                _logger.LogWarning("Cannot set property '{Key}' on null fragment reference", key);
+                return;
+            }
+
+            SetFragmentValue(fragment.Id, key, value);
+
+            if (notify)
+            {
+                PublishChange(GenerationParametersChangedEventArgs.FragmentValueChanged(fragment.Id, key));
+            }
+        }
+
+        #endregion
 
         public GenerationParameterService(
             ILogger<GenerationParameterService> logger,
@@ -134,6 +190,9 @@ namespace BlazorWebApp.Services
                 // Initialize fresh from workflow template
                 InitializeFreshFromWorkflow(workflow, current);
             }
+
+            // Discover key fragments after initialization
+            DiscoverFragments();
 
             PublishChange(GenerationParametersChangedEventArgs.WorkflowChanged(workflow.Id));
         }
@@ -405,6 +464,129 @@ namespace BlazorWebApp.Services
                 parameters.Fragments.Count, workflow.Title);
         }
 
+        /// <summary>
+        /// Discovers key fragments from the current parameters.
+        /// Identifies primary latent, sampler, and prompts fragments based on FragmentType.
+        /// Populates optional/enhancement fragments list.
+        /// Called automatically after workflow initialization.
+        /// </summary>
+        private void DiscoverFragments()
+        {
+            _primaryLatentFragment = null;
+            _primarySamplerFragment = null;
+            _promptsFragment = null;
+            _optionalFragments.Clear();
+
+            var current = Current;
+            if (current.Fragments.Count == 0)
+            {
+                _logger.LogDebug("No fragments to discover");
+                return;
+            }
+
+            _logger.LogDebug("Discovering fragments from {Count} total fragments", current.Fragments.Count);
+
+            foreach (var kvp in current.Fragments)
+            {
+                var fragmentId = kvp.Key;
+                var fragment = kvp.Value;
+
+                // Get schema to access FragmentType
+                var schema = _workflowService.GetFragmentSchema(fragment.FragmentFile);
+                if (schema == null)
+                {
+                    _logger.LogTrace("Fragment '{FragmentId}' has no schema, skipping discovery", fragmentId);
+                    continue;
+                }
+
+                // Create reference for this fragment
+                var reference = new FragmentReference
+                {
+                    Id = fragmentId,
+                    Parameters = fragment,
+                    Schema = schema
+                };
+
+                switch (schema.Type)
+                {
+                    case FragmentType.Prompts:
+                        _promptsFragment ??= reference;
+                        _logger.LogTrace("Discovered prompts fragment: '{FragmentId}'", fragmentId);
+                        break;
+
+                    case FragmentType.Sampler:
+                        // Use first sampler found (for multi-sampler workflows, this gets the main one)
+                        _primarySamplerFragment ??= reference;
+                        _logger.LogTrace("Discovered primary sampler fragment: '{FragmentId}'", fragmentId);
+                        break;
+
+                    case FragmentType.Latent:
+                        _primaryLatentFragment ??= reference;
+                        _logger.LogTrace("Discovered latent fragment: '{FragmentId}'", fragmentId);
+                        break;
+
+                    case FragmentType.Loader:
+                        // Loader fragments often contain width/height/batch_size but no dedicated latent
+                        // Only use if we haven't found a dedicated latent fragment
+                        if (_primaryLatentFragment == null &&
+                            (fragment.Values.ContainsKey("width") || fragment.Values.ContainsKey("height")))
+                        {
+                            _primaryLatentFragment = reference;
+                            _logger.LogTrace("Using loader fragment as latent: '{FragmentId}'", fragmentId);
+                        }
+                        break;
+
+                    case FragmentType.Enhancement:
+                        _optionalFragments.Add(reference);
+                        _logger.LogTrace("Discovered enhancement fragment: '{FragmentId}'", fragmentId);
+                        break;
+
+                    case FragmentType.Unknown:
+                    case FragmentType.Conditioning:
+                    case FragmentType.Output:
+                        // Check if fragment is marked as defaultCollapsed (makes it optional)
+                        if (schema.DefaultCollapsed)
+                        {
+                            _optionalFragments.Add(reference);
+                            _logger.LogTrace("Discovered optional fragment (defaultCollapsed): '{FragmentId}'", fragmentId);
+                        }
+                        break;
+                }
+            }
+
+            // Fallback: If no latent fragment found by type, check for any fragment with resolution params
+            if (_primaryLatentFragment == null)
+            {
+                foreach (var kvp in current.Fragments)
+                {
+                    if (kvp.Value.Values.ContainsKey("width") && kvp.Value.Values.ContainsKey("height"))
+                    {
+                        var schema = _workflowService.GetFragmentSchema(kvp.Value.FragmentFile);
+                        _primaryLatentFragment = new FragmentReference
+                        {
+                            Id = kvp.Key,
+                            Parameters = kvp.Value,
+                            Schema = schema
+                        };
+                        _logger.LogDebug("Fallback: Using fragment '{FragmentId}' as latent (has width/height)", kvp.Key);
+                        break;
+                    }
+                }
+            }
+
+            // Sort optional fragments by schema order
+            _optionalFragments = _optionalFragments.OrderBy(f => f.Schema?.Order ?? 999).ToList();
+
+            _logger.LogInformation(
+                "Fragment discovery complete - Prompts: {HasPrompts}, Latent: {HasLatent}, Sampler: {HasSampler}, Optional: {OptionalCount}",
+                _promptsFragment != null,
+                _primaryLatentFragment != null,
+                _primarySamplerFragment != null,
+                _optionalFragments.Count);
+        }
+
+        #region Fragment CRUD Operations
+
         /// <inheritdoc />
         public void SetFragmentValue(string fragmentId, string parameter, object? value)
         {
@@ -622,6 +804,8 @@ namespace BlazorWebApp.Services
             _eventService.Publish(args);
         }
 
+        #endregion
+
         #region Source Options Resolution
 
         /// <inheritdoc />
@@ -650,8 +834,6 @@ namespace BlazorWebApp.Services
                 if (schema?.Parameters == null) continue;
 
                 var fragment = Current.GetFragment(fragmentId);
-                if (fragment == null) continue;
-
                 foreach (var (paramName, constraints) in schema.Parameters)
                 {
                     if (!constraints.HasDynamicSource) continue;

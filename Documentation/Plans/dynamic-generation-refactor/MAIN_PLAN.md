@@ -613,6 +613,51 @@ See: [PHASE_13_ARCHITECTURE_IMPROVEMENTS.md](./PHASE_13_ARCHITECTURE_IMPROVEMENT
 
 ---
 
+### Phase 14: Architecture Cleanup & Refactor
+**Objective:** Eliminate technical debt identified in Architecture Review and modernize component architecture
+**Complexity:** 55 points
+**Status:** [ ] Not Started
+**Can Run In Parallel With:** None (depends on Phase 13 completion)
+
+#### Overview
+Addresses all issues identified in the 2025-01-27 Architecture Review including:
+- Service layer cleanup (remove obsolete methods)
+- Fragment discovery refactor (move logic to service layer)
+- Generate.razor state refactor (eliminate shadow state)
+- Unified fragment rendering (data-driven layout)
+- Code-behind extraction (improve readability)
+
+#### Sub-Phases
+
+| Sub-Phase | Description | Complexity | Status |
+|-----------|-------------|------------|--------|
+| 14.1 | Service Layer Cleanup | 8 | [ ] Not Started |
+| 14.2 | Fragment Discovery Refactor | 8 | [ ] Not Started |
+| 14.3 | Generate.razor State Refactor | 21 | [ ] Not Started |
+| 14.4 | Unified Fragment Rendering | 13 | [ ] Not Started |
+| 14.5 | Code-Behind Extraction | 5 | [ ] Not Started |
+
+#### Key Improvements
+1. **Service Layer:** Remove obsolete methods, clarify responsibilities
+2. **Fragment Discovery:** Move from UI to service layer with clear API
+3. **State Management:** Eliminate 15+ shadow state variables
+4. **Rendering:** Data-driven fragment rendering via `FragmentRenderer`
+5. **Code Organization:** Extract C# code to `.razor.cs` partial class
+
+#### Success Criteria
+- [ ] All obsolete methods removed
+- [ ] Generate.razor has no shadow state
+- [ ] Fragment discovery in service layer
+- [ ] Unified fragment rendering
+- [ ] Code-behind extraction complete
+- [ ] All tests passing (398+ tests)
+- [ ] Build successful with no warnings
+- [ ] Manual testing successful for all workflows
+
+See: [PHASE_14_ARCHITECTURE_CLEANUP.md](./PHASE_14_ARCHITECTURE_CLEANUP.md) for detailed breakdown.
+
+---
+
 ## Stress Points &amp; Risks
 
 | Risk | Mitigation | Complexity |
@@ -731,6 +776,12 @@ See: [PHASE_13_ARCHITECTURE_IMPROVEMENTS.md](./PHASE_13_ARCHITECTURE_IMPROVEMENT
 | Phase 13 | Created comprehensive phase plan for architecture improvements |
 | Phase 13 | Identified 10 sub-phases addressing all pain points from Implementation Report |
 | Phase 13 | Prioritized sub-phases by impact and risk |
+| Phase 14 | Added Phase 14 for architecture cleanup and refactor |
+| Phase 14 | Removed obsolete methods from services |
+| Phase 14 | Moved fragment discovery to service layer |
+| Phase 14 | Refactored Generate.razor state management |
+| Phase 14 | Implemented unified fragment rendering |
+| Phase 14 | Extracted code-behind for components |
 
 ---
 
@@ -891,7 +942,8 @@ public interface IImageService
 | Phase 11: Documentation | 3 | [ ] Not Started |
 | Phase 12: Service Cleanup | 21 | ? Complete |
 | Phase 13: Architecture Improvements | 92 | [~] 83% Complete (76/92 pts) |
-| **Total** | **297 points** | **251 completed (85%)** |
+| Phase 14: Architecture Cleanup | 55 | [ ] Not Started |
+| **Total** | **352 points** | **306 completed (87%)** |
 
 ---
 

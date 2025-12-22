@@ -96,23 +96,6 @@ namespace BlazorWebApp.Services
         Workflow? GetWorkflowById(Guid workflowId);
 
         /// <summary>
-        /// Parses default values from a fragment's template body.
-        /// Extracts defaults from Scriban syntax like {{ param ?? "default" | json }}.
-        /// </summary>
-        /// <param name="fragmentFile">The fragment file path (relative to Fragments folder)</param>
-        /// <returns>Dictionary of parameter names to their default values</returns>
-        /// <remarks>
-        /// <para><strong>DEPRECATED for initialization:</strong> This method is kept for backward compatibility
-        /// but should NOT be used for fragment initialization. Use schema defaults instead.</para>
-        /// <para>Fragment body defaults ({{ param ?? "default" }}) are Scriban rendering fallbacks only.
-        /// They prevent null reference errors during template rendering but are not the source of truth
-        /// for UI initialization.</para>
-        /// <para>Use <c>GetFragmentSchema(fragmentFile)?.Parameters[paramName].Default</c> instead.</para>
-        /// </remarks>
-        [Obsolete("Use GetFragmentSchema().Parameters[paramName].Default for initialization. Fragment body defaults are rendering fallbacks only.")]
-        Dictionary<string, object?> ParseFragmentDefaults(string fragmentFile);
-
-        /// <summary>
         /// Parses pipeline steps from a workflow's RawJson.
         /// Extracts step IDs, fragment files, and default parameter values.
         /// Handles Scriban template syntax using regex.
