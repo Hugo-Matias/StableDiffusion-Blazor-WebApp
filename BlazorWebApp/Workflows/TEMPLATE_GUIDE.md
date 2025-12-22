@@ -834,6 +834,53 @@ The `??` operator is the proper Scriban null-coalescing operator and should be a
 "scope": {{ scope ?? "" }}
 ```
 
+### Default Value Priority
+
+**Important:** Default values in templates follow a strict priority order:
+
+| Priority | Source | Purpose |
+|----------|--------|---------|
+| **1 (Highest)** | Saved Workflow State | User's previously saved settings (database) |
+| **2** | Pipeline Step Parameters | Workflow-specific defaults in template |
+| **3** | Schema Defaults | Fragment `#meta.ui.parameters.*.default` |
+| **4** | Dynamic Source | First option from ComfyUI API query |
+
+**Best Practices:**
+1. **Pipeline step parameters** are the primary source of defaults
+   - Put workflow-specific values here: `"steps": {{ Steps ?? 20 | json }}`
+   - Different workflows can have different defaults for the same fragment
+
+2. **Fragment body `??` defaults** are rendering fallbacks only
+   - These ONLY apply when the value reaches Scriban as null
+   - Do NOT rely on these for UI initialization
+   - They prevent null reference errors during rendering
+
+3. **Schema defaults** are global fallbacks
+   - Put in `#meta.ui.parameters.*.default` for values that rarely change
+   - Applied when neither saved state nor pipeline provides a value
+
+```json
+// In fragment #meta block - schema defaults (Priority 3)
+"parameters": {
+  "steps": { "min": 1, "max": 150, "step": 1, "default": 20 },
+  "cfg": { "min": 1, "max": 30, "step": 0.5, "default": 7 }
+}
+```
+
+```json
+// In template Pipeline - step parameters (Priority 2, overrides schema)
+{
+  "id": "main_sampler",
+  "fragment": "sampler.sbn",
+  "parameters": {
+    "steps": {{ Steps ?? 9 | json }},  // This workflow uses 9 steps by default
+    "cfg": {{ CfgScale ?? 1 | json }}   // This workflow uses cfg=1 by default
+  }
+}
+```
+
+See [FRAGMENT_SCHEMA_GUIDE.md](./FRAGMENT_SCHEMA_GUIDE.md#default-value-resolution) for complete documentation.
+
 ---
 
 ## Related Files

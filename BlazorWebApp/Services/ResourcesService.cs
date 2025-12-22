@@ -143,14 +143,12 @@ namespace BlazorWebApp.Services
                     ? fullPath.Substring(loraBasePath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                     : file.File.Name;
 
+                var newLora = new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true };
 
-                if (target.Item1 == ModeType.Txt2Img)
+                // Update GenerationParameters.Loras (primary)
+                if (!_state.GenerationParameters.Loras.Any(l => l.Name.Equals(filename, comp)))
                 {
-                    _state.ParametersTxt2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
-                }
-                else if (target.Item1 == ModeType.Img2Img)
-                {
-                    _state.ParametersImg2Img.Loras.Add(new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = !target.Item2, IsEnabled = true });
+                    _state.GenerationParameters.Loras.Add(new Lora(newLora));
                 }
             }
 
@@ -160,16 +158,11 @@ namespace BlazorWebApp.Services
                 triggerWords += string.Join(", ", file.TriggerWords);
             }
 
-            if (target.Item1 == ModeType.Txt2Img)
-            {
-                if (target.Item2 == true) _state.ParametersTxt2Img.Prompt += $"{triggerWords}{keyword}";
-                else _state.ParametersTxt2Img.NegativePrompt += $"{triggerWords}{keyword}";
-            }
-            else if (target.Item1 == ModeType.Img2Img)
-            {
-                if (target.Item2 == true) _state.ParametersImg2Img.Prompt += $"{triggerWords}{keyword}";
-                else _state.ParametersImg2Img.NegativePrompt += $"{triggerWords}{keyword}";
-            }
+            // Update GenerationParameters prompts fragment (primary)
+            var promptsFragment = _state.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var promptKey = target.Item2 ? FragmentKeys.Params.Positive : FragmentKeys.Params.Negative;
+            var currentPrompt = promptsFragment.GetValue<string>(promptKey) ?? "";
+            promptsFragment.SetValue(promptKey, currentPrompt + $"{triggerWords}{keyword}");
         }
 
         public async Task UpdateResource(Resource resource, string directory, string filename, int resourceId, bool isEnabled)

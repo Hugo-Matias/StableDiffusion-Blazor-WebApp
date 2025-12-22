@@ -6,14 +6,10 @@ namespace BlazorWebApp.Services
 {
     /// <summary>
     /// Service responsible for orchestrating image and video generation workflows.
+    /// Events are published through IEventService (ImagesGeneratedEventArgs).
     /// </summary>
     public interface IImageService
     {
-        /// <summary>
-        /// Event fired when image generation state changes.
-        /// </summary>
-        event Action OnChange;
-
         #region Generation Results
 
         /// <summary>
@@ -42,25 +38,25 @@ namespace BlazorWebApp.Services
         #region Generation Methods
 
         /// <summary>
-        /// Generates images based on the specified mode (Txt2Img, Img2Img, or Extras/Upscale).
+        /// Generates images using the new GenerationParameters model.
+        /// Automatically determines mode from the workflow.
         /// </summary>
-        /// <param name="mode">The generation mode to use.</param>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="workflow">The workflow to use for generation.</param>
         /// <returns>DTO containing generated image information and metadata.</returns>
-        Task<ImagesDto> GetImages(ModeType mode);
+        Task<ImagesDto> GenerateImagesAsync(GenerationParameters parameters, Workflow workflow);
 
         /// <summary>
-        /// Generates a video from an image using Img2Vid parameters.
+        /// Generates a video using the new GenerationParameters model.
         /// </summary>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="workflow">The workflow to use for generation.</param>
         /// <returns>Generated video result.</returns>
-        Task<GeneratedVideos> GetVideo();
+        Task<GeneratedVideos> GenerateVideoAsync(GenerationParameters parameters, Workflow workflow);
 
-        /// <summary>
-        /// Saves generated images to disk and database.
-        /// </summary>
-        /// <param name="outdirSamples">Output directory for sample images.</param>
-        /// <param name="scriptName">Name of the script used (if any).</param>
-        /// <returns>DTO containing saved image information.</returns>
-        Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName);
+        #endregion
+
+        #region Utility Methods
 
         /// <summary>
         /// Downloads an image from a URL and saves it as PNG.

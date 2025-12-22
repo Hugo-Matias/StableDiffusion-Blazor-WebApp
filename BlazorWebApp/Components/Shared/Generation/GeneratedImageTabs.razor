@@ -290,7 +290,7 @@
     protected async override Task OnInitializedAsync()
     {
         await LoadSelectedPage(1);
-        ImageService.OnChange += Refresh;
+        Events.Subscribe<ImagesGeneratedEventArgs>(OnImagesGenerated);
         Events.Subscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
         Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
     }
@@ -429,6 +429,7 @@
         }
     }
 
+    private void OnImagesGenerated(ImagesGeneratedEventArgs args) => Refresh();
     private void OnSelectedImagesChanged(SelectedImagesChangedEventArgs args) => Refresh();
     private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();
 
@@ -440,7 +441,7 @@
 
     public void Dispose()
     {
-        ImageService.OnChange -= Refresh;
+        Events.Unsubscribe<ImagesGeneratedEventArgs>(OnImagesGenerated);
         Events.Unsubscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
         Events.Unsubscribe<ProgressChangedEventArgs>(OnProgressChanged);
     }

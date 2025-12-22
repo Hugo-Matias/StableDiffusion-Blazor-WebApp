@@ -33,28 +33,28 @@ namespace BlazorWebApp.Events
         AppState,
 
         /// <summary>
-        /// Text-to-Image parameters changed
+        /// Generation parameters changed
         /// </summary>
-        Txt2ImgParameters,
-
-        /// <summary>
-        /// Image-to-Image parameters changed
-        /// </summary>
-        Img2ImgParameters,
-
-        /// <summary>
-        /// Upscale parameters changed
-        /// </summary>
-        UpscaleParameters,
-
-        /// <summary>
-        /// Image-to-Video parameters changed
-        /// </summary>
-        Img2VidParameters,
+        GenerationParameters,
 
         /// <summary>
         /// Workflow base model changed
         /// </summary>
-        WorkflowBase
+        WorkflowBase,
+
+        /// <summary>
+        /// Current workflow changed
+        /// </summary>
+        CurrentWorkflow,
+
+        /// <summary>
+        /// LoRAs changed
+        /// </summary>
+        Loras,
+
+        /// <summary>
+        /// Assets changed
+        /// </summary>
+        Assets
     }
 }

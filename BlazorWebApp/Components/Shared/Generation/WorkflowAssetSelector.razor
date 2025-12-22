@@ -118,7 +118,6 @@ else if (ShowEmptyMessage)
     {
         Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
         Events.Subscribe<ModelsChangedEventArgs>(OnModelsChanged);
-        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
         
         await LoadAssetsAsync();
     }
@@ -142,6 +141,7 @@ else if (ShowEmptyMessage)
 
             if (_workflowAssets == null || _workflowAssets.Count == 0)
             {
+                _assetOptions.Clear();
                 _isLoading = false;
                 await InvokeAsync(StateHasChanged);
                 return;
@@ -151,6 +151,7 @@ else if (ShowEmptyMessage)
             await AssetResolver.PreloadAssetOptions(workflow);
 
             // Get cached options for each asset type
+            _assetOptions.Clear();
             var assetTypes = _workflowAssets.Select(a => a.Type).Distinct();
             foreach (var assetType in assetTypes)
             {
@@ -205,16 +206,9 @@ else if (ShowEmptyMessage)
     {
         await InvokeAsync(async () =>
         {
-            await LoadAssetsAsync();
-        });
-    }
-
-    private async void OnWorkflowBaseChanged(StateChangedEventArgs args)
-    {
-        await InvokeAsync(async () =>
-        {
-            // Clear cache when base changes to reload proper models
+            // Clear cache when workflow changes to reload proper model types
             AssetResolver.ClearCache();
+            _assetOptions.Clear();
             await LoadAssetsAsync();
         });
     }
@@ -225,6 +219,7 @@ else if (ShowEmptyMessage)
         {
             // Refresh options when models change
             AssetResolver.ClearCache();
+            _assetOptions.Clear();
             await LoadAssetsAsync();
         });
     }
@@ -275,6 +270,5 @@ else if (ShowEmptyMessage)
     {
         Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
         Events.Unsubscribe<ModelsChangedEventArgs>(OnModelsChanged);
-        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
     }
 }

@@ -24,6 +24,7 @@ public class OrchestratorServiceTests
     private readonly Mock<IGalleryService> _mockGallery;
     private readonly Mock<ISessionService> _mockSession;
     private readonly OrchestratorService _service;
+    private readonly GenerationParameters _generationParameters;
 
     public OrchestratorServiceTests()
     {
@@ -48,10 +49,10 @@ public class OrchestratorServiceTests
             Gallery = new AppStateGallery { PageSize = 20, DateRange = new MudBlazor.DateRange(DateTime.Now.AddDays(-5), DateTime.Now) }
         };
         _mockState.Setup(s => s.State).Returns(appState);
-        _mockState.Setup(s => s.ParametersTxt2Img).Returns(new Txt2ImgParameters());
-        _mockState.Setup(s => s.ParametersImg2Img).Returns(new Img2ImgParameters());
-        _mockState.Setup(s => s.ParametersImg2Vid).Returns(new Img2VidParameters());
-        _mockState.Setup(s => s.ParametersUpscale).Returns(new UpscaleParameters());
+        
+        // Setup GenerationParameters
+        _generationParameters = new GenerationParameters();
+        _mockState.Setup(s => s.GenerationParameters).Returns(_generationParameters);
 
         _service = new OrchestratorService(
             _mockDb.Object,
@@ -118,23 +119,6 @@ public class OrchestratorServiceTests
 
         // Assert
         _mockEvents.Verify(e => e.Publish(It.IsAny<SessionVideosChangedEventArgs>()), Times.Once);
-    }
-
-    #endregion
-
-    #region Parameter Initialization Tests
-
-    [Fact]
-    public void InitializeParameters_ShouldDelegateToStateService()
-    {
-        // Arrange
-        var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img };
-
-        // Act
-        _service.InitializeParameters(modes);
-
-        // Assert
-        _mockState.Verify(s => s.InitializeParameters(modes), Times.Once);
     }
 
     #endregion
@@ -355,10 +339,7 @@ public class OrchestratorServiceTests
     public void GetWorkflowAsset_ShouldReturnAssetValue()
     {
         // Arrange
-        _mockState.Object.ParametersTxt2Img.WorkflowAssets = new Dictionary<string, string>
-        {
-            { "Model", "test_model.safetensors" }
-        };
+        _generationParameters.Assets["Model"] = "test_model.safetensors";
 
         // Act
         var result = _service.GetWorkflowAsset("Model");
@@ -370,9 +351,6 @@ public class OrchestratorServiceTests
     [Fact]
     public void GetWorkflowAsset_WithNonExistentParameter_ShouldReturnNull()
     {
-        // Arrange
-        _mockState.Object.ParametersTxt2Img.WorkflowAssets = new Dictionary<string, string>();
-
         // Act
         var result = _service.GetWorkflowAsset("NonExistent");
 
@@ -383,42 +361,24 @@ public class OrchestratorServiceTests
     [Fact]
     public void SetWorkflowAsset_ShouldUpdateAssetValue()
     {
-        // Arrange
-        _mockState.Object.ParametersTxt2Img.WorkflowAssets = new Dictionary<string, string>();
-
         // Act
         _service.SetWorkflowAsset("Model", "new_model.safetensors");
 
         // Assert
-        Assert.Equal("new_model.safetensors", _mockState.Object.ParametersTxt2Img.WorkflowAssets["Model"]);
+        Assert.Equal("new_model.safetensors", _generationParameters.Assets["Model"]);
     }
 
     [Fact]
-    public void GetWorkflowAssetsForMode_Txt2Img_ShouldReturnTxt2ImgAssets()
+    public void GetWorkflowAssetsForMode_ShouldReturnGenerationParametersAssets()
     {
         // Arrange
-        var assets = new Dictionary<string, string> { { "Model", "test.safetensors" } };
-        _mockState.Object.ParametersTxt2Img.WorkflowAssets = assets;
+        _generationParameters.Assets["Model"] = "test.safetensors";
 
         // Act
         var result = _service.GetWorkflowAssetsForMode(ModeType.Txt2Img);
 
         // Assert
-        Assert.Same(assets, result);
-    }
-
-    [Fact]
-    public void GetWorkflowAssetsForMode_Img2Img_ShouldReturnImg2ImgAssets()
-    {
-        // Arrange
-        var assets = new Dictionary<string, string> { { "Model", "test.safetensors" } };
-        _mockState.Object.ParametersImg2Img.WorkflowAssets = assets;
-
-        // Act
-        var result = _service.GetWorkflowAssetsForMode(ModeType.Img2Img);
-
-        // Assert
-        Assert.Same(assets, result);
+        Assert.Same(_generationParameters.Assets, result);
     }
 
     #endregion
@@ -589,17 +549,16 @@ public class OrchestratorServiceTests
     }
 
     [Fact]
-    public void SetLoras_ShouldAddLorasToParameters()
+    public void SetLoras_ShouldAddLorasToGenerationParameters()
     {
         // Arrange
-        _mockState.Object.ParametersTxt2Img.Loras = new List<Lora>();
         var loras = new List<Lora> { new Lora { Name = "test_lora" } };
 
         // Act
         _service.SetLoras(loras, isImg2Img: false);
 
         // Assert
-        Assert.Contains(_mockState.Object.ParametersTxt2Img.Loras, l => l.Name == "test_lora");
+        Assert.Contains(_generationParameters.Loras, l => l.Name == "test_lora");
     }
 
     [Fact]

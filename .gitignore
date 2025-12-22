@@ -382,3 +382,4 @@ FodyWeavers.xsd
 /BlazorWebApp/payload_img2vid.json
 /BlazorWebApp/Workflows/IMPLEMENTATION_PLAN.md
 /.github/copilot-instructions.md
+/BlazorWebApp/payload_generation.json

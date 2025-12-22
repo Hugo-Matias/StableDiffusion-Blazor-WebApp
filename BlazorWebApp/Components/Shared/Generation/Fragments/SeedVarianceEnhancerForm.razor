@@ -1,0 +1,205 @@
+@*
+    SeedVarianceEnhancerForm - Form for seed-variance-enhancer.sbn fragment
+    
+    Handles: randomize_percent, strength, noise_insert, steps_switchover_percent, 
+             seed, mask_starts_at, mask_percent
+    
+    This is an optional feature that modifies prompt embedding values with noise
+    to create variation while maintaining the core concept.
+    Values are read from FragmentParameters.Values and synced back on change.
+*@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("SeedVarianceEnhancerForm")]
+@inject IGenerationParameterService ParameterService
+@inject IWorkflowService WorkflowService
+
+<MudGrid>
+    <MudItem xs="6">
+        <MudSlider T="int" 
+                   @bind-Value="_localRandomizePercent"
+                   @bind-Value:after="OnRandomizePercentChanged"
+                   Min="@_constraints.randomize_percent.GetMin(0)"
+                   Max="@_constraints.randomize_percent.GetMax(100)"
+                   Step="@_constraints.randomize_percent.GetStep(5)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Randomize:</small> @(_localRandomizePercent)%
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" 
+                   @bind-Value="_localStrength"
+                   @bind-Value:after="OnStrengthChanged"
+                   Min="@_constraints.strength.GetMin(0)"
+                   Max="@_constraints.strength.GetMax(100)"
+                   Step="@_constraints.strength.GetStep(1)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Strength:</small> @_localStrength
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Noise Insert" @bind-Value="_localNoiseInsert" @bind-Value:after="OnNoiseInsertChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _noiseInsertOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" 
+                   @bind-Value="_localStepsSwitchoverPercent"
+                   @bind-Value:after="OnStepsSwitchoverPercentChanged"
+                   Min="@_constraints.steps_switchover_percent.GetMin(0)"
+                   Max="@_constraints.steps_switchover_percent.GetMax(100)"
+                   Step="@_constraints.steps_switchover_percent.GetStep(5)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Steps Switchover:</small> @(_localStepsSwitchoverPercent)%
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1" Max="long.MaxValue" />
+    </MudItem>
+    <MudItem xs="4">
+        <MudSelect T="string" Label="Mask Starts At" @bind-Value="_localMaskStartsAt" @bind-Value:after="OnMaskStartsAtChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _maskStartsAtOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" 
+                   @bind-Value="_localMaskPercent"
+                   @bind-Value:after="OnMaskPercentChanged"
+                   Min="@_constraints.mask_percent.GetMin(0)"
+                   Max="@_constraints.mask_percent.GetMax(100)"
+                   Step="@_constraints.mask_percent.GetStep(5)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Mask:</small> @(_localMaskPercent)%
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+            <MudText Typo="Typo.caption">
+                <strong>Seed Variance Enhancer</strong> modifies <strong>@(_localRandomizePercent)%</strong> of the prompt embedding values with noise (strength: <strong>@_localStrength</strong>).
+                The noise is applied during the first <strong>@(_localStepsSwitchoverPercent)%</strong> of steps, then removed so the model can refine the output.
+                <br /><br />
+                <em>Tip: Strength 15-30 and randomize_percent 50 work well with Z-Image Turbo. Longer prompts provide more embedding values to manipulate.</em>
+            </MudText>
+        </MudAlert>
+    </MudItem>
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// Fragment reference containing the fragment ID, parameters, and schema.
+    /// </summary>
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #region Local State (for MudBlazor binding - prevents snap-back)
+    
+    private int _localRandomizePercent;
+    private int _localStrength;
+    private string _localNoiseInsert = "noise on beginning steps";
+    private int _localStepsSwitchoverPercent;
+    private long _localSeed;
+    private string _localMaskStartsAt = "beginning";
+    private int _localMaskPercent;
+    
+    // Options from schema
+    private List<string> _noiseInsertOptions = new() { "noise on beginning steps", "noise on ending steps", "noise on all steps", "disabled" };
+    private List<string> _maskStartsAtOptions = new() { "beginning", "end" };
+    
+    // Cached constraints from schema
+    private (ParameterConstraints randomize_percent, ParameterConstraints strength, 
+             ParameterConstraints noise_insert, ParameterConstraints steps_switchover_percent,
+             ParameterConstraints seed, ParameterConstraints mask_starts_at,
+             ParameterConstraints mask_percent) _constraints;
+    
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        
+        // Load constraints from schema
+        _constraints = (
+            Fragment.Schema.GetConstraints("randomize_percent"),
+            Fragment.Schema.GetConstraints("strength"),
+            Fragment.Schema.GetConstraints("noise_insert"),
+            Fragment.Schema.GetConstraints("steps_switchover_percent"),
+            Fragment.Schema.GetConstraints("seed"),
+            Fragment.Schema.GetConstraints("mask_starts_at"),
+            Fragment.Schema.GetConstraints("mask_percent")
+        );
+        
+        // Load options from schema if available
+        if (_constraints.noise_insert.Options?.Count > 0)
+            _noiseInsertOptions = _constraints.noise_insert.Options;
+        if (_constraints.mask_starts_at.Options?.Count > 0)
+            _maskStartsAtOptions = _constraints.mask_starts_at.Options;
+        
+        // Sync local state FROM service
+        _localRandomizePercent = ParameterService.GetFragmentProperty(Fragment, "randomize_percent", 50);
+        _localStrength = ParameterService.GetFragmentProperty(Fragment, "strength", 20);
+        _localNoiseInsert = ParameterService.GetFragmentProperty(Fragment, "noise_insert", "noise on beginning steps");
+        _localStepsSwitchoverPercent = ParameterService.GetFragmentProperty(Fragment, "steps_switchover_percent", 20);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, "seed", 0L);
+        _localMaskStartsAt = ParameterService.GetFragmentProperty(Fragment, "mask_starts_at", "beginning");
+        _localMaskPercent = ParameterService.GetFragmentProperty(Fragment, "mask_percent", 0);
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task OnRandomizePercentChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "randomize_percent", _localRandomizePercent, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "strength", _localStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnNoiseInsertChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "noise_insert", _localNoiseInsert, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnStepsSwitchoverPercentChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "steps_switchover_percent", _localStepsSwitchoverPercent, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnSeedChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "seed", _localSeed, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnMaskStartsAtChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "mask_starts_at", _localMaskStartsAt, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnMaskPercentChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "mask_percent", _localMaskPercent, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    #endregion
+}

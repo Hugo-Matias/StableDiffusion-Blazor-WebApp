@@ -245,44 +245,20 @@ namespace BlazorWebApp.Services
 
         private string? GetWorkflowAsset(string parameter, ModeType? mode)
         {
-            var assets = GetWorkflowAssetsForMode(mode);
-            return assets?.GetValueOrDefault(parameter);
+            // Use GenerationParameters.Assets (unified model)
+            if (_state.GenerationParameters?.Assets?.TryGetValue(parameter, out var genParamValue) == true)
+            {
+                if (!string.IsNullOrWhiteSpace(genParamValue))
+                    return genParamValue;
+            }
+            
+            return null;
         }
 
         private void SetWorkflowAsset(string parameter, string value, ModeType? mode)
         {
-            var assets = GetOrCreateWorkflowAssetsForMode(mode);
-            assets[parameter] = value;
-        }
-
-        private Dictionary<string, string>? GetWorkflowAssetsForMode(ModeType? mode)
-        {
-            return mode switch
-            {
-                ModeType.Img2Img => _state.ParametersImg2Img?.WorkflowAssets,
-                ModeType.Img2Vid => _state.ParametersImg2Vid?.WorkflowAssets,
-                ModeType.Extras => _state.ParametersUpscale?.WorkflowAssets,
-                _ => _state.ParametersTxt2Img?.WorkflowAssets
-            };
-        }
-
-        private Dictionary<string, string> GetOrCreateWorkflowAssetsForMode(ModeType? mode)
-        {
-            switch (mode)
-            {
-                case ModeType.Img2Img:
-                    _state.ParametersImg2Img.WorkflowAssets ??= new Dictionary<string, string>();
-                    return _state.ParametersImg2Img.WorkflowAssets;
-                case ModeType.Img2Vid:
-                    _state.ParametersImg2Vid.WorkflowAssets ??= new Dictionary<string, string>();
-                    return _state.ParametersImg2Vid.WorkflowAssets;
-                case ModeType.Extras:
-                    _state.ParametersUpscale.WorkflowAssets ??= new Dictionary<string, string>();
-                    return _state.ParametersUpscale.WorkflowAssets;
-                default:
-                    _state.ParametersTxt2Img.WorkflowAssets ??= new Dictionary<string, string>();
-                    return _state.ParametersTxt2Img.WorkflowAssets;
-            }
+            // Update GenerationParameters.Assets (unified model)
+            _state.GenerationParameters.Assets[parameter] = value;
         }
 
         private void PublishModelChanged()

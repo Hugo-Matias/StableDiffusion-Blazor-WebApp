@@ -69,7 +69,8 @@
              OnClosed="HandleViewerClosed" />
 
 <!-- Video Viewer (for video files) -->
-<VideoViewer @bind-IsVisible="_showVideoViewer"
+<VideoViewer IsVisible="@_showVideoViewer"
+             IsVisibleChanged="HandleVideoViewerVisibilityChanged"
              Videos="@_cachedVideoItems"
              StartIndex="_videoViewerStartIndex"
              OnVideoChanged="HandleVideoChanged"

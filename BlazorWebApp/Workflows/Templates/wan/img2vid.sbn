@@ -9,8 +9,12 @@
     { "parameter": "ClipVision", "label": "CLIP Vision", "type": "ClipVision", "default": "clip_vision_h.safetensors", "order": 4, "columnSize": 2 },
     { "parameter": "Vae", "label": "VAE", "type": "Vae", "default": "wan_2.1_vae.safetensors", "order": 5, "columnSize": 2 }
   ],
+  "Sources": [
+    { "id": "source_image", "label": "Source Image", "type": "image", "required": true }
+  ],
   "Pipeline": [
     {
+      "id": "loader_high",
       "fragment": "wan/load-model-sage.sbn",
       "parameters": {
         "model_name": {{ HighModel | json }},
@@ -20,6 +24,7 @@
       }
     },
     {
+      "id": "loader_low",
       "fragment": "wan/load-model-sage.sbn",
       "parameters": {
         "model_name": {{ LowModel | json }},
@@ -29,6 +34,7 @@
       }
     },
     {
+      "id": "loader_clip_vae",
       "fragment": "wan/load-clip-vae.sbn",
       "parameters": {
         "clip_name": {{ Clip | json }},
@@ -39,6 +45,7 @@
     {{~ for lora in Loras ~}}
     {{~ if lora.HighPath && lora.HighPath != "" ~}}
     {
+      "id": "lora_high_{{ for.index }}",
       "fragment": "wan/lora-loader-model-only.sbn",
       "parameters": {
         "lora_loader_id": "high_lora_loader_{{ for.index }}",
@@ -53,6 +60,7 @@
     {{~ end ~}}
     {{~ if lora.LowPath && lora.LowPath != "" ~}}
     {
+      "id": "lora_low_{{ for.index }}",
       "fragment": "wan/lora-loader-model-only.sbn",
       "parameters": {
         "lora_loader_id": "low_lora_loader_{{ for.index }}",
@@ -68,10 +76,11 @@
     {{~ end ~}}
     {{~ end ~}}
     {
+      "id": "model_sampling_high",
       "fragment": "wan/model-sampling-sd3.sbn",
       "parameters": {
         "sampler_id": "high_model_sampling",
-        "shift": {{ Shift ?? 5 | json }},
+        "shift": {{ shift ?? 5 | json }},
         {{~ has_high_lora = false ~}}
         {{~ if Loras && Loras.size > 0 ~}}
         {{~ for lora in Loras ~}}
@@ -90,10 +99,11 @@
       }
     },
     {
+      "id": "model_sampling_low",
       "fragment": "wan/model-sampling-sd3.sbn",
       "parameters": {
         "sampler_id": "low_model_sampling",
-        "shift": {{ Shift ?? 5 | json }},
+        "shift": {{ shift ?? 5 | json }},
         {{~ has_low_lora = false ~}}
         {{~ if Loras && Loras.size > 0 ~}}
         {{~ for lora in Loras ~}}
@@ -112,45 +122,50 @@
       }
     },
     {
+      "id": "load_image",
       "fragment": "wan/load-image.sbn",
       "parameters": {
-        "image_path": {{ Image | json }},
-        "width": {{ Width ?? 768 | json }},
-        "height": {{ Height ?? 768 | json }}
+        "image_path": {{ image | json }},
+        "width": {{ width ?? 768 | json }},
+        "height": {{ height ?? 768 | json }}
       }
     },
     {
+      "id": "clip_vision",
       "fragment": "wan/clip-vision.sbn",
       "parameters": {
         "clip_vision_name": {{ ClipVision | json }}
       }
     },
     {
+      "id": "prompts",
       "fragment": "wan/prompts.sbn",
       "parameters": {
-        "positive": {{ Prompt | json }},
-        "negative": {{ NegativePrompt ?? "???,??,??,??,??,??,??,??,???,????,JPEG??,????,??,??,??,??,??,??,?,??,??,??,??,????,???" | json }}
+        "positive": {{ positive | json }},
+        "negative": {{ negative ?? "???,????,??,??,??,??,??,??,??,??,??,??,??,??,??,??,JPEG??,????,???,???,??,??,??,??,????,????,????" | json }}
       }
     },
     {
+      "id": "video_settings",
       "fragment": "wan/painter-i2v.sbn",
       "parameters": {
-        "length": {{ Length ?? 81 | json }},
-        "batch_size": {{ BatchSize ?? 1 | json }},
-        "motion_amplitude": {{ MotionAmplitude ?? 1.1 | json }}
+        "length": {{ video_length ?? 81 | json }},
+        "batch_size": {{ batch_size ?? 1 | json }},
+        "motion_amplitude": {{ motion_amplitude ?? 1.1 | json }}
       }
     },
     {
+      "id": "sampler_high",
       "fragment": "wan/sampler-advanced.sbn",
       "parameters": {
         "sampler_id": "sampler_high",
-        "seed": {{ Seed ?? 42 | json }},
-        "steps": {{ Steps ?? 8 | json }},
-        "cfg": {{ CfgScale ?? 1 | json }},
-        "sampler_name": {{ SamplerName ?? "euler" | json }},
-        "scheduler": {{ Scheduler ?? "simple" | json }},
+        "seed": {{ seed ?? 42 | json }},
+        "steps": {{ steps ?? 8 | json }},
+        "cfg": {{ cfg ?? 1 | json }},
+        "sampler_name": {{ sampler_name ?? "euler" | json }},
+        "scheduler": {{ scheduler ?? "simple" | json }},
         "start_at_step": 0,
-        "end_at_step": {{ (Steps ?? 8) / 2 | math.round | json }},
+        "end_at_step": {{ (steps ?? 8) / 2 | math.round | json }},
         "add_noise": "enable",
         "return_with_leftover_noise": "enable",
         "model_input_name": "high_sampled_model_output",
@@ -158,15 +173,16 @@
       }
     },
     {
+      "id": "sampler_low",
       "fragment": "wan/sampler-advanced.sbn",
       "parameters": {
         "sampler_id": "sampler_low",
         "seed": 0,
-        "steps": {{ Steps ?? 8 | json }},
-        "cfg": {{ CfgScale ?? 1 | json }},
-        "sampler_name": {{ SamplerName ?? "euler" | json }},
-        "scheduler": {{ Scheduler ?? "simple" | json }},
-        "start_at_step": {{ (Steps ?? 8) / 2 | math.round | json }},
+        "steps": {{ steps ?? 8 | json }},
+        "cfg": {{ cfg ?? 1 | json }},
+        "sampler_name": {{ sampler_name ?? "euler" | json }},
+        "scheduler": {{ scheduler ?? "simple" | json }},
+        "start_at_step": {{ (steps ?? 8) / 2 | math.round | json }},
         "end_at_step": 10000,
         "add_noise": "disable",
         "return_with_leftover_noise": "disable",
@@ -176,6 +192,7 @@
       }
     },
     {
+      "id": "clean_vram",
       "fragment": "clean-vram.sbn",
       "parameters": {
         "node_id": "clean_sampler",
@@ -185,28 +202,31 @@
       }
     },
     {
+      "id": "vae_decode",
       "fragment": "vae-decode.sbn",
       "parameters": {
         "latent_input_name": "cleaned_latent_output"
       }
     },
     {
+      "id": "frame_interpolation",
       "fragment": "wan/frame-interpolation.sbn",
       "parameters": {
-        "scale_by": {{ FrameInterpolation.ScaleBy ?? 2.0 | json }},
-        "frame_multiplier": {{ FrameInterpolation.Multiplier ?? 2 | json }},
-        "rife_model": {{ FrameInterpolation.RifeModel ?? "rife49.pth" | json }}
+        "scale_by": {{ frame_interpolation_scale_by ?? 2.0 | json }},
+        "frame_multiplier": {{ frame_interpolation_multiplier ?? 2 | json }},
+        "rife_model": {{ frame_interpolation_rife_model ?? "rife49.pth" | json }}
       }
     },
     {
+      "id": "video_save",
       "fragment": "video-save.sbn",
       "parameters": {
         "node_id": "video_output",
-        {{~ if FrameInterpolation && FrameInterpolation.IsActive ~}}
-        "frame_rate": {{ (FrameRate ?? 16) * (FrameInterpolation.Multiplier ?? 2) | json }},
+        {{~ if frame_interpolation_is_active ~}}
+        "frame_rate": {{ (frame_rate ?? 16) * (frame_interpolation_multiplier ?? 2) | json }},
         "image_input_name": "frames_output",
         {{~ else ~}}
-        "frame_rate": {{ FrameRate ?? 16 | json }},
+        "frame_rate": {{ frame_rate ?? 16 | json }},
         "image_input_name": "image_output",
         {{~ end ~}}
         "filename_prefix": "tmp/vid",

@@ -166,7 +166,7 @@ namespace BlazorWebApp.Tests.Services
 
             var expectedEventArgs = new StateChangedEventArgs
             {
-                ChangeType = StateChangeType.Txt2ImgParameters,
+                ChangeType = StateChangeType.GenerationParameters,
                 OldValue = "old",
                 NewValue = "new"
             };
@@ -176,7 +176,7 @@ namespace BlazorWebApp.Tests.Services
 
             // Assert
             receivedEventArgs.Should().NotBeNull();
-            receivedEventArgs!.ChangeType.Should().Be(StateChangeType.Txt2ImgParameters);
+            receivedEventArgs!.ChangeType.Should().Be(StateChangeType.GenerationParameters);
             receivedEventArgs.OldValue.Should().Be("old");
             receivedEventArgs.NewValue.Should().Be("new");
         }

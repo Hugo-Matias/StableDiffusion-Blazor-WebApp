@@ -1,0 +1,107 @@
+@inherits FragmentFormBase
+@inject IBackendService Backend
+
+@* New SeedVR2 Form - uses FragmentSchema for binding *@
+
+<MudGrid>
+    <MudItem xs="6">
+        <MudSelect T="string"
+                   Value="@GetString("seedvr2_model")"
+                   ValueChanged="@((string v) => SetValue("seedvr2_model", v))"
+                   Label="SeedVR2 Model"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @if (Backend.Upscalers != null)
+            {
+                @foreach (var upscaler in Backend.Upscalers.Where(u => u.Name.Contains("seedvr2", StringComparison.OrdinalIgnoreCase)))
+                {
+                    <MudSelectItem Value="@upscaler.Name">@upscaler.Name</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int"
+                   Value="@GetInt("seedvr2_resolution", 2048)"
+                   ValueChanged="@((int v) => SetValue("seedvr2_resolution", v))"
+                   Min="@GetMinInt("seedvr2_resolution", 512)"
+                   Max="@GetMaxInt("seedvr2_resolution", 4096)"
+                   Step="@GetStepInt("seedvr2_resolution", 64)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>Resolution:</small> @GetInt("seedvr2_resolution", 2048)
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int"
+                   Value="@GetInt("blocks_to_swap", 36)"
+                   ValueChanged="@((int v) => SetValue("blocks_to_swap", v))"
+                   Min="@GetMinInt("blocks_to_swap", 0)"
+                   Max="@GetMaxInt("blocks_to_swap", 36)"
+                   Step="@GetStepInt("blocks_to_swap", 1)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>Blocks to Swap:</small> @GetInt("blocks_to_swap", 36)
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int"
+                   Value="@GetInt("vae_tile_size", 1024)"
+                   ValueChanged="@((int v) => SetValue("vae_tile_size", v))"
+                   Min="@GetMinInt("vae_tile_size", 128)"
+                   Max="@GetMaxInt("vae_tile_size", 2048)"
+                   Step="@GetStepInt("vae_tile_size", 64)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>VAE Tile Size:</small> @GetInt("vae_tile_size", 1024)
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int"
+                   Value="@GetInt("vae_tile_overlap", 128)"
+                   ValueChanged="@((int v) => SetValue("vae_tile_overlap", v))"
+                   Min="@GetMinInt("vae_tile_overlap", 0)"
+                   Max="@GetMaxInt("vae_tile_overlap", 512)"
+                   Step="@GetStepInt("vae_tile_overlap", 32)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>VAE Overlap:</small> @GetInt("vae_tile_overlap", 128)
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="double"
+                   Value="@GetDouble("seedvr2_input_noise_scale", 0)"
+                   ValueChanged="@((double v) => SetValue("seedvr2_input_noise_scale", v))"
+                   Min="@GetMinDouble("seedvr2_input_noise_scale", 0)"
+                   Max="@GetMaxDouble("seedvr2_input_noise_scale", 1)"
+                   Step="@GetStepDouble("seedvr2_input_noise_scale", 0.01)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>Input Noise:</small> @GetDouble("seedvr2_input_noise_scale", 0).ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="double"
+                   Value="@GetDouble("seedvr2_latent_noise_scale", 0)"
+                   ValueChanged="@((double v) => SetValue("seedvr2_latent_noise_scale", v))"
+                   Min="@GetMinDouble("seedvr2_latent_noise_scale", 0)"
+                   Max="@GetMaxDouble("seedvr2_latent_noise_scale", 1)"
+                   Step="@GetStepDouble("seedvr2_latent_noise_scale", 0.01)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>Latent Noise:</small> @GetDouble("seedvr2_latent_noise_scale", 0).ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudNumericField T="long"
+                         Value="@GetLong("seedvr2_seed", -1)"
+                         ValueChanged="@((long v) => SetValue("seedvr2_seed", v))"
+                         Label="Seed"
+                         Min="-1" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    // SeedVR2FormNew extends FragmentFormBase
+    // Reads constraints from Schema.Parameters
+}

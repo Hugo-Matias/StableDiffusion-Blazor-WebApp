@@ -16,12 +16,55 @@ namespace BlazorWebApp.Models
         /// </summary>
         public List<WorkflowAsset>? Assets { get; set; }
         
+        /// <summary>
+        /// List of input sources (images/videos) required by this workflow.
+        /// Used for Img2Img, Img2Vid, ControlNet inputs, etc.
+        /// </summary>
+        public List<WorkflowSource>? Sources { get; set; }
+        
         public List<WorkflowStep> Pipeline { get; set; }
         public string RawJson { get; set; }
     }
 
+    /// <summary>
+    /// Defines an input source required by a workflow.
+    /// </summary>
+    public class WorkflowSource
+    {
+        /// <summary>
+        /// Unique ID for this source within the workflow.
+        /// </summary>
+        public string Id { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Display label for the input.
+        /// </summary>
+        public string Label { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Type of source: "image" or "video".
+        /// </summary>
+        public string Type { get; set; } = "image";
+        
+        /// <summary>
+        /// Whether this source is required for generation.
+        /// </summary>
+        public bool Required { get; set; } = true;
+        
+        /// <summary>
+        /// Parameter name in the workflow template that receives this source.
+        /// </summary>
+        public string Parameter { get; set; } = string.Empty;
+    }
+
     public class WorkflowStep
     {
+        /// <summary>
+        /// Unique identifier for this step in the pipeline.
+        /// Used as the key in GenerationParameters.Fragments.
+        /// </summary>
+        public string Id { get; set; } = string.Empty;
+        
         public string Fragment { get; set; }
         public string RawParameters { get; set; }
         public Dictionary<string, object> Parameters { get; set; }

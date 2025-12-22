@@ -2,6 +2,24 @@
 {
   "outputs": {
     "latent_output": {"node": "{{ sampler_id }}", "index": 0}
+  },
+  "ui": {
+    "type": "sampler",
+    "component": "SamplerForm",
+    "title": "Sampler",
+    "icon": "fa-solid fa-dice",
+    "order": 50,
+    "collapsible": true,
+    "chainable": true,
+    "parameters": {
+      "sampler_name": { "source": "Backend.Samplers" },
+      "scheduler": { "source": "Backend.Schedulers" },
+      "steps": { "min": 1, "max": 150, "step": 1 },
+      "cfg": { "min": 1, "max": 30, "step": 0.5 },
+      "denoise": { "min": 0, "max": 1, "step": 0.01 },
+      "eta": { "min": 0, "max": 1, "step": 0.01 },
+      "seed": { "min": -1 }
+    }
   }
 }
 #end

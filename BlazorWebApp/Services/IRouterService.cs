@@ -17,24 +17,20 @@ namespace BlazorWebApp.Services
         Task<IEnumerable<string>> SearchLoras(Backend backend, string search = "");
 
         /// <summary>
-        /// Routes a text-to-image generation request to ComfyUI backend.
+        /// Executes a generation workflow using the unified GenerationParameters model.
+        /// Works for Txt2Img and Img2Img modes.
         /// </summary>
-        /// <param name="parameters">The generation parameters.</param>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="workflow">The workflow to execute.</param>
         /// <returns>The generated images result.</returns>
-        Task<GeneratedImages> PostTxt2Img(Txt2ImgParameters parameters);
+        Task<GeneratedImages> PostGenerationAsync(GenerationParameters parameters, Workflow workflow);
 
         /// <summary>
-        /// Routes an image-to-image generation request to ComfyUI backend.
+        /// Executes a video generation workflow using the unified GenerationParameters model.
         /// </summary>
-        /// <param name="parameters">The generation parameters including input image.</param>
-        /// <returns>The generated images result.</returns>
-        Task<GeneratedImages> PostImg2Img(Img2ImgParameters parameters);
-
-        /// <summary>
-        /// Routes an image-to-video generation request to ComfyUI backend.
-        /// </summary>
-        /// <param name="parameters">The video generation parameters including input image.</param>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="workflow">The workflow to execute.</param>
         /// <returns>The generated video result.</returns>
-        Task<GeneratedVideos> PostImg2Vid(Img2VidParameters parameters);
+        Task<GeneratedVideos> PostVideoGenerationAsync(GenerationParameters parameters, Workflow workflow);
     }
 }

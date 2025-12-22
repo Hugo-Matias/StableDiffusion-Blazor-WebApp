@@ -1,95 +1,86 @@
 #meta
 {
   "outputs": {
-    "{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}lora_positive", "index": 0 },
-    "{{ scope ?? '' }}clip_output": { "node": "{{ scope ?? '' }}lora_positive", "index": 1 },
-    "{{ scope ?? '' }}vae_output": { "node": "{{ scope ?? '' }}{{ loader_id }}", "index": 2 },
-    "{{ scope ?? '' }}latent_output": { "node": "{{ scope ?? '' }}{{ latent_id }}", "index": 0 },
-    "{{ scope ?? '' }}positive_output": { "node": "{{ scope ?? '' }}encode_positive", "index": 0 },
-    "{{ scope ?? '' }}negative_output": { "node": "{{ scope ?? '' }}encode_negative", "index": 0 }
-  }
+    "{{ if scope }}{{ scope }}{{ end }}model_output": { "node": "{{ if scope }}{{ scope }}{{ end }}lora_positive", "index": 0 },
+    "{{ if scope }}{{ scope }}{{ end }}clip_output": { "node": "{{ if scope }}{{ scope }}{{ end }}lora_positive", "index": 1 },
+    "{{ if scope }}{{ scope }}{{ end }}vae_output": { "node": "{{ if scope }}{{ scope }}{{ end }}{{ loader_id }}", "index": 2 },
+    "{{ if scope }}{{ scope }}{{ end }}positive_output": { "node": "{{ if scope }}{{ scope }}{{ end }}encode_positive", "index": 0 },
+    "{{ if scope }}{{ scope }}{{ end }}negative_output": { "node": "{{ if scope }}{{ scope }}{{ end }}encode_negative", "index": 0 }
+  }{{~ if scope && scope | string.contains "detailer" ~}},
+  "conditions": {
+    "required": ["Detailer.IsActive"]
+  }{{~ end ~}}
 }
 #end
 
 {
-  "{{ scope ?? '' }}{{ loader_id }}": {
+  "{{ if scope }}{{ scope }}{{ end }}{{ loader_id }}": {
     "inputs": {
       "ckpt_name": {{ ckpt_name | json }}
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Load Checkpoint"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Load Checkpoint"
     }
   },
-  "{{ scope ?? '' }}text_prompt": {
+  "{{ if scope }}{{ scope }}{{ end }}text_prompt": {
     "inputs": {
       "value": {{ prompt | json }}
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Prompt"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Prompt"
     }
   },
-  "{{ scope ?? '' }}text_negative": {
+  "{{ if scope }}{{ scope }}{{ end }}text_negative": {
     "inputs": {
       "value": {{ negative | json }}
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Negative Prompt"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Negative Prompt"
     }
   },
-  "{{ scope ?? '' }}lora_positive": {
+  "{{ if scope }}{{ scope }}{{ end }}lora_positive": {
     "inputs": {
-      "text": ["{{ scope ?? '' }}text_prompt", 0],
-      "model": ["{{ scope ?? '' }}{{ loader_id }}", 0],
-      "clip": ["{{ scope ?? '' }}{{ loader_id }}", 1]
+      "text": ["{{ if scope }}{{ scope }}{{ end }}text_prompt", 0],
+      "model": ["{{ if scope }}{{ scope }}{{ end }}{{ loader_id }}", 0],
+      "clip": ["{{ if scope }}{{ scope }}{{ end }}{{ loader_id }}", 1]
     },
     "class_type": "PCLazyLoraLoader",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}LoRAs (Positive)"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}LoRAs (Positive)"
     }
   },
-  "{{ scope ?? '' }}lora_negative": {
+  "{{ if scope }}{{ scope }}{{ end }}lora_negative": {
     "inputs": {
-      "text": ["{{ scope ?? '' }}text_negative", 0],
-      "model": ["{{ scope ?? '' }}lora_positive", 0],
-      "clip": ["{{ scope ?? '' }}lora_positive", 1]
+      "text": ["{{ if scope }}{{ scope }}{{ end }}text_negative", 0],
+      "model": ["{{ if scope }}{{ scope }}{{ end }}lora_positive", 0],
+      "clip": ["{{ if scope }}{{ scope }}{{ end }}lora_positive", 1]
     },
     "class_type": "PCLazyLoraLoader",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}LoRAs (Negative)"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}LoRAs (Negative)"
     }
   },
-  "{{ scope ?? '' }}encode_positive": {
+  "{{ if scope }}{{ scope }}{{ end }}encode_positive": {
     "inputs": {
-      "text": ["{{ scope ?? '' }}text_prompt", 0],
-      "clip": ["{{ scope ?? '' }}lora_positive", 1]
+      "text": ["{{ if scope }}{{ scope }}{{ end }}text_prompt", 0],
+      "clip": ["{{ if scope }}{{ scope }}{{ end }}lora_positive", 1]
     },
     "class_type": "PCLazyTextEncode",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Encode Positive"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Encode Positive"
     }
   },
-  "{{ scope ?? '' }}encode_negative": {
+  "{{ if scope }}{{ scope }}{{ end }}encode_negative": {
     "inputs": {
-      "text": ["{{ scope ?? '' }}text_negative", 0],
-      "clip": ["{{ scope ?? '' }}lora_negative", 1]
+      "text": ["{{ if scope }}{{ scope }}{{ end }}text_negative", 0],
+      "clip": ["{{ if scope }}{{ scope }}{{ end }}lora_negative", 1]
     },
     "class_type": "PCLazyTextEncode",
     "_meta": {
-      "title": "{{ scope_title ?? '' }}Encode Negative"
-    }
-  },
-  "{{ scope ?? '' }}{{ latent_id }}": {
-    "inputs": {
-      "width": {{ width | json }},
-      "height": {{ height | json }},
-      "batch_size": {{ batch_size | json }}
-    },
-    "class_type": "EmptyLatentImage",
-    "_meta": {
-      "title": "{{ scope_title ?? '' }}Empty Latent Image"
+      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Encode Negative"
     }
   }
 }

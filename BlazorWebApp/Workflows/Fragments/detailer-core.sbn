@@ -5,6 +5,33 @@
   },
   "conditions": {
     "required": ["Detailer.IsActive"]
+  },
+  "ui": {
+    "type": "enhancement",
+    "component": "DetailerForm",
+    "title": "Detailer",
+    "icon": "fa-solid fa-face-smile",
+    "order": 120,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "chainable": true,
+    "parameters": {
+      "detailer_detection_model": { "source": "Backend.DetectionModels" },
+      "detailer_sampler": { "source": "Backend.DetailerSamplers" },
+      "detailer_scheduler": { "source": "Backend.DetailerSchedulers" },
+      "detailer_seed": { "min": -1 },
+      "detailer_steps": { "min": 1, "max": 100, "step": 1 },
+      "detailer_cfg": { "min": 1, "max": 30, "step": 0.5 },
+      "detailer_denoise": { "min": 0, "max": 1, "step": 0.01 },
+      "detailer_feather": { "min": 0, "max": 100, "step": 1 },
+      "detailer_bbox_threshold": { "min": 0, "max": 1, "step": 0.01 },
+      "detailer_bbox_dilation": { "min": 0, "max": 100, "step": 1 },
+      "detailer_bbox_crop_factor": { "min": 1, "max": 10, "step": 0.1 },
+      "detailer_drop_size": { "min": 1, "max": 200, "step": 1 },
+      "detailer_guide_size": { "min": 64, "max": 2048, "step": 64 },
+      "detailer_max_size": { "min": 256, "max": 4096, "step": 64 },
+      "detailer_cycle": { "min": 1, "max": 10, "step": 1 }
+    }
   }
 }
 #end

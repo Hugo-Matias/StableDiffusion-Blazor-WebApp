@@ -1,5 +1,4 @@
 using BlazorWebApp.Data.Entities;
-using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using Microsoft.Extensions.Logging;
@@ -12,16 +11,12 @@ public class RouterServiceTests
 {
     private readonly Mock<IComfyUIService> _mockComfyUI;
     private readonly Mock<IBackendService> _mockBackend;
-    private readonly Mock<IStateService> _mockState;
-    private readonly Mock<IModelService> _mockModels;
     private readonly Mock<ILogger<RouterService>> _mockLogger;
 
     public RouterServiceTests()
     {
         _mockComfyUI = new Mock<IComfyUIService>();
         _mockBackend = new Mock<IBackendService>();
-        _mockState = new Mock<IStateService>();
-        _mockModels = new Mock<IModelService>();
         _mockLogger = new Mock<ILogger<RouterService>>();
 
         // Default setup
@@ -34,8 +29,6 @@ public class RouterServiceTests
         return new RouterService(
             _mockComfyUI.Object,
             _mockBackend.Object,
-            _mockState.Object,
-            _mockModels.Object,
             _mockLogger.Object);
     }
 
@@ -106,135 +99,106 @@ public class RouterServiceTests
 
     #endregion
 
-    #region PostTxt2Img Tests
+    #region PostGenerationAsync Tests
 
     [Fact]
-    public async Task PostTxt2Img_WhenBackendNotAvailable_ShouldThrowInvalidOperationException()
+    public async Task PostGenerationAsync_WhenBackendNotAvailable_ShouldThrowInvalidOperationException()
     {
         // Arrange
         _mockBackend.Setup(b => b.IsBackendAvailable).Returns(false);
         var service = CreateService();
-        var parameters = new Txt2ImgParameters
-        {
-            Prompt = "test",
-            Width = 512,
-            Height = 512
-        };
+        var parameters = new GenerationParameters();
+        var workflow = new Workflow { Id = Guid.NewGuid(), Mode = ModeType.Txt2Img };
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostTxt2Img(parameters));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.PostGenerationAsync(parameters, workflow));
         Assert.Contains("not available", exception.Message);
     }
 
     [Fact]
-    public async Task PostTxt2Img_ShouldUseModelFromModelService()
+    public async Task PostGenerationAsync_WhenWorkflowIsNull_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var expectedModel = "my_model.safetensors";
-        _mockModels.Setup(m => m.GetCurrentModel(ModeType.Txt2Img)).Returns(expectedModel);
-        _mockModels.Setup(m => m.GetCurrentVae(ModeType.Txt2Img)).Returns((string?)null);
-        _mockComfyUI.Setup(c => c.PostTxt2Img(It.IsAny<Txt2ImgComfyUI>(), It.IsAny<string>(), It.IsAny<Workflow>()))
-            .ReturnsAsync(new GeneratedImages());
+        var service = CreateService();
+        var parameters = new GenerationParameters();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => service.PostGenerationAsync(parameters, null!));
+    }
+
+    [Fact]
+    public async Task PostGenerationAsync_ShouldCallComfyUIService()
+    {
+        // Arrange
+        var workflow = new Workflow { Id = Guid.NewGuid(), Title = "Test Workflow", Mode = ModeType.Txt2Img };
+        var parameters = new GenerationParameters();
+        var expectedResult = new GeneratedImages { Images = new List<string> { "base64data" } };
         
-        // Setup State to return a workflow
-        var workflow = new Workflow { Id = Guid.NewGuid() };
-        var txt2ImgParams = new Txt2ImgParameters
-        {
-            Comfy = new SharedParameters.ComfySharedParameters { Workflow = workflow }
-        };
-        _mockState.Setup(s => s.ParametersTxt2Img).Returns(txt2ImgParams);
-
-        var parameters = new Txt2ImgParameters
-        {
-            Prompt = "test",
-            Width = 512,
-            Height = 512,
-            Comfy = new SharedParameters.ComfySharedParameters { Workflow = workflow }
-        };
-
+        _mockComfyUI.Setup(c => c.PostGenerationAsync(It.IsAny<GenerationParameters>(), It.IsAny<string>(), It.IsAny<Workflow>()))
+            .ReturnsAsync(expectedResult);
+        
         var service = CreateService();
 
         // Act
-        await service.PostTxt2Img(parameters);
+        var result = await service.PostGenerationAsync(parameters, workflow);
 
         // Assert
-        _mockModels.Verify(m => m.GetCurrentModel(ModeType.Txt2Img), Times.Once);
+        Assert.Equal(expectedResult, result);
+        _mockComfyUI.Verify(c => c.PostGenerationAsync(parameters, "test-client-id", workflow), Times.Once);
     }
 
     #endregion
 
-    #region PostImg2Img Tests
+    #region PostVideoGenerationAsync Tests
 
     [Fact]
-    public async Task PostImg2Img_WhenBackendNotAvailable_ShouldThrowInvalidOperationException()
+    public async Task PostVideoGenerationAsync_WhenBackendNotAvailable_ShouldThrowInvalidOperationException()
     {
         // Arrange
         _mockBackend.Setup(b => b.IsBackendAvailable).Returns(false);
         var service = CreateService();
-        var parameters = new Img2ImgParameters
-        {
-            Prompt = "test",
-            Width = 512,
-            Height = 512
-        };
+        var parameters = new GenerationParameters();
+        var workflow = new Workflow { Id = Guid.NewGuid(), Mode = ModeType.Img2Vid };
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostImg2Img(parameters));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>
+            (() => service.PostVideoGenerationAsync(parameters, workflow));
         Assert.Contains("not available", exception.Message);
     }
 
     [Fact]
-    public async Task PostImg2Img_WhenNoWorkflowConfigured_ShouldThrowException()
-    {
-        // Arrange - The service requires a workflow, but when none is configured it may throw
-        // NullReferenceException (due to null check order) or InvalidOperationException
-        _mockState.Setup(s => s.ParametersImg2Img).Returns(new Img2ImgParameters());
-        var service = CreateService();
-        var parameters = new Img2ImgParameters
-        {
-            Prompt = "test",
-            Comfy = new SharedParameters.ComfySharedParameters { Workflow = null }
-        };
-
-        // Act & Assert - Any exception indicates the missing workflow scenario is handled
-        await Assert.ThrowsAnyAsync<Exception>(() => service.PostImg2Img(parameters));
-    }
-
-    #endregion
-
-    #region PostImg2Vid Tests
-
-    [Fact]
-    public async Task PostImg2Vid_WhenBackendNotAvailable_ShouldThrowInvalidOperationException()
+    public async Task PostVideoGenerationAsync_WhenWorkflowIsNull_ShouldThrowArgumentNullException()
     {
         // Arrange
-        _mockBackend.Setup(b => b.IsBackendAvailable).Returns(false);
         var service = CreateService();
-        var parameters = new Img2VidParameters
-        {
-            Prompt = "test"
-        };
+        var parameters = new GenerationParameters();
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostImg2Vid(parameters));
-        Assert.Contains("not available", exception.Message);
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => service.PostVideoGenerationAsync(parameters, null!));
     }
 
     [Fact]
-    public async Task PostImg2Vid_WhenNoWorkflowConfigured_ShouldThrowInvalidOperationException()
+    public async Task PostVideoGenerationAsync_ShouldCallComfyUIService()
     {
         // Arrange
-        _mockState.Setup(s => s.ParametersImg2Vid).Returns(new Img2VidParameters());
+        var workflow = new Workflow { Id = Guid.NewGuid(), Title = "Video Workflow", Mode = ModeType.Img2Vid };
+        var parameters = new GenerationParameters();
+        var expectedResult = new GeneratedVideos { Videos = new List<GeneratedVideo>() };
+        
+        _mockComfyUI.Setup(c => c.PostVideoGenerationAsync(It.IsAny<GenerationParameters>(), It.IsAny<string>(), It.IsAny<Workflow>()))
+            .ReturnsAsync(expectedResult);
+        
         var service = CreateService();
-        var parameters = new Img2VidParameters
-        {
-            Prompt = "test",
-            Comfy = new Img2VidParameters.ComfyImg2VidParameters { Workflow = null }
-        };
 
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostImg2Vid(parameters));
-        Assert.Contains("workflow", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Act
+        var result = await service.PostVideoGenerationAsync(parameters, workflow);
+
+        // Assert
+        Assert.Equal(expectedResult, result);
+        _mockComfyUI.Verify(c => c.PostVideoGenerationAsync(parameters, "test-client-id", workflow), Times.Once);
     }
 
     #endregion

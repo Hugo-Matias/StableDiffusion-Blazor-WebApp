@@ -1,15 +1,19 @@
 using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using System.Text.RegularExpressions;
 using static BlazorWebApp.Data.Enums;
+using static BlazorWebApp.Models.FragmentKeys;
 
 namespace BlazorWebApp.Services
 {
     /// <summary>
     /// Service responsible for orchestrating image and video generation workflows.
     /// Coordinates between API services, file I/O, database operations, and progress tracking.
+    /// Events are published through IEventService.
     /// </summary>
     public class ImageService : IImageService
     {
@@ -24,18 +28,15 @@ namespace BlazorWebApp.Services
         private readonly ISessionService _session;
         private readonly IModelService _models;
         private readonly IWildcardService _wildcardService;
+        private readonly IEventService _events;
         private PeriodicTimer? _timer;
-        private SharedParameters _parsingParams;
-        private Txt2ImgParameters _txt2imgParams;
-        private Img2VidParameters _img2vidParams;
-        private int _canvasSourceWidth;
-        private int _canvasSourceHeight;
+        
+        // Legacy field - kept for backward compatibility during transition
         private string _currentModel = string.Empty;
-
-        /// <summary>
-        /// Event fired when image generation state changes.
-        /// </summary>
-        public event Action OnChange;
+        
+        // New fields for GenerationParameters-based flow
+        private GenerationParameters? _currentGenerationParams;
+        private Workflow? _currentWorkflow;
 
         #region Generation Results
 
@@ -73,7 +74,8 @@ namespace BlazorWebApp.Services
             IStateService state, 
             ISessionService session, 
             IModelService models,
-            IWildcardService wildcardService)
+            IWildcardService wildcardService,
+            IEventService events)
         {
             _io = io;
             _backend = backend;
@@ -86,7 +88,10 @@ namespace BlazorWebApp.Services
             _session = session;
             _models = models;
             _wildcardService = wildcardService;
+            _events = events;
         }
+
+        #region Image Generation
 
         /// <summary>
         /// Generates images based on the specified mode (Txt2Img, Img2Img).
@@ -94,31 +99,39 @@ namespace BlazorWebApp.Services
         /// </summary>
         /// <param name="mode">The generation mode to use.</param>
         /// <returns>DTO containing generated image information and metadata.</returns>
-        public async Task<ImagesDto> GetImages(ModeType mode)
+        public async Task<ImagesDto> GenerateImagesAsync(GenerationParameters parameters, Workflow workflow)
         {
-            _logger.LogInformation("Starting image generation for mode: {Mode}", mode);
+            if (workflow == null)
+            {
+                _logger.LogError("Cannot generate images: workflow is null");
+                return new ImagesDto();
+            }
+
+            _logger.LogInformation("Starting image generation with GenerationParameters for workflow: {WorkflowTitle}", workflow.Title);
             _progress.IsConverging = true;
 
             ImagesDto images = new();
-            string scriptName = string.Empty;
-            _currentModel = _models.GetCurrentModel(mode);
-
+            _currentGenerationParams = parameters;
+            _currentWorkflow = workflow;
+            
+            // Capture original seed values to restore after generation (for random seed support)
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
+            
+            var detailerFragment = parameters.GetFragment(Fragments.Detailer);
+            var originalDetailerSeed = detailerFragment?.GetValueOrDefault(Params.DetailerSeed, -1L) ?? -1L;
+            
             try
             {
-                switch (mode)
-                {
-                    case ModeType.Img2Img:
-                        _logger.LogDebug("Building Img2Img parameters");
-                        var img2imgParams = await BuildImg2ImgParametersAsync(scriptName);
-                        Images = await _router.PostImg2Img(img2imgParams);
-                        break;
+                // Apply wildcard expansion and seed randomization directly to GenerationParameters
+                await PrepareGenerationParametersAsync(parameters);
+                
+                // Get current model from assets
+                _currentModel = parameters.Assets.GetValueOrDefault("Model", "") 
+                    ?? _models.GetCurrentModel(workflow.Mode);
 
-                    default:
-                        _logger.LogDebug("Building Txt2Img parameters");
-                        await BuildTxt2ImgParametersAsync(scriptName);
-                        Images = await _router.PostTxt2Img(_txt2imgParams);
-                        break;
-                }
+                // Call the new unified router method
+                Images = await _router.PostGenerationAsync(parameters, workflow);
 
                 if (_state.State.Generation.IsInterrupted)
                 {
@@ -128,22 +141,34 @@ namespace BlazorWebApp.Services
 
                 if (_backend.OutputPaths.SaveSamples)
                 {
-                    switch (mode)
-                    {
-                        case ModeType.Img2Img:
-                            images = await SaveImages(Outdir.Img2ImgSamples, scriptName);
-                            break;
-                        default:
-                            images = await SaveImages(Outdir.Txt2ImgSamples, scriptName);
-                            break;
-                    }
+                    var outdir = workflow.Mode == ModeType.Img2Img 
+                        ? Outdir.Img2ImgSamples 
+                        : Outdir.Txt2ImgSamples;
+                    images = await SaveImagesFromGenerationParams(outdir, parameters, workflow);
                 }
 
-                _logger.LogInformation("Image generation completed successfully for mode: {Mode}, generated {ImageCount} images", mode, images?.Images?.Count ?? 0);
+                _logger.LogInformation("Image generation completed for workflow: {WorkflowTitle}, generated {ImageCount} images", 
+                    workflow.Title, images?.Images?.Count ?? 0);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error occurred during image generation for mode: {Mode}", mode);
+                _logger.LogError(e, "Error during image generation for workflow: {WorkflowTitle}", workflow.Title);
+            }
+            finally
+            {
+                // Restore original seed values if they were random (-1)
+                // This ensures the next generation will also get new random seeds
+                if (originalSeed == -1 && samplerFragment != null)
+                {
+                    samplerFragment.SetValue(Params.Seed, -1L);
+                    _logger.LogDebug("Restored seed to -1 for next random generation");
+                }
+                
+                if (originalDetailerSeed == -1 && detailerFragment != null)
+                {
+                    detailerFragment.SetValue(Params.DetailerSeed, -1L);
+                    _logger.LogDebug("Restored detailer seed to -1 for next random generation");
+                }
             }
 
             _progress.IsConverging = false;
@@ -154,66 +179,235 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
+        /// Prepares GenerationParameters for generation by applying wildcard expansion,
+        /// seed randomization, and style processing.
+        /// </summary>
+        private async Task PrepareGenerationParametersAsync(GenerationParameters parameters)
+        {
+            // Get prompts fragment
+            var promptsFragment = parameters.GetFragment(Fragments.Prompts);
+            if (promptsFragment != null)
+            {
+                var prompt = promptsFragment.GetValueOrDefault<string>(Params.Positive, "") ?? "";
+                var negativePrompt = promptsFragment.GetValueOrDefault<string>(Params.Negative, "") ?? "";
+                
+                // Apply wildcard expansion
+                prompt = await _wildcardService.ParseWildcards(prompt);
+                negativePrompt = await _wildcardService.ParseWildcards(negativePrompt);
+                
+                // Apply styles
+                foreach (var style in _state.State.Generation.Styles)
+                {
+                    if (!string.IsNullOrWhiteSpace(style.Prompt))
+                        prompt = style.Prompt.Replace("{prompt}", prompt);
+                    if (!string.IsNullOrWhiteSpace(style.NegativePrompt))
+                        negativePrompt = string.IsNullOrEmpty(negativePrompt) 
+                            ? style.NegativePrompt 
+                            : $"{negativePrompt}, {style.NegativePrompt}";
+                }
+                
+                promptsFragment.SetValue(Params.Positive, prompt);
+                promptsFragment.SetValue(Params.Negative, negativePrompt);
+            }
+            else
+            {
+                _logger.LogWarning("No prompts fragment found for generation");
+            }
+            
+            // Handle seed randomization for main sampler fragment
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            if (samplerFragment != null)
+            {
+                var fragmentSeed = samplerFragment.GetValueOrDefault(Params.Seed, -1L);
+                
+                // Generate new random seed if user wants random (-1 or <= 0)
+                if (fragmentSeed == -1 || fragmentSeed <= 0)
+                {
+                    var actualSeed = (long)new Random().Next(0, int.MaxValue);
+                    samplerFragment.SetValue(Params.Seed, actualSeed);
+                    _state.State.Generation.Seed = actualSeed;
+                }
+                else
+                {
+                    _state.State.Generation.Seed = fragmentSeed;
+                }
+            }
+            
+            // Handle seed randomization for detailer fragment (FaceDetailer requires seed >= 0)
+            var detailerFragment = parameters.GetFragment(Fragments.Detailer);
+            if (detailerFragment != null && detailerFragment.IsActive)
+            {
+                var detailerSeed = detailerFragment.GetValueOrDefault(Params.DetailerSeed, -1L);
+                
+                // Generate new random seed if user wants random (-1 or <= 0)
+                // FaceDetailer node requires seed >= 0
+                if (detailerSeed == -1 || detailerSeed <= 0)
+                {
+                    var actualSeed = (long)new Random().Next(0, int.MaxValue);
+                    detailerFragment.SetValue(Params.DetailerSeed, actualSeed);
+                    _logger.LogDebug("Randomized detailer seed to {Seed}", actualSeed);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Saves generated images using data from GenerationParameters.
+        /// </summary>
+        private async Task<ImagesDto> SaveImagesFromGenerationParams(Outdir outdirSamples, GenerationParameters parameters, Workflow workflow)
+        {
+            DirectoryInfo saveDir = _io.CreateDirectory(GetCurrentSaveFolder(outdirSamples));
+            ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
+
+            var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
+            var mode = Parser.ModeTypeFromOutdir(outdirSamples);
+
+            // Parse info from the workflow JSON (Images.Info contains ComfyUI workflow data)
+            var info = Parser.ParseInfoStrings(Images.Info, mode);
+
+            // Extract parameters from GenerationParameters
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var promptsFragment = parameters.GetFragment(Fragments.Prompts);
+            var latentFragment = parameters.GetFragment(Fragments.Latent);
+            
+            var seed = samplerFragment?.GetValueOrDefault(Params.Seed, _state.State.Generation.Seed) ?? _state.State.Generation.Seed;
+            var steps = samplerFragment?.GetValueOrDefault(Params.Steps, 20) ?? 20;
+            var cfg = samplerFragment?.GetValueOrDefault(Params.Cfg, 7.0) ?? 7.0;
+            var samplerName = samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler";
+            var scheduler = samplerFragment?.GetValue<string>(Params.Scheduler) ?? "normal";
+            var denoise = samplerFragment?.GetValueOrDefault(Params.Denoise, 1.0) ?? 1.0;
+            
+            var prompt = promptsFragment?.GetValue<string>(Params.Positive) ?? info?["prompt"] ?? "";
+            var negativePrompt = promptsFragment?.GetValue<string>(Params.Negative) ?? info?["negative"] ?? "";
+            
+            var width = latentFragment?.GetValueOrDefault(Params.Width, 1024) ?? 1024;
+            var height = latentFragment?.GetValueOrDefault(Params.Height, 1024) ?? 1024;
+
+            for (int i = 0; i < Images.Images.Count; i++)
+            {
+                fileIndex++;
+                var extension = _backend.OutputPaths.SamplesFormat.ToLowerInvariant();
+
+                var fullpath = GetImagePathFromParams(saveDir.FullName, fileIndex, seed, steps, cfg, samplerName);
+                var imagePath = $"{fullpath}.{extension}";
+
+                await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(Images.Images[i]));
+
+                // Create image entity from GenerationParameters
+                var image = new Image
+                {
+                    Path = imagePath,
+                    ProjectId = _state.State.Gallery.ProjectId,
+                    Width = width,
+                    Height = height,
+                    Prompt = prompt,
+                    NegativePrompt = negativePrompt,
+                    SamplerId = await _db.GetSamplerIdByName(samplerName),
+                    Scheduler = scheduler,
+                    Steps = steps,
+                    Seed = seed,
+                    CfgScale = (float)cfg,
+                    DenoisingStrength = denoise,
+                    Model = await _db.GetResourceByFilename(_currentModel),
+                    ModeId = await _db.GetMode(mode),
+                    DateCreated = DateTime.Now
+                };
+
+                savedImages.Images.Add(await _db.AddImage(image));
+            }
+
+            return savedImages;
+        }
+
+        /// <summary>
+        /// Gets the full path for an image file based on GenerationParameters.
+        /// </summary>
+        private string GetImagePathFromParams(string saveDir, int fileIndex, long seed, int steps, double cfg, string sampler)
+        {
+            var pattern = _backend.OutputPaths.FilenamePattern ?? "";
+            
+            var filename = fileIndex.ToString().PadLeft(5, '0');
+            
+            if (!string.IsNullOrWhiteSpace(pattern))
+            {
+                filename += "-" + pattern
+                    .Replace("[seed]", seed.ToString())
+                    .Replace("[steps]", steps.ToString())
+                    .Replace("[cfg]", cfg.ToString())
+                    .Replace("[sampler]", sampler);
+            }
+            
+            return Path.Combine(saveDir, filename);
+        }
+
+        #endregion
+
+        #region Video Generation
+
+        /// <summary>
         /// Generates a video from an image using Img2Vid parameters
         /// </summary>
-        public async Task<GeneratedVideos> GetVideo()
+        public async Task<GeneratedVideos> GenerateVideoAsync(GenerationParameters parameters, Workflow workflow)
         {
+            if (workflow == null)
+            {
+                _logger.LogError("Cannot generate video: workflow is null");
+                return new GeneratedVideos();
+            }
+
+            _logger.LogInformation("Starting video generation with GenerationParameters for workflow: {WorkflowTitle}", workflow.Title);
             _progress.IsConverging = true;
             GeneratedVideos = null;
-            _currentModel = _models.GetCurrentModel(ModeType.Img2Vid);
+            _currentGenerationParams = parameters;
+            _currentWorkflow = workflow;
+
+            // Capture original seed value to restore after generation (for random seed support)
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
 
             try
             {
-                _img2vidParams = _state.ParametersImg2Vid;
+                // Apply wildcard expansion and seed randomization
+                await PrepareGenerationParametersAsync(parameters);
+                
+                // Get current model from assets
+                _currentModel = parameters.Assets.GetValueOrDefault(Assets.HighModel, "") 
+                    ?? parameters.Assets.GetValueOrDefault(Assets.Model, "") 
+                    ?? _models.GetCurrentModel(ModeType.Img2Vid);
 
-                // Generate random seed ONLY for API call, don't update UI
-                var actualSeed = _img2vidParams.Seed == -1 
-                    ? new Random().Next(0, int.MaxValue) 
-                    : (long)_img2vidParams.Seed;
+                // Get the actual seed that will be used (already set by PrepareGenerationParametersAsync)
+                var actualSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
 
-                // Create a copy of parameters with the actual seed for the API
-                var paramsForGeneration = new Img2VidParameters
-                {
-                    Prompt = _img2vidParams.Prompt,
-                    NegativePrompt = _img2vidParams.NegativePrompt,
-                    Image = _img2vidParams.Image,
-                    Seed = actualSeed,
-                    Steps = _img2vidParams.Steps,
-                    CfgScale = _img2vidParams.CfgScale,
-                    Width = _img2vidParams.Width,
-                    Height = _img2vidParams.Height,
-                    Length = _img2vidParams.Length,
-                    FrameRate = _img2vidParams.FrameRate,
-                    MotionAmplitude = _img2vidParams.MotionAmplitude,
-                    Shift = _img2vidParams.Shift,
-                    SamplerName = _img2vidParams.SamplerName,
-                    Scheduler = _img2vidParams.Scheduler,
-                    Loras = _img2vidParams.Loras,
-                    FrameInterpolation = _img2vidParams.FrameInterpolation,
-                    Comfy = _img2vidParams.Comfy
-                };
-
-                GeneratedVideos = await _router.PostImg2Vid(paramsForGeneration);
+                // Call the new unified router method
+                GeneratedVideos = await _router.PostVideoGenerationAsync(parameters, workflow);
 
                 if (_state.State.Generation.IsInterrupted)
                 {
                     throw new Exception("Generation Canceled!");
                 }
 
-                // Store the actual seed used (not -1)
-                _state.State.Generation.Seed = actualSeed;
+                // Store the actual seed used (already stored by PrepareGenerationParametersAsync)
 
                 if (_backend.OutputPaths.SaveSamples && GeneratedVideos?.Videos?.Count > 0)
                 {
-                    await SaveVideos(GeneratedVideos, actualSeed);
-                    
-                    // Add videos to session for history display
+                    await SaveVideosFromGenerationParams(GeneratedVideos, actualSeed, parameters);
                     _session.AddSessionVideos(GeneratedVideos.Videos);
                 }
+
+                _logger.LogInformation("Video generation completed for workflow: {WorkflowTitle}", workflow.Title);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Video generation error");
+                _logger.LogError(e, "Error during video generation for workflow: {WorkflowTitle}", workflow.Title);
+            }
+            finally
+            {
+                // Restore original seed value if it was random (-1)
+                // This ensures the next generation will also get a new random seed
+                if (originalSeed == -1 && samplerFragment != null)
+                {
+                    samplerFragment.SetValue(Params.Seed, -1L);
+                    _logger.LogDebug("Restored seed to -1 for next random generation");
+                }
             }
 
             _progress.IsConverging = false;
@@ -226,15 +420,23 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Saves generated videos to the output directory
         /// </summary>
-        private async Task SaveVideos(GeneratedVideos videos, long actualSeed)
+        private async Task SaveVideosFromGenerationParams(GeneratedVideos videos, long actualSeed, GenerationParameters parameters)
         {
             var saveDir = _io.CreateDirectory(GetVideoSaveFolder());
             var fileIndex = GetVideoFileIndex(saveDir.FullName);
 
+            var samplerFragment = parameters.Fragments.Values.FirstOrDefault(f => 
+                f.FragmentFile.Contains("sampler", StringComparison.OrdinalIgnoreCase));
+            var promptsFragment = parameters.Fragments.Values.FirstOrDefault(f => 
+                f.FragmentFile.Contains("prompt", StringComparison.OrdinalIgnoreCase));
+            var videoFragment = parameters.Fragments.Values.FirstOrDefault(f => 
+                f.FragmentFile.Contains("video", StringComparison.OrdinalIgnoreCase) || 
+                f.FragmentFile.Contains("wan", StringComparison.OrdinalIgnoreCase));
+
             foreach (var video in videos.Videos)
             {
                 fileIndex++;
-                var filename = GenerateVideoFilename(fileIndex, actualSeed);
+                var filename = GenerateVideoFilename(fileIndex, actualSeed, samplerFragment);
                 var videoPath = Path.Combine(saveDir.FullName, filename);
 
                 // If video data is available as base64, decode and save
@@ -253,29 +455,39 @@ namespace BlazorWebApp.Services
 
                 // Update video metadata with actual seed used
                 video.Filename = filename;
-                video.Prompt = _img2vidParams.Prompt;
-                video.NegativePrompt = _img2vidParams.NegativePrompt;
+                video.Prompt = promptsFragment?.GetValue<string>(Params.Positive) ?? "";
+                video.NegativePrompt = promptsFragment?.GetValue<string>(Params.Negative) ?? "";
                 video.Seed = actualSeed;
-                video.Steps = (int)_img2vidParams.Steps;
-                video.CfgScale = (float)_img2vidParams.CfgScale;
-                video.Sampler = _img2vidParams.SamplerName;
-                video.Model = _currentModel;
-                video.Width = (int)_img2vidParams.Width;
-                video.Height = (int)_img2vidParams.Height;
-                video.FrameCount = (int)_img2vidParams.Length;
-                video.FrameRate = (int)_img2vidParams.FrameRate;
-                video.Duration = (double)_img2vidParams.Length / (double)_img2vidParams.FrameRate;
+                video.Steps = samplerFragment?.GetValueOrDefault(Params.Steps, 20) ?? 20;
+                video.CfgScale = (float)(samplerFragment?.GetValueOrDefault(Params.Cfg, 1.0) ?? 1.0);
+                video.Sampler = samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler";
+                video.Model = parameters.Assets.GetValueOrDefault(Assets.Model) ?? 
+                              parameters.Assets.GetValueOrDefault(Assets.HighModel) ?? "";
+                
+                var latentFragment = parameters.Fragments.Values.FirstOrDefault(f => 
+                    f.FragmentFile.Contains("latent", StringComparison.OrdinalIgnoreCase));
+                video.Width = latentFragment?.GetValueOrDefault(Params.Width, 768) ?? 
+                              videoFragment?.GetValueOrDefault(Params.Width, 768) ?? 768;
+                video.Height = latentFragment?.GetValueOrDefault(Params.Height, 768) ?? 
+                               videoFragment?.GetValueOrDefault(Params.Height, 768) ?? 768;
+                
+                video.FrameCount = videoFragment?.GetValueOrDefault(Params.VideoLength, 81) ?? 81;
+                video.FrameRate = videoFragment?.GetValueOrDefault(Params.FrameRate, 16) ?? 16;
+                video.Duration = video.FrameRate > 0 ? (double)video.FrameCount / video.FrameRate : 0;
 
                 // Persist to database using Image entity
-                await AddVideoToDb(video);
+                await AddVideoToDbFromParams(video, video.Steps, video.CfgScale, video.Sampler, 
+                    samplerFragment?.GetValue<string>(Params.Scheduler) ?? "simple", parameters);
             }
         }
 
         /// <summary>
         /// Adds a generated video to the database using the Image entity
         /// </summary>
-        private async Task<Image> AddVideoToDb(GeneratedVideo video)
+        private async Task<Image> AddVideoToDbFromParams(GeneratedVideo video, int steps, double cfg, string samplerName, string scheduler, GenerationParameters parameters)
         {
+            var samplerId = await _db.GetSamplerIdByName(samplerName);
+            
             var image = new Image
             {
                 Path = video.FilePath,
@@ -284,21 +496,24 @@ namespace BlazorWebApp.Services
                 Seed = video.Seed,
                 Width = video.Width,
                 Height = video.Height,
-                Steps = (int)_img2vidParams.Steps,
-                CfgScale = (float)_img2vidParams.CfgScale,
-                SamplerId = await _db.GetSamplerIdByName(_img2vidParams.SamplerName),
-                Scheduler = _img2vidParams.Scheduler,
-                ProjectId = _state.State.Gallery.ProjectId,
-                ModeId = await _db.GetMode(ModeType.Img2Vid),
-                Model = await _db.GetResourceByFilename(_currentModel)
+                Steps = steps,
+                CfgScale = (float)cfg,
+                DenoisingStrength = 1.0,
+                DateCreated = DateTime.Now,
+                SamplerId = samplerId,
+                Scheduler = scheduler,
+                Favorite = false,
+                Score = 0,
+                ModeId = (int)ModeType.Img2Vid,
+                ProjectId = _state.State.Gallery.ProjectId
             };
 
-            return await _db.AddImage(image);
+            await _db.AddImage(image);
+            video.Id = image.Id;
+            
+            return image;
         }
 
-        /// <summary>
-        /// Gets the save folder for Img2Vid outputs
-        /// </summary>
         private string GetVideoSaveFolder()
         {
             var basePath = _backend.GetOutputPath(Outdir.Img2VidSamples);
@@ -314,9 +529,6 @@ namespace BlazorWebApp.Services
             return basePath;
         }
 
-        /// <summary>
-        /// Gets the next file index for video files in the directory
-        /// </summary>
         private int GetVideoFileIndex(string path)
         {
             if (!Directory.Exists(path)) return 0;
@@ -342,10 +554,7 @@ namespace BlazorWebApp.Services
             return maxIndex;
         }
 
-        /// <summary>
-        /// Generates a filename for the video based on parameters
-        /// </summary>
-        private string GenerateVideoFilename(int fileIndex, long actualSeed)
+        private string GenerateVideoFilename(int fileIndex, long actualSeed, FragmentParameters? samplerFragment)
         {
             var pattern = _backend.OutputPaths.FilenamePattern;
             var filename = $"{fileIndex.ToString().PadLeft(5, '0')}";
@@ -354,90 +563,18 @@ namespace BlazorWebApp.Services
             {
                 filename += "-" + pattern
                     .Replace("[seed]", actualSeed.ToString())
-                    .Replace("[steps]", _img2vidParams.Steps.ToString())
-                    .Replace("[cfg]", _img2vidParams.CfgScale.ToString())
-                    .Replace("[sampler]", _img2vidParams.SamplerName ?? "euler");
+                    .Replace("[steps]", samplerFragment?.GetValueOrDefault(Params.Steps, 20).ToString() ?? "20")
+                    .Replace("[cfg]", samplerFragment?.GetValueOrDefault(Params.Cfg, 1.0).ToString() ?? "1")
+                    .Replace("[sampler]", samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler");
             }
 
             return filename + ".mp4";
         }
 
-        private async Task BuildTxt2ImgParametersAsync(string scriptName)
-        {
-            _parsingParams = await Parser.ParseParametersAsync(
-                new SharedParameters(_state.ParametersTxt2Img), 
-                _state.State.Generation.Styles,
-                _wildcardService);
-            _txt2imgParams = new Txt2ImgParameters(_parsingParams);
-            _txt2imgParams.EnableHR = _state.ParametersTxt2Img.EnableHR;
-            if (_txt2imgParams.EnableHR != null && (bool)_txt2imgParams.EnableHR)
-            {
-                _txt2imgParams.FirstphaseWidth = _state.ParametersTxt2Img.Width;
-                _txt2imgParams.FirstphaseHeight = _state.ParametersTxt2Img.Height;
-                _txt2imgParams.HRUpscaler = _state.ParametersTxt2Img.HRUpscaler;
-                _txt2imgParams.HRScale = _state.ParametersTxt2Img.HRScale;
-                _txt2imgParams.HRWidth = _state.ParametersTxt2Img.HRWidth;
-                _txt2imgParams.HRHeight = _state.ParametersTxt2Img.HRHeight;
-                _txt2imgParams.HRSecondPassSteps = _state.ParametersTxt2Img.HRSecondPassSteps;
-                _txt2imgParams.DenoisingStrength = _state.ParametersTxt2Img.DenoisingStrength;
-            }
-            _txt2imgParams.SeedVR2 = _state.ParametersTxt2Img.SeedVR2;
-            _txt2imgParams.ConditioningVariation = _state.ParametersTxt2Img.ConditioningVariation;
-            _txt2imgParams.SeedVarianceEnhancer = _state.ParametersTxt2Img.SeedVarianceEnhancer;
-        }
+        #endregion
 
-        private async Task<Img2ImgParameters> BuildImg2ImgParametersAsync(string scriptName)
-        {
-            _parsingParams = await Parser.ParseParametersAsync(
-                new SharedParameters(_state.ParametersImg2Img), 
-                _state.State.Generation.Styles,
-                _wildcardService);
-            var img2imgParams = new Img2ImgParameters(_parsingParams);
-            img2imgParams.InitImages = _state.ParametersImg2Img.InitImages;
-            img2imgParams.Mask = _state.ParametersImg2Img.Mask;
-            img2imgParams.MaskBlur = _state.ParametersImg2Img.MaskBlur;
-            img2imgParams.ResizeMode = _state.ParametersImg2Img.ResizeMode;
-            img2imgParams.InpaintingFill = _state.ParametersImg2Img.InpaintingFill;
-            img2imgParams.InpaintFullRes = _state.ParametersImg2Img.InpaintFullRes;
-            img2imgParams.InpaintFullResPadding = _state.ParametersImg2Img.InpaintFullResPadding;
-            img2imgParams.InpaintingMaskInvert = _state.ParametersImg2Img.InpaintingMaskInvert;
-            SetSourceImageSize();
-            return img2imgParams;
-        }
+        #region Utilities
 
-        public async Task<ImagesDto> SaveImages(Outdir outdirSamples, string scriptName)
-        {
-            DirectoryInfo saveDir = _io.CreateDirectory(GetCurrentSaveFolder(outdirSamples));
-            ImagesDto savedImages = new() { PageCount = 1, HasNext = false, HasPrev = false, CurrentPage = 1, Images = new() };
-
-            var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
-            var mode = Parser.ModeTypeFromOutdir(outdirSamples);
-
-            // Parse info from the workflow JSON (Images.Info contains ComfyUI workflow data)
-            var info = Parser.ParseInfoStrings(Images.Info, mode, _backend.IsBackendAvailable);
-
-            for (int i = 0; i < Images.Images.Count; i++)
-            {
-                fileIndex++;
-                var extension = _backend.OutputPaths.SamplesFormat.ToLowerInvariant();
-
-                // Use seed from parameters (already set during generation)
-                _state.State.Generation.Seed = (long)_parsingParams.Seed;
-
-                var fullpath = GetImagePath(saveDir.FullName, fileIndex, mode);
-                var imagePath = $"{fullpath}.{extension}";
-
-                await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(Images.Images[i]));
-
-                savedImages.Images.Add(await AddImageToDb(imagePath, outdirSamples, info));
-            }
-
-            return savedImages;
-        }
-
-        /// <summary>
-        /// Gets the save folder for the specified output type.
-        /// </summary>
         public string GetCurrentSaveFolder(Outdir? outdir)
         {
             if (outdir == null) return string.Empty;
@@ -445,7 +582,6 @@ namespace BlazorWebApp.Services
             var basePath = _backend.GetOutputPath(outdir.Value);
             if (string.IsNullOrEmpty(basePath)) return string.Empty;
             
-            // For Extras, don't add directory pattern
             if (outdir == Outdir.Extras) return basePath;
 
             var dirPattern = _backend.OutputPaths.DirectoryPattern;
@@ -458,9 +594,6 @@ namespace BlazorWebApp.Services
             return basePath;
         }
 
-        /// <summary>
-        /// Converts a path pattern with placeholders to actual values.
-        /// </summary>
         public string ConvertPathPattern(string pattern, ModeType mode)
         {
             if (string.IsNullOrWhiteSpace(pattern)) return string.Empty;
@@ -478,68 +611,12 @@ namespace BlazorWebApp.Services
 
             return tag switch
             {
-                "[sampler]" => mode switch
-                {
-                    ModeType.Txt2Img => _state.ParametersTxt2Img?.SamplerName ?? "euler",
-                    ModeType.Img2Img => _state.ParametersImg2Img?.SamplerIndex ?? "euler",
-                    ModeType.Img2Vid => _state.ParametersImg2Vid?.SamplerName ?? "euler",
-                    _ => "euler"
-                },
+                "[sampler]" => _currentGenerationParams?.GetFragment(Fragments.MainSampler)?.GetValue<string>(Params.SamplerName) ?? "euler",
                 "[seed]" => _state.State.Generation.Seed.ToString(),
-                "[steps]" => mode switch
-                {
-                    ModeType.Txt2Img => _state.ParametersTxt2Img?.Steps?.ToString() ?? "20",
-                    ModeType.Img2Img => _state.ParametersImg2Img?.Steps?.ToString() ?? "20",
-                    ModeType.Img2Vid => _state.ParametersImg2Vid?.Steps?.ToString() ?? "8",
-                    _ => "20"
-                },
-                "[cfg]" => mode switch
-                {
-                    ModeType.Txt2Img => _state.ParametersTxt2Img?.CfgScale?.ToString() ?? "7",
-                    ModeType.Img2Img => _state.ParametersImg2Img?.CfgScale?.ToString() ?? "7",
-                    ModeType.Img2Vid => _state.ParametersImg2Vid?.CfgScale?.ToString() ?? "1",
-                    _ => "7"
-                },
+                "[steps]" => _currentGenerationParams?.GetFragment(Fragments.MainSampler)?.GetValueOrDefault(Params.Steps, 20).ToString() ?? "20",
+                "[cfg]" => _currentGenerationParams?.GetFragment(Fragments.MainSampler)?.GetValueOrDefault(Params.Cfg, 7.0).ToString() ?? "7",
                 _ => string.Empty
             };
-        }
-
-        private async Task<Image> AddImageToDb(string path, Outdir outdir, Dictionary<string, string> info)
-        {
-            Image image = new();
-
-            image.Path = path;
-            image.ProjectId = _state.State.Gallery.ProjectId;
-            
-            if (outdir == Outdir.Txt2ImgSamples && _txt2imgParams.EnableHR == true)
-            {
-                var resizeRes = Parser.ParseHighresResolution((int)_parsingParams.Width, (int)_parsingParams.Height, _txt2imgParams.HRWidth, _txt2imgParams.HRHeight, _txt2imgParams.HRScale);
-                image.Width = resizeRes.Item1;
-                image.Height = resizeRes.Item2;
-            }
-            else if (outdir == Outdir.Img2ImgSamples)
-            {
-                image.Width = _canvasSourceWidth;
-                image.Height = _canvasSourceHeight;
-            }
-            else
-            {
-                image.Width = (int)_parsingParams.Width;
-                image.Height = (int)_parsingParams.Height;
-            }
-
-            image.Prompt = info != null ? info["prompt"] : _parsingParams.Prompt;
-            image.NegativePrompt = info != null ? info["negative"] : _parsingParams.NegativePrompt;
-            image.SamplerId = await _db.GetSamplerIdByName(_parsingParams.SamplerName);
-            image.Scheduler = _parsingParams.Scheduler;
-            image.Steps = (int)_parsingParams.Steps;
-            image.Seed = (long)_parsingParams.Seed;
-            image.CfgScale = (float)_parsingParams.CfgScale;
-            image.DenoisingStrength = _parsingParams.DenoisingStrength;
-            image.Model = await _db.GetResourceByFilename(_currentModel);
-            image.ModeId = await _db.GetMode(Parser.ModeTypeFromOutdir(outdir));
-
-            return await _db.AddImage(image);
         }
 
         public async Task<bool> DownloadImageAsPng(string url, string path, bool overwrite = true)
@@ -555,50 +632,12 @@ namespace BlazorWebApp.Services
                 await File.WriteAllBytesAsync(path, imageData);
                 return true;
             }
-            else return false;
+            return false;
         }
 
-        private string GetImagePath(string path, int fileIndex, ModeType mode)
-        {
-            string infoname = ConvertPathPattern(_backend.OutputPaths.FilenamePattern, mode);
-            string filename = $"{fileIndex.ToString().PadLeft(5, '0')}-{infoname}";
-            return Path.Combine(path, filename);
-        }
+        private void NotifyStateChanged(bool success = true, int count = 0) 
+            => _events.Publish(new ImagesGeneratedEventArgs(success, count));
 
-        /// <summary>
-        /// In Img2Img, Width and Height are related to the section being masked and not the final image.
-        /// This method will set global variables with the proper dimensions to be used in the image's data.
-        /// </summary>
-        private void SetSourceImageSize()
-        {
-            var data = Regex.Replace(_session.CanvasImageData, @"data.+?,", "");
-            var size = _magick.GetImageSize(data);
-            _canvasSourceWidth = size.Item1;
-            _canvasSourceHeight = size.Item2;
-        }
-
-        private async void StartProgressChecker(BaseProgress progress)
-        {
-            // Progress checking temporarily disabled - will be reimplemented for ComfyUI
-            _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-            _progress.Add(progress);
-
-            while (await _timer.WaitForNextTickAsync())
-            {
-                // ComfyUI progress checking to be implemented
-                Progress = new InferenceProgress();
-                _progress.Update(progress.Id, 0);
-                NotifyStateChanged();
-            }
-        }
-
-        private void StopProgressChecker(Guid id)
-        {
-            _timer?.Dispose();
-            _progress.Remove(id);
-            Progress = new();
-        }
-
-        private void NotifyStateChanged() => OnChange?.Invoke();
+        #endregion
     }
 }

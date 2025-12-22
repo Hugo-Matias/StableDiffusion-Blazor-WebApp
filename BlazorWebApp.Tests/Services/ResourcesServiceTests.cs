@@ -18,6 +18,7 @@ namespace BlazorWebApp.Tests.Services
         private readonly Mock<IIOService> _mockIO;
         private readonly Mock<IDatabaseService> _mockDb;
         private readonly Mock<IConfiguration> _mockConfig;
+        private readonly GenerationParameters _generationParameters;
         private readonly ResourcesService _service;
 
         public ResourcesServiceTests()
@@ -37,18 +38,13 @@ namespace BlazorWebApp.Tests.Services
             {
                 Resources = new AppStateResources { Weight = 1.0f, LoadTriggerWords = true }
             });
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(new Txt2ImgParameters
-            {
-                Prompt = "",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            });
-            _mockState.Setup(x => x.ParametersImg2Img).Returns(new Img2ImgParameters
-            {
-                Prompt = "",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            });
+            
+            // Setup GenerationParameters
+            _generationParameters = new GenerationParameters();
+            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
+            promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
+            _mockState.Setup(x => x.GenerationParameters).Returns(_generationParameters);
 
             _service = new ResourcesService(_mockState.Object, _mockIO.Object, _mockDb.Object, _mockConfig.Object);
         }
@@ -332,61 +328,6 @@ namespace BlazorWebApp.Tests.Services
         #region LoadPrompt Tests
 
         [Fact]
-        public async Task LoadPrompt_TextualInversion_AddsKeywordToPrompt()
-        {
-            // Arrange
-            var file = new LocalResourceFile
-            {
-                Filename = "embedding.safetensors",
-                File = new FileInfo(Path.Combine(Path.GetTempPath(), "embedding.safetensors"))
-            };
-            var txt2imgParams = new Txt2ImgParameters
-            {
-                Prompt = "initial prompt",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(txt2imgParams);
-
-            // Act
-            await _service.LoadPrompt(file, "TextualInversion", (ModeType.Txt2Img, true));
-
-            // Assert
-            txt2imgParams.Prompt.Should().Contain("embedding");
-        }
-
-        [Fact]
-        public async Task LoadPrompt_TextualInversion_WithWeight_AddsWeightedKeyword()
-        {
-            // Arrange
-            var state = new AppState
-            {
-                Resources = new AppStateResources { Weight = 0.8f, LoadTriggerWords = false }
-            };
-            _mockState.Setup(x => x.State).Returns(state);
-
-            var file = new LocalResourceFile
-            {
-                Filename = "embedding.safetensors",
-                File = new FileInfo(Path.Combine(Path.GetTempPath(), "embedding.safetensors"))
-            };
-            var txt2imgParams = new Txt2ImgParameters
-            {
-                Prompt = "",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(txt2imgParams);
-
-            // Act
-            await _service.LoadPrompt(file, "TextualInversion", (ModeType.Txt2Img, true));
-
-            // Assert - check for weighted syntax pattern (locale-independent)
-            txt2imgParams.Prompt.Should().Contain("(embedding:");
-            txt2imgParams.Prompt.Should().Contain("8)"); // Weight contains 8 regardless of decimal separator
-        }
-
-        [Fact]
         public async Task LoadPrompt_Lora_AddsToLorasList()
         {
             // Arrange
@@ -396,73 +337,18 @@ namespace BlazorWebApp.Tests.Services
                 Filename = "test_lora.safetensors",
                 File = new FileInfo(loraPath)
             };
-            var txt2imgParams = new Txt2ImgParameters
-            {
-                Prompt = "",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(txt2imgParams);
 
             // Act
             await _service.LoadPrompt(file, "LORA", (ModeType.Txt2Img, true));
 
             // Assert
-            txt2imgParams.Loras.Should().HaveCount(1);
-            txt2imgParams.Loras[0].Name.Should().Be("test_lora");
-            txt2imgParams.Loras[0].IsEnabled.Should().BeTrue();
+            _generationParameters.Loras.Should().HaveCount(1);
+            _generationParameters.Loras[0].Name.Should().Be("test_lora");
+            _generationParameters.Loras[0].IsEnabled.Should().BeTrue();
         }
 
         [Fact]
-        public async Task LoadPrompt_Hypernetwork_AddsHypernetSyntax()
-        {
-            // Arrange
-            var file = new LocalResourceFile
-            {
-                Filename = "hypernet.pt",
-                File = new FileInfo(Path.Combine(Path.GetTempPath(), "hypernet.pt"))
-            };
-            var txt2imgParams = new Txt2ImgParameters
-            {
-                Prompt = "",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(txt2imgParams);
-
-            // Act
-            await _service.LoadPrompt(file, "Hypernetwork", (ModeType.Txt2Img, true));
-
-            // Assert
-            txt2imgParams.Prompt.Should().Contain("<hypernet:hypernet:");
-        }
-
-        [Fact]
-        public async Task LoadPrompt_NegativePromptTarget_AddsToNegativePrompt()
-        {
-            // Arrange
-            var file = new LocalResourceFile
-            {
-                Filename = "embedding.safetensors",
-                File = new FileInfo(Path.Combine(Path.GetTempPath(), "embedding.safetensors"))
-            };
-            var txt2imgParams = new Txt2ImgParameters
-            {
-                Prompt = "",
-                NegativePrompt = "initial negative",
-                Loras = new List<Lora>()
-            };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(txt2imgParams);
-
-            // Act
-            await _service.LoadPrompt(file, "TextualInversion", (ModeType.Txt2Img, false)); // false = negative prompt
-
-            // Assert
-            txt2imgParams.NegativePrompt.Should().Contain("embedding");
-        }
-
-        [Fact]
-        public async Task LoadPrompt_WithTriggerWords_AppendsTriggerWords()
+        public async Task LoadPrompt_WithTriggerWords_UpdatesPromptsFragment()
         {
             // Arrange
             var file = new LocalResourceFile
@@ -471,13 +357,6 @@ namespace BlazorWebApp.Tests.Services
                 File = new FileInfo(Path.Combine(Path.GetTempPath(), "lora.safetensors")),
                 TriggerWords = new List<string> { "word1", "word2" }
             };
-            var txt2imgParams = new Txt2ImgParameters
-            {
-                Prompt = "base",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            };
-            _mockState.Setup(x => x.ParametersTxt2Img).Returns(txt2imgParams);
             _mockState.Setup(x => x.State).Returns(new AppState
             {
                 Resources = new AppStateResources { Weight = 1.0f, LoadTriggerWords = true }
@@ -487,32 +366,10 @@ namespace BlazorWebApp.Tests.Services
             await _service.LoadPrompt(file, "LORA", (ModeType.Txt2Img, true));
 
             // Assert
-            txt2imgParams.Prompt.Should().Contain("word1");
-            txt2imgParams.Prompt.Should().Contain("word2");
-        }
-
-        [Fact]
-        public async Task LoadPrompt_Img2ImgMode_AddsToImg2ImgParams()
-        {
-            // Arrange
-            var file = new LocalResourceFile
-            {
-                Filename = "embedding.safetensors",
-                File = new FileInfo(Path.Combine(Path.GetTempPath(), "embedding.safetensors"))
-            };
-            var img2imgParams = new Img2ImgParameters
-            {
-                Prompt = "",
-                NegativePrompt = "",
-                Loras = new List<Lora>()
-            };
-            _mockState.Setup(x => x.ParametersImg2Img).Returns(img2imgParams);
-
-            // Act
-            await _service.LoadPrompt(file, "TextualInversion", (ModeType.Img2Img, true));
-
-            // Assert
-            img2imgParams.Prompt.Should().Contain("embedding");
+            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
+            var positive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive);
+            positive.Should().Contain("word1");
+            positive.Should().Contain("word2");
         }
 
         #endregion
@@ -528,6 +385,7 @@ namespace BlazorWebApp.Tests.Services
             var mockDb = new Mock<IDatabaseService>();
             var mockConfig = new Mock<IConfiguration>();
             mockConfig.Setup(x => x["ResourcesPath"]).Returns("/test/path");
+            mockState.Setup(x => x.GenerationParameters).Returns(new GenerationParameters());
 
             var service = new ResourcesService(mockState.Object, mockIO.Object, mockDb.Object, mockConfig.Object);
 

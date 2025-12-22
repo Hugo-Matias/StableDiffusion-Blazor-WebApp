@@ -1,0 +1,85 @@
+@*
+    FragmentSelect - Reusable select component that binds to fragment parameters.
+    Reduces boilerplate in fragment forms.
+*@
+
+<MudSelect T="string"
+           Value="@CurrentValue"
+           ValueChanged="@HandleValueChanged"
+           Label="@Label"
+           AnchorOrigin="Origin.BottomLeft"
+           TransformOrigin="Origin.TopLeft">
+    @foreach (var option in Options)
+    {
+        <MudSelectItem Value="@option">@(DisplayFormat != null ? DisplayFormat(option) : option)</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    /// <summary>
+    /// The values dictionary to read/write from.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, object?> Values { get; set; } = new();
+
+    /// <summary>
+    /// The parameter name in the values dictionary.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Parameter { get; set; } = "";
+
+    /// <summary>
+    /// The display label.
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "";
+
+    /// <summary>
+    /// The available options.
+    /// </summary>
+    [Parameter]
+    public IEnumerable<string> Options { get; set; } = Enumerable.Empty<string>();
+
+    /// <summary>
+    /// Default value if not found in Values.
+    /// </summary>
+    [Parameter]
+    public string DefaultValue { get; set; } = "";
+
+    /// <summary>
+    /// Optional function to format option display text.
+    /// </summary>
+    [Parameter]
+    public Func<string, string>? DisplayFormat { get; set; }
+
+    /// <summary>
+    /// Callback when value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnValueChanged { get; set; }
+
+    /// <summary>
+    /// Callback when any value changes (no parameter).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private string CurrentValue
+    {
+        get
+        {
+            if (Values.TryGetValue(Parameter, out var value) && value != null)
+            {
+                return value.ToString() ?? DefaultValue;
+            }
+            return DefaultValue;
+        }
+    }
+
+    private async Task HandleValueChanged(string value)
+    {
+        Values[Parameter] = value;
+        await OnValueChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+}

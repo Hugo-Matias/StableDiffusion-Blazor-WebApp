@@ -14,9 +14,7 @@
             <MudText Typo="Typo.caption">Save:</MudText>
             <MudStack Row=true>
                 <MudCheckBox Label="App State" @bind-Checked=_saveAppstate />
-                <MudCheckBox Label="Txt2Img" @bind-Checked=_saveTxt2img />
-                <MudCheckBox Label="Img2Img" @bind-Checked=_saveImg2img />
-                <MudCheckBox Label="Upscale" @bind-Checked=_saveUpscale />
+                <MudCheckBox Label="Generation Parameters" @bind-Checked=_saveGenerationParams />
             </MudStack>
         </EditForm>
     </DialogContent>
@@ -37,14 +35,12 @@
     [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
     [Parameter] public BlazorWebApp.Data.Entities.State StatePreset { get; set; }
 
-    private bool _saveAppstate = true, _saveTxt2img, _saveImg2img, _saveUpscale;
+    private bool _saveAppstate = true, _saveGenerationParams = true;
 
     private void WriteState()
     {
         if (_saveAppstate) StatePreset.AppState = State.State;
-        if (_saveTxt2img) StatePreset.Txt2ImgParameters = State.ParametersTxt2Img;
-        if (_saveImg2img) StatePreset.Img2ImgParameters = State.ParametersImg2Img;
-        if (_saveUpscale) StatePreset.UpscaleParameters = State.ParametersUpscale;
+        if (_saveGenerationParams) StatePreset.GenerationParameters = State.GenerationParameters;
         StatePreset.CreationDate = DateTime.Now;
         StatePreset.Version = int.Parse(Configuration["StateVersion"]);
     }

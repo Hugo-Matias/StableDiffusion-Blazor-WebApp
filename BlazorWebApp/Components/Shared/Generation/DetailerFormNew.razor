@@ -1,0 +1,111 @@
+@inherits FragmentFormBase
+@inject IBackendService Backend
+
+@* New Detailer Form - uses FragmentSchema for binding *@
+
+<MudGrid>
+    <MudItem xs="6">
+        <MudSelect T="string"
+                   Value="@GetString("detailer_sampler", "dpmpp_2m")"
+                   ValueChanged="@((string v) => SetValue("detailer_sampler", v))"
+                   Label="Sampler"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @if (Backend.Samplers != null)
+            {
+                @foreach (var sampler in Backend.Samplers)
+                {
+                    <MudSelectItem Value="@sampler.Name">@sampler.Name</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string"
+                   Value="@GetString("detailer_scheduler", "beta")"
+                   ValueChanged="@((string v) => SetValue("detailer_scheduler", v))"
+                   Label="Scheduler"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @if (Backend.Schedulers != null)
+            {
+                @foreach (var scheduler in Backend.Schedulers)
+                {
+                    <MudSelectItem Value="@scheduler.Name">@scheduler.Name</MudSelectItem>
+                }
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int"
+                   Value="@GetInt("detailer_steps", 20)"
+                   ValueChanged="@((int v) => SetValue("detailer_steps", v))"
+                   Min="@GetMinInt("detailer_steps", 1)"
+                   Max="@GetMaxInt("detailer_steps", 100)"
+                   Step="@GetStepInt("detailer_steps", 1)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>Steps:</small> @GetInt("detailer_steps", 20)
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="double"
+                   Value="@GetDouble("detailer_cfg", 8)"
+                   ValueChanged="@((double v) => SetValue("detailer_cfg", v))"
+                   Min="@GetMinDouble("detailer_cfg", 1)"
+                   Max="@GetMaxDouble("detailer_cfg", 30)"
+                   Step="@GetStepDouble("detailer_cfg", 0.5)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>CFG:</small> @GetDouble("detailer_cfg", 8).ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="double"
+                   Value="@GetDouble("detailer_denoise", 0.65)"
+                   ValueChanged="@((double v) => SetValue("detailer_denoise", v))"
+                   Min="@GetMinDouble("detailer_denoise", 0)"
+                   Max="@GetMaxDouble("detailer_denoise", 1)"
+                   Step="@GetStepDouble("detailer_denoise", 0.01)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>Denoise:</small> @GetDouble("detailer_denoise", 0.65).ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudNumericField T="long"
+                         Value="@GetLong("detailer_seed", 42)"
+                         ValueChanged="@((long v) => SetValue("detailer_seed", v))"
+                         Label="Seed"
+                         Min="-1" />
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int"
+                   Value="@GetInt("detailer_guide_size", 512)"
+                   ValueChanged="@((int v) => SetValue("detailer_guide_size", v))"
+                   Min="@GetMinInt("detailer_guide_size", 64)"
+                   Max="@GetMaxInt("detailer_guide_size", 2048)"
+                   Step="@GetStepInt("detailer_guide_size", 64)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>Guide Size:</small> @GetInt("detailer_guide_size", 512)
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="double"
+                   Value="@GetDouble("detailer_bbox_threshold", 0.7)"
+                   ValueChanged="@((double v) => SetValue("detailer_bbox_threshold", v))"
+                   Min="@GetMinDouble("detailer_bbox_threshold", 0)"
+                   Max="@GetMaxDouble("detailer_bbox_threshold", 1)"
+                   Step="@GetStepDouble("detailer_bbox_threshold", 0.01)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>BBox Threshold:</small> @GetDouble("detailer_bbox_threshold", 0.7).ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    // DetailerFormNew extends FragmentFormBase
+    // Full implementation will include detection model selection
+}

@@ -453,20 +453,11 @@ namespace BlazorWebApp.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Img2ImgParameters")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Img2VidParameters")
+                    b.Property<string>("GenerationParameters")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Txt2ImgParameters")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UpscaleParameters")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Version")
@@ -575,6 +566,29 @@ namespace BlazorWebApp.Migrations
                     b.HasIndex("SortOrder");
 
                     b.ToTable("WildcardEntries");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WorkflowState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Parameters")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowId")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowStates");
                 });
 
             modelBuilder.Entity("ImageSelection", b =>
