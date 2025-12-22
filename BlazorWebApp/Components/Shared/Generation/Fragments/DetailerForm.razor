@@ -1,0 +1,275 @@
+@*
+    DetailerForm - Form for detailer-core.sbn fragment
+    
+    Handles FaceDetailer settings including:
+    - Detection model selection
+    - Sampler/scheduler settings
+    - Seed, steps, CFG, denoise
+    - BBox detection parameters
+    - Guide size and cycle settings
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Events
+@attribute [FragmentComponent("DetailerForm")]
+@inject IGenerationParameterService ParameterService
+@inject IEventService EventService
+@inject ILogger<DetailerForm> Logger
+@implements IDisposable
+
+<MudGrid Spacing="2">
+    @* Detection Model *@
+    <MudItem xs="12">
+        @if (_detectionModels.Count > 0)
+        {
+            <MudSelect T="string" Label="Detection Model" Value="@_detectionModel" ValueChanged="OnDetectionModelChanged" 
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense>
+                @foreach (var model in _detectionModels)
+                {
+                    <MudSelectItem Value="@model">@model</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                No detection models found. Ensure ComfyUI is running and has the UltralyticsDetectorProvider node.
+            </MudAlert>
+        }
+    </MudItem>
+    
+    @* Sampler and Scheduler *@
+    <MudItem xs="6">
+        @if (_samplers.Count > 0)
+        {
+            <MudSelect T="string" Label="Sampler" Value="@_sampler" ValueChanged="OnSamplerChanged" 
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense>
+                @foreach (var sampler in _samplers)
+                {
+                    <MudSelectItem Value="@sampler">@sampler</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </MudItem>
+    <MudItem xs="6">
+        @if (_schedulers.Count > 0)
+        {
+            <MudSelect T="string" Label="Scheduler" Value="@_scheduler" ValueChanged="OnSchedulerChanged" 
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense>
+                @foreach (var scheduler in _schedulers)
+                {
+                    <MudSelectItem Value="@scheduler">@scheduler</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </MudItem>
+    
+    @* Seed *@
+    <MudItem xs="12">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" Value="@_seed" ValueChanged="OnSeedChanged" 
+                             Label="Seed" Min="-1" Max="long.MaxValue" Class="flex-grow-1" Dense />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+        </MudStack>
+    </MudItem>
+    
+    @* Steps and CFG *@
+    <MudItem xs="6">
+        <MudSlider T="int" Value="@_steps" ValueChanged="OnStepsChanged"
+                   Min="1" Max="100" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Steps:</small> @_steps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float" Value="@_cfg" ValueChanged="OnCfgChanged"
+                   Min="1" Max="30" Step="0.5f" Variant="Variant.Filled" ValueLabel>
+            <small>CFG:</small> @_cfg
+        </MudSlider>
+    </MudItem>
+    
+    @* Denoise and Feather *@
+    <MudItem xs="6">
+        <MudSlider T="float" Value="@_denoise" ValueChanged="OnDenoiseChanged"
+                   Min="0" Max="1" Step="0.01f" Variant="Variant.Filled" ValueLabel>
+            <small>Denoise:</small> @_denoise.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" Value="@_feather" ValueChanged="OnFeatherChanged"
+                   Min="0" Max="100" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Feather:</small> @_feather
+        </MudSlider>
+    </MudItem>
+    
+    @* BBox Detection Parameters *@
+    <MudItem xs="4">
+        <MudSlider T="float" Value="@_bboxThreshold" ValueChanged="OnBboxThresholdChanged"
+                   Min="0" Max="1" Step="0.01f" Variant="Variant.Filled" ValueLabel>
+            <small>Threshold:</small> @_bboxThreshold.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_bboxDilation" ValueChanged="OnBboxDilationChanged"
+                   Min="0" Max="100" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Dilation:</small> @_bboxDilation
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="float" Value="@_bboxCropFactor" ValueChanged="OnBboxCropFactorChanged"
+                   Min="1" Max="10" Step="0.1f" Variant="Variant.Filled" ValueLabel>
+            <small>Crop:</small> @_bboxCropFactor.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    
+    @* Guide Size, Max Size, Drop Size *@
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_guideSize" ValueChanged="OnGuideSizeChanged"
+                   Min="64" Max="2048" Step="64" Variant="Variant.Filled" ValueLabel>
+            <small>Guide:</small> @_guideSize
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_maxSize" ValueChanged="OnMaxSizeChanged"
+                   Min="256" Max="4096" Step="64" Variant="Variant.Filled" ValueLabel>
+            <small>Max:</small> @_maxSize
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_dropSize" ValueChanged="OnDropSizeChanged"
+                   Min="1" Max="200" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Drop:</small> @_dropSize
+        </MudSlider>
+    </MudItem>
+    
+    @* Cycle *@
+    <MudItem xs="6">
+        <MudSlider T="int" Value="@_cycle" ValueChanged="OnCycleChanged"
+                   Min="1" Max="10" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Cycle:</small> @_cycle
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public string FragmentId { get; set; } = "detailer";
+    
+    // Local state - reads from and writes to ParameterService
+    private string? _detectionModel;
+    private string? _sampler;
+    private string? _scheduler;
+    private long _seed = -1;
+    private int _steps = 20;
+    private float _cfg = 8.0f;
+    private float _denoise = 0.65f;
+    private int _feather = 5;
+    private float _bboxThreshold = 0.7f;
+    private int _bboxDilation = 10;
+    private float _bboxCropFactor = 3.0f;
+    private int _dropSize = 70;
+    private int _guideSize = 512;
+    private int _maxSize = 1024;
+    private int _cycle = 1;
+    
+    // Dropdown options
+    private List<string> _detectionModels = new();
+    private List<string> _samplers = new();
+    private List<string> _schedulers = new();
+    
+    protected override void OnInitialized()
+    {
+        // Subscribe to parameter changes to reload when workflow initialization completes
+        EventService.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+    
+    protected override void OnParametersSet()
+    {
+        LoadFromFragment();
+        LoadResolvedOptions();
+    }
+    
+    private void OnParametersChanged(GenerationParametersChangedEventArgs args)
+    {
+        // Reload options when dynamic sources are resolved or workflow changes
+        // This handles the race condition where the component renders before PreResolveDynamicSourcesAsync completes
+        if (args.ChangeType == GenerationParameterChangeType.DynamicSourcesResolved ||
+            args.ChangeType == GenerationParameterChangeType.WorkflowChanged ||
+            args.ChangeType == GenerationParameterChangeType.ParametersLoaded)
+        {
+            LoadFromFragment();
+            LoadResolvedOptions();
+            InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private void LoadFromFragment()
+    {
+        var fragment = ParameterService.Current.GetFragment(FragmentId);
+        if (fragment == null)
+        {
+            Logger.LogWarning("DetailerForm: Fragment '{FragmentId}' not found", FragmentId);
+            return;
+        }
+        
+        _detectionModel = fragment.GetValueOrDefault<string>("detailer_detection_model", null);
+        _sampler = fragment.GetValueOrDefault<string>("detailer_sampler", null);
+        _scheduler = fragment.GetValueOrDefault<string>("detailer_scheduler", null);
+        _seed = fragment.GetValueOrDefault("detailer_seed", -1L);
+        _steps = fragment.GetValueOrDefault("detailer_steps", 20);
+        _cfg = fragment.GetValueOrDefault("detailer_cfg", 8.0f);
+        _denoise = fragment.GetValueOrDefault("detailer_denoise", 0.65f);
+        _feather = fragment.GetValueOrDefault("detailer_feather", 5);
+        _bboxThreshold = fragment.GetValueOrDefault("detailer_bbox_threshold", 0.7f);
+        _bboxDilation = fragment.GetValueOrDefault("detailer_bbox_dilation", 10);
+        _bboxCropFactor = fragment.GetValueOrDefault("detailer_bbox_crop_factor", 3.0f);
+        _dropSize = fragment.GetValueOrDefault("detailer_drop_size", 70);
+        _guideSize = fragment.GetValueOrDefault("detailer_guide_size", 512);
+        _maxSize = fragment.GetValueOrDefault("detailer_max_size", 1024);
+        _cycle = fragment.GetValueOrDefault("detailer_cycle", 1);
+    }
+    
+    private void LoadResolvedOptions()
+    {
+        _detectionModels = ParameterService.GetResolvedOptions(FragmentId, "detailer_detection_model");
+        _samplers = ParameterService.GetResolvedOptions(FragmentId, "detailer_sampler");
+        _schedulers = ParameterService.GetResolvedOptions(FragmentId, "detailer_scheduler");
+        
+        // Set defaults if values are empty but options exist
+        if (string.IsNullOrEmpty(_detectionModel) && _detectionModels.Count > 0)
+            _detectionModel = _detectionModels[0];
+        if (string.IsNullOrEmpty(_sampler) && _samplers.Count > 0)
+            _sampler = _samplers[0];
+        if (string.IsNullOrEmpty(_scheduler) && _schedulers.Count > 0)
+            _scheduler = _schedulers[0];
+    }
+    
+    private void SetValue(string param, object? value)
+    {
+        ParameterService.SetFragmentValue(FragmentId, param, value);
+    }
+    
+    private void OnDetectionModelChanged(string value) { _detectionModel = value; SetValue("detailer_detection_model", value); }
+    private void OnSamplerChanged(string value) { _sampler = value; SetValue("detailer_sampler", value); }
+    private void OnSchedulerChanged(string value) { _scheduler = value; SetValue("detailer_scheduler", value); }
+    private void OnSeedChanged(long value) { _seed = value; SetValue("detailer_seed", value); }
+    private void OnStepsChanged(int value) { _steps = value; SetValue("detailer_steps", value); }
+    private void OnCfgChanged(float value) { _cfg = value; SetValue("detailer_cfg", value); }
+    private void OnDenoiseChanged(float value) { _denoise = value; SetValue("detailer_denoise", value); }
+    private void OnFeatherChanged(int value) { _feather = value; SetValue("detailer_feather", value); }
+    private void OnBboxThresholdChanged(float value) { _bboxThreshold = value; SetValue("detailer_bbox_threshold", value); }
+    private void OnBboxDilationChanged(int value) { _bboxDilation = value; SetValue("detailer_bbox_dilation", value); }
+    private void OnBboxCropFactorChanged(float value) { _bboxCropFactor = value; SetValue("detailer_bbox_crop_factor", value); }
+    private void OnDropSizeChanged(int value) { _dropSize = value; SetValue("detailer_drop_size", value); }
+    private void OnGuideSizeChanged(int value) { _guideSize = value; SetValue("detailer_guide_size", value); }
+    private void OnMaxSizeChanged(int value) { _maxSize = value; SetValue("detailer_max_size", value); }
+    private void OnCycleChanged(int value) { _cycle = value; SetValue("detailer_cycle", value); }
+    
+    private void SetRandomSeed()
+    {
+        _seed = -1;
+        SetValue("detailer_seed", -1L);
+    }
+    
+    public void Dispose()
+    {
+        EventService.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+}

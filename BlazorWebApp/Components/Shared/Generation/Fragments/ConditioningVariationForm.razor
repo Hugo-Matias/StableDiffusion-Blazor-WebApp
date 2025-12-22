@@ -7,6 +7,8 @@
     then switches to the actual prompt for the remaining steps.
     Values are read from FragmentParameters.Values and synced back on change.
 *@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("ConditioningVariationForm")]
 @inject IGenerationParameterService ParameterService
 @inject IWorkflowService WorkflowService
 

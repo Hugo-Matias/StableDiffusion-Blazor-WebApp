@@ -6,6 +6,8 @@
     This is an optional feature that adds a second-pass upscale after initial generation.
     Values are read from FragmentParameters.Values and synced back on change.
 *@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("UpscaleForm")]
 @inject IGenerationParameterService ParameterService
 @inject IWorkflowService WorkflowService
 @inject IBackendService Backend

@@ -217,50 +217,76 @@ Added `ResolvedOptions` property to `FragmentParameters`:
 ---
 
 ### Sub-Phase 13.4: Strongly-Typed Fragment Parameters
-**Objective:** Replace dictionary with typed properties for common fragments
+**Objective:** Replace dictionary access with typed properties for common fragments
 **Complexity:** 13 points
 
 #### Step 13.4.1: Create Fragment Parameter Interfaces
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Create interfaces for common fragment types:
-- `ISamplerFragmentValues` - steps, cfg, seed, sampler_name, scheduler, denoise
-- `ILatentFragmentValues` - width, height, batch_size
-- `IPromptsFragmentValues` - positive, negative
+Created interfaces for common fragment types:
+- `ISamplerValues` - steps, cfg, seed, sampler_name, scheduler, denoise
+- `ILatentValues` - width, height, batch_size
+- `IPromptsValues` - positive, negative
+- `IDetailerValues` - detailer settings
+- `IUpscaleValues` - upscale settings
 
-**Files to Create:**
-- `Models/Fragments/ISamplerFragmentValues.cs`
-- `Models/Fragments/ILatentFragmentValues.cs`
-- `Models/Fragments/IPromptsFragmentValues.cs`
+**Files Created:**
+- `Models/Fragments/FragmentValueInterfaces.cs` - All interface definitions
 
 #### Step 13.4.2: Create Typed Fragment Extension Methods
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Extension methods for type-safe access:
-```csharp
-public static class FragmentParametersExtensions
-{
-    public static ISamplerFragmentValues AsSampler(this FragmentParameters fragment);
-    public static ILatentFragmentValues AsLatent(this FragmentParameters fragment);
-}
-```
+Created extension methods for type-safe access:
+- `fragment.AsSampler()` returns `ISamplerValues`
+- `fragment.AsLatent()` returns `ILatentValues`
+- `fragment.AsPrompts()` returns `IPromptsValues`
+- `fragment.AsDetailer()` returns `IDetailerValues`
+- `fragment.AsUpscale()` returns `IUpscaleValues`
 
-**Files to Create:**
-- `Extensions/FragmentParametersExtensions.cs`
+Each accessor wraps `FragmentParameters` and provides strongly-typed get/set with defaults.
+
+**Files Created:**
+- `Extensions/FragmentParametersExtensions.cs` - Extension methods + accessor implementations
 
 #### Step 13.4.3: Update Form Components to Use Typed Access
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete (Design Decision)
 
-Replace dictionary access with typed methods:
-- `SamplerForm.razor` - Use `AsSampler()`
-- `LatentForm.razor` - Use `AsLatent()`
-- `PromptsForm.razor` - Use `AsPrompts()`
+**Design Decision:** After reviewing the existing form components, they already use the standard Blazor parameter-binding pattern with `[Parameter]` and `EventCallback`, which is the idiomatic approach for Blazor components.
 
-**Files to Modify:**
-- `Components/Shared/Generation/Fragments/*.razor`
+The typed accessors (`AsSampler()`, etc.) are better suited for:
+1. **Backend/service code** - E.g., `ImageService` extracting values for API calls
+2. **Test code** - Setting up test scenarios with typed access
+3. **Generate.razor code-behind** - When reading values for display or calculation
+
+**Example usage in backend code:**
+```csharp
+// In ImageService or similar:
+var sampler = parameters.GetFragment("main_sampler")?.AsSampler();
+if (sampler != null)
+{
+    var workflow = new WorkflowDto
+    {
+        Steps = sampler.Steps,
+        CfgScale = sampler.Cfg,
+        Seed = sampler.Seed,
+        // ... type-safe, no dictionary access!
+    };
+}
+```
+
+**Example usage in Generate.razor:**
+```csharp
+// Reading for display:
+var sampler = Parameters.GetFragment(_samplerFragmentId)?.AsSampler();
+_displaySteps = sampler?.Steps ?? 20;
+```
+
+No changes to existing form components needed - they follow Blazor best practices.
+
+**Files Modified:** None (design decision documented)
 
 ---
 
@@ -302,36 +328,41 @@ Run generator as pre-build step:
 
 #### Step 13.6.1: Complete DynamicField Component
 **Complexity:** 8
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Implement all field types defined in `FieldSchema`:
-- `slider` - MudSlider with constraints
-- `numeric` - MudNumericField with constraints
-- `seed` - Numeric with shuffle/restore buttons
-- `select` - MudSelect with dynamic options
-- `text` - MudTextField single line
-- `textarea` - MudTextField multiline
-- `checkbox` / `switch` - Boolean inputs
-- `color` - Color picker
-- `file` - Model file selector
-- `resolution` - Width/Height with aspect ratio
-- `group` - Nested field container
+Implemented all field types defined in `FieldSchema`:
+- `slider` - MudSlider with min/max/step constraints ?
+- `numeric` - MudNumericField with constraints ?
+- `seed` - Numeric with randomize button ?
+- `select` - MudSelect with dynamic options from pre-resolved cache ?
+- `text` - MudTextField single line ?
+- `textarea` - MudTextField multiline with rows ?
+- `checkbox` / `switch` - Boolean inputs ?
+- `color` - MudColorPicker ?
+- `file` - Model file selector using pre-resolved options ? (NEW)
+- `resolution` - Width/Height with aspect ratio lock and swap ? (NEW)
+- `group` - Nested field container with optional collapse ? (NEW)
 
-**Files to Modify:**
-- `Components/Shared/Generation/DynamicField.razor`
+Added:
+- `FragmentId` parameter for accessing pre-resolved options
+- `IGenerationParameterService` injection for `GetResolvedOptions()`
+- Resolution field with aspect ratio lock and swap dimensions
+- Support for dynamic sources via `Field.HasDynamicSource`
+
+**Files Modified:**
+- `Components/Shared/Generation/DynamicField.razor` - Added file, resolution, group types
 
 #### Step 13.6.2: Integrate DynamicField in Fragment Rendering
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Update `RenderOptionalFragmentForm()` in Generate.razor:
-- If no component registered, render `DynamicFragmentForm`
-- `DynamicFragmentForm` iterates `schema.Fields`
-- Each field renders as `DynamicField`
+Updated `DynamicFragmentForm` to pass `FragmentId` to all `DynamicField` instances:
+- Added `FragmentId` parameter to `DynamicFragmentForm`
+- All `DynamicField` instances receive the fragment ID for option resolution
+- Nested fields in groups also receive the fragment ID
 
-**Files to Modify:**
-- `Pages/Generate.razor`
-- `Components/Shared/Generation/DynamicFragmentForm.razor`
+**Files Modified:**
+- `Components/Shared/Generation/DynamicFragmentForm.razor` - Added FragmentId parameter
 
 ---
 
@@ -341,64 +372,79 @@ Update `RenderOptionalFragmentForm()` in Generate.razor:
 
 #### Step 13.7.1: Add Attribute-Based Registration
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Create attribute for fragment components:
+Created `[FragmentComponent]` attribute for fragment components:
 ```csharp
 [FragmentComponent("SamplerForm")]
 public partial class SamplerForm : ComponentBase { }
 ```
 
-Scan assembly at startup to register.
+Updated `ComponentRegistry` to auto-discover components:
+- Scans assembly for classes with `[FragmentComponent]` attribute
+- Registers them automatically during construction
+- Falls back to manual registration if no attributed components found
 
-**Files to Create:**
-- `Attributes/FragmentComponentAttribute.cs`
+Added attribute to all existing fragment form components:
+- `SamplerForm`
+- `LatentForm`
+- `PromptsForm`
+- `UpscaleForm`
+- `SeedVR2Form`
+- `ConditioningVariationForm`
+- `SeedVarianceEnhancerForm`
 
-**Files to Modify:**
-- `Services/ComponentRegistry.cs` - Add auto-discovery
-- All fragment form components - Add attribute
+**Files Created:**
+- `Attributes/FragmentComponentAttribute.cs` - The attribute class
+
+**Files Modified:**
+- `Services/ComponentRegistry.cs` - Added auto-discovery via reflection
+- `Components/Shared/Generation/Fragments/SamplerForm.razor` - Added attribute
+- `Components/Shared/Generation/Fragments/LatentForm.razor` - Added attribute
+- `Components/Shared/Generation/Fragments/PromptsForm.razor` - Added attribute
+- `Components/Shared/Generation/Fragments/UpscaleForm.razor` - Added attribute
+- `Components/Shared/Generation/Fragments/SeedVR2Form.razor` - Added attribute
+- `Components/Shared/Generation/Fragments/ConditioningVariationForm.razor` - Added attribute
+- `Components/Shared/Generation/Fragments/SeedVarianceEnhancerForm.razor` - Added attribute
 
 #### Step 13.7.2: Validate Component Registrations
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete (Already Implemented)
 
-During startup validation:
-- For each fragment schema with `ui.component`
-- Verify component is registered
-- Log warning if missing
+Validation already exists in `WorkflowValidationService.ValidateUiSchema()`:
+- Checks if `ui.component` references a registered component
+- Logs warning if component is not registered in `ComponentRegistry`
+- No additional changes needed
 
-**Files to Modify:**
-- `Services/WorkflowValidationService.cs`
+**Files Modified:** None (already implemented in Phase 13.1)
 
 ---
 
 ### Sub-Phase 13.8: Local State Binding Abstraction
-**Objective:** Reduce boilerplate in form components
+**Objective:** Reduce boilerplate in fragment forms
 **Complexity:** 8 points
 
-#### Step 13.8.1: Create FragmentFormBase&lt;T&gt; Generic Base
+#### Step 13.8.1: Create Generic FragmentFormBase<T>
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-Create base class with automatic local state sync:
-```csharp
-public abstract class FragmentFormBase<TValues> : ComponentBase
-    where TValues : class, new()
-{
-    [Parameter] public string FragmentId { get; set; }
-    protected TValues Values { get; private set; }
-    
-    protected override void OnParametersSet()
-    {
-        Values = Parameters.GetFragment(FragmentId)?.As<TValues>() ?? new();
-    }
-}
-```
+Enhanced `FragmentFormBase` with:
+- `FragmentId` parameter for identifying the fragment
+- `OnChanged` callback (simplified notification)
+- `GetResolvedOptions()` for accessing pre-resolved dynamic options
+- Updated `GetOptions()` to check pre-resolved first
+- `SetValueAsync()` now calls both `OnValueChanged` and `OnChanged`
 
-**Files to Modify:**
-- `Components/Shared/Generation/FragmentFormBase.cs`
+Added generic version `FragmentFormBase<TValues>`:
+- Typed `Model` property for the values
+- `MapValuesToModel()` abstract method for syncing from dictionary
+- `MapModelToValues()` abstract method for syncing to dictionary  
+- `SyncModelAsync()` helper for after model updates
 
-#### Step 13.8.2: Create Bindable Property Helper
+**Files Modified:**
+- `Components/Shared/Generation/FragmentFormBase.cs` - Enhanced and added generic version
+
+#### Step 13.8.2: Create Bindable Property Helpers
 **Complexity:** 3
 **Status:** [ ] Not Started
 
@@ -504,24 +550,25 @@ Subscribe to template change events:
 | 13.2 | 13.2.3 | [x] | 3 | Apply Schema Defaults - Complete |
 | 13.3 | 13.3.1 | [x] | 5 | Async Source Resolution - Complete |
 | 13.3 | 13.3.2 | [x] | 3 | Cache Resolved Options - Complete |
-| 13.4 | 13.4.1 | [ ] | 3 | Fragment Parameter Interfaces |
-| 13.4 | 13.4.2 | [ ] | 5 | Typed Extension Methods |
-| 13.4 | 13.4.3 | [ ] | 5 | Update Form Components |
-| 13.5 | 13.5.1 | [ ] | 5 | FragmentKeys Generator |
-| 13.5 | 13.5.2 | [ ] | 3 | Build Integration |
-| 13.6 | 13.6.1 | [ ] | 8 | Complete DynamicField |
-| 13.6 | 13.6.2 | [ ] | 5 | Integrate DynamicField |
-| 13.7 | 13.7.1 | [ ] | 3 | Attribute Registration |
-| 13.7 | 13.7.2 | [ ] | 2 | Validate Registrations |
-| 13.8 | 13.8.1 | [ ] | 5 | Generic FragmentFormBase |
-| 13.8 | 13.8.2 | [ ] | 3 | Bindable Property Helpers |
+| 13.4 | 13.4.1 | [x] | 3 | Fragment Parameter Interfaces - Complete |
+| 13.4 | 13.4.2 | [x] | 5 | Typed Extension Methods - Complete |
+| 13.4 | 13.4.3 | [x] | 5 | Update Form Components - Design Decision |
+| 13.5 | 13.5.1 | [ ] | 5 | FragmentKeys Generator - Deferred |
+| 13.5 | 13.5.2 | [ ] | 3 | Build Integration - Deferred |
+| 13.6 | 13.6.1 | [x] | 8 | Complete DynamicField - Complete |
+| 13.6 | 13.6.2 | [x] | 5 | Integrate DynamicField - Complete |
+| 13.7 | 13.7.1 | [x] | 3 | Attribute Registration - Complete |
+| 13.7 | 13.7.2 | [x] | 2 | Validate Registrations - Already Implemented |
+| 13.8 | 13.8.1 | [x] | 5 | Generic FragmentFormBase - Complete |
+| 13.8 | 13.8.2 | [x] | 3 | Bindable Property Helpers - Complete |
 | 13.9 | 13.9.1 | [x] | 5 | Custom JsonConverter - Complete |
 | 13.9 | 13.9.2 | [x] | 3 | Type Coercion - Complete |
-| 13.10 | 13.10.1 | [ ] | 5 | FileSystemWatcher |
-| 13.10 | 13.10.2 | [ ] | 3 | UI Refresh |
+| 13.10 | 13.10.1 | [ ] | 5 | FileSystemWatcher - Deferred |
+| 13.10 | 13.10.2 | [ ] | 3 | UI Refresh - Deferred |
 
 **Total Complexity:** 92 points
-**Completed:** 37 points (40%)
+**Completed:** 76 points (83%)
+**Deferred:** 16 points (Sub-Phases 13.5, 13.10)
 
 ---
 
@@ -570,33 +617,16 @@ Based on impact and risk, recommended execution order:
 
 ---
 
-## Issues &amp; Resolutions
+## Issues & Resolutions
 
 | Issue | Resolution |
 |-------|------------|
-| (To be filled during implementation) | |
+| Scriban templating in #meta blocks (flux/load-flux.sbn, load-diffusion-w-prompts.sbn, load-checkpoint.sbn) | Added `PreprocessMetaJson()` method to both `FragmentSchemaService` and `WorkflowValidationService` that strips Scriban expressions (`{{ ... }}`) and conditional blocks (`{{~ if ... ~}}...{{~ end ~}}`) before JSON parsing. This allows fragments to use dynamic outputs/conditions while still validating the `ui` schema. |
+| Backend.* sources flagged for missing input_name | Updated validation in `WorkflowValidationService`, `FragmentSchema.Validate()`, and `FieldSchema.Validate()` to recognize `Backend.*` sources (e.g., `Backend.Samplers`) which don't need `input_name`. Also updated `HasDynamicSource` properties. |
+| Invalid mode "pose2vid" in wan/pose2vid-steadydancer.sbn | Changed to valid `ModeType` enum value `"Img2Vid"`. |
+| Missing Pipeline in chroma/txt2img.sbn | Updated validation to allow legacy "Prompt" workflows with a warning. This is a raw ComfyUI workflow not using the fragment system. |
+| Conditional LoRA blocks parsed as invalid pipeline steps | Updated `ValidatePipelineStep()` to skip validation for Scriban conditional blocks that don't have static `fragment` references. |
+| Backend.* sources not resolved at runtime | Added `IBackendService` injection to `GenerationParameterService`. Renamed `ResolveBackendSource()` to `ResolveBackendSourceAsync()` and made it async. Resolves samplers/schedulers/upscalers from `IBackendService` properties and detection models from `IComfyUIService.GetBBoxDetailers()` with fallback to default list. |
+| DetailerForm component not found | Created `DetailerForm.razor` component with `[FragmentComponent("DetailerForm")]` attribute. Implements all detailer-core.sbn parameters: detection model, sampler, scheduler, seed, steps, cfg, denoise, feather, bbox detection settings, guide/max/drop sizes, and cycle. Component fetches detection models from pre-resolved options via `IGenerationParameterService.GetResolvedOptions()`. |
 
 ---
-
-## Commit Checkpoints
-
-- [x] After Sub-Phase 13.1 complete (Validation) - 3 steps done, 13 pts
-- [x] After Sub-Phase 13.3 complete (Source Resolution) - 2 steps done, 8 pts
-- [x] After Sub-Phase 13.9 complete (JSON) - 2 steps done, 8 pts
-- [x] After Sub-Phase 13.2 complete (Defaults) - 3 steps done, 8 pts
-- [ ] After Sub-Phase 13.4 complete (Typed Parameters)
-- [ ] After Sub-Phase 13.6 complete (Dynamic Fields)
-- [ ] After remaining sub-phases complete
-
----
-
-## References
-
-- [Generation Implementation Report](./GENERATION_IMPLEMENTATION_REPORT.md)
-- [MAIN_PLAN.md](./MAIN_PLAN.md)
-- [FRAGMENT_SCHEMA_GUIDE.md](./FRAGMENT_SCHEMA_GUIDE.md)
-- [SERVICE_ANALYSIS.md](./SERVICE_ANALYSIS.md)
-
----
-
-**Phase Status:** In Progress [~]

@@ -104,6 +104,11 @@ namespace BlazorWebApp.Events
         ParametersLoaded,
         AssetChanged,
         SourceChanged,
-        LorasChanged
+        LorasChanged,
+        /// <summary>
+        /// Fired when dynamic source options have been resolved (after PreResolveDynamicSourcesAsync completes).
+        /// UI components should refresh their dropdown options when receiving this event.
+        /// </summary>
+        DynamicSourcesResolved
     }
 }

@@ -1,6 +1,7 @@
 @using BlazorWebApp.Models
 @using MudBlazor.Utilities
 @inject IBackendService Backend
+@inject IGenerationParameterService ParameterService
 
 @* Renders a single field based on FieldSchema type *@
 
@@ -57,6 +58,21 @@
         </MudSelect>
         break;
 
+    case "file":
+        @* File selector for model files - uses pre-resolved options *@
+        <MudSelect T="string"
+                   @bind-Value="_localStringValue"
+                   @bind-Value:after="OnStringValueChanged"
+                   Label="@Field.Label"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in GetFileOptions())
+            {
+                <MudSelectItem Value="@option">@System.IO.Path.GetFileName(option)</MudSelectItem>
+            }
+        </MudSelect>
+        break;
+
     case "text":
         <MudTextField T="string"
                       @bind-Value="_localStringValue"
@@ -95,6 +111,64 @@
                         DisableAlpha="true" />
         break;
 
+    case "resolution":
+        @* Width/Height with aspect ratio lock *@
+        <MudStack Spacing="1">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudNumericField T="int"
+                                 @bind-Value="_localWidth"
+                                 @bind-Value:after="OnWidthChanged"
+                                 Label="Width"
+                                 Min="@((int)(Field.Min ?? 64))"
+                                 Max="@((int)(Field.Max ?? 4096))"
+                                 Step="@((int)(Field.Step ?? 64))"
+                                 Style="flex: 1;" />
+                <MudIconButton Icon="@(_lockAspectRatio ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                               Size="Size.Small"
+                               Title="@(_lockAspectRatio ? "Unlock aspect ratio" : "Lock aspect ratio")"
+                               OnClick="ToggleAspectRatioLock" />
+                <MudNumericField T="int"
+                                 @bind-Value="_localHeight"
+                                 @bind-Value:after="OnHeightChanged"
+                                 Label="Height"
+                                 Min="@((int)(Field.Min ?? 64))"
+                                 Max="@((int)(Field.Max ?? 4096))"
+                                 Step="@((int)(Field.Step ?? 64))"
+                                 Style="flex: 1;" />
+            </MudStack>
+            <MudStack Row="true" Spacing="1" Justify="Justify.Center">
+                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" 
+                               Size="Size.Small" 
+                               Title="Swap width/height"
+                               OnClick="SwapDimensions" />
+            </MudStack>
+        </MudStack>
+        break;
+
+    case "group":
+        @* Nested field container *@
+        <MudPaper Elevation="0" Class="pa-2 mb-2" Style="border: 1px solid rgba(255,255,255,0.1);">
+            @if (!string.IsNullOrEmpty(Field.Label))
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@Field.Label</MudText>
+            }
+            @if (Field.Fields != null)
+            {
+                <MudGrid Spacing="2">
+                    @foreach (var nestedField in Field.Fields)
+                    {
+                        <MudItem xs="@nestedField.Column">
+                            <DynamicField Field="@nestedField" 
+                                          Values="@Values" 
+                                          FragmentId="@FragmentId"
+                                          OnValueChanged="@OnValueChanged" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudPaper>
+        break;
+
     default:
         <MudText Typo="Typo.caption" Color="Color.Warning">
             Unknown field type: @Field.Type
@@ -102,7 +176,7 @@
         break;
 }
 
-@if (!string.IsNullOrEmpty(Field.Tooltip))
+@if (!string.IsNullOrEmpty(Field.Tooltip) && Field.Type?.ToLowerInvariant() != "group")
 {
     <MudTooltip Text="@Field.Tooltip" Placement="Placement.Top">
         <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" Class="ml-1" Style="opacity: 0.5;" />
@@ -123,6 +197,12 @@
     public Dictionary<string, object?> Values { get; set; } = new();
 
     /// <summary>
+    /// The fragment ID for accessing pre-resolved options.
+    /// </summary>
+    [Parameter]
+    public string FragmentId { get; set; } = "";
+
+    /// <summary>
     /// Callback when the value changes.
     /// </summary>
     [Parameter]
@@ -139,6 +219,12 @@
     private bool _localBoolValue;
     private MudColor _localColorValue = new MudColor("#FFFFFF");
     
+    // Resolution field state
+    private int _localWidth = 512;
+    private int _localHeight = 512;
+    private bool _lockAspectRatio = false;
+    private double _aspectRatio = 1.0;
+    
     protected override void OnParametersSet()
     {
         // Sync local state from Values dictionary based on field type
@@ -152,6 +238,7 @@
                 _localLongValue = GetLongValueFromDict();
                 break;
             case "select":
+            case "file":
             case "text":
             case "textarea":
                 _localStringValue = GetStringValueFromDict();
@@ -162,6 +249,12 @@
                 break;
             case "color":
                 _localColorValue = GetMudColorFromDict();
+                break;
+            case "resolution":
+                _localWidth = GetIntValueFromDict("width", 512);
+                _localHeight = GetIntValueFromDict("height", 512);
+                if (_localWidth > 0 && _localHeight > 0)
+                    _aspectRatio = (double)_localWidth / _localHeight;
                 break;
         }
     }
@@ -219,6 +312,22 @@
             if (bool.TryParse(value.ToString(), out var parsed)) return parsed;
         }
         return false;
+    }
+
+    private int GetIntValueFromDict(string key, int defaultValue)
+    {
+        if (Values.TryGetValue(key, out var value) && value != null)
+        {
+            try
+            {
+                return Convert.ToInt32(value);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        return defaultValue;
     }
 
     private MudColor GetMudColorFromDict()
@@ -293,7 +402,60 @@
 
     #endregion
 
-    #region Select Options
+    #region Resolution Field Handlers
+
+    private async Task OnWidthChanged()
+    {
+        if (_lockAspectRatio && _aspectRatio > 0)
+        {
+            _localHeight = (int)Math.Round(_localWidth / _aspectRatio);
+        }
+        
+        Values["width"] = _localWidth;
+        Values["height"] = _localHeight;
+        await OnValueChanged.InvokeAsync(("width", _localWidth));
+        await OnValueChanged.InvokeAsync(("height", _localHeight));
+    }
+
+    private async Task OnHeightChanged()
+    {
+        if (_lockAspectRatio && _aspectRatio > 0)
+        {
+            _localWidth = (int)Math.Round(_localHeight * _aspectRatio);
+        }
+        
+        Values["width"] = _localWidth;
+        Values["height"] = _localHeight;
+        await OnValueChanged.InvokeAsync(("width", _localWidth));
+        await OnValueChanged.InvokeAsync(("height", _localHeight));
+    }
+
+    private void ToggleAspectRatioLock()
+    {
+        _lockAspectRatio = !_lockAspectRatio;
+        if (_lockAspectRatio && _localWidth > 0 && _localHeight > 0)
+        {
+            _aspectRatio = (double)_localWidth / _localHeight;
+        }
+    }
+
+    private async Task SwapDimensions()
+    {
+        (_localWidth, _localHeight) = (_localHeight, _localWidth);
+        if (_lockAspectRatio)
+        {
+            _aspectRatio = 1.0 / _aspectRatio;
+        }
+        
+        Values["width"] = _localWidth;
+        Values["height"] = _localHeight;
+        await OnValueChanged.InvokeAsync(("width", _localWidth));
+        await OnValueChanged.InvokeAsync(("height", _localHeight));
+    }
+
+    #endregion
+
+    #region Select/File Options
 
     private IEnumerable<string> GetSelectOptions()
     {
@@ -303,16 +465,37 @@
             return Field.Options;
         }
 
-        // Then check for source reference
-        if (!string.IsNullOrEmpty(Field.Source))
+        // Then check for pre-resolved options from initialization
+        if (!string.IsNullOrEmpty(FragmentId) && Field.HasDynamicSource)
         {
-            return ResolveSource(Field.Source);
+            var resolved = ParameterService.GetResolvedOptions(FragmentId, ParameterKey);
+            if (resolved.Count > 0)
+                return resolved;
+        }
+
+        // Legacy: Parse source format "Backend.Samplers"
+        if (!string.IsNullOrEmpty(Field.Source) && Field.Source.Contains('.'))
+        {
+            return ResolveLegacySource(Field.Source);
         }
 
         return Enumerable.Empty<string>();
     }
 
-    private IEnumerable<string> ResolveSource(string source)
+    private IEnumerable<string> GetFileOptions()
+    {
+        // For file fields, use pre-resolved options from initialization
+        if (!string.IsNullOrEmpty(FragmentId) && Field.HasDynamicSource)
+        {
+            var resolved = ParameterService.GetResolvedOptions(FragmentId, ParameterKey);
+            if (resolved.Count > 0)
+                return resolved;
+        }
+
+        return Enumerable.Empty<string>();
+    }
+
+    private IEnumerable<string> ResolveLegacySource(string source)
     {
         // Parse source format: "Backend.Samplers"
         var parts = source.Split('.');
@@ -329,9 +512,6 @@
                 "samplers" => Backend.Samplers?.Select(s => s.Name) ?? Enumerable.Empty<string>(),
                 "schedulers" => Backend.Schedulers?.Select(s => s.Name) ?? Enumerable.Empty<string>(),
                 "upscalers" => Backend.Upscalers?.Select(u => u.Name) ?? Enumerable.Empty<string>(),
-                // TODO: Add these to IBackendService when available
-                // "vaes" => Backend.Vaes ?? Enumerable.Empty<string>(),
-                // "detectionmodels" => Backend.DetectionModels ?? Enumerable.Empty<string>(),
                 _ => Enumerable.Empty<string>()
             };
         }

@@ -36,6 +36,10 @@ namespace BlazorWebApp.Services
 
             try
             {
+                // Pre-process to handle Scriban templating in #meta blocks
+                // This allows fragments to use dynamic outputs/conditions while still having parseable UI schemas
+                metaJson = PreprocessMetaJson(metaJson);
+                
                 // Clean up trailing commas before parsing
                 metaJson = Regex.Replace(metaJson, @",\s*(\}|])", "$1", RegexOptions.Singleline);
                 
@@ -52,6 +56,32 @@ namespace BlazorWebApp.Services
                 _logger.LogWarning(ex, "Failed to parse fragment UI schema");
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Pre-processes #meta JSON content to handle Scriban templating.
+        /// Removes or neutralizes Scriban expressions so the JSON can be parsed.
+        /// </summary>
+        private static string PreprocessMetaJson(string metaJson)
+        {
+            // Remove Scriban conditional blocks entirely (they add optional properties like "conditions")
+            // Pattern: {{~ if ... ~}} ... {{~ end ~}} or {{ if ... }} ... {{ end }}
+            metaJson = Regex.Replace(metaJson, @"\{\{~?\s*if\s+[\s\S]*?\{\{~?\s*end\s*~?\}\}", "", RegexOptions.Singleline);
+            
+            // Replace Scriban expressions in string values with placeholder
+            // Pattern: {{ scope ?? '' }} or {{ variable | filter }} etc.
+            // This handles dynamic keys like "{{ scope ?? '' }}model_output"
+            metaJson = Regex.Replace(metaJson, @"\{\{[^}]+\}\}", "", RegexOptions.None);
+            
+            // Clean up any resulting empty string concatenations in keys
+            // e.g., "model_output" instead of "{{ scope ?? '' }}model_output"
+            // The keys will be different at runtime but we only need to validate structure
+            
+            // Remove any leading commas that might result from removed conditional blocks
+            metaJson = Regex.Replace(metaJson, @",(\s*\})", "$1", RegexOptions.Singleline);
+            metaJson = Regex.Replace(metaJson, @"\{(\s*),", "{$1", RegexOptions.Singleline);
+            
+            return metaJson;
         }
 
         /// <inheritdoc />

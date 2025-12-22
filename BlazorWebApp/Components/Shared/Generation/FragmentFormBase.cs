@@ -1,4 +1,5 @@
 using BlazorWebApp.Models;
+using BlazorWebApp.Services;
 using Microsoft.AspNetCore.Components;
 
 namespace BlazorWebApp.Components.Shared.Generation
@@ -9,6 +10,12 @@ namespace BlazorWebApp.Components.Shared.Generation
     /// </summary>
     public abstract class FragmentFormBase : ComponentBase
     {
+        /// <summary>
+        /// The fragment ID for this form.
+        /// </summary>
+        [Parameter]
+        public string FragmentId { get; set; } = "";
+
         /// <summary>
         /// The fragment schema with UI definition and parameter constraints.
         /// </summary>
@@ -28,9 +35,23 @@ namespace BlazorWebApp.Components.Shared.Generation
         public EventCallback<(string key, object? value)> OnValueChanged { get; set; }
 
         /// <summary>
+        /// Optional callback when any value changes (simplified).
+        /// </summary>
+        [Parameter]
+        public EventCallback OnChanged { get; set; }
+
+        /// <summary>
         /// Gets the Values dictionary for direct access.
         /// </summary>
         protected Dictionary<string, object?> Values => Parameters.Values;
+
+        /// <summary>
+        /// Gets pre-resolved options for a parameter (for dynamic sources).
+        /// </summary>
+        protected List<string> GetResolvedOptions(string parameterName)
+        {
+            return Parameters.ResolvedOptions.GetValueOrDefault(parameterName, new List<string>());
+        }
 
         #region Typed Value Accessors
 
@@ -87,12 +108,13 @@ namespace BlazorWebApp.Components.Shared.Generation
         #region Value Setters
 
         /// <summary>
-        /// Sets a value and triggers the change callback.
+        /// Sets a value and triggers both change callbacks.
         /// </summary>
         protected async Task SetValueAsync(string key, object? value)
         {
             Parameters.SetValue(key, value);
             await OnValueChanged.InvokeAsync((key, value));
+            await OnChanged.InvokeAsync();
         }
 
         /// <summary>
@@ -102,6 +124,15 @@ namespace BlazorWebApp.Components.Shared.Generation
         {
             Parameters.SetValue(key, value);
             _ = OnValueChanged.InvokeAsync((key, value));
+            _ = OnChanged.InvokeAsync();
+        }
+
+        /// <summary>
+        /// Notifies that a change occurred without specifying the key.
+        /// </summary>
+        protected async Task NotifyChangedAsync()
+        {
+            await OnChanged.InvokeAsync();
         }
 
         #endregion
@@ -166,12 +197,60 @@ namespace BlazorWebApp.Components.Shared.Generation
 
         /// <summary>
         /// Gets the options array for a select field.
+        /// First checks pre-resolved options, then falls back to static options from schema.
         /// </summary>
         protected List<string> GetOptions(string parameterName)
         {
+            // First try pre-resolved options (from dynamic sources)
+            var resolved = GetResolvedOptions(parameterName);
+            if (resolved.Count > 0)
+                return resolved;
+
+            // Fall back to static options from constraints
             return GetConstraints(parameterName).Options ?? new List<string>();
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// Generic base class for fragment forms with a typed values model.
+    /// Provides automatic synchronization between the model and fragment parameters.
+    /// </summary>
+    /// <typeparam name="TValues">The type containing the typed properties for this fragment.</typeparam>
+    public abstract class FragmentFormBase<TValues> : FragmentFormBase where TValues : class, new()
+    {
+        /// <summary>
+        /// The typed values model for this fragment.
+        /// Automatically synchronized with Parameters.Values.
+        /// </summary>
+        protected TValues Model { get; private set; } = new();
+
+        /// <summary>
+        /// Called during OnParametersSet to map Values dictionary to Model.
+        /// Override in derived class to set up the mapping.
+        /// </summary>
+        protected abstract void MapValuesToModel();
+
+        /// <summary>
+        /// Called when Model properties change to sync back to Values dictionary.
+        /// Override in derived class to set up the mapping.
+        /// </summary>
+        protected abstract void MapModelToValues();
+
+        protected override void OnParametersSet()
+        {
+            base.OnParametersSet();
+            MapValuesToModel();
+        }
+
+        /// <summary>
+        /// Call this after updating Model properties to sync to Values and notify.
+        /// </summary>
+        protected async Task SyncModelAsync()
+        {
+            MapModelToValues();
+            await NotifyChangedAsync();
+        }
     }
 }

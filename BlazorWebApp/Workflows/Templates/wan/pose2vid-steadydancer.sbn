@@ -1,7 +1,7 @@
 {
-  "Title": "SteadyDancer (Pose2Vid)",
+  "Title": "SteadyDancer",
   "Base": "Wan",
-  "Mode": "pose2vid",
+  "Mode": "Img2Vid",
   "Assets": [
     { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "Wan21_SteadyDancer_fp8_e4m3fn_scaled_KJ.safetensors", "order": 1, "columnSize": 4 },
     { "parameter": "Vae", "label": "VAE", "type": "Vae", "default": "wan_2.1_vae.safetensors", "order": 2, "columnSize": 4 },

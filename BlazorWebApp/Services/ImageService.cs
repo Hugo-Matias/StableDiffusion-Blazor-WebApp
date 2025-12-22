@@ -143,9 +143,12 @@ namespace BlazorWebApp.Services
             _currentGenerationParams = parameters;
             _currentWorkflow = workflow;
             
-            // Capture original seed value to restore after generation (for random seed support)
+            // Capture original seed values to restore after generation (for random seed support)
             var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
             var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
+            
+            var detailerFragment = parameters.GetFragment(Fragments.Detailer);
+            var originalDetailerSeed = detailerFragment?.GetValueOrDefault(Params.DetailerSeed, -1L) ?? -1L;
             
             try
             {
@@ -182,12 +185,18 @@ namespace BlazorWebApp.Services
             }
             finally
             {
-                // Restore original seed value if it was random (-1)
-                // This ensures the next generation will also get a new random seed
+                // Restore original seed values if they were random (-1)
+                // This ensures the next generation will also get new random seeds
                 if (originalSeed == -1 && samplerFragment != null)
                 {
                     samplerFragment.SetValue(Params.Seed, -1L);
                     _logger.LogDebug("Restored seed to -1 for next random generation");
+                }
+                
+                if (originalDetailerSeed == -1 && detailerFragment != null)
+                {
+                    detailerFragment.SetValue(Params.DetailerSeed, -1L);
+                    _logger.LogDebug("Restored detailer seed to -1 for next random generation");
                 }
             }
 
@@ -234,7 +243,7 @@ namespace BlazorWebApp.Services
                 _logger.LogWarning("No prompts fragment found for generation");
             }
             
-            // Handle seed randomization for sampler fragment
+            // Handle seed randomization for main sampler fragment
             var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
             if (samplerFragment != null)
             {
@@ -250,6 +259,22 @@ namespace BlazorWebApp.Services
                 else
                 {
                     _state.State.Generation.Seed = fragmentSeed;
+                }
+            }
+            
+            // Handle seed randomization for detailer fragment (FaceDetailer requires seed >= 0)
+            var detailerFragment = parameters.GetFragment(Fragments.Detailer);
+            if (detailerFragment != null && detailerFragment.IsActive)
+            {
+                var detailerSeed = detailerFragment.GetValueOrDefault(Params.DetailerSeed, -1L);
+                
+                // Generate new random seed if user wants random (-1 or <= 0)
+                // FaceDetailer node requires seed >= 0
+                if (detailerSeed == -1 || detailerSeed <= 0)
+                {
+                    var actualSeed = (long)new Random().Next(0, int.MaxValue);
+                    detailerFragment.SetValue(Params.DetailerSeed, actualSeed);
+                    _logger.LogDebug("Randomized detailer seed to {Seed}", actualSeed);
                 }
             }
         }

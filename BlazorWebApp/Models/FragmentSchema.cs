@@ -217,8 +217,11 @@ namespace BlazorWebApp.Models
                 errors.Add($"Parameter '{paramName}' has invalid step value: {constraints.Step} (must be greater than 0)");
             }
 
-            // Validate dynamic source has input_name
-            if (!string.IsNullOrEmpty(constraints.Source) && string.IsNullOrEmpty(constraints.InputName))
+            // Validate dynamic source has input_name (only for ComfyUI node sources, not Backend.* sources)
+            // Backend.* sources are resolved from IBackendService and don't need input_name
+            if (!string.IsNullOrEmpty(constraints.Source) && 
+                !constraints.Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrEmpty(constraints.InputName))
             {
                 errors.Add($"Parameter '{paramName}' has 'source' but no 'input_name' for dynamic resolution");
             }
@@ -275,9 +278,12 @@ namespace BlazorWebApp.Models
         public List<string>? Options { get; set; }
 
         /// <summary>
-        /// Returns true if this constraint has a dynamic source (node class_type).
+        /// Returns true if this constraint has a dynamic source.
+        /// For ComfyUI node sources, both Source and InputName are required.
+        /// For Backend.* sources (e.g., Backend.Samplers), only Source is required.
         /// </summary>
-        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && 
+            (Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(InputName));
 
         /// <summary>
         /// Gets the min value as the specified type.
@@ -410,9 +416,12 @@ namespace BlazorWebApp.Models
         public List<FieldSchema>? Fields { get; set; }
 
         /// <summary>
-        /// Returns true if this field has a dynamic source (node class_type + input name).
+        /// Returns true if this field has a dynamic source.
+        /// For ComfyUI node sources, both Source and InputName are required.
+        /// For Backend.* sources (e.g., Backend.Samplers), only Source is required.
         /// </summary>
-        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && 
+            (Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(InputName));
 
         /// <summary>
         /// Converts this FieldSchema to ParameterConstraints for source resolution.
@@ -444,6 +453,10 @@ namespace BlazorWebApp.Models
             if (string.IsNullOrEmpty(Type))
                 errors.Add($"Field '{Parameter}' missing required 'type' property");
 
+            // Backend.* sources don't need input_name - they're resolved from IBackendService
+            var isBackendSource = !string.IsNullOrEmpty(Source) && 
+                                  Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase);
+
             switch (Type?.ToLowerInvariant())
             {
                 case "slider":
@@ -454,14 +467,14 @@ namespace BlazorWebApp.Models
                 case "select":
                     if (string.IsNullOrEmpty(Source) && (Options == null || Options.Count == 0))
                         errors.Add($"Select field '{Parameter}' requires 'source' (node class_type) or 'options'");
-                    if (!string.IsNullOrEmpty(Source) && string.IsNullOrEmpty(InputName))
+                    if (!string.IsNullOrEmpty(Source) && !isBackendSource && string.IsNullOrEmpty(InputName))
                         errors.Add($"Select field '{Parameter}' with 'source' requires 'input_name'");
                     break;
 
                 case "file":
                     if (string.IsNullOrEmpty(Source))
                         errors.Add($"File field '{Parameter}' requires 'source' (node class_type)");
-                    if (!string.IsNullOrEmpty(Source) && string.IsNullOrEmpty(InputName))
+                    if (!string.IsNullOrEmpty(Source) && !isBackendSource && string.IsNullOrEmpty(InputName))
                         errors.Add($"File field '{Parameter}' with 'source' requires 'input_name'");
                     break;
 

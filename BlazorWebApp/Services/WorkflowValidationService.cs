@@ -261,10 +261,19 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            // Check for Pipeline array
-            if (!Regex.IsMatch(templateText, @"""Pipeline""\s*:\s*\[", RegexOptions.IgnoreCase))
+            // Check for Pipeline array (fragment-based) OR Prompt object (legacy raw workflow)
+            var hasPipeline = Regex.IsMatch(templateText, @"""Pipeline""\s*:\s*\[", RegexOptions.IgnoreCase);
+            var hasPrompt = Regex.IsMatch(templateText, @"""Prompt""\s*:\s*\{", RegexOptions.IgnoreCase);
+            
+            if (!hasPipeline && !hasPrompt)
             {
-                result.AddError(relativePath, TemplateErrorType.Pipeline, "Missing required 'Pipeline' array");
+                result.AddError(relativePath, TemplateErrorType.Pipeline, "Missing required 'Pipeline' array or 'Prompt' object");
+            }
+            else if (hasPrompt && !hasPipeline)
+            {
+                // Legacy workflow - add a warning but don't fail validation
+                result.AddWarning(relativePath, TemplateErrorType.Pipeline, 
+                    "Template uses legacy 'Prompt' format instead of 'Pipeline'. Consider converting to fragment-based Pipeline.");
             }
         }
 
@@ -282,7 +291,7 @@ namespace BlazorWebApp.Services
                 return;
 
             // Validate each asset entry
-            var assetMatches = Regex.Matches(assetsContent, @"\{([^{}]*)\}", RegexOptions.Singleline);
+            var assetMatches = Regex.Matches(assetsContent, @"\{([^{}{]*)\}", RegexOptions.Singleline);
             var assetIndex = 0;
 
             foreach (Match assetMatch in assetMatches)
@@ -412,10 +421,27 @@ namespace BlazorWebApp.Services
 
         private void ValidatePipelineStep(string stepContent, int stepIndex, string relativePath, TemplateValidationResult result, HashSet<string> stepIds)
         {
+            // Skip validation for steps that are entirely Scriban conditionals
+            // These are typically LoRA loaders or other optional nodes that are dynamically generated
+            var cleanedContent = stepContent.Trim();
+            if (cleanedContent.StartsWith("{{") || cleanedContent.Contains("{{~") && !cleanedContent.Contains("\"fragment\""))
+            {
+                // This step appears to be a Scriban conditional block without a static fragment
+                // It will be validated when the template is actually rendered
+                return;
+            }
+
             // Check for fragment reference
             var fragmentMatch = Regex.Match(stepContent, @"""fragment""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
             if (!fragmentMatch.Success)
             {
+                // Check if this might be a conditional block that got parsed as a step
+                if (stepContent.Contains("{{~") || stepContent.Contains("{{if") || stepContent.Contains("{{ if"))
+                {
+                    // This is a Scriban conditional, skip validation
+                    return;
+                }
+                
                 result.AddError(relativePath, TemplateErrorType.Pipeline, $"Pipeline step #{stepIndex} missing required 'fragment' property");
                 return;
             }
@@ -451,6 +477,10 @@ namespace BlazorWebApp.Services
 
         private void ValidateMetaBlock(string metaContent, string relativePath, TemplateValidationResult result)
         {
+            // Pre-process to handle Scriban templating in #meta blocks
+            // This allows fragments to use dynamic outputs/conditions while still validating the UI schema
+            metaContent = PreprocessMetaJson(metaContent);
+            
             // Clean up trailing commas before parsing
             metaContent = Regex.Replace(metaContent, @",\s*(\}|])", "$1", RegexOptions.Singleline);
 
@@ -472,6 +502,32 @@ namespace BlazorWebApp.Services
                 result.AddError(relativePath, TemplateErrorType.FragmentSchema,
                     $"Invalid JSON in #meta block: {ex.Message}", lineNumber, ex);
             }
+        }
+
+        /// <summary>
+        /// Pre-processes #meta JSON content to handle Scriban templating.
+        /// Removes or neutralizes Scriban expressions so the JSON can be parsed for validation.
+        /// </summary>
+        private static string PreprocessMetaJson(string metaJson)
+        {
+            // Remove Scriban conditional blocks entirely (they add optional properties like "conditions")
+            // Pattern: {{~ if ... ~}} ... {{~ end ~}} or {{ if ... }} ... {{ end }}
+            metaJson = Regex.Replace(metaJson, @"\{\{~?\s*if\s+[\s\S]*?\{\{~?\s*end\s*~?\}\}", "", RegexOptions.Singleline);
+            
+            // Replace Scriban expressions in string values with placeholder
+            // Pattern: {{ scope ?? '' }} or {{ variable | filter }} etc.
+            // This handles dynamic keys like "{{ scope ?? '' }}model_output"
+            metaJson = Regex.Replace(metaJson, @"\{\{[^}]+\}\}", "", RegexOptions.None);
+            
+            // Clean up any resulting empty string concatenations in keys
+            // e.g., "model_output" instead of "{{ scope ?? '' }}model_output"
+            // The keys will be different at runtime but we only need to validate structure
+            
+            // Remove any leading commas that might result from removed conditional blocks
+            metaJson = Regex.Replace(metaJson, @",(\s*\})", "$1", RegexOptions.Singleline);
+            metaJson = Regex.Replace(metaJson, @"\{(\s*),", "{$1", RegexOptions.Singleline);
+            
+            return metaJson;
         }
 
         private void ValidateUiSchema(JsonElement uiEl, string relativePath, TemplateValidationResult result)
@@ -538,13 +594,18 @@ namespace BlazorWebApp.Services
                     $"Parameter '{paramName}' has invalid step value: {step} (must be greater than 0)");
             }
 
-            // Validate dynamic source has input_name
+            // Validate dynamic source has input_name (only for ComfyUI node sources, not Backend.* sources)
             if (constraints.TryGetProperty("source", out var sourceEl) && sourceEl.ValueKind == JsonValueKind.String)
             {
-                if (!constraints.TryGetProperty("input_name", out _))
+                var sourceValue = sourceEl.GetString() ?? "";
+                
+                // Backend.* sources are resolved from IBackendService and don't need input_name
+                // Only ComfyUI node class_type sources need input_name
+                if (!sourceValue.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) &&
+                    !constraints.TryGetProperty("input_name", out _))
                 {
                     result.AddWarning(relativePath, TemplateErrorType.SchemaConstraints,
-                        $"Parameter '{paramName}' has 'source' but no 'input_name' for dynamic resolution");
+                        $"Parameter '{paramName}' has 'source' but no 'input_name' for dynamic resolution in '{Path.GetFileName(relativePath)}'");
                 }
             }
         }

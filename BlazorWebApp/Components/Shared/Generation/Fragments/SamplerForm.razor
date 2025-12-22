@@ -7,6 +7,8 @@
     Flux models use Guidance, other models use CFG Scale.
 *@
 @using static BlazorWebApp.Data.Enums
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("SamplerForm")]
 @inject ISettingsService Settings
 @inject IBackendService Backend
 @inject IImageService ImageService

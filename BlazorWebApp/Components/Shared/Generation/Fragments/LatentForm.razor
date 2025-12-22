@@ -4,6 +4,8 @@
     Handles: width, height, batch_size
     Uses ResolutionPanel as sub-component for resolution controls.
 *@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("LatentForm")]
 @inject ISettingsService Settings
 
 <MudGrid Spacing="2">

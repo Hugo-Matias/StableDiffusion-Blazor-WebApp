@@ -17,8 +17,8 @@
     "chainable": true,
     "parameters": {
       "detailer_detection_model": { "source": "Backend.DetectionModels" },
-      "detailer_sampler": { "source": "Backend.Samplers" },
-      "detailer_scheduler": { "source": "Backend.Schedulers" },
+      "detailer_sampler": { "source": "Backend.DetailerSamplers" },
+      "detailer_scheduler": { "source": "Backend.DetailerSchedulers" },
       "detailer_seed": { "min": -1 },
       "detailer_steps": { "min": 1, "max": 100, "step": 1 },
       "detailer_cfg": { "min": 1, "max": 30, "step": 0.5 },

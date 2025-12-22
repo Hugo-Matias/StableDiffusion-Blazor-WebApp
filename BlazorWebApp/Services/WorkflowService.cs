@@ -274,8 +274,7 @@ namespace BlazorWebApp.Services
 
                     context.Outputs.Merge(composer.Registry);
 
-                    if (!string.IsNullOrWhiteSpace(fragmentName))
-                    {
+                    if (!string.IsNullOrWhiteSpace(fragmentName)){
                         var fragPath = Path.Combine(_workflowPath, "Fragments", fragmentName.Replace('/', Path.DirectorySeparatorChar));
                         if (File.Exists(fragPath))
                         {
@@ -751,15 +750,51 @@ namespace BlazorWebApp.Services
             _logger.LogDebug("Pipeline cache cleared");
         }
 
-        // Delegate to FragmentSchemaService
+        // Delegate to FragmentSchemaService but use GetPipelineSteps for consistent IDs
         public FragmentSchema? ParseFragmentSchema(string fragmentText)
             => _fragmentSchemaService.ParseFragmentSchema(fragmentText);
 
         public FragmentSchema? GetFragmentSchema(string fragmentFile)
             => _fragmentSchemaService.GetFragmentSchema(fragmentFile);
 
+        /// <summary>
+        /// Gets all fragment schemas for a workflow's pipeline.
+        /// Uses GetPipelineSteps() for consistent fragment ID resolution.
+        /// </summary>
         public Dictionary<string, FragmentSchema> GetWorkflowFragmentSchemas(Workflow workflow)
-            => _fragmentSchemaService.GetWorkflowFragmentSchemas(workflow);
+        {
+            var result = new Dictionary<string, FragmentSchema>(StringComparer.OrdinalIgnoreCase);
+
+            if (workflow == null)
+                return result;
+
+            // Use GetPipelineSteps for consistent fragment ID resolution
+            // This ensures the same IDs are used for both fragment initialization and schema lookup
+            var pipelineSteps = GetPipelineSteps(workflow);
+
+            foreach (var step in pipelineSteps)
+            {
+                var fragmentId = step.Id;
+
+                if (string.IsNullOrEmpty(fragmentId))
+                    fragmentId = Path.GetFileNameWithoutExtension(step.Fragment).Replace("-", "_");
+
+                if (!string.IsNullOrEmpty(step.Fragment))
+                {
+                    var schema = _fragmentSchemaService.GetFragmentSchema(step.Fragment);
+                    if (schema != null)
+                    {
+                        result[fragmentId] = schema;
+                        _logger.LogTrace("Got schema for fragment '{FragmentId}' from '{FragmentFile}'", fragmentId, step.Fragment);
+                    }
+                }
+            }
+
+            _logger.LogDebug("GetWorkflowFragmentSchemas: Found {Count} schemas for workflow '{WorkflowTitle}'", 
+                result.Count, workflow.Title);
+
+            return result;
+        }
 
         public Dictionary<string, object?> ParseFragmentDefaults(string fragmentFile)
             => _fragmentSchemaService.ParseFragmentDefaults(fragmentFile);

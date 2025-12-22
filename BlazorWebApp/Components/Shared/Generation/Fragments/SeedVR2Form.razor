@@ -7,6 +7,8 @@
     This is an optional feature for high-quality video/image upscaling using SeedVR2.
     Values are read from FragmentParameters.Values and synced back on change.
 *@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("SeedVR2Form")]
 @inject IGenerationParameterService ParameterService
 @inject IWorkflowService WorkflowService
 
