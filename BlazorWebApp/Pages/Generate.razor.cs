@@ -91,7 +91,8 @@ public partial class Generate : IDisposable
                 var workflow = _workflows?.FirstOrDefault(w => w.Id == workflowGuid);
                 if (workflow != null)
                 {
-                    await OnWorkflowSelected(workflow);
+                    // Don't update URL - we're already navigating from URL
+                    await OnWorkflowSelected(workflow, updateUrl: false);
                     return;
                 }
             }
@@ -103,7 +104,8 @@ public partial class Generate : IDisposable
             var restoredWorkflow = _workflows?.FirstOrDefault(w => w.Id == Parameters.WorkflowId.Value);
             if (restoredWorkflow != null)
             {
-                await OnWorkflowSelected(restoredWorkflow);
+                // Update URL to reflect restored workflow
+                await OnWorkflowSelected(restoredWorkflow, updateUrl: true);
                 return;
             }
         }
@@ -119,7 +121,7 @@ public partial class Generate : IDisposable
 
     #region Workflow Selection
 
-    private async Task OnWorkflowSelected(Workflow workflow)
+    private async Task OnWorkflowSelected(Workflow workflow, bool updateUrl = true)
     {
         if (workflow == null) return;
 
@@ -140,9 +142,20 @@ public partial class Generate : IDisposable
 
         // Local state initialization removed - all state is managed by child components or service
 
-        // Update URL without full navigation
-        var newUrl = $"/generate/{workflow.Id}";
-        NavManager.NavigateTo(newUrl, forceLoad: false, replace: true);
+        // Update URL without full navigation (only if not already navigating from URL)
+        if (updateUrl)
+        {
+            try
+            {
+                var newUrl = $"/generate/{workflow.Id}";
+                NavManager.NavigateTo(newUrl, forceLoad: false, replace: true);
+            }
+            catch (Exception ex)
+            {
+                // Navigation may fail if circuit is disconnecting - log but don't throw
+                Logger.LogDebug(ex, "Failed to update URL during workflow selection");
+            }
+        }
 
         StateHasChanged();
     }
@@ -244,26 +257,7 @@ public partial class Generate : IDisposable
 
     #endregion
 
-    #region Optional Fragments
-
-    /// <summary>
-    /// Gets the optional fragments that should be rendered with CollapsibleFeatureSection.
-    /// Uses the service's OptionalFragments discovery instead of manual iteration.
-    /// </summary>
-    private IEnumerable<(string Id, string Title, string? Icon, FragmentSchema? Schema, FragmentParameters Fragment)> GetOptionalFragments()
-    {
-        // Use the service's discovered optional fragments
-        foreach (var fragmentRef in ParameterService.OptionalFragments)
-        {
-            yield return (
-                fragmentRef.Id,
-                fragmentRef.Title,
-                fragmentRef.Icon,
-                fragmentRef.Schema,
-                fragmentRef.Parameters
-            );
-        }
-    }
+    #region Fragment Active Handler
 
     private async Task HandleFragmentActiveChanged(string fragmentId, bool active)
     {
@@ -273,63 +267,6 @@ public partial class Generate : IDisposable
         Logger.LogDebug("Fragment '{FragmentId}' IsActive changed to {IsActive}", fragmentId, active);
 
         await InvokeAsync(StateHasChanged);
-    }
-
-    /// <summary>
-    /// Dynamically renders a fragment form using the schema's Component property.
-    /// Falls back to a placeholder if no component is registered.
-    /// </summary>
-    private RenderFragment RenderOptionalFragmentForm(string fragmentId, FragmentParameters fragment, FragmentSchema? schema)
-    {
-        // Get component name from schema, or derive from fragment file
-        var componentName = schema?.Component;
-
-        if (string.IsNullOrEmpty(componentName))
-        {
-            // Try to derive component name from fragment file: "upscale.sbn" -> "UpscaleForm"
-            var baseName = Path.GetFileNameWithoutExtension(fragment.FragmentFile);
-            componentName = ToPascalCase(baseName) + "Form";
-        }
-
-        // Look up component type in registry
-        var componentType = ComponentRegistry.GetComponent(componentName);
-
-        if (componentType != null)
-        {
-            return builder =>
-            {
-                builder.OpenComponent(0, componentType);
-                builder.AddAttribute(1, "FragmentId", fragmentId);
-                builder.CloseComponent();
-            };
-        }
-
-        // Check if schema has dynamic fields defined
-        if (schema?.UsesDynamicFields == true)
-        {
-            // TODO: Implement dynamic field rendering based on schema.Fields
-            return builder => builder.AddContent(0,
-                $"Dynamic fields for '{schema.Title}' - field rendering not yet implemented");
-        }
-
-        // No component found and no dynamic fields
-        Logger.LogWarning("No component found for fragment '{FragmentId}' (tried '{ComponentName}')",
-            fragmentId, componentName);
-
-        return builder => builder.AddContent(0,
-            $"No form component registered for '{componentName}'");
-    }
-
-    /// <summary>
-    /// Converts a kebab-case or snake_case string to PascalCase.
-    /// </summary>
-    private static string ToPascalCase(string input)
-    {
-        if (string.IsNullOrEmpty(input)) return input;
-
-        var parts = input.Split(new[] { '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-        return string.Concat(parts.Select(p =>
-            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p.Substring(1).ToLowerInvariant() : "")));
     }
 
     #endregion

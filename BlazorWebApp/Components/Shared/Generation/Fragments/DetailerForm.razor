@@ -150,7 +150,15 @@
 </MudGrid>
 
 @code {
-    [Parameter] public string FragmentId { get; set; } = "detailer";
+    /// <summary>
+    /// Fragment reference containing the fragment ID, parameters, and schema.
+    /// </summary>
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
     
     // Local state - reads from and writes to ParameterService
     private string? _detectionModel;
@@ -182,6 +190,8 @@
     
     protected override void OnParametersSet()
     {
+        if (Fragment == null) return;
+        
         LoadFromFragment();
         LoadResolvedOptions();
     }
@@ -202,70 +212,77 @@
     
     private void LoadFromFragment()
     {
-        var fragment = ParameterService.Current.GetFragment(FragmentId);
-        if (fragment == null)
-        {
-            Logger.LogWarning("DetailerForm: Fragment '{FragmentId}' not found", FragmentId);
-            return;
-        }
+        if (Fragment == null) return;
         
-        _detectionModel = fragment.GetValueOrDefault<string>("detailer_detection_model", null);
-        _sampler = fragment.GetValueOrDefault<string>("detailer_sampler", null);
-        _scheduler = fragment.GetValueOrDefault<string>("detailer_scheduler", null);
-        _seed = fragment.GetValueOrDefault("detailer_seed", -1L);
-        _steps = fragment.GetValueOrDefault("detailer_steps", 20);
-        _cfg = fragment.GetValueOrDefault("detailer_cfg", 8.0f);
-        _denoise = fragment.GetValueOrDefault("detailer_denoise", 0.65f);
-        _feather = fragment.GetValueOrDefault("detailer_feather", 5);
-        _bboxThreshold = fragment.GetValueOrDefault("detailer_bbox_threshold", 0.7f);
-        _bboxDilation = fragment.GetValueOrDefault("detailer_bbox_dilation", 10);
-        _bboxCropFactor = fragment.GetValueOrDefault("detailer_bbox_crop_factor", 3.0f);
-        _dropSize = fragment.GetValueOrDefault("detailer_drop_size", 70);
-        _guideSize = fragment.GetValueOrDefault("detailer_guide_size", 512);
-        _maxSize = fragment.GetValueOrDefault("detailer_max_size", 1024);
-        _cycle = fragment.GetValueOrDefault("detailer_cycle", 1);
+        _detectionModel = ParameterService.GetFragmentProperty(Fragment, "detailer_detection_model", (string?)null);
+        _sampler = ParameterService.GetFragmentProperty(Fragment, "detailer_sampler", (string?)null);
+        _scheduler = ParameterService.GetFragmentProperty(Fragment, "detailer_scheduler", (string?)null);
+        _seed = ParameterService.GetFragmentProperty(Fragment, "detailer_seed", -1L);
+        _steps = ParameterService.GetFragmentProperty(Fragment, "detailer_steps", 20);
+        _cfg = ParameterService.GetFragmentProperty(Fragment, "detailer_cfg", 8.0f);
+        _denoise = ParameterService.GetFragmentProperty(Fragment, "detailer_denoise", 0.65f);
+        _feather = ParameterService.GetFragmentProperty(Fragment, "detailer_feather", 5);
+        _bboxThreshold = ParameterService.GetFragmentProperty(Fragment, "detailer_bbox_threshold", 0.7f);
+        _bboxDilation = ParameterService.GetFragmentProperty(Fragment, "detailer_bbox_dilation", 10);
+        _bboxCropFactor = ParameterService.GetFragmentProperty(Fragment, "detailer_bbox_crop_factor", 3.0f);
+        _dropSize = ParameterService.GetFragmentProperty(Fragment, "detailer_drop_size", 70);
+        _guideSize = ParameterService.GetFragmentProperty(Fragment, "detailer_guide_size", 512);
+        _maxSize = ParameterService.GetFragmentProperty(Fragment, "detailer_max_size", 1024);
+        _cycle = ParameterService.GetFragmentProperty(Fragment, "detailer_cycle", 1);
     }
     
     private void LoadResolvedOptions()
     {
-        _detectionModels = ParameterService.GetResolvedOptions(FragmentId, "detailer_detection_model");
-        _samplers = ParameterService.GetResolvedOptions(FragmentId, "detailer_sampler");
-        _schedulers = ParameterService.GetResolvedOptions(FragmentId, "detailer_scheduler");
+        if (Fragment == null) return;
+        
+        _detectionModels = ParameterService.GetResolvedOptions(Fragment.Id, "detailer_detection_model");
+        _samplers = ParameterService.GetResolvedOptions(Fragment.Id, "detailer_sampler");
+        _schedulers = ParameterService.GetResolvedOptions(Fragment.Id, "detailer_scheduler");
         
         // Set defaults if values are empty but options exist
         if (string.IsNullOrEmpty(_detectionModel) && _detectionModels.Count > 0)
+        {
             _detectionModel = _detectionModels[0];
+            SetValue("detailer_detection_model", _detectionModel);
+        }
         if (string.IsNullOrEmpty(_sampler) && _samplers.Count > 0)
+        {
             _sampler = _samplers[0];
+            SetValue("detailer_sampler", _sampler);
+        }
         if (string.IsNullOrEmpty(_scheduler) && _schedulers.Count > 0)
+        {
             _scheduler = _schedulers[0];
+            SetValue("detailer_scheduler", _scheduler);
+        }
     }
     
     private void SetValue(string param, object? value)
     {
-        ParameterService.SetFragmentValue(FragmentId, param, value);
+        ParameterService.SetFragmentProperty(Fragment, param, value, notify: true);
     }
     
-    private void OnDetectionModelChanged(string value) { _detectionModel = value; SetValue("detailer_detection_model", value); }
-    private void OnSamplerChanged(string value) { _sampler = value; SetValue("detailer_sampler", value); }
-    private void OnSchedulerChanged(string value) { _scheduler = value; SetValue("detailer_scheduler", value); }
-    private void OnSeedChanged(long value) { _seed = value; SetValue("detailer_seed", value); }
-    private void OnStepsChanged(int value) { _steps = value; SetValue("detailer_steps", value); }
-    private void OnCfgChanged(float value) { _cfg = value; SetValue("detailer_cfg", value); }
-    private void OnDenoiseChanged(float value) { _denoise = value; SetValue("detailer_denoise", value); }
-    private void OnFeatherChanged(int value) { _feather = value; SetValue("detailer_feather", value); }
-    private void OnBboxThresholdChanged(float value) { _bboxThreshold = value; SetValue("detailer_bbox_threshold", value); }
-    private void OnBboxDilationChanged(int value) { _bboxDilation = value; SetValue("detailer_bbox_dilation", value); }
-    private void OnBboxCropFactorChanged(float value) { _bboxCropFactor = value; SetValue("detailer_bbox_crop_factor", value); }
-    private void OnDropSizeChanged(int value) { _dropSize = value; SetValue("detailer_drop_size", value); }
-    private void OnGuideSizeChanged(int value) { _guideSize = value; SetValue("detailer_guide_size", value); }
-    private void OnMaxSizeChanged(int value) { _maxSize = value; SetValue("detailer_max_size", value); }
-    private void OnCycleChanged(int value) { _cycle = value; SetValue("detailer_cycle", value); }
+    private async Task OnDetectionModelChanged(string value) { _detectionModel = value; SetValue("detailer_detection_model", value); await OnChanged.InvokeAsync(); }
+    private async Task OnSamplerChanged(string value) { _sampler = value; SetValue("detailer_sampler", value); await OnChanged.InvokeAsync(); }
+    private async Task OnSchedulerChanged(string value) { _scheduler = value; SetValue("detailer_scheduler", value); await OnChanged.InvokeAsync(); }
+    private async Task OnSeedChanged(long value) { _seed = value; SetValue("detailer_seed", value); await OnChanged.InvokeAsync(); }
+    private async Task OnStepsChanged(int value) { _steps = value; SetValue("detailer_steps", value); await OnChanged.InvokeAsync(); }
+    private async Task OnCfgChanged(float value) { _cfg = value; SetValue("detailer_cfg", value); await OnChanged.InvokeAsync(); }
+    private async Task OnDenoiseChanged(float value) { _denoise = value; SetValue("detailer_denoise", value); await OnChanged.InvokeAsync(); }
+    private async Task OnFeatherChanged(int value) { _feather = value; SetValue("detailer_feather", value); await OnChanged.InvokeAsync(); }
+    private async Task OnBboxThresholdChanged(float value) { _bboxThreshold = value; SetValue("detailer_bbox_threshold", value); await OnChanged.InvokeAsync(); }
+    private async Task OnBboxDilationChanged(int value) { _bboxDilation = value; SetValue("detailer_bbox_dilation", value); await OnChanged.InvokeAsync(); }
+    private async Task OnBboxCropFactorChanged(float value) { _bboxCropFactor = value; SetValue("detailer_bbox_crop_factor", value); await OnChanged.InvokeAsync(); }
+    private async Task OnDropSizeChanged(int value) { _dropSize = value; SetValue("detailer_drop_size", value); await OnChanged.InvokeAsync(); }
+    private async Task OnGuideSizeChanged(int value) { _guideSize = value; SetValue("detailer_guide_size", value); await OnChanged.InvokeAsync(); }
+    private async Task OnMaxSizeChanged(int value) { _maxSize = value; SetValue("detailer_max_size", value); await OnChanged.InvokeAsync(); }
+    private async Task OnCycleChanged(int value) { _cycle = value; SetValue("detailer_cycle", value); await OnChanged.InvokeAsync(); }
     
-    private void SetRandomSeed()
+    private async Task SetRandomSeed()
     {
         _seed = -1;
         SetValue("detailer_seed", -1L);
+        await OnChanged.InvokeAsync();
     }
     
     public void Dispose()

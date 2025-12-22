@@ -93,17 +93,16 @@
 
 @code {
     /// <summary>
-    /// Fragment ID this form is associated with.
-    /// Used to read/write values from FragmentParameters.
+    /// Fragment reference containing the fragment ID, parameters, and schema.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = "upscale_seedvr2";
+    [Parameter] public FragmentReference? Fragment { get; set; }
     
     /// <summary>
     /// Optional callback when any value changes.
     /// </summary>
     [Parameter] public EventCallback OnChanged { get; set; }
     
-    #region Local State
+    #region Local State (for MudBlazor binding - prevents snap-back)
     
     private string? _localModel;
     private string? _localVaeModel;
@@ -124,14 +123,17 @@
     
     protected override async Task OnInitializedAsync()
     {
+        if (Fragment == null) return;
+        
         LoadConstraints();
         await LoadDynamicOptionsAsync();
-        InitializeFromFragment();
     }
     
     protected override void OnParametersSet()
     {
-        // Re-read values when FragmentId changes
+        if (Fragment == null) return;
+        
+        // Re-read values when Fragment changes
         InitializeFromFragment();
     }
     
@@ -152,14 +154,10 @@
     /// </summary>
     private void LoadConstraints()
     {
-        var fragment = ParameterService.Current.GetFragment(FragmentId);
-        if (fragment == null) return;
-        
-        var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
-        if (schema?.Parameters == null) return;
+        if (Fragment?.Schema?.Parameters == null) return;
         
         // Store entire Parameters dictionary - preserves parameter names as keys
-        _constraints = schema.Parameters;
+        _constraints = Fragment.Schema.Parameters;
     }
     
     /// <summary>
@@ -168,6 +166,8 @@
     /// </summary>
     private async Task LoadDynamicOptionsAsync()
     {
+        if (Fragment == null) return;
+        
         foreach (var (parameterName, constraint) in _constraints)
         {
             if (constraint.HasDynamicSource)
@@ -188,38 +188,37 @@
     /// </summary>
     private void InitializeFromFragment()
     {
-        var fragment = ParameterService.Current.GetFragment(FragmentId);
-        if (fragment == null) return;
+        if (Fragment == null) return;
         
         // Model fields with dynamic sources: apply first-option fallback if no default
-        _localModel = fragment.GetValueOrDefault<string>("seedvr2_model", null);
+        _localModel = ParameterService.GetFragmentProperty(Fragment, "seedvr2_model", (string?)null);
         if (string.IsNullOrEmpty(_localModel))
         {
             _localModel = GetOptions("seedvr2_model").FirstOrDefault();
             if (_localModel != null)
             {
-                ParameterService.SetFragmentValue(FragmentId, "seedvr2_model", _localModel);
+                ParameterService.SetFragmentProperty(Fragment, "seedvr2_model", _localModel, notify: false);
             }
         }
         
-        _localVaeModel = fragment.GetValueOrDefault<string>("seedvr2_vae_model", null);
+        _localVaeModel = ParameterService.GetFragmentProperty(Fragment, "seedvr2_vae_model", (string?)null);
         if (string.IsNullOrEmpty(_localVaeModel))
         {
             _localVaeModel = GetOptions("seedvr2_vae_model").FirstOrDefault();
             if (_localVaeModel != null)
             {
-                ParameterService.SetFragmentValue(FragmentId, "seedvr2_vae_model", _localVaeModel);
+                ParameterService.SetFragmentProperty(Fragment, "seedvr2_vae_model", _localVaeModel, notify: false);
             }
         }
         
         // Numeric fields: use fragment defaults (priority 1 & 2 handled by service)
-        _localResolution = fragment.GetValueOrDefault("seedvr2_resolution", 2048);
-        _localBatchSize = fragment.GetValueOrDefault("seedvr2_batch_size", 1);
-        _localBlocksToSwap = fragment.GetValueOrDefault("blocks_to_swap", 36);
-        _localVaeTileSize = fragment.GetValueOrDefault("vae_tile_size", 1024);
-        _localVaeTileOverlap = fragment.GetValueOrDefault("vae_tile_overlap", 128);
-        _localInputNoiseScale = fragment.GetValueOrDefault("seedvr2_input_noise_scale", 0f);
-        _localLatentNoiseScale = fragment.GetValueOrDefault("seedvr2_latent_noise_scale", 0f);
+        _localResolution = ParameterService.GetFragmentProperty(Fragment, "seedvr2_resolution", 2048);
+        _localBatchSize = ParameterService.GetFragmentProperty(Fragment, "seedvr2_batch_size", 1);
+        _localBlocksToSwap = ParameterService.GetFragmentProperty(Fragment, "blocks_to_swap", 36);
+        _localVaeTileSize = ParameterService.GetFragmentProperty(Fragment, "vae_tile_size", 1024);
+        _localVaeTileOverlap = ParameterService.GetFragmentProperty(Fragment, "vae_tile_overlap", 128);
+        _localInputNoiseScale = ParameterService.GetFragmentProperty(Fragment, "seedvr2_input_noise_scale", 0f);
+        _localLatentNoiseScale = ParameterService.GetFragmentProperty(Fragment, "seedvr2_latent_noise_scale", 0f);
         
         RefreshResizeInfo();
     }
@@ -230,56 +229,56 @@
     
     private async Task OnModelChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_model", _localModel);
+        ParameterService.SetFragmentProperty(Fragment, "seedvr2_model", _localModel, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnVaeModelChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_vae_model", _localVaeModel);
+        ParameterService.SetFragmentProperty(Fragment, "seedvr2_vae_model", _localVaeModel, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnResolutionChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_resolution", _localResolution);
+        ParameterService.SetFragmentProperty(Fragment, "seedvr2_resolution", _localResolution, notify: true);
         RefreshResizeInfo();
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnBatchSizeChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_batch_size", _localBatchSize);
+        ParameterService.SetFragmentProperty(Fragment, "seedvr2_batch_size", _localBatchSize, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnBlocksToSwapChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "blocks_to_swap", _localBlocksToSwap);
+        ParameterService.SetFragmentProperty(Fragment, "blocks_to_swap", _localBlocksToSwap, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnVaeTileSizeChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "vae_tile_size", _localVaeTileSize);
+        ParameterService.SetFragmentProperty(Fragment, "vae_tile_size", _localVaeTileSize, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnVaeTileOverlapChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "vae_tile_overlap", _localVaeTileOverlap);
+        ParameterService.SetFragmentProperty(Fragment, "vae_tile_overlap", _localVaeTileOverlap, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnInputNoiseScaleChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_input_noise_scale", _localInputNoiseScale);
+        ParameterService.SetFragmentProperty(Fragment, "seedvr2_input_noise_scale", _localInputNoiseScale, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnLatentNoiseScaleChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seedvr2_latent_noise_scale", _localLatentNoiseScale);
+        ParameterService.SetFragmentProperty(Fragment, "seedvr2_latent_noise_scale", _localLatentNoiseScale, notify: true);
         await OnChanged.InvokeAsync();
     }
     
@@ -291,16 +290,11 @@
         var baseWidth = 1024;
         var baseHeight = 1024;
         
-        // Try to read base dimensions from a latent fragment
-        foreach (var kvp in ParameterService.Current.Fragments)
+        // Try to read base dimensions from primary latent fragment
+        if (ParameterService.PrimaryLatentFragment != null)
         {
-            var fragmentFile = Path.GetFileName(kvp.Value.FragmentFile).ToLowerInvariant();
-            if (fragmentFile.Contains("latent") || fragmentFile.Contains("load"))
-            {
-                baseWidth = kvp.Value.GetValueOrDefault("width", 1024);
-                baseHeight = kvp.Value.GetValueOrDefault("height", 1024);
-                break;
-            }
+            baseWidth = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "width", 1024);
+            baseHeight = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "height", 1024);
         }
         
         // SeedVR2 uses resolution (smallest side) to scale proportionally

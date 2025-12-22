@@ -65,7 +65,7 @@
             @* Latent/Resolution (if present in pipeline) *@
             @if (ParameterService.PrimaryLatentFragment != null)
             {
-                <LatentForm 
+                <FragmentRenderer 
                     Fragment="@ParameterService.PrimaryLatentFragment"
                     OnChanged="HandleFragmentValueChanged" />
             }
@@ -73,22 +73,22 @@
             @* Sampler (if present in pipeline) *@
             @if (ParameterService.PrimarySamplerFragment != null)
             {
-                <SamplerForm 
+                <FragmentRenderer 
                     Fragment="@ParameterService.PrimarySamplerFragment"
                     UseGuidance="@UseGuidance"
                     OnChanged="HandleFragmentValueChanged" />
             }
 
             @* Optional Features (wrapped in CollapsibleFeatureSection) *@
-            @foreach (var optFrag in GetOptionalFragments())
+            @foreach (var fragmentRef in ParameterService.OptionalFragments)
             {
                 <CollapsibleFeatureSection 
-                    Title="@optFrag.Title"
-                    Icon="@optFrag.Icon"
-                    IsActive="@optFrag.Fragment.IsActive"
-                    IsActiveChanged="@((active) => HandleFragmentActiveChanged(optFrag.Id, active))"
+                    Title="@fragmentRef.Title"
+                    Icon="@fragmentRef.Icon"
+                    IsActive="@fragmentRef.Parameters.IsActive"
+                    IsActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentRef.Id, active))"
                     DefaultExpanded="false">
-                    @RenderOptionalFragmentForm(optFrag.Id, optFrag.Fragment, optFrag.Schema)
+                    <FragmentRenderer Fragment="@fragmentRef" OnChanged="HandleFragmentValueChanged" />
                 </CollapsibleFeatureSection>
             }
         </MudItem>

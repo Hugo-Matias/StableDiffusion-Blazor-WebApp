@@ -95,17 +95,16 @@
 
 @code {
     /// <summary>
-    /// Fragment ID this form is associated with.
-    /// Used to read/write values from FragmentParameters.
+    /// Fragment reference containing the fragment ID, parameters, and schema.
     /// </summary>
-    [Parameter] public string FragmentId { get; set; } = "seed_variance_enhancer";
+    [Parameter] public FragmentReference? Fragment { get; set; }
     
     /// <summary>
     /// Optional callback when any value changes.
     /// </summary>
     [Parameter] public EventCallback OnChanged { get; set; }
     
-    #region Local State
+    #region Local State (for MudBlazor binding - prevents snap-back)
     
     private int _localRandomizePercent;
     private int _localStrength;
@@ -125,44 +124,19 @@
              ParameterConstraints seed, ParameterConstraints mask_starts_at,
              ParameterConstraints mask_percent) _constraints;
     
-    protected override void OnInitialized()
-    {
-        LoadConstraints();
-        InitializeFromFragment();
-    }
-    
     protected override void OnParametersSet()
     {
-        InitializeFromFragment();
-    }
-    
-    /// <summary>
-    /// Loads parameter constraints from the fragment schema.
-    /// </summary>
-    private void LoadConstraints()
-    {
-        var fragment = ParameterService.Current.GetFragment(FragmentId);
-        if (fragment == null) 
-        {
-            _constraints = (new(), new(), new(), new(), new(), new(), new());
-            return;
-        }
+        if (Fragment == null) return;
         
-        var schema = WorkflowService.GetFragmentSchema(fragment.FragmentFile);
-        if (schema?.Parameters == null)
-        {
-            _constraints = (new(), new(), new(), new(), new(), new(), new());
-            return;
-        }
-        
+        // Load constraints from schema
         _constraints = (
-            schema.GetConstraints("randomize_percent"),
-            schema.GetConstraints("strength"),
-            schema.GetConstraints("noise_insert"),
-            schema.GetConstraints("steps_switchover_percent"),
-            schema.GetConstraints("seed"),
-            schema.GetConstraints("mask_starts_at"),
-            schema.GetConstraints("mask_percent")
+            Fragment.Schema.GetConstraints("randomize_percent"),
+            Fragment.Schema.GetConstraints("strength"),
+            Fragment.Schema.GetConstraints("noise_insert"),
+            Fragment.Schema.GetConstraints("steps_switchover_percent"),
+            Fragment.Schema.GetConstraints("seed"),
+            Fragment.Schema.GetConstraints("mask_starts_at"),
+            Fragment.Schema.GetConstraints("mask_percent")
         );
         
         // Load options from schema if available
@@ -170,23 +144,15 @@
             _noiseInsertOptions = _constraints.noise_insert.Options;
         if (_constraints.mask_starts_at.Options?.Count > 0)
             _maskStartsAtOptions = _constraints.mask_starts_at.Options;
-    }
-    
-    /// <summary>
-    /// Initializes local state from fragment parameters.
-    /// </summary>
-    private void InitializeFromFragment()
-    {
-        var fragment = ParameterService.Current.GetFragment(FragmentId);
-        if (fragment == null) return;
         
-        _localRandomizePercent = fragment.GetValueOrDefault("randomize_percent", 50);
-        _localStrength = fragment.GetValueOrDefault("strength", 20);
-        _localNoiseInsert = fragment.GetValueOrDefault<string>("noise_insert", "noise on beginning steps") ?? "noise on beginning steps";
-        _localStepsSwitchoverPercent = fragment.GetValueOrDefault("steps_switchover_percent", 20);
-        _localSeed = fragment.GetValueOrDefault("seed", 0L);
-        _localMaskStartsAt = fragment.GetValueOrDefault<string>("mask_starts_at", "beginning") ?? "beginning";
-        _localMaskPercent = fragment.GetValueOrDefault("mask_percent", 0);
+        // Sync local state FROM service
+        _localRandomizePercent = ParameterService.GetFragmentProperty(Fragment, "randomize_percent", 50);
+        _localStrength = ParameterService.GetFragmentProperty(Fragment, "strength", 20);
+        _localNoiseInsert = ParameterService.GetFragmentProperty(Fragment, "noise_insert", "noise on beginning steps");
+        _localStepsSwitchoverPercent = ParameterService.GetFragmentProperty(Fragment, "steps_switchover_percent", 20);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, "seed", 0L);
+        _localMaskStartsAt = ParameterService.GetFragmentProperty(Fragment, "mask_starts_at", "beginning");
+        _localMaskPercent = ParameterService.GetFragmentProperty(Fragment, "mask_percent", 0);
     }
     
     #endregion
@@ -195,43 +161,43 @@
     
     private async Task OnRandomizePercentChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "randomize_percent", _localRandomizePercent);
+        ParameterService.SetFragmentProperty(Fragment, "randomize_percent", _localRandomizePercent, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnStrengthChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "strength", _localStrength);
+        ParameterService.SetFragmentProperty(Fragment, "strength", _localStrength, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnNoiseInsertChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "noise_insert", _localNoiseInsert);
+        ParameterService.SetFragmentProperty(Fragment, "noise_insert", _localNoiseInsert, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnStepsSwitchoverPercentChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "steps_switchover_percent", _localStepsSwitchoverPercent);
+        ParameterService.SetFragmentProperty(Fragment, "steps_switchover_percent", _localStepsSwitchoverPercent, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnSeedChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "seed", _localSeed);
+        ParameterService.SetFragmentProperty(Fragment, "seed", _localSeed, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnMaskStartsAtChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "mask_starts_at", _localMaskStartsAt);
+        ParameterService.SetFragmentProperty(Fragment, "mask_starts_at", _localMaskStartsAt, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnMaskPercentChanged()
     {
-        ParameterService.SetFragmentValue(FragmentId, "mask_percent", _localMaskPercent);
+        ParameterService.SetFragmentProperty(Fragment, "mask_percent", _localMaskPercent, notify: true);
         await OnChanged.InvokeAsync();
     }
     
