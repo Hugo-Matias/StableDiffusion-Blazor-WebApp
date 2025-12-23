@@ -525,6 +525,14 @@ namespace BlazorWebApp.Services
                         _logger.LogTrace("Discovered latent fragment: '{FragmentId}'", fragmentId);
                         break;
 
+                    case FragmentType.Settings:
+                        // Settings fragments are workflow-specific required configuration
+                        // They should be discovered but rendered separately from optional fragments
+                        // Add to optional list for UI rendering (they'll be marked as non-collapsible in their schema)
+                        _optionalFragments.Add(reference);
+                        _logger.LogTrace("Discovered settings fragment: '{FragmentId}'", fragmentId);
+                        break;
+
                     case FragmentType.Loader:
                         // Loader fragments often contain width/height/batch_size but no dedicated latent
                         // Only use if we haven't found a dedicated latent fragment
@@ -545,10 +553,12 @@ namespace BlazorWebApp.Services
                     case FragmentType.Conditioning:
                     case FragmentType.Output:
                         // Check if fragment is marked as defaultCollapsed (makes it optional)
-                        if (schema.DefaultCollapsed)
+                        // OR if it has a designed component (makes it a feature fragment)
+                        if (schema.DefaultCollapsed || schema.HasDesignedComponent)
                         {
                             _optionalFragments.Add(reference);
-                            _logger.LogTrace("Discovered optional fragment (defaultCollapsed): '{FragmentId}'", fragmentId);
+                            _logger.LogTrace("Discovered optional fragment (defaultCollapsed={DefaultCollapsed}, hasComponent={HasComponent}): '{FragmentId}'", 
+                                schema.DefaultCollapsed, schema.HasDesignedComponent, fragmentId);
                         }
                         break;
                 }

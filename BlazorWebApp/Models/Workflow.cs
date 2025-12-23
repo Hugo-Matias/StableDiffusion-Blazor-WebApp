@@ -95,7 +95,11 @@ namespace BlazorWebApp.Models
         public string GetReference(string key)
         {
             if (!_outputs.TryGetValue(key, out var refData))
-                throw new KeyNotFoundException($"No node registered for key '{key}'");
+            {
+                var availableKeys = string.Join(", ", _outputs.Keys.OrderBy(k => k).Select(k => $"'{k}'"));
+                throw new KeyNotFoundException(
+                    $"No node registered for key '{key}'. Available keys: {availableKeys}");
+            }
 
             return $"[\"{refData.nodeId}\", {refData.outputIndex}]";
         }

@@ -1,7 +1,7 @@
 #meta
 {
   "outputs": {
-    "video_save_node": { "node": "{{ node_id ?? 'video_save' }}", "index": 0 }
+    "video_save_node": { "node": "@{node_id}", "index": 0 }
   },
   "ui": {
     "type": "utility",
@@ -11,8 +11,10 @@
 }
 #end
 
+{{~ save_id = node_id ?? "video_save" ~}}
+
 {
-  "{{ node_id ?? 'video_save' }}": {
+  {{ save_id | json }}: {
     "inputs": {
       "frame_rate": {{ frame_rate ?? 16 | json }},
       "loop_count": 0,

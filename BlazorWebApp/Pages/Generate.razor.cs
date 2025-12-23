@@ -137,6 +137,9 @@ public partial class Generate : IDisposable
         // Initialize parameters from workflow
         await ParameterService.InitializeFromWorkflowAsync(workflow);
 
+        // Load session images into sources if available
+        await LoadSessionSourcesAsync(workflow);
+
         // Fragment discovery is now handled by ParameterService.DiscoverFragments()
         // (called automatically during InitializeFromWorkflowAsync)
 
@@ -158,6 +161,44 @@ public partial class Generate : IDisposable
         }
 
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Loads session images into workflow sources if available and clears the session afterwards.
+    /// </summary>
+    private async Task LoadSessionSourcesAsync(Workflow workflow)
+    {
+        // Check for Img2Vid input image
+        if (!string.IsNullOrEmpty(Session.Img2VidInputImage) && workflow.Mode == ModeType.Img2Vid)
+        {
+            // Find the first image source
+            var imageSource = workflow.Sources?.FirstOrDefault(s => s.Type?.Equals("image", StringComparison.OrdinalIgnoreCase) == true);
+            if (imageSource != null && Parameters.Sources.TryGetValue(imageSource.Id, out var source))
+            {
+                source.Data = Session.Img2VidInputImage;
+                Logger.LogDebug("Loaded session image into source '{SourceId}'", imageSource.Id);
+            }
+            
+            // Clear session after loading
+            Session.Img2VidInputImage = null;
+        }
+        
+        // Check for Img2Img input image
+        if (!string.IsNullOrEmpty(Session.Img2ImgInputImage) && workflow.Mode == ModeType.Img2Img)
+        {
+            // Find the first image source
+            var imageSource = workflow.Sources?.FirstOrDefault(s => s.Type?.Equals("image", StringComparison.OrdinalIgnoreCase) == true);
+            if (imageSource != null && Parameters.Sources.TryGetValue(imageSource.Id, out var source))
+            {
+                source.Data = Session.Img2ImgInputImage;
+                Logger.LogDebug("Loaded session image into source '{SourceId}'", imageSource.Id);
+            }
+            
+            // Clear session after loading
+            Session.Img2ImgInputImage = null;
+        }
+
+        await Task.CompletedTask;
     }
 
     #endregion

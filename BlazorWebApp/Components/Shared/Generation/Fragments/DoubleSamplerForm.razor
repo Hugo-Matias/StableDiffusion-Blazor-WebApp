@@ -1,0 +1,242 @@
+@*
+    DoubleSamplerForm - Coordinated control for WAN's dual-sampler video generation
+    
+    Controls BOTH sampler_high and sampler_low fragments simultaneously:
+    - High sampler: start_at_step=0, end_at_step=steps/2 (add_noise=enable, return_leftover=enable)
+    - Low sampler: start_at_step=steps/2, end_at_step=10000 (add_noise=disable, return_leftover=disable)
+    
+    Note: Only registered to sampler_high fragment, but writes to both.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("DoubleSamplerForm")]
+@inject IGenerationParameterService ParameterService
+@inject ILogger<DoubleSamplerForm> Logger
+
+<MudPaper Class="pa-4 mb-4">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">Video Sampling (Dual-Stage)</MudText>
+        <MudText Typo="Typo.caption" Class="mb-2">
+            High Noise (0?@(_localSteps/2)) ? Low Noise (@(_localSteps/2)??)
+        </MudText>
+        
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudSelect T="string" 
+                           Label="Sampler" 
+                           @bind-Value="_localSamplerName"
+                           @bind-Value:after="OnParametersChanged"
+                           AnchorOrigin="Origin.BottomLeft" 
+                           TransformOrigin="Origin.TopLeft">
+                    @foreach (var option in _samplerOptions)
+                    {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="6">
+                <MudSelect T="string" 
+                           Label="Scheduler" 
+                           @bind-Value="_localScheduler"
+                           @bind-Value:after="OnParametersChanged"
+                           AnchorOrigin="Origin.BottomLeft" 
+                           TransformOrigin="Origin.TopLeft">
+                    @foreach (var option in _schedulerOptions)
+                    {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="4">
+                <MudSlider T="int" 
+                           @bind-Value="_localSteps"
+                           @bind-Value:after="OnParametersChanged"
+                           Min="_stepsMin" 
+                           Max="_stepsMax" 
+                           Step="_stepsStep"
+                           Variant="Variant.Filled" 
+                           ValueLabel>
+                    <small>Steps:</small> @_localSteps
+                </MudSlider>
+            </MudItem>
+            
+            <MudItem xs="4">
+                <MudSlider T="double" 
+                           @bind-Value="_localCfg"
+                           @bind-Value:after="OnParametersChanged"
+                           Min="_cfgMin" 
+                           Max="_cfgMax" 
+                           Step="_cfgStep"
+                           Variant="Variant.Filled" 
+                           ValueLabel>
+                    <small>CFG Scale:</small> @_localCfg.ToString("F1")
+                </MudSlider>
+            </MudItem>
+            
+            <MudItem xs="4">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                    <MudNumericField T="long" 
+                                     @bind-Value="_localSeed" 
+                                     @bind-Value:after="OnParametersChanged"
+                                     Label="Seed" 
+                                     Min="-1" 
+                                     Max="long.MaxValue" 
+                                     Class="flex-grow-1" />
+                    <MudIconButton OnClick="SetRandomSeed" 
+                                   Icon="fa-solid fa-shuffle" 
+                                   Size="Size.Small" 
+                                   Title="Random seed" />
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudStack>
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Fragment reference for the HIGH sampler (this component is only registered to sampler_high).
+    /// </summary>
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #region Local State (prevents MudBlazor snap-back)
+    
+    private string _localSamplerName = "euler";
+    private string _localScheduler = "simple";
+    private int _localSteps = 8;
+    private double _localCfg = 1.0;
+    private long _localSeed = 42;
+    
+    #endregion
+    
+    #region Dynamic Options & Constraints
+    
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+    
+    // Constraints from schema
+    private int _stepsMin = 2;
+    private int _stepsMax = 50;
+    private int _stepsStep = 2;
+    
+    private double _cfgMin = 1.0;
+    private double _cfgMax = 15.0;
+    private double _cfgStep = 0.5;
+    
+    #endregion
+    
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null)
+        {
+            Logger.LogWarning("DoubleSamplerForm: Fragment is null");
+            return;
+        }
+        
+        // Load constraints from schema
+        LoadConstraintsFromSchema();
+        
+        // Load dynamic options (sampler_name, scheduler)
+        LoadDynamicOptions();
+        
+        // Sync local state FROM service (sampler_high fragment)
+        SyncFromService();
+    }
+    
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+        
+        // Steps constraints
+        if (Fragment.Schema.Parameters.TryGetValue(Params.Steps, out var stepsConstraints))
+        {
+            _stepsMin = stepsConstraints.GetMin(2);
+            _stepsMax = stepsConstraints.GetMax(50);
+            _stepsStep = stepsConstraints.GetStep(2);
+        }
+        
+        // CFG constraints
+        if (Fragment.Schema.Parameters.TryGetValue(Params.Cfg, out var cfgConstraints))
+        {
+            _cfgMin = cfgConstraints.GetMin(1.0);
+            _cfgMax = cfgConstraints.GetMax(15.0);
+            _cfgStep = cfgConstraints.GetStep(0.5);
+        }
+    }
+    
+    private void LoadDynamicOptions()
+    {
+        // Get resolved options from ParameterService (pre-resolved during workflow init)
+        _samplerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.SamplerName);
+        _schedulerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.Scheduler);
+        
+        // Fallback if options not yet resolved
+        if (_samplerOptions.Count == 0)
+        {
+            _samplerOptions = new List<string> { "euler", "euler_ancestral", "heun", "heunpp2", "dpm_2", "dpm_2_ancestral", "lms", "dpm_fast", "dpm_adaptive", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_2m", "dpmpp_3m_sde", "ddpm", "lcm" };
+        }
+        
+        if (_schedulerOptions.Count == 0)
+        {
+            _schedulerOptions = new List<string> { "normal", "karras", "exponential", "sgm_uniform", "simple", "ddim_uniform" };
+        }
+    }
+    
+    private void SyncFromService()
+    {
+        // Read from sampler_high fragment
+        _localSamplerName = ParameterService.GetFragmentProperty(Fragment, Params.SamplerName, "euler");
+        _localScheduler = ParameterService.GetFragmentProperty(Fragment, Params.Scheduler, "simple");
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, Params.Steps, 8);
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, Params.Cfg, 1.0);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, Params.Seed, 42L);
+    }
+    
+    private async Task OnParametersChanged()
+    {
+        // Calculate split points for dual-stage sampling
+        var halfSteps = _localSteps / 2;
+        
+        // Update sampler_high fragment (first stage: 0 ? steps/2)
+        ParameterService.SetFragmentProperty(Fragment, Params.SamplerName, _localSamplerName, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Scheduler, _localScheduler, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Steps, _localSteps, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Cfg, _localCfg, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, _localSeed, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "start_at_step", 0, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "end_at_step", halfSteps, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "add_noise", "enable", notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "return_with_leftover_noise", "enable", notify: false);
+        
+        // Update sampler_low fragment (second stage: steps/2 ? 10000)
+        // Note: sampler_low doesn't have a FragmentReference since it has no UI, so we write directly by ID
+        ParameterService.SetFragmentValue("sampler_low", Params.SamplerName, _localSamplerName);
+        ParameterService.SetFragmentValue("sampler_low", Params.Scheduler, _localScheduler);
+        ParameterService.SetFragmentValue("sampler_low", Params.Steps, _localSteps);
+        ParameterService.SetFragmentValue("sampler_low", Params.Cfg, _localCfg);
+        ParameterService.SetFragmentValue("sampler_low", Params.Seed, 0L); // Low sampler uses seed=0
+        ParameterService.SetFragmentValue("sampler_low", "start_at_step", halfSteps);
+        ParameterService.SetFragmentValue("sampler_low", "end_at_step", 10000);
+        ParameterService.SetFragmentValue("sampler_low", "add_noise", "disable");
+        ParameterService.SetFragmentValue("sampler_low", "return_with_leftover_noise", "disable");
+        
+        Logger.LogDebug("DoubleSamplerForm: Updated dual samplers - High(0?{HalfSteps}), Low({HalfSteps}??)", halfSteps, halfSteps);
+        
+        // Notify once after all updates
+        ParameterService.NotifyChanged();
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task SetRandomSeed()
+    {
+        _localSeed = -1;
+        await OnParametersChanged();
+    }
+}

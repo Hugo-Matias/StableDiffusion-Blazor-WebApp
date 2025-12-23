@@ -1,13 +1,15 @@
 #meta
 {
   "outputs": {
-    "{{ output_name ?? 'cleaned_output' }}": { "node": "{{ node_id ?? 'clean_vram' }}", "index": 0 }
+    "@{output_name}": { "node": "@{node_id}", "index": 0 }
   }
 }
 #end
 
+{{~ clean_id = node_id ?? "clean_vram" ~}}
+
 {
-  "{{ node_id ?? 'clean_vram' }}": {
+  {{ clean_id | json }}: {
     "inputs": {
       "anything": {{ get_ref (input_name ?? "latent_output") }}
     },

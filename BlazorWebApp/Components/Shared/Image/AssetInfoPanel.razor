@@ -31,49 +31,43 @@
             <!-- Send To Buttons (images only) -->
             @if (!IsVideo)
             {
-                @* Only show "Send image to" section if there are available workflows *@
-                @if (HasWorkflowForMode(ModeType.Img2Img) || HasWorkflowForMode(ModeType.Img2Vid) || HasWorkflowForMode(ModeType.Extras))
+                @* Send image to workflows *@
+                @if (GetAvailableWorkflows().Any())
                 {
                     <div class="send-to-section">
                         <span class="send-to-label">Send image to:</span>
                         <div class="send-to-buttons">
-                            @if (HasWorkflowForMode(ModeType.Img2Img))
+                            @foreach (var workflow in GetAvailableWorkflows())
                             {
-                                <button class="send-to-btn" @onclick="() => SendImageTo(img2img: true)" title="Send to Img2Img">
-                                    <MudIcon Icon="fa-solid fa-image" Size="Size.Small" />
-                                    <span>Img2Img</span>
-                                </button>
-                            }
-                            @if (HasWorkflowForMode(ModeType.Img2Vid))
-                            {
-                                <button class="send-to-btn" @onclick="SendImageToImg2Vid" title="Send to Img2Vid">
-                                    <MudIcon Icon="fa-solid fa-video" Size="Size.Small" />
-                                    <span>Img2Vid</span>
-                                </button>
-                            }
-                            @if (HasWorkflowForMode(ModeType.Extras))
-                            {
-                                <button class="send-to-btn" @onclick="() => SendImageTo(img2img: false)" title="Send to Upscale">
-                                    <MudIcon Icon="fa-solid fa-panorama" Size="Size.Small" />
-                                    <span>Upscale</span>
+                                <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)" 
+                                        @onclick="() => SendImageToWorkflow(workflow)" 
+                                        title="Send to @workflow.Title">
+                                    <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                    <span>@workflow.Title</span>
                                 </button>
                             }
                         </div>
                     </div>
                 }
-                <div class="send-to-section">
-                    <span class="send-to-label">Send parameters to:</span>
-                    <div class="send-to-buttons">
-                        <button class="send-to-btn" @onclick="() => SendSelectedTo(false)" title="Send to Txt2Img">
-                            <MudIcon Icon="fa-solid fa-font" Size="Size.Small" />
-                            <span>Txt2Img</span>
-                        </button>
-                        <button class="send-to-btn" @onclick="() => SendSelectedTo(true)" title="Send to Img2Img">
-                            <MudIcon Icon="fa-solid fa-image" Size="Size.Small" />
-                            <span>Img2Img</span>
-                        </button>
+                
+                @* Send parameters to workflows *@
+                @if (GetAvailableParameterWorkflows().Any())
+                {
+                    <div class="send-to-section">
+                        <span class="send-to-label">Send parameters to:</span>
+                        <div class="send-to-buttons">
+                            @foreach (var workflow in GetAvailableParameterWorkflows())
+                            {
+                                <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)" 
+                                        @onclick="() => SendParametersToWorkflow(workflow)" 
+                                        title="Send to @workflow.Title">
+                                    <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                    <span>@workflow.Title</span>
+                                </button>
+                            }
+                        </div>
                     </div>
-                </div>
+                }
                 <MudDivider />
             }
 
@@ -355,59 +349,100 @@
         return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
     }
 
-    private void SendImageTo(bool img2img)
+    /// <summary>
+    /// Gets workflows that accept images as input (Img2Img, Img2Vid)
+    /// </summary>
+    private List<Workflow> GetAvailableWorkflows()
     {
-        if (Asset == null) return;
+        if (!Backend.IsBackendAvailable || State.State.Generation.Workflows == null)
+            return new List<Workflow>();
 
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Asset.Path)}";
-        
-        if (img2img)
-        {
-            Session.Img2ImgInputImage = data;
-            var workflow = GetWorkflowForMode(ModeType.Img2Img);
-            if (workflow != null)
-            {
-                NavManager.NavigateTo($"/img2img/{workflow.Id}");
-                Snackbar.Add("Image sent to Img2Img", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add("No Img2Img workflow found for current model base", Severity.Warning);
-            }
-        }
-        else
-        {
-            Session.UpscaleImageData = data;
-            var workflow = GetWorkflowForMode(ModeType.Extras);
-            if (workflow != null)
-            {
-                NavManager.NavigateTo($"/extras/{workflow.Id}");
-                Snackbar.Add("Image sent to Upscale", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add("No Upscale workflow found for current model base", Severity.Warning);
-            }
-        }
+        var currentBase = State.State.Generation.WorkflowBase;
+        return State.State.Generation.Workflows
+            .Where(w => w.Base == currentBase && (w.Mode == ModeType.Img2Img || w.Mode == ModeType.Img2Vid))
+            .OrderBy(w => w.Mode)
+            .ThenBy(w => w.Title)
+            .ToList();
     }
 
-    private void SendImageToImg2Vid()
+    /// <summary>
+    /// Gets workflows that accept generation parameters (Txt2Img, Img2Img)
+    /// </summary>
+    private List<Workflow> GetAvailableParameterWorkflows()
+    {
+        if (!Backend.IsBackendAvailable || State.State.Generation.Workflows == null)
+            return new List<Workflow>();
+
+        var currentBase = State.State.Generation.WorkflowBase;
+        return State.State.Generation.Workflows
+            .Where(w => w.Base == currentBase && (w.Mode == ModeType.Txt2Img || w.Mode == ModeType.Img2Img))
+            .OrderBy(w => w.Mode)
+            .ThenBy(w => w.Title)
+            .ToList();
+    }
+
+    private string GetWorkflowIcon(ModeType mode)
+    {
+        return mode switch
+        {
+            ModeType.Txt2Img => "fa-solid fa-font",
+            ModeType.Img2Img => "fa-solid fa-image",
+            ModeType.Img2Vid => "fa-solid fa-video",
+            ModeType.Extras => "fa-solid fa-panorama",
+            _ => "fa-solid fa-circle"
+        };
+    }
+
+    private string GetWorkflowModeClass(ModeType mode)
+    {
+        return mode switch
+        {
+            ModeType.Txt2Img => "mode-txt2img",
+            ModeType.Img2Img => "mode-img2img",
+            ModeType.Img2Vid => "mode-img2vid",
+            ModeType.Extras => "mode-extras",
+            _ => ""
+        };
+    }
+
+    private void SendImageToWorkflow(Workflow workflow)
     {
         if (Asset == null) return;
 
         var data = $"data:image/png;base64,{IO.GetBase64FromFile(Asset.Path)}";
-        Session.Img2VidInputImage = data;
-        
-        var workflow = GetWorkflowForMode(ModeType.Img2Vid);
-        if (workflow != null)
+
+        switch (workflow.Mode)
         {
-            NavManager.NavigateTo($"/img2vid/{workflow.Id}");
-            Snackbar.Add("Image sent to Img2Vid", Severity.Success);
+            case ModeType.Img2Img:
+                Session.Img2ImgInputImage = data;
+                break;
+            case ModeType.Img2Vid:
+                Session.Img2VidInputImage = data;
+                break;
         }
-        else
+
+        NavManager.NavigateTo($"/generate/{workflow.Id}");
+        Snackbar.Add($"Image sent to {workflow.Title}", Severity.Success);
+    }
+
+    private void SendParametersToWorkflow(Workflow workflow)
+    {
+        if (Asset == null || _selectedParams.Count == 0)
         {
-            Snackbar.Add("No Img2Vid workflow found for current model base", Severity.Warning);
+            Snackbar.Add("Select parameters to send by clicking on them", Severity.Warning);
+            return;
         }
+
+        var isImg2Img = workflow.Mode == ModeType.Img2Img;
+        foreach (var param in _selectedParams)
+        {
+            M.SetGenerationParameter(Asset, param, isImg2Img);
+        }
+
+        NavManager.NavigateTo($"/generate/{workflow.Id}");
+        Snackbar.Add($"Sent {_selectedParams.Count} parameter(s) to {workflow.Title}", Severity.Success);
+        _selectedParams.Clear();
+        SelectedParamsChanged.InvokeAsync(_selectedParams);
     }
 
     private void ToggleParam(string param)
@@ -423,42 +458,6 @@
         else if (param == "Width")
             _selectedParams.Remove("Height");
 
-        SelectedParamsChanged.InvokeAsync(_selectedParams);
-    }
-
-    private void SendSelectedTo(bool isImg2Img)
-    {
-        if (Asset == null || _selectedParams.Count == 0)
-        {
-            Snackbar.Add("Select parameters to send by clicking on them", Severity.Warning);
-            return;
-        }
-
-        foreach (var param in _selectedParams)
-        {
-            M.SetGenerationParameter(Asset, param, isImg2Img);
-        }
-
-        if (isImg2Img)
-        {
-            var workflow = GetWorkflowForMode(ModeType.Img2Img);
-            if (workflow != null)
-            {
-                NavManager.NavigateTo($"/img2img/{workflow.Id}");
-            }
-        }
-        else
-        {
-            var workflow = GetWorkflowForMode(ModeType.Txt2Img);
-            if (workflow != null)
-            {
-                NavManager.NavigateTo($"/txt2img/{workflow.Id}");
-            }
-        }
-
-        var target = isImg2Img ? "Img2Img" : "Txt2Img";
-        Snackbar.Add($"Sent {_selectedParams.Count} parameter(s) to {target}", Severity.Success);
-        _selectedParams.Clear();
         SelectedParamsChanged.InvokeAsync(_selectedParams);
     }
 }

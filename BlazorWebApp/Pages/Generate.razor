@@ -75,21 +75,29 @@
             {
                 <FragmentRenderer 
                     Fragment="@ParameterService.PrimarySamplerFragment"
-                    UseGuidance="@UseGuidance"
                     OnChanged="HandleFragmentValueChanged" />
             }
 
             @* Optional Features (wrapped in CollapsibleFeatureSection) *@
             @foreach (var fragmentRef in ParameterService.OptionalFragments)
             {
-                <CollapsibleFeatureSection 
-                    Title="@fragmentRef.Title"
-                    Icon="@fragmentRef.Icon"
-                    IsActive="@fragmentRef.Parameters.IsActive"
-                    IsActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentRef.Id, active))"
-                    DefaultExpanded="false">
+                @if (fragmentRef.Schema?.Collapsible ?? true)
+                {
+                    @* Collapsible features (enhancements, optional settings) *@
+                    <CollapsibleFeatureSection 
+                        Title="@fragmentRef.Title"
+                        Icon="@fragmentRef.Icon"
+                        IsActive="@fragmentRef.Parameters.IsActive"
+                        IsActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentRef.Id, active))"
+                        DefaultExpanded="false">
+                        <FragmentRenderer Fragment="@fragmentRef" OnChanged="HandleFragmentValueChanged" />
+                    </CollapsibleFeatureSection>
+                }
+                else
+                {
+                    @* Non-collapsible features (required settings, always visible) *@
                     <FragmentRenderer Fragment="@fragmentRef" OnChanged="HandleFragmentValueChanged" />
-                </CollapsibleFeatureSection>
+                }
             }
         </MudItem>
 

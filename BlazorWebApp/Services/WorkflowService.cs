@@ -1,5 +1,4 @@
-﻿using BlazorWebApp.Data.Entities;
-using BlazorWebApp.Models;
+﻿using BlazorWebApp.Models;
 using Scriban;
 using Scriban.Runtime;
 using System.Reflection;
@@ -143,10 +142,10 @@ namespace BlazorWebApp.Services
         public string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters)
         {
             var composer = new WorkflowComposer();
-            
+
             // Build global parameters from GenerationParameters
             var globalParams = parameters.FlattenForTemplateRendering();
-            
+
             // Inject any remaining workflow asset defaults that aren't in parameters
             if (template.Assets != null)
             {
@@ -172,13 +171,13 @@ namespace BlazorWebApp.Services
                 {
                     // Use source ID as parameter name, also add common aliases
                     globalParams[source.Key] = source.Value.Data;
-                    
+
                     // Add "Image" alias for the first source_image
                     if (source.Key.Equals("source_image", StringComparison.OrdinalIgnoreCase))
                     {
                         globalParams["Image"] = source.Value.Data;
                     }
-                    
+
                     _logger.LogDebug("Injected source '{SourceId}' into globalParams", source.Key);
                 }
             }
@@ -226,7 +225,7 @@ namespace BlazorWebApp.Services
                         continue;
 
                     var fragmentName = fragmentEl.GetString();
-                    
+
                     // Check if this fragment should be skipped (inactive optional fragment)
                     var fragmentId = GetFragmentIdFromStep(stepEl, fragmentName);
                     if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParams))
@@ -243,11 +242,12 @@ namespace BlazorWebApp.Services
                     }
                     else if (!string.IsNullOrEmpty(fragmentId))
                     {
-                        _logger.LogDebug("Fragment '{FragmentId}' not found in parameters.Fragments, will evaluate conditions from globalParams", fragmentId);
+                        _logger.LogDebug("Fragment '{FragmentId}' not found in parameters.Fragments (available: {AvailableFragments}), will evaluate conditions from globalParams",
+                            fragmentId, string.Join(", ", parameters.Fragments.Keys));
                     }
 
                     var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-                    
+
                     // Copy global params
                     foreach (var kvp in globalParams)
                     {
@@ -277,6 +277,31 @@ namespace BlazorWebApp.Services
                         }
                     }
 
+                    // CRITICAL FIX: Merge fragment-specific parameters from GenerationParameters.Fragments
+                    // This ensures UI-set values (like latent width/height) override template defaults
+                    if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParamsForMerge))
+                    {
+                        if (fragmentParamsForMerge.Values != null && fragmentParamsForMerge.Values.Count > 0)
+                        {
+                            _logger.LogDebug("Fragment '{FragmentId}': Found {Count} parameters in FragmentParameters.Values",
+                                fragmentId, fragmentParamsForMerge.Values.Count);
+
+                            foreach (var kvp in fragmentParamsForMerge.Values)
+                            {
+                                if (kvp.Value != null)
+                                {
+                                    mergedParams[kvp.Key] = kvp.Value;
+                                    _logger.LogDebug("Fragment '{FragmentId}': Overriding parameter '{ParamName}' = {Value} (type: {Type})",
+                                        fragmentId, kvp.Key, kvp.Value, kvp.Value.GetType().Name);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Fragment '{FragmentId}' found but has no values in FragmentParameters.Values dictionary", fragmentId);
+                        }
+                    }
+
                     var context = new SubgraphContext
                     {
                         Parameters = mergedParams,
@@ -285,7 +310,8 @@ namespace BlazorWebApp.Services
 
                     context.Outputs.Merge(composer.Registry);
 
-                    if (!string.IsNullOrWhiteSpace(fragmentName)){
+                    if (!string.IsNullOrWhiteSpace(fragmentName))
+                    {
                         var fragPath = Path.Combine(_workflowPath, "Fragments", fragmentName.Replace('/', Path.DirectorySeparatorChar));
                         if (File.Exists(fragPath))
                         {
@@ -293,9 +319,24 @@ namespace BlazorWebApp.Services
                             var (rendered, outputs) = RenderFragment(fragmentText, context, mergedParams);
 
                             if (string.IsNullOrWhiteSpace(rendered))
+                            {
+                                _logger.LogWarning("Fragment '{FragmentId}' rendered to empty string (likely excluded by conditions)", fragmentId);
                                 continue;
+                            }
 
                             rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
+
+                            // Log outputs from fragment BEFORE registering
+                            if (outputs.Count > 0)
+                            {
+                                var outputKeys = string.Join(", ", outputs.Keys.Select(k => $"'{k}'"));
+                                _logger.LogWarning("Fragment '{FragmentId}' ({FragmentFile}) declared {Count} outputs: {OutputKeys}",
+                                    fragmentId, fragmentName, outputs.Count, outputKeys);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Fragment '{FragmentId}' ({FragmentFile}) declared no outputs", fragmentId, fragmentName);
+                            }
 
                             foreach (var kvp in outputs)
                                 context.Outputs.Register(kvp.Key, kvp.Value.nodeId, kvp.Value.index);
@@ -323,13 +364,13 @@ namespace BlazorWebApp.Services
             {
                 return idEl.GetString();
             }
-            
+
             // Fall back to generating ID from fragment filename
             if (!string.IsNullOrEmpty(fragmentName))
             {
                 return Path.GetFileNameWithoutExtension(fragmentName).Replace("-", "_");
             }
-            
+
             return null;
         }
 
@@ -349,7 +390,7 @@ namespace BlazorWebApp.Services
             // Match #meta ... #end block - use [\s\S] to match any character including newlines
             // The pattern captures everything between #meta and #end
             var metaMatch = Regex.Match(fragmentText, @"#meta\s*([\s\S]*?)\s*#end");
-            
+
             if (metaMatch.Success)
             {
                 var metaJson = metaMatch.Groups[1].Value.Trim();
@@ -357,10 +398,46 @@ namespace BlazorWebApp.Services
                 string renderedMeta;
                 try
                 {
-                    renderedMeta = RenderTemplate(metaJson, context, preserveFormatting: true, loraPathResolver);
+                    _logger.LogWarning("RenderFragment: context.Parameters has {Count} entries: {Keys}", 
+                        context.Parameters.Count,
+                        string.Join(", ", context.Parameters.Keys.Select(k => $"'{k}'")));
+                    
+                    // Use simple string replacement for @{variable} placeholders in meta section
+                    // This avoids Scriban parser issues with JSON structure
+                    renderedMeta = metaJson;
+                    var placeholderPattern = @"@\{([a-zA-Z_][a-zA-Z0-9_]*)\}";
+                    renderedMeta = Regex.Replace(renderedMeta, placeholderPattern, match =>
+                    {
+                        var varName = match.Groups[1].Value;
+                        
+                        // Try to get the value from context parameters (case-insensitive)
+                        var key = context.Parameters.Keys.FirstOrDefault(k => 
+                            k.Equals(varName, StringComparison.OrdinalIgnoreCase));
+                        
+                        if (key != null && context.Parameters[key] is string strValue)
+                        {
+                            return strValue;
+                        }
+                        
+                        // Default values for common parameters
+                        return varName switch
+                        {
+                            "model_output_name" => "model_output",
+                            "node_prefix" => "model",
+                            "output_name" => "cleaned_output",
+                            "node_id" => "clean_vram",
+                            _ => match.Value // Keep placeholder if no value found
+                        };
+                    });
+                    
+                    _logger.LogWarning("RenderFragment meta section - Original: {OriginalMeta}", 
+                        metaJson.Length > 300 ? metaJson.Substring(0, 300) + "..." : metaJson);
+                    _logger.LogWarning("RenderFragment meta section - Rendered: {RenderedMeta}", 
+                        renderedMeta.Length > 300 ? renderedMeta.Substring(0, 300) + "..." : renderedMeta);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogError(ex, "RenderFragment: Failed to render meta section");
                     renderedMeta = metaJson;
                 }
 
@@ -536,6 +613,11 @@ namespace BlazorWebApp.Services
                         outputs[prop.Name] = (node, idx);
                     }
                 }
+                else
+                {
+                    _logger.LogWarning("ExtractMetadata: No 'outputs' property found in rendered meta. Meta JSON: {RenderedMeta}", 
+                        renderedMeta.Length > 500 ? renderedMeta.Substring(0, 500) + "..." : renderedMeta);
+                }
 
                 if (root.TryGetProperty("conditions", out var conditionsEl) && conditionsEl.ValueKind == JsonValueKind.Object)
                 {
@@ -543,7 +625,11 @@ namespace BlazorWebApp.Services
                         conditions[prop.Name] = prop.Value.Clone();
                 }
             }
-            catch { }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "ExtractMetadata: Failed to parse rendered meta as JSON. Meta text: {RenderedMeta}", 
+                    renderedMeta.Length > 500 ? renderedMeta.Substring(0, 500) + "..." : renderedMeta);
+            }
 
             return (outputs, conditions);
         }
@@ -561,7 +647,7 @@ namespace BlazorWebApp.Services
                     {
                         var conditionPath = condition.GetString();
                         var result = EvaluateCondition(conditionPath, parameters);
-                        
+
                         if (!result)
                         {
                             _logger.LogDebug("Fragment excluded: required condition '{ConditionPath}' evaluated to false", conditionPath);
@@ -583,7 +669,7 @@ namespace BlazorWebApp.Services
                     {
                         var conditionPath = condition.GetString();
                         var result = EvaluateCondition(conditionPath, parameters);
-                        
+
                         if (result)
                         {
                             _logger.LogDebug("Fragment excluded: excluded_if condition '{ConditionPath}' evaluated to true", conditionPath);
@@ -620,7 +706,7 @@ namespace BlazorWebApp.Services
                         var snakeCase = ToSnakeCase(part);
                         var pascalCase = ToPascalCase(part);
                         var camelCase = ToCamelCase(part);
-                        
+
                         if (dict.TryGetValue(snakeCase, out var snakeVal)) current = snakeVal;
                         else if (dict.TryGetValue(pascalCase, out var pascalVal)) current = pascalVal;
                         else if (dict.TryGetValue(camelCase, out var camelVal)) current = camelVal;

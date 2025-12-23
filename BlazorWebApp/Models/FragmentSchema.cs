@@ -34,6 +34,13 @@ namespace BlazorWebApp.Models
         Sampler,
 
         /// <summary>
+        /// Required workflow settings and configuration.
+        /// Examples: video settings, animation parameters, mode-specific configuration.
+        /// Always visible (non-collapsible by default).
+        /// </summary>
+        Settings,
+
+        /// <summary>
         /// CLIP text encoding and conditioning nodes.
         /// </summary>
         Conditioning,

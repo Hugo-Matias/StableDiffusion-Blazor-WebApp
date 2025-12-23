@@ -5,6 +5,19 @@
   },
   "conditions": {
     "required": ["frame_interpolation.IsActive"]
+  },
+  "ui": {
+    "type": "enhancement",
+    "component": "FrameInterpolationForm",
+    "title": "Frame Interpolation",
+    "icon": "fa-solid fa-film",
+    "order": 70,
+    "collapsible": true,
+    "parameters": {
+      "rife_model": { "default": "rife49.pth" },
+      "frame_multiplier": { "min": 1, "max": 8, "step": 1, "default": 2 },
+      "scale_by": { "min": 1.0, "max": 4.0, "step": 0.5, "default": 2.0 }
+    }
   }
 }
 #end

@@ -5,6 +5,18 @@
     "image_width_output": { "node": "image_resize", "index": 1 },
     "image_height_output": { "node": "image_resize", "index": 2 },
     "original_image_output": { "node": "load_image", "index": 0 }
+  },
+  "ui": {
+    "type": "latent",
+    "component": "LatentForm",
+    "title": "Resolution",
+    "icon": "fa-solid fa-image",
+    "order": 30,
+    "parameters": {
+      "width": { "min": 64, "max": 2048, "step": 32, "default": 768 },
+      "height": { "min": 64, "max": 2048, "step": 32, "default": 768 },
+      "batch_size": { "min": 1, "max": 8, "step": 1, "default": 1 }
+    }
   }
 }
 #end

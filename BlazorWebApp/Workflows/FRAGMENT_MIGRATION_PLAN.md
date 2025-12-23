@@ -102,15 +102,21 @@ These fragments use the `scope` parameter for **namespacing**, not for **conditi
 1. ? Complete Phase 1 testing
 2. ? Complete Phase 2 (#meta blocks)
 3. ? Complete Phase 3 (scoped fragments classified as core)
-4. ?? **Continue Phase 4:** Categorize remaining 29 fragments
+4. ?? **Pause Phase 4:** Wan component implementation required first
+5. ?? **Implement Wan Components:** See [Wan Components Implementation Guide](./WAN_COMPONENTS_IMPLEMENTATION_GUIDE.md)
 
 **Phase 4 Progress:** 3/29 fragments categorized (10%)
   - ? `load_image` ? Core
   - ? `load_video` ? Core
   - ? `lora_loader` ? Core
 
-**Next Batch to Analyze:**
-- [ ] Wan-specific fragments (loaders, samplers, encoders)
+**Blocked On:**
+- Wan workflow components need to be implemented before continuing Phase 4
+- Video tab display needs enhancement for Img2Vid workflows
+- See implementation guide for detailed component creation steps
+
+**Next Batch to Analyze (After Wan Components):**
+- [ ] Remaining Wan-specific fragments (loaders, samplers, encoders)
 - [ ] Utility fragments (resize, get-image-size)
 - [ ] Optional features (llm, pose-detection, model-sampling variants)
 

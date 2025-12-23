@@ -124,8 +124,9 @@
                 _componentParams["OnChanged"] = OnChanged;
             }
 
-            // Add UseGuidance for sampler fragments
-            if (Fragment.Schema?.Type == FragmentType.Sampler)
+            // Add UseGuidance only for Flux-based sampler fragments
+            // WAN and other non-Flux workflows don't use this parameter
+            if (Fragment.Schema?.Type == FragmentType.Sampler && UseGuidance)
             {
                 _componentParams["UseGuidance"] = UseGuidance;
             }

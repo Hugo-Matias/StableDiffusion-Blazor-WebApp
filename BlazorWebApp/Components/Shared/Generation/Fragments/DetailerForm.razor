@@ -25,7 +25,7 @@
                        AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense>
                 @foreach (var model in _detectionModels)
                 {
-                    <MudSelectItem Value="@model">@model</MudSelectItem>
+                    <MudSelectItem Value=@($"bbox/{model}")>@model</MudSelectItem>
                 }
             </MudSelect>
         }

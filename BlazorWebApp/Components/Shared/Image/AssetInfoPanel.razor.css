@@ -56,11 +56,13 @@
 
 .send-to-buttons {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
 .send-to-btn {
-    flex: 1;
+    flex: 1 1 calc(50% - 4px);
+    min-width: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -79,6 +81,27 @@
     background: var(--mud-palette-primary);
     color: var(--mud-palette-primary-text);
     border-color: var(--mud-palette-primary);
+}
+
+/* Mode-specific button colors */
+.send-to-btn.mode-txt2img:hover {
+    background: var(--mud-palette-info);
+    border-color: var(--mud-palette-info);
+}
+
+.send-to-btn.mode-img2img:hover {
+    background: var(--mud-palette-warning);
+    border-color: var(--mud-palette-warning);
+}
+
+.send-to-btn.mode-img2vid:hover {
+    background: var(--mud-palette-primary);
+    border-color: var(--mud-palette-primary);
+}
+
+.send-to-btn.mode-extras:hover {
+    background: var(--mud-palette-secondary);
+    border-color: var(--mud-palette-secondary);
 }
 
 .send-to-btn ::deep .mud-icon-root {
