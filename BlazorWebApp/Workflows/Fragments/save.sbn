@@ -1,3 +1,16 @@
+#meta
+{
+  "outputs": {
+    "save_node": { "node": "save", "index": 0 }
+  },
+  "ui": {
+    "type": "utility",
+    "title": "Save Image",
+    "description": "Saves generated images to disk"
+  }
+}
+#end
+
 {
 	"save": {
 		"inputs": {

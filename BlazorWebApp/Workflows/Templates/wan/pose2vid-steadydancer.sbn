@@ -136,11 +136,10 @@
       "fragment": "save-video.sbn",
       "parameters": {
         "frame_rate": {{ output_frame_rate ?? 24 | json }},
-        "filename_prefix": "wan/steadydancer",
         {{~ if append_preview ~}}
-        "image_ref": "preview_concat"
+        "image_input_name": "preview_concat"
         {{~ else ~}}
-        "image_ref": "image_output"
+        "image_input_name": "image_output"
         {{~ end ~}}
       }
     }

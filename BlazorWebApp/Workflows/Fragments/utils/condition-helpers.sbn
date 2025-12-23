@@ -1,0 +1,90 @@
+{{##
+  Condition Helper Functions for Workflow Fragments
+  
+  These functions standardize condition checking across all fragments.
+  Import this file in fragments that need conditional rendering.
+##}}
+
+{{##
+  Generates a standard required condition for a fragment.
+  
+  Usage:
+    {{ fragment_condition "detailer" }}
+  
+  Output:
+    "conditions": { "required": ["detailer.IsActive"] }
+##}}
+{{~ func fragment_condition(fragment_id) ~}}
+"conditions": {
+  "required": ["{{ fragment_id }}.IsActive"]
+}
+{{~ end ~}}
+
+{{##
+  Generates a scoped condition based on scope parameter.
+  
+  Usage:
+    {{ scoped_condition scope "detailer" }}
+  
+  If scope contains "detailer", outputs:
+    "conditions": { "required": ["detailer.IsActive"] }
+  Otherwise outputs nothing.
+##}}
+{{~ func scoped_condition(scope_value, parent_fragment_id) ~}}
+{{~ if scope_value && string_contains scope_value parent_fragment_id ~}},
+"conditions": {
+  "required": ["{{ parent_fragment_id }}.IsActive"]
+}
+{{~ end ~}}
+{{~ end ~}}
+
+{{##
+  Generates multiple conditions (AND logic).
+  
+  Usage:
+    {{ multi_condition ["upscale", "detailer"] }}
+  
+  Output:
+    "conditions": { "required": ["upscale.IsActive", "detailer.IsActive"] }
+##}}
+{{~ func multi_condition(fragment_ids) ~}}
+"conditions": {
+  "required": [
+    {{~ for id in fragment_ids ~}}
+    "{{ id }}.IsActive"{{ if !for.last }}, {{ end }}
+    {{~ end ~}}
+  ]
+}
+{{~ end ~}}
+
+{{##
+  Generates exclusion condition (NOT logic).
+  
+  Usage:
+    {{ exclude_if "seed_vr2" }}
+  
+  Output:
+    "conditions": { "excluded_if": ["seed_vr2.IsActive"] }
+##}}
+{{~ func exclude_if(fragment_id) ~}}
+"conditions": {
+  "excluded_if": ["{{ fragment_id }}.IsActive"]
+}
+{{~ end ~}}
+
+{{##
+  Auto-generates condition from current fragment filename.
+  Requires 'fragment_file' parameter to be passed.
+  
+  Usage:
+    {{ auto_condition fragment_file }}
+  
+  If fragment_file = "detailer-core.sbn":
+    Output: "conditions": { "required": ["detailer_core.IsActive"] }
+##}}
+{{~ func auto_condition(filename) ~}}
+{{~ fragment_id = filename | string.replace ".sbn" "" | string.replace "-" "_" ~}}
+"conditions": {
+  "required": ["{{ fragment_id }}.IsActive"]
+}
+{{~ end ~}}

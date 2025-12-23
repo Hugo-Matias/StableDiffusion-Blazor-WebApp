@@ -4,7 +4,7 @@
     "frames_output": { "node": "frame_interpolation", "index": 0 }
   },
   "conditions": {
-    "required": ["FrameInterpolation.IsActive"]
+    "required": ["frame_interpolation.IsActive"]
   }
 }
 #end

@@ -70,6 +70,7 @@ builder.Services.AddSingleton<IRouterService, RouterService>();
 // Workflow service - interface-only
 builder.Services.AddSingleton<WorkflowTemplateParser>();
 builder.Services.AddSingleton<IFragmentSchemaService, FragmentSchemaService>();
+builder.Services.AddSingleton<FragmentConditionValidator>();
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 
 // Workflow state persistence service (per-workflow saved parameters)
@@ -141,6 +142,22 @@ var app = builder.Build();
             logger.LogWarning(
                 "Workflow template validation found {ErrorCount} errors. Check logs for details.",
                 validationResult.Errors.Count);
+        }
+        
+        // Validate fragment conditions
+        var conditionGenerator = new FragmentConditionGenerator(workflowPath, 
+            app.Services.GetRequiredService<ILogger<FragmentConditionGenerator>>());
+        var conditionReport = conditionGenerator.GenerateAndValidate();
+        
+        if (conditionReport.HasIssues)
+        {
+            logger.LogWarning("Fragment condition validation found {IssueCount} issues:\n{Report}",
+                conditionReport.TotalIssues,
+                conditionReport.GenerateReport());
+        }
+        else
+        {
+            logger.LogInformation("? All fragment conditions are valid");
         }
         
         // Log compilation errors from cache service

@@ -6,9 +6,9 @@
     "{{ if scope }}{{ scope }}{{ end }}vae_output": { "node": "{{ if scope }}{{ scope }}{{ end }}vae_loader", "index": 0 },
     "{{ if scope }}{{ scope }}{{ end }}positive_output": { "node": "{{ if scope }}{{ scope }}{{ end }}encode_positive", "index": 0 },
     "{{ if scope }}{{ scope }}{{ end }}negative_output": { "node": "{{ if scope }}{{ scope }}{{ end }}encode_negative", "index": 0 }
-  }{{~ if scope && scope | string.contains "detailer" ~}},
+  }{{~ if scope && string_contains scope "detailer" ~}},
   "conditions": {
-    "required": ["Detailer.IsActive"]
+    "required": ["detailer.IsActive"]
   }{{~ end ~}}
 }
 #end

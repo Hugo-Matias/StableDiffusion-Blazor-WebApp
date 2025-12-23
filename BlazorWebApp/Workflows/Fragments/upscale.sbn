@@ -4,7 +4,7 @@
     "latent_output": { "node": "upscale_resample_2", "index": 0 }
   },
   "conditions": {
-    "required": ["Upscale.IsActive"]
+    "required": ["upscale.IsActive"]
   },
   "ui": {
     "component": "UpscaleForm",

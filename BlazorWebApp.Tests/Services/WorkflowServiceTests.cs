@@ -28,7 +28,8 @@ public class WorkflowServiceTests
         var templateParser = new WorkflowTemplateParser(_mockParserLogger.Object);
         var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
         var templateCacheService = new TemplateCacheService(_mockCacheLogger.Object);
-        return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService);
+        return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService,
+            new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object));
     }
 
     #region Workflow Model Tests

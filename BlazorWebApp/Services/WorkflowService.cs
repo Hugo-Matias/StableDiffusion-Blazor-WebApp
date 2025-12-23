@@ -21,6 +21,7 @@ namespace BlazorWebApp.Services
         private readonly WorkflowTemplateParser _templateParser;
         private readonly IFragmentSchemaService _fragmentSchemaService;
         private readonly ITemplateCacheService _templateCache;
+        private readonly FragmentConditionValidator _conditionValidator;
         private readonly Dictionary<Guid, List<ParsedPipelineStep>> _pipelineCache = new();
         private readonly object _pipelineCacheLock = new();
 
@@ -29,13 +30,15 @@ namespace BlazorWebApp.Services
             ILogger<WorkflowService> logger,
             WorkflowTemplateParser templateParser,
             IFragmentSchemaService fragmentSchemaService,
-            ITemplateCacheService templateCache)
+            ITemplateCacheService templateCache,
+            FragmentConditionValidator conditionValidator)
         {
             _io = io;
             _logger = logger;
             _templateParser = templateParser;
             _fragmentSchemaService = fragmentSchemaService;
             _templateCache = templateCache;
+            _conditionValidator = conditionValidator;
         }
 
         #region Workflow Loading
@@ -230,11 +233,19 @@ namespace BlazorWebApp.Services
                     {
                         if (!fragmentParams.IsActive)
                         {
-                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}'", fragmentId);
+                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
                             continue;
                         }
+                        else
+                        {
+                            _logger.LogDebug("Processing active fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
+                        }
                     }
-                    
+                    else if (!string.IsNullOrEmpty(fragmentId))
+                    {
+                        _logger.LogDebug("Fragment '{FragmentId}' not found in parameters.Fragments, will evaluate conditions from globalParams", fragmentId);
+                    }
+
                     var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                     
                     // Copy global params
@@ -355,6 +366,20 @@ namespace BlazorWebApp.Services
 
                 (outputs, conditions) = ExtractMetadata(renderedMeta);
 
+                // Validate conditions if present
+                if (conditions != null && conditions.Count > 0)
+                {
+                    var fragmentId = GetFragmentIdFromContext(context, globalParams);
+                    if (!string.IsNullOrEmpty(fragmentId))
+                    {
+                        var validationErrors = _conditionValidator.ValidateConditions(fragmentId, conditions);
+                        if (validationErrors.Count > 0)
+                        {
+                            _conditionValidator.LogValidationErrors(fragmentId, validationErrors);
+                        }
+                    }
+                }
+
                 if (!EvaluateConditions(conditions, globalParams))
                     return (string.Empty, outputs);
 
@@ -364,6 +389,26 @@ namespace BlazorWebApp.Services
             var rendered = RenderTemplate(fragmentText, context, preserveFormatting: false, loraPathResolver);
             rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
             return (rendered, outputs);
+        }
+
+        /// <summary>
+        /// Attempts to determine the fragment ID from context for validation.
+        /// </summary>
+        private string? GetFragmentIdFromContext(SubgraphContext context, Dictionary<string, object> globalParams)
+        {
+            // Try to get from scope parameter
+            if (context.Parameters.TryGetValue("scope", out var scopeObj) && scopeObj is string scope)
+            {
+                return scope.TrimEnd('_');
+            }
+
+            // Try to get from fragment_id parameter (if we add it in future)
+            if (globalParams.TryGetValue("fragment_id", out var fragmentIdObj) && fragmentIdObj is string fragmentId)
+            {
+                return fragmentId;
+            }
+
+            return null;
         }
 
         private string RenderTemplate(string templateText, SubgraphContext context, bool preserveFormatting, Func<string, Task<string>>? loraPathResolver = null)
@@ -404,6 +449,14 @@ namespace BlazorWebApp.Services
             }
 
             scriptObject.Import("get_ref", new Func<string, string>(key => context.Outputs.GetReference(key)));
+
+            // Add string_contains helper for Scriban templates
+            scriptObject.Import("string_contains", new Func<string, string, bool>((str, substring) =>
+            {
+                if (string.IsNullOrEmpty(str) || string.IsNullOrEmpty(substring))
+                    return false;
+                return str.Contains(substring, StringComparison.OrdinalIgnoreCase);
+            }));
 
             scriptObject.Import("json", new Func<object, string>(value =>
             {
@@ -507,8 +560,17 @@ namespace BlazorWebApp.Services
                     if (condition.ValueKind == JsonValueKind.String)
                     {
                         var conditionPath = condition.GetString();
-                        if (!EvaluateCondition(conditionPath, parameters))
+                        var result = EvaluateCondition(conditionPath, parameters);
+                        
+                        if (!result)
+                        {
+                            _logger.LogDebug("Fragment excluded: required condition '{ConditionPath}' evaluated to false", conditionPath);
                             return false;
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Required condition '{ConditionPath}' satisfied", conditionPath);
+                        }
                     }
                 }
             }
@@ -520,8 +582,13 @@ namespace BlazorWebApp.Services
                     if (condition.ValueKind == JsonValueKind.String)
                     {
                         var conditionPath = condition.GetString();
-                        if (EvaluateCondition(conditionPath, parameters))
+                        var result = EvaluateCondition(conditionPath, parameters);
+                        
+                        if (result)
+                        {
+                            _logger.LogDebug("Fragment excluded: excluded_if condition '{ConditionPath}' evaluated to true", conditionPath);
                             return false;
+                        }
                     }
                 }
             }

@@ -7,9 +7,9 @@
     "{{ scope ?? '' }}latent_output": { "node": "{{ scope ?? '' }}vae_encode_advanced", "index": 3 },
     "{{ scope ?? '' }}positive_output": { "node": "{{ scope ?? '' }}flux_guidance", "index": 0 },
     "{{ scope ?? '' }}negative_output": { "node": "{{ scope ?? '' }}empty_encode", "index": 0 }
-  }{{~ if scope && scope | string.contains "detailer" ~}},
+  }{{~ if scope && string_contains scope "detailer" ~}},
   "conditions": {
-    "required": ["Detailer.IsActive"]
+    "required": ["detailer.IsActive"]
   }{{~ end ~}}
 }
 #end

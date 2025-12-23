@@ -34,6 +34,7 @@ namespace BlazorWebApp.Models
             public const string Detailer = "detailer";
             public const string DetailerCore = "detailer_core";
             public const string RefinerSampler = "refiner_sampler";
+            public const string LoaderDetailer = "loader_detailer";
 
             // Utility fragments (order 150+)
             public const string Save = "save";
@@ -51,6 +52,7 @@ namespace BlazorWebApp.Models
 
             // Optional feature fragments
             public const string SeedVR2 = "seed_vr2";
+            public const string UpscaleSeedVR2 = "upscale_seedvr2"; // Alias for compatibility
             public const string ConditioningVariation = "conditioning_variation";
             public const string SeedVarianceEnhancer = "seed_variance_enhancer";
             public const string Llm = "llm";

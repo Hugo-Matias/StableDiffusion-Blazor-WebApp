@@ -64,7 +64,8 @@ public class MockWorkflowServiceBuilder
         // 1. Make the path injectable
         // 2. Create files in the expected location
         // 3. Use reflection to override
-        return new WorkflowService(_ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService);
+        return new WorkflowService(_ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService, 
+            new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object));
     }
 
     public void Cleanup()

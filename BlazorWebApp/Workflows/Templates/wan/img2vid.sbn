@@ -219,19 +219,16 @@
     },
     {
       "id": "video_save",
-      "fragment": "video-save.sbn",
+      "fragment": "save-video.sbn",
       "parameters": {
         "node_id": "video_output",
         {{~ if frame_interpolation_is_active ~}}
         "frame_rate": {{ (frame_rate ?? 16) * (frame_interpolation_multiplier ?? 2) | json }},
-        "image_input_name": "frames_output",
+        "image_input_name": "frames_output"
         {{~ else ~}}
         "frame_rate": {{ frame_rate ?? 16 | json }},
-        "image_input_name": "image_output",
+        "image_input_name": "image_output"
         {{~ end ~}}
-        "filename_prefix": "tmp/vid",
-        "save_metadata": true,
-        "save_output": true
       }
     }
   ]
