@@ -1,4 +1,4 @@
-#meta
+{% meta %}
 {
   "outputs": {
     "save_node": { "node": "save", "index": 0 }
@@ -9,13 +9,13 @@
     "description": "Saves generated images to disk"
   }
 }
-#end
+{% endmeta %}
 
 {
 	"save": {
 		"inputs": {
-			"filename_prefix": {{ filename_prefix ?? "tmp/img" | json }},
-			"images": {{ get_ref "image_output" }}
+			"filename_prefix": {{ filename_prefix | default: "tmp/img" | json }},
+			"images": {% get_ref "image_output" %}
 		},
 		"class_type": "SaveImage",
 		"_meta": {

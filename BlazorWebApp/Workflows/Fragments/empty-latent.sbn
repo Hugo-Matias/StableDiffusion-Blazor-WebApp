@@ -1,7 +1,9 @@
-#meta
+File: BlazorWebApp\Workflows\Fragments\empty-latent.sbn
+````````
+{% meta %}
 {
   "outputs": {
-    "{{ if scope }}{{ scope }}{{ end }}latent_output": { "node": "{{ if scope }}{{ scope }}{{ end }}empty_latent", "index": 0 }
+    "{% if scope %}{{ scope }}{% endif %}latent_output": { "node": "{% if scope %}{{ scope }}{% endif %}empty_latent", "index": 0 }
   },
   "ui": {
     "type": "latent",
@@ -17,18 +19,18 @@
     }
   }
 }
-#end
+{% endmeta %}
 
 {
-  "{{ if scope }}{{ scope }}{{ end }}empty_latent": {
+  "{% if scope %}{{ scope }}{% endif %}empty_latent": {
     "inputs": {
       "width": {{ width | json }},
       "height": {{ height | json }},
       "batch_size": {{ batch_size | json }}
     },
-    "class_type": {{ latent_class ?? "EmptySD3LatentImage" | json }},
+    "class_type": {{ latent_class | default: "EmptySD3LatentImage" | json }},
     "_meta": {
-      "title": "{{ if scope_title }}{{ scope_title }}{{ end }}Empty Latent Image"
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}Empty Latent Image"
     }
   }
 }

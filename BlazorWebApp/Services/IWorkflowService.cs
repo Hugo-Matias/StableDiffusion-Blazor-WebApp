@@ -39,12 +39,22 @@ namespace BlazorWebApp.Services
             Guid? currentWorkflowId = null);
 
         /// <summary>
+        /// Composes a workflow from a template using the unified GenerationParameters model (async, uses Fluid).
+        /// This is the preferred method that eliminates the need for legacy parameter classes.
+        /// </summary>
+        /// <param name="template">The workflow template to compose</param>
+        /// <param name="parameters">The unified generation parameters containing all fragment values</param>
+        /// <returns>The rendered workflow JSON ready for ComfyUI</returns>
+        Task<string> ComposeWorkflowFromGenerationParametersAsync(Workflow template, GenerationParameters parameters);
+
+        /// <summary>
         /// Composes a workflow from a template using the unified GenerationParameters model.
         /// This is the preferred method that eliminates the need for legacy parameter classes.
         /// </summary>
         /// <param name="template">The workflow template to compose</param>
         /// <param name="parameters">The unified generation parameters containing all fragment values</param>
         /// <returns>The rendered workflow JSON ready for ComfyUI</returns>
+        [Obsolete("Use ComposeWorkflowFromGenerationParametersAsync for Fluid template rendering")]
         string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters);
 
         /// <summary>

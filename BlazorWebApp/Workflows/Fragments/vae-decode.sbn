@@ -1,16 +1,16 @@
-#meta
+{% meta %}
 {
   "outputs": {
     "image_output": { "node": "vae_decoder", "index": 0 }
   }
 }
-#end
+{% endmeta %}
 
 {
   "vae_decoder": {
     "inputs": {
-      "samples": {{ get_ref "latent_output" }},
-      "vae": {{ get_ref ((scope ?? "") + "vae_output") }}
+      "samples": {% get_ref "latent_output" %},
+      "vae": {% assign vae_key = scope | default: "" | append: "vae_output" %}{% get_ref vae_key %}
     },
     "class_type": "VAEDecode",
     "_meta": {

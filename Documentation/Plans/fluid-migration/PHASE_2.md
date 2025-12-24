@@ -98,39 +98,45 @@ Integrate FluidTemplateService into WorkflowService, replacing the Scriban-based
 
 ---
 
-### Step 2.4: Update RenderFragment to Use Fluid
-**Complexity:** 3  
-**Status:** [~] In Progress
+### Step 2.4: Create ComposeWorkflowFromGenerationParametersAsync
+**Complexity:** 5  
+**Status:** [x] Complete
 
 #### Tasks
-- [ ] Replace regex-based meta extraction with Fluid render
-- [ ] Remove `#meta...#end` regex pattern matching
-- [ ] Use metadata from FluidRenderContext.CapturedMetadata
-- [ ] Maintain backward compatibility for output format
+- [x] Create async version of `ComposeWorkflowFromGenerationParameters`
+- [x] Replace `RenderFragment()` call with `RenderFragmentWithFluidAsync()`
+- [x] Add method signature to IWorkflowService interface
+- [x] Mark old sync method with `[Obsolete]` attribute
+- [x] Update ComfyUIService to use async method
+
+#### Notes
+- Both call sites in ComfyUIService updated (`PostGenerationAsync` and `PostVideoGenerationAsync`)
+- Old sync method kept with `[Obsolete]` for backward compatibility during migration
+- Workflow template rendering still uses Scriban (only fragments use Fluid)
+- File reading changed to async (`File.ReadAllTextAsync`)
 
 ---
 
-### Step 2.5: Update RenderTemplate Method
+### Step 2.5: Update RenderTemplate Method (Skipped)
 **Complexity:** 3  
-**Status:** [ ] Not Started
+**Status:** [-] Skipped (not needed for Fluid path)
 
-#### Tasks
-- [ ] Create Fluid-based `RenderTemplate()` method
-- [ ] Handle ScriptObject to Dictionary conversion
-- [ ] Preserve formatting option handling
-- [ ] Add LoRA path resolver support
+#### Notes
+- `RenderTemplate` is only used by the old sync `RenderFragment` method
+- The new async path uses FluidTemplateService directly
+- Can be removed in Phase 7 cleanup
 
 ---
 
-### Step 2.6: Verify Build and Existing Tests
+### Step 2.6: Verify Build and Tests
 **Complexity:** 2  
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
-- [ ] Run full build
-- [ ] Run existing WorkflowServiceTests
-- [ ] Fix any breaking changes
-- [ ] Update test mocks as needed
+- [x] Run full build - passing
+- [x] Run WorkflowServiceTests (23 tests) - passing
+- [x] Run FluidTemplateServiceTests (27 tests) - passing
+- [x] Total: 50 tests passing
 
 ---
 
@@ -138,70 +144,112 @@ Integrate FluidTemplateService into WorkflowService, replacing the Scriban-based
 
 | Step | Status | Complexity | Notes |
 |------|--------|------------|-------|
-| 2.1 |  x     | 1          | DI registration |
-| 2.2 |  x     | 2          | Constructor injection |
-| 2.3 |  x     | 5          | Core Fluid rendering |
-| 2.4 |        | 3          | Replace regex extraction |
-| 2.5 |        | 3          | Template rendering |
-| 2.6 |        | 2          | Verification |
+| 2.1 | ?      | 1          | DI registration |
+| 2.2 | ?      | 2          | Constructor injection |
+| 2.3 | ?      | 5          | RenderFragmentWithFluidAsync |
+| 2.4 | ?      | 5          | ComposeWorkflowAsync |
+| 2.5 | -      | 0          | Skipped |
+| 2.6 | ?      | 2          | Verification |
 
-**Total Phase Complexity:** 16 points
+**Total Phase Complexity:** 15 points (estimated 16)
 
 ---
 
 ## Commit Checkpoints
 
-- [ ] After Step 2.2 complete (DI wired up)
-- [ ] After Step 2.4 complete (fragment rendering migrated)
-- [ ] After Step 2.6 complete (phase complete, verified)
+- [x] After Step 2.2 complete (DI wired up)
+- [x] After Step 2.4 complete (async composition migrated)
+- [x] After Step 2.6 complete (phase complete, verified)
 
 ---
 
 ## Issues & Resolutions
 
-*(To be filled during implementation)*
+| Issue | Resolution |
+|-------|------------|
+| Missing opening parenthesis in `if` statement | Fixed syntax error |
 
 ---
 
-## Files to Modify
+## Files Modified
 
 | File | Changes |
 |------|---------|
-| `Program.cs` | Add IFluidTemplateService DI registration |
-| `Services/WorkflowService.cs` | Inject and use FluidTemplateService |
-| `Services/IWorkflowService.cs` | No changes expected |
-| `BlazorWebApp.Tests/MockBuilders/MockWorkflowServiceBuilder.cs` | Add mock for IFluidTemplateService |
-| `BlazorWebApp.Tests/Services/WorkflowServiceTests.cs` | Update CreateWorkflowService helper |
+| `Program.cs` | Added IFluidTemplateService DI registration |
+| `Services/WorkflowService.cs` | Added FluidTemplateService injection, `RenderFragmentWithFluidAsync`, `ComposeWorkflowFromGenerationParametersAsync` |
+| `Services/IWorkflowService.cs` | Added async method signatures |
+| `Services/ComfyUIService.cs` | Updated to use `ComposeWorkflowFromGenerationParametersAsync` |
+| `BlazorWebApp.Tests/Services/WorkflowServiceTests.cs` | Added FluidTemplateService mock |
+| `BlazorWebApp.Tests/MockBuilders/MockWorkflowServiceBuilder.cs` | Added FluidTemplateService injection |
 
 ---
 
 ## Key Architecture Notes
 
-### Before (Scriban + Regex)
-```csharp
-// Current flow in RenderFragment
-var metaMatch = Regex.Match(fragmentText, @"#meta\s*([\s\S]*?)\s*#end");
-if (metaMatch.Success)
-{
-    var metaJson = metaMatch.Groups[1].Value.Trim();
-    var renderedMeta = RenderTemplate(metaJson, context, preserveFormatting: true);
-    (outputs, conditions) = ExtractMetadata(renderedMeta);
-    fragmentText = fragmentText.Replace(metaMatch.Value, "").Trim();
-}
-var rendered = RenderTemplate(fragmentText, context, preserveFormatting: false);
+### Migration Path
 ```
-
-### After (Fluid)
-```csharp
-// New flow with FluidTemplateService
-var (rendered, metadata) = await _fluidService.RenderAsync(fragmentText, parameters, nodeRegistry);
-if (!string.IsNullOrEmpty(metadata))
-{
-    (outputs, conditions) = ExtractMetadata(metadata);
-}
-// No regex needed - meta block was automatically removed from output
+                    ???????????????????????????????????????????
+                    ?            ComfyUIService               ?
+                    ?                                         ?
+                    ?  PostGenerationAsync()                  ?
+                    ?  PostVideoGenerationAsync()             ?
+                    ???????????????????????????????????????????
+                                     ? calls
+                                     ?
+???????????????????????????????????????????????????????????????????????????
+?                          WorkflowService                                ?
+?                                                                         ?
+?  ???????????????????????????????    ???????????????????????????????    ?
+?  ? ComposeWorkflowAsync (NEW)  ?    ? ComposeWorkflow (OLD)       ?    ?
+?  ? Uses Fluid                  ?    ? Uses Scriban + Regex        ?    ?
+?  ? ? Active                   ?    ? ?? Obsolete                 ?    ?
+?  ???????????????????????????????    ???????????????????????????????    ?
+?                 ?                                                       ?
+?                 ? calls per fragment                                    ?
+?                 ?                                                       ?
+?  ???????????????????????????????    ???????????????????????????????    ?
+?  ? RenderFragmentWithFluidAsync?    ? RenderFragment (OLD)        ?    ?
+?  ? Uses FluidTemplateService   ?    ? Uses Scriban + Regex        ?    ?
+?  ? ? Active                   ?    ? ?? Obsolete                 ?    ?
+?  ???????????????????????????????    ???????????????????????????????    ?
+?                 ?                                                       ?
+???????????????????????????????????????????????????????????????????????????
+                  ? calls
+                  ?
+???????????????????????????????????????????????????????????????????????????
+?                      FluidTemplateService                               ?
+?                                                                         ?
+?  RenderAsync() ? {% meta %} captured to side-channel                   ?
+?               ? {% get_ref %} resolved from NodeRegistry               ?
+?               ? {{ var | json }} proper JSON encoding                   ?
+?                                                                         ?
+?  ? No regex extraction needed                                          ?
+?  ? Native Liquid parsing handles meta blocks                           ?
+???????????????????????????????????????????????????????????????????????????
 ```
 
 ---
 
-**Phase Status:** Step 2.1 In Progress
+## Phase Summary
+
+### Accomplishments
+1. ? Registered `FluidTemplateService` in DI container
+2. ? Injected `IFluidTemplateService` into `WorkflowService`
+3. ? Created `RenderFragmentWithFluidAsync()` - async fragment rendering with Fluid
+4. ? Created `ComposeWorkflowFromGenerationParametersAsync()` - async workflow composition
+5. ? Updated `ComfyUIService` to use async methods
+6. ? All 50 tests passing
+
+### Key Validation
+- **Core path migrated:** ComfyUI generation now uses Fluid for fragment rendering
+- **No regex for meta extraction:** Fluid natively handles `{% meta %}...{% endmeta %}`
+- **Backward compatible:** Old sync methods marked `[Obsolete]` but still available
+- **Tests passing:** 23 WorkflowServiceTests + 27 FluidTemplateServiceTests
+
+### Ready for Phase 3
+- Convert template files from `.sbn` (Scriban) to `.liquid` (Fluid) syntax
+- Start with simple fragments without loops/conditionals
+
+---
+
+**Phase Status:** ? Complete - Ready for Phase 3 (Template Conversion)

@@ -739,8 +739,8 @@ namespace BlazorWebApp.Services
             // Upload any source images that are base64 data
             await UploadSourceImagesAsync(parameters, tempId);
 
-            // Compose workflow from template using GenerationParameters
-            var workflowJson = _workflow.ComposeWorkflowFromGenerationParameters(workflow, parameters);
+            // Compose workflow from template using GenerationParameters (async Fluid-based rendering)
+            var workflowJson = await _workflow.ComposeWorkflowFromGenerationParametersAsync(workflow, parameters);
             var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
 
             var payload = new { prompt = workflowObject, client_id = clientId };
@@ -780,8 +780,8 @@ namespace BlazorWebApp.Services
             // Upload any source images that are base64 data
             await UploadSourceImagesAsync(parameters, tempId);
 
-            // Compose workflow from template using GenerationParameters
-            var workflowJson = _workflow.ComposeWorkflowFromGenerationParameters(workflow, parameters);
+            // Compose workflow from template using GenerationParameters (async Fluid-based rendering)
+            var workflowJson = await _workflow.ComposeWorkflowFromGenerationParametersAsync(workflow, parameters);
             var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
 
             var payload = new { prompt = workflowObject, client_id = clientId };

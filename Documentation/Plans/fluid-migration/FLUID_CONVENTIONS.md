@@ -433,7 +433,40 @@ Parameters are accessible in both `snake_case` and `PascalCase`:
 | Version | Changes |
 |---------|---------|
 | 1.0 | Initial document - Phase 1 complete |
+| 1.1 | Phase 2 complete - Core service migration |
+| 1.2 | Phase 3 complete - Simple fragment conversion patterns validated |
 
 ---
 
-**Last Updated:** Phase 1 Completion
+## Architecture Notes (Phase 2)
+
+### Call Flow
+```
+ComfyUIService.PostGenerationAsync()
+    ??? WorkflowService.ComposeWorkflowFromGenerationParametersAsync()
+        ??? RenderFragmentWithFluidAsync() [per fragment]
+            ??? FluidTemplateService.RenderAsync()
+                ??? Output: rendered fragment JSON
+                ??? Side-channel: captured metadata
+```
+
+### Key Integration Points
+
+1. **FluidTemplateService.RenderAsync()**
+   - Input: template text, parameters dictionary, optional NodeRegistry
+   - Output: tuple of (rendered string, metadata string or null)
+   - Metadata captured from `{% meta %}` block via AmbientValues
+
+2. **WorkflowService.RenderFragmentWithFluidAsync()**
+   - Builds parameters from SubgraphContext + globalParams
+   - Calls FluidTemplateService
+   - Extracts outputs/conditions from metadata JSON
+   - Evaluates conditions to determine fragment inclusion
+
+3. **ComfyUIService**
+   - Uses `ComposeWorkflowFromGenerationParametersAsync()` for all generation
+   - Both image and video generation paths use Fluid
+
+---
+
+**Last Updated:** Phase 2 Completion

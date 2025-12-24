@@ -538,4 +538,123 @@ public class FluidTemplateServiceTests
     }
 
     #endregion
+
+    #region Real Fragment Tests
+
+    [Fact]
+    public async Task RenderAsync_WithSaveFragmentSyntax_ShouldRenderCorrectly()
+    {
+        // Arrange - Simulates save.sbn structure
+        var template = @"{% meta %}
+{
+  ""outputs"": {
+    ""save_node"": { ""node"": ""save"", ""index"": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  ""save"": {
+    ""inputs"": {
+      ""filename_prefix"": {{ filename_prefix | default: ""tmp/img"" | json }},
+      ""images"": {% get_ref ""image_output"" %}
+    },
+    ""class_type"": ""SaveImage""
+  }
+}";
+        var parameters = new Dictionary<string, object?> { { "filename_prefix", "my_output" } };
+        var nodeRegistry = new NodeRegistry();
+        nodeRegistry.Register("image_output", "vae_decoder", 0);
+
+        // Act
+        var (rendered, metadata) = await _service.RenderAsync(template, parameters, nodeRegistry);
+
+        // Assert
+        Assert.NotNull(metadata);
+        Assert.Contains("save_node", metadata);
+        Assert.Contains("\"my_output\"", rendered);
+        Assert.Contains("[\"vae_decoder\", 0]", rendered);
+        Assert.DoesNotContain("outputs", rendered); // meta should NOT be in output
+    }
+
+    [Fact]
+    public async Task RenderAsync_WithEmptyLatentFragmentSyntax_ShouldRenderCorrectly()
+    {
+        // Arrange - Simulates empty-latent.sbn structure
+        var template = @"{% meta %}
+{
+  ""outputs"": {
+    ""{% if scope %}{{ scope }}{% endif %}latent_output"": { ""node"": ""{% if scope %}{{ scope }}{% endif %}empty_latent"", ""index"": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  ""{% if scope %}{{ scope }}{% endif %}empty_latent"": {
+    ""inputs"": {
+      ""width"": {{ width | json }},
+      ""height"": {{ height | json }},
+      ""batch_size"": {{ batch_size | json }}
+    },
+    ""class_type"": {{ latent_class | default: ""EmptySD3LatentImage"" | json }}
+  }
+}";
+        var parameters = new Dictionary<string, object?>
+        {
+            { "scope", "txt2img_" },
+            { "width", 1024 },
+            { "height", 768 },
+            { "batch_size", 1 }
+        };
+
+        // Act
+        var (rendered, metadata) = await _service.RenderAsync(template, parameters);
+
+        // Assert
+        Assert.NotNull(metadata);
+        Assert.Contains("txt2img_latent_output", metadata);
+        Assert.Contains("txt2img_empty_latent", metadata);
+        Assert.Contains("\"txt2img_empty_latent\"", rendered);
+        Assert.Contains("1024", rendered);
+        Assert.Contains("768", rendered);
+        Assert.Contains("\"EmptySD3LatentImage\"", rendered);
+    }
+
+    [Fact]
+    public async Task RenderAsync_WithVaeDecodeFragmentSyntax_ShouldRenderCorrectly()
+    {
+        // Arrange - Simulates vae-decode.sbn structure
+        var template = @"{% meta %}
+{
+  ""outputs"": {
+    ""image_output"": { ""node"": ""vae_decoder"", ""index"": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  ""vae_decoder"": {
+    ""inputs"": {
+      ""samples"": {% get_ref ""latent_output"" %},
+      ""vae"": {% assign vae_key = scope | default: """" | append: ""vae_output"" %}{% get_ref vae_key %}
+    },
+    ""class_type"": ""VAEDecode""
+  }
+}";
+        var parameters = new Dictionary<string, object?> { { "scope", "txt2img_" } };
+        var nodeRegistry = new NodeRegistry();
+        nodeRegistry.Register("latent_output", "sampler_node", 0);
+        nodeRegistry.Register("txt2img_vae_output", "vae_loader", 0);
+
+        // Act
+        var (rendered, metadata) = await _service.RenderAsync(template, parameters, nodeRegistry);
+
+        // Assert
+        Assert.NotNull(metadata);
+        Assert.Contains("image_output", metadata);
+        Assert.Contains("[\"sampler_node\", 0]", rendered);
+        Assert.Contains("[\"vae_loader\", 0]", rendered);
+    }
+
+    #endregion
 }

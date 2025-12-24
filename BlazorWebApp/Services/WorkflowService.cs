@@ -143,6 +143,204 @@ namespace BlazorWebApp.Services
         #region Workflow Composition
 
         /// <inheritdoc />
+        public async Task<string> ComposeWorkflowFromGenerationParametersAsync(Workflow template, GenerationParameters parameters)
+        {
+            var composer = new WorkflowComposer();
+
+            // Build global parameters from GenerationParameters
+            var globalParams = parameters.FlattenForTemplateRendering();
+
+            // Inject any remaining workflow asset defaults that aren't in parameters
+            if (template.Assets != null)
+            {
+                foreach (var asset in template.Assets)
+                {
+                    if (!globalParams.ContainsKey(asset.Parameter) ||
+                        globalParams[asset.Parameter] == null ||
+                        string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
+                    {
+                        if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                        {
+                            globalParams[asset.Parameter] = asset.DefaultValue;
+                            _logger.LogDebug("Injected Asset default for '{Parameter}': '{Value}'", asset.Parameter, asset.DefaultValue);
+                        }
+                    }
+                }
+            }
+
+            // Inject sources from GenerationParameters
+            foreach (var source in parameters.Sources)
+            {
+                if (source.Value?.HasData == true && !string.IsNullOrWhiteSpace(source.Value.Data))
+                {
+                    globalParams[source.Key] = source.Value.Data;
+
+                    if (source.Key.Equals("source_image", StringComparison.OrdinalIgnoreCase))
+                    {
+                        globalParams["Image"] = source.Value.Data;
+                    }
+
+                    _logger.LogDebug("Injected source '{SourceId}' into globalParams", source.Key);
+                }
+            }
+
+            // Render workflow template (still using Scriban for the outer template)
+            var templateContext = new TemplateContext
+            {
+                MemberRenamer = member => member.Name,
+                MemberFilter = member => true,
+                EnableRelaxedMemberAccess = true,
+                EnableRelaxedFunctionAccess = true,
+                EnableRelaxedTargetAccess = true,
+                StrictVariables = false
+            };
+
+            var scriptObject = new ScriptObject();
+            foreach (var kvp in globalParams)
+                scriptObject[kvp.Key] = kvp.Value;
+
+            scriptObject.Import("json", new Func<object, string>(value =>
+            {
+                if (value == null) return "null";
+                if (value is string str) return JsonSerializer.Serialize(str);
+                if (value is bool b) return b ? "true" : "false";
+                if (value is int || value is long || value is double || value is float || value is decimal)
+                    return value.ToString()!;
+                return JsonSerializer.Serialize(value);
+            }));
+
+            templateContext.PushGlobal(scriptObject);
+
+            var fullTemplate = Template.Parse(template.RawJson);
+            var renderedTemplate = fullTemplate.Render(templateContext);
+
+            using var doc = JsonDocument.Parse(renderedTemplate);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("Pipeline", out var pipelineEl))
+                throw new InvalidOperationException("No Pipeline found in rendered template");
+
+            foreach (var stepEl in pipelineEl.EnumerateArray())
+            {
+                try
+                {
+                    if (!stepEl.TryGetProperty("fragment", out var fragmentEl))
+                        continue;
+
+                    var fragmentName = fragmentEl.GetString();
+
+                    // Check if this fragment should be skipped (inactive optional fragment)
+                    var fragmentId = GetFragmentIdFromStep(stepEl, fragmentName);
+                    if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParams))
+                    {
+                        if (!fragmentParams.IsActive)
+                        {
+                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
+                            continue;
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Processing active fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
+                        }
+                    }
+
+                    var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+                    // Copy global params
+                    foreach (var kvp in globalParams)
+                    {
+                        if (kvp.Value != null)
+                            mergedParams[kvp.Key] = kvp.Value;
+                    }
+
+                    // Override with step parameters from rendered template
+                    if (stepEl.TryGetProperty("parameters", out var paramsEl))
+                    {
+                        foreach (var prop in paramsEl.EnumerateObject())
+                        {
+                            object value = prop.Value.ValueKind switch
+                            {
+                                JsonValueKind.String => prop.Value.GetString()!,
+                                JsonValueKind.Number => prop.Value.TryGetInt32(out var intVal)
+                                    ? intVal
+                                    : (prop.Value.TryGetInt64(out var longVal)
+                                        ? (object)longVal
+                                        : prop.Value.GetDouble()),
+                                JsonValueKind.True => true,
+                                JsonValueKind.False => false,
+                                JsonValueKind.Null => null!,
+                                _ => prop.Value.GetRawText()
+                            };
+                            mergedParams[prop.Name] = value;
+                        }
+                    }
+
+                    // Merge fragment-specific parameters from GenerationParameters.Fragments
+                    if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParamsForMerge))
+                    {
+                        if (fragmentParamsForMerge.Values != null && fragmentParamsForMerge.Values.Count > 0)
+                        {
+                            foreach (var kvp in fragmentParamsForMerge.Values)
+                            {
+                                if (kvp.Value != null)
+                                {
+                                    mergedParams[kvp.Key] = kvp.Value;
+                                }
+                            }
+                        }
+                    }
+
+                    var context = new SubgraphContext
+                    {
+                        Parameters = mergedParams,
+                        Outputs = new NodeRegistry()
+                    };
+
+                    context.Outputs.Merge(composer.Registry);
+
+                    if (!string.IsNullOrWhiteSpace(fragmentName))
+                    {
+                        var fragPath = Path.Combine(_workflowPath, "Fragments", fragmentName.Replace('/', Path.DirectorySeparatorChar));
+                        if (File.Exists(fragPath))
+                        {
+                            var fragmentText = await File.ReadAllTextAsync(fragPath);
+                            
+                            // Use Fluid-based rendering for fragments
+                            var (rendered, outputs) = await RenderFragmentWithFluidAsync(fragmentText, context, mergedParams);
+
+                            if (string.IsNullOrWhiteSpace(rendered))
+                            {
+                                _logger.LogDebug("Fragment '{FragmentId}' rendered to empty string (likely excluded by conditions)", fragmentId);
+                                continue;
+                            }
+
+                            rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
+
+                            if (outputs.Count > 0)
+                            {
+                                var outputKeys = string.Join(", ", outputs.Keys.Select(k => $"'{k}'"));
+                                _logger.LogDebug("Fragment '{FragmentId}' declared {Count} outputs: {OutputKeys}",
+                                    fragmentId, outputs.Count, outputKeys);
+                            }
+
+                            foreach (var kvp in outputs)
+                                context.Outputs.Register(kvp.Key, kvp.Value.nodeId, kvp.Value.index);
+
+                            composer.AddRenderedFragment(rendered, context.Outputs);
+                        }
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    throw new InvalidOperationException($"Failed to parse step parameters. JSON error: {ex.Message}.", ex);
+                }
+            }
+
+            return composer.BuildFinalWorkflow();
+        }
+
+        /// <inheritdoc />
+        [Obsolete("Use ComposeWorkflowFromGenerationParametersAsync for Fluid template rendering")]
         public string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters)
         {
             var composer = new WorkflowComposer();
@@ -243,11 +441,6 @@ namespace BlazorWebApp.Services
                         {
                             _logger.LogDebug("Processing active fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
                         }
-                    }
-                    else if (!string.IsNullOrEmpty(fragmentId))
-                    {
-                        _logger.LogDebug("Fragment '{FragmentId}' not found in parameters.Fragments (available: {AvailableFragments}), will evaluate conditions from globalParams",
-                            fragmentId, string.Join(", ", parameters.Fragments.Keys));
                     }
 
                     var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
