@@ -37,6 +37,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="MudBlazor" Version="6.1.8" />
+    <PackageReference Include="Fluid.Core" Version="2.11.1" />
     <PackageReference Include="Scriban" Version="6.4.0" />
     <PackageReference Include="Syllabore" Version="3.0.1-alpha" />
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />

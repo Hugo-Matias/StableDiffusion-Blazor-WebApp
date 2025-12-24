@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Models;
+using BlazorWebApp.Services.Templating;
 using Scriban;
 using Scriban.Runtime;
 using System.Reflection;
@@ -20,6 +21,7 @@ namespace BlazorWebApp.Services
         private readonly WorkflowTemplateParser _templateParser;
         private readonly IFragmentSchemaService _fragmentSchemaService;
         private readonly ITemplateCacheService _templateCache;
+        private readonly IFluidTemplateService _fluidService;
         private readonly FragmentConditionValidator _conditionValidator;
         private readonly Dictionary<Guid, List<ParsedPipelineStep>> _pipelineCache = new();
         private readonly object _pipelineCacheLock = new();
@@ -30,6 +32,7 @@ namespace BlazorWebApp.Services
             WorkflowTemplateParser templateParser,
             IFragmentSchemaService fragmentSchemaService,
             ITemplateCacheService templateCache,
+            IFluidTemplateService fluidService,
             FragmentConditionValidator conditionValidator)
         {
             _io = io;
@@ -37,6 +40,7 @@ namespace BlazorWebApp.Services
             _templateParser = templateParser;
             _fragmentSchemaService = fragmentSchemaService;
             _templateCache = templateCache;
+            _fluidService = fluidService;
             _conditionValidator = conditionValidator;
         }
 
@@ -377,6 +381,74 @@ namespace BlazorWebApp.Services
         #endregion
 
         #region Fragment Rendering
+
+        /// <summary>
+        /// Renders a fragment using the Fluid template engine.
+        /// This is the new approach that eliminates regex-based meta extraction.
+        /// </summary>
+        public async Task<(string rendered, Dictionary<string, (string nodeId, int index)> outputs)> RenderFragmentWithFluidAsync(
+            string fragmentText,
+            SubgraphContext context,
+            Dictionary<string, object> globalParams)
+        {
+            var outputs = new Dictionary<string, (string nodeId, int index)>();
+            Dictionary<string, JsonElement>? conditions = null;
+
+            // Build parameters dictionary for Fluid
+            var parameters = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+            // Add context parameters
+            if (context.Parameters != null)
+            {
+                foreach (var kvp in context.Parameters)
+                {
+                    parameters[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Add global params (may override context params)
+            foreach (var kvp in globalParams)
+            {
+                if (kvp.Value != null)
+                {
+                    parameters[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Render with Fluid - meta block is automatically captured to side-channel
+            var (rendered, metadata) = await _fluidService.RenderAsync(fragmentText, parameters, context.Outputs);
+
+            // Process metadata if captured
+            if (!string.IsNullOrEmpty(metadata))
+            {
+                (outputs, conditions) = ExtractMetadata(metadata);
+
+                // Validate conditions if present
+                if (conditions != null && conditions.Count > 0)
+                {
+                    var fragmentId = GetFragmentIdFromContext(context, globalParams);
+                    if (!string.IsNullOrEmpty(fragmentId))
+                    {
+                        var validationErrors = _conditionValidator.ValidateConditions(fragmentId, conditions);
+                        if (validationErrors.Count > 0)
+                        {
+                            _conditionValidator.LogValidationErrors(fragmentId, validationErrors);
+                        }
+                    }
+                }
+
+                // Evaluate conditions - if not met, return empty
+                if (!EvaluateConditions(conditions, globalParams))
+                {
+                    return (string.Empty, outputs);
+                }
+            }
+
+            // Clean up trailing commas in JSON
+            rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
+
+            return (rendered, outputs);
+        }
 
         public (string rendered, Dictionary<string, (string nodeId, int index)> outputs) RenderFragment(
             string fragmentText,

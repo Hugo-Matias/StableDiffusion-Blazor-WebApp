@@ -1,4 +1,5 @@
 using BlazorWebApp.Services;
+using BlazorWebApp.Services.Templating;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,6 +15,7 @@ public class MockWorkflowServiceBuilder
     private Mock<ILogger<WorkflowTemplateParser>> _mockParserLogger;
     private Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
     private Mock<ILogger<TemplateCacheService>> _mockCacheLogger;
+    private Mock<ILogger<FluidTemplateService>> _mockFluidLogger;
     private IOService _ioService;
     private string _tempPath;
 
@@ -23,6 +25,7 @@ public class MockWorkflowServiceBuilder
         _mockParserLogger = new Mock<ILogger<WorkflowTemplateParser>>();
         _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
         _mockCacheLogger = new Mock<ILogger<TemplateCacheService>>();
+        _mockFluidLogger = new Mock<ILogger<FluidTemplateService>>();
         _tempPath = Path.Combine(Path.GetTempPath(), $"WorkflowTests_{Guid.NewGuid()}");
     }
 
@@ -58,13 +61,15 @@ public class MockWorkflowServiceBuilder
         var templateParser = new WorkflowTemplateParser(_mockParserLogger.Object);
         var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
         var templateCacheService = new TemplateCacheService(_mockCacheLogger.Object);
+        var fluidTemplateService = new FluidTemplateService(_mockFluidLogger.Object);
 
         // Note: WorkflowService uses hardcoded path from AppContext.BaseDirectory
         // For testing, we'd need to either:
         // 1. Make the path injectable
         // 2. Create files in the expected location
         // 3. Use reflection to override
-        return new WorkflowService(_ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService, 
+        return new WorkflowService(_ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService,
+            fluidTemplateService,
             new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object));
     }
 

@@ -1,5 +1,6 @@
 using BlazorWebApp.Data;
 using BlazorWebApp.Services;
+using BlazorWebApp.Services.Templating;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using MudBlazor;
@@ -100,6 +101,9 @@ builder.Services.AddSingleton<IWildcardService, WildcardService>();
 
 // Template cache service for compiled Scriban templates
 builder.Services.AddSingleton<ITemplateCacheService, TemplateCacheService>();
+
+// Fluid template service for Liquid template rendering (replaces Scriban for fragments)
+builder.Services.AddSingleton<IFluidTemplateService, FluidTemplateService>();
 
 // Workflow validation service for startup template validation
 builder.Services.AddSingleton<IWorkflowValidationService, WorkflowValidationService>();

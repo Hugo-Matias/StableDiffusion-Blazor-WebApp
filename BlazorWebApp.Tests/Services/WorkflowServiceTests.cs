@@ -1,6 +1,7 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
+using BlazorWebApp.Services.Templating;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,6 +15,7 @@ public class WorkflowServiceTests
     private readonly Mock<ILogger<WorkflowTemplateParser>> _mockParserLogger;
     private readonly Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
     private readonly Mock<ILogger<TemplateCacheService>> _mockCacheLogger;
+    private readonly Mock<ILogger<FluidTemplateService>> _mockFluidLogger;
 
     public WorkflowServiceTests()
     {
@@ -21,6 +23,7 @@ public class WorkflowServiceTests
         _mockParserLogger = new Mock<ILogger<WorkflowTemplateParser>>();
         _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
         _mockCacheLogger = new Mock<ILogger<TemplateCacheService>>();
+        _mockFluidLogger = new Mock<ILogger<FluidTemplateService>>();
     }
 
     private WorkflowService CreateWorkflowService(IIOService ioService)
@@ -28,7 +31,9 @@ public class WorkflowServiceTests
         var templateParser = new WorkflowTemplateParser(_mockParserLogger.Object);
         var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
         var templateCacheService = new TemplateCacheService(_mockCacheLogger.Object);
+        var fluidTemplateService = new FluidTemplateService(_mockFluidLogger.Object);
         return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService,
+            fluidTemplateService,
             new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object));
     }
 

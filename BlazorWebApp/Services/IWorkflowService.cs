@@ -71,6 +71,15 @@ namespace BlazorWebApp.Services
             Func<string, Task<string>>? loraPathResolver = null);
 
         /// <summary>
+        /// Renders a workflow fragment using the Fluid template engine (async).
+        /// This is the new approach that eliminates regex-based meta extraction.
+        /// </summary>
+        Task<(string rendered, Dictionary<string, (string nodeId, int index)> outputs)> RenderFragmentWithFluidAsync(
+            string fragmentText,
+            SubgraphContext context,
+            Dictionary<string, object> globalParams);
+
+        /// <summary>
         /// Parses the UI schema from a fragment's #meta block.
         /// Returns null if no UI schema is defined.
         /// </summary>
