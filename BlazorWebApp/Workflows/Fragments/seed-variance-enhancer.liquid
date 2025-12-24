@@ -1,0 +1,49 @@
+{% meta %}
+{
+  "outputs": {
+    "positive_output": { "node": "seed_variance_enhancer", "index": 0 }
+  },
+  "conditions": {
+    "required": ["seed_variance_enhancer.IsActive"]
+  },
+  "ui": {
+    "type": "enhancement",
+    "component": "SeedVarianceEnhancerForm",
+    "title": "Seed Variance Enhancer",
+    "icon": "fa-solid fa-shuffle",
+    "order": 80,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "parameters": {
+      "randomize_percent": { "min": 0, "max": 100, "step": 5 },
+      "strength": { "min": 0, "max": 100, "step": 1 },
+      "noise_insert": { "options": ["noise on beginning steps", "noise on ending steps", "noise on all steps", "disabled"] },
+      "steps_switchover_percent": { "min": 0, "max": 100, "step": 5 },
+      "seed": { "min": -1 },
+      "mask_starts_at": { "options": ["beginning", "end"] },
+      "mask_percent": { "min": 0, "max": 100, "step": 5 },
+      "log_to_console": { }
+    }
+  }
+}
+{% endmeta %}
+
+{
+  "seed_variance_enhancer": {
+    "inputs": {
+      "randomize_percent": {{ randomize_percent | default: 50 | json }},
+      "strength": {{ strength | default: 20 | json }},
+      "noise_insert": {{ noise_insert | default: "noise on beginning steps" | json }},
+      "steps_switchover_percent": {{ steps_switchover_percent | default: 20 | json }},
+      "seed": {{ seed | default: 0 | json }},
+      "mask_starts_at": {{ mask_starts_at | default: "beginning" | json }},
+      "mask_percent": {{ mask_percent | default: 0 | json }},
+      "log_to_console": {{ log_to_console | default: false | json }},
+      "conditioning": {% assign pos_key = scope | default: "" | append: "positive_output" %}{% get_ref pos_key %}
+    },
+    "class_type": "SeedVarianceEnhancer",
+    "_meta": {
+      "title": "SeedVarianceEnhancer"
+    }
+  }
+}

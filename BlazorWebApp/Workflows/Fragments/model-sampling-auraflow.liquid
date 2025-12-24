@@ -1,0 +1,20 @@
+{% meta %}
+{
+  "outputs": {
+    "model_output": { "node": "model_sampler_auraflow", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "model_sampler_auraflow": {
+    "inputs": {
+      "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
+      "shift": {{ model_shift | json }}
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "Model Sampler (AuraFlow)"
+    }
+  }
+}

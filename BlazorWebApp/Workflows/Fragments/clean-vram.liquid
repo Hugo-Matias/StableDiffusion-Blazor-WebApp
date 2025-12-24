@@ -1,0 +1,19 @@
+{% meta %}
+{
+  "outputs": {
+    "{{ output_name | default: 'cleaned_output' }}": { "node": "{{ node_id | default: 'clean_vram' }}", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "{{ node_id | default: 'clean_vram' }}": {
+    "inputs": {
+      "anything": {% assign input_key = input_name | default: "latent_output" %}{% get_ref input_key %}
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": {{ title | default: "Clean VRAM Used" | json }}
+    }
+  }
+}

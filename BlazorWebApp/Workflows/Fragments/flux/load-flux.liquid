@@ -1,0 +1,150 @@
+{% meta %}
+{
+  "outputs": {
+    "{{ scope | default: '' }}model_output": { "node": "{{ scope | default: '' }}flux_model_sampling", "index": 0 },
+    "{{ scope | default: '' }}clip_output": { "node": "{{ scope | default: '' }}dual_clip_loader", "index": 0 },
+    "{{ scope | default: '' }}vae_output": { "node": "{{ scope | default: '' }}vae_loader", "index": 0 },
+    "{{ scope | default: '' }}latent_output": { "node": "{{ scope | default: '' }}vae_encode_advanced", "index": 3 },
+    "{{ scope | default: '' }}positive_output": { "node": "{{ scope | default: '' }}flux_guidance", "index": 0 },
+    "{{ scope | default: '' }}negative_output": { "node": "{{ scope | default: '' }}empty_encode", "index": 0 }
+  }{% assign is_detailer = scope | string_contains: "detailer" %}{% if scope and is_detailer %},
+  "conditions": {
+    "required": ["detailer.IsActive"]
+  }{% endif %}
+}
+{% endmeta %}
+
+{
+  "{{ scope | default: '' }}unet_loader": {
+    "inputs": {
+      "unet_name": {{ unet_name | json }},
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Load Diffusion Model"
+    }
+  },
+  "{{ scope | default: '' }}dual_clip_loader": {
+    "inputs": {
+      "clip_name1": {{ clip_name1 | json }},
+      "clip_name2": {{ clip_name2 | json }},
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}DualCLIPLoader"
+    }
+  },
+  "{{ scope | default: '' }}vae_loader": {
+    "inputs": {
+      "vae_name": {{ vae_name | json }}
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Load VAE"
+    }
+  },
+  "{{ scope | default: '' }}text_positive": {
+    "inputs": {
+      "value": {{ positive | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Prompt"
+    }
+  },
+  "{{ scope | default: '' }}lora_loader": {
+    "inputs": {
+      "text": ["{{ scope | default: '' }}text_positive", 0],
+      "model": ["{{ scope | default: '' }}unet_loader", 0],
+      "clip": ["{{ scope | default: '' }}dual_clip_loader", 0]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}LoRAs"
+    }
+  },
+  "{{ scope | default: '' }}reflux_patcher": {
+    "inputs": {
+      "style_dtype": "float64",
+      "enable": {{ reflux_enabled | default: true | json }},
+      "model": ["{{ scope | default: '' }}lora_loader", 0]
+    },
+    "class_type": "ReFluxPatcher",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}ReFluxPatcher"
+    }
+  },
+  "{{ scope | default: '' }}prompt_encode": {
+    "inputs": {
+      "text": ["{{ scope | default: '' }}text_positive", 0],
+      "clip": ["{{ scope | default: '' }}lora_loader", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Encode Prompt"
+    }
+  },
+  "{{ scope | default: '' }}flux_guidance": {
+    "inputs": {
+      "guidance": {{ guidance | default: 3.5 | json }},
+      "conditioning": ["{{ scope | default: '' }}prompt_encode", 0]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}FluxGuidance"
+    }
+  },
+  "{{ scope | default: '' }}empty_encode": {
+    "inputs": {
+      "text": "",
+      "clip": ["{{ scope | default: '' }}dual_clip_loader", 0]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Empty Negative Encode"
+    }
+  },
+  "{{ scope | default: '' }}empty_latent": {
+    "inputs": {
+      "width": {{ width | json }},
+      "height": {{ height | json }},
+      "batch_size": {{ batch_size | json }}
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}EmptySD3LatentImage"
+    }
+  },
+  "{{ scope | default: '' }}vae_encode_advanced": {
+    "inputs": {
+      "resize_to_input": "false",
+      "width": {{ width | json }},
+      "height": {{ height | json }},
+      "mask_channel": "red",
+      "invert_mask": false,
+      "latent_type": "16_channels",
+      "latent": ["{{ scope | default: '' }}empty_latent", 0],
+      "vae": ["{{ scope | default: '' }}vae_loader", 0]
+    },
+    "class_type": "VAEEncodeAdvanced",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}VAEEncodeAdvanced"
+    }
+  },
+  "{{ scope | default: '' }}flux_model_sampling": {
+    "inputs": {
+      "scaling": {{ scaling | default: "exponential" | json }},
+      "max_shift": {{ max_shift | default: 1.35 | json }},
+      "base_shift": {{ base_shift | default: 0.85 | json }},
+      "model": ["{{ scope | default: '' }}reflux_patcher", 0],
+      "latent_image": ["{{ scope | default: '' }}vae_encode_advanced", 3]
+    },
+    "class_type": "ModelSamplingAdvancedResolution",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}ModelSamplingAdvancedResolution"
+    }
+  }
+}

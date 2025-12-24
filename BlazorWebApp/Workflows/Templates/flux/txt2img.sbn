@@ -11,7 +11,7 @@
   "Pipeline": [
     {
       "id": "loader_flux",
-      "fragment": "flux/load-flux.sbn",
+      "fragment": "flux/load-flux.liquid",
       "parameters": {
         "unet_name": {{ Model | json }},
         "clip_name1": {{ Clip1 | json }},
@@ -30,7 +30,7 @@
     },
     {
       "id": "main_sampler",
-      "fragment": "sampler.sbn",
+      "fragment": "sampler.liquid",
       "parameters": {
         "title": "Main Sampler",
         "sampler_id": "sampler_main",
@@ -43,7 +43,7 @@
     },
     {
       "id": "upscale",
-      "fragment": "upscale.sbn",
+      "fragment": "upscale.liquid",
       "parameters": {
         "upscale_model": {{ upscale_model ?? "4x-UltraSharpV2.safetensors" | json }},
         "upscale_width": {{ upscale_width ?? 1744 | json }},
@@ -58,12 +58,12 @@
     },
     {
       "id": "vae_decode",
-      "fragment": "vae-decode.sbn",
+      "fragment": "vae-decode.liquid",
       "parameters": {}
     },
     {
       "id": "loader_detailer",
-      "fragment": "flux/load-flux.sbn",
+      "fragment": "flux/load-flux.liquid",
       "parameters": {
         "scope": "detailer_",
         "scope_title": "Detailer ",
@@ -84,7 +84,7 @@
     },
     {
       "id": "detailer",
-      "fragment": "detailer-core.sbn",
+      "fragment": "detailer-core.liquid",
       "parameters": {
         "scope": "detailer_",
         "detailer_detection_model": {{ detailer_model ?? "bbox/face_yolov8m.pt" | json }},
@@ -106,7 +106,7 @@
     },
     {
       "id": "save",
-      "fragment": "save.sbn",
+      "fragment": "save.liquid",
       "parameters": {}
     }
   ]

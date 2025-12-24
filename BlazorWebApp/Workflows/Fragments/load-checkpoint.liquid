@@ -1,0 +1,86 @@
+{% meta %}
+{
+  "outputs": {
+    "{% if scope %}{{ scope }}{% endif %}model_output": { "node": "{% if scope %}{{ scope }}{% endif %}lora_positive", "index": 0 },
+    "{% if scope %}{{ scope }}{% endif %}clip_output": { "node": "{% if scope %}{{ scope }}{% endif %}lora_positive", "index": 1 },
+    "{% if scope %}{{ scope }}{% endif %}vae_output": { "node": "{% if scope %}{{ scope }}{% endif %}{{ loader_id }}", "index": 2 },
+    "{% if scope %}{{ scope }}{% endif %}positive_output": { "node": "{% if scope %}{{ scope }}{% endif %}encode_positive", "index": 0 },
+    "{% if scope %}{{ scope }}{% endif %}negative_output": { "node": "{% if scope %}{{ scope }}{% endif %}encode_negative", "index": 0 }
+  }{% assign is_detailer = scope | string_contains: "detailer" %}{% if scope and is_detailer %},
+  "conditions": {
+    "required": ["Detailer.IsActive"]
+  }{% endif %}
+}
+{% endmeta %}
+
+{
+  "{% if scope %}{{ scope }}{% endif %}{{ loader_id }}": {
+    "inputs": {
+      "ckpt_name": {{ ckpt_name | json }}
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}Load Checkpoint"
+    }
+  },
+  "{% if scope %}{{ scope }}{% endif %}text_prompt": {
+    "inputs": {
+      "value": {{ prompt | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}Prompt"
+    }
+  },
+  "{% if scope %}{{ scope }}{% endif %}text_negative": {
+    "inputs": {
+      "value": {{ negative | json }}
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}Negative Prompt"
+    }
+  },
+  "{% if scope %}{{ scope }}{% endif %}lora_positive": {
+    "inputs": {
+      "text": ["{% if scope %}{{ scope }}{% endif %}text_prompt", 0],
+      "model": ["{% if scope %}{{ scope }}{% endif %}{{ loader_id }}", 0],
+      "clip": ["{% if scope %}{{ scope }}{% endif %}{{ loader_id }}", 1]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}LoRAs (Positive)"
+    }
+  },
+  "{% if scope %}{{ scope }}{% endif %}lora_negative": {
+    "inputs": {
+      "text": ["{% if scope %}{{ scope }}{% endif %}text_negative", 0],
+      "model": ["{% if scope %}{{ scope }}{% endif %}lora_positive", 0],
+      "clip": ["{% if scope %}{{ scope }}{% endif %}lora_positive", 1]
+    },
+    "class_type": "PCLazyLoraLoader",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}LoRAs (Negative)"
+    }
+  },
+  "{% if scope %}{{ scope }}{% endif %}encode_positive": {
+    "inputs": {
+      "text": ["{% if scope %}{{ scope }}{% endif %}text_prompt", 0],
+      "clip": ["{% if scope %}{{ scope }}{% endif %}lora_positive", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}Encode Positive"
+    }
+  },
+  "{% if scope %}{{ scope }}{% endif %}encode_negative": {
+    "inputs": {
+      "text": ["{% if scope %}{{ scope }}{% endif %}text_negative", 0],
+      "clip": ["{% if scope %}{{ scope }}{% endif %}lora_negative", 1]
+    },
+    "class_type": "PCLazyTextEncode",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}Encode Negative"
+    }
+  }
+}

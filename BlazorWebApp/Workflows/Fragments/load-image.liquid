@@ -1,0 +1,19 @@
+{% meta %}
+{
+  "outputs": {
+    "image_input": { "node": "load_image", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "load_image": {
+    "inputs": {
+      "image": {{ image | json }}
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  }
+}

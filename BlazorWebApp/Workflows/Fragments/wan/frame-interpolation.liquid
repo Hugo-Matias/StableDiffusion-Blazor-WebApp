@@ -1,0 +1,61 @@
+{% meta %}
+{
+  "outputs": {
+    "frames_output": { "node": "frame_interpolation", "index": 0 }
+  },
+  "conditions": {
+    "required": ["frame_interpolation.IsActive"]
+  },
+  "ui": {
+    "type": "enhancement",
+    "component": "FrameInterpolationForm",
+    "title": "Frame Interpolation",
+    "icon": "fa-solid fa-film",
+    "order": 70,
+    "collapsible": true,
+    "parameters": {
+      "rife_model": { "default": "rife49.pth" },
+      "frame_multiplier": { "min": 1, "max": 8, "step": 1, "default": 2 },
+      "scale_by": { "min": 1.0, "max": 4.0, "step": 0.5, "default": 2.0 }
+    }
+  }
+}
+{% endmeta %}
+
+{
+  "upscale_frames": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": {{ scale_by | default: 2.0 | json }},
+      "image": {% get_ref "image_output" %}
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "Upscale Image By"
+    }
+  },
+  "clean_upscale": {
+    "inputs": {
+      "anything": ["upscale_frames", 0]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "Clean VRAM (Upscale)"
+    }
+  },
+  "frame_interpolation": {
+    "inputs": {
+      "ckpt_name": {{ rife_model | default: "rife49.pth" | json }},
+      "clear_cache_after_n_frames": 10,
+      "multiplier": {{ frame_multiplier | default: 2 | json }},
+      "fast_mode": false,
+      "ensemble": true,
+      "scale_factor": 1,
+      "frames": ["clean_upscale", 0]
+    },
+    "class_type": "RIFE VFI",
+    "_meta": {
+      "title": "Frame Interpolation (RIFE)"
+    }
+  }
+}

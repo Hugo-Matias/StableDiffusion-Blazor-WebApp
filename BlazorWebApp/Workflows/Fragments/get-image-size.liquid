@@ -1,0 +1,22 @@
+{% meta %}
+{
+  "outputs": {
+    "image_size_info": { "node": "get_size", "index": 0 },
+    "width": { "node": "get_size", "index": 1 },
+    "height": { "node": "get_size", "index": 2 },
+    "num_frames": { "node": "get_size", "index": 3 }
+  }
+}
+{% endmeta %}
+
+{
+  "get_size": {
+    "inputs": {
+      "image": {% assign img_key = image_ref | default: "video_frames" %}{% get_ref img_key %}
+    },
+    "class_type": "GetImageSizeAndCount",
+    "_meta": {
+      "title": "Get Image Size & Count"
+    }
+  }
+}

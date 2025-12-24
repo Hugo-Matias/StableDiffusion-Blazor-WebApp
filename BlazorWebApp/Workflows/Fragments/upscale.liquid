@@ -1,0 +1,133 @@
+{% meta %}
+{
+  "outputs": {
+    "latent_output": { "node": "upscale_resample_2", "index": 0 }
+  },
+  "conditions": {
+    "required": ["upscale.IsActive"]
+  },
+  "ui": {
+    "component": "UpscaleForm",
+    "title": "Upscale",
+    "icon": "fa-solid fa-expand",
+    "order": 90,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "parameters": {
+      "upscale_model": { "source": "Backend.Upscalers" },
+      "upscale_width": { "min": 64, "max": 4096, "step": 8 },
+      "upscale_height": { "min": 64, "max": 4096, "step": 8 },
+      "upscale_steps": { "min": 0, "max": 150, "step": 1 },
+      "upscale_denoise": { "min": 0, "max": 1, "step": 0.01 },
+      "upscale_scale": { "min": 1, "max": 4, "step": 0.25 }
+    }
+  }
+}
+{% endmeta %}
+
+{
+  "upscale_model_loader": {
+    "inputs": {
+      "model_name": {{ upscale_model | default: "4x-UltraSharpV2.safetensors" | json }}
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "upscale_decode_for_upscale": {
+    "inputs": {
+      "samples": {% get_ref "latent_output" %},
+      "vae": {% assign vae_key = scope | default: "" | append: "vae_output" %}{% get_ref vae_key %}
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode (for Upscale)"
+    }
+  },
+  "upscale_with_model": {
+    "inputs": {
+      "upscale_model": ["upscale_model_loader", 0],
+      "image": ["upscale_decode_for_upscale", 0]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
+    }
+  },
+  "upscale_scale": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "width": {{ upscale_width | default: 1744 | json }},
+      "height": {{ upscale_height | default: 2496 | json }},
+      "crop": "disabled",
+      "image": ["upscale_with_model", 0]
+    },
+    "class_type": "ImageScale",
+    "_meta": {
+      "title": "Upscale Image"
+    }
+  },
+  "upscale_encode": {
+    "inputs": {
+      "pixels": ["upscale_scale", 0],
+      "vae": {% assign vae_key2 = scope | default: "" | append: "vae_output" %}{% get_ref vae_key2 %}
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode (Upscaled)"
+    }
+  },
+  "upscale_unsample": {
+    "inputs": {
+      "eta": 0.5,
+      "sampler_name": {{ sampler_name | default: "multistep/res_2m" | json }},
+      "scheduler": {{ scheduler | default: "beta" | json }},
+      "steps": {{ upscale_steps | default: 20 | json }},
+      "steps_to_run": {% assign base_steps = upscale_steps | default: 20 %}{{ base_steps | divided_by: 4 | round | json }},
+      "denoise": {{ upscale_denoise | default: 1 | json }},
+      "cfg": {{ cfg | default: 1 | json }},
+      "seed": {{ seed | default: 42 | json }},
+      "sampler_mode": "unsample",
+      "bongmath": true,
+      "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
+      "positive": {% assign pos_key = scope | default: "" | append: "positive_output" %}{% get_ref pos_key %},
+      "negative": {% assign neg_key = scope | default: "" | append: "negative_output" %}{% get_ref neg_key %},
+      "latent_image": ["upscale_encode", 0]
+    },
+    "class_type": "ClownsharKSampler_Beta",
+    "_meta": {
+      "title": "Upscale Unsample"
+    }
+  },
+  "upscale_resample_1": {
+    "inputs": {
+      "eta": 0.5,
+      "sampler_name": {{ sampler_name | default: "multistep/res_2m" | json }},
+      "steps_to_run": {% assign base_steps2 = upscale_steps | default: 20 %}{{ base_steps2 | divided_by: 4 | round | json }},
+      "cfg": {{ cfg | default: 1 | json }},
+      "sampler_mode": "resample",
+      "bongmath": true,
+      "latent_image": ["upscale_unsample", 0]
+    },
+    "class_type": "ClownsharkChainsampler_Beta",
+    "_meta": {
+      "title": "Upscale Resample 1"
+    }
+  },
+  "upscale_resample_2": {
+    "inputs": {
+      "eta": 0.5,
+      "sampler_name": {{ sampler_name | default: "multistep/res_2m" | json }},
+      "steps_to_run": -1,
+      "cfg": {{ cfg | default: 1 | json }},
+      "sampler_mode": "resample",
+      "bongmath": true,
+      "latent_image": ["upscale_resample_1", 0]
+    },
+    "class_type": "ClownsharkChainsampler_Beta",
+    "_meta": {
+      "title": "Upscale Resample 2"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{% meta %}
+{
+  "outputs": {
+    "latent_output": { "node": "sampler", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "scheduler": {
+    "inputs": {
+      "scheduler": {{ scheduler | default: "dpm++_sde" | json }},
+      "steps": {{ steps | json }},
+      "shift": {{ shift | default: 5 | json }},
+      "start_step": 0,
+      "end_step": -1
+    },
+    "class_type": "WanVideoScheduler",
+    "_meta": {
+      "title": "WanVideo Scheduler"
+    }
+  },
+  "sampler_settings": {
+    "inputs": {
+      "steps": {{ steps | json }},
+      "cfg": {{ cfg | default: 1 | json }},
+      "shift": {{ shift | default: 5 | json }},
+      "seed": {{ seed | json }},
+      "force_offload": true,
+      "scheduler": ["scheduler", 3],
+      "riflex_freq_index": 0,
+      "denoise_strength": {{ denoise | default: 1 | json }},
+      "batched_cfg": false,
+      "rope_function": "comfy",
+      "start_step": 0,
+      "end_step": -1,
+      "add_noise_to_samples": false,
+      "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
+      "image_embeds": {% get_ref "steadydancer_embeds" %},
+      "text_embeds": {% assign text_key = scope | default: "" | append: "text_embeds" %}{% get_ref text_key %},
+      "context_options": {% get_ref "context_options" %}
+    },
+    "class_type": "WanVideoSamplerSettings",
+    "_meta": {
+      "title": "WanVideo Sampler Settings"
+    }
+  },
+  "sampler": {
+    "inputs": {
+      "sampler_inputs": ["sampler_settings", 0]
+    },
+    "class_type": "WanVideoSamplerFromSettings",
+    "_meta": {
+      "title": "WanVideo Sampler"
+    }
+  }
+}

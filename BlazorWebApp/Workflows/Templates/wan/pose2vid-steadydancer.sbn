@@ -16,7 +16,7 @@
   "Pipeline": [
     {
       "id": "load_video",
-      "fragment": "load-video.sbn",
+      "fragment": "load-video.liquid",
       "parameters": {
         "video": {{ video | json }},
         "force_rate": {{ video_force_rate ?? 16 | json }},
@@ -29,21 +29,21 @@
     },
     {
       "id": "get_image_size",
-      "fragment": "get-image-size.sbn",
+      "fragment": "get-image-size.liquid",
       "parameters": {
         "image_ref": "video_frames"
       }
     },
     {
       "id": "load_image",
-      "fragment": "load-image.sbn",
+      "fragment": "load-image.liquid",
       "parameters": {
         "image": {{ image | json }}
       }
     },
     {
       "id": "resize_subject",
-      "fragment": "resize-image-kj.sbn",
+      "fragment": "resize-image-kj.liquid",
       "parameters": {
         "node_id": "resize_subject",
         "image_ref": "image_input",
@@ -52,7 +52,7 @@
     },
     {
       "id": "loader_wan",
-      "fragment": "wan/load-wan-model.sbn",
+      "fragment": "wan/load-wan-model.liquid",
       "parameters": {
         "model_name": {{ Model | json }},
         "lora_name": {{ SpeedLora | json }},
@@ -61,21 +61,21 @@
     },
     {
       "id": "loader_vae",
-      "fragment": "wan/load-wan-vae.sbn",
+      "fragment": "wan/load-wan-vae.liquid",
       "parameters": {
         "vae_name": {{ Vae | json }}
       }
     },
     {
       "id": "clip_vision",
-      "fragment": "load-clip-vision.sbn",
+      "fragment": "load-clip-vision.liquid",
       "parameters": {
         "clip_vision_name": {{ ClipVision | json }}
       }
     },
     {
       "id": "prompts",
-      "fragment": "wan/text-encode-wan.sbn",
+      "fragment": "wan/text-encode-wan.liquid",
       "parameters": {
         "text_encoder_name": {{ TextEncoder | json }},
         "positive": {{ positive | json }},
@@ -84,19 +84,19 @@
     },
     {
       "id": "pose_detection",
-      "fragment": "wan/pose-detection.sbn",
+      "fragment": "wan/pose-detection.liquid",
       "parameters": {}
     },
     {
       "id": "i2v_encode",
-      "fragment": "wan/i2v-encode.sbn",
+      "fragment": "wan/i2v-encode.liquid",
       "parameters": {
         "resized_image_ref": "resized_image"
       }
     },
     {
       "id": "steadydancer_embeds",
-      "fragment": "wan/steadydancer-embeds.sbn",
+      "fragment": "wan/steadydancer-embeds.liquid",
       "parameters": {
         "pose_strength_spatial": {{ pose_strength_spatial ?? 1 | json }},
         "pose_strength_temporal": {{ pose_strength_temporal ?? 1 | json }}
@@ -104,7 +104,7 @@
     },
     {
       "id": "context_options",
-      "fragment": "wan/context-options.sbn",
+      "fragment": "wan/context-options.liquid",
       "parameters": {
         "context_frames": {{ context_frames ?? 81 | json }},
         "context_overlap": {{ context_overlap ?? 16 | json }}
@@ -112,7 +112,7 @@
     },
     {
       "id": "main_sampler",
-      "fragment": "wan/sampler-wan.sbn",
+      "fragment": "wan/sampler-wan.liquid",
       "parameters": {
         "steps": {{ steps ?? 4 | json }},
         "cfg": {{ cfg ?? 1 | json }},
@@ -123,17 +123,17 @@
     },
     {
       "id": "vae_decode",
-      "fragment": "wan/decode-wan.sbn",
+      "fragment": "wan/decode-wan.liquid",
       "parameters": {}
     },
     {
       "id": "concat_preview",
-      "fragment": "concat-preview.sbn",
+      "fragment": "concat-preview.liquid",
       "parameters": {}
     },
     {
       "id": "video_save",
-      "fragment": "save-video.sbn",
+      "fragment": "save-video.liquid",
       "parameters": {
         "frame_rate": {{ output_frame_rate ?? 24 | json }},
         {{~ if append_preview ~}}

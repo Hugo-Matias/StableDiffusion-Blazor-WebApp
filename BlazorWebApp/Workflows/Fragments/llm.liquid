@@ -1,0 +1,24 @@
+{% meta %}
+{
+  "outputs": {
+    {{ text_output }}: {"node": "llm_generator", "index": 0}
+  }
+}
+{% endmeta %}
+
+{
+  "llm_generator": {
+    "inputs": {
+      "text": {{ Prompt | json }},
+      "random_seed": {{ Seed | default: 42 | json }},
+      "model": "Llama-3.2-3B-Instruct-abliterated.Q5_K_M.gguf",
+      "max_tokens": 4096,
+      "apply_instructions": true,
+      "instructions": {{ Instructions | default: "Generate a prompt from \"{prompt}\"" | json }}
+    },
+    "class_type": "Searge_LLM_Node",
+    "_meta": {
+      "title": "Searge LLM Node"
+    }
+  }
+}

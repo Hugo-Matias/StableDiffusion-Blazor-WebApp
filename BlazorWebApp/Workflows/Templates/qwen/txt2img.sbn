@@ -10,7 +10,7 @@
   "Pipeline": [
     {
       "id": "loader_qwen",
-      "fragment": "load-diffusion-w-prompts.sbn",
+      "fragment": "load-diffusion-w-prompts.liquid",
       "parameters": {
         "unet_name": {{ Model | json }},
         "clip_name": {{ Clip | json }},
@@ -22,7 +22,7 @@
     },
     {
       "id": "latent",
-      "fragment": "empty-latent.sbn",
+      "fragment": "empty-latent.liquid",
       "parameters": {
         "width": {{ width ?? 872 | json }},
         "height": {{ height ?? 1248 | json }},
@@ -32,14 +32,14 @@
     },
     {
       "id": "model_sampling",
-      "fragment": "model-sampling-auraflow.sbn",
+      "fragment": "model-sampling-auraflow.liquid",
       "parameters": {
         "model_shift": {{ model_shift ?? 3.10 | json }}
       }
     },
     {
       "id": "main_sampler",
-      "fragment": "sampler.sbn",
+      "fragment": "sampler.liquid",
       "parameters": {
         "title": "Main Sampler",
         "sampler_id": "sampler_main",
@@ -52,12 +52,12 @@
      },
      {
        "id": "vae_decode",
-       "fragment": "vae-decode.sbn",
+       "fragment": "vae-decode.liquid",
        "parameters": {}
      },
     {
       "id": "seed_vr2",
-      "fragment": "upscale-seedvr2.sbn",
+      "fragment": "upscale-seedvr2.liquid",
       "parameters": {
         "seedvr2_model": {{ seed_vr2_model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
         "seedvr2_vae_model": {{ seed_vr2_vae_model ?? "ema_vae_fp16.safetensors" | json }},
@@ -73,7 +73,7 @@
     },
     {
       "id": "loader_detailer",
-      "fragment": "load-diffusion-w-prompts.sbn",
+      "fragment": "load-diffusion-w-prompts.liquid",
       "parameters": {
         "scope": "detailer_",
         "scope_title": "Detailer ",
@@ -91,7 +91,7 @@
     },
     {
       "id": "detailer",
-      "fragment": "detailer-core.sbn",
+      "fragment": "detailer-core.liquid",
       "parameters": {
         "scope": "detailer_",
         "detailer_detection_model": {{ detailer_model ?? "bbox/face_yolov8m.pt" | json }},
@@ -113,7 +113,7 @@
     },
     {
       "id": "save",
-      "fragment": "save.sbn",
+      "fragment": "save.liquid",
       "parameters": {}
     }
   ]

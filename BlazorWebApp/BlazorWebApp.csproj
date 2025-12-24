@@ -69,6 +69,7 @@
   <ItemGroup>
     <Folder Include="Components\Txt2Img\" />
     <Folder Include="Data\Dictionaries\" />
+    <Folder Include="Workflows\Fragments\utils\" />
   </ItemGroup>
 
 </Project>

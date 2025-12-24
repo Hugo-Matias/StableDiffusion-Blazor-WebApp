@@ -1,0 +1,50 @@
+{% meta %}
+{
+  "outputs": {
+    "latent_output": {"node": "{{ sampler_id }}", "index": 0}
+  },
+  "ui": {
+    "type": "sampler",
+    "component": "SamplerForm",
+    "title": "Sampler",
+    "icon": "fa-solid fa-dice",
+    "order": 50,
+    "collapsible": true,
+    "chainable": true,
+    "parameters": {
+      "sampler_name": { "source": "Backend.Samplers" },
+      "scheduler": { "source": "Backend.Schedulers" },
+      "steps": { "min": 1, "max": 150, "step": 1 },
+      "cfg": { "min": 1, "max": 30, "step": 0.5 },
+      "denoise": { "min": 0, "max": 1, "step": 0.01 },
+      "eta": { "min": 0, "max": 1, "step": 0.01 },
+      "seed": { "min": -1 }
+    }
+  }
+}
+{% endmeta %}
+
+{
+  "{{ sampler_id }}": {
+    "inputs": {
+      "eta": {{ eta | default: 0.5 | json }},
+      "sampler_name": {{ sampler_name | json }},
+      "scheduler": {{ scheduler | json }},
+      "steps": {{ steps | json }},
+      "steps_to_run": {{ steps_to_run | default: -1 | json }},
+      "denoise": {{ denoise | default: 1 | json }},
+      "cfg": {{ cfg | json }},
+      "seed": {{ seed | json }},
+      "sampler_mode": {{ sampler_mode | default: "standard" | json }},
+      "bongmath": true,
+      "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
+      "positive": {% assign pos_key = scope | default: "" | append: "positive_output" %}{% get_ref pos_key %},
+      "negative": {% assign neg_key = scope | default: "" | append: "negative_output" %}{% get_ref neg_key %},
+      "latent_image": {% assign lat_key = scope | default: "" | append: "latent_output" %}{% get_ref lat_key %}
+    },
+    "class_type": {{ class_type | default: "ClownsharKSampler_Beta" | json }},
+    "_meta": {
+      "title": {{ title | default: "Sampler" | json }}
+    }
+  }
+}

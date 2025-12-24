@@ -1,0 +1,26 @@
+{% meta %}
+{
+  "outputs": {
+    "image_output": { "node": "decode", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "decode": {
+    "inputs": {
+      "enable_vae_tiling": {{ enable_vae_tiling | default: false | json }},
+      "tile_x": {{ tile_x | default: 272 | json }},
+      "tile_y": {{ tile_y | default: 272 | json }},
+      "tile_stride_x": {{ tile_stride_x | default: 144 | json }},
+      "tile_stride_y": {{ tile_stride_y | default: 128 | json }},
+      "normalization": "default",
+      "vae": {% assign vae_key = scope | default: "" | append: "vae_output" %}{% get_ref vae_key %},
+      "samples": {% get_ref "latent_output" %}
+    },
+    "class_type": "WanVideoDecode",
+    "_meta": {
+      "title": "WanVideo Decode"
+    }
+  }
+}

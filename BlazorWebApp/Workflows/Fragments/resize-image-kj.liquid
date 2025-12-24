@@ -1,0 +1,27 @@
+{% meta %}
+{
+  "outputs": {
+    "resized_image": { "node": "{{ node_id | default: 'resize_image' }}", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "{{ node_id | default: 'resize_image' }}": {
+    "inputs": {
+      "width": {% assign w_key = width_ref | default: "width" %}{% get_ref w_key %},
+      "height": {% assign h_key = height_ref | default: "height" %}{% get_ref h_key %},
+      "upscale_method": {{ upscale_method | default: "lanczos" | json }},
+      "keep_proportion": {{ keep_proportion | default: "crop" | json }},
+      "pad_color": "0, 0, 0",
+      "crop_position": {{ crop_position | default: "center" | json }},
+      "divisible_by": 16,
+      "device": "cpu",
+      "image": {% assign img_key = image_ref | default: "image_input" %}{% get_ref img_key %}
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "{{ title | default: 'Resize Image' }}"
+    }
+  }
+}

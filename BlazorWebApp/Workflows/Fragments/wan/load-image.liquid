@@ -1,0 +1,51 @@
+{% meta %}
+{
+  "outputs": {
+    "image_output": { "node": "image_resize", "index": 0 },
+    "image_width_output": { "node": "image_resize", "index": 1 },
+    "image_height_output": { "node": "image_resize", "index": 2 },
+    "original_image_output": { "node": "load_image", "index": 0 }
+  },
+  "ui": {
+    "type": "latent",
+    "component": "LatentForm",
+    "title": "Resolution",
+    "icon": "fa-solid fa-image",
+    "order": 30,
+    "parameters": {
+      "width": { "min": 64, "max": 2048, "step": 32, "default": 768 },
+      "height": { "min": 64, "max": 2048, "step": 32, "default": 768 },
+      "batch_size": { "min": 1, "max": 8, "step": 1, "default": 1 }
+    }
+  }
+}
+{% endmeta %}
+
+{
+  "load_image": {
+    "inputs": {
+      "image": {{ image_path | json }}
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "image_resize": {
+    "inputs": {
+      "width": {{ width | default: 768 | json }},
+      "height": {{ height | default: 768 | json }},
+      "upscale_method": "lanczos",
+      "keep_proportion": "resize",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 16,
+      "device": "cpu",
+      "image": ["load_image", 0]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image"
+    }
+  }
+}

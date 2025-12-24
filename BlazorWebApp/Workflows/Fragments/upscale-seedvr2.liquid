@@ -1,0 +1,91 @@
+{% meta %}
+{
+  "outputs": {
+    "image_output": { "node": "seedvr2_upscaler", "index": 0 }
+  },
+  "conditions": {
+    "required": ["seed_vr2.IsActive"]
+  },
+  "ui": {
+    "type": "enhancement",
+    "component": "SeedVR2Form",
+    "title": "SeedVR2 Upscale",
+    "icon": "fa-solid fa-expand",
+    "order": 100,
+    "collapsible": true,
+    "defaultCollapsed": true,
+    "parameters": {
+      "seedvr2_model": { "source": "SeedVR2LoadDiTModel", "input_name": "model" },
+      "seedvr2_vae_model": { "source": "SeedVR2LoadVAEModel", "input_name": "model" },
+      "seedvr2_seed": { "min": -1 },
+      "seedvr2_resolution": { "min": 512, "max": 4096, "step": 64 },
+      "seedvr2_batch_size": { "min": 1, "max": 10, "step": 1 },
+      "seedvr2_input_noise_scale": { "min": 0, "max": 1, "step": 0.01 },
+      "seedvr2_latent_noise_scale": { "min": 0, "max": 1, "step": 0.01 },
+      "blocks_to_swap": { "min": 0, "max": 36, "step": 1 },
+      "vae_tile_size": { "min": 128, "max": 2048, "step": 64 },
+      "vae_tile_overlap": { "min": 0, "max": 512, "step": 32 }
+    }
+  }
+}
+{% endmeta %}
+
+{
+  "seedvr2_load_dit": {
+    "inputs": {
+      "model": {{ seedvr2_model | json }},
+      "device": "cuda:0",
+      "blocks_to_swap": {{ blocks_to_swap | json }},
+      "swap_io_components": false,
+      "offload_device": "cpu",
+      "cache_model": false,
+      "attention_mode": "flash_attn"
+    },
+    "class_type": "SeedVR2LoadDiTModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load DiT Model"
+    }
+  },
+  "seedvr2_load_vae": {
+    "inputs": {
+      "model": {{ seedvr2_vae_model | default: "ema_vae_fp16.safetensors" | json }},
+      "device": "cuda:0",
+      "encode_tiled": true,
+      "encode_tile_size": {{ vae_tile_size | json }},
+      "encode_tile_overlap": {{ vae_tile_overlap | json }},
+      "decode_tiled": true,
+      "decode_tile_size": {{ vae_tile_size | json }},
+      "decode_tile_overlap": {{ vae_tile_overlap | json }},
+      "tile_debug": "false",
+      "offload_device": "cpu",
+      "cache_model": false
+    },
+    "class_type": "SeedVR2LoadVAEModel",
+    "_meta": {
+      "title": "SeedVR2 (Down)Load VAE Model"
+    }
+  },
+  "seedvr2_upscaler": {
+    "inputs": {
+      "seed": {{ seedvr2_seed | json }},
+      "resolution": {{ seedvr2_resolution | json }},
+      "max_resolution": {{ seedvr2_resolution | json }},
+      "batch_size": {{ seedvr2_batch_size | json }},
+      "uniform_batch_size": false,
+      "color_correction": "lab",
+      "temporal_overlap": 16,
+      "prepend_frames": 0,
+      "input_noise_scale": {{ seedvr2_input_noise_scale | json }},
+      "latent_noise_scale": {{ seedvr2_latent_noise_scale | json }},
+      "offload_device": "cpu",
+      "enable_debug": false,
+      "image": {% get_ref "image_output" %},
+      "dit": ["seedvr2_load_dit", 0],
+      "vae": ["seedvr2_load_vae", 0]
+    },
+    "class_type": "SeedVR2VideoUpscaler",
+    "_meta": {
+      "title": "SeedVR2 Video Upscaler (v2.5.18)"
+    }
+  }
+}

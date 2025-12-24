@@ -1,0 +1,28 @@
+{% meta %}
+{
+  "outputs": {
+    "latent_output": {"node": "{{ sampler_id | default: 'sampler' }}", "index": 0}
+  }
+}
+{% endmeta %}
+
+{
+  "{{ sampler_id | default: 'sampler' }}": {
+    "inputs": {
+      "seed": {{ seed | json }},
+      "steps": {{ steps | json }},
+      "cfg": {{ cfg | json }},
+      "sampler_name": {{ sampler_name | json }},
+      "scheduler": {{ scheduler | json }},
+      "denoise": {{ denoise | default: 1 | json }},
+      "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
+      "positive": {% get_ref "positive_output" %},
+      "negative": {% get_ref "negative_output" %},
+      "latent_image": {% get_ref "latent_output" %}
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": {{ title | default: "KSampler" | json }}
+    }
+  }
+}

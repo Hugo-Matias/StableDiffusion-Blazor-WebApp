@@ -1,0 +1,25 @@
+{% meta %}
+{
+  "outputs": {
+    "{{ scope | default: '' }}text_embeds": { "node": "{{ scope | default: '' }}text_encode", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "{{ scope | default: '' }}text_encode": {
+    "inputs": {
+      "model_name": {{ text_encoder_name | json }},
+      "precision": {{ precision | default: "bf16" | json }},
+      "positive_prompt": {{ positive | json }},
+      "negative_prompt": {{ negative | default: "" | json }},
+      "quantization": "disabled",
+      "use_disk_cache": true,
+      "device": "gpu"
+    },
+    "class_type": "WanVideoTextEncodeCached",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}WanVideo TextEncode"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{% meta %}
+{
+  "outputs": {
+    "model_output": { "node": "{{ lora_loader_id }}", "index": 0 },
+    "clip_output": { "node": "{{ lora_loader_id }}", "index": 1 }
+  }
+}
+{% endmeta %}
+
+{
+  "{{ lora_loader_id }}": {
+    "inputs": {
+      "lora_name": {{ lora_path | default: lora_name | json }},
+      "strength_model": {{ lora_strength | json }},
+      "strength_clip": {{ lora_strength_clip | default: 1.0 | json }},
+      "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
+      "clip": {% assign clip_key = scope | default: "" | append: "clip_output" %}{% get_ref clip_key %}
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "LoRA Loader"
+    }
+  }
+}

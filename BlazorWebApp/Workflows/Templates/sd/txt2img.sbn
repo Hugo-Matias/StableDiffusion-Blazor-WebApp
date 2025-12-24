@@ -8,7 +8,7 @@
   "Pipeline": [
     {
       "id": "loader_sd",
-      "fragment": "load-checkpoint.sbn",
+      "fragment": "load-checkpoint.liquid",
       "parameters": {
         "loader_id": "model_loader",
         "ckpt_name": {{ Model | json }},
@@ -18,7 +18,7 @@
     },
     {
       "id": "latent",
-      "fragment": "empty-latent.sbn",
+      "fragment": "empty-latent.liquid",
       "parameters": {
         "width": {{ width ?? 512 | json }},
         "height": {{ height ?? 768 | json }},
@@ -28,7 +28,7 @@
     },
     {
       "id": "main_sampler",
-      "fragment": "sampler.sbn",
+      "fragment": "sampler.liquid",
       "parameters": {
         "title": "Main Sampler",
         "sampler_id": "sampler_main",
@@ -41,7 +41,7 @@
      },
      {
       "id": "upscale",
-      "fragment": "upscale.sbn",
+      "fragment": "upscale.liquid",
       "parameters": {
         "upscale_model": {{ upscale_model ?? "4x-UltraSharpV2.safetensors" | json }},
         "upscale_width": {{ upscale_width ?? 1024 | json }},
@@ -56,12 +56,12 @@
     },
     {
       "id": "vae_decode",
-      "fragment": "vae-decode.sbn",
+      "fragment": "vae-decode.liquid",
       "parameters": {}
     },
     {
       "id": "seed_vr2",
-      "fragment": "upscale-seedvr2.sbn",
+      "fragment": "upscale-seedvr2.liquid",
       "parameters": {
         "seedvr2_model": {{ seed_vr2_model ?? "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
         "seedvr2_vae_model": {{ seed_vr2_vae_model ?? "ema_vae_fp16.safetensors" | json }},
@@ -77,7 +77,7 @@
     },
     {
       "id": "loader_detailer",
-      "fragment": "load-checkpoint.sbn",
+      "fragment": "load-checkpoint.liquid",
       "parameters": {
         "scope": "detailer_",
         "scope_title": "Detailer ",
@@ -93,7 +93,7 @@
     },
     {
       "id": "detailer",
-      "fragment": "detailer-core.sbn",
+      "fragment": "detailer-core.liquid",
       "parameters": {
         "scope": "detailer_",
         "detailer_detection_model": {{ detailer_model ?? "bbox/face_yolov8m.pt" | json }},
@@ -115,7 +115,7 @@
     },
     {
       "id": "save",
-      "fragment": "save.sbn",
+      "fragment": "save.liquid",
       "parameters": {}
     }
   ]

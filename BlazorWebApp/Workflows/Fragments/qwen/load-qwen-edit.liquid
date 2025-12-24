@@ -1,0 +1,73 @@
+{% meta %}
+{
+  "outputs": {
+    "{{ scope | default: '' }}model_output": { "node": "{{ scope | default: '' }}cfg_norm", "index": 0 },
+    "{{ scope | default: '' }}clip_output": { "node": "{{ scope | default: '' }}clip_loader", "index": 0 },
+    "{{ scope | default: '' }}vae_output": { "node": "{{ scope | default: '' }}vae_loader", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "{{ scope | default: '' }}unet_loader": {
+    "inputs": {
+      "unet_name": {{ unet_name | json }},
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Load Diffusion Model"
+    }
+  },
+  "{{ scope | default: '' }}clip_loader": {
+    "inputs": {
+      "clip_name": {{ clip_name | json }},
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Load CLIP"
+    }
+  },
+  "{{ scope | default: '' }}vae_loader": {
+    "inputs": {
+      "vae_name": {{ vae_name | json }}
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}Load VAE"
+    }
+  },
+  "{{ scope | default: '' }}lora_loader": {
+    "inputs": {
+      "lora_name": {{ lora_name | default: "Speed/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors" | json }},
+      "strength_model": {{ lora_strength | default: 1 | json }},
+      "model": ["{{ scope | default: '' }}unet_loader", 0]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}LoRA Loader (Lightning)"
+    }
+  },
+  "{{ scope | default: '' }}model_sampling": {
+    "inputs": {
+      "shift": {{ model_shift | default: 3 | json }},
+      "model": ["{{ scope | default: '' }}lora_loader", 0]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}ModelSamplingAuraFlow"
+    }
+  },
+  "{{ scope | default: '' }}cfg_norm": {
+    "inputs": {
+      "strength": {{ cfg_norm_strength | default: 1 | json }},
+      "model": ["{{ scope | default: '' }}model_sampling", 0]
+    },
+    "class_type": "CFGNorm",
+    "_meta": {
+      "title": "{{ scope_title | default: '' }}CFGNorm"
+    }
+  }
+}

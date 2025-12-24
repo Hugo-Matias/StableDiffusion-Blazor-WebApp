@@ -13,7 +13,7 @@
   "Pipeline": [
     {
       "id": "load_image",
-      "fragment": "load-image-scaled.sbn",
+      "fragment": "load-image-scaled.liquid",
       "parameters": {
         "image": {{ Image | json }},
         "megapixels": {{ Megapixels ?? 1 | json }},
@@ -22,7 +22,7 @@
     },
     {
       "id": "loader_qwen_edit",
-      "fragment": "qwen/load-qwen-edit.sbn",
+      "fragment": "qwen/load-qwen-edit.liquid",
       "parameters": {
         "unet_name": {{ Model | json }},
         "clip_name": {{ Clip | json }},
@@ -35,12 +35,12 @@
     },
     {
       "id": "vae_encode",
-      "fragment": "vae-encode.sbn",
+      "fragment": "vae-encode.liquid",
       "parameters": {}
     },
     {
       "id": "encode_edit",
-      "fragment": "qwen/encode-edit.sbn",
+      "fragment": "qwen/encode-edit.liquid",
       "parameters": {
         "positive": {{ Prompt | json }},
         "negative": {{ NegativePrompt ?? "" | json }}
@@ -48,7 +48,7 @@
     },
     {
       "id": "main_sampler",
-      "fragment": "sampler-standard.sbn",
+      "fragment": "sampler-standard.liquid",
       "parameters": {
         "title": "KSampler",
         "sampler_id": "sampler_main",
@@ -62,12 +62,12 @@
     },
     {
       "id": "vae_decode",
-      "fragment": "vae-decode.sbn",
+      "fragment": "vae-decode.liquid",
       "parameters": {}
     },
     {
       "id": "save",
-      "fragment": "save.sbn",
+      "fragment": "save.liquid",
       "parameters": {}
     }
   ]

@@ -1,0 +1,31 @@
+{% meta %}
+{
+  "outputs": {
+    "clip_output": { "node": "clip_loader", "index": 0 },
+    "vae_output": { "node": "vae_loader", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "clip_loader": {
+    "inputs": {
+      "clip_name": {{ clip_name | json }},
+      "type": {{ clip_type | default: "wan" | json }},
+      "device": {{ clip_device | default: "cpu" | json }}
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "vae_loader": {
+    "inputs": {
+      "vae_name": {{ vae_name | json }}
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  }
+}

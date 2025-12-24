@@ -1,0 +1,42 @@
+{% meta %}
+{
+  "outputs": {
+    "positive_output": { "node": "positive_encode", "index": 0 },
+    "negative_output": { "node": "negative_encode", "index": 0 }
+  },
+  "ui": {
+    "type": "prompts",
+    "component": "PromptsForm",
+    "title": "Prompts",
+    "order": 10,
+    "collapsible": false,
+    "parameters": {
+      "positive": { },
+      "negative": { }
+    }
+  }
+}
+{% endmeta %}
+
+{
+  "positive_encode": {
+    "inputs": {
+      "text": {{ positive | json }},
+      "clip": {% assign clip_key = scope | default: "" | append: "clip_output" %}{% get_ref clip_key %}
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode-Positive"
+    }
+  },
+  "negative_encode": {
+    "inputs": {
+      "text": {{ negative | default: "" | json }},
+      "clip": {% assign clip_key2 = scope | default: "" | append: "clip_output" %}{% get_ref clip_key2 %}
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode-Negative"
+    }
+  }
+}

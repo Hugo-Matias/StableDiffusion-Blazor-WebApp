@@ -1,0 +1,19 @@
+{% meta %}
+{
+  "outputs": {
+    "{% if scope %}{{ scope }}{% endif %}clip_vision_output": { "node": "{% if scope %}{{ scope }}{% endif %}clip_vision_loader", "index": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  "{% if scope %}{{ scope }}{% endif %}clip_vision_loader": {
+    "inputs": {
+      "clip_name": {{ clip_vision_name | json }}
+    },
+    "class_type": "CLIPVisionLoader",
+    "_meta": {
+      "title": "{% if scope_title %}{{ scope_title }}{% endif %}Load CLIP Vision"
+    }
+  }
+}
