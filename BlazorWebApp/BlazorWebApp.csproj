@@ -18,6 +18,9 @@
   <None Update="Workflows\**\*.sbn">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </None>
+  <None Update="Workflows\**\*.liquid">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
 </ItemGroup>
 
 
@@ -67,6 +70,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="BlazorWebApp\Services\Templating\Pipeline\" />
     <Folder Include="Components\Txt2Img\" />
     <Folder Include="Data\Dictionaries\" />
     <Folder Include="Workflows\Fragments\utils\" />

@@ -16,7 +16,7 @@
       "fragment": "load-image-scaled.liquid",
       "parameters": {
         "image": {{ Image | json }},
-        "megapixels": {{ Megapixels ?? 1 | json }},
+        "megapixels": {{ Megapixels | default: 1 | json }},
         "upscale_method": "lanczos"
       }
     },
@@ -27,10 +27,10 @@
         "unet_name": {{ Model | json }},
         "clip_name": {{ Clip | json }},
         "vae_name": {{ Vae | json }},
-        "lora_name": {{ LightningLora ?? "Speed/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors" | json }},
-        "lora_strength": {{ LoraStrength ?? 1 | json }},
-        "model_shift": {{ ModelShift ?? 3 | json }},
-        "cfg_norm_strength": {{ CfgNormStrength ?? 1 | json }}
+        "lora_name": {{ LightningLora | default: "Speed/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors" | json }},
+        "lora_strength": {{ LoraStrength | default: 1 | json }},
+        "model_shift": {{ ModelShift | default: 3 | json }},
+        "cfg_norm_strength": {{ CfgNormStrength | default: 1 | json }}
       }
     },
     {
@@ -43,7 +43,7 @@
       "fragment": "qwen/encode-edit.liquid",
       "parameters": {
         "positive": {{ Prompt | json }},
-        "negative": {{ NegativePrompt ?? "" | json }}
+        "negative": {{ NegativePrompt | default: "" | json }}
       }
     },
     {
@@ -52,12 +52,12 @@
       "parameters": {
         "title": "KSampler",
         "sampler_id": "sampler_main",
-        "sampler_name": {{ SamplerName ?? "euler" | json }},
-        "scheduler": {{ Scheduler ?? "simple" | json }},
-        "steps": {{ Steps ?? 4 | json }},
-        "cfg": {{ CfgScale ?? 1 | json }},
-        "denoise": {{ Denoise ?? 1 | json }},
-        "seed": {{ Seed ?? 42 | json }}
+        "sampler_name": {{ SamplerName | default: "euler" | json }},
+        "scheduler": {{ Scheduler | default: "simple" | json }},
+        "steps": {{ Steps | default: 4 | json }},
+        "cfg": {{ CfgScale | default: 1 | json }},
+        "denoise": {{ Denoise | default: 1 | json }},
+        "seed": {{ Seed | default: 42 | json }}
       }
     },
     {

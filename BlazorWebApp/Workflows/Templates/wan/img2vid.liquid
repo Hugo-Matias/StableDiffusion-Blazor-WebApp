@@ -41,59 +41,47 @@
         "vae_name": {{ Vae | json }}
       }
     },
-    {{~ if Loras && Loras.size > 0 ~}}
-    {{~ for lora in Loras ~}}
-    {{~ if lora.HighPath && lora.HighPath != "" ~}}
     {
-      "id": "lora_high_{{ for.index }}",
-      "fragment": "wan/lora-loader-model-only.liquid",
-      "parameters": {
-        "lora_loader_id": "high_lora_loader_{{ for.index }}",
-        "lora_name": {{ lora.Name | json }},
-        "lora_path": {{ lora.HighPath | json }},
-        "lora_strength": {{ lora.Strength | json }},
-        "model_input_name": "high_model_output",
-        "model_output_name": "high_lora_model_output",
-        "title": "LoRA (High) {{ for.index }}"
+      "$foreach": "HighLoras",
+      "$as": "lora",
+      "$template": {
+        "id": "lora_high_{{ $index }}",
+        "fragment": "wan/lora-loader-model-only.liquid",
+        "parameters": {
+          "lora_loader_id": "high_lora_loader_{{ $index }}",
+          "lora_name": "{{ lora.Name }}",
+          "lora_path": "{{ lora.HighPath }}",
+          "lora_strength": "{{ lora.Strength }}",
+          "model_input_name": "high_model_output",
+          "model_output_name": "high_lora_model_output",
+          "title": "LoRA (High) {{ $index }}"
+        }
       }
     },
-    {{~ end ~}}
-    {{~ if lora.LowPath && lora.LowPath != "" ~}}
     {
-      "id": "lora_low_{{ for.index }}",
-      "fragment": "wan/lora-loader-model-only.liquid",
-      "parameters": {
-        "lora_loader_id": "low_lora_loader_{{ for.index }}",
-        "lora_name": {{ lora.Name | json }},
-        "lora_path": {{ lora.LowPath | json }},
-        "lora_strength": {{ lora.Strength | json }},
-        "model_input_name": "low_model_output",
-        "model_output_name": "low_lora_model_output",
-        "title": "LoRA (Low) {{ for.index }}"
+      "$foreach": "LowLoras",
+      "$as": "lora",
+      "$template": {
+        "id": "lora_low_{{ $index }}",
+        "fragment": "wan/lora-loader-model-only.liquid",
+        "parameters": {
+          "lora_loader_id": "low_lora_loader_{{ $index }}",
+          "lora_name": "{{ lora.Name }}",
+          "lora_path": "{{ lora.LowPath }}",
+          "lora_strength": "{{ lora.Strength }}",
+          "model_input_name": "low_model_output",
+          "model_output_name": "low_lora_model_output",
+          "title": "LoRA (Low) {{ $index }}"
+        }
       }
     },
-    {{~ end ~}}
-    {{~ end ~}}
-    {{~ end ~}}
     {
       "id": "model_sampling_high",
       "fragment": "wan/model-sampling-sd3.liquid",
       "parameters": {
         "sampler_id": "high_model_sampling",
-        "shift": {{ shift ?? 5 | json }},
-        {{~ has_high_lora = false ~}}
-        {{~ if Loras && Loras.size > 0 ~}}
-        {{~ for lora in Loras ~}}
-        {{~ if lora.HighPath && lora.HighPath != "" ~}}
-        {{~ has_high_lora = true ~}}
-        {{~ end ~}}
-        {{~ end ~}}
-        {{~ end ~}}
-        {{~ if has_high_lora ~}}
-        "model_input_name": "high_lora_model_output",
-        {{~ else ~}}
-        "model_input_name": "high_model_output",
-        {{~ end ~}}
+        "shift": {{ shift | default: 5 | json }},
+        "model_input_name": "$compute:high_model_input",
         "model_output_name": "high_sampled_model_output",
         "title": "ModelSamplingSD3 (High)"
       }
@@ -103,20 +91,8 @@
       "fragment": "wan/model-sampling-sd3.liquid",
       "parameters": {
         "sampler_id": "low_model_sampling",
-        "shift": {{ shift ?? 5 | json }},
-        {{~ has_low_lora = false ~}}
-        {{~ if Loras && Loras.size > 0 ~}}
-        {{~ for lora in Loras ~}}
-        {{~ if lora.LowPath && lora.LowPath != "" ~}}
-        {{~ has_low_lora = true ~}}
-        {{~ end ~}}
-        {{~ end ~}}
-        {{~ end ~}}
-        {{~ if has_low_lora ~}}
-        "model_input_name": "low_lora_model_output",
-        {{~ else ~}}
-        "model_input_name": "low_model_output",
-        {{~ end ~}}
+        "shift": {{ shift | default: 5 | json }},
+        "model_input_name": "$compute:low_model_input",
         "model_output_name": "low_sampled_model_output",
         "title": "ModelSamplingSD3 (Low)"
       }
@@ -126,8 +102,8 @@
       "fragment": "wan/load-image.liquid",
       "parameters": {
         "image_path": {{ image | json }},
-        "width": {{ width ?? 768 | json }},
-        "height": {{ height ?? 768 | json }}
+        "width": {{ width | default: 768 | json }},
+        "height": {{ height | default: 768 | json }}
       }
     },
     {
@@ -149,9 +125,9 @@
       "id": "video_settings",
       "fragment": "wan/painter-i2v.liquid",
       "parameters": {
-        "length": {{ video_length ?? 81 | json }},
-        "batch_size": {{ batch_size ?? 1 | json }},
-        "motion_amplitude": {{ motion_amplitude ?? 1.1 | json }}
+        "length": {{ video_length | default: 81 | json }},
+        "batch_size": {{ batch_size | default: 1 | json }},
+        "motion_amplitude": {{ motion_amplitude | default: 1.1 | json }}
       }
     },
     {
@@ -159,13 +135,13 @@
       "fragment": "wan/sampler-advanced.liquid",
       "parameters": {
         "sampler_id": "sampler_high",
-        "seed": {{ seed ?? 42 | json }},
-        "steps": {{ steps ?? 8 | json }},
-        "cfg": {{ cfg ?? 1 | json }},
-        "sampler_name": {{ sampler_name ?? "euler" | json }},
-        "scheduler": {{ scheduler ?? "simple" | json }},
+        "seed": {{ seed | default: 42 | json }},
+        "steps": {{ steps | default: 8 | json }},
+        "cfg": {{ cfg | default: 1 | json }},
+        "sampler_name": {{ sampler_name | default: "euler" | json }},
+        "scheduler": {{ scheduler | default: "simple" | json }},
         "start_at_step": 0,
-        "end_at_step": {{ (steps ?? 8) / 2 | math.round | json }},
+        "end_at_step": "$compute:half_steps",
         "add_noise": "enable",
         "return_with_leftover_noise": "enable",
         "model_input_name": "high_sampled_model_output",
@@ -179,11 +155,11 @@
         "with_ui": false,
         "sampler_id": "sampler_low",
         "seed": 0,
-        "steps": {{ steps ?? 8 | json }},
-        "cfg": {{ cfg ?? 1 | json }},
-        "sampler_name": {{ sampler_name ?? "euler" | json }},
-        "scheduler": {{ scheduler ?? "simple" | json }},
-        "start_at_step": {{ (steps ?? 8) / 2 | math.round | json }},
+        "steps": {{ steps | default: 8 | json }},
+        "cfg": {{ cfg | default: 1 | json }},
+        "sampler_name": {{ sampler_name | default: "euler" | json }},
+        "scheduler": {{ scheduler | default: "simple" | json }},
+        "start_at_step": "$compute:half_steps",
         "end_at_step": 10000,
         "add_noise": "disable",
         "return_with_leftover_noise": "disable",
@@ -210,12 +186,13 @@
       }
     },
     {
+      "$if": "frame_interpolation.IsActive",
       "id": "frame_interpolation",
       "fragment": "wan/frame-interpolation.liquid",
       "parameters": {
-        "scale_by": {{ frame_interpolation_scale_by ?? 2.0 | json }},
-        "frame_multiplier": {{ frame_interpolation_multiplier ?? 2 | json }},
-        "rife_model": {{ frame_interpolation_rife_model ?? "rife49.pth" | json }}
+        "scale_by": {{ frame_interpolation_scale_by | default: 2.0 | json }},
+        "frame_multiplier": {{ frame_interpolation_multiplier | default: 2 | json }},
+        "rife_model": {{ frame_interpolation_rife_model | default: "rife49.pth" | json }}
       }
     },
     {
@@ -223,13 +200,8 @@
       "fragment": "save-video.liquid",
       "parameters": {
         "node_id": "video_output",
-        {{~ if frame_interpolation_is_active ~}}
-        "frame_rate": {{ (frame_rate ?? 16) * (frame_interpolation_multiplier ?? 2) | json }},
-        "image_input_name": "frames_output"
-        {{~ else ~}}
-        "frame_rate": {{ frame_rate ?? 16 | json }},
-        "image_input_name": "image_output"
-        {{~ end ~}}
+        "frame_rate": "$compute:output_frame_rate",
+        "image_input_name": "$compute:video_save_input"
       }
     }
   ]

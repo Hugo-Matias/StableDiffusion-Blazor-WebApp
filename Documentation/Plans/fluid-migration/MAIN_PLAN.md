@@ -1,7 +1,7 @@
 ﻿# Fluid Template Engine Migration - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 3 Complete ✅ - Ready for Phase 4
+**Current Phase:** Phase 5 In Progress - Workflow Template Conversion
 
 ---
 
@@ -209,54 +209,48 @@ Fragment File → Fluid Parse (handles {% meta %} block natively)
 
 ---
 
-### Phase 4: Template Conversion (Complex Fragments)
-**Objective:** Convert fragments with conditionals, loops, and dynamic keys
-**Complexity:** 8 points
-**Status:** [ ] Not Started
+### Phase 4: Template Conversion (All Remaining Fragments)
+**Objective:** Convert ALL fragments (simple, complex, WAN) to Fluid syntax
+**Complexity:** 53 points
+**Status:** [x] Complete ✅
 
-#### Target Fragments
-- [ ] `wan/load-model-sage.sbn` → `wan/load-model-sage.liquid` (the problematic one)
-- [ ] `lora-loader.sbn` → `lora-loader.liquid`
-- [ ] `prompts.sbn` → `prompts.liquid`
-- [ ] `sampler.sbn` → `sampler.liquid`
-- [ ] `conditioning-variation.sbn` → `conditioning-variation.liquid`
+#### Accomplishments
+- [x] Converted 50 fragment files from Scriban to Fluid syntax
+- [x] Renamed all fragments from `.sbn` to `.liquid`
+- [x] Deleted unused `utils/condition-helpers.sbn`
+- [x] Updated workflow templates to reference `.liquid` fragments
+- [x] All 53 tests passing
 
-#### Steps
-- [ ] Convert loop syntax (`for.index` → `forloop.index0`)
-- [ ] Convert string concatenation (`+` → `append` filter)
-- [ ] Update conditional blocks (`{{~ if ~}}` → `{% if %}`)
-- [ ] Test dynamic output key registration
-- [ ] Validate node reference resolution
-
-#### Success Criteria
-- Complex fragments render without parser bleeding
-- Dynamic output keys work correctly (e.g., `{{ model_output_name }}`)
-- Loop variables resolve properly
-- All node references resolve correctly
+#### Key Patterns Established
+- Dynamic get_ref with assign: `{% assign ref_key = scope | default: "" | append: "model_output" %}{% get_ref ref_key %}`
+- Conditional scope in keys: `{% if scope %}{{ scope }}{% endif %}node_id`
+- string_contains filter for scope conditionals
 
 ---
 
 ### Phase 5: Workflow Template Conversion
-**Objective:** Convert main workflow templates
-**Complexity:** 5 points
-**Status:** [ ] Not Started
+**Objective:** Convert main workflow templates from Scriban to Fluid
+**Complexity:** 37 points
+**Status:** [~] In Progress
 
 #### Target Templates
-- [ ] `z-image/txt2img.sbn` → `z-image/txt2img.liquid`
+- [ ] `chroma/txt2img.sbn` → `chroma/txt2img.liquid`
 - [ ] `flux/txt2img.sbn` → `flux/txt2img.liquid`
+- [ ] `qwen/img2img-edit.sbn` → `qwen/img2img-edit.liquid`
+- [ ] `qwen/txt2img.sbn` → `qwen/txt2img.liquid`
+- [ ] `sd/txt2img.sbn` → `sd/txt2img.liquid`
 - [ ] `wan/img2vid.sbn` → `wan/img2vid.liquid`
+- [ ] `wan/pose2vid-steadydancer.sbn` → `wan/pose2vid-steadydancer.liquid`
+- [ ] `z-image/txt2img.sbn` → `z-image/txt2img.liquid`
 
 #### Steps
-- [ ] Convert workflow pipeline syntax
-- [ ] Update LoRA loop syntax
-- [ ] Test full workflow rendering end-to-end
-- [ ] Validate generated ComfyUI payload structure
-
-#### Success Criteria
-- All workflows render complete JSON payloads
-- Pipeline steps execute in correct order
-- LoRA loops generate correct nodes
-- Payload structure matches Scriban baseline
+- [ ] Update WorkflowService for full Fluid workflow template support
+- [ ] Convert for loop syntax (`for.index` → `forloop.index0`)
+- [ ] Convert conditional blocks (`{{~ if ~}}` → `{% if %}`)
+- [ ] Convert variable assignments
+- [ ] Convert math operations
+- [ ] Update file loading to use `.liquid`
+- [ ] Full end-to-end testing
 
 ---
 

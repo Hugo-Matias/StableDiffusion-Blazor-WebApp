@@ -24,6 +24,13 @@ namespace BlazorWebApp.Models
         
         public List<WorkflowStep> Pipeline { get; set; }
         public string RawJson { get; set; }
+        
+        /// <summary>
+        /// Indicates whether this workflow uses Fluid/Liquid template syntax (.liquid extension).
+        /// When true, composition uses PipelineExpander for $foreach, $if, $compute markers.
+        /// When false (legacy .sbn), composition uses Scriban rendering.
+        /// </summary>
+        public bool IsFluidTemplate { get; set; }
     }
 
     /// <summary>
@@ -109,5 +116,20 @@ namespace BlazorWebApp.Models
             foreach (var kvp in other._outputs)
                 _outputs[kvp.Key] = kvp.Value;
         }
+
+        /// <summary>
+        /// Returns all registered outputs for iteration.
+        /// </summary>
+        public IReadOnlyDictionary<string, (string nodeId, int index)> All => _outputs;
+
+        /// <summary>
+        /// Returns the keys of all registered outputs.
+        /// </summary>
+        public IEnumerable<string> Keys => _outputs.Keys;
+
+        /// <summary>
+        /// Returns the count of registered outputs.
+        /// </summary>
+        public int Count => _outputs.Count;
     }
 }

@@ -2,6 +2,7 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using BlazorWebApp.Services.Templating;
+using BlazorWebApp.Services.Templating.Pipeline;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -16,6 +17,10 @@ public class WorkflowServiceTests
     private readonly Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
     private readonly Mock<ILogger<TemplateCacheService>> _mockCacheLogger;
     private readonly Mock<ILogger<FluidTemplateService>> _mockFluidLogger;
+    private readonly Mock<ILogger<PipelineExpander>> _mockExpanderLogger;
+    private readonly Mock<ILogger<ComputeRegistry>> _mockComputeLogger;
+    private readonly Mock<ILogger<ForeachProcessor>> _mockForeachLogger;
+    private readonly Mock<ILogger<ConditionalProcessor>> _mockConditionalLogger;
 
     public WorkflowServiceTests()
     {
@@ -24,6 +29,10 @@ public class WorkflowServiceTests
         _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
         _mockCacheLogger = new Mock<ILogger<TemplateCacheService>>();
         _mockFluidLogger = new Mock<ILogger<FluidTemplateService>>();
+        _mockExpanderLogger = new Mock<ILogger<PipelineExpander>>();
+        _mockComputeLogger = new Mock<ILogger<ComputeRegistry>>();
+        _mockForeachLogger = new Mock<ILogger<ForeachProcessor>>();
+        _mockConditionalLogger = new Mock<ILogger<ConditionalProcessor>>();
     }
 
     private WorkflowService CreateWorkflowService(IIOService ioService)
@@ -32,9 +41,20 @@ public class WorkflowServiceTests
         var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
         var templateCacheService = new TemplateCacheService(_mockCacheLogger.Object);
         var fluidTemplateService = new FluidTemplateService(_mockFluidLogger.Object);
+
+        // Create pipeline processors
+        var computeRegistry = new ComputeRegistry(_mockComputeLogger.Object);
+        var processors = new List<IPipelineProcessor>
+        {
+            new ForeachProcessor(_mockForeachLogger.Object),
+            new ConditionalProcessor(_mockConditionalLogger.Object)
+        };
+        var pipelineExpander = new PipelineExpander(_mockExpanderLogger.Object, processors, computeRegistry);
+
         return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService,
             fluidTemplateService,
-            new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object));
+            new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object),
+            pipelineExpander);
     }
 
     #region Workflow Model Tests

@@ -1,6 +1,7 @@
 using BlazorWebApp.Data;
 using BlazorWebApp.Services;
 using BlazorWebApp.Services.Templating;
+using BlazorWebApp.Services.Templating.Pipeline;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using MudBlazor;
@@ -69,7 +70,10 @@ builder.Services.AddSingleton<IResourcesService, ResourcesService>();
 builder.Services.AddSingleton<IRouterService, RouterService>();
 
 // Workflow service - interface-only
-builder.Services.AddSingleton<WorkflowTemplateParser>();
+builder.Services.AddSingleton<WorkflowTemplateParser>(sp => 
+    new WorkflowTemplateParser(
+        sp.GetRequiredService<ILogger<WorkflowTemplateParser>>(),
+        sp.GetRequiredService<IFluidTemplateService>()));
 builder.Services.AddSingleton<IFragmentSchemaService, FragmentSchemaService>();
 builder.Services.AddSingleton<FragmentConditionValidator>();
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
@@ -104,6 +108,12 @@ builder.Services.AddSingleton<ITemplateCacheService, TemplateCacheService>();
 
 // Fluid template service for Liquid template rendering (replaces Scriban for fragments)
 builder.Services.AddSingleton<IFluidTemplateService, FluidTemplateService>();
+
+// Pipeline processors for workflow template expansion
+builder.Services.AddSingleton<ComputeRegistry>();
+builder.Services.AddSingleton<IPipelineProcessor, ForeachProcessor>();
+builder.Services.AddSingleton<IPipelineProcessor, ConditionalProcessor>();
+builder.Services.AddSingleton<PipelineExpander>();
 
 // Workflow validation service for startup template validation
 builder.Services.AddSingleton<IWorkflowValidationService, WorkflowValidationService>();

@@ -49,6 +49,8 @@ namespace BlazorWebApp.Models
             public const string FrameInterpolation = "frame_interpolation";
             public const string LoadWanModel = "load_wan_model";
             public const string SamplerWan = "sampler_wan";
+            public const string Video = "video_settings";
+            public const string PainterI2V = "painter_i2v";
 
             // Optional feature fragments
             public const string SeedVR2 = "seed_vr2";

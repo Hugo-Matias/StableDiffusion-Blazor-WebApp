@@ -1,5 +1,6 @@
 using BlazorWebApp.Services;
 using BlazorWebApp.Services.Templating;
+using BlazorWebApp.Services.Templating.Pipeline;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -16,6 +17,10 @@ public class MockWorkflowServiceBuilder
     private Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
     private Mock<ILogger<TemplateCacheService>> _mockCacheLogger;
     private Mock<ILogger<FluidTemplateService>> _mockFluidLogger;
+    private Mock<ILogger<PipelineExpander>> _mockExpanderLogger;
+    private Mock<ILogger<ComputeRegistry>> _mockComputeLogger;
+    private Mock<ILogger<ForeachProcessor>> _mockForeachLogger;
+    private Mock<ILogger<ConditionalProcessor>> _mockConditionalLogger;
     private IOService _ioService;
     private string _tempPath;
 
@@ -26,6 +31,10 @@ public class MockWorkflowServiceBuilder
         _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
         _mockCacheLogger = new Mock<ILogger<TemplateCacheService>>();
         _mockFluidLogger = new Mock<ILogger<FluidTemplateService>>();
+        _mockExpanderLogger = new Mock<ILogger<PipelineExpander>>();
+        _mockComputeLogger = new Mock<ILogger<ComputeRegistry>>();
+        _mockForeachLogger = new Mock<ILogger<ForeachProcessor>>();
+        _mockConditionalLogger = new Mock<ILogger<ConditionalProcessor>>();
         _tempPath = Path.Combine(Path.GetTempPath(), $"WorkflowTests_{Guid.NewGuid()}");
     }
 
@@ -63,14 +72,19 @@ public class MockWorkflowServiceBuilder
         var templateCacheService = new TemplateCacheService(_mockCacheLogger.Object);
         var fluidTemplateService = new FluidTemplateService(_mockFluidLogger.Object);
 
-        // Note: WorkflowService uses hardcoded path from AppContext.BaseDirectory
-        // For testing, we'd need to either:
-        // 1. Make the path injectable
-        // 2. Create files in the expected location
-        // 3. Use reflection to override
+        // Create pipeline processors
+        var computeRegistry = new ComputeRegistry(_mockComputeLogger.Object);
+        var processors = new List<IPipelineProcessor>
+        {
+            new ForeachProcessor(_mockForeachLogger.Object),
+            new ConditionalProcessor(_mockConditionalLogger.Object)
+        };
+        var pipelineExpander = new PipelineExpander(_mockExpanderLogger.Object, processors, computeRegistry);
+
         return new WorkflowService(_ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService,
             fluidTemplateService,
-            new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object));
+            new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object),
+            pipelineExpander);
     }
 
     public void Cleanup()

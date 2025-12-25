@@ -1,0 +1,154 @@
+{
+  "Title": "Txt2Img",
+  "Base": "ZImage",
+  "Mode": "txt2img",
+  "Assets": [
+    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "z_image_turbo_bf16.safetensors", "order": 1, "columnSize": 4 },
+    { "parameter": "Clip", "label": "CLIP", "type": "Clip", "default": "qwen_3_4b.safetensors", "order": 2, "columnSize": 4 },
+    { "parameter": "Vae", "label": "VAE", "type": "Vae", "default": "ae.safetensors", "order": 3, "columnSize": 4 }
+  ],
+  "Pipeline": [
+    {
+      "id": "loader_zimage",
+      "fragment": "load-diffusion.liquid",
+      "parameters": {
+        "unet_name": {{ Model | json }},
+        "clip_name": {{ Clip | json }},
+        "clip_type": "lumina2",
+        "vae_name": {{ Vae | json }}
+      }
+    },
+    {
+      "id": "latent",
+      "fragment": "empty-latent.liquid",
+      "parameters": {
+        "width": {{ width | default: 872 | json }},
+        "height": {{ height | default: 1248 | json }},
+        "batch_size": {{ batch_size | default: 1 | json }},
+        "latent_class": "EmptySD3LatentImage"
+      }
+    },
+    {
+      "$foreach": "Loras",
+      "$as": "lora",
+      "$template": {
+        "id": "lora_{{ $index }}",
+        "fragment": "lora-loader.liquid",
+        "parameters": {
+          "lora_loader_id": "lora_loader_{{ $index }}",
+          "lora_name": "{{ lora.Name }}",
+          "lora_path": "{{ lora.Path }}",
+          "lora_strength": "{{ lora.Strength }}"
+        }
+      }
+    },
+    {
+      "id": "prompts",
+      "fragment": "prompts.liquid",
+      "parameters": {
+        "positive": {{ positive | json }},
+        "negative": {{ negative | json }}
+      }
+    },
+    {
+      "id": "seed_variance_enhancer",
+      "fragment": "seed-variance-enhancer.liquid",
+      "parameters": {
+        "randomize_percent": {{ seed_variance_enhancer_randomize_percent | default: 50 | json }},
+        "strength": {{ seed_variance_enhancer_strength | default: 20 | json }},
+        "noise_insert": {{ seed_variance_enhancer_noise_insert | default: "noise on beginning steps" | json }},
+        "steps_switchover_percent": {{ seed_variance_enhancer_steps_switchover_percent | default: 20 | json }},
+        "seed": {{ seed_variance_enhancer_seed | default: 0 | json }},
+        "mask_starts_at": {{ seed_variance_enhancer_mask_starts_at | default: "beginning" | json }},
+        "mask_percent": {{ seed_variance_enhancer_mask_percent | default: 0 | json }},
+        "log_to_console": {{ seed_variance_enhancer_log_to_console | default: false | json }}
+      }
+    },
+    {
+      "id": "conditioning_variation",
+      "fragment": "conditioning-variation.liquid",
+      "parameters": {
+        "switch_point": {{ conditioning_variation_switch_point | default: 0.2 | json }}
+      }
+    },   
+    {
+      "id": "main_sampler",
+      "fragment": "sampler.liquid",
+      "parameters": {
+        "title": "Main Sampler",
+        "sampler_id": "sampler_main",
+        "sampler_name": {{ sampler_name | default: "linear/euler" | json }},
+        "scheduler": {{ scheduler | default: "simple" | json }},
+        "steps": {{ steps | default: 9 | json }},
+        "cfg": {{ cfg | default: 1 | json }},
+        "seed": {{ seed | default: 42 | json }}
+       }
+     },
+     {
+       "id": "vae_decode",
+       "fragment": "vae-decode.liquid",
+       "parameters": {}
+     },
+    {
+      "id": "seed_vr2",
+      "fragment": "upscale-seedvr2.liquid",
+      "parameters": {
+        "seedvr2_model": {{ seed_vr2_model | default: "seedvr2_ema_7b-Q4_K_M.gguf" | json }},
+        "seedvr2_vae_model": {{ seed_vr2_vae_model | default: "ema_vae_fp16.safetensors" | json }},
+        "seedvr2_seed": {{ seed | default: 42 | json }},
+        "seedvr2_resolution": {{ seed_vr2_resolution | default: 2048 | json }},
+        "seedvr2_batch_size": {{ seed_vr2_batch_size | default: 1 | json }},
+        "seedvr2_input_noise_scale": {{ seed_vr2_input_noise_scale | default: 0.0 | json }},
+        "seedvr2_latent_noise_scale": {{ seed_vr2_latent_noise_scale | default: 0.0 | json }},
+        "blocks_to_swap": {{ seed_vr2_blocks_to_swap | default: 36 | json }},
+        "vae_tile_size": {{ seed_vr2_vae_tile_size | default: 1024 | json }},
+        "vae_tile_overlap": {{ seed_vr2_vae_tile_overlap | default: 128 | json }}
+      }
+    },
+    {
+      "id": "loader_detailer",
+      "fragment": "load-diffusion-w-prompts.liquid",
+      "parameters": {
+        "scope": "detailer_",
+        "scope_title": "Detailer ",
+        "latent_id": "latent_image",
+        "unet_name": {{ detailer_checkpoint | default: Model | default: "z_image_turbo_bf16.safetensors" | json }},
+        "clip_name": {{ Clip | default: "qwen_3_4b.safetensors" | json }},
+        "clip_type": "lumina2",
+        "vae_name": {{ Vae | default: "ae.safetensors" | json }},
+        "positive": {{ detailer_prompt | default: positive | json }},
+        "negative": {{ detailer_negative_prompt | default: negative | json }},
+        "width": {{ width | default: 872 | json }},
+        "height": {{ height | default: 1248 | json }},
+        "batch_size": {{ batch_size | default: 1 | json }}
+      }
+    },
+    {
+      "id": "detailer",
+      "fragment": "detailer-core.liquid",
+      "parameters": {
+        "scope": "detailer_",
+        "detailer_detection_model": {{ detailer_model | default: "bbox/face_yolov8m.pt" | json }},
+        "detailer_sampler": {{ detailer_sampler | default: "dpmpp_2m" | json }},
+        "detailer_scheduler": {{ detailer_scheduler | default: "beta" | json }},
+        "detailer_seed": {{ detailer_seed | default: seed | default: 42 | json }},
+        "detailer_steps": {{ detailer_steps | default: 20 | json }},
+        "detailer_cfg": {{ detailer_cfg | default: 8 | json }},
+        "detailer_denoise": {{ detailer_denoise | default: 0.65 | json }},
+        "detailer_feather": {{ detailer_feather | default: 5 | json }},
+        "detailer_bbox_threshold": {{ detailer_bbox_threshold | default: 0.7 | json }},
+        "detailer_bbox_dilation": {{ detailer_bbox_dilation | default: 10 | json }},
+        "detailer_bbox_crop_factor": {{ detailer_bbox_crop_factor | default: 3 | json }},
+        "detailer_drop_size": {{ detailer_drop_size | default: 70 | json }},
+        "detailer_guide_size": {{ detailer_guide_size | default: 512 | json }},
+        "detailer_max_size": {{ detailer_max_size | default: 1024 | json }},
+        "detailer_cycle": {{ detailer_cycle | default: 1 | json }}
+      }
+    },
+    {
+      "id": "save",
+      "fragment": "save.liquid",
+      "parameters": {}
+    }
+  ]
+}

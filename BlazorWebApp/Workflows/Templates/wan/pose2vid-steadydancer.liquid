@@ -19,12 +19,12 @@
       "fragment": "load-video.liquid",
       "parameters": {
         "video": {{ video | json }},
-        "force_rate": {{ video_force_rate ?? 16 | json }},
-        "custom_width": {{ video_width ?? 480 | json }},
-        "custom_height": {{ video_height ?? 832 | json }},
-        "frame_load_cap": {{ frame_load_cap ?? 176 | json }},
-        "skip_first_frames": {{ skip_first_frames ?? 0 | json }},
-        "select_every_nth": {{ select_every_nth ?? 1 | json }}
+        "force_rate": {{ video_force_rate | default: 16 | json }},
+        "custom_width": {{ video_width | default: 480 | json }},
+        "custom_height": {{ video_height | default: 832 | json }},
+        "frame_load_cap": {{ frame_load_cap | default: 176 | json }},
+        "skip_first_frames": {{ skip_first_frames | default: 0 | json }},
+        "select_every_nth": {{ select_every_nth | default: 1 | json }}
       }
     },
     {
@@ -56,7 +56,7 @@
       "parameters": {
         "model_name": {{ Model | json }},
         "lora_name": {{ SpeedLora | json }},
-        "lora_strength": {{ lora_strength ?? 1 | json }}
+        "lora_strength": {{ lora_strength | default: 1 | json }}
       }
     },
     {
@@ -79,7 +79,7 @@
       "parameters": {
         "text_encoder_name": {{ TextEncoder | json }},
         "positive": {{ positive | json }},
-        "negative": {{ negative ?? "" | json }}
+        "negative": {{ negative | default: "" | json }}
       }
     },
     {
@@ -98,27 +98,27 @@
       "id": "steadydancer_embeds",
       "fragment": "wan/steadydancer-embeds.liquid",
       "parameters": {
-        "pose_strength_spatial": {{ pose_strength_spatial ?? 1 | json }},
-        "pose_strength_temporal": {{ pose_strength_temporal ?? 1 | json }}
+        "pose_strength_spatial": {{ pose_strength_spatial | default: 1 | json }},
+        "pose_strength_temporal": {{ pose_strength_temporal | default: 1 | json }}
       }
     },
     {
       "id": "context_options",
       "fragment": "wan/context-options.liquid",
       "parameters": {
-        "context_frames": {{ context_frames ?? 81 | json }},
-        "context_overlap": {{ context_overlap ?? 16 | json }}
+        "context_frames": {{ context_frames | default: 81 | json }},
+        "context_overlap": {{ context_overlap | default: 16 | json }}
       }
     },
     {
       "id": "main_sampler",
       "fragment": "wan/sampler-wan.liquid",
       "parameters": {
-        "steps": {{ steps ?? 4 | json }},
-        "cfg": {{ cfg ?? 1 | json }},
-        "shift": {{ shift ?? 5 | json }},
-        "seed": {{ seed ?? 42 | json }},
-        "scheduler": {{ scheduler ?? "dpm++_sde" | json }}
+        "steps": {{ steps | default: 4 | json }},
+        "cfg": {{ cfg | default: 1 | json }},
+        "shift": {{ shift | default: 5 | json }},
+        "seed": {{ seed | default: 42 | json }},
+        "scheduler": {{ scheduler | default: "dpm++_sde" | json }}
       }
     },
     {
@@ -127,6 +127,7 @@
       "parameters": {}
     },
     {
+      "$if": "concat_preview.IsActive",
       "id": "concat_preview",
       "fragment": "concat-preview.liquid",
       "parameters": {}
@@ -135,12 +136,8 @@
       "id": "video_save",
       "fragment": "save-video.liquid",
       "parameters": {
-        "frame_rate": {{ output_frame_rate ?? 24 | json }},
-        {{~ if append_preview ~}}
-        "image_input_name": "preview_concat"
-        {{~ else ~}}
-        "image_input_name": "image_output"
-        {{~ end ~}}
+        "frame_rate": {{ output_frame_rate | default: 24 | json }},
+        "image_input_name": "$compute:video_save_input"
       }
     }
   ]

@@ -469,4 +469,139 @@ ComfyUIService.PostGenerationAsync()
 
 ---
 
-**Last Updated:** Phase 2 Completion
+## Pipeline Markers (Phase 5)
+
+> **Note:** This section documents the C# pipeline processor system for workflow templates.
+> These markers are processed by C# code, not by the Fluid template engine.
+
+### Overview
+
+Complex pipeline logic (loops, conditionals, computed values) is handled by C# processors rather than template syntax. This provides:
+- Cleaner template files
+- Testable C# logic
+- Better error handling
+- Type safety
+
+### `$foreach` - Collection Iteration
+
+Expands a template for each item in a collection.
+
+```json
+{
+  "$foreach": "Loras",
+  "$as": "lora",
+  "$template": {
+    "id": "lora_{{ $index }}",
+    "fragment": "lora-loader.liquid",
+    "parameters": {
+      "lora_name": "{{ lora.Name }}",
+      "lora_path": "{{ lora.Path }}",
+      "lora_strength": "{{ lora.Strength }}"
+    }
+  }
+}
+```
+
+**Properties:**
+| Property | Required | Description |
+|----------|----------|-------------|
+| `$foreach` | Yes | Name of collection in GenerationParameters |
+| `$as` | Yes | Variable name for current item |
+| `$template` | Yes | Step template to expand |
+
+**Special Variables:**
+- `{{ $index }}` - Current iteration index (0-based)
+- `{{ lora.PropertyName }}` - Access item properties
+
+### `$if` - Conditional Step Inclusion
+
+Includes a pipeline step only when a condition is true.
+
+```json
+{
+  "$if": "frame_interpolation.IsActive",
+  "id": "frame_interp",
+  "fragment": "frame-interpolation.liquid",
+  "parameters": {
+    "scale_by": "{{ frame_interpolation_scale | default: 2.0 }}"
+  }
+}
+```
+
+**Condition Format:**
+- `"fragment_id.IsActive"` - Check if fragment is enabled
+- `"has_high_lora"` - Check computed boolean
+- Simple property path into GenerationParameters
+
+### `$compute:name` - Computed Values
+
+References a value computed by C# `ComputeRegistry`.
+
+```json
+{
+  "parameters": {
+    "end_at_step": "$compute:half_steps",
+    "frame_rate": "$compute:interpolated_framerate"
+  }
+}
+```
+
+**Format:** `"$compute:<function_name>"`
+
+### ComputeRegistry Functions
+
+| Function Name | Description | Formula |
+|---------------|-------------|---------|
+| `half_steps` | Half of total steps (rounded) | `Math.Round(steps / 2.0)` |
+| `interpolated_framerate` | Frame rate with interpolation multiplier | `frameRate * interpolationMultiplier` |
+
+> **Adding New Functions:**
+> Add to `ComputeRegistry.cs` and document here.
+
+---
+
+## Workflow Template Structure (Phase 5)
+
+### File Format
+
+Workflow templates are JSON files with embedded Fluid syntax for parameter values.
+
+```json
+{
+  "Title": "Workflow Title",
+  "Base": "ModelBase",
+  "Mode": "txt2img",
+  "Assets": [
+    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "model.safetensors" }
+  ],
+  "Sources": [],
+  "Pipeline": [
+    { "id": "step_id", "fragment": "fragment.liquid", "parameters": { ... } }
+  ]
+}
+```
+
+### Static vs Dynamic Fields
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `Title` | Static | Pure JSON string |
+| `Base` | Static | Enum value |
+| `Mode` | Static | Enum value |
+| `Assets` | Static | Array of asset definitions |
+| `Sources` | Static | Array of source definitions |
+| `Pipeline` | Dynamic | May contain `$foreach`, `$if`, `$compute` markers |
+
+### Parameter Values
+
+Parameters use Fluid syntax for dynamic values:
+
+```json
+{
+  "parameters": {
+    "static_value": 20,
+    "dynamic_value": "{{ steps | default: 20 }}",
+    "computed_value": "$compute:half_steps",
+    "asset_ref": "{{ Model | json }}"
+  }
+}

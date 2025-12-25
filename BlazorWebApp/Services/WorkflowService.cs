@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Models;
 using BlazorWebApp.Services.Templating;
+using BlazorWebApp.Services.Templating.Pipeline;
 using Scriban;
 using Scriban.Runtime;
 using System.Reflection;
@@ -23,6 +24,7 @@ namespace BlazorWebApp.Services
         private readonly ITemplateCacheService _templateCache;
         private readonly IFluidTemplateService _fluidService;
         private readonly FragmentConditionValidator _conditionValidator;
+        private readonly PipelineExpander _pipelineExpander;
         private readonly Dictionary<Guid, List<ParsedPipelineStep>> _pipelineCache = new();
         private readonly object _pipelineCacheLock = new();
 
@@ -33,7 +35,8 @@ namespace BlazorWebApp.Services
             IFragmentSchemaService fragmentSchemaService,
             ITemplateCacheService templateCache,
             IFluidTemplateService fluidService,
-            FragmentConditionValidator conditionValidator)
+            FragmentConditionValidator conditionValidator,
+            PipelineExpander pipelineExpander)
         {
             _io = io;
             _logger = logger;
@@ -42,19 +45,29 @@ namespace BlazorWebApp.Services
             _templateCache = templateCache;
             _fluidService = fluidService;
             _conditionValidator = conditionValidator;
+            _pipelineExpander = pipelineExpander;
         }
 
         #region Workflow Loading
 
         public List<Workflow> GetWorkflows()
         {
-            var workflowFiles = _io.GetFilesRecursive(Path.Combine(_workflowPath, "Templates"), ignorePath: "utils", extensionsWhitelist: new() { ".sbn" });
+            // Search for both .liquid (new) and .sbn (legacy) templates
+            var workflowFiles = _io.GetFilesRecursive(
+                Path.Combine(_workflowPath, "Templates"), 
+                ignorePath: "utils", 
+                extensionsWhitelist: new() { ".liquid", ".sbn" });
+            
             List<Workflow> workflows = new();
 
             foreach (var filePath in workflowFiles)
             {
                 var templateText = File.ReadAllText(filePath.FullName);
                 var workflow = _templateParser.ParseWorkflowTemplate(templateText);
+                
+                // Track whether this is a Fluid template for composition
+                workflow.IsFluidTemplate = filePath.Extension.Equals(".liquid", StringComparison.OrdinalIgnoreCase);
+                
                 workflows.Add(workflow);
             }
 
@@ -145,46 +158,164 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public async Task<string> ComposeWorkflowFromGenerationParametersAsync(Workflow template, GenerationParameters parameters)
         {
+            // Use new Fluid-based composition for .liquid templates
+            if (template.IsFluidTemplate)
+            {
+                return await ComposeFluidWorkflowAsync(template, parameters);
+            }
+
+            // Legacy Scriban-based composition for .sbn templates
+            return await ComposeLegacyWorkflowAsync(template, parameters);
+        }
+
+        /// <summary>
+        /// Composes a workflow using the new Fluid/PipelineExpander approach.
+        /// Handles $foreach, $if, and $compute markers in the pipeline.
+        /// </summary>
+        private async Task<string> ComposeFluidWorkflowAsync(Workflow template, GenerationParameters parameters)
+        {
             var composer = new WorkflowComposer();
 
             // Build global parameters from GenerationParameters
             var globalParams = parameters.FlattenForTemplateRendering();
 
-            // Inject any remaining workflow asset defaults that aren't in parameters
-            if (template.Assets != null)
+            // Inject workflow asset defaults
+            InjectAssetDefaults(template, globalParams);
+
+            // Inject sources from GenerationParameters
+            InjectSources(parameters, globalParams);
+
+            // Render the template with Fluid to get the JSON structure
+            var (renderedJson, _) = await _fluidService.RenderAsync(template.RawJson, globalParams);
+
+            // Parse the rendered JSON
+            using var doc = JsonDocument.Parse(renderedJson);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("Pipeline", out var pipelineEl))
+                throw new InvalidOperationException("No Pipeline found in rendered template");
+
+            // Expand pipeline using PipelineExpander (handles $foreach, $if, $compute)
+            var expandedSteps = _pipelineExpander.ExpandPipeline(pipelineEl, parameters);
+
+            _logger.LogDebug("Expanded pipeline to {Count} steps", expandedSteps.Count);
+
+            // Process each expanded step
+            foreach (var step in expandedSteps.OrderBy(s => s.Order))
             {
-                foreach (var asset in template.Assets)
+                try
                 {
-                    if (!globalParams.ContainsKey(asset.Parameter) ||
-                        globalParams[asset.Parameter] == null ||
-                        string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
+                    // Check if this fragment should be skipped (inactive optional fragment)
+                    if (!string.IsNullOrEmpty(step.Id) && parameters.Fragments.TryGetValue(step.Id, out var fragmentParams))
                     {
-                        if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                        if (!fragmentParams.IsActive)
                         {
-                            globalParams[asset.Parameter] = asset.DefaultValue;
-                            _logger.LogDebug("Injected Asset default for '{Parameter}': '{Value}'", asset.Parameter, asset.DefaultValue);
+                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}'", step.Id);
+                            continue;
+                        }
+                    }
+
+                    // Build merged parameters for fragment rendering
+                    var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+                    // Copy global params
+                    foreach (var kvp in globalParams)
+                    {
+                        if (kvp.Value != null)
+                            mergedParams[kvp.Key] = kvp.Value;
+                    }
+
+                    // Override with expanded step parameters
+                    foreach (var kvp in step.Parameters)
+                    {
+                        if (kvp.Value != null)
+                            mergedParams[kvp.Key] = kvp.Value;
+                    }
+
+                    // Merge fragment-specific parameters from GenerationParameters.Fragments
+                    if (!string.IsNullOrEmpty(step.Id) && parameters.Fragments.TryGetValue(step.Id, out var fragmentParamsForMerge))
+                    {
+                        if (fragmentParamsForMerge.Values != null && fragmentParamsForMerge.Values.Count > 0)
+                        {
+                            foreach (var kvp in fragmentParamsForMerge.Values)
+                            {
+                                if (kvp.Value != null)
+                                {
+                                    mergedParams[kvp.Key] = kvp.Value;
+                                }
+                            }
+                        }
+                    }
+
+                    var context = new SubgraphContext
+                    {
+                        Parameters = mergedParams,
+                        Outputs = new NodeRegistry()
+                    };
+
+                    context.Outputs.Merge(composer.Registry);
+
+                    // Render fragment
+                    if (!string.IsNullOrWhiteSpace(step.Fragment))
+                    {
+                        var fragPath = Path.Combine(_workflowPath, "Fragments", step.Fragment.Replace('/', Path.DirectorySeparatorChar));
+                        if (File.Exists(fragPath))
+                        {
+                            var fragmentText = await File.ReadAllTextAsync(fragPath);
+                            var (rendered, outputs) = await RenderFragmentWithFluidAsync(fragmentText, context, mergedParams);
+
+                            if (string.IsNullOrWhiteSpace(rendered))
+                            {
+                                _logger.LogDebug("Fragment '{FragmentId}' rendered to empty string", step.Id);
+                                continue;
+                            }
+
+                            rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
+
+                            if (outputs.Count > 0)
+                            {
+                                var outputKeys = string.Join(", ", outputs.Keys.Select(k => $"'{k}'"));
+                                _logger.LogDebug("Fragment '{FragmentId}' declared {Count} outputs: {OutputKeys}",
+                                    step.Id, outputs.Count, outputKeys);
+                            }
+
+                            foreach (var kvp in outputs)
+                                context.Outputs.Register(kvp.Key, kvp.Value.nodeId, kvp.Value.index);
+
+                            composer.AddRenderedFragment(rendered, context.Outputs);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Fragment file not found: {FragmentPath}", fragPath);
                         }
                     }
                 }
-            }
-
-            // Inject sources from GenerationParameters
-            foreach (var source in parameters.Sources)
-            {
-                if (source.Value?.HasData == true && !string.IsNullOrWhiteSpace(source.Value.Data))
+                catch (JsonException ex)
                 {
-                    globalParams[source.Key] = source.Value.Data;
-
-                    if (source.Key.Equals("source_image", StringComparison.OrdinalIgnoreCase))
-                    {
-                        globalParams["Image"] = source.Value.Data;
-                    }
-
-                    _logger.LogDebug("Injected source '{SourceId}' into globalParams", source.Key);
+                    throw new InvalidOperationException($"Failed to process step '{step.Id}'. JSON error: {ex.Message}.", ex);
                 }
             }
 
-            // Render workflow template (still using Scriban for the outer template)
+            return composer.BuildFinalWorkflow();
+        }
+
+        /// <summary>
+        /// Legacy Scriban-based workflow composition for .sbn templates.
+        /// </summary>
+        private async Task<string> ComposeLegacyWorkflowAsync(Workflow template, GenerationParameters parameters)
+        {
+            var composer = new WorkflowComposer();
+
+            // Build global parameters from GenerationParameters
+            var globalParams = parameters.FlattenForTemplateRendering();
+
+            // Inject workflow asset defaults
+            InjectAssetDefaults(template, globalParams);
+
+            // Inject sources from GenerationParameters
+            InjectSources(parameters, globalParams);
+
+            // Render workflow template using Scriban
             var templateContext = new TemplateContext
             {
                 MemberRenamer = member => member.Name,
@@ -228,19 +359,15 @@ namespace BlazorWebApp.Services
                         continue;
 
                     var fragmentName = fragmentEl.GetString();
-
-                    // Check if this fragment should be skipped (inactive optional fragment)
                     var fragmentId = GetFragmentIdFromStep(stepEl, fragmentName);
+
+                    // Check if this fragment should be skipped
                     if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParams))
                     {
                         if (!fragmentParams.IsActive)
                         {
-                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
+                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}'", fragmentId);
                             continue;
-                        }
-                        else
-                        {
-                            _logger.LogDebug("Processing active fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
                         }
                     }
 
@@ -253,7 +380,7 @@ namespace BlazorWebApp.Services
                             mergedParams[kvp.Key] = kvp.Value;
                     }
 
-                    // Override with step parameters from rendered template
+                    // Override with step parameters
                     if (stepEl.TryGetProperty("parameters", out var paramsEl))
                     {
                         foreach (var prop in paramsEl.EnumerateObject())
@@ -275,17 +402,15 @@ namespace BlazorWebApp.Services
                         }
                     }
 
-                    // Merge fragment-specific parameters from GenerationParameters.Fragments
+                    // Merge fragment-specific parameters
                     if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParamsForMerge))
                     {
-                        if (fragmentParamsForMerge.Values != null && fragmentParamsForMerge.Values.Count > 0)
+                        if (fragmentParamsForMerge.Values != null)
                         {
                             foreach (var kvp in fragmentParamsForMerge.Values)
                             {
                                 if (kvp.Value != null)
-                                {
                                     mergedParams[kvp.Key] = kvp.Value;
-                                }
                             }
                         }
                     }
@@ -304,24 +429,15 @@ namespace BlazorWebApp.Services
                         if (File.Exists(fragPath))
                         {
                             var fragmentText = await File.ReadAllTextAsync(fragPath);
-                            
-                            // Use Fluid-based rendering for fragments
                             var (rendered, outputs) = await RenderFragmentWithFluidAsync(fragmentText, context, mergedParams);
 
                             if (string.IsNullOrWhiteSpace(rendered))
                             {
-                                _logger.LogDebug("Fragment '{FragmentId}' rendered to empty string (likely excluded by conditions)", fragmentId);
+                                _logger.LogDebug("Fragment '{FragmentId}' rendered to empty string", fragmentId);
                                 continue;
                             }
 
                             rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
-
-                            if (outputs.Count > 0)
-                            {
-                                var outputKeys = string.Join(", ", outputs.Keys.Select(k => $"'{k}'"));
-                                _logger.LogDebug("Fragment '{FragmentId}' declared {Count} outputs: {OutputKeys}",
-                                    fragmentId, outputs.Count, outputKeys);
-                            }
 
                             foreach (var kvp in outputs)
                                 context.Outputs.Register(kvp.Key, kvp.Value.nodeId, kvp.Value.index);
@@ -337,6 +453,49 @@ namespace BlazorWebApp.Services
             }
 
             return composer.BuildFinalWorkflow();
+        }
+
+        /// <summary>
+        /// Injects asset default values into global parameters.
+        /// </summary>
+        private void InjectAssetDefaults(Workflow template, Dictionary<string, object?> globalParams)
+        {
+            if (template.Assets == null) return;
+
+            foreach (var asset in template.Assets)
+            {
+                if (!globalParams.ContainsKey(asset.Parameter) ||
+                    globalParams[asset.Parameter] == null ||
+                    string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
+                {
+                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
+                    {
+                        globalParams[asset.Parameter] = asset.DefaultValue;
+                        _logger.LogDebug("Injected Asset default for '{Parameter}': '{Value}'", asset.Parameter, asset.DefaultValue);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Injects source data into global parameters.
+        /// </summary>
+        private void InjectSources(GenerationParameters parameters, Dictionary<string, object?> globalParams)
+        {
+            foreach (var source in parameters.Sources)
+            {
+                if (source.Value?.HasData == true && !string.IsNullOrWhiteSpace(source.Value.Data))
+                {
+                    globalParams[source.Key] = source.Value.Data;
+
+                    if (source.Key.Equals("source_image", StringComparison.OrdinalIgnoreCase))
+                    {
+                        globalParams["Image"] = source.Value.Data;
+                    }
+
+                    _logger.LogDebug("Injected source '{SourceId}' into globalParams", source.Key);
+                }
+            }
         }
 
         /// <inheritdoc />
@@ -474,28 +633,18 @@ namespace BlazorWebApp.Services
                         }
                     }
 
-                    // CRITICAL FIX: Merge fragment-specific parameters from GenerationParameters.Fragments
-                    // This ensures UI-set values (like latent width/height) override template defaults
+                    // Merge fragment-specific parameters from GenerationParameters.Fragments
                     if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParamsForMerge))
                     {
                         if (fragmentParamsForMerge.Values != null && fragmentParamsForMerge.Values.Count > 0)
                         {
-                            _logger.LogDebug("Fragment '{FragmentId}': Found {Count} parameters in FragmentParameters.Values",
-                                fragmentId, fragmentParamsForMerge.Values.Count);
-
                             foreach (var kvp in fragmentParamsForMerge.Values)
                             {
                                 if (kvp.Value != null)
                                 {
                                     mergedParams[kvp.Key] = kvp.Value;
-                                    _logger.LogDebug("Fragment '{FragmentId}': Overriding parameter '{ParamName}' = {Value} (type: {Type})",
-                                        fragmentId, kvp.Key, kvp.Value, kvp.Value.GetType().Name);
                                 }
                             }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Fragment '{FragmentId}' found but has no values in FragmentParameters.Values dictionary", fragmentId);
                         }
                     }
 
@@ -1096,7 +1245,8 @@ namespace BlazorWebApp.Services
         private string? FindWorkflowTemplatePath(Workflow workflow)
         {
             var templatesPath = Path.Combine(_workflowPath, "Templates");
-            var workflowFiles = _io.GetFilesRecursive(templatesPath, ignorePath: "utils", extensionsWhitelist: new() { ".sbn" });
+            // Search for both .liquid (new) and .sbn (legacy) templates
+            var workflowFiles = _io.GetFilesRecursive(templatesPath, ignorePath: "utils", extensionsWhitelist: new() { ".liquid", ".sbn" });
 
             foreach (var file in workflowFiles)
             {
