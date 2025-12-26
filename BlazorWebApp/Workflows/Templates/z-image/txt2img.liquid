@@ -32,13 +32,13 @@
       "$foreach": "Loras",
       "$as": "lora",
       "$template": {
-        "id": "lora_{{ $index }}",
+        "id": "lora_{% raw %}{{ $index }}{% endraw %}",
         "fragment": "lora-loader.liquid",
         "parameters": {
-          "lora_loader_id": "lora_loader_{{ $index }}",
-          "lora_name": "{{ lora.Name }}",
-          "lora_path": "{{ lora.Path }}",
-          "lora_strength": "{{ lora.Strength }}"
+          "lora_loader_id": "lora_loader_{% raw %}{{ $index }}{% endraw %}",
+          "lora_name": "{% raw %}{{ lora.Name }}{% endraw %}",
+          "lora_path": "{% raw %}{{ lora.Path }}{% endraw %}",
+          "lora_strength": "{% raw %}{{ lora.Strength }}{% endraw %}"
         }
       }
     },

@@ -14,9 +14,7 @@ namespace BlazorWebApp.Services
     /// - Sources array parsing
     /// - Pipeline steps parsing with parameter defaults
     /// 
-    /// Supports two parsing modes:
-    /// 1. Async (preferred): Uses Fluid rendering with safe defaults to produce valid JSON
-    /// 2. Sync (legacy): Uses regex parsing for templates with Scriban syntax
+    /// Uses Fluid rendering with safe defaults to produce valid JSON for parsing.
     /// </summary>
     public class WorkflowTemplateParser
     {
@@ -108,15 +106,12 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Parses a workflow template asynchronously using Fluid rendering.
-        /// This is the preferred method for .liquid templates.
         /// </summary>
-        /// <param name="templateText">The raw template text.</param>
-        /// <returns>A parsed Workflow object.</returns>
         public async Task<Workflow> ParseWorkflowTemplateAsync(string templateText)
         {
             if (_fluidService == null)
             {
-                _logger.LogWarning("FluidTemplateService not available, falling back to sync parsing");
+                _logger.LogWarning("FluidTemplateService not available, using regex parsing");
                 return ParseWorkflowTemplate(templateText);
             }
 
@@ -163,13 +158,13 @@ namespace BlazorWebApp.Services
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Failed to parse rendered workflow template as JSON. Falling back to regex parsing.");
-                return ParseWorkflowTemplate(templateText);
+                _logger.LogError(ex, "Failed to parse rendered workflow template as JSON");
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error parsing workflow template with Fluid. Falling back to regex parsing.");
-                return ParseWorkflowTemplate(templateText);
+                _logger.LogError(ex, "Error parsing workflow template with Fluid");
+                throw;
             }
 
             return wf;
@@ -319,11 +314,11 @@ namespace BlazorWebApp.Services
 
         #endregion
 
-        #region Legacy Regex-based Parsing (for .sbn templates)
+        #region Regex-based Parsing (for metadata extraction without FluidTemplateService)
 
         /// <summary>
         /// Parses a workflow template text into a Workflow object using regex.
-        /// This is the legacy method for .sbn templates with Scriban syntax.
+        /// Used when FluidTemplateService is not available (e.g., during testing without DI).
         /// </summary>
         public Workflow ParseWorkflowTemplate(string templateText)
         {
@@ -598,9 +593,10 @@ namespace BlazorWebApp.Services
             }
 
             var paramsContent = stepContent.Substring(startIndex, endIndex - startIndex);
-            var paramPattern = @"""(\w+)""\s*:\s*\{\{\s*[\w.]+\s*\?\?\s*([^|]+?)\s*\|";
-
-            var matches = Regex.Matches(paramsContent, paramPattern);
+            
+            // Parse Fluid default filter: {{ variable | default: value }}
+            var fluidDefaultPattern = @"""(\w+)""\s*:\s*""\{\{\s*[\w.]+\s*\|\s*default:\s*([^|}\s]+)";
+            var matches = Regex.Matches(paramsContent, fluidDefaultPattern);
             foreach (Match match in matches)
             {
                 var paramName = match.Groups[1].Value.Trim();
@@ -609,7 +605,7 @@ namespace BlazorWebApp.Services
                 if (string.IsNullOrEmpty(paramName) || defaults.ContainsKey(paramName))
                     continue;
 
-                var parsedValue = ParseScribanDefaultValue(defaultValueStr);
+                var parsedValue = ParseDefaultValue(defaultValueStr);
                 if (parsedValue != null)
                     defaults[paramName] = parsedValue;
             }
@@ -618,43 +614,33 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Parses a Scriban default value expression into a CLR object.
-        /// 
-        /// Only parses unambiguous literals:
-        /// - Quoted strings: "euler", 'simple'
-        /// - Numbers: 20, 1.5, -1
-        /// - Booleans: true, false
-        /// - Null: null, nil
-        /// 
-        /// Unquoted identifiers (like positive, width, Model) are NOT stored as defaults.
-        /// They are variable references that Scriban will resolve at render time.
+        /// Parses a default value expression into a CLR object.
         /// </summary>
-        public object? ParseScribanDefaultValue(string valueStr)
+        public object? ParseDefaultValue(string valueStr)
         {
             if (string.IsNullOrWhiteSpace(valueStr))
                 return null;
 
             valueStr = valueStr.Trim();
 
-            // 1. Quoted string literals - these are unambiguous defaults
+            // Quoted string literals
             if ((valueStr.StartsWith("\"") && valueStr.EndsWith("\"")) ||
                 (valueStr.StartsWith("'") && valueStr.EndsWith("'")))
             {
                 return valueStr.Substring(1, valueStr.Length - 2);
             }
 
-            // 2. Boolean literals
+            // Boolean literals
             if (valueStr.Equals("true", StringComparison.OrdinalIgnoreCase))
                 return true;
             if (valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            // 3. Null literals
-            if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase) ||
-                valueStr.Equals("nil", StringComparison.OrdinalIgnoreCase))
+            // Null literal
+            if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            // 4. Numeric literals - try integer first, then floating point
+            // Numeric literals
             if (long.TryParse(valueStr, out var longVal))
                 return longVal;
 
@@ -662,8 +648,7 @@ namespace BlazorWebApp.Services
                 System.Globalization.CultureInfo.InvariantCulture, out var doubleVal))
                 return doubleVal;
 
-            // 5. Anything else is an unquoted identifier - treat as variable reference
-            // Don't store it as a default; let Scriban resolve it at render time
+            // Unquoted identifier - treat as variable reference, don't store as default
             _logger.LogTrace("Unquoted identifier '{Value}' treated as variable reference, not storing as default", valueStr);
             return null;
         }

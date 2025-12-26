@@ -102,7 +102,7 @@
 
         if (string.IsNullOrEmpty(_componentName))
         {
-            // Try to derive component name from fragment file: "upscale.sbn" -> "UpscaleForm"
+            // Try to derive component name from fragment file: "upscale.liquid" -> "UpscaleForm"
             var baseName = Path.GetFileNameWithoutExtension(Fragment.Parameters.FragmentFile);
             _componentName = ToPascalCase(baseName) + "Form";
         }

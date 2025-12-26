@@ -6,7 +6,7 @@ namespace BlazorWebApp.Services
 {
     /// <summary>
     /// Service for parsing and caching fragment UI schemas.
-    /// Handles extraction of #meta blocks and UI configuration from fragment files.
+    /// Handles extraction of {% meta %} blocks and UI configuration from fragment files.
     /// </summary>
     public class FragmentSchemaService : IFragmentSchemaService
     {
@@ -27,8 +27,9 @@ namespace BlazorWebApp.Services
             if (string.IsNullOrWhiteSpace(fragmentText))
                 return null;
 
-            // Match #meta ... #end block - use [\s\S] to match any character including newlines
-            var metaMatch = Regex.Match(fragmentText, @"#meta\s*([\s\S]*?)\s*#end");
+            // Match Fluid syntax: {% meta %} ... {% endmeta %}
+            var metaMatch = Regex.Match(fragmentText, @"\{%\s*meta\s*%\}([\s\S]*?)\{%\s*endmeta\s*%\}");
+            
             if (!metaMatch.Success)
                 return null;
 
@@ -36,8 +37,7 @@ namespace BlazorWebApp.Services
 
             try
             {
-                // Pre-process to handle Scriban templating in #meta blocks
-                // This allows fragments to use dynamic outputs/conditions while still having parseable UI schemas
+                // Pre-process to handle templating in meta blocks
                 metaJson = PreprocessMetaJson(metaJson);
                 
                 // Clean up trailing commas before parsing
@@ -59,23 +59,19 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Pre-processes #meta JSON content to handle Scriban templating.
-        /// Removes or neutralizes Scriban expressions so the JSON can be parsed.
+        /// Pre-processes meta JSON content to handle Fluid templating syntax.
+        /// Removes or neutralizes template expressions so the JSON can be parsed.
         /// </summary>
         private static string PreprocessMetaJson(string metaJson)
         {
-            // Remove Scriban conditional blocks entirely (they add optional properties like "conditions")
-            // Pattern: {{~ if ... ~}} ... {{~ end ~}} or {{ if ... }} ... {{ end }}
-            metaJson = Regex.Replace(metaJson, @"\{\{~?\s*if\s+[\s\S]*?\{\{~?\s*end\s*~?\}\}", "", RegexOptions.Singleline);
+            // Remove Fluid conditional blocks: {% if ... %} ... {% endif %}
+            metaJson = Regex.Replace(metaJson, @"\{%\s*if\s+[\s\S]*?\{%\s*endif\s*%\}", "", RegexOptions.Singleline);
             
-            // Replace Scriban expressions in string values with placeholder
-            // Pattern: {{ scope ?? '' }} or {{ variable | filter }} etc.
-            // This handles dynamic keys like "{{ scope ?? '' }}model_output"
+            // Replace Fluid output expressions: {{ variable }} or {{ variable | filter }}
             metaJson = Regex.Replace(metaJson, @"\{\{[^}]+\}\}", "", RegexOptions.None);
             
-            // Clean up any resulting empty string concatenations in keys
-            // e.g., "model_output" instead of "{{ scope ?? '' }}model_output"
-            // The keys will be different at runtime but we only need to validate structure
+            // Replace Fluid tags: {% get_ref ... %} or {% assign ... %}
+            metaJson = Regex.Replace(metaJson, @"\{%\s*(?:get_ref|assign)[^%]*%\}", "", RegexOptions.None);
             
             // Remove any leading commas that might result from removed conditional blocks
             metaJson = Regex.Replace(metaJson, @",(\s*\})", "$1", RegexOptions.Singleline);
@@ -196,12 +192,10 @@ namespace BlazorWebApp.Services
 
             try
             {
-                var files = Directory.GetFiles(_fragmentsPath, "*.sbn", SearchOption.AllDirectories);
-                foreach (var file in files)
+                var liquidFiles = Directory.GetFiles(_fragmentsPath, "*.liquid", SearchOption.AllDirectories);
+                foreach (var file in liquidFiles)
                 {
-                    // Get path relative to fragments folder
                     var relativePath = Path.GetRelativePath(_fragmentsPath, file);
-                    // Normalize to forward slashes for consistency
                     fragments.Add(relativePath.Replace(Path.DirectorySeparatorChar, '/'));
                 }
             }
@@ -257,13 +251,13 @@ namespace BlazorWebApp.Services
 
             var fragmentText = File.ReadAllText(fragPath);
 
-            // Remove #meta block - use [\s\S] to match any character including newlines
-            fragmentText = Regex.Replace(fragmentText, @"#meta\s*[\s\S]*?\s*#end", "", RegexOptions.None);
+            // Remove Fluid meta block: {% meta %} ... {% endmeta %}
+            fragmentText = Regex.Replace(fragmentText, @"\{%\s*meta\s*%\}[\s\S]*?\{%\s*endmeta\s*%\}", "", RegexOptions.None);
 
-            var defaultPattern = @"\{\{\s*(\w+)\s*\?\?\s*([^|]+?)\s*\|";
-            var matches = Regex.Matches(fragmentText, defaultPattern);
-
-            foreach (Match match in matches)
+            // Parse Fluid default filter: {{ variable | default: value }}
+            var fluidDefaultPattern = @"\{\{\s*(\w+)\s*\|\s*default:\s*([^|}\s]+)\s*(?:\||\}\})";
+            var fluidMatches = Regex.Matches(fragmentText, fluidDefaultPattern);
+            foreach (Match match in fluidMatches)
             {
                 var paramName = match.Groups[1].Value.Trim();
                 var defaultValueStr = match.Groups[2].Value.Trim();
@@ -271,7 +265,7 @@ namespace BlazorWebApp.Services
                 if (string.IsNullOrEmpty(paramName) || defaults.ContainsKey(paramName))
                     continue;
 
-                var parsedValue = ParseScribanDefaultValue(defaultValueStr);
+                var parsedValue = ParseDefaultValue(defaultValueStr);
                 if (parsedValue != null)
                 {
                     defaults[paramName] = parsedValue;
@@ -445,7 +439,7 @@ namespace BlazorWebApp.Services
             return result;
         }
 
-        private object? ParseScribanDefaultValue(string valueStr)
+        private object? ParseDefaultValue(string valueStr)
         {
             if (string.IsNullOrWhiteSpace(valueStr))
                 return null;
@@ -461,8 +455,7 @@ namespace BlazorWebApp.Services
             if (valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase) ||
-                valueStr.Equals("nil", StringComparison.OrdinalIgnoreCase))
+            if (valueStr.Equals("null", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             if (long.TryParse(valueStr, out var longVal))
@@ -511,20 +504,16 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Validates a fragment's schema and returns any errors found.
         /// </summary>
-        /// <param name="fragmentFile">The fragment file path (relative to Fragments folder).</param>
-        /// <returns>List of validation error messages, empty if valid.</returns>
         List<string> ValidateFragmentSchema(string fragmentFile);
 
         /// <summary>
         /// Gets all fragment files in the Fragments directory.
         /// </summary>
-        /// <returns>List of fragment file paths relative to the Fragments folder.</returns>
         List<string> GetAllFragmentFiles();
 
         /// <summary>
         /// Validates all fragment schemas in the Fragments directory.
         /// </summary>
-        /// <returns>Dictionary of fragment file paths to their validation errors.</returns>
         Dictionary<string, List<string>> ValidateAllFragmentSchemas();
     }
 }

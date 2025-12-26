@@ -491,12 +491,12 @@ Expands a template for each item in a collection.
   "$foreach": "Loras",
   "$as": "lora",
   "$template": {
-    "id": "lora_{{ $index }}",
+    "id": "lora_{% raw %}{{ $index }}{% endraw %}",
     "fragment": "lora-loader.liquid",
     "parameters": {
-      "lora_name": "{{ lora.Name }}",
-      "lora_path": "{{ lora.Path }}",
-      "lora_strength": "{{ lora.Strength }}"
+      "lora_name": "{% raw %}{{ lora.Name }}{% endraw %}",
+      "lora_path": "{% raw %}{{ lora.Path }}{% endraw %}",
+      "lora_strength": "{% raw %}{{ lora.Strength }}{% endraw %}"
     }
   }
 }
@@ -512,6 +512,25 @@ Expands a template for each item in a collection.
 **Special Variables:**
 - `{{ $index }}` - Current iteration index (0-based)
 - `{{ lora.PropertyName }}` - Access item properties
+
+**?? Important: Use `{% raw %}...{% endraw %}` blocks**
+
+Since workflow templates are first processed by Fluid, `$foreach` placeholders like `{{ $index }}` and `{{ item.Property }}` must be wrapped in `{% raw %}{% endraw %}` blocks to prevent Fluid from attempting to parse them. These placeholders are intended for the PipelineExpander (C#) to process, not Fluid.
+
+**Why this is needed:**
+1. Workflow template JSON is first rendered by `FluidTemplateService.RenderAsync()`
+2. Fluid would try to parse `{{ $index }}` and fail (variable doesn't exist in Fluid context)
+3. `{% raw %}` tells Fluid to output the content literally without parsing
+4. PipelineExpander receives the literal `{{ $index }}` and performs the replacement
+
+**Example:**
+```json
+{# ? Correct - Protected from Fluid #}
+"id": "lora_{% raw %}{{ $index }}{% endraw %}"
+
+{# ? Wrong - Fluid will try to parse and fail #}
+"id": "lora_{{ $index }}"
+```
 
 ### `$if` - Conditional Step Inclusion
 

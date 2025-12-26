@@ -14,15 +14,13 @@
     <None Remove="Scripts\**" />
   </ItemGroup>
 
-<ItemGroup>
-  <None Update="Workflows\**\*.sbn">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
-  <None Update="Workflows\**\*.liquid">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
-</ItemGroup>
-
+  <!-- Workflow template files -->
+  <ItemGroup>
+    <!-- Fluid/Liquid templates (primary format) -->
+    <None Update="Workflows\**\*.liquid">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.6" />
@@ -41,13 +39,12 @@
     </PackageReference>
     <PackageReference Include="MudBlazor" Version="6.1.8" />
     <PackageReference Include="Fluid.Core" Version="2.11.1" />
-    <PackageReference Include="Scriban" Version="6.4.0" />
     <PackageReference Include="Syllabore" Version="3.0.1-alpha" />
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.2.6-b0002" />
-	<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0.3" />
-	    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.0" />
-	    <PackageReference Include="TiktokenSharp" Version="1.2.0" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0.3" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.0" />
+    <PackageReference Include="TiktokenSharp" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>

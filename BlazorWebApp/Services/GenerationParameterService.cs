@@ -208,7 +208,18 @@ namespace BlazorWebApp.Services
             current.Fragments.Clear();
             foreach (var kvp in savedState.Fragments)
             {
-                current.Fragments[kvp.Key] = kvp.Value.Clone();
+                var fragment = kvp.Value.Clone();
+                
+                // Migration: Convert .sbn fragment file paths to .liquid
+                if (!string.IsNullOrEmpty(fragment.FragmentFile) && 
+                    fragment.FragmentFile.EndsWith(".sbn", StringComparison.OrdinalIgnoreCase))
+                {
+                    var oldPath = fragment.FragmentFile;
+                    fragment.FragmentFile = Path.ChangeExtension(fragment.FragmentFile, ".liquid");
+                    _logger.LogDebug("Migrated fragment file path: '{OldPath}' -> '{NewPath}'", oldPath, fragment.FragmentFile);
+                }
+                
+                current.Fragments[kvp.Key] = fragment;
             }
 
             current.Assets.Clear();
@@ -480,11 +491,13 @@ namespace BlazorWebApp.Services
             var current = Current;
             if (current.Fragments.Count == 0)
             {
-                _logger.LogDebug("No fragments to discover");
+                _logger.LogWarning("No fragments to discover - Fragments dictionary is empty");
                 return;
             }
 
-            _logger.LogDebug("Discovering fragments from {Count} total fragments", current.Fragments.Count);
+            _logger.LogDebug("Discovering fragments from {Count} total fragments: [{FragmentIds}]", 
+                current.Fragments.Count, 
+                string.Join(", ", current.Fragments.Keys));
 
             foreach (var kvp in current.Fragments)
             {
@@ -495,9 +508,13 @@ namespace BlazorWebApp.Services
                 var schema = _workflowService.GetFragmentSchema(fragment.FragmentFile);
                 if (schema == null)
                 {
-                    _logger.LogTrace("Fragment '{FragmentId}' has no schema, skipping discovery", fragmentId);
+                    _logger.LogDebug("Fragment '{FragmentId}' (file: {FragmentFile}) has no schema - checking fallback eligibility", 
+                        fragmentId, fragment.FragmentFile);
                     continue;
                 }
+
+                _logger.LogDebug("Fragment '{FragmentId}' has schema: Type={Type}, Component={Component}, HasUI={HasUI}", 
+                    fragmentId, schema.Type, schema.Component, schema.HasUI);
 
                 // Create reference for this fragment
                 var reference = new FragmentReference
@@ -579,6 +596,49 @@ namespace BlazorWebApp.Services
                             Schema = schema
                         };
                         _logger.LogDebug("Fallback: Using fragment '{FragmentId}' as latent (has width/height)", kvp.Key);
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: If no prompts fragment found by type, check for any fragment with positive/negative params
+            // This handles workflows like Flux where prompts are embedded in the loader fragment
+            if (_promptsFragment == null)
+            {
+                foreach (var kvp in current.Fragments)
+                {
+                    if (kvp.Value.Values.ContainsKey("positive"))
+                    {
+                        var schema = _workflowService.GetFragmentSchema(kvp.Value.FragmentFile);
+                        _promptsFragment = new FragmentReference
+                        {
+                            Id = kvp.Key,
+                            Parameters = kvp.Value,
+                            Schema = schema
+                        };
+                        _logger.LogDebug("Fallback: Using fragment '{FragmentId}' as prompts (has positive param)", kvp.Key);
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: If no sampler fragment found by type, check for any fragment with sampler params
+            // This handles workflows where sampler fragment doesn't have schema type defined
+            if (_primarySamplerFragment == null)
+            {
+                foreach (var kvp in current.Fragments)
+                {
+                    if (kvp.Value.Values.ContainsKey("sampler_name") && 
+                        kvp.Value.Values.ContainsKey("steps"))
+                    {
+                        var schema = _workflowService.GetFragmentSchema(kvp.Value.FragmentFile);
+                        _primarySamplerFragment = new FragmentReference
+                        {
+                            Id = kvp.Key,
+                            Parameters = kvp.Value,
+                            Schema = schema
+                        };
+                        _logger.LogDebug("Fallback: Using fragment '{FragmentId}' as sampler (has sampler_name/steps)", kvp.Key);
                         break;
                     }
                 }

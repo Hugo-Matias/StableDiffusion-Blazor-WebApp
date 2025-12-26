@@ -24,13 +24,6 @@ namespace BlazorWebApp.Models
         
         public List<WorkflowStep> Pipeline { get; set; }
         public string RawJson { get; set; }
-        
-        /// <summary>
-        /// Indicates whether this workflow uses Fluid/Liquid template syntax (.liquid extension).
-        /// When true, composition uses PipelineExpander for $foreach, $if, $compute markers.
-        /// When false (legacy .sbn), composition uses Scriban rendering.
-        /// </summary>
-        public bool IsFluidTemplate { get; set; }
     }
 
     /// <summary>

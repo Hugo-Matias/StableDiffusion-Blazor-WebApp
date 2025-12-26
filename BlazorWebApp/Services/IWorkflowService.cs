@@ -19,7 +19,7 @@ namespace BlazorWebApp.Services
     );
 
     /// <summary>
-    /// Service for managing workflow templates and rendering.
+    /// Service for managing workflow templates and rendering using Fluid template engine.
     /// </summary>
     public interface IWorkflowService
     {
@@ -39,23 +39,13 @@ namespace BlazorWebApp.Services
             Guid? currentWorkflowId = null);
 
         /// <summary>
-        /// Composes a workflow from a template using the unified GenerationParameters model (async, uses Fluid).
-        /// This is the preferred method that eliminates the need for legacy parameter classes.
+        /// Composes a workflow from a template using the unified GenerationParameters model.
+        /// Uses Fluid template engine for rendering.
         /// </summary>
         /// <param name="template">The workflow template to compose</param>
         /// <param name="parameters">The unified generation parameters containing all fragment values</param>
         /// <returns>The rendered workflow JSON ready for ComfyUI</returns>
         Task<string> ComposeWorkflowFromGenerationParametersAsync(Workflow template, GenerationParameters parameters);
-
-        /// <summary>
-        /// Composes a workflow from a template using the unified GenerationParameters model.
-        /// This is the preferred method that eliminates the need for legacy parameter classes.
-        /// </summary>
-        /// <param name="template">The workflow template to compose</param>
-        /// <param name="parameters">The unified generation parameters containing all fragment values</param>
-        /// <returns>The rendered workflow JSON ready for ComfyUI</returns>
-        [Obsolete("Use ComposeWorkflowFromGenerationParametersAsync for Fluid template rendering")]
-        string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters);
 
         /// <summary>
         /// Saves the current asset values as defaults in the workflow template file.
@@ -72,25 +62,15 @@ namespace BlazorWebApp.Services
         Workflow LoadWorkflowTemplate(string path);
 
         /// <summary>
-        /// Renders a workflow fragment with the given context.
+        /// Renders a workflow fragment using the Fluid template engine.
         /// </summary>
-        (string rendered, Dictionary<string, (string nodeId, int index)> outputs) RenderFragment(
-            string fragmentText, 
-            SubgraphContext context, 
-            Dictionary<string, object> globalParams, 
-            Func<string, Task<string>>? loraPathResolver = null);
-
-        /// <summary>
-        /// Renders a workflow fragment using the Fluid template engine (async).
-        /// This is the new approach that eliminates regex-based meta extraction.
-        /// </summary>
-        Task<(string rendered, Dictionary<string, (string nodeId, int index)> outputs)> RenderFragmentWithFluidAsync(
+        Task<(string rendered, Dictionary<string, (string nodeId, int index)> outputs)> RenderFragmentAsync(
             string fragmentText,
             SubgraphContext context,
             Dictionary<string, object> globalParams);
 
         /// <summary>
-        /// Parses the UI schema from a fragment's #meta block.
+        /// Parses the UI schema from a fragment's meta block.
         /// Returns null if no UI schema is defined.
         /// </summary>
         FragmentSchema? ParseFragmentSchema(string fragmentText);
@@ -117,7 +97,6 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Parses pipeline steps from a workflow's RawJson.
         /// Extracts step IDs, fragment files, and default parameter values.
-        /// Handles Scriban template syntax using regex.
         /// </summary>
         /// <param name="rawJson">The workflow's RawJson content</param>
         /// <returns>List of parsed pipeline steps with all extracted data</returns>

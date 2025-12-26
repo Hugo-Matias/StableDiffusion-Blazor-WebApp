@@ -184,7 +184,8 @@ namespace BlazorWebApp.Extensions
         public static string GetDefaultModelFromWorkflow(this string workflow)
         {
             var defaultModel = string.Empty;
-            var match = Regex.Match(workflow, @"\{\{\s*Model\s*\?\?\s*""([^""]+)""");
+            // Fluid syntax: {{ Model | default: "value" }}
+            var match = Regex.Match(workflow, @"\{\{\s*Model\s*\|\s*default:\s*['""]([^'""]+)['""]");
             if (match.Success)
             {
                 defaultModel = match.Groups[1].Value;
