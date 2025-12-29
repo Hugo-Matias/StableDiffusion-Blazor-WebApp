@@ -11,11 +11,11 @@ namespace BlazorWebApp.Services.Templating.Pipeline;
 ///   "$foreach": "Loras",
 ///   "$as": "lora",
 ///   "$template": {
-///     "id": "lora_{{ $index }}",
+///     "id": "lora_${$index}",
 ///     "fragment": "lora-loader.liquid",
 ///     "parameters": {
-///       "lora_name": "{{ lora.Name }}",
-///       "lora_strength": "{{ lora.Strength }}"
+///       "lora_name": "${lora.Name}",
+///       "lora_strength": "${lora.Strength}"
 ///     }
 ///   }
 /// }
@@ -106,7 +106,7 @@ public class ForeachProcessor : IPipelineProcessor
     {
         try
         {
-            // Extract id - replace {{ $index }} placeholder
+            // Extract id - replace ${$index} placeholder
             var id = template.TryGetProperty("id", out var idEl)
                 ? ReplaceIndexPlaceholder(idEl.GetString() ?? "", index)
                 : $"foreach_item_{index}";
@@ -168,7 +168,7 @@ public class ForeachProcessor : IPipelineProcessor
                 return computeRegistry.ResolveValue(strValue, parameters);
             }
 
-            // Replace item property placeholders (e.g., {{ lora.Name }})
+            // Replace item property placeholders (e.g., ${lora.Name})
             strValue = ReplaceItemPlaceholders(strValue, itemName, item);
 
             // Replace index placeholder
@@ -190,8 +190,13 @@ public class ForeachProcessor : IPipelineProcessor
 
     private static string ReplaceIndexPlaceholder(string template, int index)
     {
-        // Replace {{ $index }} with the actual index
+        // Replace ${$index} with the actual index (using ${} delimiter to avoid Fluid conflicts)
         return template
+            .Replace("${$index}", index.ToString())
+            .Replace("${ $index }", index.ToString())
+            .Replace("${forloop.index0}", index.ToString())
+            .Replace("${forloop.index}", (index + 1).ToString())
+            // Legacy {{ }} support (deprecated, will be removed)
             .Replace("{{ $index }}", index.ToString())
             .Replace("{{$index}}", index.ToString())
             .Replace("{{ forloop.index0 }}", index.ToString())
@@ -207,17 +212,25 @@ public class ForeachProcessor : IPipelineProcessor
 
         foreach (var prop in properties)
         {
-            var placeholder1 = $"{{{{ {itemName}.{prop.Name} }}}}";
-            var placeholder2 = $"{{{{{itemName}.{prop.Name}}}}}";
+            // Primary ${} delimiter (recommended)
+            var placeholder1 = $"${{{itemName}.{prop.Name}}}";
+            var placeholder2 = $"${{{{{itemName}.{prop.Name}}}}}"; // ${{itemName.PropName}} with spaces
+            
+            // Legacy {{ }} delimiter (deprecated, will be removed)
+            var legacyPlaceholder1 = $"{{{{ {itemName}.{prop.Name} }}}}";
+            var legacyPlaceholder2 = $"{{{{{itemName}.{prop.Name}}}}}";
 
-            if (template.Contains(placeholder1) || template.Contains(placeholder2))
+            if (template.Contains(placeholder1) || template.Contains(placeholder2) ||
+                template.Contains(legacyPlaceholder1) || template.Contains(legacyPlaceholder2))
             {
                 var propValue = prop.GetValue(item);
                 var strValue = propValue?.ToString() ?? "";
 
                 template = template
                     .Replace(placeholder1, strValue)
-                    .Replace(placeholder2, strValue);
+                    .Replace(placeholder2, strValue)
+                    .Replace(legacyPlaceholder1, strValue)
+                    .Replace(legacyPlaceholder2, strValue);
             }
         }
 

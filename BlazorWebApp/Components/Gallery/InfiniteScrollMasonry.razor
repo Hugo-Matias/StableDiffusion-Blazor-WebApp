@@ -198,6 +198,15 @@
         StateHasChanged();
     }
 
+    private void HandleVideoViewerVisibilityChanged(bool isVisible)
+    {
+        _showVideoViewer = isVisible;
+        if (!isVisible)
+        {
+            HandleViewerClosed();
+        }
+    }
+
     private void ShowSelectionsDialog()
     {
         var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };

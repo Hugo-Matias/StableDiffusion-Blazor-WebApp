@@ -1,7 +1,7 @@
 {% meta %}
 {
   "outputs": {
-    "video_save_node": { "node": "{{ node_id | default: 'video_save' }}", "index": 0 }
+    "video_save_node": { "node": "{{ node_id | default: "" }}", "index": 0 }
   },
   "ui": {
     "type": "utility",
@@ -11,10 +11,10 @@
 }
 {% endmeta %}
 
-{% assign save_id = node_id | default: "video_save" %}
+{% assign save_id = node_id | default: "" %}
 
 {
-  {{ save_id | json }}: {
+  "{{ save_id }}": {
     "inputs": {
       "frame_rate": {{ frame_rate | default: 16 | json }},
       "loop_count": 0,
@@ -26,7 +26,7 @@
       "trim_to_audio": false,
       "pingpong": false,
       "save_output": true,
-      "images": {% assign img_key = image_input_name | default: "image_output" %}{% get_ref img_key %}
+      "images": {% assign img_key = image_input_name | default: "" %}{% get_ref img_key %}
     },
     "class_type": "VHS_VideoCombine",
     "_meta": {

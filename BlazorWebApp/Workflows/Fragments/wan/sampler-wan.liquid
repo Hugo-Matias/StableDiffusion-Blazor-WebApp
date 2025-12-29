@@ -9,7 +9,7 @@
 {
   "scheduler": {
     "inputs": {
-      "scheduler": {{ scheduler | default: "dpm++_sde" | json }},
+      "scheduler": {{ scheduler | default: "" | json }},
       "steps": {{ steps | json }},
       "shift": {{ shift | default: 5 | json }},
       "start_step": 0,

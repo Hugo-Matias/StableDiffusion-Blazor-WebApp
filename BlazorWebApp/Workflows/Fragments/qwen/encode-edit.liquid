@@ -1,36 +1,35 @@
-
 {% meta %}
 {
   "outputs": {
-    "positive_output": { "node": "{{ scope | default: '' }}encode_positive", "index": 0 },
-    "negative_output": { "node": "{{ scope | default: '' }}encode_negative", "index": 0 }
+    "positive_output": { "node": "{{ scope | default: "" }}encode_positive", "index": 0 },
+    "negative_output": { "node": "{{ scope | default: "" }}encode_negative", "index": 0 }
   }
 }
 {% endmeta %}
 
 {
-  "{{ scope | default: '' }}encode_positive": {
+  "{{ scope | default: "" }}encode_positive": {
     "inputs": {
       "prompt": {{ positive | json }},
       "clip": {% assign clip_key = scope | default: "" | append: "clip_output" %}{% get_ref clip_key %},
       "vae": {% assign vae_key = scope | default: "" | append: "vae_output" %}{% get_ref vae_key %},
-      "image1": {% assign img_key = image_ref | default: "image_input" %}{% get_ref img_key %}
+      "image1": {% assign img_key = image_ref | default: "" %}{% get_ref img_key %}
     },
     "class_type": "TextEncodeQwenImageEditPlus",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}Encode Positive (Qwen Edit)"
+      "title": "{{ scope_title | default: "" }}Encode Positive (Qwen Edit)"
     }
   },
-  "{{ scope | default: '' }}encode_negative": {
+  "{{ scope | default: "" }}encode_negative": {
     "inputs": {
       "prompt": {{ negative | default: "" | json }},
       "clip": {% assign clip_key2 = scope | default: "" | append: "clip_output" %}{% get_ref clip_key2 %},
       "vae": {% assign vae_key2 = scope | default: "" | append: "vae_output" %}{% get_ref vae_key2 %},
-      "image1": {% assign img_key2 = image_ref | default: "image_input" %}{% get_ref img_key2 %}
+      "image1": {% assign img_key2 = image_ref | default: "" %}{% get_ref img_key2 %}
     },
     "class_type": "TextEncodeQwenImageEditPlus",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}Encode Negative (Qwen Edit)"
+      "title": "{{ scope_title | default: "" }}Encode Negative (Qwen Edit)"
     }
   }
 }

@@ -45,7 +45,7 @@
   },
   "frame_interpolation": {
     "inputs": {
-      "ckpt_name": {{ rife_model | default: "rife49.pth" | json }},
+      "ckpt_name": {{ rife_model | default: "" | json }},
       "clear_cache_after_n_frames": 10,
       "multiplier": {{ frame_multiplier | default: 2 | json }},
       "fast_mode": false,

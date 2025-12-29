@@ -35,16 +35,16 @@
       "denoise": {{ denoise | default: 1 | json }},
       "cfg": {{ cfg | json }},
       "seed": {{ seed | json }},
-      "sampler_mode": {{ sampler_mode | default: "standard" | json }},
+      "sampler_mode": {{ sampler_mode | default: "" | json }},
       "bongmath": true,
       "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
       "positive": {% assign pos_key = scope | default: "" | append: "positive_output" %}{% get_ref pos_key %},
       "negative": {% assign neg_key = scope | default: "" | append: "negative_output" %}{% get_ref neg_key %},
       "latent_image": {% assign lat_key = scope | default: "" | append: "latent_output" %}{% get_ref lat_key %}
     },
-    "class_type": {{ class_type | default: "ClownsharKSampler_Beta" | json }},
+    "class_type": {{ class_type | default: "" | json }},
     "_meta": {
-      "title": {{ title | default: "Sampler" | json }}
+      "title": {{ title | default: "" | json }}
     }
   }
 }

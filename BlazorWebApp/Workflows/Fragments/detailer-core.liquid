@@ -39,7 +39,7 @@
 {
   "detailer_bbox_provider": {
     "inputs": {
-      "model_name": {{ detailer_detection_model | default: "bbox/face_yolov8m.pt" | json }}
+      "model_name": {{ detailer_detection_model | default: "" | json }}
     },
     "class_type": "UltralyticsDetectorProvider",
     "_meta": {
@@ -54,8 +54,8 @@
       "seed": {{ detailer_seed | default: 42 | json }},
       "steps": {{ detailer_steps | default: 20 | json }},
       "cfg": {{ detailer_cfg | default: 8 | json }},
-      "sampler_name": {{ detailer_sampler | default: "dpmpp_2m" | json }},
-      "scheduler": {{ detailer_scheduler | default: "beta" | json }},
+      "sampler_name": {{ detailer_sampler | default: "" | json }},
+      "scheduler": {{ detailer_scheduler | default: "" | json }},
       "denoise": {{ detailer_denoise | default: 0.65 | json }},
       "feather": {{ detailer_feather | default: 5 | json }},
       "noise_mask": true,
@@ -77,11 +77,11 @@
       "tiled_encode": false,
       "tiled_decode": false,
       "image": {% get_ref "image_output" %},
-      "model": {% assign model_key = scope | default: "detailer_" | append: "model_output" %}{% get_ref model_key %},
-      "clip": {% assign clip_key = scope | default: "detailer_" | append: "clip_output" %}{% get_ref clip_key %},
-      "vae": {% assign vae_key = scope | default: "detailer_" | append: "vae_output" %}{% get_ref vae_key %},
-      "positive": {% assign pos_key = scope | default: "detailer_" | append: "positive_output" %}{% get_ref pos_key %},
-      "negative": {% assign neg_key = scope | default: "detailer_" | append: "negative_output" %}{% get_ref neg_key %},
+      "model": {% assign model_key = scope | default: "" | append: "model_output" %}{% get_ref model_key %},
+      "clip": {% assign clip_key = scope | default: "" | append: "clip_output" %}{% get_ref clip_key %},
+      "vae": {% assign vae_key = scope | default: "" | append: "vae_output" %}{% get_ref vae_key %},
+      "positive": {% assign pos_key = scope | default: "" | append: "positive_output" %}{% get_ref pos_key %},
+      "negative": {% assign neg_key = scope | default: "" | append: "negative_output" %}{% get_ref neg_key %},
       "bbox_detector": ["detailer_bbox_provider", 0]
     },
     "class_type": "FaceDetailer",

@@ -1,4 +1,5 @@
-﻿using BlazorWebApp.Models;
+﻿using BlazorWebApp.Extensions;
+using BlazorWebApp.Models;
 using BlazorWebApp.Services.Templating;
 using BlazorWebApp.Services.Templating.Pipeline;
 using System.Reflection;
@@ -48,18 +49,64 @@ namespace BlazorWebApp.Services
 
         public List<Workflow> GetWorkflows()
         {
-            var workflowFiles = _io.GetFilesRecursive(
-                Path.Combine(_workflowPath, "Templates"), 
-                ignorePath: "utils", 
-                extensionsWhitelist: new() { ".liquid" });
+            var templatesPath = Path.Combine(_workflowPath, "Templates");
             
+            // Get both .workflow and .liquid files
+            var workflowFiles = _io.GetFilesRecursive(
+                templatesPath,
+                ignorePath: "utils",
+                extensionsWhitelist: new() { ".workflow", ".liquid" });
+
+            // Group by relative path (without extension) to handle duplicates across different folders
+            var filesByRelativePath = workflowFiles
+                .Select(f => new
+                {
+                    File = f,
+                    RelativePath = Path.GetRelativePath(templatesPath, f.FullName)
+                        .Replace(f.Extension, "", StringComparison.OrdinalIgnoreCase)
+                })
+                .GroupBy(x => x.RelativePath, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.File).ToList());
+
             List<Workflow> workflows = new();
 
-            foreach (var filePath in workflowFiles)
+            foreach (var group in filesByRelativePath)
             {
-                var templateText = File.ReadAllText(filePath.FullName);
-                var workflow = _templateParser.ParseWorkflowTemplate(templateText);
-                workflows.Add(workflow);
+                FileInfo? fileToLoad = null;
+
+                // Prefer .workflow extension, fall back to .liquid
+                var workflowFile = group.Value.FirstOrDefault(f => f.Extension == ".workflow");
+                var liquidFile = group.Value.FirstOrDefault(f => f.Extension == ".liquid");
+
+                if (workflowFile != null)
+                {
+                    fileToLoad = workflowFile;
+                    _logger.LogDebug("Loading workflow template: {RelativePath}.workflow", group.Key);
+                }
+                else if (liquidFile != null)
+                {
+                    fileToLoad = liquidFile;
+                    _logger.LogWarning(
+                        "Loading legacy .liquid workflow template: {RelativePath}. " +
+                        "Consider renaming to .workflow for clarity.",
+                        group.Key);
+                }
+
+                if (fileToLoad != null)
+                {
+                    try
+                    {
+                        var templateText = File.ReadAllText(fileToLoad.FullName);
+                        
+                        // Use async Fluid parsing to handle template syntax properly
+                        var workflow = _templateParser.ParseWorkflowTemplateAsync(templateText).GetAwaiter().GetResult();
+                        workflows.Add(workflow);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to parse workflow template: {FilePath}", fileToLoad.FullName);
+                    }
+                }
             }
 
             return workflows;
@@ -360,6 +407,21 @@ namespace BlazorWebApp.Services
                 {
                     parameters[kvp.Key] = kvp.Value;
                 }
+            }
+            
+            // Debug log the parameters being passed
+            var parameterPreview = string.Join(", ", parameters.Take(10).Select(kvp => $"{kvp.Key}={kvp.Value?.ToString()?.Truncate(30)}"));
+            _logger.LogDebug("RenderFragmentAsync: Rendering fragment with {ParamCount} parameters: {Preview}", 
+                parameters.Count, parameterPreview);
+            
+            // Check for node_prefix specifically
+            if (parameters.TryGetValue("node_prefix", out var nodePrefixValue))
+            {
+                _logger.LogDebug("RenderFragmentAsync: node_prefix = '{Value}' (type: {Type})", nodePrefixValue, nodePrefixValue?.GetType().Name);
+            }
+            else
+            {
+                _logger.LogWarning("RenderFragmentAsync: node_prefix NOT found in parameters!");
             }
 
             // Render with Fluid - meta block is automatically captured to side-channel
@@ -671,18 +733,31 @@ namespace BlazorWebApp.Services
         private string? FindWorkflowTemplatePath(Workflow workflow)
         {
             var templatesPath = Path.Combine(_workflowPath, "Templates");
-            var workflowFiles = _io.GetFilesRecursive(templatesPath, ignorePath: "utils", extensionsWhitelist: new() { ".liquid" });
+            var workflowFiles = _io.GetFilesRecursive(
+                templatesPath,
+                ignorePath: "utils",
+                extensionsWhitelist: new() { ".workflow", ".liquid" });
 
             foreach (var file in workflowFiles)
             {
-                var templateText = File.ReadAllText(file.FullName);
-                var parsedWorkflow = _templateParser.ParseWorkflowTemplate(templateText);
-
-                if (parsedWorkflow.Title == workflow.Title &&
-                    parsedWorkflow.Base == workflow.Base &&
-                    parsedWorkflow.Mode == workflow.Mode)
+                try
                 {
-                    return file.FullName;
+                    var templateText = File.ReadAllText(file.FullName);
+                    
+                    // Use async Fluid parsing
+                    var parsedWorkflow = _templateParser.ParseWorkflowTemplateAsync(templateText).GetAwaiter().GetResult();
+
+                    if (parsedWorkflow.Title == workflow.Title &&
+                        parsedWorkflow.Base == workflow.Base &&
+                        parsedWorkflow.Mode == workflow.Mode)
+                    {
+                        return file.FullName;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse workflow template: {FilePath}", file.FullName);
+                    continue;
                 }
             }
 

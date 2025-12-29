@@ -28,7 +28,7 @@
 {
   "upscale_model_loader": {
     "inputs": {
-      "model_name": {{ upscale_model | default: "4x-UltraSharpV2.safetensors" | json }}
+      "model_name": {{ upscale_model | default: "" | json }}
     },
     "class_type": "UpscaleModelLoader",
     "_meta": {
@@ -81,8 +81,8 @@
   "upscale_unsample": {
     "inputs": {
       "eta": 0.5,
-      "sampler_name": {{ sampler_name | default: "multistep/res_2m" | json }},
-      "scheduler": {{ scheduler | default: "beta" | json }},
+      "sampler_name": {{ sampler_name | default: "" | json }},
+      "scheduler": {{ scheduler | default: "" | json }},
       "steps": {{ upscale_steps | default: 20 | json }},
       "steps_to_run": {% assign base_steps = upscale_steps | default: 20 %}{{ base_steps | divided_by: 4 | round | json }},
       "denoise": {{ upscale_denoise | default: 1 | json }},
@@ -103,7 +103,7 @@
   "upscale_resample_1": {
     "inputs": {
       "eta": 0.5,
-      "sampler_name": {{ sampler_name | default: "multistep/res_2m" | json }},
+      "sampler_name": {{ sampler_name | default: "" | json }},
       "steps_to_run": {% assign base_steps2 = upscale_steps | default: 20 %}{{ base_steps2 | divided_by: 4 | round | json }},
       "cfg": {{ cfg | default: 1 | json }},
       "sampler_mode": "resample",
@@ -118,7 +118,7 @@
   "upscale_resample_2": {
     "inputs": {
       "eta": 0.5,
-      "sampler_name": {{ sampler_name | default: "multistep/res_2m" | json }},
+      "sampler_name": {{ sampler_name | default: "" | json }},
       "steps_to_run": -1,
       "cfg": {{ cfg | default: 1 | json }},
       "sampler_mode": "resample",

@@ -1,13 +1,18 @@
+{%- assign _prefix = node_prefix | default: "model" -%}
+{%- assign _output_name = model_output_name | default: "model_output" -%}
+{%- assign _torch_node = _prefix | append: "_torch" -%}
+{%- assign _unet_node = _prefix | append: "_unet_loader" -%}
+{%- assign _sage_node = _prefix | append: "_sage" -%}
 {% meta %}
 {
   "outputs": {
-    "{{ model_output_name | default: 'model_output' }}": { "node": "{{ node_prefix | default: 'model' }}_torch", "index": 0 }
+    "{{ _output_name }}": { "node": "{{ _torch_node }}", "index": 0 }
   }
 }
 {% endmeta %}
 
 {
-  "{{ node_prefix | default: 'model' }}_unet_loader": {
+  "{{ _unet_node }}": {
     "inputs": {
       "unet_name": {{ model_name | json }},
       "weight_dtype": {{ weight_dtype | default: "default" | json }}
@@ -17,20 +22,20 @@
       "title": {{ loader_title | default: "Load Diffusion Model" | json }}
     }
   },
-  "{{ node_prefix | default: 'model' }}_sage": {
+  "{{ _sage_node }}": {
     "inputs": {
       "sage_attention": {{ sage_attention | default: "sageattn_qk_int8_pv_fp16_triton" | json }},
-      "model": ["{{ node_prefix | default: 'model' }}_unet_loader", 0]
+      "model": ["{{ _unet_node }}", 0]
     },
     "class_type": "PathchSageAttentionKJ",
     "_meta": {
       "title": {{ sage_title | default: "Patch Sage Attention" | json }}
     }
   },
-  "{{ node_prefix | default: 'model' }}_torch": {
+  "{{ _torch_node }}": {
     "inputs": {
       "enable_fp16_accumulation": {{ enable_fp16_accumulation | default: true | json }},
-      "model": ["{{ node_prefix | default: 'model' }}_sage", 0]
+      "model": ["{{ _sage_node }}", 0]
     },
     "class_type": "ModelPatchTorchSettings",
     "_meta": {

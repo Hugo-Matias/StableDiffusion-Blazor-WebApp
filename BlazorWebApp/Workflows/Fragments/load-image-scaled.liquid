@@ -18,7 +18,7 @@
   },
   "image_scale": {
     "inputs": {
-      "upscale_method": {{ upscale_method | default: "lanczos" | json }},
+      "upscale_method": {{ upscale_method | default: "" | json }},
       "megapixels": {{ megapixels | default: 1 | json }},
       "image": ["image_loader", 0]
     },

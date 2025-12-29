@@ -45,16 +45,16 @@
       "$foreach": "HighLoras",
       "$as": "lora",
       "$template": {
-        "id": "lora_high_{% raw %}{{ $index }}{% endraw %}",
+        "id": "lora_high_${$index}",
         "fragment": "wan/lora-loader-model-only.liquid",
         "parameters": {
-          "lora_loader_id": "high_lora_loader_{% raw %}{{ $index }}{% endraw %}",
-          "lora_name": "{% raw %}{{ lora.Name }}{% endraw %}",
-          "lora_path": "{% raw %}{{ lora.HighPath }}{% endraw %}",
-          "lora_strength": "{% raw %}{{ lora.Strength }}{% endraw %}",
+          "lora_loader_id": "high_lora_loader_${$index}",
+          "lora_name": "${lora.Name}",
+          "lora_path": "${lora.HighPath}",
+          "lora_strength": "${lora.Strength}",
           "model_input_name": "high_model_output",
           "model_output_name": "high_lora_model_output",
-          "title": "LoRA (High) {% raw %}{{ $index }}{% endraw %}"
+          "title": "LoRA (High) ${$index}"
         }
       }
     },
@@ -62,16 +62,16 @@
       "$foreach": "LowLoras",
       "$as": "lora",
       "$template": {
-        "id": "lora_low_{% raw %}{{ $index }}{% endraw %}",
+        "id": "lora_low_${$index}",
         "fragment": "wan/lora-loader-model-only.liquid",
         "parameters": {
-          "lora_loader_id": "low_lora_loader_{% raw %}{{ $index }}{% endraw %}",
-          "lora_name": "{% raw %}{{ lora.Name }}{% endraw %}",
-          "lora_path": "{% raw %}{{ lora.LowPath }}{% endraw %}",
-          "lora_strength": "{% raw %}{{ lora.Strength }}{% endraw %}",
+          "lora_loader_id": "low_lora_loader_${$index}",
+          "lora_name": "${lora.Name}",
+          "lora_path": "${lora.LowPath}",
+          "lora_strength": "${lora.Strength}",
           "model_input_name": "low_model_output",
           "model_output_name": "low_lora_model_output",
-          "title": "LoRA (Low) {% raw %}{{ $index }}{% endraw %}"
+          "title": "LoRA (Low) ${$index}"
         }
       }
     },

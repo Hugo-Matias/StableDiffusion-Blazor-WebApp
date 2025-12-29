@@ -1,16 +1,16 @@
 {% meta %}
 {
   "outputs": {
-    "{{ scope | default: '' }}text_embeds": { "node": "{{ scope | default: '' }}text_encode", "index": 0 }
+    "{{ scope | default: "" }}text_embeds": { "node": "{{ scope | default: "" }}text_encode", "index": 0 }
   }
 }
 {% endmeta %}
 
 {
-  "{{ scope | default: '' }}text_encode": {
+  "{{ scope | default: "" }}text_encode": {
     "inputs": {
       "model_name": {{ text_encoder_name | json }},
-      "precision": {{ precision | default: "bf16" | json }},
+      "precision": {{ precision | default: "" | json }},
       "positive_prompt": {{ positive | json }},
       "negative_prompt": {{ negative | default: "" | json }},
       "quantization": "disabled",
@@ -19,7 +19,7 @@
     },
     "class_type": "WanVideoTextEncodeCached",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}WanVideo TextEncode"
+      "title": "{{ scope_title | default: "" }}WanVideo TextEncode"
     }
   }
 }

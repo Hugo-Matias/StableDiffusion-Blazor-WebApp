@@ -26,7 +26,7 @@
       "height": {{ height | json }},
       "batch_size": {{ batch_size | json }}
     },
-    "class_type": {{ latent_class | default: "EmptySD3LatentImage" | json }},
+    "class_type": {{ latent_class | default: "" | json }},
     "_meta": {
       "title": "{% if scope_title %}{{ scope_title }}{% endif %}Empty Latent Image"
     }

@@ -1,13 +1,13 @@
 {% meta %}
 {
   "outputs": {
-    "{{ scope | default: '' }}model_output": { "node": "{{ scope | default: '' }}set_loras", "index": 0 }
+    "{{ scope | default: "" }}model_output": { "node": "{{ scope | default: "" }}set_loras", "index": 0 }
   }
 }
 {% endmeta %}
 
 {
-  "{{ scope | default: '' }}compile_settings": {
+  "{{ scope | default: "" }}compile_settings": {
     "inputs": {
       "backend": "inductor",
       "fullgraph": false,
@@ -21,25 +21,25 @@
     },
     "class_type": "WanVideoTorchCompileSettings",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}Torch Compile Settings"
+      "title": "{{ scope_title | default: "" }}Torch Compile Settings"
     }
   },
-  "{{ scope | default: '' }}model_loader": {
+  "{{ scope | default: "" }}model_loader": {
     "inputs": {
       "model": {{ model_name | json }},
-      "base_precision": {{ base_precision | default: "fp16_fast" | json }},
+      "base_precision": {{ base_precision | default: "" | json }},
       "quantization": "disabled",
       "load_device": "offload_device",
-      "attention_mode": {{ attention_mode | default: "sageattn" | json }},
+      "attention_mode": {{ attention_mode | default: "" | json }},
       "rms_norm_function": "default",
-      "compile_args": ["{{ scope | default: '' }}compile_settings", 0]
+      "compile_args": ["{{ scope | default: "" }}compile_settings", 0]
     },
     "class_type": "WanVideoModelLoader",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}WanVideo Model Loader"
+      "title": "{{ scope_title | default: "" }}WanVideo Model Loader"
     }
   },
-  "{{ scope | default: '' }}block_swap": {
+  "{{ scope | default: "" }}block_swap": {
     "inputs": {
       "blocks_to_swap": {{ blocks_to_swap | default: 35 | json }},
       "offload_img_emb": false,
@@ -51,20 +51,20 @@
     },
     "class_type": "WanVideoBlockSwap",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}Block Swap"
+      "title": "{{ scope_title | default: "" }}Block Swap"
     }
   },
-  "{{ scope | default: '' }}set_block_swap": {
+  "{{ scope | default: "" }}set_block_swap": {
     "inputs": {
-      "model": ["{{ scope | default: '' }}model_loader", 0],
-      "block_swap_args": ["{{ scope | default: '' }}block_swap", 0]
+      "model": ["{{ scope | default: "" }}model_loader", 0],
+      "block_swap_args": ["{{ scope | default: "" }}block_swap", 0]
     },
     "class_type": "WanVideoSetBlockSwap",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}Set BlockSwap"
+      "title": "{{ scope_title | default: "" }}Set BlockSwap"
     }
   },
-  "{{ scope | default: '' }}lora_select": {
+  "{{ scope | default: "" }}lora_select": {
     "inputs": {
       "lora": {{ lora_name | json }},
       "strength": {{ lora_strength | default: 1 | json }},
@@ -73,17 +73,17 @@
     },
     "class_type": "WanVideoLoraSelect",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}LoRA Select"
+      "title": "{{ scope_title | default: "" }}LoRA Select"
     }
   },
-  "{{ scope | default: '' }}set_loras": {
+  "{{ scope | default: "" }}set_loras": {
     "inputs": {
-      "model": ["{{ scope | default: '' }}set_block_swap", 0],
-      "lora": ["{{ scope | default: '' }}lora_select", 0]
+      "model": ["{{ scope | default: "" }}set_block_swap", 0],
+      "lora": ["{{ scope | default: "" }}lora_select", 0]
     },
     "class_type": "WanVideoSetLoRAs",
     "_meta": {
-      "title": "{{ scope_title | default: '' }}Set LoRAs"
+      "title": "{{ scope_title | default: "" }}Set LoRAs"
     }
   }
 }

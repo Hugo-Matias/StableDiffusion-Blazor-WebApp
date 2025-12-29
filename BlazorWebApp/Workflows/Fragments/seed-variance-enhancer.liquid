@@ -33,10 +33,10 @@
     "inputs": {
       "randomize_percent": {{ randomize_percent | default: 50 | json }},
       "strength": {{ strength | default: 20 | json }},
-      "noise_insert": {{ noise_insert | default: "noise on beginning steps" | json }},
+      "noise_insert": {{ noise_insert | default: "" | json }},
       "steps_switchover_percent": {{ steps_switchover_percent | default: 20 | json }},
       "seed": {{ seed | default: 0 | json }},
-      "mask_starts_at": {{ mask_starts_at | default: "beginning" | json }},
+      "mask_starts_at": {{ mask_starts_at | default: "" | json }},
       "mask_percent": {{ mask_percent | default: 0 | json }},
       "log_to_console": {{ log_to_console | default: false | json }},
       "conditioning": {% assign pos_key = scope | default: "" | append: "positive_output" %}{% get_ref pos_key %}

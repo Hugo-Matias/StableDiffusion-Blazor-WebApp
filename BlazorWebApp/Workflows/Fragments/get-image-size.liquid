@@ -12,7 +12,7 @@
 {
   "get_size": {
     "inputs": {
-      "image": {% assign img_key = image_ref | default: "video_frames" %}{% get_ref img_key %}
+      "image": {% assign img_key = image_ref | default: "" %}{% get_ref img_key %}
     },
     "class_type": "GetImageSizeAndCount",
     "_meta": {

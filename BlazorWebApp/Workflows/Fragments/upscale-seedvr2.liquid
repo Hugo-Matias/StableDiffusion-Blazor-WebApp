@@ -48,7 +48,7 @@
   },
   "seedvr2_load_vae": {
     "inputs": {
-      "model": {{ seedvr2_vae_model | default: "ema_vae_fp16.safetensors" | json }},
+      "model": {{ seedvr2_vae_model | default: "" | json }},
       "device": "cuda:0",
       "encode_tiled": true,
       "encode_tile_size": {{ vae_tile_size | json }},

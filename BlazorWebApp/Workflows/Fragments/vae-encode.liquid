@@ -9,7 +9,7 @@
 {
   "vae_encoder": {
     "inputs": {
-      "pixels": {% assign img_key = image_ref | default: "image_input" %}{% get_ref img_key %},
+      "pixels": {% assign img_key = image_ref | default: "" %}{% get_ref img_key %},
       "vae": {% assign vae_key = scope | default: "" | append: "vae_output" %}{% get_ref vae_key %}
     },
     "class_type": "VAEEncode",

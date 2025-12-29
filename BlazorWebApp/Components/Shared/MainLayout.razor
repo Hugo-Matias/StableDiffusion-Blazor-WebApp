@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @using BlazorWebApp.Events
+@using BlazorWebApp.Services.Templating
 @using static BlazorWebApp.Data.Enums
 @inject IOrchestratorService M
 @inject IStateService State
@@ -9,6 +10,7 @@
 @inject ThemeService ThemeService
 @inject NavigationManager NavManager
 @inject IInfoService InfoService
+@inject IFluidTemplateService FluidService
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
@@ -195,7 +197,12 @@
 
     private void RefreshWorkflows()
     {
+        // Clear Fluid template cache to force re-reading templates from disk
+        FluidService.ClearCache();
+        
+        // Refresh workflows from disk templates
         M.RefreshWorkflowsFromDisk();
+        
         LoadWorkflowBases();
         StateHasChanged();
     }

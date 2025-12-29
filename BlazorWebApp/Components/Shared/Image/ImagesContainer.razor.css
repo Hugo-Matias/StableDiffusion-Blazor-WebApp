@@ -105,7 +105,8 @@
 }
 
 /* Card inside grid item */
-::deep .grid-item-fixed .gallery-card {
+::deep .grid-item-fixed .gallery-card,
+::deep .grid-item-fixed .video-card {
     height: 100%;
 }
 

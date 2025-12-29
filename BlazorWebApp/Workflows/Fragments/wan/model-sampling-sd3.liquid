@@ -1,7 +1,7 @@
 {% meta %}
 {
   "outputs": {
-    "{{ model_output_name | default: 'model_output' }}": { "node": "{{ sampler_id }}", "index": 0 }
+    "{{ model_output_name | default: "" }}": { "node": "{{ sampler_id }}", "index": 0 }
   }
 }
 {% endmeta %}
@@ -10,11 +10,11 @@
   "{{ sampler_id }}": {
     "inputs": {
       "shift": {{ shift | default: 5 | json }},
-      "model": {% assign model_key = model_input_name | default: "model_output" %}{% get_ref model_key %}
+      "model": {% assign model_key = model_input_name | default: "" %}{% get_ref model_key %}
     },
     "class_type": "ModelSamplingSD3",
     "_meta": {
-      "title": {{ title | default: "ModelSamplingSD3" | json }}
+      "title": {{ title | default: "" | json }}
     }
   }
 }

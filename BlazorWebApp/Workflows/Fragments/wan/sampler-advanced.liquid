@@ -30,7 +30,7 @@
 {
   "{{ sampler_id }}": {
     "inputs": {
-      "add_noise": {{ add_noise | default: "enable" | json }},
+      "add_noise": {{ add_noise | default: "" | json }},
       "noise_seed": {{ seed | json }},
       "steps": {{ steps | json }},
       "cfg": {{ cfg | json }},
@@ -38,15 +38,15 @@
       "scheduler": {{ scheduler | json }},
       "start_at_step": {{ start_at_step | json }},
       "end_at_step": {{ end_at_step | json }},
-      "return_with_leftover_noise": {{ return_with_leftover_noise | default: "disable" | json }},
-      "model": {% assign model_key = model_input_name | default: "model_output" %}{% get_ref model_key %},
-      "positive": {% assign pos_key = positive_input_name | default: "painter_positive_output" %}{% get_ref pos_key %},
-      "negative": {% assign neg_key = negative_input_name | default: "painter_negative_output" %}{% get_ref neg_key %},
-      "latent_image": {% assign lat_key = latent_input_name | default: "painter_latent_output" %}{% get_ref lat_key %}
+      "return_with_leftover_noise": {{ return_with_leftover_noise | default: "" | json }},
+      "model": {% assign model_key = model_input_name | default: "" %}{% get_ref model_key %},
+      "positive": {% assign pos_key = positive_input_name | default: "" %}{% get_ref pos_key %},
+      "negative": {% assign neg_key = negative_input_name | default: "" %}{% get_ref neg_key %},
+      "latent_image": {% assign lat_key = latent_input_name | default: "" %}{% get_ref lat_key %}
     },
     "class_type": "KSamplerAdvanced",
     "_meta": {
-      "title": {{ title | default: "KSampler (Advanced)" | json }}
+      "title": {{ title | default: "" | json }}
     }
   }
 }

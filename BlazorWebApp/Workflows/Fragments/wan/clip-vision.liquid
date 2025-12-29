@@ -9,7 +9,7 @@
 {
   "clip_vision_loader": {
     "inputs": {
-      "clip_name": {{ clip_vision_name | default: "clip_vision_h.safetensors" | json }}
+      "clip_name": {{ clip_vision_name | default: "" | json }}
     },
     "class_type": "CLIPVisionLoader",
     "_meta": {

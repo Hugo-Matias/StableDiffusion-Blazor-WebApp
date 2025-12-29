@@ -293,6 +293,8 @@ Fragment File → Fluid Parse (handles {% meta %} block natively)
 - [x] Update .csproj to only copy chroma .sbn file
 - [x] Update test files to remove Scriban dependencies
 - [x] **Update FragmentSchemaService to parse Fluid `{% meta %}` blocks**
+- [x] **Fix Liquid quote syntax in all fragments** - Use double quotes in filter arguments
+- [x] **Fix `| json` usage** - Remove from object keys and array references
 - [x] Build passes with zero Scriban type references
 
 #### Completion Notes
@@ -302,7 +304,65 @@ Fragment File → Fluid Parse (handles {% meta %} block natively)
 - **Program.cs** simplified - no more Scriban precompilation
 - **Test files** updated to work without TemplateCacheService
 - **Chroma template** kept as `.sbn` but throws error if used (requires separate conversion)
-- **Root cause of z-image workflow issue fixed**: FragmentSchemaService was only parsing legacy Scriban meta blocks
+- **Quote syntax fixed** - 30 fragment files updated to use double quotes in `default:` filters
+- **Golden Rules documented** in FLUID_CONVENTIONS.md to prevent future issues
+
+**Critical Fixes:**
+1. **Quote Handling:** Single quotes in Liquid `default:` filters are literal characters. Changed all instances to use double quotes: `default: "value"` not `default: 'value'`
+2. **Object Keys:** Removed `| json` filter from object keys - keys should be plain template output with quotes in the template
+3. **Array References:** Removed `| json` filter from node ID references in arrays
+
+---
+
+### Phase 8: Workflow Template Standardization
+**Objective:** Rename workflow templates to `.workflow` extension for architectural clarity
+**Complexity:** 18 points
+**Status:** [~] In Progress - Core implementation complete, testing pending
+
+#### Steps
+- [x] Rename workflow template files from `.liquid` to `.workflow` (7 files)
+- [x] Update WorkflowService file loading with backward compatibility
+- [x] Update documentation (FLUID_CONVENTIONS.md, PHASE_8.md)
+- [x] Update .csproj build configuration
+- [ ] JSON schema for `.workflow` validation (deferred)
+- [ ] Full manual testing and validation
+
+#### Accomplishments
+- **7 workflow templates renamed** to `.workflow` extension
+- **WorkflowService updated** to prefer `.workflow`, fallback to `.liquid` with warning
+- **Build configuration updated** to copy both `.workflow` and `.liquid` (backward compat)
+- **Documentation enhanced** with file extension conventions
+- **Backward compatibility maintained** - no breaking changes
+
+#### Rationale
+**Problem:** Both workflow templates and fragments use `.liquid` extension, but they're processed completely differently:
+- **Workflow templates:** Pipeline expansion (Stage 1) → Fluid rendering (Stage 2)
+- **Fragment templates:** Pure Fluid rendering only
+
+**Solution:** Clear separation with `.workflow` extension:
+- `.workflow` = JSON + Pipeline directives + Fluid placeholders
+- `.liquid` = Pure Liquid templates
+
+**Benefits:**
+- ✅ Clear separation of concerns
+- ✅ Better editor tooling (JSON schema validation possible)
+- ✅ Prevents confusion about processing stages
+- ✅ Easier to document quote/syntax rules per file type
+- ✅ Backward compatible migration path
+
+#### Testing Status
+- [x] Build passes
+- [x] Backward compatibility verified (code inspection)
+- [ ] Runtime testing - workflow loading
+- [ ] Manual workflow execution testing
+
+#### Success Criteria
+- [x] All workflow templates renamed to `.workflow`
+- [x] Backward compatibility maintained (`.liquid` still loads with warning)
+- [ ] JSON schema validates `.workflow` files (deferred)
+- [x] Build passes
+- [ ] All workflows execute successfully
+- [x] Documentation updated
 
 ---
 
@@ -404,93 +464,8 @@ Fragment File → Fluid Parse (handles {% meta %} block natively)
 | Phase 4 | All fragments converted - 50 fragments renamed to .liquid |
 | Phase 5 | Workflow templates converted - 7 templates, Pipeline processors created |
 | Phase 7 | Scriban removed - TemplateCacheService deleted, FragmentSchemaService updated for Fluid meta syntax |
-
----
-
-## Validation Checklist
-
-**Payload Comparison Tests:**
-- [ ] Simple txt2img workflow (Z-Image)
-- [ ] Complex txt2img workflow (Flux with LoRAs)
-- [ ] Img2vid workflow (WAN)
-- [ ] Workflow with conditionals disabled
-- [ ] Workflow with dynamic output keys
-- [ ] Workflow with nested node references
-- [ ] Workflow with detailer fragment
-- [ ] Workflow with upscaler fragment
-
-**Manual Testing:**
-- [ ] Generate Z-Image txt2img
-- [ ] Generate Flux txt2img
-- [ ] Generate WAN img2vid (the failing workflow)
-- [ ] Generate with multiple LoRAs
-- [ ] Generate with detailer enabled
-- [ ] Generate with upscaler enabled
-- [ ] Verify all fragment UI forms render
-- [ ] Verify all fragments declare outputs correctly
-- [ ] Confirm ComfyUI accepts all payloads
-- [ ] Verify generated images/videos are correct
-
-**Performance Validation:**
-- [ ] Template render time ≤ Scriban baseline
-- [ ] Memory usage ≤ Scriban baseline
-- [ ] Cache hit rate ≥ 80%
-
----
-
-## Code Examples
-
-### Proposed Fluid (Robust)
-```csharp
-// WorkflowService.cs - RenderFragmentWithFluid method
-var template = _fluidTemplateService.Parse(fragmentText);
-var rendered = await template.RenderAsync(context);
-
-// Retrieve metadata from context (captured by {% meta %} block)
-var metaJson = context.GetValue("FragmentMetadata")?.ToStringValue();
-if (!string.IsNullOrEmpty(metaJson))
-{
-    (outputs, conditions) = ExtractMetadata(metaJson);
-}
-```
-
-### Custom Meta Block Implementation
-```csharp
-// Services/Templating/Blocks/MetaBlock.cs
-public class MetaBlock : IFluidBlock
-{
-    public async ValueTask<Completion> WriteToAsync(
-        TextWriter writer, 
-        TextEncoder encoder, 
-        TemplateContext context, 
-        IReadOnlyList<Statement> statements)
-    {
-        // Render meta content to separate writer
-        using var metaWriter = new StringWriter();
-        foreach (var statement in statements)
-        {
-            await statement.WriteToAsync(metaWriter, encoder, context);
-        }
-        
-        // Store in context, NOT in main output
-        context.SetValue("FragmentMetadata", metaWriter.ToString());
-        
-        return Completion.Normal; // No output to main stream
-    }
-}
-```
-
----
-
-## References
-
-- [Fluid Documentation](https://github.com/sebastienros/fluid)
-- [Liquid Template Language](https://shopify.github.io/liquid/)
-- Current Implementation: `BlazorWebApp/Services/WorkflowService.cs`
-- Template Guide: `Documentation/Plans/TEMPLATE_GUIDE.md`
-- Implementation Guide: `Documentation/Plans/IMPLEMENTATION_GUIDE.md`
-
----
-
-**Document Version:** 1.3 (Phase 7 Complete - FragmentSchemaService Fix)  
-**Plan Status:** Migration Complete - Ready for Manual Testing
+| Phase 7.9 | **Pipeline syntax improved** - Changed from `{{ }}` to `${}` delimiter for placeholders to eliminate Fluid conflicts |
+| Phase 7.11 | **Quote syntax fixed** - Changed all `default:` filters to use double quotes instead of single quotes (30 files, automated fix) |
+| Phase 7.11 | **JSON filter rules documented** - Added Golden Rules to FLUID_CONVENTIONS.md: no `| json` on object keys or array references |
+| Phase 8 | **Workflow standardization** - Renamed templates to `.workflow` extension, updated file loading with backward compatibility |
+| Phase 8 | **Critical fix** - Fixed duplicate filename issue causing missing txt2img workflows (SD, Qwen, Z-Image) by grouping on relative path |

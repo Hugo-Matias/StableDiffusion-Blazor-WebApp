@@ -3,8 +3,11 @@ using Fluid;
 using Fluid.Ast;
 using Fluid.Values;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Services.Templating;
 
@@ -21,6 +24,9 @@ public class FluidTemplateService : IFluidTemplateService
 
     // Context key for storing captured metadata from {% meta %} block
     private const string MetadataContextKey = "__fluid_fragment_metadata__";
+    
+    // Disable cache for debugging - set to true to diagnose cache issues
+    private const bool DisableCacheForDebugging = true;
 
     public FluidTemplateService(ILogger<FluidTemplateService> logger)
     {
@@ -35,6 +41,91 @@ public class FluidTemplateService : IFluidTemplateService
 
         // Create parser with custom tags
         _parser = CreateParser();
+        
+        // Log startup
+        _logger.LogInformation("FluidTemplateService initialized. Cache disabled: {CacheDisabled}", DisableCacheForDebugging);
+        
+        // Self-test the meta block registration
+        TestMetaBlockRegistration();
+    }
+    
+    /// <summary>
+    /// Tests that the meta block extraction works correctly.
+    /// Uses the regex-based approach that handles multi-line content.
+    /// </summary>
+    private void TestMetaBlockRegistration()
+    {
+        // Test 1: Simple meta block
+        TestMetaExtraction("Simple", 
+            @"{% meta %}{ ""test"": ""value"" }{% endmeta %}BODY", 
+            new Dictionary<string, object?>(),
+            expectedMetaContains: "test",
+            expectedBodyContains: "BODY");
+        
+        // Test 2: Multi-line nested JSON (no expressions)
+        TestMetaExtraction("MultiLineNested", 
+            @"{% meta %}
+{
+  ""outputs"": {
+    ""output_key"": { ""node"": ""node_id"", ""index"": 0 }
+  }
+}
+{% endmeta %}
+
+BODY",
+            new Dictionary<string, object?>(),
+            expectedMetaContains: "outputs",
+            expectedBodyContains: "BODY");
+        
+        // Test 3: With assign + expressions (the correct pattern)
+        TestMetaExtraction("AssignPattern",
+            @"{%- assign _prefix = prefix | default: ""model"" -%}
+{%- assign _output = output_name | default: ""out"" -%}
+{% meta %}
+{
+  ""outputs"": {
+    ""{{ _output }}"": { ""node"": ""{{ _prefix }}_torch"", ""index"": 0 }
+  }
+}
+{% endmeta %}
+
+{
+  ""{{ _prefix }}_loader"": { ""class_type"": ""Loader"" }
+}",
+            new Dictionary<string, object?> { ["prefix"] = "high", ["output_name"] = "high_output" },
+            expectedMetaContains: "high_output",
+            expectedBodyContains: "high_loader");
+    }
+    
+    private void TestMetaExtraction(string testName, string template, Dictionary<string, object?> parameters, 
+        string? expectedMetaContains, string? expectedBodyContains)
+    {
+        try
+        {
+            var context = CreateContext(parameters, null);
+            var (rendered, metadata) = RenderAsync(template, context).GetAwaiter().GetResult();
+            
+            var metaOk = expectedMetaContains == null || (metadata?.Contains(expectedMetaContains) ?? false);
+            var bodyOk = expectedBodyContains == null || rendered.Contains(expectedBodyContains);
+            
+            var metaPreview = metadata?.Length > 80 ? metadata.Substring(0, 80).Replace("\n", " ") + "..." : metadata?.Replace("\n", " ");
+            var bodyPreview = rendered.Length > 80 ? rendered.Substring(0, 80).Replace("\n", " ") + "..." : rendered.Replace("\n", " ");
+            
+            if (metaOk && bodyOk)
+            {
+                _logger.LogInformation("Meta test '{TestName}' PASSED. Meta: {Meta}, Body: {Body}", 
+                    testName, metaPreview, bodyPreview);
+            }
+            else
+            {
+                _logger.LogError("Meta test '{TestName}' FAILED. MetaOK={MetaOk}, BodyOK={BodyOk}. Meta: {Meta}, Body: {Body}", 
+                    testName, metaOk, bodyOk, metaPreview, bodyPreview);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Meta test '{TestName}' EXCEPTION", testName);
+        }
     }
 
     #region Public API
@@ -52,25 +143,94 @@ public class FluidTemplateService : IFluidTemplateService
         string templateText,
         FluidRenderContext context)
     {
-        // Get or compile template
-        var cacheKey = ComputeCacheKey(templateText);
-        var template = GetOrCompileTemplate(cacheKey, templateText);
+        // WORKAROUND: Fluid's RegisterEmptyBlock has a bug with multi-line content.
+        // Extract the meta block using regex and render it with context that includes
+        // any {% assign %} statements that may precede it.
+        string? preExtractedMetadata = null;
+        var bodyTemplate = templateText;
+        
+        var metaMatch = Regex.Match(templateText, 
+            @"\{%\s*meta\s*%\}(.*?)\{%\s*endmeta\s*%\}", 
+            RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        
+        if (metaMatch.Success)
+        {
+            // Get everything BEFORE the meta block (may contain {% assign %} statements)
+            var preMetaContent = templateText.Substring(0, metaMatch.Index);
+            
+            // Get the meta block content
+            var metaContent = metaMatch.Groups[1].Value.Trim();
+            
+            // Get everything AFTER the meta block (the body)
+            bodyTemplate = templateText.Substring(metaMatch.Index + metaMatch.Length).Trim();
+            
+            // Combine pre-meta content (assigns) with meta content for rendering
+            // This ensures variables defined before {% meta %} are available
+            var metaWithAssigns = preMetaContent + metaContent;
+            
+            // Render the meta content (with preceding assigns) to resolve Fluid expressions
+            if (!string.IsNullOrEmpty(metaWithAssigns.Trim()))
+            {
+                try
+                {
+                    if (_parser.TryParse(metaWithAssigns, out var metaTemplate, out var metaError))
+                    {
+                        var metaContext = BuildTemplateContext(context);
+                        var renderedMetaWithAssigns = await metaTemplate.RenderAsync(metaContext);
+                        
+                        // The assigns don't produce output, so the result should be just the meta JSON
+                        preExtractedMetadata = renderedMetaWithAssigns?.Trim();
+                        
+                        _logger.LogDebug("Pre-extracted metadata ({Length} chars): {Preview}", 
+                            preExtractedMetadata?.Length ?? 0,
+                            (preExtractedMetadata?.Length ?? 0) > 200 
+                                ? preExtractedMetadata!.Substring(0, 200).Replace("\n", "\\n") + "..." 
+                                : preExtractedMetadata?.Replace("\n", "\\n") ?? "(null)");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to parse meta content: {Error}. Meta with assigns: {Content}", 
+                            metaError, metaWithAssigns.Length > 200 ? metaWithAssigns.Substring(0, 200) + "..." : metaWithAssigns);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error rendering meta content");
+                }
+            }
+            
+            // Also prepend the assigns to the body template so body can use the same variables
+            bodyTemplate = preMetaContent + bodyTemplate;
+        }
+        
+        // Now parse and render the body template (without meta block, but with assigns)
+        IFluidTemplate template;
+        if (DisableCacheForDebugging)
+        {
+            if (!_parser.TryParse(bodyTemplate, out template, out var error))
+            {
+                _logger.LogError("Failed to parse Fluid template: {Error}. Template preview: {Preview}", 
+                    error, 
+                    bodyTemplate.Length > 200 ? bodyTemplate.Substring(0, 200) + "..." : bodyTemplate);
+                throw new InvalidOperationException($"Fluid template parse error: {error}");
+            }
+        }
+        else
+        {
+            var cacheKey = ComputeCacheKey(bodyTemplate);
+            template = GetOrCompileTemplate(cacheKey, bodyTemplate);
+        }
 
         // Build Fluid context
         var templateContext = BuildTemplateContext(context);
 
-        // Render
+        // Render body
         var rendered = await template.RenderAsync(templateContext);
 
-        // Extract captured metadata
-        string? metadata = null;
-        if (templateContext.AmbientValues.TryGetValue(MetadataContextKey, out var metaObj) && metaObj is string metaStr)
-        {
-            metadata = metaStr;
-            context.CapturedMetadata = metaStr;
-        }
+        // Return pre-extracted metadata (from regex) instead of relying on custom block
+        context.CapturedMetadata = preExtractedMetadata;
 
-        return (rendered, metadata);
+        return (rendered.Trim(), preExtractedMetadata);
     }
 
     public FluidRenderContext CreateContext(
@@ -99,10 +259,13 @@ public class FluidTemplateService : IFluidTemplateService
         var parser = new FluidParser();
 
         // Register {% meta %}...{% endmeta %} custom block (no expression argument)
+        // Note: RegisterEmptyBlock requires the block name and a delegate
         parser.RegisterEmptyBlock("meta", RenderMetaBlock);
 
         // Register {% get_ref "key" %} custom tag
         parser.RegisterExpressionTag("get_ref", RenderGetRefTag);
+        
+        _logger.LogInformation("FluidParser configured with custom 'meta' block and 'get_ref' tag");
 
         return parser;
     }
@@ -120,17 +283,47 @@ public class FluidTemplateService : IFluidTemplateService
         // Render meta content to separate writer
         using var metaWriter = new StringWriter();
 
-        foreach (var statement in statements)
+        _logger.LogDebug("RenderMetaBlock: Processing {StatementCount} statements in meta block", statements.Count);
+        
+        // Log each statement type for debugging
+        for (int i = 0; i < statements.Count; i++)
         {
-            await statement.WriteToAsync(metaWriter, encoder, context);
+            _logger.LogTrace("RenderMetaBlock: Statement[{Index}] type: {Type}", i, statements[i].GetType().Name);
         }
+        
+        try
+        {
+            foreach (var statement in statements)
+            {
+                await statement.WriteToAsync(metaWriter, encoder, context);
+            }
 
-        var metaContent = metaWriter.ToString().Trim();
+            var metaContent = metaWriter.ToString().Trim();
+            
+            _logger.LogDebug("RenderMetaBlock: Successfully captured metadata ({Length} chars): {Preview}", 
+                metaContent.Length, 
+                metaContent.Length > 300 ? metaContent.Substring(0, 300).Replace("\n", "\\n") + "..." : metaContent.Replace("\n", "\\n"));
 
-        // Store in context ambient values (NOT in main output)
-        context.AmbientValues[MetadataContextKey] = metaContent;
+            // Check for signs of body content leaking into meta
+            if (metaContent.Contains("class_type") || metaContent.Contains("_unet_loader"))
+            {
+                _logger.LogError("RenderMetaBlock: BODY CONTENT LEAKED INTO META! This indicates {% endmeta %} was not recognized.");
+            }
 
-        _logger.LogTrace("Meta block captured: {Length} chars", metaContent.Length);
+            // Validate that it looks like JSON
+            if (!metaContent.StartsWith("{"))
+            {
+                _logger.LogWarning("RenderMetaBlock: Captured metadata doesn't start with '{{'. Content: {Content}", metaContent);
+            }
+
+            // Store in context ambient values (NOT in main output)
+            context.AmbientValues[MetadataContextKey] = metaContent;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RenderMetaBlock: Error rendering meta block statements");
+            throw;
+        }
 
         // Return Normal to continue processing, but we wrote nothing to main writer
         return Completion.Normal;
@@ -307,8 +500,11 @@ public class FluidTemplateService : IFluidTemplateService
 
     private static string ComputeCacheKey(string templateText)
     {
-        // Simple hash-based cache key
-        return $"fluid_{templateText.GetHashCode():X8}";
+        // Use SHA256 for reliable cache key (GetHashCode is not stable across runs)
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(templateText);
+        var hash = sha256.ComputeHash(bytes);
+        return $"fluid_{Convert.ToHexString(hash).Substring(0, 16)}";
     }
 
     #endregion

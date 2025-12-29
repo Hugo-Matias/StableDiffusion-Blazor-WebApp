@@ -11,8 +11,8 @@
   "clip_loader": {
     "inputs": {
       "clip_name": {{ clip_name | json }},
-      "type": {{ clip_type | default: "wan" | json }},
-      "device": {{ clip_device | default: "cpu" | json }}
+      "type": {{ clip_type | default: "" | json }},
+      "device": {{ clip_device | default: "" | json }}
     },
     "class_type": "CLIPLoader",
     "_meta": {

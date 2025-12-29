@@ -16,8 +16,19 @@
 
   <!-- Workflow template files -->
   <ItemGroup>
-    <!-- Fluid/Liquid templates (primary format) -->
-    <None Update="Workflows\**\*.liquid">
+    <!-- Workflow definition files (new standard format) -->
+    <None Update="Workflows\Templates\**\*.workflow">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    
+    <!-- Legacy .liquid workflow templates (for backward compatibility) -->
+    <!-- TODO: Remove after Phase 8 migration period -->
+    <None Update="Workflows\Templates\**\*.liquid">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    
+    <!-- Fragment templates (pure Liquid) -->
+    <None Update="Workflows\Fragments\**\*.liquid">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

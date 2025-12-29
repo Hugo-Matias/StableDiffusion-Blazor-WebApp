@@ -1,13 +1,13 @@
 {% meta %}
 {
   "outputs": {
-    "latent_output": {"node": "{{ sampler_id | default: 'sampler' }}", "index": 0}
+    "latent_output": {"node": "{{ sampler_id | default: "" }}", "index": 0}
   }
 }
 {% endmeta %}
 
 {
-  "{{ sampler_id | default: 'sampler' }}": {
+  "{{ sampler_id | default: "" }}": {
     "inputs": {
       "seed": {{ seed | json }},
       "steps": {{ steps | json }},
@@ -22,7 +22,7 @@
     },
     "class_type": "KSampler",
     "_meta": {
-      "title": {{ title | default: "KSampler" | json }}
+      "title": {{ title | default: "" | json }}
     }
   }
 }

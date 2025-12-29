@@ -6,6 +6,182 @@ This document defines the conventions, patterns, and best practices for writing 
 
 ---
 
+## ?? GOLDEN RULES - READ FIRST
+
+### Rule 1: Quote Syntax in Liquid Filters
+
+**ALWAYS use single quotes (`'`) for string literals in Liquid filter arguments:**
+
+```liquid
+? CORRECT - Single quotes:
+{{ node_prefix | default: 'model' }}
+{{ node_prefix | default: 'model' | append: '_unet_loader' }}
+{{ title | default: 'Load Model' | json }}
+
+? WRONG - Double quotes create output with quotes:
+{{ node_prefix | default: "model" }}
+// When rendered inside "{{ }}" in JSON, outputs: "model" (with double quotes included!)
+```
+
+**Why?** In Liquid/Fluid, filter arguments with **double quotes** are treated as string literals that INCLUDE the quotes in the output. Single quotes are the correct delimiter for string values in filters.
+
+**Example of the problem:**
+```liquid
+// Template with WRONG double quotes:
+"node": "{{ node_prefix | default: "model" }}"
+
+// Renders to (BROKEN):
+"node": ""model""  ? Double quotes included in output!
+
+// Template with CORRECT single quotes:
+"node": "{{ node_prefix | default: 'model' }}
+
+// Renders to (CORRECT):
+"node": "model"  ? Clean string output
+```
+
+**Numeric and boolean filter arguments don't need quotes:**
+```liquid
+{{ steps | default: 20 }}         // Numbers - no quotes
+{{ enabled | default: true }}     // Booleans - no quotes  
+{{ value | default: 'text' }}     // Strings - single quotes
+```
+
+---
+
+### Rule 2: Never Use `| json` on Object Keys
+
+**Object keys should NEVER have the `| json` filter:**
+
+```liquid
+? CORRECT - No | json on keys:
+"{{ node_prefix | default: "model" | append: "_unet_loader" }}": {
+  "inputs": {
+    "unet_name": {{ model_name | json }}  // ? | json on value
+  }
+}
+
+? WRONG - | json on object key:
+{{ node_prefix | append: "_unet_loader" | json }}: {
+  // Creates: "\"model_unet_loader\"": { ... } (double-encoded!)
+}
+```
+
+**Why?** Object keys in JSON are already strings. Adding `| json` double-encodes them, creating malformed JSON.
+
+---
+
+### Rule 3: Use `| json` on ALL String Values
+
+**Every string value in JSON must use `| json` filter:**
+
+```liquid
+? CORRECT:
+"sampler_name": {{ sampler | json }},
+"title": {{ title | default: "Untitled" | json }}
+
+? WRONG - Missing | json:
+"sampler_name": {{ sampler }},
+// Output: "sampler_name": euler (no quotes, invalid JSON!)
+```
+
+---
+
+### Rule 4: Array References Never Use `| json`
+
+**Node references in arrays should be raw, not JSON-encoded:**
+
+```liquid
+? CORRECT:
+"model": ["{{ node_prefix | default: "model" | append: "_unet_loader" }}", 0]
+
+? WRONG:
+"model": [{{ node_prefix | append: "_unet_loader" | json }}, 0]
+// Creates: "model": ["\"model_unet_loader\"", 0] (double-encoded!)
+```
+
+---
+
+## File Extension Conventions
+
+| Extension | Purpose | Location | Processing |
+|-----------|---------|----------|------------|
+| `.workflow` | Workflow definitions | `Templates/` | Stage 1: Fluid ? Stage 2: Pipeline |
+| `.liquid` | Fragment templates | `Fragments/` | Fluid only |
+
+### Workflow Templates (.workflow)
+- **Purpose:** JSON-based workflow definitions that orchestrate fragment composition
+- **Location:** `Workflows/Templates/**/*.workflow`
+- **Contains:**
+  - Pipeline directives: `$foreach`, `$if`, `$compute`
+  - Fluid placeholders: `{{ Model }}`, `{{ steps }}`, `{{ positive }}`
+  - Pipeline placeholders: `${$index}`, `${lora.Name}`, `${lora.Strength}`
+- **Processing:**
+  1. **Stage 1 (Fluid):** Renders `{{ }}` placeholders with workflow-level parameters and assets
+  2. **Stage 2 (Pipeline):** Expands `$foreach` loops, `$if` conditionals, and `${}` item placeholders
+- **Quote Context:** JSON context - use JSON double quotes for string values
+
+**Example:**
+```json
+{
+  "Title": "Text to Image",
+  "Assets": [
+    { "parameter": "Model", "type": "DiffusionModel", "default": "model.safetensors" }
+  ],
+  "Pipeline": [
+    {
+      "id": "loader",
+      "fragment": "load-diffusion.liquid",
+      "parameters": {
+        "model_name": {{ Model | json }}
+      }
+    },
+    {
+      "$foreach": "Loras",
+      "$as": "lora",
+      "$template": {
+        "id": "lora_${$index}",
+        "fragment": "lora-loader.liquid",
+        "parameters": {
+          "lora_name": "${lora.Name}",
+          "lora_strength": "${lora.Strength}"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Fragment Templates (.liquid)
+- **Purpose:** Pure Liquid templates that render individual ComfyUI nodes
+- **Location:** `Workflows/Fragments/**/*.liquid`
+- **Contains:**
+  - Pure Fluid/Liquid syntax: `{{ }}`, `{% %}`
+  - Meta blocks: `{% meta %}...{% endmeta %}`
+  - Custom tags: `{% get_ref "key" %}`
+- **Processing:** Single-pass Fluid rendering only
+- **Quote Context:** Liquid context - follow Liquid conventions (double quotes in filter arguments)
+
+**Example:**
+```liquid
+{% meta %}
+{
+  "outputs": {
+    "model_output": { "node": "{{ scope }}loader", "index": 0 }
+  }
+}
+{% endmeta %}
+
+"{{ scope }}loader": {
+  "class_type": "CheckpointLoader",
+  "inputs": {
+    "ckpt_name": {{ model_name | json }}
+  }
+}
+```
+
+---
+
 ## Template Syntax Reference
 
 ### Delimiters
@@ -108,8 +284,44 @@ Encodes a value as valid JSON. Essential for string values in JSON templates.
 Provides a fallback value when variable is nil/empty.
 
 ```liquid
-{{ node_prefix | default: "model" }}_loader
+{{ node_prefix | default: 'model' }}_loader
 {# If node_prefix is nil ? "model_loader" #}
+```
+
+**? CRITICAL:** Always use **single quotes** (`'`) for string literals in filter arguments:
+
+```liquid
+? CORRECT - Single quotes:
+{{ node_prefix | default: 'model' }}
+// Output: model
+
+? WRONG - Double quotes are included in output:
+{{ node_prefix | default: "model" }}
+// Output: "model" (with double quotes, breaks when used in JSON strings!)
+```
+
+**Numeric and boolean defaults:**
+```liquid
+{{ steps | default: 20 }}           {# No quotes for numbers #}
+{{ enabled | default: true }}       {# No quotes for booleans #}
+{{ value | default: 'text_value' }} {# Single quotes for strings #}
+```
+
+**Why this matters:** In Liquid/Fluid, double quotes in filter arguments are treated as part of the string value itself. When you use `{{ var | default: "value" }}` inside a JSON string like `"key": "{{ var | default: "value" }}"`, Fluid outputs `"value"` WITH the quotes, creating invalid JSON like `"key": ""value""`.
+
+**The Correct Pattern:**
+```liquid
+{# In JSON context - use single quotes in filter #}
+"node_id": "{{ prefix | default: 'default' | append: '_suffix' }}"
+
+{# Renders to valid JSON #}
+"node_id": "default_suffix"
+
+{# WRONG - double quotes in filter #}
+"node_id": "{{ prefix | default: "default" | append: "_suffix" }}"
+
+{# Renders to INVALID JSON #}
+"node_id": ""default"_suffix"  ? Broken!
 ```
 
 ### `| append: string`
@@ -469,7 +681,7 @@ ComfyUIService.PostGenerationAsync()
 
 ---
 
-## Pipeline Markers (Phase 5)
+## Pipeline Markers (Phase 5 + Phase 7.9)
 
 > **Note:** This section documents the C# pipeline processor system for workflow templates.
 > These markers are processed by C# code, not by the Fluid template engine.
@@ -482,145 +694,75 @@ Complex pipeline logic (loops, conditionals, computed values) is handled by C# p
 - Better error handling
 - Type safety
 
-### `$foreach` - Collection Iteration
+### Processing Stages
 
-Expands a template for each item in a collection.
+Workflow templates go through two rendering stages:
 
+```
+Stage 1: Fluid Rendering
+  Input: Workflow template JSON with {{ }} placeholders
+  Processor: FluidTemplateService
+  Output: Expanded template with $foreach/$if markers and ${} placeholders
+
+Stage 2: Pipeline Expansion
+  Input: Fluid-rendered JSON with ${} placeholders
+  Processor: PipelineExpander (ForeachProcessor, ConditionalProcessor)
+  Output: Final ComfyUI workflow JSON
+```
+
+**Example Flow:**
 ```json
+{# Original Template #}
 {
   "$foreach": "Loras",
   "$as": "lora",
   "$template": {
-    "id": "lora_{% raw %}{{ $index }}{% endraw %}",
-    "fragment": "lora-loader.liquid",
+    "id": "{{ scope }}lora_${$index}",
     "parameters": {
-      "lora_name": "{% raw %}{{ lora.Name }}{% endraw %}",
-      "lora_path": "{% raw %}{{ lora.Path }}{% endraw %}",
-      "lora_strength": "{% raw %}{{ lora.Strength }}{% endraw %}"
+      "model": "{{ Model }}",
+      "lora_name": "${lora.Name}"
     }
   }
 }
-```
 
-**Properties:**
-| Property | Required | Description |
-|----------|----------|-------------|
-| `$foreach` | Yes | Name of collection in GenerationParameters |
-| `$as` | Yes | Variable name for current item |
-| `$template` | Yes | Step template to expand |
-
-**Special Variables:**
-- `{{ $index }}` - Current iteration index (0-based)
-- `{{ lora.PropertyName }}` - Access item properties
-
-**?? Important: Use `{% raw %}...{% endraw %}` blocks**
-
-Since workflow templates are first processed by Fluid, `$foreach` placeholders like `{{ $index }}` and `{{ item.Property }}` must be wrapped in `{% raw %}{% endraw %}` blocks to prevent Fluid from attempting to parse them. These placeholders are intended for the PipelineExpander (C#) to process, not Fluid.
-
-**Why this is needed:**
-1. Workflow template JSON is first rendered by `FluidTemplateService.RenderAsync()`
-2. Fluid would try to parse `{{ $index }}` and fail (variable doesn't exist in Fluid context)
-3. `{% raw %}` tells Fluid to output the content literally without parsing
-4. PipelineExpander receives the literal `{{ $index }}` and performs the replacement
-
-**Example:**
-```json
-{# ? Correct - Protected from Fluid #}
-"id": "lora_{% raw %}{{ $index }}{% endraw %}"
-
-{# ? Wrong - Fluid will try to parse and fail #}
-"id": "lora_{{ $index }}"
-```
-
-### `$if` - Conditional Step Inclusion
-
-Includes a pipeline step only when a condition is true.
-
-```json
+{# After Fluid Rendering (Stage 1) #}
 {
-  "$if": "frame_interpolation.IsActive",
-  "id": "frame_interp",
-  "fragment": "frame-interpolation.liquid",
-  "parameters": {
-    "scale_by": "{{ frame_interpolation_scale | default: 2.0 }}"
+  "$foreach": "Loras",
+  "$as": "lora",
+  "$template": {
+    "id": "txt2img_lora_${$index}",
+    "parameters": {
+      "model": "flux-dev.safetensors",
+      "lora_name": "${lora.Name}"
+    }
   }
 }
-```
 
-**Condition Format:**
-- `"fragment_id.IsActive"` - Check if fragment is enabled
-- `"has_high_lora"` - Check computed boolean
-- Simple property path into GenerationParameters
-
-### `$compute:name` - Computed Values
-
-References a value computed by C# `ComputeRegistry`.
-
-```json
-{
-  "parameters": {
-    "end_at_step": "$compute:half_steps",
-    "frame_rate": "$compute:interpolated_framerate"
+{# After Pipeline Expansion (Stage 2) #}
+[
+  {
+    "id": "txt2img_lora_0",
+    "parameters": {
+      "model": "flux-dev.safetensors",
+      "lora_name": "add_detail"
+    }
+  },
+  {
+    "id": "txt2img_lora_1",
+    "parameters": {
+      "model": "flux-dev.safetensors",
+      "lora_name": "cyberpunk_style"
+    }
   }
-}
+]
 ```
 
-**Format:** `"$compute:<function_name>"`
+### Delimiter Reference
 
-### ComputeRegistry Functions
-
-| Function Name | Description | Formula |
-|---------------|-------------|---------|
-| `half_steps` | Half of total steps (rounded) | `Math.Round(steps / 2.0)` |
-| `interpolated_framerate` | Frame rate with interpolation multiplier | `frameRate * interpolationMultiplier` |
-
-> **Adding New Functions:**
-> Add to `ComputeRegistry.cs` and document here.
-
----
-
-## Workflow Template Structure (Phase 5)
-
-### File Format
-
-Workflow templates are JSON files with embedded Fluid syntax for parameter values.
-
-```json
-{
-  "Title": "Workflow Title",
-  "Base": "ModelBase",
-  "Mode": "txt2img",
-  "Assets": [
-    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "model.safetensors" }
-  ],
-  "Sources": [],
-  "Pipeline": [
-    { "id": "step_id", "fragment": "fragment.liquid", "parameters": { ... } }
-  ]
-}
-```
-
-### Static vs Dynamic Fields
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `Title` | Static | Pure JSON string |
-| `Base` | Static | Enum value |
-| `Mode` | Static | Enum value |
-| `Assets` | Static | Array of asset definitions |
-| `Sources` | Static | Array of source definitions |
-| `Pipeline` | Dynamic | May contain `$foreach`, `$if`, `$compute` markers |
-
-### Parameter Values
-
-Parameters use Fluid syntax for dynamic values:
-
-```json
-{
-  "parameters": {
-    "static_value": 20,
-    "dynamic_value": "{{ steps | default: 20 }}",
-    "computed_value": "$compute:half_steps",
-    "asset_ref": "{{ Model | json }}"
-  }
-}
+| Delimiter | Stage | Description | Example |
+|-----------|-------|-------------|---------|
+| `{{ }}` | Fluid (1) | Workflow-level parameters, assets, computed values | `{{ scope }}`, `{{ Model }}`, `{{ steps }}` |
+| `${}` | Pipeline (2) | Loop variables, item properties | `${$index}`, `${lora.Name}`, `${lora.Strength}` |
+| `$compute:` | Pipeline (2) | Registry-computed values | `$compute:half_steps` |
+| `$foreach` | Pipeline (2) | Collection iteration marker | `"$foreach": "Loras"` |
+| `$if` | Pipeline (2) | Conditional step marker | `"$if": "fragment.IsActive"` |

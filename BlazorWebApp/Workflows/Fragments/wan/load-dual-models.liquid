@@ -13,7 +13,7 @@
   "high_unet_loader": {
     "inputs": {
       "unet_name": {{ high_model_name | json }},
-      "weight_dtype": {{ weight_dtype | default: "default" | json }}
+      "weight_dtype": {{ weight_dtype | default: "" | json }}
     },
     "class_type": "UNETLoader",
     "_meta": {
@@ -23,7 +23,7 @@
   "low_unet_loader": {
     "inputs": {
       "unet_name": {{ low_model_name | json }},
-      "weight_dtype": {{ weight_dtype | default: "default" | json }}
+      "weight_dtype": {{ weight_dtype | default: "" | json }}
     },
     "class_type": "UNETLoader",
     "_meta": {
@@ -33,8 +33,8 @@
   "clip_loader": {
     "inputs": {
       "clip_name": {{ clip_name | json }},
-      "type": {{ clip_type | default: "wan" | json }},
-      "device": {{ clip_device | default: "cpu" | json }}
+      "type": {{ clip_type | default: "" | json }},
+      "device": {{ clip_device | default: "" | json }}
     },
     "class_type": "CLIPLoader",
     "_meta": {
@@ -52,7 +52,7 @@
   },
   "high_model_sage": {
     "inputs": {
-      "sage_attention": {{ sage_attention | default: "sageattn_qk_int8_pv_fp16_triton" | json }},
+      "sage_attention": {{ sage_attention | default: "" | json }},
       "model": ["high_unet_loader", 0]
     },
     "class_type": "PathchSageAttentionKJ",
@@ -62,7 +62,7 @@
   },
   "low_model_sage": {
     "inputs": {
-      "sage_attention": {{ sage_attention | default: "sageattn_qk_int8_pv_fp16_triton" | json }},
+      "sage_attention": {{ sage_attention | default: "" | json }},
       "model": ["low_unet_loader", 0]
     },
     "class_type": "PathchSageAttentionKJ",
