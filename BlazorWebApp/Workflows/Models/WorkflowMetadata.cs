@@ -114,6 +114,11 @@ public record WorkflowSource
     /// Whether this source is required.
     /// </summary>
     public bool Required { get; init; }
+
+    /// <summary>
+    /// Parameter name for template variable replacement.
+    /// </summary>
+    public string Parameter { get; init; } = "";
 }
 
 /// <summary>

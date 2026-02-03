@@ -37,10 +37,6 @@ namespace BlazorWebApp.Data
             
             // Workflow-related models
             modelBuilder.Ignore<Workflow>();
-            modelBuilder.Ignore<WorkflowStep>();
-            modelBuilder.Ignore<OutputMapping>();
-            modelBuilder.Ignore<SubgraphContext>();
-            modelBuilder.Ignore<NodeRegistry>();
             
             // State and generation models
             modelBuilder.Ignore<Lora>();

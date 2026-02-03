@@ -336,5 +336,44 @@ namespace BlazorWebApp.Models
         }
 
         #endregion
+
+        #region Convenience Methods
+
+        /// <summary>
+        /// Gets an integer value with a default fallback.
+        /// </summary>
+        public int GetInt(string key, int defaultValue = 0) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a long value with a default fallback.
+        /// </summary>
+        public long GetLong(string key, long defaultValue = 0) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a float value with a default fallback.
+        /// </summary>
+        public float GetFloat(string key, float defaultValue = 0f) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a double value with a default fallback.
+        /// </summary>
+        public double GetDouble(string key, double defaultValue = 0d) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a boolean value with a default fallback.
+        /// </summary>
+        public bool GetBool(string key, bool defaultValue = false) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a string value with a default fallback.
+        /// </summary>
+        public string GetString(string key, string defaultValue = "") => GetValueOrDefault(key, defaultValue) ?? defaultValue;
+
+        /// <summary>
+        /// Gets a string value or null if not found.
+        /// </summary>
+        public string? GetString(string key) => GetValue<string>(key);
+
+        #endregion
     }
 }

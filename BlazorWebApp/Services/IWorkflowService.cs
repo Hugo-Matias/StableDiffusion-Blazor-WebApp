@@ -1,4 +1,5 @@
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
@@ -20,16 +21,42 @@ namespace BlazorWebApp.Services
 
     /// <summary>
     /// Service for managing workflow templates and rendering.
+    /// Supports both new C# IWorkflowBuilder implementations and legacy Scriban templates.
     /// </summary>
     public interface IWorkflowService
     {
+        #region C# Workflow Builder Support
+
         /// <summary>
-        /// Gets all available workflows from template files.
+        /// Gets a C# workflow builder by ID if available.
+        /// </summary>
+        /// <param name="workflowId">The workflow ID to find</param>
+        /// <returns>The workflow builder, or null if not found or using Scriban template</returns>
+        IWorkflowBuilder? GetWorkflowBuilder(Guid workflowId);
+
+        /// <summary>
+        /// Gets all discovered C# workflow builders.
+        /// </summary>
+        /// <returns>Dictionary of workflow ID to builder instance</returns>
+        IReadOnlyDictionary<Guid, IWorkflowBuilder> GetWorkflowBuilders();
+
+        /// <summary>
+        /// Checks if a workflow has a C# builder available.
+        /// </summary>
+        /// <param name="workflowId">The workflow ID to check</param>
+        /// <returns>True if a C# builder exists, false if using Scriban template</returns>
+        bool HasWorkflowBuilder(Guid workflowId);
+
+        #endregion
+
+        /// <summary>
+        /// Gets all available workflows from both C# builders and template files.
+        /// C# workflows take precedence over Scriban templates with the same ID.
         /// </summary>
         List<Workflow> GetWorkflows();
 
         /// <summary>
-        /// Refreshes workflows from disk template files and attempts to preserve the current selection.
+        /// Refreshes workflows from disk template files and C# builders, attempting to preserve the current selection.
         /// </summary>
         /// <param name="currentWorkflowBase">The currently selected workflow base (to preserve selection)</param>
         /// <param name="currentWorkflowId">The currently selected workflow ID (to preserve selection)</param>
@@ -40,7 +67,8 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Composes a workflow from a template using the unified GenerationParameters model.
-        /// This is the preferred method that eliminates the need for legacy parameter classes.
+        /// For C# workflows, calls IWorkflowBuilder.Build() directly.
+        /// For Scriban workflows, uses template rendering.
         /// </summary>
         /// <param name="template">The workflow template to compose</param>
         /// <param name="parameters">The unified generation parameters containing all fragment values</param>

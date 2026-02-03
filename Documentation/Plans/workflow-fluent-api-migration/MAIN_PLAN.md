@@ -1,7 +1,7 @@
 # Workflow System Migration to Fluent Builder API - Implementation Plan
 
 ## Status
-**Current Phase:** Planning
+**Current Phase:** Phase 3 - Service Layer Refactoring
 
 ---
 
@@ -293,21 +293,21 @@ if (parameters.GetFragment("upscale")?.IsActive == true)
 ### Phase 1: Core Infrastructure
 **Objective:** Create foundational interfaces, builders, and metadata classes
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Create `Workflows/Models/IWorkflowBuilder.cs` interface
-- [ ] Create `Workflows/Models/IFragmentBuilder.cs` interface
-- [ ] Create `Workflows/Models/WorkflowMetadata.cs` record
-- [ ] Create `Workflows/Models/FragmentMetadata.cs` record
-- [ ] Create `Workflows/Models/FragmentParameter.cs` class
-- [ ] Create `Workflows/Models/ComfyWorkflow.cs` result class
-- [ ] Create `Workflows/Builders/ComfyWorkflowBuilder.cs` with fluent API
-- [ ] Create `Workflows/Builders/NodeBuilder.cs` for node construction
-- [ ] Update `Workflows/Builders/NodeRegistry.cs` for new system
-- [ ] Create unit test project structure for workflow tests
-- [ ] Add unit tests for `ComfyWorkflowBuilder`
-- [ ] Add unit tests for `NodeBuilder`
+- [x] Create `Workflows/Models/IWorkflowBuilder.cs` interface
+- [x] Create `Workflows/Models/IFragmentBuilder.cs` interface
+- [x] Create `Workflows/Models/WorkflowMetadata.cs` record
+- [x] Create `Workflows/Models/FragmentMetadata.cs` record
+- [x] Create `Workflows/Models/FragmentParameter.cs` class
+- [x] Create `Workflows/Models/ComfyWorkflow.cs` result class
+- [x] Create `Workflows/Builders/ComfyWorkflowBuilder.cs` with fluent API
+- [x] Create `Workflows/Builders/NodeBuilder.cs` for node construction
+- [x] Update `Workflows/Builders/NodeRegistry.cs` for new system
+- [x] Create unit test project structure for workflow tests
+- [x] Add unit tests for `ComfyWorkflowBuilder`
+- [x] Add unit tests for `NodeBuilder`
 
 #### Success Criteria
 - All interfaces and classes compile without errors
@@ -321,21 +321,21 @@ if (parameters.GetFragment("upscale")?.IsActive == true)
 ### Phase 1.5: Type-Safe Enhancements (Hybrid Approach)
 **Objective:** Add type-safe features without compromising service flexibility
 **Complexity:** 5 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Create `Workflows/Models/OutputTypes.cs` - strongly-typed output references
-- [ ] Create `Workflows/Models/ComfyNode.cs` - typed node representation for JSON serialization
-- [ ] Update `NodeRegistry.cs` to support generic type-safe output registration
-- [ ] Add extension methods to `FragmentParameters` for type-safe value access
-  - [ ] `GetString(string key, string defaultValue)`
-  - [ ] `GetInt(string key, int defaultValue)`
-  - [ ] `GetDouble(string key, double defaultValue)`
-  - [ ] `GetLong(string key, long defaultValue)`
-  - [ ] `GetBool(string key, bool defaultValue)`
-- [ ] Add unit tests for typed output references
-- [ ] Add unit tests for type-safe parameter accessors
-- [ ] Benchmark performance vs current string-based approach
+- [x] Create `Workflows/Models/OutputTypes.cs` - strongly-typed output references
+- [x] Create `Workflows/Models/ComfyNode.cs` - typed node representation for JSON serialization
+- [x] Update `NodeRegistry.cs` to support generic type-safe output registration
+- [x] Add extension methods to `FragmentParameters` for type-safe value access
+  - [x] `GetString(string key, string defaultValue)`
+  - [x] `GetInt(string key, int defaultValue)`
+  - [x] `GetDouble(string key, double defaultValue)`
+  - [x] `GetLong(string key, long defaultValue)`
+  - [x] `GetBool(string key, bool defaultValue)`
+- [x] Add unit tests for typed output references
+- [x] Add unit tests for type-safe parameter accessors
+- [x] Benchmark performance vs current string-based approach
 
 #### Success Criteria
 - `NodeRegistry.Register<TOutput>()` provides compile-time output validation
@@ -558,37 +558,35 @@ public class ComfyWorkflowBuilder
 
 ---
 
-### Phase 2: Proof of Concept - Convert Flux Txt2Img Workflow
+### Phase 2: Proof of Concept - Convert Z-Image Txt2Img Workflow
 **Objective:** End-to-end conversion of one complete workflow to validate approach
-**Complexity:** 21 points
-**Status:** [ ] Not Started
+**Complexity:** 53 points
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Analyze `flux/txt2img.sbn` and identify all fragment dependencies
-- [ ] Create `Workflows/Fragments/Flux/LoadFluxFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/PromptsFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/LatentFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/SamplerFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/VaeDecodeFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/SaveFragment.cs`
-- [ ] Create `Workflows/Templates/Flux/FluxTxt2ImgWorkflow.cs`
-- [ ] Add unit tests for each fragment (6 fragments × tests)
-- [ ] Add unit test for complete workflow JSON generation
-- [ ] Update `WorkflowService.GetWorkflows()` to discover C# workflows via reflection
-- [ ] Update `WorkflowService.ComposeWorkflowFromGenerationParameters()` to use `IWorkflowBuilder.Build()`
-- [ ] Test workflow generation produces valid ComfyUI JSON
-- [ ] Test workflow execution in ComfyUI generates images successfully
-- [ ] Compare generated JSON with original Scriban output (should be equivalent)
-- [ ] Delete `flux/txt2img.sbn` and related fragment `.sbn` files
+- [x] Update `IFragmentBuilder` interface with optional scope parameter
+- [x] Create core loader fragments (LoadDiffusion, EmptyLatent, LoraLoader)
+- [x] Create prompts fragment
+- [x] Create sampler fragment
+- [x] Create output fragments (VaeDecode, Save)
+- [x] Create enhancement fragments (SeedVarianceEnhancer, ConditioningVariation, SeedVR2Upscale)
+- [x] Create detailer fragments (LoadDiffusionWithPrompts, Detailer)
+- [x] Create `Workflows/Templates/ZImage/ZImageTxt2ImgWorkflow.cs`
+- [x] Update `WorkflowService.GetWorkflows()` to discover C# workflows via reflection
+- [x] Update `WorkflowService.ComposeWorkflowFromGenerationParameters()` to use `IWorkflowBuilder.Build()`
+- [x] Test workflow generation produces valid ComfyUI JSON
+- [x] Test workflow execution in ComfyUI generates images successfully
+- [x] Delete `z-image/txt2img.sbn`
+
+#### Deferred to Later
+- [ ] Add unit tests for each fragment (deferred to reduce phase scope)
 
 #### Success Criteria
-- Flux Txt2Img workflow generates valid, working ComfyUI JSON
-- Workflow executes successfully in ComfyUI and produces images
-- All 6 fragments have unit tests with 90%+ coverage
-- Workflow class has integration test
-- Generated JSON is functionally equivalent to Scriban version
-- No compilation errors or warnings
-- No `.sbn` files remain for converted fragments
+- ? Z-Image Txt2Img workflow generates valid, working ComfyUI JSON
+- ? Workflow executes successfully in ComfyUI and produces images
+- ? Generated JSON is functionally equivalent to Scriban version
+- ? No compilation errors or warnings
+- ? Unit tests deferred
 
 ---
 

@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using Scriban;
 using Scriban.Runtime;
 using System.Reflection;
@@ -10,6 +11,7 @@ namespace BlazorWebApp.Services
 {
     /// <summary>
     /// Service for loading, composing, and managing workflow templates.
+    /// Supports both new C# IWorkflowBuilder implementations and legacy Scriban templates.
     /// Delegates parsing to WorkflowTemplateParser and FragmentSchemaService.
     /// </summary>
     public class WorkflowService : IWorkflowService
@@ -23,6 +25,11 @@ namespace BlazorWebApp.Services
         private readonly FragmentConditionValidator _conditionValidator;
         private readonly Dictionary<Guid, List<ParsedPipelineStep>> _pipelineCache = new();
         private readonly object _pipelineCacheLock = new();
+
+        // Cache for discovered C# workflow builders
+        private readonly Dictionary<Guid, IWorkflowBuilder> _workflowBuilders = new();
+        private readonly object _workflowBuildersLock = new();
+        private bool _workflowBuildersDiscovered = false;
 
         public WorkflowService(
             IIOService io,
@@ -40,21 +47,175 @@ namespace BlazorWebApp.Services
             _conditionValidator = conditionValidator;
         }
 
+        #region C# Workflow Builder Discovery
+
+        /// <summary>
+        /// Discovers all IWorkflowBuilder implementations in the current assembly.
+        /// Called lazily on first access.
+        /// </summary>
+        private void DiscoverWorkflowBuilders()
+        {
+            lock (_workflowBuildersLock)
+            {
+                if (_workflowBuildersDiscovered) return;
+
+                _workflowBuilders.Clear();
+
+                try
+                {
+                    var assembly = Assembly.GetExecutingAssembly();
+                    var workflowBuilderType = typeof(IWorkflowBuilder);
+
+                    var builderTypes = assembly.GetTypes()
+                        .Where(t => !t.IsAbstract && !t.IsInterface && workflowBuilderType.IsAssignableFrom(t));
+
+                    foreach (var type in builderTypes)
+                    {
+                        try
+                        {
+                            var instance = (IWorkflowBuilder)Activator.CreateInstance(type)!;
+                            _workflowBuilders[instance.Metadata.Id] = instance;
+                            _logger.LogInformation("Discovered C# workflow: {Title} ({Base}/{Mode}) - {Id}",
+                                instance.Metadata.Title, instance.Metadata.Base, instance.Metadata.Mode, instance.Metadata.Id);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to instantiate workflow builder: {Type}", type.FullName);
+                        }
+                    }
+
+                    _workflowBuildersDiscovered = true;
+                    _logger.LogInformation("Discovered {Count} C# workflow builder(s)", _workflowBuilders.Count);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error discovering workflow builders");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets a C# workflow builder by ID if available.
+        /// </summary>
+        public IWorkflowBuilder? GetWorkflowBuilder(Guid workflowId)
+        {
+            DiscoverWorkflowBuilders();
+
+            lock (_workflowBuildersLock)
+            {
+                return _workflowBuilders.GetValueOrDefault(workflowId);
+            }
+        }
+
+        /// <summary>
+        /// Gets all discovered C# workflow builders.
+        /// </summary>
+        public IReadOnlyDictionary<Guid, IWorkflowBuilder> GetWorkflowBuilders()
+        {
+            DiscoverWorkflowBuilders();
+
+            lock (_workflowBuildersLock)
+            {
+                return _workflowBuilders.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            }
+        }
+
+        /// <summary>
+        /// Checks if a workflow has a C# builder available.
+        /// </summary>
+        public bool HasWorkflowBuilder(Guid workflowId)
+        {
+            DiscoverWorkflowBuilders();
+
+            lock (_workflowBuildersLock)
+            {
+                return _workflowBuilders.ContainsKey(workflowId);
+            }
+        }
+
+        #endregion
+
         #region Workflow Loading
 
         public List<Workflow> GetWorkflows()
         {
-            var workflowFiles = _io.GetFilesRecursive(Path.Combine(_workflowPath, "Templates"), ignorePath: "utils", extensionsWhitelist: new() { ".sbn" });
+            // First, get C# workflow builders
+            DiscoverWorkflowBuilders();
+
             List<Workflow> workflows = new();
+
+            // Add C# workflows first (they take precedence)
+            lock (_workflowBuildersLock)
+            {
+                foreach (var builder in _workflowBuilders.Values)
+                {
+                    var metadata = builder.Metadata;
+                    workflows.Add(new Workflow
+                    {
+                        Id = metadata.Id,
+                        Title = metadata.Title,
+                        Base = metadata.Base,
+                        Mode = metadata.Mode,
+                        Assets = metadata.Assets?.Select(a => new Models.WorkflowAsset
+                        {
+                            Parameter = a.Parameter,
+                            Label = a.Label,
+                            Type = ConvertAssetType(a.Type),
+                            DefaultValue = a.DefaultValue,
+                            Order = a.Order,
+                            ColumnSize = a.ColumnSize
+                        }).ToList(),
+                        Sources = metadata.Sources?.Select(s => new Models.WorkflowSource
+                        {
+                            Id = s.Id,
+                            Label = s.Label,
+                            Type = s.Type.ToString().ToLower(),
+                            Required = s.Required,
+                            Parameter = s.Parameter
+                        }).ToList(),
+                        Pipeline = new List<WorkflowStep>(), // C# workflows don't use Pipeline
+                        RawJson = "" // C# workflows don't have RawJson
+                    });
+                }
+            }
+
+            // Then load Scriban templates (skip any that have C# equivalents)
+            var existingIds = workflows.Select(w => w.Id).ToHashSet();
+            var workflowFiles = _io.GetFilesRecursive(Path.Combine(_workflowPath, "Templates"), ignorePath: "utils", extensionsWhitelist: new() { ".sbn" });
 
             foreach (var filePath in workflowFiles)
             {
                 var templateText = File.ReadAllText(filePath.FullName);
                 var workflow = _templateParser.ParseWorkflowTemplate(templateText);
+                
+                // Skip if we already have a C# workflow with this ID
+                if (existingIds.Contains(workflow.Id))
+                {
+                    _logger.LogDebug("Skipping Scriban workflow {Title} - C# workflow with ID {Id} already exists",
+                        workflow.Title, workflow.Id);
+                    continue;
+                }
+
                 workflows.Add(workflow);
             }
 
             return workflows;
+        }
+
+        /// <summary>
+        /// Converts fluent API AssetType to legacy Models.AssetType.
+        /// </summary>
+        private static Models.AssetType ConvertAssetType(Workflows.Models.AssetType type)
+        {
+            return type switch
+            {
+                Workflows.Models.AssetType.DiffusionModel => Models.AssetType.DiffusionModel,
+                Workflows.Models.AssetType.Clip => Models.AssetType.Clip,
+                Workflows.Models.AssetType.Vae => Models.AssetType.Vae,
+                Workflows.Models.AssetType.CheckpointModel => Models.AssetType.CheckpointModel,
+                Workflows.Models.AssetType.ClipVision => Models.AssetType.ClipVision,
+                _ => Models.AssetType.DiffusionModel // Default fallback
+            };
         }
 
         /// <inheritdoc />
@@ -141,6 +302,25 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters)
         {
+            // Check if we have a C# workflow builder for this workflow
+            if (HasWorkflowBuilder(template.Id))
+            {
+                var builder = GetWorkflowBuilder(template.Id)!;
+                var comfyWorkflow = builder.Build(parameters);
+                _logger.LogInformation("Composed workflow using C# builder: {Title}", template.Title);
+                return comfyWorkflow.Json;
+            }
+
+            // Fall back to Scriban template rendering
+            _logger.LogDebug("Composing workflow using Scriban template: {Title}", template.Title);
+            return ComposeWorkflowFromScribanTemplate(template, parameters);
+        }
+
+        /// <summary>
+        /// Composes a workflow from a Scriban template.
+        /// </summary>
+        private string ComposeWorkflowFromScribanTemplate(Workflow template, GenerationParameters parameters)
+        {
             var composer = new WorkflowComposer();
 
             // Build global parameters from GenerationParameters
@@ -169,15 +349,11 @@ namespace BlazorWebApp.Services
             {
                 if (source.Value?.HasData == true && !string.IsNullOrWhiteSpace(source.Value.Data))
                 {
-                    // Use source ID as parameter name, also add common aliases
                     globalParams[source.Key] = source.Value.Data;
-
-                    // Add "Image" alias for the first source_image
                     if (source.Key.Equals("source_image", StringComparison.OrdinalIgnoreCase))
                     {
                         globalParams["Image"] = source.Value.Data;
                     }
-
                     _logger.LogDebug("Injected source '{SourceId}' into globalParams", source.Key);
                 }
             }

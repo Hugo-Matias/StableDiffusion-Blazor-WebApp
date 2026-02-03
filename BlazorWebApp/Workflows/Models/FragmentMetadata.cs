@@ -1,6 +1,5 @@
 using BlazorWebApp.Models;
 using BlazorWebApp.Workflows.Builders;
-using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Workflows.Models;
 
@@ -24,6 +23,13 @@ public record FragmentMetadata
     /// Display title for the fragment in the UI.
     /// </summary>
     public required string Title { get; init; }
+
+    /// <summary>
+    /// Optional Blazor component name for rendering this fragment.
+    /// If null, dynamic field rendering is used based on Parameters.
+    /// Example: "LatentForm", "SamplerForm", "DetailerForm"
+    /// </summary>
+    public string? Component { get; init; }
 
     /// <summary>
     /// Optional icon class (Font Awesome) for UI display.

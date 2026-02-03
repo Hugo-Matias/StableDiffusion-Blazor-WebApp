@@ -1,5 +1,6 @@
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using System.Collections.Concurrent;
 
 namespace BlazorWebApp.Services
@@ -251,50 +252,91 @@ namespace BlazorWebApp.Services
             }));
 
             // Check for any new fragments in the workflow that weren't in saved state
-            var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
-            foreach (var step in pipelineSteps)
+            if (_workflowService.HasWorkflowBuilder(workflow.Id))
             {
-                var fragmentId = step.Id;
-                if (string.IsNullOrEmpty(fragmentId))
+                // C# workflow - check builder fragments
+                var builder = _workflowService.GetWorkflowBuilder(workflow.Id);
+                if (builder != null)
                 {
-                    fragmentId = Path.GetFileNameWithoutExtension(step.Fragment).Replace("-", "_");
-                }
-
-                if (!current.Fragments.ContainsKey(fragmentId))
-                {
-                    // New fragment not in saved state - initialize from template
-                    var schema = _workflowService.GetFragmentSchema(step.Fragment);
-                    var isOptional = schema?.DefaultCollapsed ?? false;
-
-                    var fragment = new FragmentParameters
+                    var order = current.Fragments.Values.Any() ? current.Fragments.Values.Max(f => f.Order) + 1 : 0;
+                    foreach (var fragmentBuilder in builder.GetFragments())
                     {
-                        FragmentFile = step.Fragment,
-                        IsActive = !isOptional,
-                        Order = step.Order
-                    };
+                        var metadata = fragmentBuilder.Metadata;
+                        if (metadata.IsHidden) continue;
 
-                    // Priority 1: Pipeline step defaults
-                    foreach (var kvp in step.DefaultValues)
-                    {
-                        fragment.Values[kvp.Key] = kvp.Value;
-                    }
-
-                    // Priority 2: Schema defaults
-                    if (schema?.Parameters != null)
-                    {
-                        foreach (var (paramName, constraints) in schema.Parameters)
+                        if (!current.Fragments.ContainsKey(metadata.Id))
                         {
-                            if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                            var isOptional = metadata.Collapsible || metadata.Type == FragmentType.Enhancement;
+                            var fragment = new FragmentParameters
                             {
-                                fragment.Values[paramName] = constraints.Default;
+                                FragmentFile = $"fluent:{metadata.Id}",
+                                IsActive = !isOptional,
+                                Order = order++
+                            };
+
+                            if (metadata.Parameters != null)
+                            {
+                                foreach (var param in metadata.Parameters)
+                                {
+                                    if (param.DefaultValue != null)
+                                    {
+                                        fragment.Values[param.Name] = param.DefaultValue;
+                                    }
+                                }
                             }
+
+                            current.Fragments[metadata.Id] = fragment;
+                            _logger.LogDebug("Added new fragment '{FragmentId}' from updated C# workflow", metadata.Id);
                         }
                     }
+                }
+            }
+            else
+            {
+                // Scriban workflow - check pipeline steps
+                var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
+                foreach (var step in pipelineSteps)
+                {
+                    var fragmentId = step.Id;
+                    if (string.IsNullOrEmpty(fragmentId))
+                    {
+                        fragmentId = Path.GetFileNameWithoutExtension(step.Fragment).Replace("-", "_");
+                    }
 
-                    // Note: Fragment body defaults are NOT used - Scriban rendering fallbacks only
+                    if (!current.Fragments.ContainsKey(fragmentId))
+                    {
+                        // New fragment not in saved state - initialize from template
+                        var schema = _workflowService.GetFragmentSchema(step.Fragment);
+                        var isOptional = schema?.DefaultCollapsed ?? false;
 
-                    current.Fragments[fragmentId] = fragment;
-                    _logger.LogDebug("Added new fragment '{FragmentId}' from updated workflow template", fragmentId);
+                        var fragment = new FragmentParameters
+                        {
+                            FragmentFile = step.Fragment,
+                            IsActive = !isOptional,
+                            Order = step.Order
+                        };
+
+                        // Priority 1: Pipeline step defaults
+                        foreach (var kvp in step.DefaultValues)
+                        {
+                            fragment.Values[kvp.Key] = kvp.Value;
+                        }
+
+                        // Priority 2: Schema defaults
+                        if (schema?.Parameters != null)
+                        {
+                            foreach (var (paramName, constraints) in schema.Parameters)
+                            {
+                                if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                                {
+                                    fragment.Values[paramName] = constraints.Default;
+                                }
+                            }
+                        }
+
+                        current.Fragments[fragmentId] = fragment;
+                        _logger.LogDebug("Added new fragment '{FragmentId}' from updated workflow template", fragmentId);
+                    }
                 }
             }
 
@@ -317,6 +359,7 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Initializes fresh from workflow template (no saved state).
+        /// Supports both C# IWorkflowBuilder workflows and Scriban template workflows.
         /// </summary>
         private void InitializeFreshFromWorkflow(Workflow workflow, GenerationParameters current)
         {
@@ -340,45 +383,99 @@ namespace BlazorWebApp.Services
             }
 
             // Initialize sources from workflow definition
-            InitializeSourcesFromWorkflow(workflow, current);
-
-            // Parse pipeline to extract fragments
-            try
+            if (workflow.Sources != null)
             {
-                InitializeFragmentsFromPipeline(workflow, current);
+                foreach (var source in workflow.Sources)
+                {
+                    current.Sources[source.Id] = new SourceAsset
+                    {
+                        Label = source.Label,
+                        Type = source.Type
+                    };
+                    _logger.LogDebug("Initialized source '{SourceId}' ({Type}) from workflow definition", source.Id, source.Type);
+                }
             }
-            catch (Exception ex)
+
+            // Check if this workflow has a C# builder
+            if (_workflowService.HasWorkflowBuilder(workflow.Id))
             {
-                _logger.LogError(ex, "Error parsing pipeline for workflow {WorkflowTitle}", workflow.Title);
+                // Initialize from C# workflow builder
+                InitializeFragmentsFromBuilder(workflow, current);
+            }
+            else
+            {
+                // Parse pipeline to extract fragments from Scriban template
+                try
+                {
+                    InitializeFragmentsFromPipeline(workflow, current);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error parsing pipeline for workflow {WorkflowTitle}", workflow.Title);
+                }
             }
         }
 
         /// <summary>
-        /// Initializes source assets from workflow definition.
-        /// Sources are parsed by WorkflowService using regex since RawJson contains Scriban templates.
+        /// Initializes fragment parameters from C# IWorkflowBuilder.GetFragments().
+        /// Creates FragmentParameters entries for each fragment with metadata-driven defaults.
         /// </summary>
-        private void InitializeSourcesFromWorkflow(Workflow workflow, GenerationParameters parameters)
+        private void InitializeFragmentsFromBuilder(Workflow workflow, GenerationParameters parameters)
         {
-            // Sources must come from the parsed workflow.Sources property
-            // We cannot parse RawJson directly as it contains Scriban template syntax
-            if (workflow.Sources == null || workflow.Sources.Count == 0)
+            var builder = _workflowService.GetWorkflowBuilder(workflow.Id);
+            if (builder == null)
             {
-                _logger.LogDebug("No sources defined for workflow '{WorkflowTitle}'", workflow.Title);
+                _logger.LogWarning("No builder found for workflow {WorkflowId}", workflow.Id);
                 return;
             }
 
-            _logger.LogDebug("Initializing {Count} sources from workflow.Sources for '{WorkflowTitle}'", 
-                workflow.Sources.Count, workflow.Title);
-                
-            foreach (var source in workflow.Sources)
+            var fragments = builder.GetFragments().ToList();
+            var order = 0;
+
+            foreach (var fragmentBuilder in fragments)
             {
-                parameters.Sources[source.Id] = new SourceAsset
+                var metadata = fragmentBuilder.Metadata;
+                var fragmentId = metadata.Id;
+
+                // Check if fragment should be hidden (utility fragments with no UI)
+                if (metadata.IsHidden)
                 {
-                    Label = source.Label,
-                    Type = source.Type
+                    _logger.LogTrace("Skipping hidden fragment '{FragmentId}'", fragmentId);
+                    continue;
+                }
+
+                // Determine if this is an optional fragment (defaultCollapsed or enhancement type)
+                var isOptional = metadata.Collapsible || metadata.Type == FragmentType.Enhancement;
+
+                // Create fragment parameters
+                var fragment = new FragmentParameters
+                {
+                    FragmentFile = $"fluent:{fragmentId}", // Mark as fluent API fragment
+                    IsActive = !isOptional, // Optional fragments start inactive
+                    Order = order++
                 };
-                _logger.LogDebug("Initialized source '{SourceId}' ({Type}) from workflow definition", source.Id, source.Type);
+
+                // Apply default values from metadata parameters
+                if (metadata.Parameters != null)
+                {
+                    foreach (var param in metadata.Parameters)
+                    {
+                        if (param.DefaultValue != null)
+                        {
+                            fragment.Values[param.Name] = param.DefaultValue;
+                            _logger.LogTrace("Set default for '{FragmentId}.{Param}' = {Value}",
+                                fragmentId, param.Name, param.DefaultValue);
+                        }
+                    }
+                }
+
+                parameters.Fragments[fragmentId] = fragment;
+                _logger.LogDebug("Initialized fragment '{FragmentId}' from C# builder (IsActive: {IsActive}, Type: {Type})",
+                    fragmentId, fragment.IsActive, metadata.Type);
             }
+
+            _logger.LogDebug("Initialized {Count} fragments from C# workflow builder for '{WorkflowTitle}'",
+                parameters.Fragments.Count, workflow.Title);
         }
 
         /// <summary>
@@ -469,6 +566,7 @@ namespace BlazorWebApp.Services
         /// Identifies primary latent, sampler, and prompts fragments based on FragmentType.
         /// Populates optional/enhancement fragments list.
         /// Called automatically after workflow initialization.
+        /// Supports both C# IWorkflowBuilder and Scriban workflows.
         /// </summary>
         private void DiscoverFragments()
         {
@@ -486,18 +584,47 @@ namespace BlazorWebApp.Services
 
             _logger.LogDebug("Discovering fragments from {Count} total fragments", current.Fragments.Count);
 
+            // Check if we have a C# workflow builder
+            IWorkflowBuilder? builder = null;
+            Dictionary<string, FragmentMetadata>? builderMetadata = null;
+            if (current.WorkflowId.HasValue && _workflowService.HasWorkflowBuilder(current.WorkflowId.Value))
+            {
+                builder = _workflowService.GetWorkflowBuilder(current.WorkflowId.Value);
+                if (builder != null)
+                {
+                    builderMetadata = builder.GetFragments()
+                        .ToDictionary(f => f.Metadata.Id, f => f.Metadata, StringComparer.OrdinalIgnoreCase);
+                }
+            }
+
             foreach (var kvp in current.Fragments)
             {
                 var fragmentId = kvp.Key;
                 var fragment = kvp.Value;
 
-                // Get schema to access FragmentType
-                var schema = _workflowService.GetFragmentSchema(fragment.FragmentFile);
-                if (schema == null)
+                FragmentSchema? schema = null;
+                FragmentMetadata? metadata = null;
+
+                // Try to get metadata from C# builder first
+                if (builderMetadata?.TryGetValue(fragmentId, out metadata) == true)
                 {
-                    _logger.LogTrace("Fragment '{FragmentId}' has no schema, skipping discovery", fragmentId);
+                    // Build a FragmentSchema from the C# metadata for UI compatibility
+                    schema = BuildSchemaFromMetadata(metadata);
+                }
+                else
+                {
+                    // Fall back to Scriban schema parsing
+                    schema = _workflowService.GetFragmentSchema(fragment.FragmentFile);
+                }
+
+                if (schema == null && metadata == null)
+                {
+                    _logger.LogTrace("Fragment '{FragmentId}' has no schema or metadata, skipping discovery", fragmentId);
                     continue;
                 }
+
+                // Get the FragmentType from either source
+                var fragmentType = metadata?.Type ?? schema?.Type ?? FragmentType.Unknown;
 
                 // Create reference for this fragment
                 var reference = new FragmentReference
@@ -507,7 +634,7 @@ namespace BlazorWebApp.Services
                     Schema = schema
                 };
 
-                switch (schema.Type)
+                switch (fragmentType)
                 {
                     case FragmentType.Prompts:
                         _promptsFragment ??= reference;
@@ -526,9 +653,6 @@ namespace BlazorWebApp.Services
                         break;
 
                     case FragmentType.Settings:
-                        // Settings fragments are workflow-specific required configuration
-                        // They should be discovered but rendered separately from optional fragments
-                        // Add to optional list for UI rendering (they'll be marked as non-collapsible in their schema)
                         _optionalFragments.Add(reference);
                         _logger.LogTrace("Discovered settings fragment: '{FragmentId}'", fragmentId);
                         break;
@@ -552,13 +676,15 @@ namespace BlazorWebApp.Services
                     case FragmentType.Unknown:
                     case FragmentType.Conditioning:
                     case FragmentType.Output:
-                        // Check if fragment is marked as defaultCollapsed (makes it optional)
+                        // Check if fragment is marked as collapsible (makes it optional)
                         // OR if it has a designed component (makes it a feature fragment)
-                        if (schema.DefaultCollapsed || schema.HasDesignedComponent)
+                        var isCollapsible = metadata?.Collapsible ?? schema?.DefaultCollapsed ?? false;
+                        var hasComponent = schema?.HasDesignedComponent ?? (metadata != null);
+                        if (isCollapsible || hasComponent)
                         {
                             _optionalFragments.Add(reference);
-                            _logger.LogTrace("Discovered optional fragment (defaultCollapsed={DefaultCollapsed}, hasComponent={HasComponent}): '{FragmentId}'", 
-                                schema.DefaultCollapsed, schema.HasDesignedComponent, fragmentId);
+                            _logger.LogTrace("Discovered optional fragment (collapsible={Collapsible}, hasComponent={HasComponent}): '{FragmentId}'", 
+                                isCollapsible, hasComponent, fragmentId);
                         }
                         break;
                 }
@@ -593,6 +719,44 @@ namespace BlazorWebApp.Services
                 _primaryLatentFragment != null,
                 _primarySamplerFragment != null,
                 _optionalFragments.Count);
+        }
+
+        /// <summary>
+        /// Builds a FragmentSchema from C# FragmentMetadata for UI compatibility.
+        /// </summary>
+        private static FragmentSchema BuildSchemaFromMetadata(FragmentMetadata metadata)
+        {
+            var schema = new FragmentSchema
+            {
+                Type = metadata.Type,
+                Title = metadata.Title,
+                Icon = metadata.Icon,
+                Order = metadata.Order,
+                DefaultCollapsed = metadata.Collapsible && metadata.DefaultCollapsed,
+                Collapsible = metadata.Collapsible,
+                Component = metadata.Component // Use the component from metadata, may be null for dynamic rendering
+            };
+
+            // Convert FragmentParameter to ParameterConstraints
+            if (metadata.Parameters != null)
+            {
+                schema.Parameters = new Dictionary<string, ParameterConstraints>(StringComparer.OrdinalIgnoreCase);
+                foreach (var param in metadata.Parameters)
+                {
+                    schema.Parameters[param.Name] = new ParameterConstraints
+                    {
+                        Default = param.DefaultValue,
+                        Min = param.Min,
+                        Max = param.Max,
+                        Step = param.Step,
+                        Options = param.Options?.ToList(),
+                        Source = param.Source?.NodeType,
+                        InputName = param.Source?.InputName
+                    };
+                }
+            }
+
+            return schema;
         }
 
         #region Fragment CRUD Operations

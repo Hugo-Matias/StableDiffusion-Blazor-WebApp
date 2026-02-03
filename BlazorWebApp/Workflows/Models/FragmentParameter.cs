@@ -13,7 +13,7 @@ public class FragmentParameter
     /// <summary>
     /// Display label for the UI control.
     /// </summary>
-    public required string Label { get; init; }
+    public string? Label { get; init; }
 
     /// <summary>
     /// Parameter type (determines which UI control to render).
@@ -62,6 +62,7 @@ public class FragmentParameter
 public enum ParameterType
 {
     Text,
+    TextArea,
     Number,
     Slider,
     Select,
@@ -70,19 +71,35 @@ public enum ParameterType
 }
 
 /// <summary>
+/// Fragment type classification for UI grouping and display.
+/// </summary>
+public enum FragmentType
+{
+    Unknown,
+    Loader,
+    Latent,
+    Prompts,
+    Conditioning,
+    Sampler,
+    Settings,
+    Enhancement,
+    Output
+}
+
+/// <summary>
 /// Defines a dynamic source for populating select options from ComfyUI.
 /// </summary>
 public record DynamicSource
 {
     /// <summary>
-    /// ComfyUI node type to query (e.g., "KSampler").
+    /// ComfyUI node type to query (e.g., "KSampler") or "Backend" for app-provided sources.
     /// </summary>
-    public required string NodeType { get; init; }
+    public string NodeType { get; init; } = "";
 
     /// <summary>
     /// Input name on the node type to get options for (e.g., "sampler_name").
     /// </summary>
-    public required string InputName { get; init; }
+    public string InputName { get; init; } = "";
 
     public DynamicSource() { }
 

@@ -19,5 +19,12 @@ public interface IFragmentBuilder
     /// <param name="builder">The workflow builder to add nodes to.</param>
     /// <param name="parameters">The generation parameters containing fragment values.</param>
     /// <param name="registry">The node registry for tracking and referencing outputs.</param>
-    void Build(BlazorWebApp.Workflows.Builders.ComfyWorkflowBuilder builder, GenerationParameters parameters, BlazorWebApp.Workflows.Builders.NodeRegistry registry);
+    /// <param name="scope">Optional prefix for node IDs and output names (e.g., "detailer_"). Default is empty.</param>
+    /// <param name="scopeTitle">Optional prefix for node titles in ComfyUI (e.g., "Detailer "). Default is empty.</param>
+    void Build(
+        BlazorWebApp.Workflows.Builders.ComfyWorkflowBuilder builder, 
+        GenerationParameters parameters, 
+        BlazorWebApp.Workflows.Builders.NodeRegistry registry,
+        string scope = "",
+        string scopeTitle = "");
 }
