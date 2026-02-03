@@ -1,35 +1,29 @@
-using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
-using Microsoft.Extensions.Configuration;
+using BlazorWebApp.Data.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
 using static BlazorWebApp.Data.Enums;
+using AssetType = BlazorWebApp.Models.AssetType;
+using WorkflowAsset = BlazorWebApp.Models.WorkflowAsset;
 
 namespace BlazorWebApp.Tests.Services;
 
 public class WorkflowServiceTests
 {
     private readonly Mock<ILogger<WorkflowService>> _mockLogger;
-    private readonly Mock<ILogger<WorkflowTemplateParser>> _mockParserLogger;
     private readonly Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
-    private readonly Mock<ILogger<TemplateCacheService>> _mockCacheLogger;
 
     public WorkflowServiceTests()
     {
         _mockLogger = new Mock<ILogger<WorkflowService>>();
-        _mockParserLogger = new Mock<ILogger<WorkflowTemplateParser>>();
         _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
-        _mockCacheLogger = new Mock<ILogger<TemplateCacheService>>();
     }
 
-    private WorkflowService CreateWorkflowService(IIOService ioService)
+    private WorkflowService CreateWorkflowService()
     {
-        var templateParser = new WorkflowTemplateParser(_mockParserLogger.Object);
         var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
-        var templateCacheService = new TemplateCacheService(_mockCacheLogger.Object);
-        return new WorkflowService(ioService, _mockLogger.Object, templateParser, fragmentSchemaService, templateCacheService,
-            new FragmentConditionValidator(new Mock<ILogger<FragmentConditionValidator>>().Object));
+        return new WorkflowService(_mockLogger.Object, fragmentSchemaService);
     }
 
     #region Workflow Model Tests
@@ -82,44 +76,92 @@ public class WorkflowServiceTests
         Assert.Equal(AssetType.ClipVision, clipVisionAsset.Type);
     }
 
-    [Fact]
-    public void WorkflowStep_ShouldHaveCorrectDefaults()
-    {
-        // Arrange & Act
-        var step = new WorkflowStep();
-
-        // Assert
-        Assert.Null(step.Fragment);
-        Assert.Null(step.RawParameters);
-        Assert.Null(step.Parameters);
-        Assert.Null(step.Outputs);
-    }
-
-    [Fact]
-    public void OutputMapping_ShouldHaveCorrectDefaults()
-    {
-        // Arrange & Act
-        var mapping = new OutputMapping();
-
-        // Assert
-        Assert.Null(mapping.Node);
-        Assert.Equal(0, mapping.Index);
-    }
-
     #endregion
 
-    #region Integration-style Tests
+    #region WorkflowService Tests
 
     [Fact]
     public void WorkflowService_Constructor_ShouldNotThrow()
     {
-        // Arrange
-        var mockConfig = new Mock<IConfiguration>();
-        var ioService = new IOService(mockConfig.Object);
-
         // Act & Assert - Constructor should not throw
-        var service = CreateWorkflowService(ioService);
+        var service = CreateWorkflowService();
         Assert.NotNull(service);
+    }
+
+    [Fact]
+    public void WorkflowService_GetWorkflows_ShouldReturnDiscoveredBuilders()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+
+        // Act
+        var workflows = service.GetWorkflows();
+
+        // Assert
+        Assert.NotNull(workflows);
+        // Should discover at least ZImageTxt2ImgWorkflow
+        Assert.True(workflows.Count >= 1, "Should discover at least one C# workflow builder");
+    }
+
+    [Fact]
+    public void WorkflowService_GetWorkflowBuilders_ShouldReturnBuilders()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+
+        // Act
+        var builders = service.GetWorkflowBuilders();
+
+        // Assert
+        Assert.NotNull(builders);
+        Assert.True(builders.Count >= 1, "Should discover at least one C# workflow builder");
+    }
+
+    [Fact]
+    public void WorkflowService_HasWorkflowBuilder_ShouldReturnTrueForExistingBuilder()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+        var builders = service.GetWorkflowBuilders();
+        
+        if (builders.Count == 0)
+        {
+            return; // Skip if no builders discovered
+        }
+
+        var firstBuilderId = builders.Keys.First();
+
+        // Act
+        var hasBuilder = service.HasWorkflowBuilder(firstBuilderId);
+
+        // Assert
+        Assert.True(hasBuilder);
+    }
+
+    [Fact]
+    public void WorkflowService_HasWorkflowBuilder_ShouldReturnFalseForNonExistentBuilder()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+
+        // Act
+        var hasBuilder = service.HasWorkflowBuilder(Guid.NewGuid());
+
+        // Assert
+        Assert.False(hasBuilder);
+    }
+
+    [Fact]
+    public void WorkflowService_GetWorkflowById_ShouldReturnNullForNonExistent()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+
+        // Act
+        var workflow = service.GetWorkflowById(Guid.NewGuid());
+
+        // Assert
+        Assert.Null(workflow);
     }
 
     #endregion
@@ -198,229 +240,7 @@ public class WorkflowServiceTests
 
     #endregion
 
-    #region SubgraphContext Tests
-
-    [Fact]
-    public void SubgraphContext_ShouldInitializeWithDefaults()
-    {
-        // Arrange & Act
-        var context = new SubgraphContext();
-
-        // Assert - SubgraphContext has default initializers in the class
-        Assert.NotNull(context.Parameters);
-        Assert.NotNull(context.Outputs);
-    }
-
-    [Fact]
-    public void SubgraphContext_ShouldAllowSettingProperties()
-    {
-        // Arrange
-        var parameters = new Dictionary<string, object> { { "key", "value" } };
-        var outputs = new NodeRegistry();
-
-        // Act
-        var context = new SubgraphContext
-        {
-            Parameters = parameters,
-            Outputs = outputs
-        };
-
-        // Assert
-        Assert.Same(parameters, context.Parameters);
-        Assert.Same(outputs, context.Outputs);
-    }
-
-    #endregion
-
-    #region Fragment Schema Parsing Tests
-
-    [Fact]
-    public void ParseFragmentSchema_WithValidUISchema_ShouldReturnSchema()
-    {
-        // Arrange
-        var mockConfig = new Mock<IConfiguration>();
-        var ioService = new IOService(mockConfig.Object);
-        var service = CreateWorkflowService(ioService);
-
-        var fragmentText = @"
-#meta
-{
-  ""outputs"": {
-    ""latent_output"": {""node"": ""sampler"", ""index"": 0}
-  },
-  ""ui"": {
-    ""component"": ""SamplerForm"",
-    ""title"": ""Sampler"",
-    ""icon"": ""fa-solid fa-dice"",
-    ""order"": 50,
-    ""collapsible"": true,
-    ""chainable"": true,
-    ""parameters"": {
-      ""steps"": { ""min"": 1, ""max"": 150, ""step"": 1 },
-      ""cfg"": { ""min"": 1, ""max"": 30, ""step"": 0.5 },
-      ""sampler_name"": { ""source"": ""Backend.Samplers"" }
-    }
-  }
-}
-#end
-
-{ ""test"": ""node"" }";
-
-        // Act
-        var schema = service.ParseFragmentSchema(fragmentText);
-
-        // Assert
-        Assert.NotNull(schema);
-        Assert.Equal("SamplerForm", schema.Component);
-        Assert.Equal("Sampler", schema.Title);
-        Assert.Equal("fa-solid fa-dice", schema.Icon);
-        Assert.Equal(50, schema.Order);
-        Assert.True(schema.Collapsible);
-        Assert.True(schema.Chainable);
-        Assert.False(schema.DefaultCollapsed);
-        
-        // Check parameters
-        Assert.True(schema.Parameters.ContainsKey("steps"));
-        Assert.Equal(1, schema.Parameters["steps"].Min);
-        Assert.Equal(150, schema.Parameters["steps"].Max);
-        Assert.Equal(1, schema.Parameters["steps"].Step);
-        
-        Assert.True(schema.Parameters.ContainsKey("sampler_name"));
-        Assert.Equal("Backend.Samplers", schema.Parameters["sampler_name"].Source);
-    }
-
-    [Fact]
-    public void ParseFragmentSchema_WithNoUIBlock_ShouldReturnNull()
-    {
-        // Arrange
-        var mockConfig = new Mock<IConfiguration>();
-        var ioService = new IOService(mockConfig.Object);
-        var service = CreateWorkflowService(ioService);
-
-        var fragmentText = @"
-#meta
-{
-  ""outputs"": {
-    ""model_output"": {""node"": ""loader"", ""index"": 0}
-  }
-}
-#end
-
-{ ""test"": ""node"" }";
-
-        // Act
-        var schema = service.ParseFragmentSchema(fragmentText);
-
-        // Assert
-        Assert.Null(schema);
-    }
-
-    [Fact]
-    public void ParseFragmentSchema_WithNoMetaBlock_ShouldReturnNull()
-    {
-        // Arrange
-        var mockConfig = new Mock<IConfiguration>();
-        var ioService = new IOService(mockConfig.Object);
-        var service = CreateWorkflowService(ioService);
-
-        var fragmentText = @"{ ""test"": ""node"" }";
-
-        // Act
-        var schema = service.ParseFragmentSchema(fragmentText);
-
-        // Assert
-        Assert.Null(schema);
-    }
-
-    [Fact]
-    public void ParseFragmentSchema_WithDynamicFields_ShouldParseFields()
-    {
-        // Arrange
-        var mockConfig = new Mock<IConfiguration>();
-        var ioService = new IOService(mockConfig.Object);
-        var service = CreateWorkflowService(ioService);
-
-        var fragmentText = @"
-#meta
-{
-  ""outputs"": {},
-  ""ui"": {
-    ""component"": null,
-    ""title"": ""Experimental Node"",
-    ""collapsible"": true,
-    ""fields"": [
-      { ""parameter"": ""strength"", ""label"": ""Strength"", ""type"": ""slider"", ""min"": 0, ""max"": 1, ""step"": 0.01 },
-      { ""parameter"": ""mode"", ""label"": ""Mode"", ""type"": ""select"", ""options"": [""fast"", ""quality""] }
-    ]
-  }
-}
-#end
-
-{ ""test"": ""node"" }";
-
-        // Act
-        var schema = service.ParseFragmentSchema(fragmentText);
-
-        // Assert
-        Assert.NotNull(schema);
-        Assert.Null(schema.Component);
-        Assert.Equal("Experimental Node", schema.Title);
-        Assert.True(schema.UsesDynamicFields);
-        Assert.False(schema.HasDesignedComponent);
-        
-        // Check fields
-        Assert.NotNull(schema.Fields);
-        Assert.Equal(2, schema.Fields.Count);
-        
-        var strengthField = schema.Fields[0];
-        Assert.Equal("strength", strengthField.Parameter);
-        Assert.Equal("Strength", strengthField.Label);
-        Assert.Equal("slider", strengthField.Type);
-        Assert.Equal(0, strengthField.Min);
-        Assert.Equal(1, strengthField.Max);
-        Assert.Equal(0.01, strengthField.Step);
-        
-        var modeField = schema.Fields[1];
-        Assert.Equal("mode", modeField.Parameter);
-        Assert.Equal("select", modeField.Type);
-        Assert.NotNull(modeField.Options);
-        Assert.Equal(2, modeField.Options.Count);
-        Assert.Contains("fast", modeField.Options);
-        Assert.Contains("quality", modeField.Options);
-    }
-
-    [Fact]
-    public void ParseFragmentSchema_WithDefaultCollapsed_ShouldParse()
-    {
-        // Arrange
-        var mockConfig = new Mock<IConfiguration>();
-        var ioService = new IOService(mockConfig.Object);
-        var service = CreateWorkflowService(ioService);
-
-        var fragmentText = @"
-#meta
-{
-  ""outputs"": {},
-  ""ui"": {
-    ""component"": ""DetailerForm"",
-    ""title"": ""Detailer"",
-    ""collapsible"": true,
-    ""defaultCollapsed"": true,
-    ""parameters"": {}
-  }
-}
-#end
-
-{ ""test"": ""node"" }";
-
-        // Act
-        var schema = service.ParseFragmentSchema(fragmentText);
-
-        // Assert
-        Assert.NotNull(schema);
-        Assert.True(schema.Collapsible);
-        Assert.True(schema.DefaultCollapsed);
-    }
+    #region ParameterConstraints Tests
 
     [Fact]
     public void ParameterConstraints_GetMin_ShouldReturnTypedValue()

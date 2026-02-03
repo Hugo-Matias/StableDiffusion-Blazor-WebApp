@@ -1,4 +1,3 @@
-using BlazorWebApp.Models;
 using BlazorWebApp.Workflows.Builders;
 using BlazorWebApp.Workflows.Models;
 using GenerationParameters = BlazorWebApp.Models.GenerationParameters;
@@ -144,7 +143,7 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
         string scopeTitle = "")
     {
         var fragment = parameters.GetFragment(Metadata.Id);
-        
+
         // Check if fragment is active
         if (fragment?.IsActive != true)
             return;
@@ -195,7 +194,7 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
             .Input("swap_io_components", false)
             .Input("offload_device", "cpu")
             .Input("cache_model", false)
-            .Input("attention_mode", "flash_attn"));
+            .Input("attention_mode", "sageattn_2"));
 
         // Load VAE model
         builder.AddNode("seedvr2_load_vae", node => node

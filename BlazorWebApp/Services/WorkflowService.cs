@@ -1,30 +1,19 @@
 ﻿using BlazorWebApp.Models;
 using BlazorWebApp.Workflows.Models;
-using Scriban;
-using Scriban.Runtime;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
     /// <summary>
     /// Service for loading, composing, and managing workflow templates.
-    /// Supports both new C# IWorkflowBuilder implementations and legacy Scriban templates.
-    /// Delegates parsing to WorkflowTemplateParser and FragmentSchemaService.
+    /// Uses C# IWorkflowBuilder implementations exclusively.
     /// </summary>
     public class WorkflowService : IWorkflowService
     {
-        private readonly string _workflowPath = Path.Combine(AppContext.BaseDirectory, "Workflows");
-        private readonly IIOService _io;
         private readonly ILogger<WorkflowService> _logger;
-        private readonly WorkflowTemplateParser _templateParser;
         private readonly IFragmentSchemaService _fragmentSchemaService;
-        private readonly ITemplateCacheService _templateCache;
-        private readonly FragmentConditionValidator _conditionValidator;
-        private readonly Dictionary<Guid, List<ParsedPipelineStep>> _pipelineCache = new();
-        private readonly object _pipelineCacheLock = new();
 
         // Cache for discovered C# workflow builders
         private readonly Dictionary<Guid, IWorkflowBuilder> _workflowBuilders = new();
@@ -32,26 +21,18 @@ namespace BlazorWebApp.Services
         private bool _workflowBuildersDiscovered = false;
 
         public WorkflowService(
-            IIOService io,
             ILogger<WorkflowService> logger,
-            WorkflowTemplateParser templateParser,
-            IFragmentSchemaService fragmentSchemaService,
-            ITemplateCacheService templateCache,
-            FragmentConditionValidator conditionValidator)
+            IFragmentSchemaService fragmentSchemaService)
         {
-            _io = io;
             _logger = logger;
-            _templateParser = templateParser;
             _fragmentSchemaService = fragmentSchemaService;
-            _templateCache = templateCache;
-            _conditionValidator = conditionValidator;
         }
 
-        #region C# Workflow Builder Discovery
+        #region Workflow Builder Discovery
 
         /// <summary>
         /// Discovers all IWorkflowBuilder implementations in the current assembly.
-        /// Called lazily on first access.
+        /// Called lazily on first access. Results are cached.
         /// </summary>
         private void DiscoverWorkflowBuilders()
         {
@@ -75,8 +56,8 @@ namespace BlazorWebApp.Services
                         {
                             var instance = (IWorkflowBuilder)Activator.CreateInstance(type)!;
                             _workflowBuilders[instance.Metadata.Id] = instance;
-                            _logger.LogInformation("Discovered C# workflow: {Title} ({Base}/{Mode}) - {Id}",
-                                instance.Metadata.Title, instance.Metadata.Base, instance.Metadata.Mode, instance.Metadata.Id);
+                            _logger.LogDebug("Discovered C# workflow: {Title} ({Base}/{Mode})",
+                                instance.Metadata.Title, instance.Metadata.Base, instance.Metadata.Mode);
                         }
                         catch (Exception ex)
                         {
@@ -94,39 +75,30 @@ namespace BlazorWebApp.Services
             }
         }
 
-        /// <summary>
-        /// Gets a C# workflow builder by ID if available.
-        /// </summary>
+        /// <inheritdoc />
         public IWorkflowBuilder? GetWorkflowBuilder(Guid workflowId)
         {
             DiscoverWorkflowBuilders();
-
             lock (_workflowBuildersLock)
             {
                 return _workflowBuilders.GetValueOrDefault(workflowId);
             }
         }
 
-        /// <summary>
-        /// Gets all discovered C# workflow builders.
-        /// </summary>
+        /// <inheritdoc />
         public IReadOnlyDictionary<Guid, IWorkflowBuilder> GetWorkflowBuilders()
         {
             DiscoverWorkflowBuilders();
-
             lock (_workflowBuildersLock)
             {
                 return _workflowBuilders.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             }
         }
 
-        /// <summary>
-        /// Checks if a workflow has a C# builder available.
-        /// </summary>
+        /// <inheritdoc />
         public bool HasWorkflowBuilder(Guid workflowId)
         {
             DiscoverWorkflowBuilders();
-
             lock (_workflowBuildersLock)
             {
                 return _workflowBuilders.ContainsKey(workflowId);
@@ -135,75 +107,64 @@ namespace BlazorWebApp.Services
 
         #endregion
 
-        #region Workflow Loading
+        #region Workflow Discovery
 
+        /// <inheritdoc />
         public List<Workflow> GetWorkflows()
         {
-            // First, get C# workflow builders
             DiscoverWorkflowBuilders();
 
-            List<Workflow> workflows = new();
+            var workflows = new List<Workflow>();
 
-            // Add C# workflows first (they take precedence)
             lock (_workflowBuildersLock)
             {
                 foreach (var builder in _workflowBuilders.Values)
                 {
-                    var metadata = builder.Metadata;
-                    workflows.Add(new Workflow
-                    {
-                        Id = metadata.Id,
-                        Title = metadata.Title,
-                        Base = metadata.Base,
-                        Mode = metadata.Mode,
-                        Assets = metadata.Assets?.Select(a => new Models.WorkflowAsset
-                        {
-                            Parameter = a.Parameter,
-                            Label = a.Label,
-                            Type = ConvertAssetType(a.Type),
-                            DefaultValue = a.DefaultValue,
-                            Order = a.Order,
-                            ColumnSize = a.ColumnSize
-                        }).ToList(),
-                        Sources = metadata.Sources?.Select(s => new Models.WorkflowSource
-                        {
-                            Id = s.Id,
-                            Label = s.Label,
-                            Type = s.Type.ToString().ToLower(),
-                            Required = s.Required,
-                            Parameter = s.Parameter
-                        }).ToList(),
-                        Pipeline = new List<WorkflowStep>(), // C# workflows don't use Pipeline
-                        RawJson = "" // C# workflows don't have RawJson
-                    });
+                    var workflow = ConvertBuilderToWorkflow(builder);
+                    workflows.Add(workflow);
                 }
             }
 
-            // Then load Scriban templates (skip any that have C# equivalents)
-            var existingIds = workflows.Select(w => w.Id).ToHashSet();
-            var workflowFiles = _io.GetFilesRecursive(Path.Combine(_workflowPath, "Templates"), ignorePath: "utils", extensionsWhitelist: new() { ".sbn" });
-
-            foreach (var filePath in workflowFiles)
-            {
-                var templateText = File.ReadAllText(filePath.FullName);
-                var workflow = _templateParser.ParseWorkflowTemplate(templateText);
-                
-                // Skip if we already have a C# workflow with this ID
-                if (existingIds.Contains(workflow.Id))
-                {
-                    _logger.LogDebug("Skipping Scriban workflow {Title} - C# workflow with ID {Id} already exists",
-                        workflow.Title, workflow.Id);
-                    continue;
-                }
-
-                workflows.Add(workflow);
-            }
-
+            _logger.LogDebug("GetWorkflows: {Count} C# workflows", workflows.Count);
             return workflows;
         }
 
         /// <summary>
-        /// Converts fluent API AssetType to legacy Models.AssetType.
+        /// Converts an IWorkflowBuilder to the Workflow model for UI compatibility.
+        /// </summary>
+        private Workflow ConvertBuilderToWorkflow(IWorkflowBuilder builder)
+        {
+            var metadata = builder.Metadata;
+            return new Workflow
+            {
+                Id = metadata.Id,
+                Title = metadata.Title,
+                Base = metadata.Base,
+                Mode = metadata.Mode,
+                Assets = metadata.Assets?.Select(a => new Models.WorkflowAsset
+                {
+                    Parameter = a.Parameter,
+                    Label = a.Label,
+                    Type = ConvertAssetType(a.Type),
+                    DefaultValue = a.DefaultValue,
+                    Order = a.Order,
+                    ColumnSize = a.ColumnSize
+                }).ToList(),
+                Sources = metadata.Sources?.Select(s => new Models.WorkflowSource
+                {
+                    Id = s.Id,
+                    Label = s.Label,
+                    Type = s.Type.ToString().ToLower(),
+                    Required = s.Required,
+                    Parameter = s.Parameter
+                }).ToList(),
+                Pipeline = new List<WorkflowStep>(),
+                RawJson = ""
+            };
+        }
+
+        /// <summary>
+        /// Converts fluent API AssetType to Models.AssetType.
         /// </summary>
         private static Models.AssetType ConvertAssetType(Workflows.Models.AssetType type)
         {
@@ -214,46 +175,52 @@ namespace BlazorWebApp.Services
                 Workflows.Models.AssetType.Vae => Models.AssetType.Vae,
                 Workflows.Models.AssetType.CheckpointModel => Models.AssetType.CheckpointModel,
                 Workflows.Models.AssetType.ClipVision => Models.AssetType.ClipVision,
-                _ => Models.AssetType.DiffusionModel // Default fallback
+                _ => Models.AssetType.DiffusionModel
             };
         }
 
         /// <inheritdoc />
         public Workflow? GetWorkflowById(Guid workflowId)
         {
-            var workflows = GetWorkflows();
-            return workflows.FirstOrDefault(w => w.Id == workflowId);
+            if (HasWorkflowBuilder(workflowId))
+            {
+                var builder = GetWorkflowBuilder(workflowId)!;
+                return ConvertBuilderToWorkflow(builder);
+            }
+            return null;
         }
 
+        /// <inheritdoc />
         public (List<Workflow> workflows, ModelBase? suggestedBase, Guid? suggestedId) RefreshWorkflows(
             ModelBase? currentWorkflowBase = null,
             Guid? currentWorkflowId = null)
         {
+            // Clear schema cache
             ClearSchemaCache();
-            ClearPipelineCache();
+            
+            // Reset workflow discovery to pick up any changes
+            lock (_workflowBuildersLock)
+            {
+                _workflowBuildersDiscovered = false;
+            }
 
             try
             {
                 var workflows = GetWorkflows();
 
-                if (workflows == null || workflows.Count == 0)
+                if (workflows.Count == 0)
                 {
-                    _logger.LogWarning("No workflows found on disk");
+                    _logger.LogWarning("No workflows found");
                     return (new List<Workflow>(), null, null);
                 }
 
-                ModelBase? suggestedBase = null;
-                Guid? suggestedId = null;
-
+                // Try to preserve current selection
                 if (currentWorkflowId.HasValue)
                 {
                     var matchById = workflows.FirstOrDefault(w => w.Id == currentWorkflowId.Value);
                     if (matchById != null)
                     {
-                        suggestedId = matchById.Id;
-                        suggestedBase = matchById.Base;
-                        _logger.LogDebug("Preserved workflow selection by ID: {WorkflowId}", suggestedId);
-                        return (workflows, suggestedBase, suggestedId);
+                        return (workflows, matchById.Base, matchById.Id);
                     }
                 }
 
@@ -262,37 +229,19 @@ namespace BlazorWebApp.Services
                     var matchByBase = workflows.FirstOrDefault(w => w.Base == currentWorkflowBase.Value);
                     if (matchByBase != null)
                     {
-                        suggestedId = matchByBase.Id;
-                        suggestedBase = matchByBase.Base;
-                        _logger.LogDebug("Preserved workflow selection by base: {WorkflowBase}", suggestedBase);
-                        return (workflows, suggestedBase, suggestedId);
+                        return (workflows, matchByBase.Base, matchByBase.Id);
                     }
                 }
 
-                var firstWorkflow = workflows.FirstOrDefault();
-                if (firstWorkflow != null)
-                {
-                    suggestedId = firstWorkflow.Id;
-                    suggestedBase = firstWorkflow.Base;
-                    _logger.LogDebug("Using first available workflow: {WorkflowTitle}", firstWorkflow.Title);
-                }
-
-                return (workflows, suggestedBase, suggestedId);
+                // Default to first workflow
+                var first = workflows.First();
+                return (workflows, first.Base, first.Id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error refreshing workflows from disk");
+                _logger.LogError(ex, "Error refreshing workflows");
                 return (new List<Workflow>(), null, null);
             }
-        }
-
-        public Workflow LoadWorkflowTemplate(string path)
-        {
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<Workflow>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            })!;
         }
 
         #endregion
@@ -302,858 +251,85 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public string ComposeWorkflowFromGenerationParameters(Workflow template, GenerationParameters parameters)
         {
-            // Check if we have a C# workflow builder for this workflow
-            if (HasWorkflowBuilder(template.Id))
+            var builder = GetWorkflowBuilder(template.Id);
+            if (builder == null)
             {
-                var builder = GetWorkflowBuilder(template.Id)!;
-                var comfyWorkflow = builder.Build(parameters);
-                _logger.LogInformation("Composed workflow using C# builder: {Title}", template.Title);
-                return comfyWorkflow.Json;
+                throw new InvalidOperationException($"No C# workflow builder found for workflow '{template.Title}' (ID: {template.Id})");
             }
 
-            // Fall back to Scriban template rendering
-            _logger.LogDebug("Composing workflow using Scriban template: {Title}", template.Title);
-            return ComposeWorkflowFromScribanTemplate(template, parameters);
-        }
-
-        /// <summary>
-        /// Composes a workflow from a Scriban template.
-        /// </summary>
-        private string ComposeWorkflowFromScribanTemplate(Workflow template, GenerationParameters parameters)
-        {
-            var composer = new WorkflowComposer();
-
-            // Build global parameters from GenerationParameters
-            var globalParams = parameters.FlattenForTemplateRendering();
-
-            // Inject any remaining workflow asset defaults that aren't in parameters
-            if (template.Assets != null)
-            {
-                foreach (var asset in template.Assets)
-                {
-                    if (!globalParams.ContainsKey(asset.Parameter) ||
-                        globalParams[asset.Parameter] == null ||
-                        string.IsNullOrWhiteSpace(globalParams[asset.Parameter]?.ToString()))
-                    {
-                        if (!string.IsNullOrWhiteSpace(asset.DefaultValue))
-                        {
-                            globalParams[asset.Parameter] = asset.DefaultValue;
-                            _logger.LogDebug("Injected Asset default for '{Parameter}': '{Value}'", asset.Parameter, asset.DefaultValue);
-                        }
-                    }
-                }
-            }
-
-            // Inject sources from GenerationParameters
-            foreach (var source in parameters.Sources)
-            {
-                if (source.Value?.HasData == true && !string.IsNullOrWhiteSpace(source.Value.Data))
-                {
-                    globalParams[source.Key] = source.Value.Data;
-                    if (source.Key.Equals("source_image", StringComparison.OrdinalIgnoreCase))
-                    {
-                        globalParams["Image"] = source.Value.Data;
-                    }
-                    _logger.LogDebug("Injected source '{SourceId}' into globalParams", source.Key);
-                }
-            }
-
-            var templateContext = new TemplateContext
-            {
-                MemberRenamer = member => member.Name,
-                MemberFilter = member => true,
-                EnableRelaxedMemberAccess = true,
-                EnableRelaxedFunctionAccess = true,
-                EnableRelaxedTargetAccess = true,
-                StrictVariables = false
-            };
-
-            var scriptObject = new ScriptObject();
-            foreach (var kvp in globalParams)
-                scriptObject[kvp.Key] = kvp.Value;
-
-            scriptObject.Import("json", new Func<object, string>(value =>
-            {
-                if (value == null) return "null";
-                if (value is string str) return JsonSerializer.Serialize(str);
-                if (value is bool b) return b ? "true" : "false";
-                if (value is int || value is long || value is double || value is float || value is decimal)
-                    return value.ToString()!;
-                return JsonSerializer.Serialize(value);
-            }));
-
-            templateContext.PushGlobal(scriptObject);
-
-            var fullTemplate = Template.Parse(template.RawJson);
-            var renderedTemplate = fullTemplate.Render(templateContext);
-
-            using var doc = JsonDocument.Parse(renderedTemplate);
-            var root = doc.RootElement;
-
-            if (!root.TryGetProperty("Pipeline", out var pipelineEl))
-                throw new InvalidOperationException("No Pipeline found in rendered template");
-
-            foreach (var stepEl in pipelineEl.EnumerateArray())
-            {
-                try
-                {
-                    if (!stepEl.TryGetProperty("fragment", out var fragmentEl))
-                        continue;
-
-                    var fragmentName = fragmentEl.GetString();
-
-                    // Check if this fragment should be skipped (inactive optional fragment)
-                    var fragmentId = GetFragmentIdFromStep(stepEl, fragmentName);
-                    if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParams))
-                    {
-                        if (!fragmentParams.IsActive)
-                        {
-                            _logger.LogDebug("Skipping inactive fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
-                            continue;
-                        }
-                        else
-                        {
-                            _logger.LogDebug("Processing active fragment '{FragmentId}' (file: '{FragmentName}')", fragmentId, fragmentName);
-                        }
-                    }
-                    else if (!string.IsNullOrEmpty(fragmentId))
-                    {
-                        _logger.LogDebug("Fragment '{FragmentId}' not found in parameters.Fragments (available: {AvailableFragments}), will evaluate conditions from globalParams",
-                            fragmentId, string.Join(", ", parameters.Fragments.Keys));
-                    }
-
-                    var mergedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-
-                    // Copy global params
-                    foreach (var kvp in globalParams)
-                    {
-                        if (kvp.Value != null)
-                            mergedParams[kvp.Key] = kvp.Value;
-                    }
-
-                    // Override with step parameters from rendered template
-                    if (stepEl.TryGetProperty("parameters", out var paramsEl))
-                    {
-                        foreach (var prop in paramsEl.EnumerateObject())
-                        {
-                            object value = prop.Value.ValueKind switch
-                            {
-                                JsonValueKind.String => prop.Value.GetString()!,
-                                JsonValueKind.Number => prop.Value.TryGetInt32(out var intVal)
-                                    ? intVal
-                                    : (prop.Value.TryGetInt64(out var longVal)
-                                        ? (object)longVal
-                                        : prop.Value.GetDouble()),
-                                JsonValueKind.True => true,
-                                JsonValueKind.False => false,
-                                JsonValueKind.Null => null!,
-                                _ => prop.Value.GetRawText()
-                            };
-                            mergedParams[prop.Name] = value;
-                        }
-                    }
-
-                    // CRITICAL FIX: Merge fragment-specific parameters from GenerationParameters.Fragments
-                    // This ensures UI-set values (like latent width/height) override template defaults
-                    if (!string.IsNullOrEmpty(fragmentId) && parameters.Fragments.TryGetValue(fragmentId, out var fragmentParamsForMerge))
-                    {
-                        if (fragmentParamsForMerge.Values != null && fragmentParamsForMerge.Values.Count > 0)
-                        {
-                            _logger.LogDebug("Fragment '{FragmentId}': Found {Count} parameters in FragmentParameters.Values",
-                                fragmentId, fragmentParamsForMerge.Values.Count);
-
-                            foreach (var kvp in fragmentParamsForMerge.Values)
-                            {
-                                if (kvp.Value != null)
-                                {
-                                    mergedParams[kvp.Key] = kvp.Value;
-                                    _logger.LogDebug("Fragment '{FragmentId}': Overriding parameter '{ParamName}' = {Value} (type: {Type})",
-                                        fragmentId, kvp.Key, kvp.Value, kvp.Value.GetType().Name);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Fragment '{FragmentId}' found but has no values in FragmentParameters.Values dictionary", fragmentId);
-                        }
-                    }
-
-                    var context = new SubgraphContext
-                    {
-                        Parameters = mergedParams,
-                        Outputs = new NodeRegistry()
-                    };
-
-                    context.Outputs.Merge(composer.Registry);
-
-                    if (!string.IsNullOrWhiteSpace(fragmentName))
-                    {
-                        var fragPath = Path.Combine(_workflowPath, "Fragments", fragmentName.Replace('/', Path.DirectorySeparatorChar));
-                        if (File.Exists(fragPath))
-                        {
-                            var fragmentText = File.ReadAllText(fragPath);
-                            var (rendered, outputs) = RenderFragment(fragmentText, context, mergedParams);
-
-                            if (string.IsNullOrWhiteSpace(rendered))
-                            {
-                                _logger.LogWarning("Fragment '{FragmentId}' rendered to empty string (likely excluded by conditions)", fragmentId);
-                                continue;
-                            }
-
-                            rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
-
-                            // Log outputs from fragment BEFORE registering
-                            if (outputs.Count > 0)
-                            {
-                                var outputKeys = string.Join(", ", outputs.Keys.Select(k => $"'{k}'"));
-                                _logger.LogWarning("Fragment '{FragmentId}' ({FragmentFile}) declared {Count} outputs: {OutputKeys}",
-                                    fragmentId, fragmentName, outputs.Count, outputKeys);
-                            }
-                            else
-                            {
-                                _logger.LogWarning("Fragment '{FragmentId}' ({FragmentFile}) declared no outputs", fragmentId, fragmentName);
-                            }
-
-                            foreach (var kvp in outputs)
-                                context.Outputs.Register(kvp.Key, kvp.Value.nodeId, kvp.Value.index);
-
-                            composer.AddRenderedFragment(rendered, context.Outputs);
-                        }
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    throw new InvalidOperationException($"Failed to parse step parameters. JSON error: {ex.Message}.", ex);
-                }
-            }
-
-            return composer.BuildFinalWorkflow();
-        }
-
-        /// <summary>
-        /// Extracts the fragment ID from a pipeline step.
-        /// </summary>
-        private static string? GetFragmentIdFromStep(JsonElement stepEl, string? fragmentName)
-        {
-            // First try to get explicit ID
-            if (stepEl.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String)
-            {
-                return idEl.GetString();
-            }
-
-            // Fall back to generating ID from fragment filename
-            if (!string.IsNullOrEmpty(fragmentName))
-            {
-                return Path.GetFileNameWithoutExtension(fragmentName).Replace("-", "_");
-            }
-
-            return null;
+            var comfyWorkflow = builder.Build(parameters);
+            _logger.LogDebug("Composed workflow: {Title}", template.Title);
+            return comfyWorkflow.Json;
         }
 
         #endregion
 
-        #region Fragment Rendering
+        #region Schema Delegation
 
-        public (string rendered, Dictionary<string, (string nodeId, int index)> outputs) RenderFragment(
-            string fragmentText,
-            SubgraphContext context,
-            Dictionary<string, object> globalParams,
-            Func<string, Task<string>>? loraPathResolver = null)
-        {
-            Dictionary<string, (string, int)> outputs = new();
-            Dictionary<string, JsonElement>? conditions = null;
-
-            // Match #meta ... #end block - use [\s\S] to match any character including newlines
-            // The pattern captures everything between #meta and #end
-            var metaMatch = Regex.Match(fragmentText, @"#meta\s*([\s\S]*?)\s*#end");
-
-            if (metaMatch.Success)
-            {
-                var metaJson = metaMatch.Groups[1].Value.Trim();
-
-                string renderedMeta;
-                try
-                {
-                    _logger.LogWarning("RenderFragment: context.Parameters has {Count} entries: {Keys}", 
-                        context.Parameters.Count,
-                        string.Join(", ", context.Parameters.Keys.Select(k => $"'{k}'")));
-                    
-                    // Use simple string replacement for @{variable} placeholders in meta section
-                    // This avoids Scriban parser issues with JSON structure
-                    renderedMeta = metaJson;
-                    var placeholderPattern = @"@\{([a-zA-Z_][a-zA-Z0-9_]*)\}";
-                    renderedMeta = Regex.Replace(renderedMeta, placeholderPattern, match =>
-                    {
-                        var varName = match.Groups[1].Value;
-                        
-                        // Try to get the value from context parameters (case-insensitive)
-                        var key = context.Parameters.Keys.FirstOrDefault(k => 
-                            k.Equals(varName, StringComparison.OrdinalIgnoreCase));
-                        
-                        if (key != null && context.Parameters[key] is string strValue)
-                        {
-                            return strValue;
-                        }
-                        
-                        // Default values for common parameters
-                        return varName switch
-                        {
-                            "model_output_name" => "model_output",
-                            "node_prefix" => "model",
-                            "output_name" => "cleaned_output",
-                            "node_id" => "clean_vram",
-                            _ => match.Value // Keep placeholder if no value found
-                        };
-                    });
-                    
-                    _logger.LogWarning("RenderFragment meta section - Original: {OriginalMeta}", 
-                        metaJson.Length > 300 ? metaJson.Substring(0, 300) + "..." : metaJson);
-                    _logger.LogWarning("RenderFragment meta section - Rendered: {RenderedMeta}", 
-                        renderedMeta.Length > 300 ? renderedMeta.Substring(0, 300) + "..." : renderedMeta);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "RenderFragment: Failed to render meta section");
-                    renderedMeta = metaJson;
-                }
-
-                (outputs, conditions) = ExtractMetadata(renderedMeta);
-
-                // Validate conditions if present
-                if (conditions != null && conditions.Count > 0)
-                {
-                    var fragmentId = GetFragmentIdFromContext(context, globalParams);
-                    if (!string.IsNullOrEmpty(fragmentId))
-                    {
-                        var validationErrors = _conditionValidator.ValidateConditions(fragmentId, conditions);
-                        if (validationErrors.Count > 0)
-                        {
-                            _conditionValidator.LogValidationErrors(fragmentId, validationErrors);
-                        }
-                    }
-                }
-
-                if (!EvaluateConditions(conditions, globalParams))
-                    return (string.Empty, outputs);
-
-                fragmentText = fragmentText.Replace(metaMatch.Value, "").Trim();
-            }
-
-            var rendered = RenderTemplate(fragmentText, context, preserveFormatting: false, loraPathResolver);
-            rendered = Regex.Replace(rendered, @",\s*(\}|])", "$1", RegexOptions.Singleline);
-            return (rendered, outputs);
-        }
-
-        /// <summary>
-        /// Attempts to determine the fragment ID from context for validation.
-        /// </summary>
-        private string? GetFragmentIdFromContext(SubgraphContext context, Dictionary<string, object> globalParams)
-        {
-            // Try to get from scope parameter
-            if (context.Parameters.TryGetValue("scope", out var scopeObj) && scopeObj is string scope)
-            {
-                return scope.TrimEnd('_');
-            }
-
-            // Try to get from fragment_id parameter (if we add it in future)
-            if (globalParams.TryGetValue("fragment_id", out var fragmentIdObj) && fragmentIdObj is string fragmentId)
-            {
-                return fragmentId;
-            }
-
-            return null;
-        }
-
-        private string RenderTemplate(string templateText, SubgraphContext context, bool preserveFormatting, Func<string, Task<string>>? loraPathResolver = null)
-        {
-            // Use cached template if available via text hash, otherwise parse
-            var cacheKey = $"inline_{templateText.GetHashCode():X8}";
-            var template = _templateCache.GetOrCompile(cacheKey, templateText);
-
-            if (template.HasErrors)
-            {
-                var errors = string.Join(", ", template.Messages.Select(m => m.Message));
-                if (!preserveFormatting)
-                    throw new InvalidOperationException($"Template parse errors: {errors}");
-            }
-
-            var templateContext = new TemplateContext
-            {
-                MemberRenamer = member => member.Name,
-                MemberFilter = member => true,
-                EnableRelaxedMemberAccess = true,
-                EnableRelaxedFunctionAccess = true,
-                EnableRelaxedTargetAccess = true,
-                StrictVariables = false
-            };
-
-            var scriptObject = new ScriptObject();
-
-            if (context.Parameters != null)
-            {
-                foreach (var kvp in context.Parameters)
-                {
-                    scriptObject[kvp.Key] = kvp.Value;
-
-                    var alternateKey = ConvertCasing(kvp.Key);
-                    if (alternateKey != kvp.Key)
-                        scriptObject[alternateKey] = kvp.Value;
-                }
-            }
-
-            scriptObject.Import("get_ref", new Func<string, string>(key => context.Outputs.GetReference(key)));
-
-            // Add string_contains helper for Scriban templates
-            scriptObject.Import("string_contains", new Func<string, string, bool>((str, substring) =>
-            {
-                if (string.IsNullOrEmpty(str) || string.IsNullOrEmpty(substring))
-                    return false;
-                return str.Contains(substring, StringComparison.OrdinalIgnoreCase);
-            }));
-
-            scriptObject.Import("json", new Func<object, string>(value =>
-            {
-                if (value == null) return "null";
-                if (value is string str) return JsonSerializer.Serialize(str);
-                if (value is bool b) return b ? "true" : "false";
-                if (value is int || value is long || value is double || value is float || value is decimal)
-                    return value.ToString()!;
-                return JsonSerializer.Serialize(value);
-            }));
-
-            if (loraPathResolver != null)
-            {
-                scriptObject.Import("resolve_lora_path", new Func<string, object>(loraName =>
-                {
-                    if (string.IsNullOrWhiteSpace(loraName))
-                        return loraName;
-
-                    var task = loraPathResolver(loraName);
-                    task.Wait();
-                    return task.Result;
-                }));
-            }
-            else
-            {
-                scriptObject.Import("resolve_lora_path", new Func<string, string>(loraName => loraName));
-            }
-
-            templateContext.PushGlobal(scriptObject);
-
-            var rendered = template.Render(templateContext);
-
-            if (!preserveFormatting)
-            {
-                rendered = rendered.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ");
-                rendered = Regex.Replace(rendered, @"\s+", " ");
-                rendered = Regex.Replace(rendered, @"\s*([{}[\]:,])\s*", "$1");
-                rendered = rendered.Trim();
-            }
-
-            return rendered;
-        }
-
-        #endregion
-
-        #region Condition Evaluation
-
-        private (Dictionary<string, (string nodeId, int index)> outputs, Dictionary<string, JsonElement> conditions) ExtractMetadata(string renderedMeta)
-        {
-            var outputs = new Dictionary<string, (string, int)>();
-            var conditions = new Dictionary<string, JsonElement>();
-
-            renderedMeta = Regex.Replace(renderedMeta, @",\s*(\}|])", "$1", RegexOptions.Singleline);
-
-            try
-            {
-                using var doc = JsonDocument.Parse(renderedMeta);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("outputs", out var outputsEl) && outputsEl.ValueKind == JsonValueKind.Object)
-                {
-                    foreach (var prop in outputsEl.EnumerateObject())
-                    {
-                        var node = string.Empty;
-                        var idx = 0;
-
-                        if (prop.Value.TryGetProperty("node", out var nodeEl))
-                        {
-                            node = nodeEl.ValueKind == JsonValueKind.String
-                                ? nodeEl.GetString() ?? string.Empty
-                                : nodeEl.GetRawText()?.Trim().Trim('"') ?? string.Empty;
-                        }
-
-                        if (prop.Value.TryGetProperty("index", out var idxEl) && idxEl.ValueKind == JsonValueKind.Number)
-                            _ = idxEl.TryGetInt32(out idx);
-
-                        outputs[prop.Name] = (node, idx);
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("ExtractMetadata: No 'outputs' property found in rendered meta. Meta JSON: {RenderedMeta}", 
-                        renderedMeta.Length > 500 ? renderedMeta.Substring(0, 500) + "..." : renderedMeta);
-                }
-
-                if (root.TryGetProperty("conditions", out var conditionsEl) && conditionsEl.ValueKind == JsonValueKind.Object)
-                {
-                    foreach (var prop in conditionsEl.EnumerateObject())
-                        conditions[prop.Name] = prop.Value.Clone();
-                }
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "ExtractMetadata: Failed to parse rendered meta as JSON. Meta text: {RenderedMeta}", 
-                    renderedMeta.Length > 500 ? renderedMeta.Substring(0, 500) + "..." : renderedMeta);
-            }
-
-            return (outputs, conditions);
-        }
-
-        private bool EvaluateConditions(Dictionary<string, JsonElement>? conditions, Dictionary<string, object> parameters)
-        {
-            if (conditions == null || conditions.Count == 0)
-                return true;
-
-            if (conditions.TryGetValue("required", out var requiredEl) && requiredEl.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var condition in requiredEl.EnumerateArray())
-                {
-                    if (condition.ValueKind == JsonValueKind.String)
-                    {
-                        var conditionPath = condition.GetString();
-                        var result = EvaluateCondition(conditionPath, parameters);
-
-                        if (!result)
-                        {
-                            _logger.LogDebug("Fragment excluded: required condition '{ConditionPath}' evaluated to false", conditionPath);
-                            return false;
-                        }
-                        else
-                        {
-                            _logger.LogDebug("Required condition '{ConditionPath}' satisfied", conditionPath);
-                        }
-                    }
-                }
-            }
-
-            if (conditions.TryGetValue("excluded_if", out var excludedEl) && excludedEl.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var condition in excludedEl.EnumerateArray())
-                {
-                    if (condition.ValueKind == JsonValueKind.String)
-                    {
-                        var conditionPath = condition.GetString();
-                        var result = EvaluateCondition(conditionPath, parameters);
-
-                        if (result)
-                        {
-                            _logger.LogDebug("Fragment excluded: excluded_if condition '{ConditionPath}' evaluated to true", conditionPath);
-                            return false;
-                        }
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        private bool EvaluateCondition(string? conditionPath, Dictionary<string, object> parameters)
-        {
-            if (string.IsNullOrEmpty(conditionPath))
-                return false;
-
-            var parts = conditionPath.Split('.');
-            object current = parameters;
-
-            foreach (var part in parts)
-            {
-                if (current is IDictionary<string, object> dict)
-                {
-                    // Case-insensitive key lookup
-                    var match = dict.Keys.FirstOrDefault(k => k.Equals(part, StringComparison.OrdinalIgnoreCase));
-                    if (match != null)
-                    {
-                        current = dict[match];
-                    }
-                    else
-                    {
-                        // Try to find the key with different casing conventions if direct match fails
-                        var snakeCase = ToSnakeCase(part);
-                        var pascalCase = ToPascalCase(part);
-                        var camelCase = ToCamelCase(part);
-
-                        if (dict.TryGetValue(snakeCase, out var snakeVal)) current = snakeVal;
-                        else if (dict.TryGetValue(pascalCase, out var pascalVal)) current = pascalVal;
-                        else if (dict.TryGetValue(camelCase, out var camelVal)) current = camelVal;
-                        else return false;
-                    }
-                }
-                else if (current != null)
-                {
-                    // Try reflection for object properties (case-insensitive)
-                    var prop = current.GetType().GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                    if (prop == null)
-                        return false;
-                    current = prop.GetValue(current)!;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            return current is bool boolValue && boolValue;
-        }
-
-        private static string ToSnakeCase(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            return string.Concat(text.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString())).ToLower();
-        }
-
-        private static string ToPascalCase(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            if (text.Contains('_'))
-            {
-                return string.Concat(text.Split('_').Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1).ToLower()));
-            }
-            return char.ToUpperInvariant(text[0]) + text.Substring(1);
-        }
-
-        private static string ToCamelCase(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            var pascal = ToPascalCase(text);
-            return char.ToLowerInvariant(pascal[0]) + pascal.Substring(1);
-        }
-
-        #endregion
-
-        #region Asset Defaults Saving
-
-        public bool SaveAssetDefaults(Workflow workflow, Dictionary<string, string> assetValues, List<Workflow>? allWorkflows = null)
-        {
-            if (workflow == null || assetValues == null || assetValues.Count == 0)
-                return false;
-
-            var validAssetParams = workflow.Assets?.Select(a => a.Parameter).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            if (validAssetParams == null || validAssetParams.Count == 0)
-                return false;
-
-            try
-            {
-                var templatePath = FindWorkflowTemplatePath(workflow);
-                if (string.IsNullOrEmpty(templatePath) || !File.Exists(templatePath))
-                    return false;
-
-                var templateText = File.ReadAllText(templatePath);
-                var updatedText = templateText;
-
-                var workflowToUpdate = allWorkflows?.FirstOrDefault(w => w.Id == workflow.Id) ?? workflow;
-
-                foreach (var kvp in assetValues)
-                {
-                    if (!validAssetParams.Contains(kvp.Key))
-                    {
-                        _logger.LogDebug("Skipping asset '{AssetKey}' - not defined in workflow", kvp.Key);
-                        continue;
-                    }
-
-                    if (string.IsNullOrWhiteSpace(kvp.Value))
-                        continue;
-
-                    var escapedParam = Regex.Escape(kvp.Key);
-                    var escapedValue = EscapeJsonString(kvp.Value);
-
-                    var assetBlockPattern = @"\{[^{}]*""parameter""\s*:\s*""" + escapedParam + @"""[^{}]*\}";
-
-                    updatedText = Regex.Replace(updatedText, assetBlockPattern, match =>
-                    {
-                        var assetBlock = match.Value;
-                        var defaultPattern = @"""default""\s*:\s*""[^""]*""";
-                        var newDefault = $@"""default"": ""{escapedValue}""";
-                        return Regex.Replace(assetBlock, defaultPattern, newDefault, RegexOptions.IgnoreCase);
-                    }, RegexOptions.Singleline | RegexOptions.IgnoreCase);
-
-                    var asset = workflowToUpdate.Assets?.FirstOrDefault(a =>
-                        a.Parameter.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
-                    if (asset != null)
-                    {
-                        asset.DefaultValue = kvp.Value;
-                        _logger.LogDebug("Updated in-memory default for '{Parameter}': '{Value}' (workflow: {WorkflowTitle})",
-                            kvp.Key, kvp.Value, workflowToUpdate.Title);
-                    }
-                }
-
-                if (updatedText != templateText)
-                {
-                    File.WriteAllText(templatePath, updatedText);
-                    _logger.LogDebug("Saved asset defaults to: {TemplatePath}", templatePath);
-                    return true;
-                }
-
-                _logger.LogDebug("No changes made to asset defaults");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving asset defaults for workflow '{WorkflowTitle}'", workflow.Title);
-                return false;
-            }
-        }
-
-        private string? FindWorkflowTemplatePath(Workflow workflow)
-        {
-            var templatesPath = Path.Combine(_workflowPath, "Templates");
-            var workflowFiles = _io.GetFilesRecursive(templatesPath, ignorePath: "utils", extensionsWhitelist: new() { ".sbn" });
-
-            foreach (var file in workflowFiles)
-            {
-                var templateText = File.ReadAllText(file.FullName);
-                var parsedWorkflow = _templateParser.ParseWorkflowTemplate(templateText);
-
-                if (parsedWorkflow.Title == workflow.Title &&
-                    parsedWorkflow.Base == workflow.Base &&
-                    parsedWorkflow.Mode == workflow.Mode)
-                {
-                    return file.FullName;
-                }
-            }
-
-            return null;
-        }
-
-        private static string EscapeJsonString(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return value;
-
-            return value
-                .Replace("\\", "\\\\")
-                .Replace("\"", "\\\"")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r")
-                .Replace("\t", "\\t");
-        }
-
-        #endregion
-
-        #region Pipeline Cache & Schema Delegation
-
-        public List<ParsedPipelineStep> GetPipelineSteps(Workflow workflow)
-        {
-            if (workflow == null || string.IsNullOrEmpty(workflow.RawJson))
-                return new List<ParsedPipelineStep>();
-
-            lock (_pipelineCacheLock)
-            {
-                if (_pipelineCache.TryGetValue(workflow.Id, out var cached))
-                {
-                    _logger.LogTrace("Returning cached pipeline steps for workflow {WorkflowId}", workflow.Id);
-                    return cached;
-                }
-            }
-
-            var steps = _templateParser.ParsePipelineSteps(workflow.RawJson);
-
-            lock (_pipelineCacheLock)
-            {
-                _pipelineCache[workflow.Id] = steps;
-            }
-
-            _logger.LogDebug("Cached {Count} pipeline steps for workflow {WorkflowId}", steps.Count, workflow.Id);
-            return steps;
-        }
-
-        public List<ParsedPipelineStep> ParsePipelineSteps(string rawJson)
-            => _templateParser.ParsePipelineSteps(rawJson);
-
-        public void ClearPipelineCache()
-        {
-            lock (_pipelineCacheLock)
-            {
-                _pipelineCache.Clear();
-            }
-            _logger.LogDebug("Pipeline cache cleared");
-        }
-
-        // Delegate to FragmentSchemaService but use GetPipelineSteps for consistent IDs
-        public FragmentSchema? ParseFragmentSchema(string fragmentText)
-            => _fragmentSchemaService.ParseFragmentSchema(fragmentText);
-
-        public FragmentSchema? GetFragmentSchema(string fragmentFile)
-            => _fragmentSchemaService.GetFragmentSchema(fragmentFile);
-
+        /// <inheritdoc />
         public Dictionary<string, FragmentSchema> GetWorkflowFragmentSchemas(Workflow workflow)
-            => _fragmentSchemaService.GetWorkflowFragmentSchemas(workflow);
+        {
+            // For C# workflows, build schemas from fragment metadata
+            var builder = GetWorkflowBuilder(workflow.Id);
+            if (builder == null)
+            {
+                return new Dictionary<string, FragmentSchema>();
+            }
 
+            var schemas = new Dictionary<string, FragmentSchema>(StringComparer.OrdinalIgnoreCase);
+            foreach (var fragment in builder.GetFragments())
+            {
+                var metadata = fragment.Metadata;
+                if (metadata.IsHidden) continue;
+
+                var schema = BuildSchemaFromMetadata(metadata);
+                schemas[metadata.Id] = schema;
+            }
+
+            return schemas;
+        }
+
+        /// <summary>
+        /// Builds a FragmentSchema from C# FragmentMetadata.
+        /// </summary>
+        private static FragmentSchema BuildSchemaFromMetadata(FragmentMetadata metadata)
+        {
+            var schema = new FragmentSchema
+            {
+                Type = metadata.Type,
+                Title = metadata.Title,
+                Icon = metadata.Icon,
+                Order = metadata.Order,
+                DefaultCollapsed = metadata.Collapsible && metadata.DefaultCollapsed,
+                Collapsible = metadata.Collapsible,
+                Component = metadata.Component
+            };
+
+            if (metadata.Parameters != null)
+            {
+                schema.Parameters = new Dictionary<string, ParameterConstraints>(StringComparer.OrdinalIgnoreCase);
+                foreach (var param in metadata.Parameters)
+                {
+                    schema.Parameters[param.Name] = new ParameterConstraints
+                    {
+                        Default = param.DefaultValue,
+                        Min = param.Min,
+                        Max = param.Max,
+                        Step = param.Step,
+                        Options = param.Options?.ToList(),
+                        Source = param.Source?.NodeType,
+                        InputName = param.Source?.InputName
+                    };
+                }
+            }
+
+            return schema;
+        }
+
+        /// <inheritdoc />
         public void ClearSchemaCache()
             => _fragmentSchemaService.ClearCache();
 
         #endregion
-
-        #region Utilities
-
-        private static string ConvertCasing(string key)
-        {
-            if (key.Contains('_'))
-            {
-                return string.Concat(key.Split('_').Select(part =>
-                    char.ToUpperInvariant(part[0]) + (part.Length > 1 ? part.Substring(1) : "")));
-            }
-            else if (char.IsUpper(key[0]))
-            {
-                return string.Concat(key.Select((c, i) =>
-                    i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
-            }
-            return key;
-        }
-
-        #endregion
-    }
-
-    /// <summary>
-    /// Composes workflow fragments into a final workflow JSON.
-    /// </summary>
-    public class WorkflowComposer
-    {
-        private readonly List<string> _renderedFragments = new();
-        private readonly NodeRegistry _globalRegistry = new();
-
-        public void AddRenderedFragment(string rendered, NodeRegistry outputs)
-        {
-            _renderedFragments.Add(rendered);
-            _globalRegistry.Merge(outputs);
-        }
-
-        public string BuildFinalWorkflow()
-        {
-            if (_renderedFragments.Count == 0)
-                return "{}";
-
-            var mergedNodes = new Dictionary<string, JsonElement>();
-
-            foreach (var fragment in _renderedFragments)
-            {
-                try
-                {
-                    using var doc = JsonDocument.Parse(fragment);
-                    var root = doc.RootElement;
-
-                    foreach (var prop in root.EnumerateObject())
-                        mergedNodes[prop.Name] = prop.Value.Clone();
-                }
-                catch (JsonException ex)
-                {
-                    throw new InvalidOperationException($"Failed to parse fragment as JSON: {fragment}", ex);
-                }
-            }
-
-            return JsonSerializer.Serialize(mergedNodes, new JsonSerializerOptions { WriteIndented = false });
-        }
-
-        public NodeRegistry Registry => _globalRegistry;
     }
 }

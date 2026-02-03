@@ -1,7 +1,7 @@
 # Workflow System Migration to Fluent Builder API - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 3 - Service Layer Refactoring
+**Current Phase:** Phase 4 - Convert Core Shared Fragments
 
 ---
 
@@ -591,35 +591,42 @@ public class ComfyWorkflowBuilder
 ---
 
 ### Phase 3: Service Layer Refactoring
-**Objective:** Update WorkflowService and remove all Scriban dependencies
-**Complexity:** 13 points
-**Status:** [ ] Not Started
+**Objective:** Complete removal of ALL Scriban dependencies from the codebase
+**Complexity:** 33 points (revised from 13 due to broader scope)
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Update `IWorkflowService` interface - remove Scriban-specific methods
-- [ ] Refactor `WorkflowService.GetWorkflows()` to use reflection discovery
-- [ ] Refactor `WorkflowService.ComposeWorkflowFromGenerationParameters()`
-- [ ] Remove `RenderFragment()` method (Scriban-specific)
-- [ ] Remove `RenderTemplate()` method (Scriban-specific)
-- [ ] Remove `ExtractMetadata()` method (regex parsing)
-- [ ] Remove `EvaluateConditions()` method (Scriban conditions)
-- [ ] Update or remove `ParseFragmentSchema()` to use `IFragmentBuilder.Metadata`
-- [ ] Update `GenerationParameterService.InitializeFromWorkflow()` for new metadata
-- [ ] Update `FragmentSchemaService` to read from `IFragmentBuilder.Metadata`
-- [ ] Delete `TemplateCacheService.cs` (no longer needed)
-- [ ] Delete `WorkflowTemplateParser.cs` (Scriban-specific)
-- [ ] Delete `FragmentConditionValidator.cs` or adapt for C# conditions
-- [ ] Remove Scriban NuGet package from project
-- [ ] Add unit tests for refactored service methods
+- [x] Update `IWorkflowService` interface - remove Scriban-specific methods
+- [x] Refactor `WorkflowService.GetWorkflows()` to use reflection discovery only
+- [x] Refactor `WorkflowService.ComposeWorkflowFromGenerationParameters()` - C# only
+- [x] Remove `RenderFragment()` method (Scriban-specific)
+- [x] Remove `RenderTemplate()` method (Scriban-specific)
+- [x] Remove `ExtractMetadata()` method (regex parsing)
+- [x] Remove `EvaluateConditions()` method (Scriban conditions)
+- [x] Update `GenerationParameterService` - remove pipeline code
+- [x] Delete `TemplateCacheService.cs` (no longer needed)
+- [x] Delete `WorkflowTemplateParser.cs` (Scriban-specific)
+- [x] Delete `FragmentConditionValidator.cs`
+- [x] Delete `WorkflowValidationService.cs` and `IWorkflowValidationService.cs`
+- [x] Delete `FragmentConditionGenerator.cs`
+- [x] Remove Scriban NuGet package from project
+- [x] Update test files for new API
+
+#### Files Deleted
+- `TemplateCacheService.cs`
+- `WorkflowTemplateParser.cs`
+- `FragmentConditionValidator.cs`
+- `WorkflowValidationService.cs`
+- `IWorkflowValidationService.cs`
+- `FragmentConditionGenerator.cs`
 
 #### Success Criteria
-- All services compile without Scriban references
-- Workflow discovery works correctly via reflection
-- Fragment metadata extraction works from C# properties
-- State initialization functions with new metadata system
-- No Scriban code remains in any service
-- All unit tests pass
-- Application runs without Scriban dependencies
+- ? All services compile without Scriban references
+- ? Workflow discovery works correctly via reflection
+- ? No Scriban code remains in any service
+- ? Scriban NuGet package removed
+- ? Application builds successfully
+- ? Tests updated and passing
 
 ---
 
