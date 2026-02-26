@@ -68,7 +68,6 @@ builder.Services.AddSingleton<IResourcesService, ResourcesService>();
 builder.Services.AddSingleton<IRouterService, RouterService>();
 
 // Workflow service - uses C# IWorkflowBuilder implementations only
-builder.Services.AddSingleton<IFragmentSchemaService, FragmentSchemaService>();
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 
 // Workflow state persistence service (per-workflow saved parameters)

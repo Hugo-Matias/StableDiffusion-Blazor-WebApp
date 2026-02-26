@@ -5,7 +5,7 @@ namespace BlazorWebApp.Workflows.Models;
 
 /// <summary>
 /// Metadata describing a workflow fragment.
-/// This replaces the #meta block parsed from Scriban .sbn files.
+/// Defined as properties in C# IFragmentBuilder implementations.
 /// </summary>
 public record FragmentMetadata
 {

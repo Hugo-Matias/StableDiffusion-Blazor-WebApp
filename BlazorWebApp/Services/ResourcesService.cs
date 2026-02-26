@@ -1,4 +1,4 @@
-﻿using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
@@ -159,7 +159,7 @@ namespace BlazorWebApp.Services
             }
 
             // Update GenerationParameters prompts fragment (primary)
-            var promptsFragment = _state.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var promptsFragment = _state.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Fragments.Prompts);
             var promptKey = target.Item2 ? FragmentKeys.Params.Positive : FragmentKeys.Params.Negative;
             var currentPrompt = promptsFragment.GetValue<string>(promptKey) ?? "";
             promptsFragment.SetValue(promptKey, currentPrompt + $"{triggerWords}{keyword}");

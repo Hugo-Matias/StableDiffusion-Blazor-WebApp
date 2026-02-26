@@ -40,7 +40,7 @@ public class LoadDiffusionFragment : IFragmentBuilder
         // Get fragment-specific parameters from GenerationParameters
         var fragment = parameters.GetFragment(Metadata.Id);
         
-        // Extract parameters - these come from workflow pipeline configuration
+        // Extract parameters from workflow assets
         var unetName = GetParameterValue(parameters, "Model", "");
         var clipName = GetParameterValue(parameters, "Clip", "");
         var clipType = GetParameterValue(parameters, "clip_type", "stable_diffusion");

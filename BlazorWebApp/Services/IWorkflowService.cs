@@ -81,11 +81,6 @@ namespace BlazorWebApp.Services
         /// <returns>Dictionary of fragment ID to schema</returns>
         Dictionary<string, FragmentSchema> GetWorkflowFragmentSchemas(Workflow workflow);
 
-        /// <summary>
-        /// Clears the fragment schema cache.
-        /// </summary>
-        void ClearSchemaCache();
-
         #endregion
     }
 }

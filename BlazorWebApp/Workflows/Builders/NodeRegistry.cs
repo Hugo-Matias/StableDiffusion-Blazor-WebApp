@@ -41,6 +41,22 @@ public class NodeRegistry
     }
 
     /// <summary>
+    /// Gets a reference to a previously registered output (alias for GetRef).
+    /// </summary>
+    public (string nodeId, int outputIndex) GetOutput(string outputName) => GetRef(outputName);
+
+    /// <summary>
+    /// Gets a reference formatted as a JSON array string for direct JSON embedding.
+    /// </summary>
+    /// <param name="outputName">The logical name of the output to reference.</param>
+    /// <returns>JSON-formatted reference like ["node_id", 0].</returns>
+    public string GetReference(string outputName)
+    {
+        var (nodeId, index) = GetRef(outputName);
+        return $"[\"{nodeId}\", {index}]";
+    }
+
+    /// <summary>
     /// Checks if an output has been registered (string-based).
     /// </summary>
     public bool HasOutput(string outputName) => _outputs.ContainsKey(outputName);
@@ -141,6 +157,28 @@ public class NodeRegistry
     {
         _outputs.Clear();
         _typedOutputs.Clear();
+    }
+
+    /// <summary>
+    /// Merges another registry's outputs into this one.
+    /// </summary>
+    /// <param name="other">The registry to merge from.</param>
+    public void Merge(NodeRegistry other)
+    {
+        // Merge string-based outputs
+        foreach (var kvp in other._outputs)
+        {
+            _outputs[kvp.Key] = kvp.Value;
+        }
+
+        // Merge typed outputs
+        foreach (var kvp in other._typedOutputs)
+        {
+            if (!_typedOutputs.ContainsKey(kvp.Key))
+                _typedOutputs[kvp.Key] = new List<NodeOutput>();
+            
+            _typedOutputs[kvp.Key].AddRange(kvp.Value);
+        }
     }
 
     #endregion

@@ -1,5 +1,6 @@
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
+using BlazorWebApp.Workflows.Builders;
 using BlazorWebApp.Data.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -12,18 +13,15 @@ namespace BlazorWebApp.Tests.Services;
 public class WorkflowServiceTests
 {
     private readonly Mock<ILogger<WorkflowService>> _mockLogger;
-    private readonly Mock<ILogger<FragmentSchemaService>> _mockSchemaLogger;
 
     public WorkflowServiceTests()
     {
         _mockLogger = new Mock<ILogger<WorkflowService>>();
-        _mockSchemaLogger = new Mock<ILogger<FragmentSchemaService>>();
     }
 
     private WorkflowService CreateWorkflowService()
     {
-        var fragmentSchemaService = new FragmentSchemaService(_mockSchemaLogger.Object);
-        return new WorkflowService(_mockLogger.Object, fragmentSchemaService);
+        return new WorkflowService(_mockLogger.Object);
     }
 
     #region Workflow Model Tests
@@ -36,12 +34,11 @@ public class WorkflowServiceTests
 
         // Assert
         Assert.Equal(default(Guid), workflow.Id);
-        Assert.Null(workflow.Title);
+        Assert.Empty(workflow.Title);
         Assert.Equal(default(ModelBase), workflow.Base);
         Assert.Equal(default(ModeType), workflow.Mode);
         Assert.Null(workflow.Assets);
-        Assert.Null(workflow.Pipeline);
-        Assert.Null(workflow.RawJson);
+        Assert.Null(workflow.Sources);
     }
 
     [Fact]
@@ -183,13 +180,13 @@ public class WorkflowServiceTests
     }
 
     [Fact]
-    public void NodeRegistry_GetReference_WithNonExistentKey_ShouldThrowKeyNotFoundException()
+    public void NodeRegistry_GetReference_WithNonExistentKey_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var registry = new NodeRegistry();
 
         // Act & Assert
-        var exception = Assert.Throws<KeyNotFoundException>(() => registry.GetReference("nonexistent"));
+        var exception = Assert.Throws<InvalidOperationException>(() => registry.GetReference("nonexistent"));
         Assert.Contains("nonexistent", exception.Message);
     }
 

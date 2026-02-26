@@ -230,7 +230,7 @@ else if (!_initialLoading && (Posts == null || Posts.Count == 0))
         var tagsString = string.Join(", ", tags.Where(v => !blacklistTags.Contains(v)));
         
         // Update GenerationParameters (primary)
-        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Fragments.Prompts);
         var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
         var extractedLoras = string.Join(" ", Regex.Matches(currentPositive, _loraRegex));
         promptsFragment.SetValue(FragmentKeys.Params.Positive, extractedLoras + " " + tagsString);

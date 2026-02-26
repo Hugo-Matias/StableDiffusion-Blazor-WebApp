@@ -7,7 +7,7 @@ namespace BlazorWebApp.Workflows.Fragments.Loaders;
 
 /// <summary>
 /// Fragment that loads diffusion models with prompt encoding.
-/// Used for detailer and other scoped pipelines that need their own model + prompts.
+/// Used for detailer and other scoped workflows that need their own model + prompts.
 /// Registers scoped outputs: model_output, clip_output, vae_output, positive_output, negative_output.
 /// </summary>
 public class LoadDiffusionWithPromptsFragment : IFragmentBuilder

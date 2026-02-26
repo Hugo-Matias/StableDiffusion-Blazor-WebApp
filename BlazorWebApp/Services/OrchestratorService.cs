@@ -224,21 +224,17 @@ namespace BlazorWebApp.Services
 
         public void SetDefaultBaseModel()
         {
-            var modelKeys = new[] { "ckpt_name", "unet_name" };
             var workflow = _state.State.Generation.Workflows?.FirstOrDefault(w => w.Base == _state.State.Generation.WorkflowBase);
-            if (workflow?.Pipeline == null) return;
+            if (workflow?.Assets == null || workflow.Assets.Count == 0) return;
 
-            var defaultModel = workflow.Pipeline
-                .Select(s => modelKeys.FirstOrDefault(k => s.Parameters?.ContainsKey(k) == true))
-                .Where(k => k != null)
-                .Select(k => workflow.Pipeline.FirstOrDefault(s => s.Parameters?.ContainsKey(k) == true)?.Parameters[k]?.ToString())
-                .FirstOrDefault()?
-                .GetDefaultModelFromWorkflow();
-
-            if (!string.IsNullOrWhiteSpace(defaultModel))
+            // Get the default model from workflow assets (C# workflows define defaults in metadata)
+            var modelAsset = workflow.Assets.FirstOrDefault(a => 
+                a.Type == AssetType.DiffusionModel || a.Type == AssetType.CheckpointModel);
+            
+            if (modelAsset != null && !string.IsNullOrWhiteSpace(modelAsset.DefaultValue))
             {
                 // Update GenerationParameters.Assets (unified model)
-                _state.GenerationParameters.Assets["Model"] = defaultModel;
+                _state.GenerationParameters.Assets["Model"] = modelAsset.DefaultValue;
                 _events.Publish(new ModelsChangedEventArgs());
             }
         }

@@ -1,7 +1,7 @@
 # Workflow System Migration to Fluent Builder API - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 4 - Convert Core Shared Fragments
+**Current Phase:** Phase 5 - Convert Remaining Flux Workflows
 
 ---
 
@@ -592,7 +592,7 @@ public class ComfyWorkflowBuilder
 
 ### Phase 3: Service Layer Refactoring
 **Objective:** Complete removal of ALL Scriban dependencies from the codebase
-**Complexity:** 33 points (revised from 13 due to broader scope)
+**Complexity:** 35 points (revised from 13 due to broader scope)
 **Status:** [x] Complete
 
 #### Steps
@@ -611,6 +611,7 @@ public class ComfyWorkflowBuilder
 - [x] Delete `FragmentConditionGenerator.cs`
 - [x] Remove Scriban NuGet package from project
 - [x] Update test files for new API
+- [x] Delete `FragmentSchemaService.cs` (dead code - cache never used)
 
 #### Files Deleted
 - `TemplateCacheService.cs`
@@ -619,6 +620,7 @@ public class ComfyWorkflowBuilder
 - `WorkflowValidationService.cs`
 - `IWorkflowValidationService.cs`
 - `FragmentConditionGenerator.cs`
+- `FragmentSchemaService.cs`
 
 #### Success Criteria
 - ? All services compile without Scriban references
@@ -627,26 +629,27 @@ public class ComfyWorkflowBuilder
 - ? Scriban NuGet package removed
 - ? Application builds successfully
 - ? Tests updated and passing
+- ? No dead services remaining
 
 ---
 
 ### Phase 4: Convert Core Shared Fragments
 **Objective:** Convert commonly-used fragments shared across multiple workflows
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Create `Workflows/Fragments/Enhancements/UpscaleFragment.cs`
-- [ ] Create `Workflows/Fragments/Enhancements/DetailerFragment.cs`
-- [ ] Create `Workflows/Fragments/Enhancements/LoraLoaderFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/ConditioningVariationFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/ModelSamplingAuraFlowFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/LoadCheckpointFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/LoadDiffusionFragment.cs`
-- [ ] Create `Workflows/Fragments/Core/LoadDiffusionWithPromptsFragment.cs`
-- [ ] Add unit tests for all 8 fragments
-- [ ] Integrate fragments into converted workflows
-- [ ] Delete corresponding `.sbn` files
+- [x] Create `Workflows/Fragments/Enhancements/UpscaleFragment.cs`
+- [x] Create `Workflows/Fragments/Enhancements/DetailerFragment.cs`
+- [x] Create `Workflows/Fragments/Enhancements/LoraLoaderFragment.cs`
+- [x] Create `Workflows/Fragments/Core/ConditioningVariationFragment.cs`
+- [x] Create `Workflows/Fragments/Core/ModelSamplingAuraFlowFragment.cs`
+- [x] Create `Workflows/Fragments/Core/LoadCheckpointFragment.cs`
+- [x] Create `Workflows/Fragments/Core/LoadDiffusionFragment.cs`
+- [x] Create `Workflows/Fragments/Core/LoadDiffusionWithPromptsFragment.cs`
+- [x] Add unit tests for all 8 fragments
+- [x] Integrate fragments into converted workflows
+- [x] Delete corresponding `.sbn` files
 
 #### Success Criteria
 - All 8 core fragments converted to C#
@@ -1028,6 +1031,7 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
   - `BlazorWebApp/Services/WorkflowService.cs`
   - `BlazorWebApp/Services/WorkflowTemplateParser.cs`
   - `BlazorWebApp/Services/FragmentSchemaService.cs`
+  - `BlazorWebApp/Services/WorkflowValidationService.cs`
 - Models involved:
   - `BlazorWebApp/Models/Workflow.cs`
   - `BlazorWebApp/Models/GenerationParameters.cs`

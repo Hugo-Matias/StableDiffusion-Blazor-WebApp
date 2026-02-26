@@ -143,6 +143,21 @@
 
 ---
 
+### Step 11: Delete FragmentSchemaService (Dead Code)
+**Complexity:** 2
+**Status:** [x] Complete
+
+#### Changes Made
+- **Deleted** `BlazorWebApp/Services/FragmentSchemaService.cs` entirely
+- The service was no longer needed - its cache was never populated
+- `WorkflowService.GetWorkflowFragmentSchemas()` builds schemas directly from C# metadata
+- Removed `IFragmentSchemaService` registration from `Program.cs`
+- Removed `ClearSchemaCache()` from `IWorkflowService` interface
+- Updated `WorkflowService` constructor - now only takes logger
+- Updated test files to remove FragmentSchemaService dependency
+
+---
+
 ## Progress Tracking
 
 | Step | Status | Complexity | Notes |
@@ -157,7 +172,8 @@
 | 8 - Update GenParams Service | [x] | 5 | C# workflow only |
 | 9 - Remove NuGet Package | [x] | 2 | Scriban removed |
 | 10 - Update Test Files | [x] | 3 | Tests updated |
-| **Total** | **100%** | **33** | **10/10 complete** |
+| 11 - Delete FragmentSchemaService | [x] | 2 | Dead service removed |
+| **Total** | **100%** | **35** | **11/11 complete** |
 
 ---
 
@@ -169,17 +185,18 @@
 - `BlazorWebApp/Services/WorkflowValidationService.cs`
 - `BlazorWebApp/Services/IWorkflowValidationService.cs`
 - `BlazorWebApp/Services/FragmentConditionGenerator.cs`
+- `BlazorWebApp/Services/FragmentSchemaService.cs` ? **NEW**
 
 ## Files Modified
 
-- `BlazorWebApp/Services/WorkflowService.cs` - Complete rewrite, C# only
-- `BlazorWebApp/Services/IWorkflowService.cs` - Cleaned interface
+- `BlazorWebApp/Services/WorkflowService.cs` - Complete rewrite, C# only, no schema service dependency
+- `BlazorWebApp/Services/IWorkflowService.cs` - Cleaned interface, removed ClearSchemaCache
 - `BlazorWebApp/Services/GenerationParameterService.cs` - Removed pipeline code
 - `BlazorWebApp/Components/Shared/Generation/WorkflowAssetsPanel.razor` - Removed save button
-- `BlazorWebApp/Program.cs` - Removed service registrations
+- `BlazorWebApp/Program.cs` - Removed all deleted service registrations
 - `BlazorWebApp/BlazorWebApp.csproj` - Removed Scriban package
-- `BlazorWebApp.Tests/MockBuilders/MockWorkflowServiceBuilder.cs` - Simplified
-- `BlazorWebApp.Tests/Services/WorkflowServiceTests.cs` - Updated tests
+- `BlazorWebApp.Tests/MockBuilders/MockWorkflowServiceBuilder.cs` - Simplified, no schema service
+- `BlazorWebApp.Tests/Services/WorkflowServiceTests.cs` - Updated tests, no schema service
 
 ---
 
@@ -194,11 +211,31 @@ After Phase 3:
 
 ---
 
+## Codebase Analysis (Post-Phase 3)
+
+### Scriban Dependencies: FULLY REMOVED ?
+- No Scriban NuGet package
+- No `using Scriban` statements  
+- No template parsing code
+- All Scriban-related services deleted
+- FragmentSchemaService deleted (was dead code)
+
+### Service Layer: CLEAN ?
+- `WorkflowService` - single dependency (logger)
+- `IWorkflowService` - clean interface with 4 regions
+- No unused services or interfaces
+
+### Items Remaining for Phase 10
+- Delete `.sbn` files from disk
+- Update documentation (TEMPLATE_GUIDE.md, FRAGMENT_SCHEMA_GUIDE.md)
+
+---
+
 ## Next Steps
 
 Phase 4 will convert core shared fragments that are used by multiple workflows:
 - UpscaleFragment
-- DetailerFragment
+- DetailerFragment  
 - LoraLoaderFragment
 - ConditioningVariationFragment
 - And more...

@@ -13,19 +13,15 @@ namespace BlazorWebApp.Services
     public class WorkflowService : IWorkflowService
     {
         private readonly ILogger<WorkflowService> _logger;
-        private readonly IFragmentSchemaService _fragmentSchemaService;
 
         // Cache for discovered C# workflow builders
         private readonly Dictionary<Guid, IWorkflowBuilder> _workflowBuilders = new();
         private readonly object _workflowBuildersLock = new();
         private bool _workflowBuildersDiscovered = false;
 
-        public WorkflowService(
-            ILogger<WorkflowService> logger,
-            IFragmentSchemaService fragmentSchemaService)
+        public WorkflowService(ILogger<WorkflowService> logger)
         {
             _logger = logger;
-            _fragmentSchemaService = fragmentSchemaService;
         }
 
         #region Workflow Builder Discovery
@@ -157,9 +153,7 @@ namespace BlazorWebApp.Services
                     Type = s.Type.ToString().ToLower(),
                     Required = s.Required,
                     Parameter = s.Parameter
-                }).ToList(),
-                Pipeline = new List<WorkflowStep>(),
-                RawJson = ""
+                }).ToList()
             };
         }
 
@@ -195,9 +189,6 @@ namespace BlazorWebApp.Services
             ModelBase? currentWorkflowBase = null,
             Guid? currentWorkflowId = null)
         {
-            // Clear schema cache
-            ClearSchemaCache();
-            
             // Reset workflow discovery to pick up any changes
             lock (_workflowBuildersLock)
             {
@@ -264,7 +255,7 @@ namespace BlazorWebApp.Services
 
         #endregion
 
-        #region Schema Delegation
+        #region Schema Access
 
         /// <inheritdoc />
         public Dictionary<string, FragmentSchema> GetWorkflowFragmentSchemas(Workflow workflow)
@@ -325,10 +316,6 @@ namespace BlazorWebApp.Services
 
             return schema;
         }
-
-        /// <inheritdoc />
-        public void ClearSchemaCache()
-            => _fragmentSchemaService.ClearCache();
 
         #endregion
     }

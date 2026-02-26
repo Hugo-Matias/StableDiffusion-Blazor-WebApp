@@ -6,8 +6,8 @@ using static BlazorWebApp.Data.Enums;
 namespace BlazorWebApp.Workflows.Models;
 
 /// <summary>
-/// Metadata describing a workflow template.
-/// This replaces the parsed metadata from Scriban .sbn files.
+/// Metadata describing a workflow.
+/// Defined as properties in C# IWorkflowBuilder implementations.
 /// </summary>
 public record WorkflowMetadata
 {

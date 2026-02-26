@@ -10,18 +10,17 @@ namespace BlazorWebApp.Models
     public class FragmentParameters
     {
         /// <summary>
-        /// The fragment file this instance uses (e.g., "sampler.sbn").
+        /// The fragment identifier this instance uses (matches FragmentMetadata.Id).
         /// </summary>
         public string FragmentFile { get; set; } = string.Empty;
 
         /// <summary>
-        /// Whether this fragment is active. Inactive fragments are skipped during rendering.
+        /// Whether this fragment is active. Inactive fragments are skipped during workflow composition.
         /// </summary>
         public bool IsActive { get; set; } = true;
 
         /// <summary>
-        /// Order in the pipeline (for chainable fragments).
-        /// Lower values render first.
+        /// Order for UI display (lower values appear first).
         /// </summary>
         public int Order { get; set; }
 

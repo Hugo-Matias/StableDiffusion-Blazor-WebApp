@@ -28,6 +28,11 @@ public class NodeBuilder
     }
 
     /// <summary>
+    /// Sets the ComfyUI node class type (alias for Type method).
+    /// </summary>
+    public NodeBuilder ClassType(string classType) => Type(classType);
+
+    /// <summary>
     /// Sets the display title for this node (shown in ComfyUI UI).
     /// </summary>
     public NodeBuilder Title(string title)
@@ -98,6 +103,31 @@ public class NodeBuilder
     public NodeBuilder InputRef(string name, (string nodeId, int index) reference)
     {
         _inputs[name] = new object[] { reference.nodeId, reference.index };
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a reference to another node's output using node ID and output index directly.
+    /// </summary>
+    /// <param name="name">The input name on this node.</param>
+    /// <param name="nodeId">The ID of the source node.</param>
+    /// <param name="outputIndex">The output index on the source node.</param>
+    public NodeBuilder InputFromNode(string name, string nodeId, int outputIndex)
+    {
+        _inputs[name] = new object[] { nodeId, outputIndex };
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a reference to an output registered in the NodeRegistry.
+    /// </summary>
+    /// <param name="name">The input name on this node.</param>
+    /// <param name="registry">The registry containing output references.</param>
+    /// <param name="outputKey">The key of the registered output.</param>
+    public NodeBuilder InputFromRegistry(string name, NodeRegistry registry, string outputKey)
+    {
+        var (nodeId, index) = registry.GetOutput(outputKey);
+        _inputs[name] = new object[] { nodeId, index };
         return this;
     }
 

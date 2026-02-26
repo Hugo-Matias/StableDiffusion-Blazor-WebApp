@@ -16,12 +16,8 @@ namespace BlazorWebApp.Services
     ///     <description>Previously saved parameters for this specific workflow</description>
     ///   </item>
     ///   <item>
-    ///     <term>Step Parameters</term>
-    ///     <description>Values from workflow template's Pipeline step parameters (e.g., {{ Param ?? "default" | json }})</description>
-    ///   </item>
-    ///   <item>
-    ///     <term>Schema Defaults</term>
-    ///     <description>Values from fragment #meta.ui.parameters.*.default</description>
+    ///     <term>Fragment Metadata Defaults</term>
+    ///     <description>Values from C# FragmentMetadata.Parameters[].DefaultValue</description>
     ///   </item>
     ///   <item>
     ///     <term>Dynamic Sources</term>

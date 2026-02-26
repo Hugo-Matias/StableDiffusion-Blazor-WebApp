@@ -41,7 +41,7 @@ namespace BlazorWebApp.Tests.Services
             
             // Setup GenerationParameters
             _generationParameters = new GenerationParameters();
-            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
             promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
             _mockState.Setup(x => x.GenerationParameters).Returns(_generationParameters);

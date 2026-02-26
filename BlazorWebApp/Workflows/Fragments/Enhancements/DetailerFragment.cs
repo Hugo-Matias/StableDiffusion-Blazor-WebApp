@@ -247,7 +247,7 @@ public class DetailerFragment : IFragmentBuilder
         Builders.NodeRegistry registry,
         Parameters p)
     {
-        // Get references - image from main pipeline, model/clip/vae/conditioning from scoped loader
+        // Get references - image from main generation, model/clip/vae/conditioning from scoped loader
         var imageRef = registry.GetRef("image_output");
         var modelRef = registry.GetRef($"{p.Scope}model_output");
         var clipRef = registry.GetRef($"{p.Scope}clip_output");
