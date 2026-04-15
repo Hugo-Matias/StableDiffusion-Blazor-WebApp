@@ -103,6 +103,7 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
         var batchSize = latentFragment?.GetInt("batch_size", 1) ?? 1;
         var positive = promptsFragment?.GetString("positive", "") ?? "";
         var seed = samplerFragment?.GetLong("seed", 42) ?? 42;
+        if (seed < 0) seed = Random.Shared.NextInt64(0, int.MaxValue);
 
         // 1. Load Flux models (UNet, Dual CLIPs, VAE) and encode prompts
         _loadFluxFragment.Build(builder, registry, new LoadFluxFragment.Parameters

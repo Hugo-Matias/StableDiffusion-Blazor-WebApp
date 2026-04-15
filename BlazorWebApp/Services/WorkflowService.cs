@@ -169,6 +169,7 @@ namespace BlazorWebApp.Services
                 Workflows.Models.AssetType.Vae => Models.AssetType.Vae,
                 Workflows.Models.AssetType.CheckpointModel => Models.AssetType.CheckpointModel,
                 Workflows.Models.AssetType.ClipVision => Models.AssetType.ClipVision,
+                Workflows.Models.AssetType.Lora => Models.AssetType.Lora,
                 _ => Models.AssetType.DiffusionModel
             };
         }

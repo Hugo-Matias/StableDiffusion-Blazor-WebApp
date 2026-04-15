@@ -42,6 +42,7 @@ namespace BlazorWebApp.Models
             public const string LoadDetailer = "loader_detailer";
 
             // Video generation fragments (Wan)
+            public const string SamplerAdvanced = "sampler_advanced";
             public const string FrameInterpolation = "frame_interpolation";
             public const string LoadWanModel = "load_wan_model";
             public const string SamplerWan = "sampler_wan";

@@ -161,6 +161,8 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
         }
 
         // 7. Sample
+        var resolvedSeed = samplerFragment?.GetLong("seed", 42) ?? 42;
+        if (resolvedSeed < 0) resolvedSeed = Random.Shared.NextInt64(0, int.MaxValue);
         _samplerFragment.Build(builder, registry, new SamplerFragment.Parameters
         {
             SamplerId = samplerFragment?.GetString("sampler_id", "sampler_main") ?? "sampler_main",
@@ -171,7 +173,7 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
             Cfg = samplerFragment?.GetDouble("cfg", 1) ?? 1,
             Denoise = samplerFragment?.GetDouble("denoise", 1.0) ?? 1.0,
             Eta = samplerFragment?.GetDouble("eta", 0.5) ?? 0.5,
-            Seed = samplerFragment?.GetLong("seed", 42) ?? 42,
+            Seed = resolvedSeed,
             ClassType = "ClownsharKSampler_Beta"
         });
 

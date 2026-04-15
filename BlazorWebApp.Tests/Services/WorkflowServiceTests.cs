@@ -5,8 +5,6 @@ using BlazorWebApp.Data.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
 using static BlazorWebApp.Data.Enums;
-using AssetType = BlazorWebApp.Models.AssetType;
-using WorkflowAsset = BlazorWebApp.Models.WorkflowAsset;
 
 namespace BlazorWebApp.Tests.Services;
 

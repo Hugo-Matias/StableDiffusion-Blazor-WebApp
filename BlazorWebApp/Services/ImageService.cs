@@ -115,9 +115,10 @@ namespace BlazorWebApp.Services
             _currentWorkflow = workflow;
             
             // Capture original seed values to restore after generation (for random seed support)
-            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler)
+                ?? parameters.GetFragment(Fragments.SamplerAdvanced);
             var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
-            
+
             var detailerFragment = parameters.GetFragment(Fragments.Detailer);
             var originalDetailerSeed = detailerFragment?.GetValueOrDefault(Params.DetailerSeed, -1L) ?? -1L;
             
@@ -214,8 +215,9 @@ namespace BlazorWebApp.Services
                 _logger.LogWarning("No prompts fragment found for generation");
             }
             
-            // Handle seed randomization for main sampler fragment
-            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            // Handle seed randomization for sampler fragment (main_sampler for Flux/standard, sampler_advanced for Wan)
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler)
+                ?? parameters.GetFragment(Fragments.SamplerAdvanced);
             if (samplerFragment != null)
             {
                 var fragmentSeed = samplerFragment.GetValueOrDefault(Params.Seed, -1L);
@@ -361,7 +363,8 @@ namespace BlazorWebApp.Services
             _currentWorkflow = workflow;
 
             // Capture original seed value to restore after generation (for random seed support)
-            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler)
+                ?? parameters.GetFragment(Fragments.SamplerAdvanced);
             var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
 
             try

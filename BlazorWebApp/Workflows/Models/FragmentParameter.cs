@@ -77,12 +77,14 @@ public enum FragmentType
 {
     Unknown,
     Loader,
+    Input,
     Latent,
     Prompts,
     Conditioning,
     Sampler,
     Settings,
     Enhancement,
+    Utility,
     Output
 }
 

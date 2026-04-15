@@ -1,7 +1,7 @@
 # Workflow System Migration to Fluent Builder API - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 5 - Convert Remaining Flux Workflows
+**Current Phase:** Phase 6 - Convert Wan (Img2Vid) Workflows and Fragments
 
 ---
 
@@ -663,7 +663,7 @@ public class ComfyWorkflowBuilder
 ### Phase 5: Convert Remaining Flux Workflows
 **Objective:** Complete Flux workflow family conversion
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [~] Postponed (no flux/img2img.sbn exists - only Txt2Img was needed, completed in Phase 4)
 
 #### Steps
 - [ ] Analyze `flux/img2img.sbn` and identify unique fragments
@@ -687,8 +687,8 @@ public class ComfyWorkflowBuilder
 
 ### Phase 6: Convert Wan (Img2Vid) Workflows and Fragments
 **Objective:** Convert video generation workflows and Wan-specific fragments
-**Complexity:** 13 points
-**Status:** [ ] Not Started
+**Complexity:** 21 points (revised from 13 - two workflows, 16+ fragments, dual-model architecture)
+**Status:** [~] In Progress
 
 #### Steps
 - [ ] Create `Workflows/Fragments/Wan/I2VEncodeFragment.cs`

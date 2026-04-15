@@ -496,11 +496,12 @@ namespace BlazorWebApp.Services
                         break;
 
                     case FragmentType.Loader:
+                    case FragmentType.Input:
                         if (_primaryLatentFragment == null &&
                             (fragment.Values.ContainsKey("width") || fragment.Values.ContainsKey("height")))
                         {
                             _primaryLatentFragment = reference;
-                            _logger.LogTrace("Using loader fragment as latent: '{FragmentId}'", fragmentId);
+                            _logger.LogTrace("Using loader/input fragment as latent: '{FragmentId}'", fragmentId);
                         }
                         break;
 

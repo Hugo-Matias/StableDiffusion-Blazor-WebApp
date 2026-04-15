@@ -130,7 +130,8 @@ public enum AssetType
     DiffusionModel,
     Vae,
     Clip,
-    ClipVision
+    ClipVision,
+    Lora
 }
 
 /// <summary>

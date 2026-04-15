@@ -827,6 +827,7 @@ namespace BlazorWebApp.Services
                     {
                         var uploadedFilename = await UploadImageAsync(source.Data, tempId);
                         source.Data = uploadedFilename;
+                        source.Filename = uploadedFilename;
                         _logger.LogDebug("Uploaded source image: {Filename}", uploadedFilename);
                     }
                 }
