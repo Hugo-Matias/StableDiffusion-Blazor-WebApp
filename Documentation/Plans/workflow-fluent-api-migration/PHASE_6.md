@@ -3,7 +3,7 @@
 ## Status
 **Phase:** 6
 **Build Status:** Passing | **Tests:** 305/305 passing
-**Phase Status:** [~] In Progress
+**Phase Status:** [x] Complete
 
 ---
 
@@ -456,13 +456,13 @@ Compose all SteadyDancer fragments into the complete workflow:
 
 ### Step 8: Integration Testing & Cleanup
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-- [ ] Test WanImg2Vid workflow execution in ComfyUI generates videos
-- [ ] Test WanSteadyDancer workflow execution in ComfyUI generates videos
-- [ ] Verify video output quality and frame rates
-- [ ] Verify LoRA application works for Img2Vid
-- [ ] Delete all converted `.sbn` files:
+- [x] Test WanImg2Vid workflow execution in ComfyUI generates videos
+- [x] Test WanSteadyDancer workflow execution in ComfyUI generates videos
+- [x] Verify video output quality and frame rates
+- [x] Verify LoRA application works for Img2Vid
+- [x] Delete all converted `.sbn` files:
 
 **Wan fragment `.sbn` files to delete:**
 - `wan/load-model-sage.sbn`
@@ -499,7 +499,14 @@ Compose all SteadyDancer fragments into the complete workflow:
 - `wan/img2vid.sbn`
 - `wan/pose2vid-steadydancer.sbn`
 
-**Commit checkpoint:** All SteadyDancer fragments compile and have unit tests
+**Files deleted (30 total):**
+- 19 wan fragment `.sbn` files + `load-dual-models.sbn` (unreferenced legacy)
+- 8 shared fragment `.sbn` files
+- 2 wan template `.sbn` files
+
+**Verification:** Build passing, 305/305 workflow tests passing, no references to deleted files remain.
+
+**Commit checkpoint:** Phase 6 complete - all `.sbn` files deleted, codebase clean
 
 ---
 
@@ -514,8 +521,8 @@ Compose all SteadyDancer fragments into the complete workflow:
 | 5 | WanImg2VidWorkflow | [x] | 8 | Workflow + 28 tests, LoRA logic |
 | 6 | SteadyDancer Fragments | [x] | 13 | 10 fragments, 40 tests (incl. integration) |
 | 7 | WanSteadyDancerWorkflow | [x] | 8 | Workflow + 31 tests, pose pipeline |
-| 8 | Integration Testing & Cleanup | [ ] | 3 | ComfyUI testing, delete `.sbn` |
-| **Total** | | **93%** | **61** | **27 fragments + 2 workflows** |
+| 8 | Integration Testing & Cleanup | [x] | 3 | 30 `.sbn` files deleted |
+| **Total** | | **100%** | **61** | **27 fragments + 2 workflows** |
 
 ---
 
