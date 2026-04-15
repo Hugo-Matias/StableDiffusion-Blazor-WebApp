@@ -31,7 +31,6 @@ public class WanImg2VidWorkflow : IWorkflowBuilder
 
     public WorkflowMetadata Metadata => new()
     {
-        Id = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
         Title = "Img2Vid",
         Base = Data.Enums.ModelBase.Wan,
         Mode = ModeType.Img2Vid,

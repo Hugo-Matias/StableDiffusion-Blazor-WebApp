@@ -36,7 +36,6 @@ public class WanSteadyDancerWorkflow : IWorkflowBuilder
 
     public WorkflowMetadata Metadata => new()
     {
-        Id = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901"),
         Title = "SteadyDancer",
         Base = Data.Enums.ModelBase.Wan,
         Mode = ModeType.Img2Vid,

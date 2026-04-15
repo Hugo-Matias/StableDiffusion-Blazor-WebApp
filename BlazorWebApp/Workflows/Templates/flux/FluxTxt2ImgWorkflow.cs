@@ -30,7 +30,6 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
 
     public WorkflowMetadata Metadata => new()
     {
-        Id = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f23456789012"),
         Title = "Txt2Img",
         Base = Data.Enums.ModelBase.Flux,
         Mode = ModeType.Txt2Img,

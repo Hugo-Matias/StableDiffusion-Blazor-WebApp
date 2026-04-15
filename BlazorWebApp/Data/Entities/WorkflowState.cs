@@ -15,7 +15,7 @@ namespace BlazorWebApp.Data.Entities
 
         /// <summary>
         /// The workflow this state belongs to.
-        /// Links to Workflow.Id (deterministic GUID based on title/base/mode).
+        /// Links to WorkflowMetadata.Id (UUID v5 deterministically derived from Base + Mode + Title).
         /// </summary>
         public Guid WorkflowId { get; set; }
 

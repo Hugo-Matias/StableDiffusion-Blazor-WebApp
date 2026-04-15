@@ -1,5 +1,6 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using BlazorWebApp.Workflows.Templates.Wan;
 using FluentAssertions;
 using System.Text.Json;
@@ -64,9 +65,18 @@ public class WanSteadyDancerWorkflowTests
     }
 
     [Fact]
-    public void Metadata_ShouldHaveStableGuid()
+    public void Metadata_ShouldHaveDeterministicId()
     {
-        _workflow.Metadata.Id.Should().Be(Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901"));
+        var expected = WorkflowMetadata.GenerateDeterministicId(
+            Data.Enums.ModelBase.Wan, ModeType.Img2Vid, "SteadyDancer");
+        _workflow.Metadata.Id.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Metadata_Id_ShouldBeStableAcrossInstances()
+    {
+        var other = new WanSteadyDancerWorkflow();
+        _workflow.Metadata.Id.Should().Be(other.Metadata.Id);
     }
 
     #endregion

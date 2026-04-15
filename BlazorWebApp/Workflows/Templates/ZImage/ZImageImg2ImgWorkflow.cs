@@ -9,23 +9,23 @@ using GenerationParameters = BlazorWebApp.Models.GenerationParameters;
 namespace BlazorWebApp.Workflows.Templates.ZImage;
 
 /// <summary>
-/// Z-Image Txt2Img workflow implementation using the fluent builder API.
-/// Generates images from text prompts using the Z-Image model architecture.
+/// Z-Image Img2Img workflow implementation using the fluent builder API.
+/// Generates images from a source image using the Z-Image model architecture.
+/// Pipeline: LoadImage+Scale -> LoadDiffusion -> LoRAs -> VaeEncode -> Prompts -> Sample -> VaeDecode -> [SeedVR2] -> [Detailer] -> Save
 /// </summary>
-public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
+public class ZImageImg2ImgWorkflow : IWorkflowBuilder
 {
     // Core fragments
+    private readonly LoadImageScaledFragment _loadImageScaledFragment = new();
     private readonly LoadDiffusionFragment _loadDiffusionFragment = new();
-    private readonly EmptyLatentFragment _emptyLatentFragment = new();
     private readonly LoraLoaderFragment _loraLoaderFragment = new();
+    private readonly VaeEncodeFragment _vaeEncodeFragment = new();
     private readonly PromptsFragment _promptsFragment = new();
     private readonly SamplerFragment _samplerFragment = new();
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 
     // Enhancement fragments
-    private readonly SeedVarianceEnhancerFragment _seedVarianceEnhancerFragment = new();
-    private readonly ConditioningVariationFragment _conditioningVariationFragment = new();
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
 
     // Detailer fragments
@@ -34,9 +34,9 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
 
     public WorkflowMetadata Metadata => new()
     {
-        Title = "Txt2Img",
+        Title = "Img2Img",
         Base = Data.Enums.ModelBase.ZImage,
-        Mode = ModeType.Txt2Img,
+        Mode = ModeType.Img2Img,
         Assets =
         [
             new WorkflowAsset
@@ -66,17 +66,23 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 3,
                 ColumnSize = 4
             }
+        ],
+        Sources =
+        [
+            new WorkflowSource
+            {
+                Id = "source_image",
+                Label = "Source Image",
+                Type = SourceType.Image,
+                Required = true
+            }
         ]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()
     {
-        // Return fragments in UI order for display
         yield return _promptsFragment;
-        yield return _emptyLatentFragment;
         yield return _samplerFragment;
-        yield return _conditioningVariationFragment;
-        yield return _seedVarianceEnhancerFragment;
         yield return _seedVR2UpscaleFragment;
         yield return _detailerFragment;
     }
@@ -87,26 +93,28 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
         var registry = new NodeRegistry();
 
         // Get fragment parameters for reuse
-        var latentFragment = parameters.GetFragment("latent");
         var promptsFragment = parameters.GetFragment("prompts");
         var samplerFragment = parameters.GetFragment("main_sampler");
 
-        // 1. Load models (UNet, CLIP, VAE)
+        // Get source image path
+        var source = parameters.Sources?.GetValueOrDefault("source_image");
+        var imagePath = source?.FilePath ?? source?.Filename ?? "";
+
+        // 1. Load and scale source image
+        _loadImageScaledFragment.Build(builder, registry, new LoadImageScaledFragment.Parameters
+        {
+            Image = imagePath,
+            UpscaleMethod = "lanczos",
+            Megapixels = 1
+        });
+
+        // 2. Load models (UNet, CLIP, VAE)
         _loadDiffusionFragment.Build(builder, registry, new LoadDiffusionFragment.Parameters
         {
             UnetName = parameters.Assets?.GetValueOrDefault("Model") ?? "z_image_turbo_bf16.safetensors",
             ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_3_4b.safetensors",
             ClipType = "lumina2",
             VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "ae.safetensors"
-        });
-
-        // 2. Create empty latent
-        _emptyLatentFragment.Build(builder, registry, new EmptyLatentFragment.Parameters
-        {
-            Width = latentFragment?.GetInt("width", 872) ?? 872,
-            Height = latentFragment?.GetInt("height", 1248) ?? 1248,
-            BatchSize = latentFragment?.GetInt("batch_size", 1) ?? 1,
-            LatentClass = "EmptySD3LatentImage"
         });
 
         // 3. Load LoRAs (if any)
@@ -125,41 +133,17 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
             }
         }
 
-        // 4. Encode prompts
+        // 4. VAE Encode (source image -> latent)
+        _vaeEncodeFragment.Build(builder, registry, new VaeEncodeFragment.Parameters());
+
+        // 5. Encode prompts
         _promptsFragment.Build(builder, registry, new PromptsFragment.Parameters
         {
             Positive = promptsFragment?.GetString("positive", "") ?? "",
             Negative = promptsFragment?.GetString("negative", "") ?? ""
         });
 
-        // 5. Seed Variance Enhancer (conditional)
-        var seedVarianceFragment = parameters.GetFragment("seed_variance_enhancer");
-        if (seedVarianceFragment?.IsActive == true)
-        {
-            _seedVarianceEnhancerFragment.Build(builder, registry, new SeedVarianceEnhancerFragment.Parameters
-            {
-                RandomizePercent = seedVarianceFragment.GetInt("randomize_percent", 50),
-                Strength = seedVarianceFragment.GetInt("strength", 20),
-                NoiseInsert = seedVarianceFragment.GetString("noise_insert", "noise on beginning steps"),
-                StepsSwitchoverPercent = seedVarianceFragment.GetInt("steps_switchover_percent", 20),
-                Seed = seedVarianceFragment.GetLong("seed", 0),
-                MaskStartsAt = seedVarianceFragment.GetString("mask_starts_at", "beginning"),
-                MaskPercent = seedVarianceFragment.GetInt("mask_percent", 0),
-                LogToConsole = seedVarianceFragment.GetBool("log_to_console", false)
-            });
-        }
-
-        // 6. Conditioning Variation (conditional)
-        var conditioningVariationFragment = parameters.GetFragment("conditioning_variation");
-        if (conditioningVariationFragment?.IsActive == true)
-        {
-            _conditioningVariationFragment.Build(builder, registry, new ConditioningVariationFragment.Parameters
-            {
-                SwitchPoint = conditioningVariationFragment.GetDouble("switch_point", 0.2)
-            });
-        }
-
-        // 7. Sample
+        // 6. Sample (denoise < 1 for Img2Img to preserve source structure)
         var resolvedSeed = samplerFragment?.GetLong("seed", 42) ?? 42;
         if (resolvedSeed < 0) resolvedSeed = Random.Shared.NextInt64(0, int.MaxValue);
         _samplerFragment.Build(builder, registry, new SamplerFragment.Parameters
@@ -170,16 +154,16 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
             Scheduler = samplerFragment?.GetString("scheduler", "simple") ?? "simple",
             Steps = samplerFragment?.GetInt("steps", 9) ?? 9,
             Cfg = samplerFragment?.GetDouble("cfg", 1) ?? 1,
-            Denoise = samplerFragment?.GetDouble("denoise", 1.0) ?? 1.0,
+            Denoise = samplerFragment?.GetDouble("denoise", 0.75) ?? 0.75,
             Eta = samplerFragment?.GetDouble("eta", 0.5) ?? 0.5,
             Seed = resolvedSeed,
             ClassType = "ClownsharKSampler_Beta"
         });
 
-        // 8. VAE Decode
+        // 7. VAE Decode
         _vaeDecodeFragment.Build(builder, registry);
 
-        // 9. SeedVR2 Upscale (conditional)
+        // 8. SeedVR2 Upscale (conditional)
         var seedVr2Fragment = parameters.GetFragment("seed_vr2");
         if (seedVr2Fragment?.IsActive == true)
         {
@@ -198,29 +182,27 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
             });
         }
 
-        // 10. Detailer (conditional) - requires its own model loader
+        // 9. Detailer (conditional) - requires its own model loader
         var detailerFragment = parameters.GetFragment("detailer");
         if (detailerFragment?.IsActive == true)
         {
-            // Load separate models for detailer with detailer_ scope
             _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
             {
-                UnetName = detailerFragment.GetString("detailer_checkpoint") 
-                           ?? parameters.Assets?.GetValueOrDefault("Model") 
+                UnetName = detailerFragment.GetString("detailer_checkpoint")
+                           ?? parameters.Assets?.GetValueOrDefault("Model")
                            ?? "z_image_turbo_bf16.safetensors",
                 ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_3_4b.safetensors",
                 ClipType = "lumina2",
                 VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "ae.safetensors",
-                Positive = detailerFragment.GetString("detailer_prompt") 
+                Positive = detailerFragment.GetString("detailer_prompt")
                            ?? promptsFragment?.GetString("positive", "") ?? "",
-                Negative = detailerFragment.GetString("detailer_negative_prompt") 
+                Negative = detailerFragment.GetString("detailer_negative_prompt")
                            ?? promptsFragment?.GetString("negative", "") ?? "",
-                Width = latentFragment?.GetInt("width", 872) ?? 872,
-                Height = latentFragment?.GetInt("height", 1248) ?? 1248,
-                BatchSize = latentFragment?.GetInt("batch_size", 1) ?? 1
+                Width = 872,
+                Height = 1248,
+                BatchSize = 1
             }, scope: "detailer_", scopeTitle: "Detailer ");
 
-            // Apply detailer
             _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
             {
                 Scope = "detailer_",
@@ -242,7 +224,7 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
             });
         }
 
-        // 11. Save
+        // 10. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
             FilenamePrefix = "tmp/img"

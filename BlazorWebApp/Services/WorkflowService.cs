@@ -51,9 +51,23 @@ namespace BlazorWebApp.Services
                         try
                         {
                             var instance = (IWorkflowBuilder)Activator.CreateInstance(type)!;
-                            _workflowBuilders[instance.Metadata.Id] = instance;
-                            _logger.LogDebug("Discovered C# workflow: {Title} ({Base}/{Mode})",
-                                instance.Metadata.Title, instance.Metadata.Base, instance.Metadata.Mode);
+                            var id = instance.Metadata.Id;
+
+                            if (_workflowBuilders.TryGetValue(id, out var existing))
+                            {
+                                _logger.LogError(
+                                    "Duplicate workflow ID detected! {NewType} ({NewBase}/{NewMode}/{NewTitle}) " +
+                                    "collides with {ExistingType} ({ExistingBase}/{ExistingMode}/{ExistingTitle}). " +
+                                    "ID: {Id}. The new workflow will be skipped.",
+                                    type.FullName, instance.Metadata.Base, instance.Metadata.Mode, instance.Metadata.Title,
+                                    existing.GetType().FullName, existing.Metadata.Base, existing.Metadata.Mode, existing.Metadata.Title,
+                                    id);
+                                continue;
+                            }
+
+                            _workflowBuilders[id] = instance;
+                            _logger.LogDebug("Discovered C# workflow: {Title} ({Base}/{Mode}) [{Id}]",
+                                instance.Metadata.Title, instance.Metadata.Base, instance.Metadata.Mode, id);
                         }
                         catch (Exception ex)
                         {

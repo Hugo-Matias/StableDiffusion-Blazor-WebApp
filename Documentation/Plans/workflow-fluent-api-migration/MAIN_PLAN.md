@@ -1,7 +1,7 @@
 # Workflow System Migration to Fluent Builder API - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 6 Complete - Convert Wan (Img2Vid) Workflows and Fragments
+**Current Phase:** Phase 8 - Convert Z-Image Img2Img & Remaining Shared Fragments
 
 ---
 
@@ -719,55 +719,78 @@ public class ComfyWorkflowBuilder
 ### Phase 7: Convert Qwen Workflows and Fragments
 **Objective:** Convert image editing workflows for Qwen model
 **Complexity:** 8 points
+**Status:** [~] Skipped (reordered after Phase 8)
+
+#### Notes
+Phase 7 was skipped in execution order. Z-Image Img2Img was prioritized first (Phase 8). Qwen conversion will follow as Phase 9.
+
+---
+
+### Phase 8: Convert Z-Image Img2Img & Remaining Shared Fragments
+**Objective:** Create Z-Image Img2Img workflow and convert all remaining shared fragment `.sbn` files to C#
+**Complexity:** 17 points
 **Status:** [ ] Not Started
 
 #### Steps
-- [ ] Create `Workflows/Fragments/Qwen/EncodeEditFragment.cs`
-- [ ] Convert any other Qwen-specific fragments
-- [ ] Create `Workflows/Templates/Qwen/QwenImg2ImgEditWorkflow.cs`
-- [ ] Add unit tests for Qwen fragments
-- [ ] Add unit tests for Qwen workflow
-- [ ] Test workflow generation produces valid JSON
+- [ ] Create `LoadImageScaledFragment` (`load-image-scaled.sbn`) - LoadImage + ImageScaleToTotalPixels
+- [ ] Create `VaeEncodeFragment` (`vae-encode.sbn`) - VAEEncode with registry refs
+- [ ] Create `LoadCheckpointFragment` (`load-checkpoint.sbn`) - CheckpointLoaderSimple + PCLazyLoraLoader + PCLazyTextEncode
+- [ ] Create `SamplerStandardFragment` (`sampler-standard.sbn`) - Standard KSampler wrapper
+- [ ] Create `ZImageImg2ImgWorkflow.cs` with source image, VAE encode, denoise < 1
+- [ ] Add unit tests for all 4 fragments and workflow
 - [ ] Test workflow execution in ComfyUI
+- [ ] Delete converted `.sbn` files
+
+#### Success Criteria
+- 4 new shared fragments converted to C#
+- Z-Image Img2Img workflow generates valid ComfyUI JSON
+- Workflow executes successfully in ComfyUI
+- All unit tests pass
+- Converted `.sbn` files deleted
+
+---
+
+### Phase 9: Convert Qwen Workflows and Fragments
+**Objective:** Convert Qwen-specific fragments and both Qwen workflows (Txt2Img + Img2Img Edit)
+**Complexity:** 8 points
+**Status:** [ ] Not Started
+
+#### Steps
+- [ ] Create `Workflows/Fragments/Qwen/LoadQwenEditFragment.cs`
+- [ ] Create `Workflows/Fragments/Qwen/EncodeEditFragment.cs`
+- [ ] Create `Workflows/Templates/Qwen/QwenTxt2ImgWorkflow.cs`
+- [ ] Create `Workflows/Templates/Qwen/QwenImg2ImgEditWorkflow.cs`
+- [ ] Add unit tests for Qwen fragments and workflows
 - [ ] Delete `qwen/*.sbn` files
 
-#### Success Criteria
-- All Qwen fragments converted to C#
-- Qwen workflow converted to C#
-- Workflow generates valid ComfyUI JSON
-- Workflow executes successfully in ComfyUI
-- Image editing functionality works correctly
-- All unit tests pass
-- No Qwen `.sbn` files remain
-
 ---
 
-### Phase 8: Convert Remaining Workflows (SD, SDXL, ZImage, Chroma)
-**Objective:** Convert all remaining workflow templates and fragments
-**Complexity:** 13 points
+### Phase 10: Convert SD Txt2Img Workflow
+**Objective:** Convert StableDiffusion Txt2Img using LoadCheckpointFragment from Phase 8
+**Complexity:** 5 points
 **Status:** [ ] Not Started
 
 #### Steps
-- [ ] Identify all remaining workflow templates
-- [ ] Create SD/SDXL workflow classes
-- [ ] Create ZImage workflow classes
-- [ ] Create Chroma workflow classes
-- [ ] Convert any remaining model-specific fragments
-- [ ] Add unit tests for all new workflows
-- [ ] Test all workflows generate valid JSON
-- [ ] Test all workflows execute successfully in ComfyUI
-- [ ] Delete all remaining `.sbn` files
-
-#### Success Criteria
-- All workflow templates converted to C#
-- All workflows generate valid ComfyUI JSON
-- All workflows tested in ComfyUI
-- All unit tests pass
-- **Zero `.sbn` files remain in codebase**
+- [ ] Create `Workflows/Templates/SD/SDTxt2ImgWorkflow.cs`
+- [ ] Add unit tests
+- [ ] Delete `sd/txt2img.sbn`
 
 ---
 
-### Phase 9: UI Component Updates
+### Phase 11: Convert Chroma Txt2Img Workflow
+**Objective:** Decompose monolithic Chroma template (828 lines) into fragment-based C# workflow
+**Complexity:** 8 points
+**Status:** [ ] Not Started
+
+#### Steps
+- [ ] Analyze monolithic template structure and identify fragments
+- [ ] Create `Workflows/Templates/Chroma/ChromaTxt2ImgWorkflow.cs`
+- [ ] Add unit tests
+- [ ] Delete `chroma/txt2img.sbn`
+
+---
+
+### Phase 12: UI Component Updates
 **Objective:** Update Blazor components to work with new metadata system
 **Complexity:** 5 points
 **Status:** [ ] Not Started
@@ -789,26 +812,25 @@ public class ComfyWorkflowBuilder
 
 ---
 
-### Phase 10: Final Cleanup and Documentation
-**Objective:** Remove all deprecated code and update documentation
+### Phase 13: Final Cleanup and Documentation
+**Objective:** Remove all deprecated code, delete all remaining `.sbn` files, and update documentation
 **Complexity:** 5 points
 **Status:** [ ] Not Started
 
 #### Steps
+- [ ] Delete all remaining `.sbn` files (shared fragments with C# equivalents)
+- [ ] Delete `utils/condition-helpers.sbn` (dead Scriban helper)
+- [ ] Delete empty `Workflows/Templates/z-image/` directory
 - [ ] Search codebase for any remaining Scriban references
 - [ ] Delete empty `Workflows/Fragments/` subdirectories
-- [ ] Remove Scriban NuGet package (if not already done)
 - [ ] Update `TEMPLATE_GUIDE.md` for new C# workflow system
-- [ ] Update `FRAGMENT_SCHEMA_GUIDE.md` for new metadata
 - [ ] Create migration guide for future workflow additions
-- [ ] Document testing strategies for workflows
 - [ ] Add code examples to documentation
 
 #### Success Criteria
-- Zero Scriban references in codebase
+- **Zero `.sbn` files remain in codebase**
 - All documentation updated
 - Migration guide completed
-- Code examples provided
 - Codebase is clean and maintainable
 
 ---

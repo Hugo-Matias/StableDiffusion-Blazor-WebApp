@@ -1,4 +1,5 @@
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using BlazorWebApp.Workflows.Templates.Flux;
 using FluentAssertions;
 using System.Text.Json;
@@ -22,10 +23,18 @@ public class FluxTxt2ImgWorkflowTests
     #region Metadata Tests
 
     [Fact]
-    public void Metadata_ShouldHaveCorrectId()
+    public void Metadata_ShouldHaveDeterministicId()
     {
-        // Assert
-        _workflow.Metadata.Id.Should().Be(Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f23456789012"));
+        var expected = WorkflowMetadata.GenerateDeterministicId(
+            Data.Enums.ModelBase.Flux, Data.Entities.ModeType.Txt2Img, "Txt2Img");
+        _workflow.Metadata.Id.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Metadata_Id_ShouldBeStableAcrossInstances()
+    {
+        var other = new FluxTxt2ImgWorkflow();
+        _workflow.Metadata.Id.Should().Be(other.Metadata.Id);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using BlazorWebApp.Workflows.Templates.Wan;
 using FluentAssertions;
 using System.Text.Json;
@@ -59,9 +60,18 @@ public class WanImg2VidWorkflowTests
     }
 
     [Fact]
-    public void Metadata_ShouldHaveStableGuid()
+    public void Metadata_ShouldHaveDeterministicId()
     {
-        _workflow.Metadata.Id.Should().Be(Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"));
+        var expected = WorkflowMetadata.GenerateDeterministicId(
+            Data.Enums.ModelBase.Wan, ModeType.Img2Vid, "Img2Vid");
+        _workflow.Metadata.Id.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Metadata_Id_ShouldBeStableAcrossInstances()
+    {
+        var other = new WanImg2VidWorkflow();
+        _workflow.Metadata.Id.Should().Be(other.Metadata.Id);
     }
 
     #endregion
