@@ -271,9 +271,16 @@ namespace BlazorWebApp.Services
         Task LoadImageInfoParameters(Image image, ModeType mode);
 
         /// <summary>
-        /// Sets a single generation parameter from an image.
+        /// Sets a single generation parameter from an image (applies immediately).
+        /// Use for same-page parameter updates.
         /// </summary>
         void SetGenerationParameter(Image source, string parameter, bool isImg2Img);
+
+        /// <summary>
+        /// Queues a generation parameter override from an image.
+        /// Use when navigating to a different workflow — overrides are applied after InitializeFromWorkflowAsync.
+        /// </summary>
+        void QueueGenerationParameter(Image source, string parameter, bool isImg2Img);
 
         #endregion
 

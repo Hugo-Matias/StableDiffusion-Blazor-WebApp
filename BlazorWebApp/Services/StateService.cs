@@ -249,16 +249,17 @@ namespace BlazorWebApp.Services
 
                 // Update CurrentWorkflowId to the first workflow matching the new base
                 // This ensures the UI switches to the correct workflow and doesn't display stale assets
+                // Only update CurrentWorkflowId (UI state) here.
+                // Do NOT update GenerationParameters.WorkflowId - it must retain the previous workflow's ID
+                // so that InitializeFromWorkflowAsync can save the previous state before switching.
                 var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
                 if (defaultWorkflow != null)
                 {
                     State.Generation.CurrentWorkflowId = defaultWorkflow.Id;
-                    GenerationParameters.WorkflowId = defaultWorkflow.Id;
                 }
                 else
                 {
                     State.Generation.CurrentWorkflowId = null;
-                    GenerationParameters.WorkflowId = null;
                 }
             }
 

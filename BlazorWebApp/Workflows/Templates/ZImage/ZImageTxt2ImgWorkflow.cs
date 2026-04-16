@@ -110,20 +110,7 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
         });
 
         // 3. Load LoRAs (if any)
-        if (parameters.Loras != null && parameters.Loras.Count > 0)
-        {
-            for (int i = 0; i < parameters.Loras.Count; i++)
-            {
-                var lora = parameters.Loras[i];
-                _loraLoaderFragment.Build(builder, registry, new LoraLoaderFragment.Parameters
-                {
-                    LoraLoaderId = $"lora_loader_{i}",
-                    LoraName = lora.Name ?? "",
-                    LoraPath = lora.Path,
-                    LoraStrength = lora.Strength
-                });
-            }
-        }
+        _loraLoaderFragment.BuildAll(builder, registry, parameters.Loras);
 
         // 4. Encode prompts
         _promptsFragment.Build(builder, registry, new PromptsFragment.Parameters

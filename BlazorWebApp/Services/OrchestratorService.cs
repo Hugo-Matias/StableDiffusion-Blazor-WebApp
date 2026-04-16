@@ -28,6 +28,7 @@ namespace BlazorWebApp.Services
         private readonly IModelService _models;
         private readonly IGalleryService _gallery;
         private readonly ISessionService _session;
+        private readonly IGenerationParameterService _parameterService;
 
         public OrchestratorService(
             IDatabaseService db,
@@ -42,7 +43,8 @@ namespace BlazorWebApp.Services
             IBackendService backend,
             IModelService models,
             IGalleryService gallery,
-            ISessionService session)
+            ISessionService session,
+            IGenerationParameterService parameterService)
         {
             _db = db;
             _io = io;
@@ -57,6 +59,7 @@ namespace BlazorWebApp.Services
             _models = models;
             _gallery = gallery;
             _session = session;
+            _parameterService = parameterService;
 
             _db.PageSize = _state.State.Gallery.PageSize;
             _state.State.Gallery.DateRange = new(DateTime.Now.Date.AddDays(-5), DateTime.Now.Date);
@@ -177,9 +180,10 @@ namespace BlazorWebApp.Services
 
             _state.State.Generation.CurrentWorkflowId = workflowId;
             _state.State.Generation.WorkflowBase = workflow.Base;
-            
-            // Update GenerationParameters.WorkflowId to match
-            _state.GenerationParameters.WorkflowId = workflowId;
+
+            // Note: Do NOT set GenerationParameters.WorkflowId here.
+            // It will be updated by InitializeFromWorkflowAsync/InitializeFromWorkflowInternal
+            // after the previous workflow's state has been saved.
 
             bool assetsInitialized = true;
             if (workflow.Assets != null && workflow.Assets.Count > 0)
@@ -393,44 +397,69 @@ namespace BlazorWebApp.Services
 
         public void SetGenerationParameter(Image source, string parameter, bool isImg2Img)
         {
+            SetOrQueueGenerationParameter(source, parameter, isImg2Img, queue: false);
+        }
+
+        public void QueueGenerationParameter(Image source, string parameter, bool isImg2Img)
+        {
+            SetOrQueueGenerationParameter(source, parameter, isImg2Img, queue: true);
+        }
+
+        private void SetOrQueueGenerationParameter(Image source, string parameter, bool isImg2Img, bool queue)
+        {
             switch (parameter)
             {
                 case "Prompt":
                     var cleanedPrompt = ParseAndCleanCopiedPrompt(source.Prompt, false, isImg2Img);
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Positive, cleanedPrompt);
+                    ApplyOrQueue(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Positive, cleanedPrompt, queue);
                     break;
                 case "NegativePrompt":
                     var cleanedNegative = ParseAndCleanCopiedPrompt(source.NegativePrompt, true, isImg2Img);
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Negative, cleanedNegative);
+                    ApplyOrQueue(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Negative, cleanedNegative, queue);
                     break;
                 case "SamplerIndex":
                     var sampler = _db.GetSampler(source.SamplerId).Result;
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.SamplerName, sampler);
+                    ApplyOrQueue(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.SamplerName, sampler, queue);
                     break;
                 case "Scheduler":
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Scheduler, source.Scheduler);
+                    ApplyOrQueue(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Scheduler, source.Scheduler, queue);
                     break;
                 case "Seed":
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Seed, source.Seed);
+                    ApplyOrQueue(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Seed, source.Seed, queue);
                     break;
                 case "Steps":
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Steps, source.Steps);
+                    ApplyOrQueue(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Steps, source.Steps, queue);
                     break;
                 case "CfgScale":
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Cfg, (double?)source.CfgScale);
+                    ApplyOrQueue(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Cfg, (double?)source.CfgScale, queue);
                     break;
                 case "Width":
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Params.Width, source.Width);
+                    ApplyOrQueue(FragmentKeys.Fragments.Latent, FragmentKeys.Params.Width, source.Width, queue);
                     break;
                 case "Height":
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Params.Height, source.Height);
+                    ApplyOrQueue(FragmentKeys.Fragments.Latent, FragmentKeys.Params.Height, source.Height, queue);
                     break;
                 case "DenoisingStrength":
-                    SetGenerationParameterFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Denoise, source.DenoisingStrength);
+                    ApplyOrQueue(FragmentKeys.Fragments.MainSampler, FragmentKeys.Params.Denoise, source.DenoisingStrength, queue);
                     break;
             }
 
-            _events.Publish(new ParametersChangedEventArgs(isImg2Img ? "Img2Img" : "Txt2Img"));
+            if (!queue)
+            {
+                _events.Publish(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
+            }
+        }
+
+        private void ApplyOrQueue(string fragmentId, string key, object? value, bool queue)
+        {
+            if (queue)
+            {
+                _parameterService.QueuePendingOverride(fragmentId, key, value);
+            }
+            else
+            {
+                SetGenerationParameterFragment(fragmentId, key, value);
+            }
         }
 
         /// <summary>

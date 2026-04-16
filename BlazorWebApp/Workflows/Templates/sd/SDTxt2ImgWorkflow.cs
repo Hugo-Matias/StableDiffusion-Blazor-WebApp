@@ -2,79 +2,49 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Workflows.Builders;
 using BlazorWebApp.Workflows.Fragments.Core;
 using BlazorWebApp.Workflows.Fragments.Enhancements;
-using BlazorWebApp.Workflows.Fragments.Loaders;
 using BlazorWebApp.Workflows.Models;
 using GenerationParameters = BlazorWebApp.Models.GenerationParameters;
 
-namespace BlazorWebApp.Workflows.Templates.ZImage;
+namespace BlazorWebApp.Workflows.Templates.SD;
 
 /// <summary>
-/// Z-Image Img2Img workflow implementation using the fluent builder API.
-/// Generates images from a source image using the Z-Image model architecture.
-/// Pipeline: LoadImage+Scale -> LoadDiffusion -> LoRAs -> VaeEncode -> Prompts -> Sample -> VaeDecode -> [SeedVR2] -> [Detailer] -> Save
+/// StableDiffusion Txt2Img workflow implementation using the fluent builder API.
+/// Uses CheckpointLoaderSimple (single file loads model+clip+vae) with PCLazyLoraLoader
+/// for LoRA scheduling and PCLazyTextEncode for prompt encoding.
+/// Pipeline: LoadCheckpoint -> EmptyLatent -> Sample -> [Upscale] -> VaeDecode -> [SeedVR2] -> [Detailer] -> Save
 /// </summary>
-public class ZImageImg2ImgWorkflow : IWorkflowBuilder
+public class SDTxt2ImgWorkflow : IWorkflowBuilder
 {
     // Core fragments
-    private readonly LoadImageScaledFragment _loadImageScaledFragment = new();
-    private readonly LoadDiffusionFragment _loadDiffusionFragment = new();
-    private readonly LoraLoaderFragment _loraLoaderFragment = new();
-    private readonly VaeEncodeFragment _vaeEncodeFragment = new();
     private readonly PromptsFragment _promptsFragment = new();
+    private readonly LoadCheckpointFragment _loadCheckpointFragment = new();
+    private readonly EmptyLatentFragment _emptyLatentFragment = new();
     private readonly SamplerFragment _samplerFragment = new();
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 
     // Enhancement fragments
+    private readonly UpscaleFragment _upscaleFragment = new();
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
 
     // Detailer fragments
-    private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
     private readonly DetailerFragment _detailerFragment = new();
 
     public WorkflowMetadata Metadata => new()
     {
-        Title = "Img2Img",
-        Base = Data.Enums.ModelBase.ZImage,
-        Mode = ModeType.Img2Img,
+        Title = "Txt2Img",
+        Base = Data.Enums.ModelBase.StableDiffusion,
+        Mode = ModeType.Txt2Img,
         Assets =
         [
             new WorkflowAsset
             {
                 Parameter = "Model",
                 Label = "Model",
-                Type = AssetType.DiffusionModel,
-                DefaultValue = "z_image_turbo_bf16.safetensors",
+                Type = AssetType.CheckpointModel,
+                DefaultValue = "Base/v1-5-pruned-emaonly.safetensors",
                 Order = 1,
-                ColumnSize = 4
-            },
-            new WorkflowAsset
-            {
-                Parameter = "Clip",
-                Label = "CLIP",
-                Type = AssetType.Clip,
-                DefaultValue = "qwen_3_4b.safetensors",
-                Order = 2,
-                ColumnSize = 4
-            },
-            new WorkflowAsset
-            {
-                Parameter = "Vae",
-                Label = "VAE",
-                Type = AssetType.Vae,
-                DefaultValue = "ae.safetensors",
-                Order = 3,
-                ColumnSize = 4
-            }
-        ],
-        Sources =
-        [
-            new WorkflowSource
-            {
-                Id = "source_image",
-                Label = "Source Image",
-                Type = SourceType.Image,
-                Required = true
+                ColumnSize = 6
             }
         ]
     };
@@ -82,7 +52,9 @@ public class ZImageImg2ImgWorkflow : IWorkflowBuilder
     public IEnumerable<IFragmentBuilder> GetFragments()
     {
         yield return _promptsFragment;
+        yield return _emptyLatentFragment;
         yield return _samplerFragment;
+        yield return _upscaleFragment;
         yield return _seedVR2UpscaleFragment;
         yield return _detailerFragment;
     }
@@ -92,65 +64,68 @@ public class ZImageImg2ImgWorkflow : IWorkflowBuilder
         var builder = new ComfyWorkflowBuilder();
         var registry = new NodeRegistry();
 
-        // Get fragment parameters for reuse
         var promptsFragment = parameters.GetFragment("prompts");
         var samplerFragment = parameters.GetFragment("main_sampler");
+        var latentFragment = parameters.GetFragment("latent");
 
-        // Get source image path
-        var source = parameters.Sources?.GetValueOrDefault("source_image");
-        var imagePath = source?.FilePath ?? source?.Filename ?? "";
-
-        // 1. Load and scale source image
-        _loadImageScaledFragment.Build(builder, registry, new LoadImageScaledFragment.Parameters
+        // 1. Load checkpoint (model + clip + vae + prompts + LoRA loaders)
+        _loadCheckpointFragment.Build(builder, registry, new LoadCheckpointFragment.Parameters
         {
-            Image = imagePath,
-            UpscaleMethod = "lanczos",
-            Megapixels = 1
-        });
-
-        // 2. Load models (UNet, CLIP, VAE)
-        _loadDiffusionFragment.Build(builder, registry, new LoadDiffusionFragment.Parameters
-        {
-            UnetName = parameters.Assets?.GetValueOrDefault("Model") ?? "z_image_turbo_bf16.safetensors",
-            ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_3_4b.safetensors",
-            ClipType = "lumina2",
-            VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "ae.safetensors"
-        });
-
-        // 3. Load LoRAs (if any)
-        _loraLoaderFragment.BuildAll(builder, registry, parameters.Loras);
-
-        // 4. VAE Encode (source image -> latent)
-        _vaeEncodeFragment.Build(builder, registry, new VaeEncodeFragment.Parameters());
-
-        // 5. Encode prompts
-        _promptsFragment.Build(builder, registry, new PromptsFragment.Parameters
-        {
+            LoaderId = "model_loader",
+            CheckpointName = parameters.Assets?.GetValueOrDefault("Model")
+                             ?? "Base/v1-5-pruned-emaonly.safetensors",
             Positive = promptsFragment?.GetString("positive", "") ?? "",
             Negative = promptsFragment?.GetString("negative", "") ?? ""
         });
 
-        // 6. Sample (denoise < 1 for Img2Img to preserve source structure)
+        // 2. Create empty latent (SD uses EmptyLatentImage, not SD3)
+        _emptyLatentFragment.Build(builder, registry, new EmptyLatentFragment.Parameters
+        {
+            Width = latentFragment?.GetInt("width", 512) ?? 512,
+            Height = latentFragment?.GetInt("height", 768) ?? 768,
+            BatchSize = latentFragment?.GetInt("batch_size", 1) ?? 1,
+            LatentClass = "EmptyLatentImage"
+        });
+
+        // 3. Sample
         var resolvedSeed = samplerFragment?.GetLong("seed", 42) ?? 42;
         if (resolvedSeed < 0) resolvedSeed = Random.Shared.NextInt64(0, int.MaxValue);
         _samplerFragment.Build(builder, registry, new SamplerFragment.Parameters
         {
-            SamplerId = samplerFragment?.GetString("sampler_id", "sampler_main") ?? "sampler_main",
-            Title = samplerFragment?.GetString("title", "Main Sampler") ?? "Main Sampler",
-            SamplerName = samplerFragment?.GetString("sampler_name", "linear/euler") ?? "linear/euler",
-            Scheduler = samplerFragment?.GetString("scheduler", "simple") ?? "simple",
-            Steps = samplerFragment?.GetInt("steps", 9) ?? 9,
-            Cfg = samplerFragment?.GetDouble("cfg", 1) ?? 1,
-            Denoise = samplerFragment?.GetDouble("denoise", 0.75) ?? 0.75,
+            SamplerId = "sampler_main",
+            Title = "Main Sampler",
+            SamplerName = samplerFragment?.GetString("sampler_name", "multistep/res_2m") ?? "multistep/res_2m",
+            Scheduler = samplerFragment?.GetString("scheduler", "beta") ?? "beta",
+            Steps = samplerFragment?.GetInt("steps", 20) ?? 20,
+            Cfg = samplerFragment?.GetDouble("cfg", 5.5) ?? 5.5,
+            Denoise = samplerFragment?.GetDouble("denoise", 1.0) ?? 1.0,
             Eta = samplerFragment?.GetDouble("eta", 0.5) ?? 0.5,
             Seed = resolvedSeed,
             ClassType = "ClownsharKSampler_Beta"
         });
 
-        // 7. VAE Decode
+        // 4. Upscale (conditional)
+        var upscaleFragmentData = parameters.GetFragment("upscale");
+        if (upscaleFragmentData?.IsActive == true)
+        {
+            _upscaleFragment.Build(builder, registry, new UpscaleFragment.Parameters
+            {
+                UpscaleModel = upscaleFragmentData.GetString("upscale_model", "4x-UltraSharpV2.safetensors"),
+                UpscaleWidth = upscaleFragmentData.GetInt("upscale_width", 1024),
+                UpscaleHeight = upscaleFragmentData.GetInt("upscale_height", 1536),
+                UpscaleSteps = upscaleFragmentData.GetInt("upscale_steps", 20),
+                UpscaleDenoise = upscaleFragmentData.GetDouble("upscale_denoise", 1.0),
+                SamplerName = samplerFragment?.GetString("sampler_name", "multistep/res_2m") ?? "multistep/res_2m",
+                Scheduler = samplerFragment?.GetString("scheduler", "beta") ?? "beta",
+                Cfg = samplerFragment?.GetDouble("cfg", 5.5) ?? 5.5,
+                Seed = resolvedSeed
+            });
+        }
+
+        // 5. VAE Decode
         _vaeDecodeFragment.Build(builder, registry);
 
-        // 8. SeedVR2 Upscale (conditional)
+        // 6. SeedVR2 Upscale (conditional)
         var seedVr2Fragment = parameters.GetFragment("seed_vr2");
         if (seedVr2Fragment?.IsActive == true)
         {
@@ -169,25 +144,20 @@ public class ZImageImg2ImgWorkflow : IWorkflowBuilder
             });
         }
 
-        // 9. Detailer (conditional) - requires its own model loader
+        // 7. Detailer (conditional) - uses LoadCheckpoint for its own scoped model
         var detailerFragment = parameters.GetFragment("detailer");
         if (detailerFragment?.IsActive == true)
         {
-            _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
+            _loadCheckpointFragment.Build(builder, registry, new LoadCheckpointFragment.Parameters
             {
-                UnetName = detailerFragment.GetString("detailer_checkpoint")
-                           ?? parameters.Assets?.GetValueOrDefault("Model")
-                           ?? "z_image_turbo_bf16.safetensors",
-                ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_3_4b.safetensors",
-                ClipType = "lumina2",
-                VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "ae.safetensors",
+                LoaderId = "model_loader",
+                CheckpointName = detailerFragment.GetString("detailer_checkpoint")
+                                 ?? parameters.Assets?.GetValueOrDefault("Model")
+                                 ?? "Base/v1-5-pruned-emaonly.safetensors",
                 Positive = detailerFragment.GetString("detailer_prompt")
                            ?? promptsFragment?.GetString("positive", "") ?? "",
                 Negative = detailerFragment.GetString("detailer_negative_prompt")
-                           ?? promptsFragment?.GetString("negative", "") ?? "",
-                Width = 872,
-                Height = 1248,
-                BatchSize = 1
+                           ?? promptsFragment?.GetString("negative", "") ?? ""
             }, scope: "detailer_", scopeTitle: "Detailer ");
 
             _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
@@ -211,7 +181,7 @@ public class ZImageImg2ImgWorkflow : IWorkflowBuilder
             });
         }
 
-        // 10. Save
+        // 8. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
             FilenamePrefix = "tmp/img"

@@ -225,6 +225,16 @@ namespace BlazorWebApp.Services
         void NotifyChanged();
 
         /// <summary>
+        /// Queues a parameter override to be applied after the next InitializeFromWorkflowAsync.
+        /// Used by "Send Parameters To" feature where values are set before navigation
+        /// and must survive workflow initialization.
+        /// </summary>
+        /// <param name="fragmentId">Target fragment ID</param>
+        /// <param name="key">Parameter key</param>
+        /// <param name="value">Parameter value</param>
+        void QueuePendingOverride(string fragmentId, string key, object? value);
+
+        /// <summary>
         /// Resolves a data source to a list of string options.
         /// Uses constraint.Source (node class_type) and constraint.InputName (input field) 
         /// to query ComfyUI's object_info API.

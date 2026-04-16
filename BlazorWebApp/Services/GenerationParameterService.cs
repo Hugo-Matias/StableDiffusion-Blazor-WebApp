@@ -38,6 +38,12 @@ namespace BlazorWebApp.Services
         private FragmentReference? _promptsFragment;
         private List<FragmentReference> _optionalFragments = new();
 
+        /// <summary>
+        /// Pending parameter overrides queued via QueuePendingOverride.
+        /// Applied and cleared after the next InitializeFromWorkflowAsync.
+        /// </summary>
+        private readonly List<(string FragmentId, string Key, object? Value)> _pendingOverrides = new();
+
         /// <inheritdoc />
         public GenerationParameters Current => _stateService.GenerationParameters;
 
@@ -133,14 +139,42 @@ namespace BlazorWebApp.Services
 
             // Try to load saved state for the target workflow
             var savedState = await _workflowStateService.LoadWorkflowStateAsync(workflow.Id);
-            
+
             // Initialize from workflow, applying saved state if available
             InitializeFromWorkflowInternal(workflow, savedState);
+
+            // Apply any pending parameter overrides (from "Send Parameters To" feature)
+            ApplyPendingOverrides();
 
             // Pre-resolve dynamic source options for all fragments
             await PreResolveDynamicSourcesAsync(workflow);
 
             return Current;
+        }
+
+        /// <inheritdoc />
+        public void QueuePendingOverride(string fragmentId, string key, object? value)
+        {
+            _pendingOverrides.Add((fragmentId, key, value));
+            _logger.LogDebug("Queued pending override: {FragmentId}.{Key}", fragmentId, key);
+        }
+
+        /// <summary>
+        /// Applies and clears all pending parameter overrides.
+        /// </summary>
+        private void ApplyPendingOverrides()
+        {
+            if (_pendingOverrides.Count == 0) return;
+
+            _logger.LogDebug("Applying {Count} pending parameter override(s)", _pendingOverrides.Count);
+            foreach (var (fragmentId, key, value) in _pendingOverrides)
+            {
+                var fragment = Current.GetOrCreateFragment(fragmentId);
+                fragment.SetValue(key, value);
+            }
+            _pendingOverrides.Clear();
+
+            PublishChange(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
         }
 
         /// <summary>
@@ -173,12 +207,12 @@ namespace BlazorWebApp.Services
             // Verify this is a C# workflow
             if (!_workflowService.HasWorkflowBuilder(workflow.Id))
             {
-                _logger.LogError("Workflow '{Title}' (ID: {Id}) is not a C# workflow - cannot initialize", 
+                _logger.LogError("Workflow '{Title}' (ID: {Id}) is not a C# workflow - cannot initialize",
                     workflow.Title, workflow.Id);
                 return;
             }
 
-            _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle} (hasSavedState: {HasSaved})", 
+            _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle} (hasSavedState: {HasSaved})",
                 workflow.Title, savedState != null);
 
             // Clear source options cache on workflow change
@@ -307,7 +341,7 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            _logger.LogDebug("Restored {FragmentCount} fragments, {AssetCount} assets from saved state", 
+            _logger.LogDebug("Restored {FragmentCount} fragments, {AssetCount} assets from saved state",
                 current.Fragments.Count, current.Assets.Count);
         }
 
@@ -620,7 +654,7 @@ namespace BlazorWebApp.Services
         public void SetFragmentActive(string fragmentId, bool isActive)
         {
             var fragment = Current.GetFragment(fragmentId);
-            
+
             // If fragment doesn't exist and we're activating it, create it with defaults
             if (fragment == null && isActive)
             {
@@ -633,7 +667,7 @@ namespace BlazorWebApp.Services
                 Current.Fragments[fragmentId] = fragment;
                 _logger.LogDebug("Created fragment '{FragmentId}' with defaults on activation", fragmentId);
             }
-            
+
             if (fragment != null)
             {
                 fragment.IsActive = isActive;
@@ -655,14 +689,14 @@ namespace BlazorWebApp.Services
             var baseName = baseId ?? Path.GetFileNameWithoutExtension(fragmentFile).Replace("-", "_");
             var index = 1;
             var fragmentId = baseName;
-            
+
             while (Current.Fragments.ContainsKey(fragmentId))
             {
                 fragmentId = $"{baseName}_{index++}";
             }
 
-            var maxOrder = Current.Fragments.Values.Any() 
-                ? Current.Fragments.Values.Max(f => f.Order) 
+            var maxOrder = Current.Fragments.Values.Any()
+                ? Current.Fragments.Values.Max(f => f.Order)
                 : 0;
 
             var parameters = new FragmentParameters
@@ -674,7 +708,7 @@ namespace BlazorWebApp.Services
 
             Current.Fragments[fragmentId] = parameters;
             _logger.LogDebug("Added fragment instance '{FragmentId}' for {FragmentFile}", fragmentId, fragmentFile);
-            
+
             PublishChange(GenerationParametersChangedEventArgs.FragmentAdded(fragmentId));
 
             return (fragmentId, parameters);
@@ -778,7 +812,7 @@ namespace BlazorWebApp.Services
             }
             current.Loras.Clear();
             current.Loras.AddRange(parameters.Loras);
-            
+
             _logger.LogDebug("Loaded generation parameters (WorkflowId: {WorkflowId})", current.WorkflowId);
             PublishChange(GenerationParametersChangedEventArgs.ParametersLoaded());
         }
@@ -849,7 +883,7 @@ namespace BlazorWebApp.Services
                         {
                             fragment.SetValue(paramName, options[0]);
                             defaultsSetCount++;
-                            _logger.LogDebug("Set default for {FragmentId}.{Parameter} = {Value} (from dynamic source)", 
+                            _logger.LogDebug("Set default for {FragmentId}.{Parameter} = {Value} (from dynamic source)",
                                 fragmentId, paramName, options[0]);
                         }
 
@@ -874,7 +908,7 @@ namespace BlazorWebApp.Services
                 _logger.LogInformation("Pre-resolved {ResolvedCount} dynamic sources, set {DefaultsCount} default values for workflow '{WorkflowTitle}'",
                     resolvedCount, defaultsSetCount, workflow.Title);
             }
-            
+
             // Notify UI components that dynamic sources are now available
             // This allows components to refresh their dropdown options
             PublishChange(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.DynamicSourcesResolved));
@@ -1139,9 +1173,9 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            _logger.LogDebug("Created fragment '{FragmentId}' with {ValueCount} default values", 
+            _logger.LogDebug("Created fragment '{FragmentId}' with {ValueCount} default values",
                 fragmentId, fragment.Values.Count);
-            
+
             return fragment;
         }
 

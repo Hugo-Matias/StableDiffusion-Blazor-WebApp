@@ -436,7 +436,7 @@
         var isImg2Img = workflow.Mode == ModeType.Img2Img;
         foreach (var param in _selectedParams)
         {
-            M.SetGenerationParameter(Asset, param, isImg2Img);
+            M.QueueGenerationParameter(Asset, param, isImg2Img);
         }
 
         NavManager.NavigateTo($"/generate/{workflow.Id}");

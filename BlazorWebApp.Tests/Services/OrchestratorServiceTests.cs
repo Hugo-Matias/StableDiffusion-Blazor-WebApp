@@ -23,6 +23,7 @@ public class OrchestratorServiceTests
     private readonly Mock<IModelService> _mockModels;
     private readonly Mock<IGalleryService> _mockGallery;
     private readonly Mock<ISessionService> _mockSession;
+    private readonly Mock<IGenerationParameterService> _mockParameterService;
     private readonly OrchestratorService _service;
     private readonly GenerationParameters _generationParameters;
 
@@ -41,6 +42,7 @@ public class OrchestratorServiceTests
         _mockModels = new Mock<IModelService>();
         _mockGallery = new Mock<IGalleryService>();
         _mockSession = new Mock<ISessionService>();
+        _mockParameterService = new Mock<IGenerationParameterService>();
 
         // Setup default state - AppState is the actual state class in IStateService.State
         var appState = new AppState
@@ -67,7 +69,8 @@ public class OrchestratorServiceTests
             _mockBackend.Object,
             _mockModels.Object,
             _mockGallery.Object,
-            _mockSession.Object
+            _mockSession.Object,
+            _mockParameterService.Object
         );
     }
 

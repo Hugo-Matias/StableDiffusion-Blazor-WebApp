@@ -1,7 +1,7 @@
 # Workflow System Migration to Fluent Builder API - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 8 - Convert Z-Image Img2Img & Remaining Shared Fragments
+**Current Phase:** Phase 10 - Convert SD Txt2Img Workflow
 
 ---
 
@@ -729,24 +729,21 @@ Phase 7 was skipped in execution order. Z-Image Img2Img was prioritized first (P
 ### Phase 8: Convert Z-Image Img2Img & Remaining Shared Fragments
 **Objective:** Create Z-Image Img2Img workflow and convert all remaining shared fragment `.sbn` files to C#
 **Complexity:** 17 points
-**Status:** [ ] Not Started
+**Status:** [~] Paused (Steps 1-3 complete, Step 4 deferred)
 
 #### Steps
-- [ ] Create `LoadImageScaledFragment` (`load-image-scaled.sbn`) - LoadImage + ImageScaleToTotalPixels
-- [ ] Create `VaeEncodeFragment` (`vae-encode.sbn`) - VAEEncode with registry refs
-- [ ] Create `LoadCheckpointFragment` (`load-checkpoint.sbn`) - CheckpointLoaderSimple + PCLazyLoraLoader + PCLazyTextEncode
-- [ ] Create `SamplerStandardFragment` (`sampler-standard.sbn`) - Standard KSampler wrapper
-- [ ] Create `ZImageImg2ImgWorkflow.cs` with source image, VAE encode, denoise < 1
-- [ ] Add unit tests for all 4 fragments and workflow
-- [ ] Test workflow execution in ComfyUI
-- [ ] Delete converted `.sbn` files
+- [x] Create `LoadImageScaledFragment` (`load-image-scaled.sbn`) - LoadImage + ImageScaleToTotalPixels
+- [x] Create `VaeEncodeFragment` (`vae-encode.sbn`) - VAEEncode with registry refs
+- [x] Create `LoadCheckpointFragment` (`load-checkpoint.sbn`) - CheckpointLoaderSimple + PCLazyLoraLoader + PCLazyTextEncode
+- [x] Create `SamplerStandardFragment` (`sampler-standard.sbn`) - Standard KSampler wrapper
+- [x] Create `ZImageImg2ImgWorkflow.cs` with source image, VAE encode, denoise < 1
+- [x] Add unit tests for all 4 fragments and workflow (63 tests)
+- [x] **Bonus:** Deterministic workflow IDs (UUID v5 from Base+Mode+Title, fixed GUID collision)
+- [ ] Test workflow execution in ComfyUI (deferred - Z-Image may not support Img2Img)
+- [ ] Delete converted `.sbn` files (deferred)
 
-#### Success Criteria
-- 4 new shared fragments converted to C#
-- Z-Image Img2Img workflow generates valid ComfyUI JSON
-- Workflow executes successfully in ComfyUI
-- All unit tests pass
-- Converted `.sbn` files deleted
+#### Notes
+Z-Image Img2Img workflow is untested in ComfyUI. All shared fragments (LoadImageScaled, VaeEncode, LoadCheckpoint, SamplerStandard) are ready for use by SD and other workflows. Moving to Phase 10 (SD) next, skipping Phase 9 (Qwen) for now.
 
 ---
 
@@ -768,12 +765,15 @@ Phase 7 was skipped in execution order. Z-Image Img2Img was prioritized first (P
 ### Phase 10: Convert SD Txt2Img Workflow
 **Objective:** Convert StableDiffusion Txt2Img using LoadCheckpointFragment from Phase 8
 **Complexity:** 5 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Create `Workflows/Templates/SD/SDTxt2ImgWorkflow.cs`
-- [ ] Add unit tests
-- [ ] Delete `sd/txt2img.sbn`
+- [x] Create `Workflows/Templates/SD/SDTxt2ImgWorkflow.cs` - CheckpointLoaderSimple pipeline with Upscale, SeedVR2, Detailer
+- [x] Add unit tests (39 tests)
+- [ ] Delete `sd/txt2img.sbn` (deferred to cleanup phase)
+
+#### Notes
+SD Txt2Img uses `LoadCheckpointFragment` (single checkpoint file loads model+clip+vae) instead of separate UNet/CLIP/VAE loaders. Uses `EmptyLatentImage` (not SD3). Detailer also uses `LoadCheckpointFragment` with `detailer_` scope. All 410 workflow tests passing.
 
 ---
 

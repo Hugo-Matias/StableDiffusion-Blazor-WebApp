@@ -119,7 +119,7 @@ namespace BlazorWebApp.Models
         /// Parses enabled loras into prompt strings in the format: &lt;lora:name:weight&gt;
         /// </summary>
         /// <returns>Tuple of (positive prompt loras, negative prompt loras)</returns>
-        private static (string positive, string negative) ParseLorasToPromptStrings(List<Lora> loras)
+        internal static (string positive, string negative) ParseLorasToPromptStrings(List<Lora> loras)
         {
             string positive = string.Empty;
             string negative = string.Empty;

@@ -68,7 +68,7 @@ public class LoraLoaderFragment : IFragmentBuilder
             return;
 
         var lora = parameters.Loras[loraIndex];
-        
+
         BuildInternal(builder, registry, new Parameters
         {
             LoraLoaderId = $"lora_loader_{loraIndex}",
@@ -76,6 +76,33 @@ public class LoraLoaderFragment : IFragmentBuilder
             LoraPath = lora.Path,
             LoraStrength = lora.Strength
         }, scope);
+    }
+
+    /// <summary>
+    /// Builds LoRA loader nodes for all enabled LoRAs in the generation parameters.
+    /// Skips disabled LoRAs automatically.
+    /// </summary>
+    public void BuildAll(
+        ComfyWorkflowBuilder builder,
+        Builders.NodeRegistry registry,
+        IList<Lora>? loras,
+        string scope = "")
+    {
+        if (loras == null || loras.Count == 0) return;
+
+        for (int i = 0; i < loras.Count; i++)
+        {
+            var lora = loras[i];
+            if (!lora.IsEnabled) continue;
+
+            BuildInternal(builder, registry, new Parameters
+            {
+                LoraLoaderId = $"lora_loader_{i}",
+                LoraName = lora.Name ?? "",
+                LoraPath = lora.Path,
+                LoraStrength = lora.Strength
+            }, scope);
+        }
     }
 
     private static void BuildInternal(

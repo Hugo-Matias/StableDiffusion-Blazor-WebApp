@@ -150,6 +150,7 @@ public class WanImg2VidWorkflow : IWorkflowBuilder
             for (int i = 0; i < parameters.Loras.Count; i++)
             {
                 var lora = parameters.Loras[i];
+                if (!lora.IsEnabled) continue;
 
                 if (lora.HasHighPath)
                 {

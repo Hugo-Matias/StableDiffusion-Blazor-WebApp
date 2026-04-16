@@ -1,8 +1,8 @@
 
 ## Status
 **Phase:** 8
-**Build Status:** Passing | **Tests:** 305/305 workflow tests passing
-**Phase Status:** [ ] Not Started
+**Build Status:** Passing | **Tests:** 371/371 workflow tests passing
+**Phase Status:** [~] Paused - Steps 1-3 complete, Step 4 (integration/cleanup) deferred
 
 ---
 
@@ -123,12 +123,12 @@ A standard `KSampler` node (not ClownsharK). Needed by Qwen Img2Img-Edit and SD 
 
 ### Step 1: Img2Img Shared Fragments
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 Create the fragments required for Img2Img pipelines:
-- [ ] `LoadImageScaledFragment` (`load-image-scaled.sbn`) - LoadImage + ImageScaleToTotalPixels, registers `image_input`
-- [ ] `VaeEncodeFragment` (`vae-encode.sbn`) - VAEEncode with registry refs for image and VAE
-- [ ] Unit tests for both fragments
+- [x] `LoadImageScaledFragment` (`load-image-scaled.sbn`) - LoadImage + ImageScaleToTotalPixels, registers `image_input`
+- [x] `VaeEncodeFragment` (`vae-encode.sbn`) - VAEEncode with registry refs for image and VAE
+- [x] Unit tests for both fragments (14 tests)
 
 **Files to create:**
 - `BlazorWebApp/Workflows/Fragments/Core/LoadImageScaledFragment.cs`
@@ -141,12 +141,12 @@ Create the fragments required for Img2Img pipelines:
 
 ### Step 2: Future-Proofing Shared Fragments
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 Convert remaining shared fragments that future workflows need:
-- [ ] `LoadCheckpointFragment` (`load-checkpoint.sbn`) - CheckpointLoaderSimple + PCLazyLoraLoader + PCLazyTextEncode, scoped
-- [ ] `SamplerStandardFragment` (`sampler-standard.sbn`) - Standard KSampler wrapper with denoise
-- [ ] Unit tests for both fragments
+- [x] `LoadCheckpointFragment` (`load-checkpoint.sbn`) - CheckpointLoaderSimple + PCLazyLoraLoader + PCLazyTextEncode, scoped
+- [x] `SamplerStandardFragment` (`sampler-standard.sbn`) - Standard KSampler wrapper with denoise
+- [x] Unit tests for both fragments (16 tests)
 
 **Files to create:**
 - `BlazorWebApp/Workflows/Fragments/Core/LoadCheckpointFragment.cs`
@@ -159,17 +159,17 @@ Convert remaining shared fragments that future workflows need:
 
 ### Step 3: ZImageImg2ImgWorkflow
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete (untested in ComfyUI - Z-Image may not support Img2Img)
 
 Compose fragments into the complete Z-Image Img2Img workflow:
-- [ ] Create `ZImageImg2ImgWorkflow.cs` implementing `IWorkflowBuilder`
-- [ ] Define metadata (assets, sources with `source_image`, GUID)
-- [ ] Implement `GetFragments()` returning UI-visible fragments
-- [ ] Implement `Build()` composing the full pipeline
-- [ ] Handle denoise parameter (< 1 for Img2Img)
-- [ ] Handle conditional SeedVR2 Upscale
-- [ ] Handle conditional Detailer with scoped loader
-- [ ] Add unit tests for workflow
+- [x] Create `ZImageImg2ImgWorkflow.cs` implementing `IWorkflowBuilder`
+- [x] Define metadata (assets, sources with `source_image`, deterministic ID)
+- [x] Implement `GetFragments()` returning UI-visible fragments
+- [x] Implement `Build()` composing the full pipeline
+- [x] Handle denoise parameter (< 1 for Img2Img)
+- [x] Handle conditional SeedVR2 Upscale
+- [x] Handle conditional Detailer with scoped loader
+- [x] Add unit tests for workflow (33 tests)
 
 **Build order in `Build()`:**
 ```csharp
@@ -203,7 +203,7 @@ Compose fragments into the complete Z-Image Img2Img workflow:
 
 ### Step 4: Integration Testing & Cleanup
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [ ] Deferred
 
 - [ ] Test ZImage Img2Img workflow execution in ComfyUI generates images
 - [ ] Verify source image is properly scaled and encoded
@@ -225,11 +225,14 @@ Compose fragments into the complete Z-Image Img2Img workflow:
 
 | Step | Description | Status | Complexity | Notes |
 |------|-------------|--------|------------|-------|
-| 1 | Img2Img Shared Fragments | [ ] | 5 | LoadImageScaled + VaeEncode |
-| 2 | Future-Proofing Shared Fragments | [ ] | 5 | LoadCheckpoint + SamplerStandard |
-| 3 | ZImageImg2ImgWorkflow | [ ] | 5 | Workflow + tests |
-| 4 | Integration Testing & Cleanup | [ ] | 2 | ComfyUI testing, delete `.sbn` |
-| **Total** | | **0%** | **17** | **4 fragments + 1 workflow** |
+| 1 | Img2Img Shared Fragments | [x] | 5 | LoadImageScaled + VaeEncode (14 tests) |
+| 2 | Future-Proofing Shared Fragments | [x] | 5 | LoadCheckpoint + SamplerStandard (16 tests) |
+| 3 | ZImageImg2ImgWorkflow | [x] | 5 | Workflow + tests (33 tests) |
+| 4 | Integration Testing & Cleanup | [ ] | 2 | Deferred - Z-Image Img2Img unverified |
+| **Total** | | **88%** | **17** | **4 fragments + 1 workflow, 63 tests** |
+
+### Additional Work Completed
+- **Deterministic Workflow IDs:** Replaced hardcoded `Guid.Parse()` in all workflows with UUID v5 derived from `Base + Mode + Title`. Fixed GUID collision between ZImageTxt2Img and WanImg2Vid. Added duplicate detection in `WorkflowService.DiscoverWorkflowBuilders()`.
 
 ---
 
