@@ -53,7 +53,7 @@ builder.Services.AddSingleton<IGalleryService, GalleryService>();
 builder.Services.AddSingleton<ISessionService, SessionService>();
 
 // Orchestrator service - interface-only (no consumers need concrete type)
-builder.Services.AddSingleton<IOrchestratorService, OrchestratorService>();
+builder.Services.AddScoped<IOrchestratorService, OrchestratorService>();
 // Image service - interface-only (IImageService.Progress has setter for WebSocket updates)
 builder.Services.AddSingleton<IImageService, ImageService>();
 

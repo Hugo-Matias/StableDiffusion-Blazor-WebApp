@@ -30,6 +30,7 @@ namespace BlazorWebApp.Services
             PopulateModes();
             PopulateSamplers();
             SeedDefaultSystemPromptTemplates();
+            SeedResourceTypes();
         }
 
         public async Task InitializeDatabase()
@@ -629,6 +630,19 @@ namespace BlazorWebApp.Services
                 var record = await context.Modes.FirstOrDefaultAsync(o => o.Type == mode);
                 if (record == null)
                     await context.Modes.AddAsync(new Mode { Type = mode });
+            }
+            await context.SaveChangesAsync();
+        }
+
+        private async void SeedResourceTypes()
+        {
+            var requiredTypes = new[] { "Checkpoint", "Diffusion", "TextualInversion", "Hypernetwork", "LORA", "LoCon", "VAE" };
+            using var context = await _factory.CreateDbContextAsync();
+            foreach (var typeName in requiredTypes)
+            {
+                var exists = await context.ResourceTypes.AnyAsync(t => t.Name == typeName);
+                if (!exists)
+                    await context.ResourceTypes.AddAsync(new ResourceType { Name = typeName });
             }
             await context.SaveChangesAsync();
         }

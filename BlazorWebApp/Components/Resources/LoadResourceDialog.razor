@@ -18,7 +18,7 @@
                 }
             </MudStack>
             <MudSpacer />
-            <MudChip Text="@Resource.Type.Name" Color="Parser.ParseCivitaiResourceColorAsColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Resource.Type.Name))" Label=true />
+            <MudChip Text="@Resource.Type.Name" Color="Enum.TryParse<CivitaiModelType>(Resource.Type.Name, out var modelType) ? Parser.ParseCivitaiResourceColorAsColor(modelType) : Color.Default" Label=true />
             @if (Resource.SubType != null)
             {
                 <MudChip Text="@Resource.SubType.Name" Color="Color.Tertiary" Label=true />

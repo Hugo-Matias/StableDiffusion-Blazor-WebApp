@@ -23,6 +23,7 @@ namespace BlazorWebApp.Services
             _resourceTypeDirectories = new()
             {
                 {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
+                {"Diffusion", Path.Combine(baseDir, "Diffusion")},
                 {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
                 {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
                 {"LORA", Path.Combine(baseDir, "LORA")},

@@ -228,6 +228,7 @@ namespace BlazorWebApp.Models
     public class AppStateCivitai
     {
         public string ResourceSubtype { get; set; }
+        public string ResourceTypeOverride { get; set; } = "Checkpoint";
         public AppStateCivitaiCreators Creators { get; set; } = new();
         public AppStateCivitaiImages Images { get; set; } = new();
         public AppStateCivitaiModels Models { get; set; } = new();
