@@ -729,7 +729,7 @@ Phase 7 was skipped in execution order. Z-Image Img2Img was prioritized first (P
 ### Phase 8: Convert Z-Image Img2Img & Remaining Shared Fragments
 **Objective:** Create Z-Image Img2Img workflow and convert all remaining shared fragment `.sbn` files to C#
 **Complexity:** 17 points
-**Status:** [~] Paused (Steps 1-3 complete, Step 4 deferred)
+**Status:** [x] Complete
 
 #### Steps
 - [x] Create `LoadImageScaledFragment` (`load-image-scaled.sbn`) - LoadImage + ImageScaleToTotalPixels
@@ -739,11 +739,11 @@ Phase 7 was skipped in execution order. Z-Image Img2Img was prioritized first (P
 - [x] Create `ZImageImg2ImgWorkflow.cs` with source image, VAE encode, denoise < 1
 - [x] Add unit tests for all 4 fragments and workflow (63 tests)
 - [x] **Bonus:** Deterministic workflow IDs (UUID v5 from Base+Mode+Title, fixed GUID collision)
-- [ ] Test workflow execution in ComfyUI (deferred - Z-Image may not support Img2Img)
-- [ ] Delete converted `.sbn` files (deferred)
+- [x] Test workflow execution in ComfyUI - Txt2Img verified working, Img2Img kept (Z-Image Turbo model limitation)
+- [x] Delete converted `.sbn` files (4 files deleted)
 
 #### Notes
-Z-Image Img2Img workflow is untested in ComfyUI. All shared fragments (LoadImageScaled, VaeEncode, LoadCheckpoint, SamplerStandard) are ready for use by SD and other workflows. Moving to Phase 10 (SD) next, skipping Phase 9 (Qwen) for now.
+Z-Image Txt2Img verified working in ComfyUI. Z-Image Turbo does not natively support Img2Img but the workflow is kept for completeness. All shared fragments (LoadImageScaled, VaeEncode, LoadCheckpoint, SamplerStandard) converted and `.sbn` files deleted. All 4 fragment `.sbn` files removed.
 
 ---
 

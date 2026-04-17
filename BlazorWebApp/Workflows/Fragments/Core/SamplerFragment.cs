@@ -27,14 +27,14 @@ public class SamplerFragment : IFragmentBuilder
                 Name = "sampler_name",
                 Label = "Sampler",
                 Type = ParameterType.Select,
-                Source = new DynamicSource("Backend", "Samplers")
+                Source = new DynamicSource("ClownsharKSampler_Beta", "sampler_name")
             },
             new FragmentParameter
             {
                 Name = "scheduler",
                 Label = "Scheduler",
                 Type = ParameterType.Select,
-                Source = new DynamicSource("Backend", "Schedulers")
+                Source = new DynamicSource("ClownsharKSampler_Beta", "scheduler")
             },
             new FragmentParameter
             {

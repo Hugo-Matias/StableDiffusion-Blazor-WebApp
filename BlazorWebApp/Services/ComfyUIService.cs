@@ -269,8 +269,6 @@ namespace BlazorWebApp.Services
 
         public async Task<List<SDModel>> GetCheckpoints() => await GetModels("checkpoints", m => new SDModel { Title = m, Model_name = m });
 
-        public async Task<List<Upscaler>> GetUpscalers() => await GetModels("upscale_models", m => new Upscaler { Name = m });
-
         public async Task<List<string>> GetVAEModels() => await GetModels("vae", m => m);
 
         public async Task<List<string>> GetTextEncoders() => await GetModels("text_encoders", m => m);
@@ -299,13 +297,6 @@ namespace BlazorWebApp.Services
         }
 
         public async Task<List<string>> GetBBoxDetailers() => await GetModels("ultralytics_bbox", m => m);
-
-        public async Task<List<Models.Sampler>> GetSamplers() => await GetNodeInputOptions<Models.Sampler>("ClownsharKSampler_Beta", "sampler_name", name => new Models.Sampler { Name = name });
-        public async Task<List<Models.Scheduler>> GetSchedulers() => await GetNodeInputOptions<Models.Scheduler>("ClownsharKSampler_Beta", "scheduler", name => new Models.Scheduler { Name = name });
-
-        public async Task<List<string>> GetDetailerSamplers() => await GetNodeInputOptions<string>("FaceDetailer", "sampler_name", name => name);
-
-        public async Task<List<string>> GetDetailerSchedulers() => await GetNodeInputOptions<string>("FaceDetailer", "scheduler", name => name);
 
         /// <inheritdoc />
         public async Task<List<string>> GetNodeInputOptionsAsync(string classType, string inputName)

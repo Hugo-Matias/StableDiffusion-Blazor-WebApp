@@ -20,12 +20,7 @@ namespace BlazorWebApp.Services
         /// Generated on each connection attempt.
         /// </summary>
         string ComfyWSClientId { get; set; }
-        
-        // Backend resources
-        List<Models.Sampler> Samplers { get; }
-        List<Scheduler> Schedulers { get; }
-        List<Upscaler> Upscalers { get; }
-        
+
         Task<bool> CheckBackendAvailability();
         void StartMonitoring(int intervalSeconds = 30);
         void StopMonitoring();

@@ -3,7 +3,7 @@
     public class Enums
     {
         public enum ModelType { Checkpoint, Diffusion };
-        public enum ModelBase { StableDiffusion, Flux, Chroma, Qwen, ZImage, Wan };
+        public enum ModelBase { StableDiffusion, Flux, Chroma, Qwen, ZImage, Wan, Anima };
         public enum Backend { WebUI, ComfyUI };
     }
 }

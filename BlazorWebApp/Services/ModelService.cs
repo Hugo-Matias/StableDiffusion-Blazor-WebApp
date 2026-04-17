@@ -25,11 +25,6 @@ namespace BlazorWebApp.Services
         public List<string> ClipVisionModels { get; private set; } = new();
         public List<string> ADetailerModels { get; private set; } = new();
 
-        // Delegate to BackendService for these (will be extracted in future iterations if needed)
-        public List<Models.Sampler> Samplers => _backend.Samplers;
-        public List<Scheduler> Schedulers => _backend.Schedulers;
-        public List<Upscaler> Upscalers => _backend.Upscalers;
-
         public ModelService(
             IComfyUIService comfyUI,
             IBackendService backend,

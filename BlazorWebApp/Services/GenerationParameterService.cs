@@ -1009,12 +1009,6 @@ namespace BlazorWebApp.Services
         /// <param name="inputName">The input field name (e.g., "model") - optional for Backend.* sources</param>
         private async Task<List<string>> ResolveNodeSourceAsync(string classType, string inputName)
         {
-            // Handle Backend.* sources - these come from IBackendService or ComfyUI special endpoints
-            if (classType.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase))
-            {
-                return await ResolveBackendSourceAsync(classType);
-            }
-
             var cacheKey = $"{classType}:{inputName}";
 
             if (_sourceOptionsCache.TryGetValue(cacheKey, out var cached))
@@ -1035,94 +1029,6 @@ namespace BlazorWebApp.Services
                 _logger.LogWarning(ex, "Failed to resolve source {ClassType}.{InputName}", classType, inputName);
                 return new List<string>();
             }
-        }
-
-        /// <summary>
-        /// Resolves a Backend.* source from IBackendService or ComfyUI special endpoints.
-        /// Supported sources: Backend.Samplers, Backend.Schedulers, Backend.Upscalers, Backend.DetectionModels,
-        ///                    Backend.DetailerSamplers, Backend.DetailerSchedulers
-        /// </summary>
-        private async Task<List<string>> ResolveBackendSourceAsync(string backendSource)
-        {
-            var cacheKey = backendSource;
-
-            if (_sourceOptionsCache.TryGetValue(cacheKey, out var cached))
-            {
-                _logger.LogTrace("Returning cached Backend source options for {Source}", backendSource);
-                return cached;
-            }
-
-            List<string> options;
-
-            // Parse the Backend.* identifier
-            var sourceName = backendSource.Substring("Backend.".Length);
-
-            switch (sourceName.ToLowerInvariant())
-            {
-                case "samplers":
-                    options = _backendService.Samplers?.Select(s => s.Name).ToList() ?? new List<string>();
-                    break;
-
-                case "schedulers":
-                    options = _backendService.Schedulers?.Select(s => s.Name).ToList() ?? new List<string>();
-                    break;
-
-                case "upscalers":
-                    options = _backendService.Upscalers?.Select(u => u.Name).ToList() ?? new List<string>();
-                    break;
-
-                case "detectionmodels":
-                    // Get detection models from ComfyUI's GetBBoxDetailers endpoint
-                    try
-                    {
-                        options = await _comfyUIService.GetBBoxDetailers();
-                        _logger.LogDebug("Resolved {Count} detection models from ComfyUI", options.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get detection models from ComfyUI");
-                        options = new List<string>();
-                    }
-                    break;
-
-                case "detailersamplers":
-                    // Get detailer-specific samplers from ComfyUI's FaceDetailer node
-                    try
-                    {
-                        options = await _comfyUIService.GetDetailerSamplers();
-                        _logger.LogDebug("Resolved {Count} detailer samplers from ComfyUI", options.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get detailer samplers from ComfyUI");
-                        options = new List<string>();
-                    }
-                    break;
-
-                case "detailerschedulers":
-                    // Get detailer-specific schedulers from ComfyUI's FaceDetailer node
-                    try
-                    {
-                        options = await _comfyUIService.GetDetailerSchedulers();
-                        _logger.LogDebug("Resolved {Count} detailer schedulers from ComfyUI", options.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get detailer schedulers from ComfyUI");
-                        options = new List<string>();
-                    }
-                    break;
-
-                default:
-                    _logger.LogWarning("Unknown Backend source: {Source}", backendSource);
-                    options = new List<string>();
-                    break;
-            }
-
-            _sourceOptionsCache[cacheKey] = options;
-            _logger.LogDebug("Resolved {Count} options for Backend source {Source}", options.Count, backendSource);
-
-            return options;
         }
 
         /// <summary>

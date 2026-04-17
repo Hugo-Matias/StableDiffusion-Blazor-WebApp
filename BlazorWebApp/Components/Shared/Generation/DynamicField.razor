@@ -1,6 +1,5 @@
 @using BlazorWebApp.Models
 @using MudBlazor.Utilities
-@inject IBackendService Backend
 @inject IGenerationParameterService ParameterService
 
 @* Renders a single field based on FieldSchema type *@
@@ -473,47 +472,16 @@
                 return resolved;
         }
 
-        // Legacy: Parse source format "Backend.Samplers"
-        if (!string.IsNullOrEmpty(Field.Source) && Field.Source.Contains('.'))
-        {
-            return ResolveLegacySource(Field.Source);
-        }
-
         return Enumerable.Empty<string>();
     }
 
     private IEnumerable<string> GetFileOptions()
     {
-        // For file fields, use pre-resolved options from initialization
         if (!string.IsNullOrEmpty(FragmentId) && Field.HasDynamicSource)
         {
             var resolved = ParameterService.GetResolvedOptions(FragmentId, ParameterKey);
             if (resolved.Count > 0)
                 return resolved;
-        }
-
-        return Enumerable.Empty<string>();
-    }
-
-    private IEnumerable<string> ResolveLegacySource(string source)
-    {
-        // Parse source format: "Backend.Samplers"
-        var parts = source.Split('.');
-        if (parts.Length != 2)
-            return Enumerable.Empty<string>();
-
-        var service = parts[0];
-        var property = parts[1];
-
-        if (service.Equals("Backend", StringComparison.OrdinalIgnoreCase))
-        {
-            return property.ToLowerInvariant() switch
-            {
-                "samplers" => Backend.Samplers?.Select(s => s.Name) ?? Enumerable.Empty<string>(),
-                "schedulers" => Backend.Schedulers?.Select(s => s.Name) ?? Enumerable.Empty<string>(),
-                "upscalers" => Backend.Upscalers?.Select(u => u.Name) ?? Enumerable.Empty<string>(),
-                _ => Enumerable.Empty<string>()
-            };
         }
 
         return Enumerable.Empty<string>();

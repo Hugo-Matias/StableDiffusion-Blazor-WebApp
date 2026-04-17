@@ -20,23 +20,17 @@
 <MudGrid Spacing="2">
     <MudItem xs="6">
         <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName" @bind-Value:after="OnSamplerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @if (Backend.Samplers != null)
+            @foreach (var sampler in _samplerOptions)
             {
-                @foreach (var sampler in Backend.Samplers)
-                {
-                    <MudSelectItem Value="@sampler.Name" />
-                }
+                <MudSelectItem Value="@sampler" />
             }
         </MudSelect>
     </MudItem>
     <MudItem xs="6">
         <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @if (Backend.Schedulers != null)
+            @foreach (var scheduler in _schedulerOptions)
             {
-                @foreach (var scheduler in Backend.Schedulers)
-                {
-                    <MudSelectItem Value="@scheduler.Name" />
-                }
+                <MudSelectItem Value="@scheduler" />
             }
         </MudSelect>
     </MudItem>
@@ -127,7 +121,7 @@
     #endregion
     
     #region Local State (for MudBlazor binding - prevents snap-back)
-    
+
     private string? _localSamplerName;
     private string? _localScheduler;
     private int _localSteps;
@@ -135,11 +129,17 @@
     private float _localCfgScale;
     private float _localGuidance;
     private float _localDenoise;
-    
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+
     protected override void OnParametersSet()
     {
         if (Fragment == null) return;
-        
+
+        // Load resolved options from pre-resolution cache
+        _samplerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.SamplerName);
+        _schedulerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.Scheduler);
+
         // Sync local state FROM service
         _localSamplerName = ParameterService.GetFragmentProperty(Fragment, Params.SamplerName, "euler");
         _localScheduler = ParameterService.GetFragmentProperty(Fragment, Params.Scheduler, "normal");

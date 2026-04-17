@@ -27,7 +27,7 @@ public class UpscaleFragment : IFragmentBuilder
                 Name = "upscale_model",
                 Label = "Upscale Model",
                 Type = ParameterType.Select,
-                Source = new DynamicSource("Backend", "Upscalers"),
+                Source = new DynamicSource("UpscaleModelLoader", "model_name"),
                 DefaultValue = "4x-UltraSharpV2.safetensors"
             },
             new FragmentParameter

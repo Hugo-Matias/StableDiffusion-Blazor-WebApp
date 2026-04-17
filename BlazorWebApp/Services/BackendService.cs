@@ -43,10 +43,6 @@ namespace BlazorWebApp.Services
         /// </summary>
         public string ComfyWSClientId { get; set; } = string.Empty;
 
-        public List<Models.Sampler> Samplers { get; private set; }
-        public List<Scheduler> Schedulers { get; private set; }
-        public List<Upscaler> Upscalers { get; private set; }
-
         public BackendService(IComfyUIService comfyUI, IEventService events, IConfiguration configuration)
         {
             _comfyUI = comfyUI;
@@ -56,10 +52,6 @@ namespace BlazorWebApp.Services
             // Load output paths from configuration
             OutputPaths = new OutputPathsOptions();
             configuration.GetSection(OutputPathsOptions.SectionName).Bind(OutputPaths);
-            
-            Samplers = new List<Models.Sampler>();
-            Schedulers = new List<Scheduler>();
-            Upscalers = new List<Upscaler>();
         }
 
         /// <summary>
@@ -115,9 +107,9 @@ namespace BlazorWebApp.Services
             if (!IsBackendAvailable)
                 return;
 
-            Samplers = await _comfyUI.GetSamplers() ?? new List<Models.Sampler>();
-            Schedulers = await _comfyUI.GetSchedulers() ?? new List<Scheduler>();
-            Upscalers = await _comfyUI.GetUpscalers() ?? new List<Upscaler>();
+            // Resources are now loaded on-demand via ComfyUI's object_info API
+            // through the DynamicSource resolution in GenerationParameterService
+            await Task.CompletedTask;
         }
 
         /// <summary>

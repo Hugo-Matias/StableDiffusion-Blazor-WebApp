@@ -18,12 +18,9 @@
     </MudItem>
     <MudItem xs="4">
         <MudSelect T="string" Label="Upscaler" @bind-Value="_localUpscaleModel" @bind-Value:after="OnUpscaleModelChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @if (Backend.Upscalers != null && Backend.Upscalers.Count > 0)
+            @foreach (var upscaler in _upscalerOptions)
             {
-                @foreach (var upscaler in Backend.Upscalers)
-                {
-                    <MudSelectItem Value="@upscaler.Name" />
-                }
+                <MudSelectItem Value="@upscaler" />
             }
         </MudSelect>
     </MudItem>
@@ -94,16 +91,20 @@
     private int _localUpscaleWidth;
     private int _localUpscaleHeight;
     private MarkupString _resizeInfo = new();
-    
+    private List<string> _upscalerOptions = new();
+
     // Cached constraints from schema
     private (ParameterConstraints upscale_model, ParameterConstraints upscale_steps, 
              ParameterConstraints upscale_denoise, ParameterConstraints upscale_scale,
              ParameterConstraints upscale_width, ParameterConstraints upscale_height) _constraints;
-    
+
     protected override void OnParametersSet()
     {
         if (Fragment == null) return;
-        
+
+        // Load resolved options from pre-resolution cache
+        _upscalerOptions = ParameterService.GetResolvedOptions(Fragment.Id, "upscale_model");
+
         // Load constraints from schema
         _constraints = (
             Fragment.Schema.GetConstraints("upscale_model"),

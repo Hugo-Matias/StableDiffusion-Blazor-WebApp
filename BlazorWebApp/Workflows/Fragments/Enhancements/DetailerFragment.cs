@@ -29,7 +29,7 @@ public class DetailerFragment : IFragmentBuilder
                 Name = "detailer_detection_model",
                 Label = "Detection Model",
                 Type = ParameterType.Select,
-                Source = new DynamicSource("Backend", "DetectionModels"),
+                Source = new DynamicSource("UltralyticsDetectorProvider", "model_name"),
                 DefaultValue = "bbox/face_yolov8m.pt"
             },
             new FragmentParameter
@@ -37,7 +37,7 @@ public class DetailerFragment : IFragmentBuilder
                 Name = "detailer_sampler",
                 Label = "Sampler",
                 Type = ParameterType.Select,
-                Source = new DynamicSource("Backend", "DetailerSamplers"),
+                Source = new DynamicSource("FaceDetailer", "sampler_name"),
                 DefaultValue = "dpmpp_2m"
             },
             new FragmentParameter
@@ -45,7 +45,7 @@ public class DetailerFragment : IFragmentBuilder
                 Name = "detailer_scheduler",
                 Label = "Scheduler",
                 Type = ParameterType.Select,
-                Source = new DynamicSource("Backend", "DetailerSchedulers"),
+                Source = new DynamicSource("FaceDetailer", "scheduler"),
                 DefaultValue = "beta"
             },
             new FragmentParameter

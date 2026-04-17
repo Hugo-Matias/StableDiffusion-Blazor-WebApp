@@ -208,7 +208,7 @@ namespace BlazorWebApp.Models
         /// <summary>
         /// Dynamic data source for select fields.
         /// Contains the ComfyUI node class_type to query for available options.
-        /// Example: "SeedVR2LoadDiTModel", "KSampler"
+        /// Example: "KSampler", "ClownsharKSampler_Beta", "UpscaleModelLoader"
         /// </summary>
         public string? Source { get; set; }
 
@@ -227,11 +227,9 @@ namespace BlazorWebApp.Models
 
         /// <summary>
         /// Returns true if this constraint has a dynamic source.
-        /// For ComfyUI node sources, both Source and InputName are required.
-        /// For Backend.* sources (e.g., Backend.Samplers), only Source is required.
+        /// Both Source (node class_type) and InputName (input field) are required.
         /// </summary>
-        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && 
-            (Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(InputName));
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
 
         /// <summary>
         /// Gets the min value as the specified type.
@@ -365,11 +363,9 @@ namespace BlazorWebApp.Models
 
         /// <summary>
         /// Returns true if this field has a dynamic source.
-        /// For ComfyUI node sources, both Source and InputName are required.
-        /// For Backend.* sources (e.g., Backend.Samplers), only Source is required.
+        /// Both Source (node class_type) and InputName (input field) are required.
         /// </summary>
-        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && 
-            (Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(InputName));
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
 
         /// <summary>
         /// Converts this FieldSchema to ParameterConstraints for source resolution.
