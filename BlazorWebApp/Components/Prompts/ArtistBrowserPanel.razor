@@ -1,0 +1,347 @@
+@inject IArtistBrowserService ArtistService
+@implements IDisposable
+
+<div class="artist-browser-panel">
+    @* Toolbar *@
+    <div class="artist-toolbar">
+        <MudTextField T="string"
+                      Value="_searchText"
+                      Placeholder="Search artists..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      DebounceInterval="300"
+                      Clearable="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Class="artist-search"
+                      ValueChanged="HandleSearchChanged" />
+
+        <div class="artist-toolbar-controls">
+            <MudToggleIconButton Toggled="_favoritesOnly"
+                                 Icon="@Icons.Material.Outlined.FavoriteBorder"
+                                 ToggledIcon="@Icons.Material.Filled.Favorite"
+                                 Color="Color.Default"
+                                 ToggledColor="Color.Error"
+                                 Size="Size.Small"
+                                 Title="@(_favoritesOnly ? "Show All" : "Favorites Only")"
+                                 ToggledChanged="HandleFavoritesToggled" />
+
+            <MudSelect T="ArtistSortMode"
+                       Value="_sortMode"
+                       Dense="true"
+                       Margin="Margin.Dense"
+                       Variant="Variant.Outlined"
+                       Class="artist-sort-select"
+                       ValueChanged="HandleSortChanged">
+                <MudSelectItem Value="ArtistSortMode.PostCount">Post Count</MudSelectItem>
+                <MudSelectItem Value="ArtistSortMode.Name">Name</MudSelectItem>
+                <MudSelectItem Value="ArtistSortMode.Random">Random</MudSelectItem>
+            </MudSelect>
+
+            <MudToggleIconButton Toggled="_sortDescending"
+                                 Icon="@Icons.Material.Filled.ArrowUpward"
+                                 ToggledIcon="@Icons.Material.Filled.ArrowDownward"
+                                 Color="Color.Default"
+                                 ToggledColor="Color.Info"
+                                 Size="Size.Small"
+                                 Title="@(_sortDescending ? "Descending" : "Ascending")"
+                                 ToggledChanged="HandleSortDirectionChanged" />
+
+            <MudNumericField T="int" Value="_pageSize" ValueChanged="HandlePageSizeChanged"
+                             Label="Per page" Variant="Variant.Outlined" Margin="Margin.Dense"
+                             Min="10" Max="200" Step="25" Class="artist-perpage-field" />
+
+            @if (_sortMode == ArtistSortMode.Random)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle"
+                               Size="Size.Small"
+                               Color="Color.Warning"
+                               Title="Re-randomize"
+                               OnClick="HandleReshuffle" />
+            }
+
+            <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"
+                           Size="Size.Small"
+                           Color="@(_showGenerator ? Color.Info : Color.Default)"
+                           Title="Generate preview images"
+                           OnClick="() => _showGenerator = !_showGenerator" />
+        </div>
+
+        @if (_allUserTags.Count > 0)
+        {
+            <MudSelect T="string" MultiSelection SelectedValues="_selectedUserTags"
+                       SelectedValuesChanged="HandleUserTagFilterChanged"
+                       Label="Filter by tags" Dense Margin="Margin.Dense"
+                       Variant="Variant.Outlined" AdornmentIcon="@Icons.Material.Filled.Label"
+                       Class="artist-tag-filter" Clearable>
+                @foreach (var tag in _allUserTags)
+                {
+                    <MudSelectItem T="string" Value="tag">@tag</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        <MudText Typo="Typo.caption" Style="opacity:0.6; text-align:right;">
+            @_filteredArtists.Count.ToString("N0") artists
+        </MudText>
+    </div>
+
+    @* Preview Generator Panel *@
+    @if (_showGenerator)
+    {
+        <MudPaper Class="pa-3" Elevation="2">
+            <MudStack Spacing="2">
+                <div class="artist-gen-header">
+                    <div class="artist-baseline-card">
+                        @{
+                            var hasBaseline = ArtistService.HasBaselineImage();
+                            var baselinePath = "images/artists/baseline.webp";
+                            if (_generationVersion > 0)
+                            {
+                                baselinePath += $"?v={_generationVersion}";
+                            }
+                        }
+                        @if (hasBaseline)
+                        {
+                            <img src="@baselinePath" alt="Baseline" class="artist-baseline-img" />
+                        }
+                        else
+                        {
+                            <div class="artist-baseline-placeholder">
+                                <i class="fa-solid fa-image"></i>
+                            </div>
+                        }
+                    </div>
+                    <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                        Generates preview images for the current artist list using your active txt2img settings. Each artist tag is prepended to your current prompt. A baseline image without any artist tag is always generated first for comparison. Set batch size to 0 to generate all artists in the current list.
+                    </MudText>
+                </div>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudNumericField T="int" Value="_batchSize" ValueChanged="v => _batchSize = v"
+                                     Label="Batch size (0=all)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Min="0" Style="max-width:120px;" />
+                    <MudCheckBox T="bool" @bind-Checked="_skipExisting" Label="Skip existing" Dense Size="Size.Small" />
+                    @if (ArtistService.PreviewProgress.IsRunning)
+                    {
+                        <MudButton OnClick="StopGeneration" Variant="Variant.Filled" Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Stop" Size="Size.Small">
+                            Stop
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton OnClick="StartGeneration" Variant="Variant.Filled" Color="Color.Success"
+                                   StartIcon="@Icons.Material.Filled.PlayArrow" Size="Size.Small">
+                            Generate
+                        </MudButton>
+                    }
+                </MudStack>
+
+                @if (ArtistService.PreviewProgress.IsRunning || ArtistService.PreviewProgress.Current > 0)
+                {
+                    <MudStack Spacing="1">
+                        <MudProgressLinear Value="@ArtistService.PreviewProgress.Current"
+                                           Max="@ArtistService.PreviewProgress.Total"
+                                           Color="Color.Info" Rounded Size="Size.Medium" />
+                        <MudText Typo="Typo.caption" Style="opacity:0.7;">
+                            @ArtistService.PreviewProgress.Current / @ArtistService.PreviewProgress.Total
+                            @if (!string.IsNullOrEmpty(ArtistService.PreviewProgress.CurrentSlug))
+                            {
+                                <text> - @ArtistService.PreviewProgress.CurrentSlug</text>
+                            }
+                            @if (ArtistService.PreviewProgress.Skipped > 0)
+                            {
+                                <text> (@ArtistService.PreviewProgress.Skipped skipped)</text>
+                            }
+                        </MudText>
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+
+    @* Card Grid *@
+    <div class="artist-grid-container">
+        @if (_filteredArtists.Count == 0)
+        {
+            <div class="artist-empty">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Dark" />
+                <MudText Typo="Typo.body2" Color="Color.Dark">No artists found</MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var artist in GetPagedArtists())
+            {
+                <ArtistCard Artist="artist"
+                            OnSelected="HandleArtistSelected"
+                            OnFavoriteChanged="HandleFavoriteChanged"
+                            OnUserTagsChanged="HandleUserTagsChanged"
+                            CacheBust="_generationVersion" />
+            }
+        }
+    </div>
+
+    @* Pagination *@
+    @if (_totalPages > 1)
+    {
+        <div class="artist-pagination">
+            <MudPagination Count="_totalPages" Selected="_currentPage" SelectedChanged="HandlePageChanged"
+                          Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
+                          BoundaryCount="1" MiddleCount="3" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<AppendedTags> OnAppendTags { get; set; }
+
+    private List<ArtistTag> _filteredArtists = new();
+    private string _searchText = string.Empty;
+    private ArtistSortMode _sortMode = ArtistSortMode.PostCount;
+    private bool _sortDescending = true;
+    private bool _favoritesOnly;
+    private int _randomSeed;
+    private System.Timers.Timer? _debounceTimer;
+
+    private bool _showGenerator;
+    private int _batchSize = 0;
+    private bool _skipExisting = true;
+    private CancellationTokenSource? _cts;
+    private long _generationVersion;
+
+    private int _currentPage = 1;
+    private int _pageSize = 25;
+    private int _totalPages => Math.Max(1, (int)Math.Ceiling(_filteredArtists.Count / (double)_pageSize));
+
+    private IEnumerable<string> _selectedUserTags = Enumerable.Empty<string>();
+    private List<string> _allUserTags = new();
+
+    protected override void OnInitialized()
+    {
+        _randomSeed = Random.Shared.Next();
+        _allUserTags = ArtistService.GetAllUserTags();
+        RefreshList();
+    }
+
+    private void RefreshList()
+    {
+        var tagFilter = _selectedUserTags?.Any() == true ? _selectedUserTags : null;
+        _filteredArtists = ArtistService.GetArtists(
+            search: _searchText,
+            sort: _sortMode,
+            descending: _sortDescending,
+            favoritesOnly: _favoritesOnly,
+            randomSeed: _randomSeed,
+            userTags: tagFilter
+        );
+        _currentPage = 1;
+    }
+
+    private IEnumerable<ArtistTag> GetPagedArtists()
+    {
+        return _filteredArtists.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+    }
+
+    private void HandlePageChanged(int page)
+    {
+        _currentPage = page;
+    }
+
+    private void HandlePageSizeChanged(int size)
+    {
+        _pageSize = size;
+        _currentPage = 1;
+    }
+
+    private void HandleSearchChanged(string text)
+    {
+        _searchText = text ?? string.Empty;
+        RefreshList();
+        StateHasChanged();
+    }
+
+    private void HandleSortChanged(ArtistSortMode mode)
+    {
+        _sortMode = mode;
+        if (mode == ArtistSortMode.Random)
+            _randomSeed = Random.Shared.Next();
+        RefreshList();
+    }
+
+    private void HandleSortDirectionChanged(bool descending)
+    {
+        _sortDescending = descending;
+        RefreshList();
+    }
+
+    private void HandleFavoritesToggled(bool favoritesOnly)
+    {
+        _favoritesOnly = favoritesOnly;
+        RefreshList();
+    }
+
+    private void HandleReshuffle()
+    {
+        _randomSeed = Random.Shared.Next();
+        RefreshList();
+    }
+
+    private async Task HandleArtistSelected(ArtistTag artist)
+    {
+        await OnAppendTags.InvokeAsync(new AppendedTags
+        {
+            Tags = artist.Tag,
+            IsPrefix = true
+        });
+    }
+
+    private void HandleFavoriteChanged()
+    {
+        if (_favoritesOnly)
+        {
+            RefreshList();
+            StateHasChanged();
+        }
+    }
+
+    private void HandleUserTagFilterChanged(IEnumerable<string> tags)
+    {
+        _selectedUserTags = tags;
+        RefreshList();
+    }
+
+    private void HandleUserTagsChanged()
+    {
+        _allUserTags = ArtistService.GetAllUserTags();
+        if (_selectedUserTags?.Any() == true)
+            RefreshList();
+    }
+
+    private async Task StartGeneration()
+    {
+        _cts = new CancellationTokenSource();
+        StateHasChanged();
+
+        await ArtistService.GenerateBatchPreviewsAsync(_filteredArtists, _batchSize, _skipExisting, _cts.Token,
+            async () =>
+            {
+                _generationVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                await InvokeAsync(StateHasChanged);
+            });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void StopGeneration()
+    {
+        _cts?.Cancel();
+    }
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _debounceTimer?.Dispose();
+    }
+}

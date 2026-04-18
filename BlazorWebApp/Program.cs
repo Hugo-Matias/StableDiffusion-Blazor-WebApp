@@ -101,6 +101,9 @@ builder.Services.AddSingleton<IInfoService, InfoService>();
 // Tokenizer service for accurate token counting
 builder.Services.AddSingleton<ITokenizerService, TokenizerService>();
 
+// Artist browser service for Anima style gallery artist tags
+builder.Services.AddSingleton<IArtistBrowserService, ArtistBrowserService>();
+
 // MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 

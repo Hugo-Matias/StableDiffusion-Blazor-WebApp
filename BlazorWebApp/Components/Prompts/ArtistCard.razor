@@ -1,0 +1,148 @@
+@inject IArtistBrowserService ArtistService
+
+<div class="artist-card @(_isHovered ? "hovered" : "")" 
+     @onclick="HandleClick" 
+     @onmouseenter="() => _isHovered = true" 
+     @onmouseleave="() => _isHovered = false"
+     title="Click to add @Artist.Tag to prompt">
+
+    @* Image / Placeholder *@
+    <div class="artist-image-wrapper">
+        @{
+            var hasImage = ArtistService.HasPreviewImage(Artist);
+            var imagePath = $"images/artists/{Artist.Shard}/{Artist.Slug}.webp";
+            if (CacheBust > 0)
+            {
+                imagePath += $"?v={CacheBust}";
+            }
+        }
+        @if (hasImage)
+        {
+            <img src="@imagePath"
+                 alt="@Artist.Slug"
+                 class="artist-image"
+                 loading="lazy" />
+        }
+        else
+        {
+            <div class="artist-placeholder">
+                <i class="fa-solid fa-palette"></i>
+            </div>
+        }
+
+        @* Favorite button overlay *@
+        <button class="artist-fav-btn @(_isHovered || _isFavorite ? "visible" : "") @(_isFavorite ? "active" : "")"
+                @onclick="HandleFavoriteClick"
+                @onclick:stopPropagation="true"
+                title="@(_isFavorite ? "Remove from Favorites" : "Add to Favorites")">
+            <i class="@(_isFavorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
+        </button>
+
+        @* Tag button overlay *@
+        <button class="artist-tag-btn @(_isHovered || _artistTags.Count > 0 ? "visible" : "") @(_artistTags.Count > 0 ? "has-tags" : "")"
+                @onclick="ToggleTagPopover"
+                @onclick:stopPropagation="true"
+                title="Manage tags">
+            <i class="fa-solid fa-tags"></i>
+            @if (_artistTags.Count > 0)
+            {
+                <span class="artist-tag-count">@_artistTags.Count</span>
+            }
+        </button>
+    </div>
+
+    @* Tag popover *@
+    @if (_showTagPopover)
+    {
+        <div class="artist-tag-popover" @onclick:stopPropagation="true">
+            <div class="artist-tag-chips">
+                @foreach (var tag in _artistTags)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Info"
+                             OnClose="() => RemoveTag(tag)">@tag</MudChip>
+                }
+            </div>
+            <MudAutocomplete T="string" Placeholder="Add tag..." Dense Margin="Margin.Dense"
+                             SearchFunc="SearchTags" ValueChanged="AddTag"
+                             CoerceValue="false" ResetValueOnEmptyText
+                             Variant="Variant.Outlined" MaxItems="10" />
+        </div>
+    }
+
+    @* Info footer *@
+    <div class="artist-info">
+        <span class="artist-slug" title="@Artist.Slug">@Artist.Slug</span>
+        <span class="artist-count">@FormatCount(Artist.PostCount)</span>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ArtistTag Artist { get; set; } = default!;
+    [Parameter] public EventCallback<ArtistTag> OnSelected { get; set; }
+    [Parameter] public EventCallback OnFavoriteChanged { get; set; }
+    [Parameter] public EventCallback OnUserTagsChanged { get; set; }
+    [Parameter] public long CacheBust { get; set; }
+
+    private bool _isHovered;
+    private bool _isFavorite;
+    private bool _showTagPopover;
+    private List<string> _artistTags = new();
+
+    protected override void OnParametersSet()
+    {
+        _isFavorite = ArtistService.IsFavorite(Artist.Tag);
+        _artistTags = ArtistService.GetUserTags(Artist.Slug);
+    }
+
+    private async Task HandleClick()
+    {
+        if (_showTagPopover) return;
+        await OnSelected.InvokeAsync(Artist);
+    }
+
+    private async Task HandleFavoriteClick()
+    {
+        ArtistService.ToggleFavorite(Artist.Tag);
+        _isFavorite = !_isFavorite;
+        await OnFavoriteChanged.InvokeAsync();
+    }
+
+    private void ToggleTagPopover()
+    {
+        _showTagPopover = !_showTagPopover;
+    }
+
+    private async Task AddTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag)) return;
+        ArtistService.AddUserTag(Artist.Slug, tag);
+        _artistTags = ArtistService.GetUserTags(Artist.Slug);
+        await ArtistService.SaveUserTagsAsync();
+        await OnUserTagsChanged.InvokeAsync();
+    }
+
+    private async Task RemoveTag(string tag)
+    {
+        ArtistService.RemoveUserTag(Artist.Slug, tag);
+        _artistTags = ArtistService.GetUserTags(Artist.Slug);
+        await ArtistService.SaveUserTagsAsync();
+        await OnUserTagsChanged.InvokeAsync();
+    }
+
+    private Task<IEnumerable<string>> SearchTags(string value)
+    {
+        var allTags = ArtistService.GetAllUserTags();
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(allTags.Where(t => !_artistTags.Contains(t, StringComparer.OrdinalIgnoreCase)));
+        return Task.FromResult(allTags
+            .Where(t => t.Contains(value, StringComparison.OrdinalIgnoreCase)
+                     && !_artistTags.Contains(t, StringComparer.OrdinalIgnoreCase))
+            .Append(value.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static string FormatCount(int count)
+    {
+        return count >= 1000 ? $"{count / 1000d:0.#}k" : count.ToString();
+    }
+}

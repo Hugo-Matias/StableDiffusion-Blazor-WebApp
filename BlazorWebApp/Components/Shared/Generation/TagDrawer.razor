@@ -62,6 +62,10 @@
                 </MudExpansionPanels>
             </MudTabPanel>
 
+            <MudTabPanel Text="Artists" Icon="@Icons.Material.Filled.Palette">
+                <ArtistBrowserPanel OnAppendTags="OnAppendTags" />
+            </MudTabPanel>
+
             <MudTabPanel Text="LLM Enhancer" Icon="@Icons.Material.Filled.AutoAwesome">
                 <LLMPromptEnhancerForm OnPromptApplied="HandleLLMPromptApplied" IsNegativePrompt=IsNegativePrompt />
             </MudTabPanel>

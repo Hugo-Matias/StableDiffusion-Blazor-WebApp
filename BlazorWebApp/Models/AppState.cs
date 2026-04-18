@@ -284,6 +284,7 @@ namespace BlazorWebApp.Models
     {
         public int ActiveTabIndex { get; set; } = 0;
         public AppStatePromptsWildcards Wildcards { get; set; } = new();
+        public List<string> FavoriteArtists { get; set; } = new();
     }
 
     public class AppStatePromptsWildcards
