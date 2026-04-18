@@ -2,13 +2,14 @@
 @inject IIOService IO
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime JS
 
-<div class="@GetCardClasses()" @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false">
+<div class="@GetCardClasses()" @onmouseenter="OnMouseEnter" @onmouseleave="OnMouseLeave">
     <div class="image-wrapper">
         @if (IsVideo())
         {
             @* Video content *@
-            <video class="card-video" autoplay loop muted playsinline>
+            <video id="@_videoId" class="card-video" loop muted playsinline preload="metadata">
                 <source src="@Image.Url" />
             </video>
         }
@@ -121,6 +122,27 @@
 
     private bool _isHovered;
     private bool _imageError;
+    private string _videoId = $"vid-{Guid.NewGuid():N}";
+
+    private async Task OnMouseEnter()
+    {
+        _isHovered = true;
+        if (IsVideo())
+        {
+            try { await JS.InvokeVoidAsync("eval", $"document.getElementById('{_videoId}')?.play()"); }
+            catch { }
+        }
+    }
+
+    private async Task OnMouseLeave()
+    {
+        _isHovered = false;
+        if (IsVideo())
+        {
+            try { await JS.InvokeVoidAsync("eval", $"(function(){{var v=document.getElementById('{_videoId}');if(v){{v.pause();v.currentTime=0;}}}})()"); }
+            catch { }
+        }
+    }
 
     private string GetCardClasses()
     {
@@ -140,7 +162,7 @@
         if (!string.IsNullOrWhiteSpace(Image.Url))
         {
             var url = Image.Url.ToLowerInvariant();
-            return url.Contains(".mp4") || url.Contains(".webm") || url.Contains(".webp") || url.Contains(".gif");
+            return url.Contains(".mp4") || url.Contains(".webm");
         }
         
         return false;

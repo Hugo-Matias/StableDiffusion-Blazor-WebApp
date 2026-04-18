@@ -1,20 +1,30 @@
 @inject IIOService IO
+@inject IJSRuntime JS
 
 <div class="@GetCardClasses()" 
      style="@GetCardStyle()"
-     @onmouseenter="() => _isHovered = true" 
-     @onmouseleave="() => _isHovered = false"
+     @onmouseenter="OnMouseEnter" 
+     @onmouseleave="OnMouseLeave"
      @onclick="@(async () => await OnLoad.InvokeAsync())">
-    
+
     @* Rainbow gradient border *@
     <div class="card-border-gradient"></div>
-    
+
     <div class="card-inner">
         <div class="image-wrapper">
-            <img src="@(string.IsNullOrWhiteSpace(ImageSrc) ? "./no_image.png" : ImageSrc)" 
-                 alt="@Title" 
-                 class="card-image" 
-                 loading="lazy" />
+            @if (IsVideo())
+            {
+                <video id="@_videoId" class="card-image" loop muted playsinline preload="metadata">
+                    <source src="@ImageSrc" />
+                </video>
+            }
+            else
+            {
+                <img src="@(string.IsNullOrWhiteSpace(ImageSrc) ? "./no_image.png" : ImageSrc)" 
+                     alt="@Title" 
+                     class="card-image" 
+                     loading="lazy" />
+            }
             
             @* Top Overlay - Badges *@
             <div class="top-overlay">
@@ -132,6 +142,37 @@
     [Parameter] public bool ShowStats { get; set; } = true;
 
     private bool _isHovered;
+    private string _videoId = $"vid-{Guid.NewGuid():N}";
+
+    private async Task OnMouseEnter()
+    {
+        _isHovered = true;
+        if (IsVideo())
+        {
+            try { await JS.InvokeVoidAsync("eval", $"document.getElementById('{_videoId}')?.play()"); }
+            catch { }
+        }
+    }
+
+    private async Task OnMouseLeave()
+    {
+        _isHovered = false;
+        if (IsVideo())
+        {
+            try { await JS.InvokeVoidAsync("eval", $"(function(){{var v=document.getElementById('{_videoId}');if(v){{v.pause();v.currentTime=0;}}}})()"); }
+            catch { }
+        }
+    }
+
+    private bool IsVideo()
+    {
+        if (!string.IsNullOrWhiteSpace(ImageSrc))
+        {
+            var url = ImageSrc.ToLowerInvariant();
+            return url.Contains(".mp4") || url.Contains(".webm");
+        }
+        return false;
+    }
 
     private string GetCardClasses()
     {
