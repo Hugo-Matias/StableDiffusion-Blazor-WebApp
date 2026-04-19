@@ -27,11 +27,19 @@ namespace BlazorWebApp.Services
             // ComfyUI only - WebUI removed
             if (_backend.IsBackendAvailable)
             {
-                _path = Path.Join(_configuration["ComfyUIPath"], "danbooru.csv");
+                _path = ResolveCsvPath();
             }
             else { _path = ""; }
 
             _fileName = !string.IsNullOrWhiteSpace(_path) ? Path.GetFileNameWithoutExtension(_path) : string.Empty;
+        }
+
+        private string ResolveCsvPath()
+        {
+            var inputsRoot = _configuration["ComfyUI:InputsPath"];
+            return string.IsNullOrWhiteSpace(inputsRoot)
+                ? string.Empty
+                : Path.Combine(inputsRoot, "danbooru.csv");
         }
 
         public async Task<IEnumerable<Tag>> SearchTags(string searchText, bool enableFuzzy = true)

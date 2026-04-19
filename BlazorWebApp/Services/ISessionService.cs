@@ -3,6 +3,11 @@ using BlazorWebApp.Models;
 namespace BlazorWebApp.Services
 {
     /// <summary>
+    /// Represents a source image to be loaded into a specific workflow source slot.
+    /// </summary>
+    public record PendingSourceImage(string SourceKey, string Data, string? FilePath, string? Label = null, bool IsNewSlot = false);
+
+    /// <summary>
     /// Service for managing session-scoped UI state (canvas, image editor, videos).
     /// This service is scoped per browser tab and does not persist to database.
     /// Session state is cleared when the browser tab is closed.
@@ -18,6 +23,12 @@ namespace BlazorWebApp.Services
         // Input Images
         string Img2ImgInputImage { get; set; }
         string Img2VidInputImage { get; set; }
+
+        /// <summary>
+        /// Pending source images to load into specific workflow source slots.
+        /// Consumed by Generate page on workflow initialization.
+        /// </summary>
+        List<PendingSourceImage> PendingSourceImages { get; }
 
         // Image Editor
         ImageEditorState ImageEditorState { get; set; }

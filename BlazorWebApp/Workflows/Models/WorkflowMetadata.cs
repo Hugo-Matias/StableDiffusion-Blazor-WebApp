@@ -179,6 +179,12 @@ public record WorkflowSource
     public bool Required { get; init; }
 
     /// <summary>
+    /// Whether the user can add multiple instances of this source.
+    /// When true, the UI shows a "+" button to add more inputs.
+    /// </summary>
+    public bool AllowMultiple { get; init; }
+
+    /// <summary>
     /// Parameter name for template variable replacement.
     /// </summary>
     public string Parameter { get; init; } = "";

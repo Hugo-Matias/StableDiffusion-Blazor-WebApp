@@ -277,6 +277,18 @@ namespace BlazorWebApp.Services
                             Type = source.Type
                         };
                     }
+
+                    // Restore additional multi-source slots (e.g., reference_image_1, reference_image_2)
+                    if (source.AllowMultiple)
+                    {
+                        foreach (var kvp in savedState.Sources)
+                        {
+                            if (kvp.Key != source.Id && kvp.Key.StartsWith($"{source.Id}_"))
+                            {
+                                current.Sources[kvp.Key] = kvp.Value.Clone();
+                            }
+                        }
+                    }
                 }
             }
 

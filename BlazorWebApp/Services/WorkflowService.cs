@@ -166,6 +166,7 @@ namespace BlazorWebApp.Services
                     Label = s.Label,
                     Type = s.Type.ToString().ToLower(),
                     Required = s.Required,
+                    AllowMultiple = s.AllowMultiple,
                     Parameter = s.Parameter
                 }).ToList()
             };

@@ -63,6 +63,14 @@ public class EmptyLatentFragment : IFragmentBuilder
         public int Height { get; set; } = 1024;
         public int BatchSize { get; set; } = 1;
         public string LatentClass { get; set; } = "EmptySD3LatentImage";
+        /// <summary>
+        /// Optional registry reference for width. When set, uses InputRef instead of scalar Input.
+        /// </summary>
+        public (string nodeId, int index)? WidthRef { get; set; }
+        /// <summary>
+        /// Optional registry reference for height. When set, uses InputRef instead of scalar Input.
+        /// </summary>
+        public (string nodeId, int index)? HeightRef { get; set; }
     }
 
     public void Build(
@@ -79,7 +87,13 @@ public class EmptyLatentFragment : IFragmentBuilder
         var batchSize = fragment?.GetInt("batch_size", 1) ?? 1;
         var latentClass = fragment?.GetString("latent_class", "EmptySD3LatentImage") ?? "EmptySD3LatentImage";
 
-        BuildInternal(builder, registry, width, height, batchSize, latentClass, scope, scopeTitle);
+        BuildInternal(builder, registry, new Parameters
+        {
+            Width = width,
+            Height = height,
+            BatchSize = batchSize,
+            LatentClass = latentClass
+        }, scope, scopeTitle);
     }
 
     /// <summary>
@@ -92,28 +106,34 @@ public class EmptyLatentFragment : IFragmentBuilder
         string scope = "",
         string scopeTitle = "")
     {
-        BuildInternal(builder, registry, fragmentParams.Width, fragmentParams.Height, 
-                      fragmentParams.BatchSize, fragmentParams.LatentClass, scope, scopeTitle);
+        BuildInternal(builder, registry, fragmentParams, scope, scopeTitle);
     }
 
     private static void BuildInternal(
         ComfyWorkflowBuilder builder,
         NodeRegistry registry,
-        int width,
-        int height,
-        int batchSize,
-        string latentClass,
+        Parameters p,
         string scope,
         string scopeTitle)
     {
         var nodeId = $"{scope}empty_latent";
 
-        builder.AddNode(nodeId, node => node
-            .Type(latentClass)
-            .Title($"{scopeTitle}Empty Latent Image")
-            .Input("width", width)
-            .Input("height", height)
-            .Input("batch_size", batchSize));
+        builder.AddNode(nodeId, node =>
+        {
+            node.Type(p.LatentClass)
+                .Title($"{scopeTitle}Empty Latent Image")
+                .Input("batch_size", p.BatchSize);
+
+            if (p.WidthRef.HasValue)
+                node.InputRef("width", p.WidthRef.Value);
+            else
+                node.Input("width", p.Width);
+
+            if (p.HeightRef.HasValue)
+                node.InputRef("height", p.HeightRef.Value);
+            else
+                node.Input("height", p.Height);
+        });
 
         registry.Register($"{scope}latent_output", nodeId, 0);
     }

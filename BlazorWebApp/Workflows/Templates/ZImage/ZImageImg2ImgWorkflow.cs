@@ -98,7 +98,7 @@ public class ZImageImg2ImgWorkflow : IWorkflowBuilder
 
         // Get source image path
         var source = parameters.Sources?.GetValueOrDefault("source_image");
-        var imagePath = source?.FilePath ?? source?.Filename ?? "";
+        var imagePath = source?.Filename ?? source?.FilePath ?? "";
 
         // 1. Load and scale source image
         _loadImageScaledFragment.Build(builder, registry, new LoadImageScaledFragment.Parameters

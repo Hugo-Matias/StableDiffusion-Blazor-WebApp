@@ -24,59 +24,43 @@
 @if (_selectedWorkflow != null)
 {
     @* Workflow Assets Panel - Full width before prompts *@
-    <WorkflowAssetsPanel Mode="@_selectedWorkflow.Mode" 
-                         Workflow="@_selectedWorkflow"
-                         Columns="3"
+    <WorkflowAssetsPanel Mode="@_selectedWorkflow.Mode" Workflow="@_selectedWorkflow" Columns="3"
                          IsInitiallyExpanded="false" />
 
     @* Prompts + Generate Button (full width) *@
-    <PromptsForm 
-        Prompt="@GetPromptValue()"
-        PromptChanged="HandlePromptChanged"
-        NegativePrompt="@GetNegativePromptValue()"
-        NegativePromptChanged="HandleNegativePromptChanged"
-        OnGenerate="GenerateAsync"
-        OnSkip="SkipAsync"
-        OnInterrupt="InterruptAsync"
-        OnLoraSelected="HandleLoraAdded"
-        OnStylesChanged="HandleStylesChanged"
-        OnPromptTagAppended="HandlePromptTagAppended"
-        OnNegativePromptTagAppended="HandleNegativePromptTagAppended"
-        ButtonDisabled="@_isGenerating" />
+    <PromptsForm Prompt="@GetPromptValue()" PromptChanged="HandlePromptChanged" NegativePrompt="@GetNegativePromptValue()"
+                 NegativePromptChanged="HandleNegativePromptChanged" OnGenerate="GenerateAsync" OnSkip="SkipAsync"
+                 OnInterrupt="InterruptAsync" OnLoraSelected="HandleLoraAdded" OnStylesChanged="HandleStylesChanged"
+                 OnPromptTagAppended="HandlePromptTagAppended" OnNegativePromptTagAppended="HandleNegativePromptTagAppended"
+                 ButtonDisabled="@_isGenerating" />
 
     @* Two-column layout *@
     <MudGrid>
         @* Left Column - Parameters *@
         <MudItem xs="6">
             @* LoRAs *@
-            <LoraForm Loras="Parameters.Loras" 
-                      Backend="Data.Enums.Backend.ComfyUI" 
-                      IsDualModel="@(_selectedWorkflow?.Base == Data.Enums.ModelBase.Wan)"
-                      OnLorasUpdated="HandleLorasUpdated" />
+            <LoraForm Loras="Parameters.Loras" Backend="Data.Enums.Backend.ComfyUI"
+                      IsDualModel="@(_selectedWorkflow?.Base == Data.Enums.ModelBase.Wan)" OnLorasUpdated="HandleLorasUpdated" />
 
             @* Sources (if workflow has sources) *@
             @if (HasSources)
             {
-                <SourcesPanel Sources="@Parameters.Sources"
-                              OnSourceChanged="HandleSourceChanged"
-                              OnEditClicked="HandleEditClicked"
+                <SourcesPanel Sources="@Parameters.Sources" SourceDefinitions="@_selectedWorkflow?.Sources"
+                              OnSourceChanged="HandleSourceChanged" OnSourceAdded="HandleSourceAdded"
+                              OnSourceRemoved="HandleSourceRemoved" OnEditClicked="HandleEditClicked"
                               OnBlankCanvasClicked="HandleBlankCanvasClicked" />
             }
 
             @* Latent/Resolution (if present in pipeline) *@
             @if (ParameterService.PrimaryLatentFragment != null)
             {
-                <FragmentRenderer 
-                    Fragment="@ParameterService.PrimaryLatentFragment"
-                    OnChanged="HandleFragmentValueChanged" />
+                <FragmentRenderer Fragment="@ParameterService.PrimaryLatentFragment" OnChanged="HandleFragmentValueChanged" />
             }
 
             @* Sampler (if present in pipeline) *@
             @if (ParameterService.PrimarySamplerFragment != null)
             {
-                <FragmentRenderer 
-                    Fragment="@ParameterService.PrimarySamplerFragment"
-                    OnChanged="HandleFragmentValueChanged" />
+                <FragmentRenderer Fragment="@ParameterService.PrimarySamplerFragment" OnChanged="HandleFragmentValueChanged" />
             }
 
             @* Optional Features (wrapped in CollapsibleFeatureSection) *@
@@ -85,12 +69,10 @@
                 @if (fragmentRef.Schema?.Collapsible ?? true)
                 {
                     @* Collapsible features (enhancements, optional settings) *@
-                    <CollapsibleFeatureSection 
-                        Title="@fragmentRef.Title"
-                        Icon="@fragmentRef.Icon"
-                        IsActive="@fragmentRef.Parameters.IsActive"
-                        IsActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentRef.Id, active))"
-                        DefaultExpanded="false">
+                    <CollapsibleFeatureSection Title="@fragmentRef.Title" Icon="@fragmentRef.Icon"
+                                               IsActive="@fragmentRef.Parameters.IsActive"
+                                               IsActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentRef.Id, active))"
+                                               DefaultExpanded="false">
                         <FragmentRenderer Fragment="@fragmentRef" OnChanged="HandleFragmentValueChanged" />
                     </CollapsibleFeatureSection>
                 }
@@ -123,6 +105,4 @@ else
 }
 
 @* Image Editor Modal *@
-<ImageEditorModal @ref="_editorModal"
-                  OnApply="HandleEditorApply"
-                  OnCancel="HandleEditorCancel" />
+<ImageEditorModal @ref="_editorModal" OnApply="HandleEditorApply" OnCancel="HandleEditorCancel" />

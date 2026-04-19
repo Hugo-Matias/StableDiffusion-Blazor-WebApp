@@ -20,6 +20,8 @@ namespace BlazorWebApp.Services
         private readonly IConfiguration _configuration;
         private readonly JsonSerializerOptions _jsonIgnoreNull;
         private readonly ConcurrentDictionary<Guid, object> _pendingJobs = new();
+        private readonly string _comfyOutputsPath;
+        private readonly string _comfyInputsPath;
 
         // Track uploaded images for cleanup: promptId -> list of uploaded filenames
         private readonly ConcurrentDictionary<Guid, List<string>> _uploadedImages = new();
@@ -41,6 +43,8 @@ namespace BlazorWebApp.Services
             _workflow = workflow;
             _io = io;
             _logger = logger;
+            _comfyOutputsPath = ResolveComfyPath("ComfyUI:OutputsPath");
+            _comfyInputsPath = ResolveComfyPath("ComfyUI:InputsPath");
             _httpClient.BaseAddress = new Uri("http://localhost:8188/");
             _httpClient.Timeout = TimeSpan.FromDays(1);
             _jsonIgnoreNull = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
@@ -68,6 +72,17 @@ namespace BlazorWebApp.Services
                 // Cleanup uploaded input images on failure
                 await CleanupUploadedImagesAsync(promptId);
             };
+        }
+
+        private string ResolveComfyPath(string key)
+        {
+            var configured = _configuration[key];
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                return configured;
+            }
+
+            return string.Empty;
         }
 
 
@@ -129,48 +144,56 @@ namespace BlazorWebApp.Services
 
         private async Task HandleImageJobCompletionAsync(Guid promptId, object obj)
         {
-            var files = await GetFilenameFromHistory(promptId);
-            if (files == null || files.Count == 0)
+            try
             {
-                _logger.LogError("File not found for prompt {PromptId}!", promptId);
-
-                if (_pendingJobs.TryRemove(promptId, out var imgObj) && imgObj is TaskCompletionSource<GeneratedImages> imgTcs)
+                var files = await GetFilenameFromHistory(promptId);
+                if (files == null || files.Count == 0)
                 {
-                    imgTcs.SetException(new Exception("No image files generated"));
-                }
-                return;
-            }
+                    _logger.LogError("File not found for prompt {PromptId}!", promptId);
 
-            var images = new GeneratedImages() { Images = [] };
-            var workflowInfo = string.Empty;
-
-            foreach (var file in files)
-            {
-                var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", file);
-                var base64 = await _io.GetBase64FromFileAsync(filepath);
-                images.Images.Add(base64);
-
-                try
-                {
-                    var metadata = await _io.ReadMetadata(filepath);
-
-                    // ComfyUI embeds as "prompt: {json}" - extract just the JSON
-                    if (!string.IsNullOrWhiteSpace(metadata))
+                    if (_pendingJobs.TryRemove(promptId, out var imgObj) && imgObj is TaskCompletionSource<GeneratedImages> imgTcs)
                     {
-                        var match = Regex.Match(metadata, @"^(?:prompt|workflow):\s*(\{.+\})$", RegexOptions.Singleline);
-                        workflowInfo = match.Success ? match.Groups[1].Value : metadata;
+                        imgTcs.SetException(new Exception("No image files generated"));
+                    }
+                    return;
+                }
+
+                var images = new GeneratedImages() { Images = [] };
+                var workflowInfo = string.Empty;
+
+                foreach (var file in files)
+                {
+                    var filepath = Path.Combine(_comfyOutputsPath, file);
+                    var base64 = await _io.GetBase64FromFileAsync(filepath);
+                    images.Images.Add(base64);
+
+                    try
+                    {
+                        var metadata = await _io.ReadMetadata(filepath);
+
+                        // ComfyUI embeds as "prompt: {json}" - extract just the JSON
+                        if (!string.IsNullOrWhiteSpace(metadata))
+                        {
+                            var match = Regex.Match(metadata, @"^(?:prompt|workflow):\s*(\{.+\})$", RegexOptions.Singleline);
+                            workflowInfo = match.Success ? match.Groups[1].Value : metadata;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to read metadata from image file: {FilePath}", filepath);
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to read metadata from image file: {FilePath}", filepath);
-                }
+
+                images.Info = workflowInfo;
+
+                if (_pendingJobs.TryRemove(promptId, out var finalObj) && finalObj is TaskCompletionSource<GeneratedImages> tcs)
+                    tcs.SetResult(images);
             }
-
-            images.Info = workflowInfo;
-
-            if (_pendingJobs.TryRemove(promptId, out var finalObj) && finalObj is TaskCompletionSource<GeneratedImages> tcs)
-                tcs.SetResult(images);
+            finally
+            {
+                // Cleanup uploaded input images after job completion
+                await CleanupUploadedImagesAsync(promptId);
+            }
         }
 
         private async Task HandleVideoJobCompletionAsync(Guid promptId, TaskCompletionSource<GeneratedVideos> tcs)
@@ -190,7 +213,7 @@ namespace BlazorWebApp.Services
 
                 foreach (var file in files)
                 {
-                    var filepath = Path.Combine(_configuration["ComfyUIPath"], "output", file);
+                    var filepath = Path.Combine(_comfyOutputsPath, file);
 
                     if (!File.Exists(filepath))
                     {
@@ -324,7 +347,7 @@ namespace BlazorWebApp.Services
 
             // Check both required and optional sections
             JsonElement? fieldNode = null;
-            
+
             if (inputNode.TryGetProperty("required", out var requiredNode) &&
                 requiredNode.TryGetProperty(inputName, out var reqField))
             {
@@ -343,7 +366,7 @@ namespace BlazorWebApp.Services
             }
 
             var field = fieldNode.Value;
-            
+
             // Format 1: Direct array of options - [["option1", "option2", ...], {...}]
             // First element is an array of strings
             if (field.GetArrayLength() >= 1 && field[0].ValueKind == JsonValueKind.Array)
@@ -354,10 +377,10 @@ namespace BlazorWebApp.Services
                     .Select(e => mapFunc(e.GetString()!))
                     .ToList();
             }
-            
+
             // Format 2: COMBO type - ["COMBO", {"options": ["option1", ...], ...}]
             // First element is "COMBO" string, second is object with options
-            if (field.GetArrayLength() >= 2 && 
+            if (field.GetArrayLength() >= 2 &&
                 field[0].ValueKind == JsonValueKind.String &&
                 field[0].GetString() == "COMBO" &&
                 field[1].ValueKind == JsonValueKind.Object &&
@@ -612,8 +635,8 @@ namespace BlazorWebApp.Services
                         _imageHashCache.TryRemove(hashToRemove, out _);
                     }
 
-                    // Delete the file from ComfyUI input folder
-                    var inputPath = Path.Combine(_configuration["ComfyUIPath"], "input", filename);
+                    // Delete the file from ComfyUI inputs image folder
+                    var inputPath = Path.Combine(_comfyInputsPath, "input", filename);
                     if (File.Exists(inputPath))
                     {
                         File.Delete(inputPath);
@@ -819,7 +842,18 @@ namespace BlazorWebApp.Services
                         var uploadedFilename = await UploadImageAsync(source.Data, tempId);
                         source.Data = uploadedFilename;
                         source.Filename = uploadedFilename;
-                        _logger.LogDebug("Uploaded source image: {Filename}", uploadedFilename);
+                        _logger.LogDebug("Uploaded source image from data: {Filename}", uploadedFilename);
+                    }
+                }
+                else if (!string.IsNullOrEmpty(source.FilePath) && File.Exists(source.FilePath))
+                {
+                    // Source has a local file path but no base64 data — read and upload to ComfyUI
+                    var base64 = _io.GetBase64FromFile(source.FilePath);
+                    if (!string.IsNullOrEmpty(base64))
+                    {
+                        var uploadedFilename = await UploadImageAsync(base64, tempId);
+                        source.Filename = uploadedFilename;
+                        _logger.LogDebug("Uploaded source image from file path: {FilePath} -> {Filename}", source.FilePath, uploadedFilename);
                     }
                 }
             }

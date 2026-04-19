@@ -71,7 +71,7 @@ public class WanLoadImageFragment : IFragmentBuilder
     {
         var fragment = parameters.GetFragment(Metadata.Id);
         var source = parameters.Sources?.GetValueOrDefault("source_image");
-        var imagePath = source?.FilePath ?? source?.Filename ?? "";
+        var imagePath = source?.Filename ?? source?.FilePath ?? "";
 
         BuildInternal(builder, registry, new Parameters
         {

@@ -13,13 +13,13 @@ namespace BlazorWebApp.Models
         public string Title { get; set; } = "";
         public ModelBase Base { get; set; }
         public ModeType Mode { get; set; }
-        
+
         /// <summary>
         /// List of assets (models/resources) required by this workflow.
         /// These are dynamically loaded from ComfyUI and displayed in the TopToolbar.
         /// </summary>
         public List<WorkflowAsset>? Assets { get; set; }
-        
+
         /// <summary>
         /// List of input sources (images/videos) required by this workflow.
         /// Used for Img2Img, Img2Vid, ControlNet inputs, etc.
@@ -36,6 +36,7 @@ namespace BlazorWebApp.Models
         public string Label { get; set; } = "";
         public string Type { get; set; } = "image";
         public bool Required { get; set; } = true;
+        public bool AllowMultiple { get; set; }
         public string Parameter { get; set; } = "";
     }
 }

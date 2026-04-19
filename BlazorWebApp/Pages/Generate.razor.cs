@@ -178,11 +178,11 @@ public partial class Generate : IDisposable
                 source.Data = Session.Img2VidInputImage;
                 Logger.LogDebug("Loaded session image into source '{SourceId}'", imageSource.Id);
             }
-            
+
             // Clear session after loading
             Session.Img2VidInputImage = null;
         }
-        
+
         // Check for Img2Img input image
         if (!string.IsNullOrEmpty(Session.Img2ImgInputImage) && workflow.Mode == ModeType.Img2Img)
         {
@@ -193,9 +193,67 @@ public partial class Generate : IDisposable
                 source.Data = Session.Img2ImgInputImage;
                 Logger.LogDebug("Loaded session image into source '{SourceId}'", imageSource.Id);
             }
-            
+
             // Clear session after loading
             Session.Img2ImgInputImage = null;
+        }
+
+        // Check for pending targeted source images (from multi-source Send To)
+        if (Session.PendingSourceImages.Count > 0)
+        {
+            foreach (var pending in Session.PendingSourceImages)
+            {
+                if (pending.IsNewSlot)
+                {
+                    // Create a new multi-source slot
+                    var baseId = pending.SourceKey;
+                    var existingKeys = Parameters.Sources.Keys
+                        .Where(k => k == baseId || k.StartsWith($"{baseId}_"))
+                        .ToList();
+
+                    var existingIndices = existingKeys
+                        .Select(k =>
+                        {
+                            var suffix = k[baseId.Length..];
+                            if (string.IsNullOrEmpty(suffix)) return 0;
+                            return suffix.StartsWith("_") && int.TryParse(suffix[1..], out var idx) ? idx : 0;
+                        })
+                        .ToList();
+
+                    var nextIndex = existingIndices.Count > 0 ? existingIndices.Max() + 1 : 1;
+                    var newKey = $"{baseId}_{nextIndex}";
+
+                    Parameters.Sources[newKey] = new SourceAsset
+                    {
+                        Label = $"{pending.Label} {nextIndex + 1}",
+                        Type = "image",
+                        Data = pending.Data,
+                        FilePath = pending.FilePath
+                    };
+                    Logger.LogDebug("Created new source slot '{SourceId}' from pending", newKey);
+                }
+                else
+                {
+                    // Load into existing slot
+                    if (Parameters.Sources.TryGetValue(pending.SourceKey, out var existingSource))
+                    {
+                        existingSource.Data = pending.Data;
+                        existingSource.FilePath = pending.FilePath;
+                    }
+                    else
+                    {
+                        Parameters.Sources[pending.SourceKey] = new SourceAsset
+                        {
+                            Label = pending.Label ?? pending.SourceKey,
+                            Type = "image",
+                            Data = pending.Data,
+                            FilePath = pending.FilePath
+                        };
+                    }
+                    Logger.LogDebug("Loaded pending image into source '{SourceId}'", pending.SourceKey);
+                }
+            }
+            Session.PendingSourceImages.Clear();
         }
 
         await Task.CompletedTask;
@@ -320,6 +378,18 @@ public partial class Generate : IDisposable
         {
             Parameters.Sources[args.sourceId] = args.source;
         }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleSourceAdded((string sourceId, SourceAsset source) args)
+    {
+        Parameters.Sources[args.sourceId] = args.source;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleSourceRemoved(string sourceId)
+    {
+        Parameters.Sources.Remove(sourceId);
         await InvokeAsync(StateHasChanged);
     }
 

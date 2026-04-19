@@ -43,6 +43,8 @@ namespace BlazorWebApp.Services
 
         #region Input Images
 
+        public List<PendingSourceImage> PendingSourceImages { get; } = new();
+
         public string Img2ImgInputImage
         {
             get => _img2ImgInputImage;

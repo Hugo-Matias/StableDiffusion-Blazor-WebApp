@@ -106,7 +106,7 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
 
         // Get source image path
         var source = parameters.Sources?.GetValueOrDefault("source_image");
-        var imagePath = source?.FilePath ?? source?.Filename ?? "";
+        var imagePath = source?.Filename ?? source?.FilePath ?? "";
 
         // 1. Load Models (checkpoint, text encoder, audio VAE, upscale model)
         _loadModelFragment.Build(builder, registry, new LtxLoadModelFragment.Parameters

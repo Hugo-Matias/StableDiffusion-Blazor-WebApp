@@ -39,12 +39,39 @@
                         <div class="send-to-buttons">
                             @foreach (var workflow in GetAvailableWorkflows())
                             {
-                                <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)" 
-                                        @onclick="() => SendImageToWorkflow(workflow)" 
-                                        title="Send to @workflow.Title">
-                                    <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
-                                    <span>@workflow.Title</span>
-                                </button>
+                                var multiSource = GetMultiSourceDefinition(workflow);
+                                @if (multiSource != null)
+                                {
+                                    @* Multi-source workflow: show per-slot buttons + Add *@
+                                    @foreach (var slot in GetSourceSlots(workflow, multiSource))
+                                    {
+                                        var slotCapture = slot;
+                                        <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)"
+                                                @onclick="() => SendImageToSourceSlot(workflow, slotCapture.Key)"
+                                                title="Send to @workflow.Title - @slotCapture.Label">
+                                            <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                            <span>@slotCapture.Label</span>
+                                        </button>
+                                    }
+                                    var wfCapture = workflow;
+                                    var msCapture = multiSource;
+                                    <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode) send-to-add"
+                                            @onclick="() => SendImageToNewSlot(wfCapture, msCapture)"
+                                            title="Add new reference and send to @workflow.Title">
+                                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                        <span>@(workflow.Title) Add</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    @* Single-source workflow: standard button *@
+                                    <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)"
+                                            @onclick="() => SendImageToWorkflow(workflow)"
+                                            title="Send to @workflow.Title">
+                                        <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                        <span>@workflow.Title</span>
+                                    </button>
+                                }
                             }
                         </div>
                     </div>
@@ -423,6 +450,72 @@
 
         NavManager.NavigateTo($"/generate/{workflow.Id}");
         Snackbar.Add($"Image sent to {workflow.Title}", Severity.Success);
+    }
+
+    private WorkflowSource? GetMultiSourceDefinition(Workflow workflow)
+    {
+        return workflow.Sources?.FirstOrDefault(s => s.AllowMultiple);
+    }
+
+    private record SourceSlotInfo(string Key, string Label);
+
+    private List<SourceSlotInfo> GetSourceSlots(Workflow workflow, WorkflowSource multiSource)
+    {
+        var slots = new List<SourceSlotInfo>();
+        var baseId = multiSource.Id;
+
+        // If this workflow is currently active, read existing slots from state
+        if (State.GenerationParameters.WorkflowId == workflow.Id)
+        {
+            var existingKeys = State.GenerationParameters.Sources.Keys
+                .Where(k => k == baseId || k.StartsWith($"{baseId}_"))
+                .OrderBy(k => k)
+                .ToList();
+
+            for (var i = 0; i < existingKeys.Count; i++)
+            {
+                slots.Add(new SourceSlotInfo(existingKeys[i], $"{workflow.Title} Ref {i + 1}"));
+            }
+        }
+
+        // Minimum: always show at least the base slot
+        if (slots.Count == 0)
+        {
+            slots.Add(new SourceSlotInfo(baseId, $"{workflow.Title} Ref 1"));
+        }
+
+        return slots;
+    }
+
+    private void SendImageToSourceSlot(Workflow workflow, string sourceKey)
+    {
+        if (Asset == null) return;
+
+        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Asset.Path)}";
+
+        Session.PendingSourceImages.Clear();
+        Session.PendingSourceImages.Add(new PendingSourceImage(sourceKey, data, Asset.Path));
+
+        NavManager.NavigateTo($"/generate/{workflow.Id}");
+        Snackbar.Add($"Image sent to {workflow.Title}", Severity.Success);
+    }
+
+    private void SendImageToNewSlot(Workflow workflow, WorkflowSource multiSource)
+    {
+        if (Asset == null) return;
+
+        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Asset.Path)}";
+
+        Session.PendingSourceImages.Clear();
+        Session.PendingSourceImages.Add(new PendingSourceImage(
+            SourceKey: multiSource.Id,
+            Data: data,
+            FilePath: Asset.Path,
+            Label: multiSource.Label,
+            IsNewSlot: true));
+
+        NavManager.NavigateTo($"/generate/{workflow.Id}");
+        Snackbar.Add($"Image sent to {workflow.Title} (new reference)", Severity.Success);
     }
 
     private void SendParametersToWorkflow(Workflow workflow)

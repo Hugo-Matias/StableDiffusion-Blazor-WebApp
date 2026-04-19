@@ -73,6 +73,14 @@ public class SamplerCustomAdvancedFragment : IFragmentBuilder
         public int Width { get; set; } = 1024;
         public int Height { get; set; } = 1024;
         public string Scope { get; set; } = "";
+        /// <summary>
+        /// Optional registry reference for width. When set, uses InputRef instead of scalar Input on Flux2Scheduler.
+        /// </summary>
+        public (string nodeId, int index)? WidthRef { get; set; }
+        /// <summary>
+        /// Optional registry reference for height. When set, uses InputRef instead of scalar Input on Flux2Scheduler.
+        /// </summary>
+        public (string nodeId, int index)? HeightRef { get; set; }
     }
 
     public void Build(
@@ -139,12 +147,22 @@ public class SamplerCustomAdvancedFragment : IFragmentBuilder
             .Input("sampler_name", p.SamplerName));
 
         // Flux2Scheduler
-        builder.AddNode(schedulerId, node => node
-            .Type("Flux2Scheduler")
-            .Title("Flux2Scheduler")
-            .Input("steps", p.Steps)
-            .Input("width", p.Width)
-            .Input("height", p.Height));
+        builder.AddNode(schedulerId, node =>
+        {
+            node.Type("Flux2Scheduler")
+                .Title("Flux2Scheduler")
+                .Input("steps", p.Steps);
+
+            if (p.WidthRef.HasValue)
+                node.InputRef("width", p.WidthRef.Value);
+            else
+                node.Input("width", p.Width);
+
+            if (p.HeightRef.HasValue)
+                node.InputRef("height", p.HeightRef.Value);
+            else
+                node.Input("height", p.Height);
+        });
 
         // CFGGuider
         builder.AddNode(guiderId, node => node
