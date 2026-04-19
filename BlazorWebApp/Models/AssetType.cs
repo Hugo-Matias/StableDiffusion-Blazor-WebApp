@@ -34,6 +34,12 @@ namespace BlazorWebApp.Models
         /// CLIP Vision models for image understanding
         /// Maps to: ComfyUIService.GetClipVisionModels()
         /// </summary>
-        ClipVision
+        ClipVision,
+
+        /// <summary>
+        /// LoRA models for fine-tuning
+        /// Maps to: ComfyUIService.GetLoras()
+        /// </summary>
+        Lora
     }
 }

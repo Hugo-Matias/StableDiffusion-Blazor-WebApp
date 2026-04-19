@@ -35,7 +35,7 @@ namespace BlazorWebApp.Services
             // Create default prompts fragment
             var promptsFragment = new FragmentParameters
             {
-                FragmentFile = FragmentKeys.Files.Prompts,
+                FragmentFile = FragmentKeys.Fragments.Prompts,
                 IsActive = true
             };
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
@@ -45,7 +45,7 @@ namespace BlazorWebApp.Services
             // Create default main_sampler fragment with settings defaults
             var samplerFragment = new FragmentParameters
             {
-                FragmentFile = FragmentKeys.Files.Sampler,
+                FragmentFile = FragmentKeys.Fragments.MainSampler,
                 IsActive = true
             };
             samplerFragment.SetValue(FragmentKeys.Params.Seed, (long)settings.Generation.Shared.Seed);
@@ -59,7 +59,7 @@ namespace BlazorWebApp.Services
             // Create default latent/resolution fragment
             var latentFragment = new FragmentParameters
             {
-                FragmentFile = FragmentKeys.Files.EmptyLatent,
+                FragmentFile = FragmentKeys.Fragments.Latent,
                 IsActive = true
             };
             latentFragment.SetValue(FragmentKeys.Params.Width, settings.Generation.Shared.Resolution.Width);
@@ -190,8 +190,8 @@ namespace BlazorWebApp.Services
         public async Task LoadGenerationParametersFromImage(Image image)
         {
             // Ensure fragments exist
-            var promptsFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
-            var samplerFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            var promptsFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
+            var samplerFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             
             // Set prompts
             promptsFragment.SetValue(FragmentKeys.Params.Positive, image.Prompt ?? "");
@@ -219,7 +219,7 @@ namespace BlazorWebApp.Services
             // If no fragment has width/height, create/update latent fragment
             if (!GenerationParameters.Fragments.Values.Any(f => f.HasValue(FragmentKeys.Params.Width)))
             {
-                var latentFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+                var latentFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
                 latentFragment.SetValue(FragmentKeys.Params.Width, image.Width);
                 latentFragment.SetValue(FragmentKeys.Params.Height, image.Height);
             }
@@ -249,16 +249,17 @@ namespace BlazorWebApp.Services
 
                 // Update CurrentWorkflowId to the first workflow matching the new base
                 // This ensures the UI switches to the correct workflow and doesn't display stale assets
+                // Only update CurrentWorkflowId (UI state) here.
+                // Do NOT update GenerationParameters.WorkflowId - it must retain the previous workflow's ID
+                // so that InitializeFromWorkflowAsync can save the previous state before switching.
                 var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
                 if (defaultWorkflow != null)
                 {
                     State.Generation.CurrentWorkflowId = defaultWorkflow.Id;
-                    GenerationParameters.WorkflowId = defaultWorkflow.Id;
                 }
                 else
                 {
                     State.Generation.CurrentWorkflowId = null;
-                    GenerationParameters.WorkflowId = null;
                 }
             }
 

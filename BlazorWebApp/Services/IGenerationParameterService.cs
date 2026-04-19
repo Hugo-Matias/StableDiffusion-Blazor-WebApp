@@ -16,12 +16,8 @@ namespace BlazorWebApp.Services
     ///     <description>Previously saved parameters for this specific workflow</description>
     ///   </item>
     ///   <item>
-    ///     <term>Step Parameters</term>
-    ///     <description>Values from workflow template's Pipeline step parameters (e.g., {{ Param ?? "default" | json }})</description>
-    ///   </item>
-    ///   <item>
-    ///     <term>Schema Defaults</term>
-    ///     <description>Values from fragment #meta.ui.parameters.*.default</description>
+    ///     <term>Fragment Metadata Defaults</term>
+    ///     <description>Values from C# FragmentMetadata.Parameters[].DefaultValue</description>
     ///   </item>
     ///   <item>
     ///     <term>Dynamic Sources</term>
@@ -227,6 +223,16 @@ namespace BlazorWebApp.Services
         /// Use after batch updates via Set* methods (without notify).
         /// </summary>
         void NotifyChanged();
+
+        /// <summary>
+        /// Queues a parameter override to be applied after the next InitializeFromWorkflowAsync.
+        /// Used by "Send Parameters To" feature where values are set before navigation
+        /// and must survive workflow initialization.
+        /// </summary>
+        /// <param name="fragmentId">Target fragment ID</param>
+        /// <param name="key">Parameter key</param>
+        /// <param name="value">Parameter value</param>
+        void QueuePendingOverride(string fragmentId, string key, object? value);
 
         /// <summary>
         /// Resolves a data source to a list of string options.

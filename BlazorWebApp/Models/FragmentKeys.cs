@@ -2,18 +2,14 @@ namespace BlazorWebApp.Models
 {
     /// <summary>
     /// Centralized registry of fragment and parameter identifiers.
-    /// These values are derived from the fragment .sbn schemas and serve as
-    /// compile-time constants for type-safe fragment/parameter access.
-    /// 
-    /// IMPORTANT: These values must match the fragment file definitions.
-    /// The fragment files are the source of truth - update them first,
-    /// then regenerate these constants.
+    /// These values are compile-time constants for type-safe fragment/parameter access.
+    /// They match the C# IFragmentBuilder metadata definitions.
     /// </summary>
     public static class FragmentKeys
     {
         /// <summary>
-        /// Well-known fragment IDs used in workflow Pipeline[].id.
-        /// These match the convention: filename without extension, dashes replaced with underscores.
+        /// Well-known fragment IDs used in GenerationParameters.Fragments dictionary.
+        /// These match the FragmentMetadata.Id values in C# fragment classes.
         /// </summary>
         public static class Fragments
         {
@@ -46,6 +42,7 @@ namespace BlazorWebApp.Models
             public const string LoadDetailer = "loader_detailer";
 
             // Video generation fragments (Wan)
+            public const string SamplerAdvanced = "sampler_advanced";
             public const string FrameInterpolation = "frame_interpolation";
             public const string LoadWanModel = "load_wan_model";
             public const string SamplerWan = "sampler_wan";
@@ -64,7 +61,7 @@ namespace BlazorWebApp.Models
 
         /// <summary>
         /// Well-known parameter names used in fragment Values dictionaries.
-        /// These match the parameter keys defined in fragment #meta.ui.parameters.
+        /// These match the FragmentParameter.Name values in C# fragment metadata.
         /// </summary>
         public static class Params
         {
@@ -160,7 +157,7 @@ namespace BlazorWebApp.Models
         }
 
         /// <summary>
-        /// Well-known asset parameter names defined in workflow template Assets[].parameter.
+        /// Well-known asset parameter names defined in WorkflowMetadata.Assets[].Parameter.
         /// These are used in GenerationParameters.Assets dictionary.
         /// </summary>
         public static class Assets
@@ -181,7 +178,7 @@ namespace BlazorWebApp.Models
         }
 
         /// <summary>
-        /// Well-known source IDs defined in workflow template Sources[].id.
+        /// Well-known source IDs defined in WorkflowMetadata.Sources[].Id.
         /// These are used in GenerationParameters.Sources dictionary.
         /// </summary>
         public static class Sources
@@ -191,43 +188,6 @@ namespace BlazorWebApp.Models
             public const string MaskImage = "mask_image";
             public const string ControlImage = "control_image";
             public const string InputVideo = "input_video";
-        }
-
-        /// <summary>
-        /// Fragment file names (relative to Workflows/Fragments/).
-        /// Used when creating new fragments or looking up schemas.
-        /// </summary>
-        public static class Files
-        {
-            public const string Prompts = "prompts.sbn";
-            public const string EmptyLatent = "empty-latent.sbn";
-            public const string Latent = "empty-latent.sbn"; // Alias for EmptyLatent
-            public const string Sampler = "sampler.sbn";
-            public const string SamplerStandard = "sampler-standard.sbn";
-            public const string Save = "save.sbn";
-            public const string Upscale = "upscale.sbn";
-            public const string Detailer = "detailer.sbn";
-            public const string DetailerCore = "detailer-core.sbn";
-            public const string LoadCheckpoint = "load-checkpoint.sbn";
-            public const string LoadDiffusion = "load-diffusion.sbn";
-            public const string CleanVram = "clean-vram.sbn";
-            public const string LoraLoader = "lora-loader.sbn";
-            public const string VaeDecode = "vae-decode.sbn";
-
-            // Flux fragments
-            public const string FluxLoad = "flux/load-flux.sbn";
-
-            // Wan fragments
-            public const string WanLoadModel = "wan/load-wan-model.sbn";
-            public const string WanSampler = "wan/sampler-wan.sbn";
-            public const string WanFrameInterpolation = "wan/frame-interpolation.sbn";
-            public const string WanPrompts = "wan/prompts.sbn";
-
-            // Optional feature fragments
-            public const string SeedVR2 = "upscale-seedvr2.sbn";
-            public const string ConditioningVariation = "conditioning-variation.sbn";
-            public const string SeedVarianceEnhancer = "seed-variance-enhancer.sbn";
-            public const string Llm = "llm.sbn";
         }
     }
 }

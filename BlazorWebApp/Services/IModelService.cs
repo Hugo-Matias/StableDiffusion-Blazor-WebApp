@@ -16,9 +16,6 @@ namespace BlazorWebApp.Services
         List<string> ClipModels { get; }
         List<string> ClipVisionModels { get; }
         List<string> ADetailerModels { get; }
-        List<Models.Sampler> Samplers { get; }
-        List<Scheduler> Schedulers { get; }
-        List<Upscaler> Upscalers { get; }
 
         // Model operations
         Task GetWorkflowModels(bool refresh = false);

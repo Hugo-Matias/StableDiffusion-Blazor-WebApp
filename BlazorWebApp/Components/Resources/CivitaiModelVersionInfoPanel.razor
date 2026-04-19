@@ -32,7 +32,7 @@
                             </MudGrid>
                         </MudItem>
                         <MudItem xs="4">
-                            <CivitaiFileButton Class="mb-4 mt-n4" ModelVersion=@version OnDownload="@(async (file) => await DownloadFile(version, file))" />
+                            <CivitaiFileButton Class="mb-4 mt-n4" ModelVersion=@version ModelType="@Model.Type" OnDownload="@(async (file) => await DownloadFile(version, file))" />
                             @if (version.IsEarlyAccess)
                             {
                                 <MudChip Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Lock" Variant="Variant.Filled">
@@ -80,10 +80,12 @@
 @code {
     [Parameter] public CivitaiModelDto Model { get; set; }
     public bool _isSavingImages;
+    private string _resolvedType => Model.Type == "Checkpoint" ? State.State.Civitai.ResourceTypeOverride ?? Model.Type : Model.Type;
 
     private async Task DownloadFile(CivitaiModelVersionDto version, CivitaiModelVersionFileDto file)
     {
-        var isSuccess = await Civitai.DownloadResource(Model, version, file, State.State.Civitai.ResourceSubtype);
+        var typeOverride = Model.Type == "Checkpoint" ? State.State.Civitai.ResourceTypeOverride : null;
+        var isSuccess = await Civitai.DownloadResource(Model, version, file, State.State.Civitai.ResourceSubtype, typeOverride);
         switch (isSuccess)
         {
             case CivitaiDownloadStatus.Success:
@@ -134,7 +136,7 @@
     {
         // if (string.IsNullOrWhiteSpace(image.Hash)) image = await Civitai.GetImageById(image.Id);
         image = await Civitai.GetImageByModelVersionId(versionId, image);
-        string path = Path.Combine(Configuration["OutputDir"], "Saved", Model.Type, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
+        string path = Path.Combine(Configuration["OutputDir"], "Saved", _resolvedType, $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
         var imageFilename = string.IsNullOrWhiteSpace(filename) ? Parser.SanitizePath(image.Hash) : filename;
         if (isPreview) path = Path.Combine(path, versionId.ToString());
         else path = Path.Combine(path, versionId.ToString(), imageFilename);

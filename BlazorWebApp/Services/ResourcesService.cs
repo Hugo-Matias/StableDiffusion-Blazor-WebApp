@@ -1,4 +1,4 @@
-﻿using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
@@ -23,6 +23,7 @@ namespace BlazorWebApp.Services
             _resourceTypeDirectories = new()
             {
                 {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
+                {"Diffusion", Path.Combine(baseDir, "Diffusion")},
                 {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
                 {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
                 {"LORA", Path.Combine(baseDir, "LORA")},
@@ -159,7 +160,7 @@ namespace BlazorWebApp.Services
             }
 
             // Update GenerationParameters prompts fragment (primary)
-            var promptsFragment = _state.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var promptsFragment = _state.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Fragments.Prompts);
             var promptKey = target.Item2 ? FragmentKeys.Params.Positive : FragmentKeys.Params.Negative;
             var currentPrompt = promptsFragment.GetValue<string>(promptKey) ?? "";
             promptsFragment.SetValue(promptKey, currentPrompt + $"{triggerWords}{keyword}");

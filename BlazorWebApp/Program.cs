@@ -53,7 +53,7 @@ builder.Services.AddSingleton<IGalleryService, GalleryService>();
 builder.Services.AddSingleton<ISessionService, SessionService>();
 
 // Orchestrator service - interface-only (no consumers need concrete type)
-builder.Services.AddSingleton<IOrchestratorService, OrchestratorService>();
+builder.Services.AddScoped<IOrchestratorService, OrchestratorService>();
 // Image service - interface-only (IImageService.Progress has setter for WebSocket updates)
 builder.Services.AddSingleton<IImageService, ImageService>();
 
@@ -67,10 +67,7 @@ builder.Services.AddSingleton<IResourcesService, ResourcesService>();
 // Router service - interface-only
 builder.Services.AddSingleton<IRouterService, RouterService>();
 
-// Workflow service - interface-only
-builder.Services.AddSingleton<WorkflowTemplateParser>();
-builder.Services.AddSingleton<IFragmentSchemaService, FragmentSchemaService>();
-builder.Services.AddSingleton<FragmentConditionValidator>();
+// Workflow service - uses C# IWorkflowBuilder implementations only
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 
 // Workflow state persistence service (per-workflow saved parameters)
@@ -98,17 +95,14 @@ builder.Services.AddSingleton<OllamaService>();
 // Wildcard service for prompt wildcard management
 builder.Services.AddSingleton<IWildcardService, WildcardService>();
 
-// Template cache service for compiled Scriban templates
-builder.Services.AddSingleton<ITemplateCacheService, TemplateCacheService>();
-
-// Workflow validation service for startup template validation
-builder.Services.AddSingleton<IWorkflowValidationService, WorkflowValidationService>();
-
 // Info service for contextual help/shortcuts across the app
 builder.Services.AddSingleton<IInfoService, InfoService>();
 
 // Tokenizer service for accurate token counting
 builder.Services.AddSingleton<ITokenizerService, TokenizerService>();
+
+// Artist browser service for Anima style gallery artist tags
+builder.Services.AddSingleton<IArtistBrowserService, ArtistBrowserService>();
 
 // MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
@@ -118,59 +112,23 @@ builder.Logging.AddConsole();
 
 var app = builder.Build();
 
-// Pre-compile and validate workflow templates at startup
+// Validate C# workflow builders at startup in Development mode
+if (app.Environment.IsDevelopment())
 {
-    var templateCacheService = app.Services.GetRequiredService<ITemplateCacheService>();
-    var workflowPath = Path.Combine(AppContext.BaseDirectory, "Workflows");
-    
-    // Pre-compile all templates (always, for performance)
-    var templatesCompiled = templateCacheService.PrecompileAll(Path.Combine(workflowPath, "Templates"));
-    var fragmentsCompiled = templateCacheService.PrecompileAll(Path.Combine(workflowPath, "Fragments"));
-    
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Pre-compiled {Templates} workflow templates and {Fragments} fragments", 
-        templatesCompiled, fragmentsCompiled);
-
-    // Validate templates in Development mode only
-    if (app.Environment.IsDevelopment())
+    var workflowService = app.Services.GetRequiredService<IWorkflowService>();
+    var workflows = workflowService.GetWorkflows();
+    
+    logger.LogInformation("Discovered {Count} C# workflow builder(s)", workflows.Count);
+    
+    foreach (var workflow in workflows)
     {
-        var validationService = app.Services.GetRequiredService<IWorkflowValidationService>();
-        var validationResult = validationService.ValidateAllTemplates();
-        
-        if (!validationResult.IsValid)
-        {
-            logger.LogWarning(
-                "Workflow template validation found {ErrorCount} errors. Check logs for details.",
-                validationResult.Errors.Count);
-        }
-        
-        // Validate fragment conditions
-        var conditionGenerator = new FragmentConditionGenerator(workflowPath, 
-            app.Services.GetRequiredService<ILogger<FragmentConditionGenerator>>());
-        var conditionReport = conditionGenerator.GenerateAndValidate();
-        
-        if (conditionReport.HasIssues)
-        {
-            logger.LogWarning("Fragment condition validation found {IssueCount} issues:\n{Report}",
-                conditionReport.TotalIssues,
-                conditionReport.GenerateReport());
-        }
-        else
-        {
-            logger.LogInformation("? All fragment conditions are valid");
-        }
-        
-        // Log compilation errors from cache service
-        var compilationErrors = templateCacheService.CompilationErrors;
-        if (compilationErrors.Count > 0)
-        {
-            logger.LogWarning("Template compilation found {Count} errors:", compilationErrors.Count);
-            foreach (var error in compilationErrors)
-            {
-                var location = error.Line.HasValue ? $":{error.Line}" : "";
-                logger.LogWarning("  {Path}{Location}: {Message}", error.FilePath, location, error.Message);
-            }
-        }
+        logger.LogInformation("  - {Title} ({Base}/{Mode})", workflow.Title, workflow.Base, workflow.Mode);
+    }
+    
+    if (workflows.Count == 0)
+    {
+        logger.LogWarning("No C# workflow builders found! Users will have no available workflows.");
     }
 }
 

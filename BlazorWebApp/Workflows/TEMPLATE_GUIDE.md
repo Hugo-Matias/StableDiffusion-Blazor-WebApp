@@ -1,6 +1,6 @@
 # Workflow Template System - Complete Guide
 
-This document provides comprehensive documentation for creating and converting ComfyUI workflows into the modular Pipeline-based template system.
+This document provides comprehensive documentation for creating and converting ComfyUI workflows into the modular C# fluent builder system.
 
 ---
 
@@ -8,9 +8,9 @@ This document provides comprehensive documentation for creating and converting C
 
 1. [System Overview](#system-overview)
 2. [Core Conventions](#core-conventions)
-3. [Template File Structure](#template-file-structure)
+3. [Workflow Class Structure](#workflow-class-structure)
 4. [Assets System](#assets-system)
-5. [Fragment File Structure](#fragment-file-structure)
+5. [Fragment Class Structure](#fragment-class-structure)
 6. [Scope System](#scope-system)
 7. [Pipeline Data Flow](#pipeline-data-flow)
 8. [Conditional Logic](#conditional-logic)
@@ -23,12 +23,12 @@ This document provides comprehensive documentation for creating and converting C
 
 ## System Overview
 
-The workflow template system uses a **Pipeline-based architecture** where:
+The workflow template system uses a **Fluent Builder API** where:
 
-1. **Templates** (`.sbn` files in `Workflows/Templates/`) define the overall workflow structure
-2. **Fragments** (`.sbn` files in `Workflows/Fragments/`) are reusable node groups
-3. **Scriban** templating engine handles dynamic value injection
-4. **Node Registry** manages references between fragments
+1. **Workflow classes** (C# in `Workflows/Templates/`) implement `IWorkflowBuilder` and define the overall workflow structure
+2. **Fragment classes** (C# in `Workflows/Fragments/`) implement `IFragmentBuilder` and are reusable node groups
+3. **ComfyWorkflowBuilder** provides a fluent API for constructing nodes
+4. **NodeRegistry** manages output references between fragments
 5. **Scope System** enables multiple model sets with isolated namespaces
 6. **Assets** allow dynamic model selection via UI dropdowns
 
@@ -40,6 +40,29 @@ The workflow template system uses a **Pipeline-based architecture** where:
 | **Flexibility** | Any fragment can be instantiated multiple times with different scopes |
 | **Architecture-Agnostic** | Features like Detailer/Upscale work with any model base |
 | **Streamlined** | Single `scope` parameter controls namespace isolation |
+| **Type Safety** | Compile-time validation, IntelliSense, and strongly-typed parameters |
+| **Testability** | Unit tests for every fragment and workflow |
+
+### Architecture
+
+```
+Workflow Classes (C# IWorkflowBuilder)
+    |
+    v
+ComfyWorkflowBuilder (fluent API)
+    |
+    v
+Fragment Classes (C# IFragmentBuilder)
+    |
+    v
+NodeBuilder (fluent node construction)
+    |
+    v
+NodeRegistry (output reference tracking)
+    |
+    v
+ComfyUI Workflow JSON
+```
 
 ---
 
@@ -67,15 +90,16 @@ The `scope` parameter controls namespace isolation:
 - **Processing fragments**: `scope` controls where model inputs are **read from**
 - **Pipeline outputs** (`latent_output`, `image_output`): Always written to main (no scope)
 
-```json
+```csharp
 // Main pipeline - no scope (writes to model_output, clip_output, etc.)
-{ "fragment": "load-checkpoint.sbn", "parameters": { "ckpt_name": "model.safetensors" } }
+_loadDiffusionFragment.Build(builder, registry, new LoadDiffusionFragment.Parameters { ... });
 
 // Detailer scope - writes to detailer_model_output, detailer_clip_output, etc.
-{ "fragment": "load-checkpoint.sbn", "parameters": { "scope": "detailer_", "scope_title": "Detailer ", ... } }
+_loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters { ... },
+    scope: "detailer_", scopeTitle: "Detailer ");
 
 // Detailer reads from detailer_ scope, writes image_output to main
-{ "fragment": "detailer-core.sbn", "parameters": { "scope": "detailer_" } }
+_detailerFragment.Build(builder, registry, new DetailerFragment.Parameters { Scope = "detailer_", ... });
 ```
 
 ### 3. Pipeline Flow Pattern
@@ -83,46 +107,78 @@ The `scope` parameter controls namespace isolation:
 **Critical concept:** Processing fragments overwrite main pipeline outputs.
 
 ```
-load-checkpoint (no scope) ? model_output, vae_output, latent_output
-sampler (no scope) ? reads main, writes latent_output (overwrites)
-vae-decode (no scope) ? reads main, writes image_output
+LoadDiffusion (no scope)     -> model_output, clip_output, vae_output
+LoraLoader (no scope)        -> overwrites model_output, clip_output
+EmptyLatent (no scope)       -> latent_output
+Prompts (no scope)           -> positive_output, negative_output
+Sampler (no scope)           -> overwrites latent_output
+VaeDecode (no scope)         -> image_output
 
-load-checkpoint (scope: detailer_) ? detailer_model_output, detailer_vae_output
-detailer-core (scope: detailer_) ? reads detailer_, reads image_output, writes image_output (overwrites)
+LoadDiffusionWithPrompts (scope: detailer_) -> detailer_model_output, etc.
+Detailer (scope: detailer_)  -> reads detailer_*, reads image_output, overwrites image_output
 
-save (no scope) ? reads image_output ? (always exists)
+Save (no scope)              -> reads image_output (always exists)
 ```
 
-**Why this works:** 
+**Why this works:**
 - Conditional fragments (detailer, upscale) overwrite `image_output` when active
 - When skipped, the previous `image_output` remains valid
 - `save` always finds `image_output` regardless of which optional fragments ran
 
 ---
 
-## Template File Structure
+## Workflow Class Structure
 
-Templates are stored in `Workflows/Templates/{base}/` directories.
+Workflow classes are stored in `Workflows/Templates/{Base}/` directories and implement `IWorkflowBuilder`.
 
-### Required Fields
+### Required Interface
 
-```json
+```csharp
+public interface IWorkflowBuilder
 {
-  "Title": "Txt2Img",
-  "Base": "Flux",
-  "Mode": "txt2img",
-  "Assets": [...],
-  "Pipeline": [...]
+    WorkflowMetadata Metadata { get; }
+    ComfyWorkflow Build(GenerationParameters parameters);
+    IEnumerable<IFragmentBuilder> GetFragments();
 }
+```
+
+### Naming Convention
+
+`{Base}{Mode}Workflow.cs` - Examples: `AnimaTxt2ImgWorkflow.cs`, `FluxTxt2ImgWorkflow.cs`, `WanImg2VidWorkflow.cs`
+
+### Workflow Metadata
+
+```csharp
+public WorkflowMetadata Metadata => new()
+{
+    Title = "Txt2Img",
+    Base = Data.Enums.ModelBase.Anima,
+    Mode = ModeType.Txt2Img,
+    Assets = [ ... ]
+};
 ```
 
 | Field | Description |
 |-------|-------------|
 | `Title` | Display name in UI |
-| `Base` | Model base: StableDiffusion, SDXL, Flux, Chroma, Wan, Qwen, ZImage, etc. |
-| `Mode` | Mode type: txt2img, img2img, upscale, img2vid |
+| `Base` | Model base enum: `StableDiffusion`, `Flux`, `Chroma`, `Qwen`, `ZImage`, `Wan`, `Anima` |
+| `Mode` | Mode type: `Txt2Img`, `Img2Img`, `Upscale`, `Img2Vid` |
 | `Assets` | Dynamic model selectors (see [Assets System](#assets-system)) |
-| `Pipeline` | Array of fragment invocations |
+
+### GetFragments()
+
+Returns UI-visible fragments in display order. Hidden/utility fragments (e.g., `LoadDiffusionFragment`) are NOT included here.
+
+```csharp
+public IEnumerable<IFragmentBuilder> GetFragments()
+{
+    yield return _promptsFragment;
+    yield return _emptyLatentFragment;
+    yield return _samplerStandardFragment;
+    yield return _seedVR2UpscaleFragment;
+    yield return _detailerFragment;
+}
+```
 
 ---
 
@@ -130,136 +186,159 @@ Templates are stored in `Workflows/Templates/{base}/` directories.
 
 Assets allow you to specify which models a workflow requires. The application dynamically generates UI dropdowns for users to select these models.
 
-### Asset Definition Format
+### Asset Definition
 
-```json
-"Assets": [
-  {
-    "parameter": "Model",
-    "label": "Diffusion Model",
-    "type": "DiffusionModel",
-    "default": "my-model.safetensors",
-    "order": 1,
-    "columnSize": 4
-  }
-]
+```csharp
+new WorkflowAsset
+{
+    Parameter = "Model",
+    Label = "Model",
+    Type = AssetType.DiffusionModel,
+    DefaultValue = "anima-preview3-base.safetensors",
+    Order = 1,
+    ColumnSize = 4
+}
 ```
 
 ### Asset Properties
 
 | Property | Required | Type | Description |
 |----------|----------|------|-------------|
-| `parameter` | ? Yes | string | Variable name in templates: `{{ Model }}` |
-| `label` | No | string | Display name in UI. Defaults to `parameter` |
-| `type` | ? Yes | string | Asset type (see below) |
-| `default` | No | string | Default filename from ComfyUI |
-| `order` | No | integer | Display order (lower = first). Default: 0 |
-| `columnSize` | No | integer | Grid column width (1-12). Default: 6 |
+| `Parameter` | Yes | string | Key used to retrieve value: `parameters.Assets?.GetValueOrDefault("Model")` |
+| `Label` | No | string | Display name in UI. Defaults to `Parameter` |
+| `Type` | Yes | AssetType | Asset type enum (see below) |
+| `DefaultValue` | No | string | Default filename from ComfyUI |
+| `Order` | No | int | Display order (lower = first). Default: 0 |
+| `ColumnSize` | No | int | Grid column width (1-12). Default: 6 |
 
 ### Asset Types
 
 | Type | ComfyUI Endpoint | Description |
 |------|------------------|-------------|
 | `CheckpointModel` | `checkpoints` | Traditional SD checkpoint files (.safetensors, .ckpt) |
-| `DiffusionModel` | `diffusion_models` / `unet` | Diffusion/UNet model files (Flux, SD3, etc.) |
+| `DiffusionModel` | `diffusion_models` / `unet` | Diffusion/UNet model files (Flux, Anima, ZImage, etc.) |
 | `Vae` | `vae` | VAE model files |
-| `Clip` | `text_encoders` / `clip` | CLIP text encoder models (T5, ViT, etc.) |
+| `Clip` | `text_encoders` / `clip` | CLIP text encoder models |
 | `ClipVision` | `clip_vision` | CLIP vision encoder models |
 
-### Using Assets in Templates
+### Using Assets in Workflows
 
-```json
-// Basic usage
-"unet_name": {{ Model | json }}
-
-// With default fallback
-"vae_name": {{ VAE ?? "ae.safetensors" | json }}
-
-// Multiple assets
-"clip_name1": {{ Clip1 ?? "t5xxl.safetensors" | json }},
-"clip_name2": {{ Clip2 ?? "vit-l.safetensors" | json }}
+```csharp
+// In Build() method - retrieve with fallback
+var modelName = parameters.Assets?.GetValueOrDefault("Model") ?? "default-model.safetensors";
+var clipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "default-clip.safetensors";
 ```
 
 ### Column Layout
 
-| columnSize | Width | Use Case |
+| ColumnSize | Width | Use Case |
 |------------|-------|----------|
 | 12 | Full width | Single large dropdown |
 | 6 | Half width | Two dropdowns per row |
-| 4 | One-third | Three dropdowns per row |
-| 3 | One-quarter | Four dropdowns per row |
-
-### Complete Assets Example
-
-```json
-{
-  "Title": "Txt2Img",
-  "Base": "Flux",
-  "Mode": "txt2img",
-  "Assets": [
-    { "parameter": "Model", "label": "Model", "type": "DiffusionModel", "default": "flux1-dev.safetensors", "order": 1, "columnSize": 3 },
-    { "parameter": "Clip1", "label": "CLIP T5", "type": "Clip", "default": "t5xxl_fp8.safetensors", "order": 2, "columnSize": 3 },
-    { "parameter": "Clip2", "label": "CLIP ViT", "type": "Clip", "default": "vit-l.safetensors", "order": 3, "columnSize": 3 },
-    { "parameter": "VAE", "label": "VAE", "type": "Vae", "default": "ae.safetensors", "order": 4, "columnSize": 3 }
-  ],
-  "Pipeline": [...]
-}
-```
+| 4 | One-third | Three dropdowns per row (Model + CLIP + VAE) |
+| 3 | One-quarter | Four dropdowns per row (Flux: Model + 2 CLIPs + VAE) |
 
 ---
 
-## Fragment File Structure
+## Fragment Class Structure
 
-Fragments are stored in `Workflows/Fragments/` (global) or `Workflows/Fragments/{base}/` (base-specific).
+Fragments are stored in `Workflows/Fragments/` organized by category:
 
-### Standard Fragment Template
+```
+Fragments/
+  Core/           # Shared across all bases (Sampler, Prompts, Save, etc.)
+  Enhancements/   # Optional features (Detailer, Upscale, LoRA, etc.)
+  Loaders/        # Model loading with prompts
+  Flux/           # Flux-specific fragments
+  Wan/            # Wan-specific fragments
+```
 
-```scriban
-#meta
+### Required Interface
+
+```csharp
+public interface IFragmentBuilder
 {
-  "outputs": {
-    "{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}loader", "index": 0 }
-  }
+    FragmentMetadata Metadata { get; }
+    void Build(ComfyWorkflowBuilder builder, GenerationParameters parameters,
+               NodeRegistry registry, string scope = "", string scopeTitle = "");
 }
-#end
+```
 
+### Fragment Metadata
+
+```csharp
+public FragmentMetadata Metadata => new()
 {
-  "{{ scope ?? '' }}loader": {
-    "inputs": {
-      "model_name": {{ model_name | json }}
+    Id = "main_sampler",
+    Type = FragmentType.Sampler,
+    Title = "Sampler",
+    Component = "SamplerForm",      // Blazor component for UI
+    Icon = "fa-solid fa-dice",
+    Order = 50,
+    Collapsible = true,
+    IsHidden = false,               // true for utility fragments (no UI)
+    Parameters = [ ... ]
+};
+```
+
+### Fragment Parameters (UI Definition)
+
+Parameters define what the UI renders for user control:
+
+```csharp
+Parameters =
+[
+    new FragmentParameter
+    {
+        Name = "sampler_name",
+        Label = "Sampler",
+        Type = ParameterType.Select,
+        Source = new DynamicSource("Backend", "Samplers")  // Fetched from ComfyUI
     },
-    "class_type": "UNETLoader",
-    "_meta": {
-      "title": "{{ scope_title ?? '' }}Load Model"
+    new FragmentParameter
+    {
+        Name = "steps",
+        Label = "Steps",
+        Type = ParameterType.Slider,
+        Min = 1, Max = 150, Step = 1,
+        DefaultValue = 20
     }
-  }
-}
+]
+```
+
+### Dynamic Sources
+
+Parameters can fetch their options dynamically from ComfyUI:
+
+| Source | Description |
+|--------|-------------|
+| `new DynamicSource("Backend", "Samplers")` | Sampler algorithms available in ComfyUI |
+| `new DynamicSource("Backend", "Schedulers")` | Scheduler types available in ComfyUI |
+
+### Dual Build Pattern
+
+Fragments support two build methods:
+1. **From GenerationParameters** (interface method) - reads from fragment state dictionary
+2. **From explicit Parameters** (overload) - direct construction by workflow
+
+```csharp
+// Interface method - used when fragment reads its own state
+public void Build(ComfyWorkflowBuilder builder, GenerationParameters parameters,
+                  NodeRegistry registry, string scope = "", string scopeTitle = "")
+
+// Explicit parameters - preferred in workflows for clarity
+public void Build(ComfyWorkflowBuilder builder, NodeRegistry registry,
+                  Parameters fragmentParams, string scope = "")
 ```
 
 ### Fragment Types
 
 | Type | Scope Behavior | Example |
 |------|----------------|---------|
-| **Loader** | Writes outputs to scope | `load-checkpoint.sbn`, `load-flux.sbn` |
-| **Processor** | Reads from scope, writes to main | `sampler.sbn`, `vae-decode.sbn` |
-| **Feature** | Reads models from scope, reads/writes pipeline to main | `detailer-core.sbn`, `upscale.sbn` |
-| **Terminal** | Reads from main only | `save.sbn` |
-
-### Metadata Block
-
-```scriban
-#meta
-{
-  "outputs": {
-    "output_name": { "node": "node_id", "index": 0 }
-  },
-  "conditions": {
-    "required": ["Feature.IsActive"],
-    "excluded_if": ["SomeCondition"]
-  }
-}
-#end
-```
+| **Loader** | Writes outputs to scope | `LoadDiffusionFragment`, `LoadCheckpointFragment` |
+| **Processor** | Reads from scope, writes to main | `SamplerFragment`, `VaeDecodeFragment` |
+| **Feature** | Reads models from scope, reads/writes pipeline to main | `DetailerFragment`, `UpscaleFragment` |
+| **Terminal** | Reads from main only | `SaveFragment` |
 
 ---
 
@@ -271,12 +350,12 @@ The `scope` parameter serves dual purpose:
 - For loaders: Prefix for output names
 - For processors/features: Prefix for input lookups
 
-```scriban
+```csharp
 // Loader: writes to scoped outputs
-"{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}loader", "index": 0 }
+registry.Register($"{scope}model_output", $"{scope}unet_loader", 0);
 
 // Processor: reads from scoped inputs
-"model": {{ get_ref ((scope ?? "") + "model_output") }}
+var modelRef = registry.GetRef($"{scope}model_output");
 ```
 
 ### Standard Scopes
@@ -290,51 +369,98 @@ The `scope` parameter serves dual purpose:
 
 ## Pipeline Data Flow
 
-### Complete Flow Diagram
+### Complete Flow Diagram (Image Txt2Img)
 
 ```
-???????????????????????????????????????????????????????????????????
-? load-checkpoint (scope: "")                                      ?
-?   WRITES: model_output, clip_output, vae_output,                ?
-?           latent_output, positive_output, negative_output        ?
-???????????????????????????????????????????????????????????????????
-                              ?
-                              ?
-???????????????????????????????????????????????????????????????????
-? sampler (scope: "")                                              ?
-?   READS: model_output, positive_output, negative_output,        ?
-?          latent_output                                           ?
-?   WRITES: latent_output (overwrites)                            ?
-???????????????????????????????????????????????????????????????????
-                              ?
-                              ?
-???????????????????????????????????????????????????????????????????
-? vae-decode (scope: "")                                           ?
-?   READS: latent_output, vae_output                              ?
-?   WRITES: image_output                                          ?
-???????????????????????????????????????????????????????????????????
-                              ?
-                              ?
-???????????????????????????????????????????????????????????????????
-? load-checkpoint (scope: "detailer_")                            ?
-?   WRITES: detailer_model_output, detailer_clip_output,          ?
-?           detailer_vae_output, detailer_positive_output, etc.   ?
-???????????????????????????????????????????????????????????????????
-                              ?
-                              ?
-???????????????????????????????????????????????????????????????????
-? detailer-core (scope: "detailer_")  [CONDITIONAL]               ?
-?   READS: detailer_model_output, detailer_clip_output, etc.      ?
-?          image_output (from main!)                              ?
-?   WRITES: image_output (overwrites main)                        ?
-???????????????????????????????????????????????????????????????????
-                              ?
-                              ?
-???????????????????????????????????????????????????????????????????
-? save (no scope)                                                  ?
-?   READS: image_output ? (always exists)                         ?
-???????????????????????????????????????????????????????????????????
++----------------------------------------------------------+
+| LoadDiffusion (scope: "")                                 |
+|   WRITES: model_output, clip_output, vae_output          |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| LoraLoader (scope: "")                  [CONDITIONAL]     |
+|   READS: model_output, clip_output                       |
+|   WRITES: model_output, clip_output (overwrites)         |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| EmptyLatent (scope: "")                                   |
+|   WRITES: latent_output                                  |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| Prompts (scope: "")                                       |
+|   READS: clip_output (LoRA-modified if LoRAs active)     |
+|   WRITES: positive_output, negative_output               |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| Sampler (scope: "")                                       |
+|   READS: model_output, positive_output, negative_output, |
+|          latent_output                                   |
+|   WRITES: latent_output (overwrites)                     |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| VaeDecode (scope: "")                                     |
+|   READS: latent_output, vae_output                       |
+|   WRITES: image_output                                   |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| SeedVR2Upscale (scope: "")              [CONDITIONAL]     |
+|   READS: image_output                                    |
+|   WRITES: image_output (overwrites)                      |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| LoadDiffusionWithPrompts (scope: "detailer_")             |
+|   WRITES: detailer_model_output, detailer_clip_output,   |
+|           detailer_vae_output, detailer_positive_output,  |
+|           detailer_negative_output                       |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| Detailer (scope: "detailer_")           [CONDITIONAL]     |
+|   READS: detailer_model_output, detailer_clip_output,    |
+|          detailer_vae_output, detailer_positive_output,  |
+|          detailer_negative_output, image_output (main!)  |
+|   WRITES: image_output (overwrites main)                 |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| Save (no scope)                                           |
+|   READS: image_output (always exists)                    |
++----------------------------------------------------------+
 ```
+
+### LoRA Wiring
+
+LoRA loading is critical because it modifies `model_output` and `clip_output` before they are consumed by prompt encoding and sampling:
+
+```
+LoadDiffusion -> model_output, clip_output
+                      |              |
+                      v              v
+LoraLoader(s) -> model_output*, clip_output*  (overwrites with LoRA-modified)
+                      |              |
+                      v              v
+Prompts       -> reads clip_output* for text encoding
+Sampler       -> reads model_output* for sampling
+```
+
+**Two LoRA approaches:**
+1. **App-generated nodes** (`LoraLoaderFragment`): Explicit `LoraLoader` nodes that chain `model_output` and `clip_output`. Used by UNet-based workflows (Anima, ZImage, Flux).
+2. **PCLazyLoader** (`LoadCheckpointFragment`): LoRA syntax parsed from prompt text by `PCLazyLoraLoader` nodes. Used by checkpoint-based workflows (StableDiffusion).
 
 ---
 
@@ -342,28 +468,27 @@ The `scope` parameter serves dual purpose:
 
 ### Fragment Conditions
 
-```scriban
-#meta
+Conditional fragments are handled with simple C# `if` statements in the workflow's `Build()` method:
+
+```csharp
+// Check if fragment is active (user toggled it on)
+var seedVr2Fragment = parameters.GetFragment("seed_vr2");
+if (seedVr2Fragment?.IsActive == true)
 {
-  "conditions": {
-    "required": ["Detailer.IsActive"]
-  }
+    _seedVR2UpscaleFragment.Build(builder, registry, new SeedVR2UpscaleFragment.Parameters { ... });
 }
-#end
 ```
 
-### Template-Level Conditionals
+### Type-Safe Parameter Access
 
-```scriban
-"Pipeline": [
-  { "fragment": "load-model.sbn", "parameters": { ... } },
-  
-  {{~ if Upscale.IsActive ~}}
-  { "fragment": "upscale.sbn", "parameters": { ... } },
-  {{~ end ~}}
-  
-  { "fragment": "save.sbn", "parameters": {} }
-]
+Use extension methods on `FragmentParameters` for safe value retrieval:
+
+```csharp
+var fragment = parameters.GetFragment("main_sampler");
+var steps = fragment?.GetInt("steps", 20) ?? 20;
+var cfg = fragment?.GetDouble("cfg", 7.0) ?? 7.0;
+var seed = fragment?.GetLong("seed", -1) ?? -1;
+var sampler = fragment?.GetString("sampler_name", "euler") ?? "euler";
 ```
 
 ---
@@ -372,36 +497,70 @@ The `scope` parameter serves dual purpose:
 
 ### 1. Loaders Write to Scope
 
-```scriban
-"outputs": {
-  "{{ scope ?? '' }}model_output": { "node": "{{ scope ?? '' }}loader", "index": 0 }
-}
+```csharp
+registry.Register($"{scope}model_output", $"{scope}unet_loader", 0);
+registry.Register($"{scope}clip_output", $"{scope}clip_loader", 0);
 ```
 
 ### 2. Processors Read from Scope, Write to Main
 
-```scriban
-"outputs": {
-  "latent_output": { "node": "sampler", "index": 0 }  // No scope prefix!
-}
-
-// In body:
-"model": {{ get_ref ((scope ?? "") + "model_output") }}  // Read from scope
+```csharp
+// Read from scope
+var modelRef = registry.GetRef($"{scope}model_output");
+// Write to main (no scope prefix)
+registry.Register("latent_output", p.SamplerId, 0);
 ```
 
 ### 3. Features Read Models from Scope, Pipeline from Main
 
-```scriban
-// detailer-core.sbn
-"image": {{ get_ref "image_output" }},                           // From main
-"model": {{ get_ref ((scope ?? "detailer_") + "model_output") }}, // From scope
+```csharp
+// DetailerFragment reads image from main, models from scope
+var imageRef = registry.GetRef("image_output");
+var modelRef = registry.GetRef($"{scope}model_output");
 ```
+
+### 4. Maximize Fragment Reuse
+
+Before creating a new fragment, check if an existing one handles the node type. Fragments should be generic enough to work across model bases:
+
+| Node Pattern | Existing Fragment |
+|--------------|-------------------|
+| UNETLoader + CLIPLoader + VAELoader | `LoadDiffusionFragment` |
+| CheckpointLoaderSimple + PCLazy prompts | `LoadCheckpointFragment` |
+| UNETLoader + CLIPLoader + VAELoader + prompts | `LoadDiffusionWithPromptsFragment` |
+| UNETLoader + DualCLIPLoader (Flux) | `LoadFluxFragment` |
+| KSampler | `SamplerStandardFragment` |
+| ClownsharKSampler_Beta | `SamplerFragment` |
+| EmptyLatentImage / EmptySD3LatentImage | `EmptyLatentFragment` |
+| CLIPTextEncode (positive + negative) | `PromptsFragment` |
+| VAEDecode | `VaeDecodeFragment` |
+| SaveImage | `SaveFragment` |
+| LoraLoader (app-generated) | `LoraLoaderFragment` |
+| FaceDetailer | `DetailerFragment` |
+| SeedVR2 upscale pipeline | `SeedVR2UpscaleFragment` |
+| ImageUpscaleWithModel + sampler | `UpscaleFragment` |
+
+### 5. Hardcoded vs UI-Exposed Values
+
+When implementing a workflow, some values are hardcoded (not relevant to the end user) while others are exposed via fragment parameters:
+
+| Category | Examples | Exposed? |
+|----------|----------|----------|
+| Model infrastructure | `clip_type`, `weight_dtype`, `device` | No - hardcoded |
+| Latent class | `EmptyLatentImage` vs `EmptySD3LatentImage` | No - hardcoded per base |
+| Save prefix | `tmp/img` | No - always temp folder |
+| Sampler class | `KSampler` vs `ClownsharKSampler_Beta` | No - hardcoded per workflow |
+| Prompt text | positive/negative | Yes - via PromptsFragment |
+| Resolution | width/height/batch | Yes - via EmptyLatentFragment |
+| Sampler params | steps/cfg/denoise/seed | Yes - via SamplerFragment |
+| Sampler/Scheduler | algorithm names | Yes - dynamic from ComfyUI |
+| Model files | model/clip/vae | Yes - via Assets |
 
 ---
 
 ## Converting Raw Workflows
 
-This section provides a step-by-step guide for converting raw ComfyUI workflow JSON files into the Pipeline-based template system.
+This section provides a step-by-step guide for converting raw ComfyUI workflow JSON files into the fluent builder system.
 
 ### Conversion Process
 
@@ -415,320 +574,197 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
    - **Post-processing**: Upscalers, detailers
    - **Output**: VAE decode, save
 
-3. Note model-specific nodes:
-   - Flux: `DualCLIPLoader`, `FluxGuidance`, `ReFluxPatcher`
-   - SD3: `CLIPLoader` with type
-   - Qwen: `TextEncodeQwenImageEditPlus`, `ModelSamplingAuraFlow`
-   - Wan: Video-specific nodes
-
+3. Note model-specific nodes and their parameters
 4. Identify nodes to remove:
-   - `FlowSelect` (use Scriban conditions instead)
-   - Duplicate save nodes
    - Debug/preview nodes
+   - Duplicate save nodes
+   - Nodes not relevant to the pipeline
 
 #### Step 2: Planning Phase (Required)
 
 **Before creating any files, discuss and document:**
 
-1. **Node Grouping Decisions**
-   - Which nodes should be combined into a single fragment?
-   - Which nodes should be split into separate fragments?
-   - Rationale for each decision
+1. **Fragment Reuse Assessment**
+   - Map each node to an existing fragment (see table above)
+   - Only create new fragments when no existing one covers the node type
+   - New fragments should be generic enough for other workflows to reuse
 
-2. **Output/Input Chaining**
-   - What outputs does each fragment need to register?
-   - What inputs does each fragment need to reference?
-   - Are there any non-standard output names needed (e.g., `image_input`)?
+2. **Model Loading Strategy**
+   - UNet-based (UNETLoader + CLIPLoader + VAELoader): Use `LoadDiffusionFragment`
+   - Checkpoint-based (CheckpointLoaderSimple): Use `LoadCheckpointFragment`
+   - Flux (dual CLIP): Use `LoadFluxFragment`
 
-3. **Fragment Reuse**
-   - Can existing fragments handle these nodes?
-   - If new fragments are needed, will they be reusable for other workflows?
+3. **LoRA Strategy**
+   - App-generated nodes (`LoraLoaderFragment`): Default for UNet-based workflows
+   - PCLazy approach (`LoadCheckpointFragment`): For checkpoint-based workflows
 
-4. **UI Considerations**
-   - What parameters should be exposed to the user?
-   - What should have defaults vs. be required?
-   - Asset definitions and layout
+4. **Sampler Selection**
+   - `KSampler`: Use `SamplerStandardFragment`
+   - `ClownsharKSampler_Beta`: Use `SamplerFragment` (advanced features like eta, bongmath)
 
-5. **Architectural Challenges**
-   - Any unique node types requiring special handling?
-   - Cross-fragment dependencies?
-   - Conditional fragment inclusion?
+5. **Enhancement Fragments**
+   - Image workflows typically include: SeedVR2Upscale, Detailer
+   - Some bases may also include: Upscale, SeedVarianceEnhancer, ConditioningVariation
+
+6. **Hardcoded vs Exposed Values**
+   - Document which values are hardcoded and why
+   - Document all UI-exposed parameters with their defaults
+
+7. **Default Values**
+   - Use values from the raw JSON as sensible defaults
+   - CFG, steps, sampler, scheduler should match the model's recommended settings
 
 **Request approval before proceeding to implementation.**
 
-#### Step 3: Map to Existing Fragments
+#### Step 3: Implementation
 
-Check if existing fragments can handle the nodes:
+1. **Add ModelBase enum value** (if new base) in `Data/Enums.cs`
+2. **Create workflow class** in `Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
+3. **Create any new fragments** in appropriate `Workflows/Fragments/` subdirectory
+4. **Build and test**
 
-| Node Pattern | Existing Fragment |
-|--------------|-------------------|
-| CheckpointLoaderSimple + prompts | `load-checkpoint.sbn` |
-| UNETLoader + CLIPLoader + VAE | `load-diffusion.sbn` or `load-diffusion-w-prompts.sbn` |
-| UNETLoader + DualCLIPLoader (Flux) | `flux/load-flux.sbn` |
-| KSampler / KSamplerAdvanced | `sampler.sbn` or `sampler-standard.sbn` |
-| VAEDecode | `vae-decode.sbn` |
-| VAEEncode | `vae-encode.sbn` |
-| SaveImage | `save.sbn` |
-| FaceDetailer | `detailer-core.sbn` |
-| LoraLoader | `lora-loader.sbn` |
-| ModelSamplingAuraFlow | `model-sampling-auraflow.sbn` |
-| LoadImage + Scale | `load-image-scaled.sbn` |
+#### Step 4: Verification
 
-#### Step 4: Create New Fragments (If Needed)
-
-Create new fragments only when:
-- Unique node types not covered by existing fragments
-- Unique node combinations (e.g., `TextEncodeQwenImageEditPlus`)
-- NOT for parameter differences
-
-Follow the [Fragment Design Principles](#fragment-design-principles).
-
-#### Step 5: Create the Template
-
-1. Define metadata (Title, Base, Mode)
-2. Define Assets for model selection
-3. Build the Pipeline array
-4. Map raw workflow parameters to template variables
-
-#### Step 6: Create Conversion Log
-
-**Always create a conversion log** at `Workflows/Logs/{base}_{mode}_conversion.md`.
-
-The log should include:
-- Planning discussion and decisions made
-- Node mapping to fragments
-- New fragments created and rationale
-- Assets and parameter mapping
-- Special considerations
-- Testing checklist
-- **Raw workflow JSON appended at the bottom**
-
-See [Conversion Log Template](#conversion-log-template) below.
-
-### Conversion Log Template
-
-```markdown
-# {Base} {Mode} Workflow Conversion Log
-
-## Source
-- Template: `Workflows/Templates/{base}/{mode}.sbn`
-
----
-
-## Planning Discussion
-
-### Initial Analysis
-- Description of the workflow
-- Key observations about node structure
-
-### Decisions Made
-
-#### Node Grouping
-| Decision | Rationale |
-|----------|-----------|
-| Combine X + Y into fragment | Always used together, simplifies template |
-| Keep Z separate | May be reused independently |
-
-#### Output/Input Chaining
-- What outputs are registered
-- What non-standard references are needed
-
-#### UI Considerations
-- Parameters to expose
-- Default values rationale
-
----
-
-## Key Design Decisions
-
-### 1. Decision Name
-
-**Decision:** What was decided.
-
-**Rationale:**
-- Why this decision was made
-- Benefits of this approach
-
----
-
-## Node Mapping
-
-| Raw Node ID | Raw Class Type | Fragment | Notes |
-|-------------|----------------|----------|-------|
-| 37 | UNETLoader | load-diffusion-w-prompts.sbn | Model loading |
-| 38 | CLIPLoader | load-diffusion-w-prompts.sbn | Combined with UNet |
-| 3 | KSampler | sampler.sbn | Standard sampler |
-| 8 | VAEDecode | vae-decode.sbn | Standard decode |
-| 60 | SaveImage | save.sbn | Terminal |
-
-## Nodes Removed
-
-| Node ID | Class Type | Reason |
-|---------|------------|--------|
-| 112 | EmptySD3LatentImage | Unused (connected to nothing) |
-
----
-
-## New Fragments Created
-
-| Fragment | Reason |
-|----------|--------|
-| `qwen/encode-edit.sbn` | Qwen-specific image edit encoding |
-
----
-
-## Assets Defined
-
-| Parameter | Type | Default | Notes |
-|-----------|------|---------|-------|
-| Model | DiffusionModel | qwen_edit.safetensors | Main model |
-| Clip | Clip | qwen_clip.safetensors | Text encoder |
-
-## Parameter Mapping
-
-| UI Parameter | Raw Workflow Source | Default | Notes |
-|--------------|---------------------|---------|-------|
-| Prompt | Node 111 ? prompt | - | Positive prompt |
-| Steps | Node 3 ? steps | 20 | Sampler steps |
-| Seed | Node 3 ? seed | 42 | Random seed |
-
----
-
-## Special Considerations
-
-- Notes about unique aspects of this workflow
-- Model chain details
-- CFG handling notes
-
----
-
-## Testing Checklist
-
-- [ ] Template loads without errors
-- [ ] Assets populate in UI
-- [ ] Generation completes successfully
-- [ ] Output matches raw workflow output
-
----
-
-## Raw Workflow Reference
-
-```json
-{
-  // Full raw workflow JSON appended here
-  // IMPORTANT: Clean the following before appending:
-  // - Prompt text (use empty string or placeholder)
-  // - Image/video filenames (use empty string or placeholder)
-  // - Seed values (use placeholder like 0 or 42)
-  // - Any personal/test data
-}
-```
-
-### Raw Workflow Cleanup
-
-Before appending the raw workflow JSON to the log, clean the following:
-
-| Field Type | Example | Clean To |
-|------------|---------|----------|
-| Prompt text | `"prompt": "a photo of..."` | `"prompt": ""` |
-| Negative prompt | `"negative": "bad quality..."` | `"negative": ""` |
-| Image filename | `"image": "test_00001.png"` | `"image": ""` |
-| Video filename | `"video": "output.mp4"` | `"video": ""` |
-| Seed | `"seed": 513958326250122` | `"seed": 0` |
-| Filename prefix | `"filename_prefix": "my/test"` | `"filename_prefix": "output"` |
-
-This ensures users can test the workflow directly in ComfyUI without missing references or hardcoded test data.
-
-### Conversion Checklist
-
-Before submitting a conversion:
-
-- [ ] Planning phase completed and documented
-- [ ] Approval received before creating files
-- [ ] Template metadata complete (Title, Base, Mode)
-- [ ] Assets defined for all user-selectable models
-- [ ] Pipeline fragments use correct scope
-- [ ] All Scriban variables use `| json` filter for JSON output
-- [ ] Default values use `??` operator (NOT `| default:`)
-- [ ] Conditional features use `#meta` conditions
-- [ ] Conversion log created with raw workflow appended
-- [ ] Tested with feature combinations
+- Build compiles without errors
+- Workflow appears in UI with correct metadata
+- Assets populate correctly
+- Generation produces valid ComfyUI JSON
+- ComfyUI executes the workflow successfully
 
 ---
 
 ## Examples
 
-### Minimal Template
+### Minimal Workflow (Anima Txt2Img)
 
-```json
+```csharp
+public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
 {
-  "Title": "Txt2Img",
-  "Base": "StableDiffusion",
-  "Mode": "txt2img",
-  "Assets": [
-    { "parameter": "Model", "type": "CheckpointModel", "default": "v1-5.safetensors" }
-  ],
-  "Pipeline": [
+    private readonly LoadDiffusionFragment _loadDiffusionFragment = new();
+    private readonly LoraLoaderFragment _loraLoaderFragment = new();
+    private readonly EmptyLatentFragment _emptyLatentFragment = new();
+    private readonly PromptsFragment _promptsFragment = new();
+    private readonly SamplerStandardFragment _samplerStandardFragment = new();
+    private readonly VaeDecodeFragment _vaeDecodeFragment = new();
+    private readonly SaveFragment _saveFragment = new();
+
+    public WorkflowMetadata Metadata => new()
     {
-      "fragment": "load-checkpoint.sbn",
-      "parameters": {
-        "loader_id": "loader",
-        "latent_id": "latent",
-        "ckpt_name": {{ Model | json }},
-        "prompt": {{ Prompt | json }},
-        "negative": {{ NegativePrompt | json }},
-        "width": {{ Width | json }},
-        "height": {{ Height | json }},
-        "batch_size": 1
-      }
-    },
+        Title = "Txt2Img",
+        Base = Data.Enums.ModelBase.Anima,
+        Mode = ModeType.Txt2Img,
+        Assets =
+        [
+            new WorkflowAsset { Parameter = "Model", Label = "Model", Type = AssetType.DiffusionModel,
+                                DefaultValue = "anima-preview3-base.safetensors", Order = 1, ColumnSize = 4 },
+            new WorkflowAsset { Parameter = "Clip", Label = "CLIP", Type = AssetType.Clip,
+                                DefaultValue = "qwen_3_06b_base.safetensors", Order = 2, ColumnSize = 4 },
+            new WorkflowAsset { Parameter = "Vae", Label = "VAE", Type = AssetType.Vae,
+                                DefaultValue = "qwen_image_vae.safetensors", Order = 3, ColumnSize = 4 }
+        ]
+    };
+
+    public IEnumerable<IFragmentBuilder> GetFragments()
     {
-      "fragment": "sampler.sbn",
-      "parameters": {
-        "sampler_id": "main",
-        "sampler_name": {{ SamplerName | json }},
-        "scheduler": {{ Scheduler | json }},
-        "steps": {{ Steps | json }},
-        "cfg": {{ CfgScale | json }},
-        "seed": {{ Seed | json }}
-      }
-    },
-    { "fragment": "vae-decode.sbn", "parameters": {} },
-    { "fragment": "save.sbn", "parameters": {} }
-  ]
+        yield return _promptsFragment;
+        yield return _emptyLatentFragment;
+        yield return _samplerStandardFragment;
+    }
+
+    public ComfyWorkflow Build(GenerationParameters parameters)
+    {
+        var builder = new ComfyWorkflowBuilder();
+        var registry = new NodeRegistry();
+
+        // 1. Load models
+        _loadDiffusionFragment.Build(builder, registry, new LoadDiffusionFragment.Parameters
+        {
+            UnetName = parameters.Assets?.GetValueOrDefault("Model") ?? "anima-preview3-base.safetensors",
+            ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_3_06b_base.safetensors",
+            ClipType = "stable_diffusion",    // Hardcoded - not relevant to user
+            VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "qwen_image_vae.safetensors"
+        });
+
+        // 2. LoRAs (app-generated nodes)
+        _loraLoaderFragment.BuildAll(builder, registry, parameters.Loras);
+
+        // 3. Empty latent
+        var latentFragment = parameters.GetFragment("latent");
+        _emptyLatentFragment.Build(builder, registry, new EmptyLatentFragment.Parameters
+        {
+            Width = latentFragment?.GetInt("width", 1024) ?? 1024,
+            Height = latentFragment?.GetInt("height", 1024) ?? 1024,
+            BatchSize = latentFragment?.GetInt("batch_size", 1) ?? 1,
+            LatentClass = "EmptyLatentImage"   // Hardcoded - Anima uses standard latent
+        });
+
+        // 4. Encode prompts (reads clip_output, possibly LoRA-modified)
+        var promptsData = parameters.GetFragment("prompts");
+        _promptsFragment.Build(builder, registry, new PromptsFragment.Parameters
+        {
+            Positive = promptsData?.GetString("positive", "") ?? "",
+            Negative = promptsData?.GetString("negative", "") ?? ""
+        });
+
+        // 5. Sample (KSampler - hardcoded class type)
+        var samplerData = parameters.GetFragment("main_sampler");
+        var seed = samplerData?.GetLong("seed", -1) ?? -1;
+        if (seed < 0) seed = Random.Shared.NextInt64(0, int.MaxValue);
+        _samplerStandardFragment.Build(builder, registry, new SamplerStandardFragment.Parameters
+        {
+            SamplerId = "sampler_main",
+            Title = "KSampler",
+            SamplerName = samplerData?.GetString("sampler_name", "er_sde") ?? "er_sde",
+            Scheduler = samplerData?.GetString("scheduler", "simple") ?? "simple",
+            Steps = samplerData?.GetInt("steps", 30) ?? 30,
+            Cfg = samplerData?.GetDouble("cfg", 4.0) ?? 4.0,
+            Denoise = samplerData?.GetDouble("denoise", 1.0) ?? 1.0,
+            Seed = seed
+        });
+
+        // 6. VAE Decode
+        _vaeDecodeFragment.Build(builder, registry);
+
+        // 7. Save (always to temp folder)
+        _saveFragment.Build(builder, registry, new SaveFragment.Parameters
+        {
+            FilenamePrefix = "tmp/img"         // Hardcoded - temp folder for cleanup
+        });
+
+        return builder.ToComfyWorkflow(registry);
+    }
 }
 ```
 
 ### With Detailer
 
-```json
-"Pipeline": [
-  // Main generation
-  { "fragment": "load-checkpoint.sbn", "parameters": { ... } },
-  { "fragment": "sampler.sbn", "parameters": { ... } },
-  { "fragment": "vae-decode.sbn", "parameters": {} },
-  
-  // Detailer (scoped model)
-  { 
-    "fragment": "load-checkpoint.sbn",
-    "parameters": { 
-      "scope": "detailer_",
-      "scope_title": "Detailer ",
-      "ckpt_name": {{ Detailer.Checkpoint | json }},
-      ...
-    }
-  },
-  { 
-    "fragment": "detailer-core.sbn",
-    "parameters": { 
-      "scope": "detailer_",
-      "detailer_cfg": 8,
-      ...
-    }
-  },
-  
-  { "fragment": "save.sbn", "parameters": {} }
-]
+```csharp
+// In Build() method, after VaeDecode:
+
+var detailerFragment = parameters.GetFragment("detailer");
+if (detailerFragment?.IsActive == true)
+{
+    // Load separate scoped models for detailer
+    _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
+    {
+        UnetName = detailerFragment.GetString("detailer_checkpoint")
+                   ?? parameters.Assets?.GetValueOrDefault("Model") ?? "model.safetensors",
+        ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "clip.safetensors",
+        ClipType = "stable_diffusion",
+        VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "vae.safetensors",
+        Positive = detailerFragment.GetString("detailer_prompt")
+                   ?? promptsFragment?.GetString("positive", "") ?? "",
+        Negative = detailerFragment.GetString("detailer_negative_prompt")
+                   ?? promptsFragment?.GetString("negative", "") ?? ""
+    }, scope: "detailer_", scopeTitle: "Detailer ");
+
+    _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
+    {
+        Scope = "detailer_",
+        DetectionModel = detailerFragment.GetString("detailer_detection_model", "bbox/face_yolov8m.pt"),
+        // ... other detailer params
+    });
+}
 ```
 
 ---
@@ -738,35 +774,31 @@ Before submitting a conversion:
 ### Asset dropdown is empty
 
 1. Check that ComfyUI is running and connected
-2. Verify the asset `type` is spelled correctly (case-insensitive)
+2. Verify the asset `Type` enum value matches a valid ComfyUI endpoint
 3. Check browser console for API errors
 
-### Asset value not being used in workflow
+### Workflow not appearing in UI
 
-1. Ensure `parameter` name matches in Assets and template usage
-2. Use `| json` filter to properly escape strings
-3. Provide fallback: `{{ Model ?? "default.safetensors" | json }}`
+1. Ensure the class implements `IWorkflowBuilder`
+2. Verify `ModelBase` enum value exists in `Data/Enums.cs`
+3. Check that the workflow is discovered via reflection (public, non-abstract class)
 
-### "No Pipeline found in rendered template"
-
-1. Ensure template has `"Pipeline": [...]` array
-2. Check for JSON syntax errors (trailing commas)
-
-### Fragment not included
-
-1. Check `#meta` conditions are met
-2. Verify parameter values evaluate to true
-
-### "get_ref" returns null
+### "No output registered" error
 
 1. Ensure previous fragment registered the required output
-2. Check output name includes correct scope
-3. Verify fragment order in Pipeline
+2. Check output name includes correct scope prefix
+3. Verify fragment execution order in `Build()` method
 
 ### Node ID conflicts
 
 1. Use different scopes for multiple fragment instances
-2. Check internal node references use `{{ scope ?? '' }}`
+2. Check node IDs use `{scope}` prefix internally
+
+### LoRA not applying
+
+1. Verify `LoraLoaderFragment.BuildAll()` is called AFTER `LoadDiffusionFragment`
+2. Verify it is called BEFORE `PromptsFragment` (so clip_output is LoRA-modified)
+3. Check that LoRAs are enabled in `parameters.Loras`
 
 ---
 
@@ -774,128 +806,33 @@ Before submitting a conversion:
 
 ### Scope Parameter
 
-| Fragment | scope controls | Writes to |
-|----------|----------------|-----------|
+| Fragment Type | scope controls | Writes to |
+|---------------|----------------|-----------|
 | Loader | Output prefix | `{scope}model_output`, etc. |
 | Processor | Input prefix | Main (`latent_output`, etc.) |
 | Feature | Model input prefix | Main (`image_output`) |
 | Terminal | N/A | N/A |
 
-### Common Patterns
+### Common Build Order (Image Txt2Img)
 
-```json
-// Main pipeline fragment (no scope)
-{ "fragment": "sampler.sbn", "parameters": { "cfg": 7, ... } }
-
-// Scoped loader
-{ "fragment": "load-checkpoint.sbn", "parameters": { "scope": "detailer_", ... } }
-
-// Feature using scoped models
-{ "fragment": "detailer-core.sbn", "parameters": { "scope": "detailer_", ... } }
-
-// Terminal (always reads main)
-{ "fragment": "save.sbn", "parameters": {} }
+```
+1. LoadDiffusion / LoadCheckpoint / LoadFlux
+2. LoraLoader (if app-generated)
+3. EmptyLatent
+4. Prompts
+5. Sampler
+6. VaeDecode
+7. [SeedVR2Upscale]  (conditional)
+8. [Detailer]         (conditional, with scoped loader)
+9. Save
 ```
 
-### Scriban Filters and Operators
+### Parameter Type Reference
 
-| Filter/Operator | Usage | Example |
-|-----------------|-------|---------|
-| `json` | Escape strings for JSON output | `{{ Prompt \| json }}` |
-| `??` | Default value (null-coalescing) | `{{ Model ?? "default.safetensors" }}` |
-| `math.round` | Round numbers | `{{ Steps \| math.divided_by 4 \| math.round }}` |
-
-#### Default Values Convention
-
-**Always use the `??` operator for default values, NOT the `| default:` filter.**
-
-```scriban
-// ? CORRECT - Use ?? operator
-{{ my_param ?? "default_value" | json }}
-
-// ? WRONG - Do not use | default: filter
-{{ my_param | default: "default_value" | json }}
-```
-
-The `??` operator is the proper Scriban null-coalescing operator and should be applied before the `| json` filter.
-
-**Examples:**
-```scriban
-// String default
-"model": {{ model_name ?? "model.safetensors" | json }}
-
-// Numeric default
-"steps": {{ steps ?? 20 | json }}
-
-// Chained defaults (fallback chain)
-"checkpoint": {{ Detailer.Checkpoint ?? Model ?? "default.safetensors" | json }}
-
-// Empty string default
-"scope": {{ scope ?? "" }}
-```
-
-### Default Value Priority
-
-**Important:** Default values in templates follow a strict priority order:
-
-| Priority | Source | Purpose |
-|----------|--------|---------|
-| **1 (Highest)** | Saved Workflow State | User's previously saved settings (database) |
-| **2** | Pipeline Step Parameters | Workflow-specific defaults in template |
-| **3** | Schema Defaults | Fragment `#meta.ui.parameters.*.default` |
-| **4** | Dynamic Source | First option from ComfyUI API query |
-
-**Best Practices:**
-1. **Pipeline step parameters** are the primary source of defaults
-   - Put workflow-specific values here: `"steps": {{ Steps ?? 20 | json }}`
-   - Different workflows can have different defaults for the same fragment
-
-2. **Fragment body `??` defaults** are rendering fallbacks only
-   - These ONLY apply when the value reaches Scriban as null
-   - Do NOT rely on these for UI initialization
-   - They prevent null reference errors during rendering
-
-3. **Schema defaults** are global fallbacks
-   - Put in `#meta.ui.parameters.*.default` for values that rarely change
-   - Applied when neither saved state nor pipeline provides a value
-
-```json
-// In fragment #meta block - schema defaults (Priority 3)
-"parameters": {
-  "steps": { "min": 1, "max": 150, "step": 1, "default": 20 },
-  "cfg": { "min": 1, "max": 30, "step": 0.5, "default": 7 }
-}
-```
-
-```json
-// In template Pipeline - step parameters (Priority 2, overrides schema)
-{
-  "id": "main_sampler",
-  "fragment": "sampler.sbn",
-  "parameters": {
-    "steps": {{ Steps ?? 9 | json }},  // This workflow uses 9 steps by default
-    "cfg": {{ CfgScale ?? 1 | json }}   // This workflow uses cfg=1 by default
-  }
-}
-```
-
-See [FRAGMENT_SCHEMA_GUIDE.md](./FRAGMENT_SCHEMA_GUIDE.md#default-value-resolution) for complete documentation.
-
----
-
-## Related Files
-
-| File | Purpose |
-|------|---------|
-| `BlazorWebApp/Models/Workflow.cs` | Workflow and WorkflowAsset classes |
-| `BlazorWebApp/Services/WorkflowService.cs` | Template parsing and composition |
-| `BlazorWebApp/Services/ManagerService.cs` | Asset get/set methods |
-| `BlazorWebApp/Components/Shared/WorkflowAssetSelector.razor` | UI component |
-| `BlazorWebApp/Workflows/Templates/` | Workflow template files |
-| `BlazorWebApp/Workflows/Fragments/` | Reusable fragment files |
-| `BlazorWebApp/Workflows/Logs/` | Workflow conversion documentation |
-
----
-
-*Document version: 5.3*
-*Last updated: Added Scriban default value convention (use ?? not | default:)*
+| ParameterType | UI Control | Example |
+|---------------|------------|---------|
+| `Slider` | Range slider | Steps, CFG, Denoise |
+| `Number` | Number input | Seed |
+| `TextArea` | Multi-line text | Prompts |
+| `Select` | Dropdown | Sampler, Scheduler (dynamic from ComfyUI) |
+| `Toggle` | Checkbox | Feature on/off |

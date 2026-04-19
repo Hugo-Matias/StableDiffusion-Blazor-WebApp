@@ -1,70 +1,11 @@
+using BlazorWebApp.Workflows.Models;
+
 namespace BlazorWebApp.Models
 {
     /// <summary>
-    /// Identifies the purpose/category of a fragment.
-    /// Used for programmatic fragment discovery instead of string heuristics.
-    /// </summary>
-    public enum FragmentType
-    {
-        /// <summary>
-        /// Unknown or unspecified fragment type.
-        /// </summary>
-        Unknown = 0,
-
-        /// <summary>
-        /// Model loading fragment (checkpoint, CLIP, VAE loaders).
-        /// Typically has no direct UI - parameters come from Assets.
-        /// </summary>
-        Loader,
-
-        /// <summary>
-        /// Prompt encoding fragment (positive/negative text).
-        /// </summary>
-        Prompts,
-
-        /// <summary>
-        /// Resolution and latent image settings.
-        /// Includes empty latent, latent from image, etc.
-        /// </summary>
-        Latent,
-
-        /// <summary>
-        /// KSampler and sampling-related settings.
-        /// </summary>
-        Sampler,
-
-        /// <summary>
-        /// Required workflow settings and configuration.
-        /// Examples: video settings, animation parameters, mode-specific configuration.
-        /// Always visible (non-collapsible by default).
-        /// </summary>
-        Settings,
-
-        /// <summary>
-        /// CLIP text encoding and conditioning nodes.
-        /// </summary>
-        Conditioning,
-
-        /// <summary>
-        /// Enhancement features like upscale, detailer, refinement.
-        /// Typically optional (defaultCollapsed = true).
-        /// </summary>
-        Enhancement,
-
-        /// <summary>
-        /// Output nodes like save, preview, display.
-        /// </summary>
-        Output,
-
-        /// <summary>
-        /// Utility/helper fragments with no UI.
-        /// </summary>
-        Utility
-    }
-
-    /// <summary>
-    /// Represents the parsed UI schema from a fragment's #meta block.
-    /// Used to determine how a fragment should be rendered in the UI.
+    /// Schema defining a fragment's metadata and parameters for UI rendering.
+    /// Used by the Scriban-based workflow system for parsing #meta blocks.
+    /// Note: New fluent API workflows use FragmentMetadata directly.
     /// </summary>
     public class FragmentSchema
     {
@@ -267,7 +208,7 @@ namespace BlazorWebApp.Models
         /// <summary>
         /// Dynamic data source for select fields.
         /// Contains the ComfyUI node class_type to query for available options.
-        /// Example: "SeedVR2LoadDiTModel", "KSampler"
+        /// Example: "KSampler", "ClownsharKSampler_Beta", "UpscaleModelLoader"
         /// </summary>
         public string? Source { get; set; }
 
@@ -286,11 +227,9 @@ namespace BlazorWebApp.Models
 
         /// <summary>
         /// Returns true if this constraint has a dynamic source.
-        /// For ComfyUI node sources, both Source and InputName are required.
-        /// For Backend.* sources (e.g., Backend.Samplers), only Source is required.
+        /// Both Source (node class_type) and InputName (input field) are required.
         /// </summary>
-        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && 
-            (Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(InputName));
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
 
         /// <summary>
         /// Gets the min value as the specified type.
@@ -424,11 +363,9 @@ namespace BlazorWebApp.Models
 
         /// <summary>
         /// Returns true if this field has a dynamic source.
-        /// For ComfyUI node sources, both Source and InputName are required.
-        /// For Backend.* sources (e.g., Backend.Samplers), only Source is required.
+        /// Both Source (node class_type) and InputName (input field) are required.
         /// </summary>
-        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && 
-            (Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(InputName));
+        public bool HasDynamicSource => !string.IsNullOrEmpty(Source) && !string.IsNullOrEmpty(InputName);
 
         /// <summary>
         /// Converts this FieldSchema to ParameterConstraints for source resolution.

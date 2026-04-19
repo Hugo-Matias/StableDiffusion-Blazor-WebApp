@@ -24,7 +24,7 @@
         <MudExpansionPanel Text=@($"Enabled Loras ({Loras.Count(l => l.IsEnabled)})") @bind-IsExpanded=_isEnabledExpanded>
             @foreach (var lora in Loras.Where(l => l.IsEnabled))
             {
-                <LoraCard Lora="lora" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
             }
         </MudExpansionPanel>
     }
@@ -34,7 +34,7 @@
         >
             @foreach (var lora in Loras.Where(l => !l.IsEnabled))
             {
-                <LoraCard Lora="lora" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
             }
         </MudExpansionPanel>
     }
@@ -44,6 +44,8 @@
     public Backend Backend { get; set; }
     [Parameter]
     public List<Lora> Loras { get; set; }
+    [Parameter]
+    public bool IsDualModel { get; set; }
     [Parameter]
     public EventCallback OnLorasUpdated { get; set; }
 
@@ -62,13 +64,17 @@
     {
         if (string.IsNullOrWhiteSpace(_lora)) return;
 
+        var name = Path.GetFileNameWithoutExtension(_lora);
+        var path = _lora;
+
         Loras.Add(new()
         {
-            Name = Path.GetFileNameWithoutExtension(_lora),
-            Path = _lora,
+            Name = name,
+            Path = path,
             IsNegative = false,
             Strength = 1,
-            IsEnabled = true
+            IsEnabled = true,
+            HighPath = IsDualModel ? path : null
         });
 
         await OnLorasUpdated.InvokeAsync();
@@ -82,8 +88,6 @@
 
     public async Task UpdateLora(Lora lora)
     {
-        // var index = Loras.FindIndex(l => l.File == lora.File);
-        // if (index >= 0) Loras[index] = lora;
         await OnLorasUpdated.InvokeAsync();
     }
 }

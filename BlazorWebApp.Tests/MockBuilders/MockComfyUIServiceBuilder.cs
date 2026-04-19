@@ -11,9 +11,6 @@ namespace BlazorWebApp.Tests.MockBuilders
     {
         private readonly Mock<IComfyUIService> _mock;
         private bool _isAvailable = true;
-        private List<Models.Sampler>? _samplers;
-        private List<Scheduler>? _schedulers;
-        private List<Upscaler>? _upscalers;
 
         public MockComfyUIServiceBuilder()
         {
@@ -30,33 +27,6 @@ namespace BlazorWebApp.Tests.MockBuilders
         }
 
         /// <summary>
-        /// Sets the samplers that will be returned
-        /// </summary>
-        public MockComfyUIServiceBuilder WithSamplers(List<Models.Sampler> samplers)
-        {
-            _samplers = samplers;
-            return this;
-        }
-
-        /// <summary>
-        /// Sets the schedulers that will be returned
-        /// </summary>
-        public MockComfyUIServiceBuilder WithSchedulers(List<Scheduler> schedulers)
-        {
-            _schedulers = schedulers;
-            return this;
-        }
-
-        /// <summary>
-        /// Sets the upscalers that will be returned
-        /// </summary>
-        public MockComfyUIServiceBuilder WithUpscalers(List<Upscaler> upscalers)
-        {
-            _upscalers = upscalers;
-            return this;
-        }
-
-        /// <summary>
         /// Builds the mock with all configured behaviors
         /// </summary>
         public Mock<IComfyUIService> Build()
@@ -64,18 +34,6 @@ namespace BlazorWebApp.Tests.MockBuilders
             // Setup health check
             _mock.Setup(x => x.CheckComfyUIState())
                 .ReturnsAsync(_isAvailable);
-
-            // Setup samplers
-            _mock.Setup(x => x.GetSamplers())
-                .ReturnsAsync(_samplers ?? new List<Models.Sampler>());
-
-            // Setup schedulers
-            _mock.Setup(x => x.GetSchedulers())
-                .ReturnsAsync(_schedulers ?? new List<Scheduler>());
-
-            // Setup upscalers
-            _mock.Setup(x => x.GetUpscalers())
-                .ReturnsAsync(_upscalers ?? new List<Upscaler>());
 
             return _mock;
         }

@@ -106,12 +106,12 @@
     private void UpdateGenerationParameters()
     {
         // Update prompts fragment
-        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
         promptsFragment.SetValue(FragmentKeys.Params.Positive, Image.Prompt ?? "");
         promptsFragment.SetValue(FragmentKeys.Params.Negative, Image.NegativePrompt ?? "");
         
         // Update sampler fragment
-        var samplerFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+        var samplerFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
         samplerFragment.SetValue(FragmentKeys.Params.Seed, Image.Seed ?? -1L);
         samplerFragment.SetValue(FragmentKeys.Params.Steps, Image.Steps ?? 20);
         samplerFragment.SetValue(FragmentKeys.Params.Cfg, (double)(Image.CfgScale ?? 7.0f));
@@ -123,14 +123,14 @@
         }
         
         // Update latent fragment
-        var latentFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.Latent);
+        var latentFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
         latentFragment.SetValue(FragmentKeys.Params.Width, Image.Width);
         latentFragment.SetValue(FragmentKeys.Params.Height, Image.Height);
         
         // Update upscale fragment if HiRes was used
         if (Image.HiresUpscale != null)
         {
-            var upscaleFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Upscale, FragmentKeys.Files.Upscale);
+            var upscaleFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Upscale);
             upscaleFragment.IsActive = true;
             upscaleFragment.SetValue("upscaler", Image.HiresUpscaler);
             if (double.TryParse(Image.HiresUpscale, out var scale))

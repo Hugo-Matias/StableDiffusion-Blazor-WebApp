@@ -26,6 +26,7 @@ namespace BlazorWebApp.Services
 
         public DirectoryInfo? GetFolderByName(string path, string folderName)
         {
+            if (!Directory.Exists(path)) return null;
             var dir = Directory.GetDirectories(path, $"{folderName}*").FirstOrDefault();
             if (dir == null) return null;
             return new DirectoryInfo(dir);

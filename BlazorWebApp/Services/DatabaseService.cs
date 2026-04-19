@@ -3,7 +3,6 @@ using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
-using Sampler = BlazorWebApp.Models.Sampler;
 
 namespace BlazorWebApp.Services
 {
@@ -30,6 +29,7 @@ namespace BlazorWebApp.Services
             PopulateModes();
             PopulateSamplers();
             SeedDefaultSystemPromptTemplates();
+            SeedResourceTypes();
         }
 
         public async Task InitializeDatabase()
@@ -581,28 +581,28 @@ namespace BlazorWebApp.Services
 
         private async Task PopulateSamplers()
         {
-            var samplers = new List<Sampler>();
+            var samplerNames = new List<string>();
             try
             {
-                samplers = await _capi.GetSamplers();
+                samplerNames = await _capi.GetNodeInputOptionsAsync("KSampler", "sampler_name");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Could not retrieve samplers from ComfyUI backend.");
             }
 
-            if (samplers.Count == 0)
+            if (samplerNames.Count == 0)
             {
                 _logger.LogWarning("No samplers retrieved, backend may not be available.");
                 return;
             }
 
             using var context = await _factory.CreateDbContextAsync();
-            foreach (var sampler in samplers)
+            foreach (var name in samplerNames)
             {
-                var currentSampler = context.Samplers.SingleOrDefault(s => s.Name.ToLower() == sampler.Name.ToLower());
+                var currentSampler = context.Samplers.SingleOrDefault(s => s.Name.ToLower() == name.ToLower());
                 if (currentSampler == null)
-                    await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = sampler.Name });
+                    await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = name });
             }
             await context.SaveChangesAsync();
         }
@@ -629,6 +629,19 @@ namespace BlazorWebApp.Services
                 var record = await context.Modes.FirstOrDefaultAsync(o => o.Type == mode);
                 if (record == null)
                     await context.Modes.AddAsync(new Mode { Type = mode });
+            }
+            await context.SaveChangesAsync();
+        }
+
+        private async void SeedResourceTypes()
+        {
+            var requiredTypes = new[] { "Checkpoint", "Diffusion", "TextualInversion", "Hypernetwork", "LORA", "LoCon", "VAE" };
+            using var context = await _factory.CreateDbContextAsync();
+            foreach (var typeName in requiredTypes)
+            {
+                var exists = await context.ResourceTypes.AnyAsync(t => t.Name == typeName);
+                if (!exists)
+                    await context.ResourceTypes.AddAsync(new ResourceType { Name = typeName });
             }
             await context.SaveChangesAsync();
         }

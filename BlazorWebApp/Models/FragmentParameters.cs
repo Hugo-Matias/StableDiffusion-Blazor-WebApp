@@ -10,18 +10,17 @@ namespace BlazorWebApp.Models
     public class FragmentParameters
     {
         /// <summary>
-        /// The fragment file this instance uses (e.g., "sampler.sbn").
+        /// The fragment identifier this instance uses (matches FragmentMetadata.Id).
         /// </summary>
         public string FragmentFile { get; set; } = string.Empty;
 
         /// <summary>
-        /// Whether this fragment is active. Inactive fragments are skipped during rendering.
+        /// Whether this fragment is active. Inactive fragments are skipped during workflow composition.
         /// </summary>
         public bool IsActive { get; set; } = true;
 
         /// <summary>
-        /// Order in the pipeline (for chainable fragments).
-        /// Lower values render first.
+        /// Order for UI display (lower values appear first).
         /// </summary>
         public int Order { get; set; }
 
@@ -334,6 +333,45 @@ namespace BlazorWebApp.Models
                 return default;
             }
         }
+
+        #endregion
+
+        #region Convenience Methods
+
+        /// <summary>
+        /// Gets an integer value with a default fallback.
+        /// </summary>
+        public int GetInt(string key, int defaultValue = 0) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a long value with a default fallback.
+        /// </summary>
+        public long GetLong(string key, long defaultValue = 0) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a float value with a default fallback.
+        /// </summary>
+        public float GetFloat(string key, float defaultValue = 0f) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a double value with a default fallback.
+        /// </summary>
+        public double GetDouble(string key, double defaultValue = 0d) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a boolean value with a default fallback.
+        /// </summary>
+        public bool GetBool(string key, bool defaultValue = false) => GetValueOrDefault(key, defaultValue);
+
+        /// <summary>
+        /// Gets a string value with a default fallback.
+        /// </summary>
+        public string GetString(string key, string defaultValue = "") => GetValueOrDefault(key, defaultValue) ?? defaultValue;
+
+        /// <summary>
+        /// Gets a string value or null if not found.
+        /// </summary>
+        public string? GetString(string key) => GetValue<string>(key);
 
         #endregion
     }

@@ -40,7 +40,7 @@
                                 {
                                     @if (Image.Meta.HiresUpscale != null)
                                     {
-                                        <MudTextField Label="Upscaler" Value=@Image.Meta.HiresUpscaler T="string"
+                                        <MudTextField Label="Upscaler" Value=@Image.Meta.HiresUpscale T="string"
                                                                 ReadOnly />
                                     }
                                     @if (Image.Meta.HiresUpscale != null)
@@ -127,12 +127,12 @@
     private void UpdateGenerationParameters()
     {
         // Update prompts fragment
-        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
         promptsFragment.SetValue(FragmentKeys.Params.Positive, Image.Meta.Prompt ?? "");
         promptsFragment.SetValue(FragmentKeys.Params.Negative, Image.Meta.NegativePrompt ?? "");
         
         // Update sampler fragment
-        var samplerFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+        var samplerFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
         samplerFragment.SetValue(FragmentKeys.Params.Seed, Image.Meta.Seed);
         samplerFragment.SetValue(FragmentKeys.Params.Steps, Image.Meta.Steps);
         samplerFragment.SetValue(FragmentKeys.Params.Cfg, (double)Image.Meta.CfgScale);
@@ -144,7 +144,7 @@
         }
         
         // Update latent fragment
-        var latentFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.Latent);
+        var latentFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
         latentFragment.SetValue(FragmentKeys.Params.Width, Image.Width);
         latentFragment.SetValue(FragmentKeys.Params.Height, Image.Height);
     }

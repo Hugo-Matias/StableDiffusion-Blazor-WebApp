@@ -206,18 +206,19 @@ async function layoutMasonry() {
 function waitForImages(container) {
     return new Promise((resolve) => {
         const images = container.querySelectorAll('img');
+        const videos = container.querySelectorAll('video');
 
-        if (images.length === 0) {
+        const totalMedia = images.length + videos.length;
+        if (totalMedia === 0) {
             resolve();
             return;
         }
 
         let loadedCount = 0;
-        let totalImages = images.length;
 
         const checkComplete = () => {
             loadedCount++;
-            if (loadedCount >= totalImages) {
+            if (loadedCount >= totalMedia) {
                 // Give a small delay for final rendering
                 setTimeout(resolve, 50);
             }
@@ -232,10 +233,19 @@ function waitForImages(container) {
             }
         });
 
-        // Fallback timeout in case some images never trigger load/error
+        videos.forEach(video => {
+            if (video.readyState >= 1) {
+                checkComplete();
+            } else {
+                video.addEventListener('loadedmetadata', checkComplete, { once: true });
+                video.addEventListener('error', checkComplete, { once: true });
+            }
+        });
+
+        // Fallback timeout in case some media never trigger load/error
         setTimeout(() => {
-            if (loadedCount < totalImages) {
-                console.warn(`Only ${loadedCount}/${totalImages} images loaded, proceeding anyway`);
+            if (loadedCount < totalMedia) {
+                console.warn(`Only ${loadedCount}/${totalMedia} media items loaded, proceeding anyway`);
                 resolve();
             }
         }, 3000);

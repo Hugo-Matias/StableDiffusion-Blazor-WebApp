@@ -3,10 +3,14 @@ using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Models
 {
+    /// <summary>
+    /// Workflow reference for UI state management.
+    /// Used by services to represent discovered workflows from C# IWorkflowBuilder implementations.
+    /// </summary>
     public class Workflow
     {
         public Guid Id { get; set; }
-        public string Title { get; set; }
+        public string Title { get; set; } = "";
         public ModelBase Base { get; set; }
         public ModeType Mode { get; set; }
         
@@ -21,9 +25,6 @@ namespace BlazorWebApp.Models
         /// Used for Img2Img, Img2Vid, ControlNet inputs, etc.
         /// </summary>
         public List<WorkflowSource>? Sources { get; set; }
-        
-        public List<WorkflowStep> Pipeline { get; set; }
-        public string RawJson { get; set; }
     }
 
     /// <summary>
@@ -31,83 +32,10 @@ namespace BlazorWebApp.Models
     /// </summary>
     public class WorkflowSource
     {
-        /// <summary>
-        /// Unique ID for this source within the workflow.
-        /// </summary>
-        public string Id { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Display label for the input.
-        /// </summary>
-        public string Label { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Type of source: "image" or "video".
-        /// </summary>
+        public string Id { get; set; } = "";
+        public string Label { get; set; } = "";
         public string Type { get; set; } = "image";
-        
-        /// <summary>
-        /// Whether this source is required for generation.
-        /// </summary>
         public bool Required { get; set; } = true;
-        
-        /// <summary>
-        /// Parameter name in the workflow template that receives this source.
-        /// </summary>
-        public string Parameter { get; set; } = string.Empty;
-    }
-
-    public class WorkflowStep
-    {
-        /// <summary>
-        /// Unique identifier for this step in the pipeline.
-        /// Used as the key in GenerationParameters.Fragments.
-        /// </summary>
-        public string Id { get; set; } = string.Empty;
-        
-        public string Fragment { get; set; }
-        public string RawParameters { get; set; }
-        public Dictionary<string, object> Parameters { get; set; }
-        public Dictionary<string, OutputMapping> Outputs { get; set; }
-    }
-
-    public class OutputMapping
-    {
-        public string Node { get; set; }
-        public int Index { get; set; }
-    }
-
-    public class SubgraphContext
-    {
-        public Dictionary<string, object> Parameters { get; set; } = new();
-        public NodeRegistry Outputs { get; set; } = new();
-    }
-
-    public class NodeRegistry
-    {
-        private readonly Dictionary<string, (string nodeId, int outputIndex)> _outputs = new();
-
-        public void Register(string key, string nodeId, int outputIndex = 0)
-        {
-            _outputs[key] = (nodeId, outputIndex);
-        }
-
-        public string GetReference(string key)
-        {
-            if (!_outputs.TryGetValue(key, out var refData))
-            {
-                var availableKeys = string.Join(", ", _outputs.Keys.OrderBy(k => k).Select(k => $"'{k}'"));
-                throw new KeyNotFoundException(
-                    $"No node registered for key '{key}'. Available keys: {availableKeys}");
-            }
-
-            return $"[\"{refData.nodeId}\", {refData.outputIndex}]";
-        }
-
-        public void Merge(NodeRegistry other)
-        {
-            foreach (var kvp in other._outputs)
-                _outputs[kvp.Key] = kvp.Value;
-        }
+        public string Parameter { get; set; } = "";
     }
 }

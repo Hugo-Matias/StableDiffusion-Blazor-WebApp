@@ -24,6 +24,11 @@ namespace BlazorWebApp.Services
         private readonly ILogger<CivitaiService> _logger;
         private readonly List<string> _ignoreFileType = new() { "config" };
         private readonly List<CivitaiModelType> _ignoreModelTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
+        private const string BaseModelsJsonPath = "Data/CivitAI/basemodels.json";
+        private static CivitaiBaseModelsData? _cachedBaseModelsData;
+        private static readonly object _baseModelsLock = new();
+
+        public CivitaiBaseModelsData BaseModelsData { get; private set; } = new();
 
         public CivitaiService(HttpClient httpClient, IConfiguration configuration, IImageService img, IIOService io, IEventService events, IDatabaseService db, IProgressService progress, ILogger<CivitaiService> logger)
         {
@@ -37,6 +42,40 @@ namespace BlazorWebApp.Services
             _httpClient = httpClient;
             _httpClient.BaseAddress = new Uri("https://civitai.com/api/");
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _configuration["CivitaiApiToken"]);
+            LoadBaseModelsData();
+        }
+
+        private void LoadBaseModelsData()
+        {
+            lock (_baseModelsLock)
+            {
+                if (_cachedBaseModelsData != null)
+                {
+                    BaseModelsData = _cachedBaseModelsData;
+                    return;
+                }
+            }
+
+            try
+            {
+                var json = _io.LoadText(BaseModelsJsonPath);
+                if (json != null)
+                {
+                    var data = JsonSerializer.Deserialize<CivitaiBaseModelsData>(json);
+                    if (data != null)
+                    {
+                        lock (_baseModelsLock)
+                        {
+                            _cachedBaseModelsData = data;
+                        }
+                        BaseModelsData = data;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load base models data from {Path}", BaseModelsJsonPath);
+            }
         }
 
         public async Task<CivitaiCreatorsDto> GetCreators(CivitaiBaseRequest req)
@@ -160,7 +199,7 @@ namespace BlazorWebApp.Services
             var sort = req.Sort != null ? $"sort={req.Sort.ToString().Replace("_", " ")}&" : string.Empty;
             var period = req.Period != null ? $"period={req.Period}&" : string.Empty;
             var rating = req.Rating > -1 ? $"rating={req.Rating}&" : string.Empty;
-            var baseModels = req.BaseModels != null && req.BaseModels != "All" ? $"baseModels={req.BaseModels}&" : string.Empty;
+            var baseModels = req.BaseModels != null && req.BaseModels.Any() ? string.Join("&", req.BaseModels.Select(b => $"baseModels={Uri.EscapeDataString(b)}")) + "&" : string.Empty;
             //var page = req.Page > 0 ? $"page={req.Page}&" : string.Empty;
             //var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
             //var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;
@@ -277,9 +316,10 @@ namespace BlazorWebApp.Services
 
         public async Task<CivitaiModelVersionDto> GetModelVersion(int id) => await _httpClient.GetFromJsonAsync<CivitaiModelVersionDto>($"v1/model-versions/{id}");
 
-        public async Task<CivitaiDownloadStatus> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null)
+        public async Task<CivitaiDownloadStatus> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null, string? typeOverride = null)
         {
             CivitaiDownloadStatus status;
+            var resourceType = typeOverride ?? model.Type;
             try
             {
                 var url = $"download/models/{version.Id}?type={file.Type}&format={file.Metadata.Format}";
@@ -295,7 +335,7 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Get/Create Directory
-                var path = Path.Combine(_configuration["ResourcesPath"], "_storage", model.Type);
+                var path = Path.Combine(_configuration["ResourcesPath"], "_storage", resourceType);
                 if (subtype != null && !subtype.Equals("none", StringComparison.InvariantCultureIgnoreCase)) path = Path.Combine(path, subtype);
                 Directory.CreateDirectory(path);
                 #endregion
@@ -309,7 +349,7 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Download Preview Image
-                var previewPath = Path.Combine(_configuration["ResourcePreviewsPath"], model.Type, Path.GetFileNameWithoutExtension(file.Name) + ".png");
+                var previewPath = Path.Combine(_configuration["ResourcePreviewsPath"], resourceType, Path.GetFileNameWithoutExtension(file.Name) + ".png");
                 if (!File.Exists(previewPath))
                 {
                     var index = 0;
@@ -340,11 +380,15 @@ namespace BlazorWebApp.Services
                 if (!_ignoreModelTypes.Contains((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)) && !_ignoreFileType.Contains(file.Type.ToLower()))
                 {
                     var entity = new Resource(model, version, file);
+                    if (typeOverride != null) entity.Type = new() { Name = resourceType };
                     if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
                     var isAdded = await _db.CreateResource(entity);
                     if (!isAdded) status = CivitaiDownloadStatus.Exists;
                 }
                 #endregion
+
+                if (status == CivitaiDownloadStatus.Success)
+                    _events.Publish(new DownloadCompletedEventArgs(file.Name));
             }
             catch (Exception ex)
             {

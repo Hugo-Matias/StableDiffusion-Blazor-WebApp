@@ -14,7 +14,6 @@ namespace BlazorWebApp.Services
 
         // Model Retrieval
         Task<List<SDModel>> GetCheckpoints();
-        Task<List<Upscaler>> GetUpscalers();
         Task<List<string>> GetVAEModels();
         Task<List<string>> GetTextEncoders();
         Task<List<SDModel>> GetDiffusionModels();
@@ -23,10 +22,6 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetLoras();
         Task<List<string>> SearchLoras(string search);
         Task<List<string>> GetBBoxDetailers();
-        Task<List<Models.Sampler>> GetSamplers();
-        Task<List<Models.Scheduler>> GetSchedulers();
-        Task<List<string>> GetDetailerSamplers();
-        Task<List<string>> GetDetailerSchedulers();
 
         /// <summary>
         /// Gets input options for a specific node input from ComfyUI's object_info API.

@@ -11,7 +11,7 @@
 @implements IAsyncDisposable
 @implements IDisposable
 
-<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+<div class="@GetCardClasses()" style="@GetCardStyle()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
     @* Video Container *@
     <div class="video-wrapper">
         <video id="@_videoId"
@@ -222,6 +222,15 @@
         if (_isSelected) classes += " selected";
         if (_isHovered || _isMenuOpen) classes += " hovered";
         return classes;
+    }
+
+    private string GetCardStyle()
+    {
+        if (Video.Width > 0 && Video.Height > 0)
+        {
+            return $"aspect-ratio: {Video.Width} / {Video.Height};";
+        }
+        return "";
     }
 
     private string GetVideoUrl()

@@ -35,7 +35,7 @@ namespace BlazorWebApp.Tests.MockBuilders
             // Create default fragments
             var promptsFragment = new FragmentParameters
             {
-                FragmentFile = FragmentKeys.Files.Prompts,
+                FragmentFile = FragmentKeys.Fragments.Prompts,
                 IsActive = true
             };
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
@@ -44,7 +44,7 @@ namespace BlazorWebApp.Tests.MockBuilders
             
             var samplerFragment = new FragmentParameters
             {
-                FragmentFile = FragmentKeys.Files.Sampler,
+                FragmentFile = FragmentKeys.Fragments.MainSampler,
                 IsActive = true
             };
             samplerFragment.SetValue(FragmentKeys.Params.Seed, -1L);
@@ -57,7 +57,7 @@ namespace BlazorWebApp.Tests.MockBuilders
             
             var latentFragment = new FragmentParameters
             {
-                FragmentFile = FragmentKeys.Files.EmptyLatent,
+                FragmentFile = FragmentKeys.Fragments.Latent,
                 IsActive = true
             };
             latentFragment.SetValue(FragmentKeys.Params.Width, 512);
@@ -129,7 +129,7 @@ namespace BlazorWebApp.Tests.MockBuilders
         /// </summary>
         public MockStateServiceBuilder WithPrompts(string positive, string negative = "")
         {
-            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             promptsFragment.SetValue(FragmentKeys.Params.Positive, positive);
             promptsFragment.SetValue(FragmentKeys.Params.Negative, negative);
             return this;
@@ -140,7 +140,7 @@ namespace BlazorWebApp.Tests.MockBuilders
         /// </summary>
         public MockStateServiceBuilder WithSamplerSettings(int steps, double cfg, long seed = -1)
         {
-            var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, steps);
             samplerFragment.SetValue(FragmentKeys.Params.Cfg, cfg);
             samplerFragment.SetValue(FragmentKeys.Params.Seed, seed);
@@ -152,7 +152,7 @@ namespace BlazorWebApp.Tests.MockBuilders
         /// </summary>
         public MockStateServiceBuilder WithResolution(int width, int height)
         {
-            var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+            var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
             latentFragment.SetValue(FragmentKeys.Params.Width, width);
             latentFragment.SetValue(FragmentKeys.Params.Height, height);
             return this;

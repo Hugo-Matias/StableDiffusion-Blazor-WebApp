@@ -1,6 +1,6 @@
 ﻿<MudPaper Class="p-1 mb-1">
     <MudGrid Class="d-flex align-items-center">
-        <MudItem xs="7">
+        <MudItem xs="@(IsDualModel ? 5 : 7)">
             <MudText Class="ms-3">@Lora.Name</MudText>
         </MudItem>
         <MudItem xs="2">
@@ -10,6 +10,18 @@
                              Variant="Variant.Text"
                              Min="-5f" Max="5f" Step="0.05f" Format="N2" />
         </MudItem>
+        @if (IsDualModel)
+        {
+            <MudItem xs="1">
+                <MudButton Variant="Variant.Filled"
+                           Color="@(_isHigh ? Color.Primary : Color.Secondary)"
+                           Size="Size.Small"
+                           OnClick="TogglePath"
+                           Title="@(_isHigh ? "Assigned to High model" : "Assigned to Low model")" Style="margin: -5px">
+                    @(_isHigh ? "H" : "L")
+                </MudButton>
+            </MudItem>
+        }
         <MudItem xs="1">
             <MudToggleIconButton Toggled="Lora.IsNegative"
                                  ToggledChanged="@(async (bool v) => await OnIsNegativeChanged(v))"
@@ -36,8 +48,34 @@
 
 @code {
     [Parameter] public Lora Lora { get; set; }
+    [Parameter] public bool IsDualModel { get; set; }
     [Parameter] public EventCallback<Lora> OnRemoveLora { get; set; }
     [Parameter] public EventCallback<Lora> OnLoraChanged { get; set; }
+
+    private bool _isHigh;
+
+    protected override void OnParametersSet()
+    {
+        _isHigh = Lora.HasHighPath || !Lora.HasLowPath;
+    }
+
+    private async Task TogglePath()
+    {
+        var path = Lora.Path;
+        if (_isHigh)
+        {
+            Lora.LowPath = path;
+            Lora.HighPath = null;
+            _isHigh = false;
+        }
+        else
+        {
+            Lora.HighPath = path;
+            Lora.LowPath = null;
+            _isHigh = true;
+        }
+        await NotifyLoraChanged();
+    }
 
     private async Task OnStrengthChanged(float value)
     {

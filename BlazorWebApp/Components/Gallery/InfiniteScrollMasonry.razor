@@ -276,6 +276,11 @@
         }
     }
 
+    private void HandleVideoViewerVisibilityChanged(bool isVisible)
+    {
+        _showVideoViewer = isVisible;
+    }
+
     private void SelectAll()
     {
         if (Images?.Images == null) return;

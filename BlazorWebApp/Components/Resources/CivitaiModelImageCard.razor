@@ -2,7 +2,17 @@
 @inject CivitaiService Civitai
 <div>
     <MudButton OnClick=ShowImage Class="image-btn">
-        <MudImage Src="@Image.Url" ObjectFit="ObjectFit.Cover" Elevation="4" Fluid />
+        @if (IsVideo())
+        {
+            <video style="width:100%; object-fit:cover;" loop muted playsinline preload="metadata"
+                               onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0;">
+                <source src="@Image.Url" />
+            </video>
+        }
+        else
+        {
+            <MudImage Src="@Image.Url" ObjectFit="ObjectFit.Cover" Elevation="4" Fluid />
+        }
      </MudButton>
  </div>
 
@@ -10,6 +20,20 @@
     [Parameter] public CivitaiImageDto Image { get; set; }
     [Parameter] public EventCallback OnSaveImage { get; set; }
     [Parameter] public int ModelVersionId { get; set; }
+
+    private bool IsVideo()
+    {
+        if (Image.ImageType != null && Image.ImageType.Length > 0 && Image.ImageType[0] == 0)
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(Image.Url))
+        {
+            var url = Image.Url.ToLowerInvariant();
+            return url.Contains(".mp4") || url.Contains(".webm");
+        }
+
+        return false;
+    }
 
     private async Task ShowImage()
     {

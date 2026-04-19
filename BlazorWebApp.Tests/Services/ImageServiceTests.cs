@@ -59,17 +59,17 @@ public class ImageServiceTests
         // Setup GenerationParameters
         _generationParameters = new GenerationParameters();
         
-        var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+        var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
         promptsFragment.SetValue(FragmentKeys.Params.Positive, "test prompt");
         promptsFragment.SetValue(FragmentKeys.Params.Negative, "bad quality");
         
-        var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+        var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
         samplerFragment.SetValue(FragmentKeys.Params.Steps, 20);
         samplerFragment.SetValue(FragmentKeys.Params.Cfg, 7.0);
         samplerFragment.SetValue(FragmentKeys.Params.SamplerName, "euler");
         samplerFragment.SetValue(FragmentKeys.Params.Seed, 12345L);
         
-        var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+        var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
         latentFragment.SetValue(FragmentKeys.Params.Width, 512);
         latentFragment.SetValue(FragmentKeys.Params.Height, 512);
 

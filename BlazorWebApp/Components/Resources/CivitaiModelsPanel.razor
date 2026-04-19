@@ -1,8 +1,11 @@
+@using BlazorWebApp.Events
 @inject IStateService State
 @inject ISettingsService Settings
 @inject CivitaiService Api
 @inject IDatabaseService DB
 @inject IDialogService DialogService
+@inject IEventService Events
+@implements IDisposable
 
 <div>
     <EditForm Model=Request OnSubmit="Search">
@@ -16,12 +19,44 @@
                     AdornmentIcon="fa-solid fa-hashtag" Clearable />
             </MudItem>
             <MudItem xs="3">
-                <MudSelect @bind-Value=Request.BaseModels Label="Base Model" AnchorOrigin="Origin.BottomLeft"
-                    TransformOrigin="Origin.TopLeft" MaxHeight="400">
-                    <MudSelectItem Value=@("All") />
-                    @foreach (string model in Settings.Settings.Resources.Civitai.BaseModels)
+                <MudSelect T="string" Label="Base Model" MultiSelection Class="base-model-select"
+                    SelectedValues="_selectedBaseModels" SelectedValuesChanged="HandleBaseModelsChanged"
+                    AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400"
+                    MultiSelectionTextFunc="@(selected => !selected.Any() || selected.Contains("All") ? "All" : string.Join(", ", selected))">
+                    <MudSelectItem Value=@("All")>All</MudSelectItem>
+                    @{
+                        var disabledFamilies = Settings.Settings.Resources.Civitai.DisabledFamilies;
+                        var disabledModels = Settings.Settings.Resources.Civitai.DisabledModels;
+                        var visibleModels = Api.BaseModelsData.Models
+                            .Where(m => m.Hidden != true)
+                            .Where(m => !disabledModels.Contains(m.Name))
+                            .Where(m => string.IsNullOrEmpty(m.Family) || !disabledFamilies.Contains(m.Family))
+                            .ToList();
+                        var familyGroups = visibleModels
+                            .Where(m => !string.IsNullOrEmpty(m.FamilyDisplayName))
+                            .GroupBy(m => m.FamilyDisplayName)
+                            .OrderBy(g => g.Key);
+                        var ungroupedModels = visibleModels.Where(m => string.IsNullOrEmpty(m.FamilyDisplayName));
+                    }
+                    @foreach (var group in familyGroups)
                     {
-                        <MudSelectItem Value="@model">@model</MudSelectItem>
+                        <MudSelectItem T="string" Disabled Value=@($"__header_{group.Key}")>
+                            <div class="base-model-group-header">@group.Key</div>
+                        </MudSelectItem>
+                        @foreach (var model in group)
+                        {
+                            <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
+                        }
+                    }
+                    @if (ungroupedModels.Any())
+                    {
+                        <MudSelectItem T="string" Disabled Value=@("__header_Other")>
+                            <div class="base-model-group-header">Other</div>
+                        </MudSelectItem>
+                        @foreach (var model in ungroupedModels)
+                        {
+                            <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
+                        }
                     }
                 </MudSelect>
             </MudItem>
@@ -148,9 +183,21 @@ else if (_models != null)
     public CivitaiModelsRequest Request { get; set; }
     private bool _isSearching;
     private CivitaiModelsDto _models;
+    private IEnumerable<string> _selectedBaseModels = new List<string> { "All" };
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<CivitaiSettingsChangedEventArgs>(OnCivitaiSettingsChanged);
+    }
+
+    private void OnCivitaiSettingsChanged(CivitaiSettingsChangedEventArgs args)
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
     protected override void OnInitialized()
     {
+        Events.Subscribe<CivitaiSettingsChangedEventArgs>(OnCivitaiSettingsChanged);
         LoadState();
     }
 
@@ -230,6 +277,37 @@ else if (_models != null)
         return string.Empty;
     }
 
+    private void HandleBaseModelsChanged(IEnumerable<string> values)
+    {
+        var selected = values.ToList();
+        var previouslyHadAll = _selectedBaseModels.Contains("All");
+
+        if (selected.Contains("All") && !previouslyHadAll)
+        {
+            // User just clicked "All" — clear everything else
+            _selectedBaseModels = new List<string> { "All" };
+        }
+        else if (selected.Contains("All") && selected.Count > 1)
+        {
+            // User picked a specific model while "All" was selected — remove "All"
+            _selectedBaseModels = selected.Where(s => s != "All").ToList();
+        }
+        else if (!selected.Any())
+        {
+            // Nothing selected — default to "All"
+            _selectedBaseModels = new List<string> { "All" };
+        }
+        else
+        {
+            _selectedBaseModels = selected;
+        }
+
+        // Sync to request: when "All" is selected, send empty list (no filter)
+        Request.BaseModels = _selectedBaseModels.Contains("All")
+            ? Enumerable.Empty<string>()
+            : _selectedBaseModels;
+    }
+
     private void LoadState()
     {
         Request = new();
@@ -240,7 +318,9 @@ else if (_models != null)
         Request.Tag = State.State.Civitai.Models.Tag;
         Request.Type = State.State.Civitai.Models.Type;
         Request.Sort = State.State.Civitai.Models.Sort;
-        Request.BaseModels = State.State.Civitai.Models.BaseModels;
+        var savedModels = State.State.Civitai.Models.BaseModels?.ToList() ?? new List<string>();
+        _selectedBaseModels = savedModels.Any() ? savedModels : new List<string> { "All" };
+        Request.BaseModels = _selectedBaseModels.Contains("All") ? Enumerable.Empty<string>() : _selectedBaseModels;
         Request.Period = State.State.Civitai.Models.Period;
         Request.Rating = State.State.Civitai.Models.Rating;
         Request.Favorites = State.State.Civitai.Models.Favorites;
@@ -258,7 +338,7 @@ else if (_models != null)
         State.State.Civitai.Models.Tag = Request.Tag;
         State.State.Civitai.Models.Type = Request.Type;
         State.State.Civitai.Models.Sort = (CivitaiSort)Request.Sort;
-        State.State.Civitai.Models.BaseModels = Request.BaseModels;
+        State.State.Civitai.Models.BaseModels = _selectedBaseModels.ToList();
         State.State.Civitai.Models.Period = (CivitaiPeriod)Request.Period;
         State.State.Civitai.Models.Rating = (int)Request.Rating;
         State.State.Civitai.Models.Favorites = (bool)Request.Favorites;

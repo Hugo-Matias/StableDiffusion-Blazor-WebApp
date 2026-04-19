@@ -1,5 +1,6 @@
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using System.Collections.Concurrent;
 
 namespace BlazorWebApp.Services
@@ -8,6 +9,7 @@ namespace BlazorWebApp.Services
     /// Service for managing generation parameters.
     /// Operates on StateService.GenerationParameters for state persistence.
     /// Integrates with WorkflowStateService for per-workflow parameter persistence.
+    /// Uses C# IWorkflowBuilder workflows exclusively.
     /// </summary>
     public class GenerationParameterService : IGenerationParameterService
     {
@@ -35,6 +37,12 @@ namespace BlazorWebApp.Services
         private FragmentReference? _primarySamplerFragment;
         private FragmentReference? _promptsFragment;
         private List<FragmentReference> _optionalFragments = new();
+
+        /// <summary>
+        /// Pending parameter overrides queued via QueuePendingOverride.
+        /// Applied and cleared after the next InitializeFromWorkflowAsync.
+        /// </summary>
+        private readonly List<(string FragmentId, string Key, object? Value)> _pendingOverrides = new();
 
         /// <inheritdoc />
         public GenerationParameters Current => _stateService.GenerationParameters;
@@ -110,8 +118,6 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void InitializeFromWorkflow(Workflow workflow)
         {
-            // Synchronous version - just initializes from template defaults
-            // For full functionality including DB state, use InitializeFromWorkflowAsync
             InitializeFromWorkflowInternal(workflow, savedState: null);
         }
 
@@ -133,9 +139,12 @@ namespace BlazorWebApp.Services
 
             // Try to load saved state for the target workflow
             var savedState = await _workflowStateService.LoadWorkflowStateAsync(workflow.Id);
-            
+
             // Initialize from workflow, applying saved state if available
             InitializeFromWorkflowInternal(workflow, savedState);
+
+            // Apply any pending parameter overrides (from "Send Parameters To" feature)
+            ApplyPendingOverrides();
 
             // Pre-resolve dynamic source options for all fragments
             await PreResolveDynamicSourcesAsync(workflow);
@@ -143,9 +152,33 @@ namespace BlazorWebApp.Services
             return Current;
         }
 
+        /// <inheritdoc />
+        public void QueuePendingOverride(string fragmentId, string key, object? value)
+        {
+            _pendingOverrides.Add((fragmentId, key, value));
+            _logger.LogDebug("Queued pending override: {FragmentId}.{Key}", fragmentId, key);
+        }
+
+        /// <summary>
+        /// Applies and clears all pending parameter overrides.
+        /// </summary>
+        private void ApplyPendingOverrides()
+        {
+            if (_pendingOverrides.Count == 0) return;
+
+            _logger.LogDebug("Applying {Count} pending parameter override(s)", _pendingOverrides.Count);
+            foreach (var (fragmentId, key, value) in _pendingOverrides)
+            {
+                var fragment = Current.GetOrCreateFragment(fragmentId);
+                fragment.SetValue(key, value);
+            }
+            _pendingOverrides.Clear();
+
+            PublishChange(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
+        }
+
         /// <summary>
         /// Saves the current workflow's parameters to the database.
-        /// Call this before switching workflows or when the user explicitly saves.
         /// </summary>
         public async Task SaveCurrentWorkflowStateAsync()
         {
@@ -171,7 +204,15 @@ namespace BlazorWebApp.Services
                 return;
             }
 
-            _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle} (hasSavedState: {HasSaved})", 
+            // Verify this is a C# workflow
+            if (!_workflowService.HasWorkflowBuilder(workflow.Id))
+            {
+                _logger.LogError("Workflow '{Title}' (ID: {Id}) is not a C# workflow - cannot initialize",
+                    workflow.Title, workflow.Id);
+                return;
+            }
+
+            _logger.LogDebug("Initializing parameters from workflow: {WorkflowTitle} (hasSavedState: {HasSaved})",
                 workflow.Title, savedState != null);
 
             // Clear source options cache on workflow change
@@ -198,7 +239,7 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Restores parameters from saved state, merging with workflow template for any new fragments.
+        /// Restores parameters from saved state, merging with workflow for any new fragments.
         /// </summary>
         private void RestoreFromSavedState(Workflow workflow, GenerationParameters current, GenerationParameters savedState)
         {
@@ -241,60 +282,42 @@ namespace BlazorWebApp.Services
 
             // Loras from saved state (if any)
             current.Loras.Clear();
-            current.Loras.AddRange(savedState.Loras.Select(l => new Lora
+            current.Loras.AddRange(savedState.Loras.Select(l => new Lora(l)));
+
+            // Check for any new fragments in the C# workflow that weren't in saved state
+            var builder = _workflowService.GetWorkflowBuilder(workflow.Id);
+            if (builder != null)
             {
-                Name = l.Name,
-                Path = l.Path,
-                Strength = l.Strength,
-                IsEnabled = l.IsEnabled,
-                IsNegative = l.IsNegative
-            }));
-
-            // Check for any new fragments in the workflow that weren't in saved state
-            var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
-            foreach (var step in pipelineSteps)
-            {
-                var fragmentId = step.Id;
-                if (string.IsNullOrEmpty(fragmentId))
+                var order = current.Fragments.Values.Any() ? current.Fragments.Values.Max(f => f.Order) + 1 : 0;
+                foreach (var fragmentBuilder in builder.GetFragments())
                 {
-                    fragmentId = Path.GetFileNameWithoutExtension(step.Fragment).Replace("-", "_");
-                }
+                    var metadata = fragmentBuilder.Metadata;
+                    if (metadata.IsHidden) continue;
 
-                if (!current.Fragments.ContainsKey(fragmentId))
-                {
-                    // New fragment not in saved state - initialize from template
-                    var schema = _workflowService.GetFragmentSchema(step.Fragment);
-                    var isOptional = schema?.DefaultCollapsed ?? false;
-
-                    var fragment = new FragmentParameters
+                    if (!current.Fragments.ContainsKey(metadata.Id))
                     {
-                        FragmentFile = step.Fragment,
-                        IsActive = !isOptional,
-                        Order = step.Order
-                    };
-
-                    // Priority 1: Pipeline step defaults
-                    foreach (var kvp in step.DefaultValues)
-                    {
-                        fragment.Values[kvp.Key] = kvp.Value;
-                    }
-
-                    // Priority 2: Schema defaults
-                    if (schema?.Parameters != null)
-                    {
-                        foreach (var (paramName, constraints) in schema.Parameters)
+                        var isOptional = metadata.Collapsible || metadata.Type == FragmentType.Enhancement;
+                        var fragment = new FragmentParameters
                         {
-                            if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                            FragmentFile = $"fluent:{metadata.Id}",
+                            IsActive = !isOptional,
+                            Order = order++
+                        };
+
+                        if (metadata.Parameters != null)
+                        {
+                            foreach (var param in metadata.Parameters)
                             {
-                                fragment.Values[paramName] = constraints.Default;
+                                if (param.DefaultValue != null)
+                                {
+                                    fragment.Values[param.Name] = param.DefaultValue;
+                                }
                             }
                         }
+
+                        current.Fragments[metadata.Id] = fragment;
+                        _logger.LogDebug("Added new fragment '{FragmentId}' from updated C# workflow", metadata.Id);
                     }
-
-                    // Note: Fragment body defaults are NOT used - Scriban rendering fallbacks only
-
-                    current.Fragments[fragmentId] = fragment;
-                    _logger.LogDebug("Added new fragment '{FragmentId}' from updated workflow template", fragmentId);
                 }
             }
 
@@ -306,26 +329,25 @@ namespace BlazorWebApp.Services
                     if (!current.Assets.ContainsKey(asset.Parameter) && !string.IsNullOrWhiteSpace(asset.DefaultValue))
                     {
                         current.Assets[asset.Parameter] = asset.DefaultValue;
-                        _logger.LogDebug("Added new asset '{AssetName}' from updated workflow template", asset.Parameter);
+                        _logger.LogDebug("Added new asset '{AssetName}' from updated workflow", asset.Parameter);
                     }
                 }
             }
 
-            _logger.LogDebug("Restored {FragmentCount} fragments, {AssetCount} assets from saved state", 
+            _logger.LogDebug("Restored {FragmentCount} fragments, {AssetCount} assets from saved state",
                 current.Fragments.Count, current.Assets.Count);
         }
 
         /// <summary>
-        /// Initializes fresh from workflow template (no saved state).
+        /// Initializes fresh from C# workflow builder (no saved state).
         /// </summary>
         private void InitializeFreshFromWorkflow(Workflow workflow, GenerationParameters current)
         {
-            _logger.LogDebug("Initializing fresh from workflow template '{WorkflowTitle}'", workflow.Title);
+            _logger.LogDebug("Initializing fresh from workflow '{WorkflowTitle}'", workflow.Title);
 
             current.Fragments.Clear();
             current.Assets.Clear();
             current.Sources.Clear();
-            // Note: Loras are preserved across workflow changes
 
             // Initialize assets from workflow defaults
             if (workflow.Assets != null)
@@ -340,135 +362,86 @@ namespace BlazorWebApp.Services
             }
 
             // Initialize sources from workflow definition
-            InitializeSourcesFromWorkflow(workflow, current);
-
-            // Parse pipeline to extract fragments
-            try
+            if (workflow.Sources != null)
             {
-                InitializeFragmentsFromPipeline(workflow, current);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing pipeline for workflow {WorkflowTitle}", workflow.Title);
-            }
-        }
-
-        /// <summary>
-        /// Initializes source assets from workflow definition.
-        /// Sources are parsed by WorkflowService using regex since RawJson contains Scriban templates.
-        /// </summary>
-        private void InitializeSourcesFromWorkflow(Workflow workflow, GenerationParameters parameters)
-        {
-            // Sources must come from the parsed workflow.Sources property
-            // We cannot parse RawJson directly as it contains Scriban template syntax
-            if (workflow.Sources == null || workflow.Sources.Count == 0)
-            {
-                _logger.LogDebug("No sources defined for workflow '{WorkflowTitle}'", workflow.Title);
-                return;
-            }
-
-            _logger.LogDebug("Initializing {Count} sources from workflow.Sources for '{WorkflowTitle}'", 
-                workflow.Sources.Count, workflow.Title);
-                
-            foreach (var source in workflow.Sources)
-            {
-                parameters.Sources[source.Id] = new SourceAsset
+                foreach (var source in workflow.Sources)
                 {
-                    Label = source.Label,
-                    Type = source.Type
-                };
-                _logger.LogDebug("Initialized source '{SourceId}' ({Type}) from workflow definition", source.Id, source.Type);
-            }
-        }
-
-        /// <summary>
-        /// Initializes fragment parameters from the workflow's pipeline.
-        /// Uses WorkflowService.GetPipelineSteps() for cached, consolidated parsing logic.
-        /// 
-        /// Default value priority (see IGenerationParameterService interface for full docs):
-        /// 1. Workflow template's pipeline step parameters
-        /// 2. Fragment schema defaults (#meta.ui.parameters.*.default)
-        /// 3. Dynamic options - handled in PreResolveDynamicSourcesAsync
-        /// 
-        /// Note: Fragment body defaults ({{ param ?? "default" }}) are NOT used here.
-        /// Those are Scriban rendering fallbacks only.
-        /// </summary>
-        private void InitializeFragmentsFromPipeline(Workflow workflow, GenerationParameters parameters)
-        {
-            if (string.IsNullOrEmpty(workflow.RawJson))
-                return;
-
-            // Use cached pipeline steps from WorkflowService
-            var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
-            
-            foreach (var step in pipelineSteps)
-            {
-                var fragmentId = step.Id;
-                
-                // If no ID, generate from fragment filename
-                if (string.IsNullOrEmpty(fragmentId))
-                {
-                    fragmentId = Path.GetFileNameWithoutExtension(step.Fragment).Replace("-", "_");
-                    
-                    // Make unique if already exists
-                    if (parameters.Fragments.ContainsKey(fragmentId))
+                    current.Sources[source.Id] = new SourceAsset
                     {
-                        fragmentId = $"{fragmentId}_{step.Order}";
-                    }
+                        Label = source.Label,
+                        Type = source.Type
+                    };
+                    _logger.LogDebug("Initialized source '{SourceId}' ({Type})", source.Id, source.Type);
                 }
-                
-                // Get the fragment schema to determine if this is an optional fragment
-                // and to get schema defaults
-                var schema = _workflowService.GetFragmentSchema(step.Fragment);
-                var isOptional = schema?.DefaultCollapsed ?? false;
+            }
+
+            // Initialize from C# workflow builder
+            InitializeFragmentsFromBuilder(workflow, current);
+        }
+
+        /// <summary>
+        /// Initializes fragment parameters from C# IWorkflowBuilder.GetFragments().
+        /// </summary>
+        private void InitializeFragmentsFromBuilder(Workflow workflow, GenerationParameters parameters)
+        {
+            var builder = _workflowService.GetWorkflowBuilder(workflow.Id);
+            if (builder == null)
+            {
+                _logger.LogWarning("No builder found for workflow {WorkflowId}", workflow.Id);
+                return;
+            }
+
+            var fragments = builder.GetFragments().ToList();
+            var order = 0;
+
+            foreach (var fragmentBuilder in fragments)
+            {
+                var metadata = fragmentBuilder.Metadata;
+                var fragmentId = metadata.Id;
+
+                // Check if fragment should be hidden (utility fragments with no UI)
+                if (metadata.IsHidden)
+                {
+                    _logger.LogTrace("Skipping hidden fragment '{FragmentId}'", fragmentId);
+                    continue;
+                }
+
+                // Determine if this is an optional fragment (defaultCollapsed or enhancement type)
+                var isOptional = metadata.Collapsible || metadata.Type == FragmentType.Enhancement;
 
                 // Create fragment parameters
-                // Optional fragments (defaultCollapsed = true) default to inactive (not included in generation)
                 var fragment = new FragmentParameters
                 {
-                    FragmentFile = step.Fragment,
-                    IsActive = !isOptional,
-                    Order = step.Order
+                    FragmentFile = $"fluent:{fragmentId}", // Mark as fluent API fragment
+                    IsActive = !isOptional, // Optional fragments start inactive
+                    Order = order++
                 };
 
-                // Priority 1: Use defaults from workflow template's pipeline step parameters
-                foreach (var kvp in step.DefaultValues)
+                // Apply default values from metadata parameters
+                if (metadata.Parameters != null)
                 {
-                    fragment.Values[kvp.Key] = kvp.Value;
-                }
-
-                // Priority 2: Fill in any missing values from schema defaults
-                if (schema?.Parameters != null)
-                {
-                    foreach (var (paramName, constraints) in schema.Parameters)
+                    foreach (var param in metadata.Parameters)
                     {
-                        if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                        if (param.DefaultValue != null)
                         {
-                            fragment.Values[paramName] = constraints.Default;
-                            _logger.LogTrace("Applied schema default for '{FragmentId}.{Param}' = {Value}", 
-                                fragmentId, paramName, constraints.Default);
+                            fragment.Values[param.Name] = param.DefaultValue;
+                            _logger.LogTrace("Set default for '{FragmentId}.{Param}' = {Value}",
+                                fragmentId, param.Name, param.DefaultValue);
                         }
                     }
                 }
 
-                // Note: Priority 3 (dynamic options) is handled in PreResolveDynamicSourcesAsync
-                // Note: Fragment body defaults ({{ param ?? "default" }}) are NOT applied here
-                //       Those are Scriban rendering fallbacks only
-
                 parameters.Fragments[fragmentId] = fragment;
-                _logger.LogTrace("Initialized fragment '{FragmentId}' from {FragmentFile} (IsActive: {IsActive}, Values: {ValueCount})", 
-                    fragmentId, step.Fragment, fragment.IsActive, fragment.Values.Count);
+                _logger.LogDebug("Initialized fragment '{FragmentId}' (IsActive: {IsActive}, Type: {Type})",
+                    fragmentId, fragment.IsActive, metadata.Type);
             }
-            
-            _logger.LogDebug("Initialized {Count} fragments for workflow '{WorkflowTitle}'", 
+
+            _logger.LogDebug("Initialized {Count} fragments from C# workflow builder for '{WorkflowTitle}'",
                 parameters.Fragments.Count, workflow.Title);
         }
 
         /// <summary>
         /// Discovers key fragments from the current parameters.
-        /// Identifies primary latent, sampler, and prompts fragments based on FragmentType.
-        /// Populates optional/enhancement fragments list.
-        /// Called automatically after workflow initialization.
         /// </summary>
         private void DiscoverFragments()
         {
@@ -486,20 +459,40 @@ namespace BlazorWebApp.Services
 
             _logger.LogDebug("Discovering fragments from {Count} total fragments", current.Fragments.Count);
 
+            // Get C# workflow builder metadata
+            IWorkflowBuilder? builder = null;
+            Dictionary<string, FragmentMetadata>? builderMetadata = null;
+            if (current.WorkflowId.HasValue && _workflowService.HasWorkflowBuilder(current.WorkflowId.Value))
+            {
+                builder = _workflowService.GetWorkflowBuilder(current.WorkflowId.Value);
+                if (builder != null)
+                {
+                    builderMetadata = builder.GetFragments()
+                        .ToDictionary(f => f.Metadata.Id, f => f.Metadata, StringComparer.OrdinalIgnoreCase);
+                }
+            }
+
             foreach (var kvp in current.Fragments)
             {
                 var fragmentId = kvp.Key;
                 var fragment = kvp.Value;
 
-                // Get schema to access FragmentType
-                var schema = _workflowService.GetFragmentSchema(fragment.FragmentFile);
-                if (schema == null)
+                FragmentSchema? schema = null;
+                FragmentMetadata? metadata = null;
+
+                if (builderMetadata?.TryGetValue(fragmentId, out metadata) == true)
                 {
-                    _logger.LogTrace("Fragment '{FragmentId}' has no schema, skipping discovery", fragmentId);
+                    schema = BuildSchemaFromMetadata(metadata);
+                }
+
+                if (schema == null && metadata == null)
+                {
+                    _logger.LogTrace("Fragment '{FragmentId}' has no schema or metadata, skipping discovery", fragmentId);
                     continue;
                 }
 
-                // Create reference for this fragment
+                var fragmentType = metadata?.Type ?? schema?.Type ?? FragmentType.Unknown;
+
                 var reference = new FragmentReference
                 {
                     Id = fragmentId,
@@ -507,7 +500,7 @@ namespace BlazorWebApp.Services
                     Schema = schema
                 };
 
-                switch (schema.Type)
+                switch (fragmentType)
                 {
                     case FragmentType.Prompts:
                         _promptsFragment ??= reference;
@@ -515,7 +508,6 @@ namespace BlazorWebApp.Services
                         break;
 
                     case FragmentType.Sampler:
-                        // Use first sampler found (for multi-sampler workflows, this gets the main one)
                         _primarySamplerFragment ??= reference;
                         _logger.LogTrace("Discovered primary sampler fragment: '{FragmentId}'", fragmentId);
                         break;
@@ -526,21 +518,17 @@ namespace BlazorWebApp.Services
                         break;
 
                     case FragmentType.Settings:
-                        // Settings fragments are workflow-specific required configuration
-                        // They should be discovered but rendered separately from optional fragments
-                        // Add to optional list for UI rendering (they'll be marked as non-collapsible in their schema)
                         _optionalFragments.Add(reference);
                         _logger.LogTrace("Discovered settings fragment: '{FragmentId}'", fragmentId);
                         break;
 
                     case FragmentType.Loader:
-                        // Loader fragments often contain width/height/batch_size but no dedicated latent
-                        // Only use if we haven't found a dedicated latent fragment
+                    case FragmentType.Input:
                         if (_primaryLatentFragment == null &&
                             (fragment.Values.ContainsKey("width") || fragment.Values.ContainsKey("height")))
                         {
                             _primaryLatentFragment = reference;
-                            _logger.LogTrace("Using loader fragment as latent: '{FragmentId}'", fragmentId);
+                            _logger.LogTrace("Using loader/input fragment as latent: '{FragmentId}'", fragmentId);
                         }
                         break;
 
@@ -552,13 +540,12 @@ namespace BlazorWebApp.Services
                     case FragmentType.Unknown:
                     case FragmentType.Conditioning:
                     case FragmentType.Output:
-                        // Check if fragment is marked as defaultCollapsed (makes it optional)
-                        // OR if it has a designed component (makes it a feature fragment)
-                        if (schema.DefaultCollapsed || schema.HasDesignedComponent)
+                        var isCollapsible = metadata?.Collapsible ?? schema?.DefaultCollapsed ?? false;
+                        var hasComponent = schema?.HasDesignedComponent ?? (metadata != null);
+                        if (isCollapsible || hasComponent)
                         {
                             _optionalFragments.Add(reference);
-                            _logger.LogTrace("Discovered optional fragment (defaultCollapsed={DefaultCollapsed}, hasComponent={HasComponent}): '{FragmentId}'", 
-                                schema.DefaultCollapsed, schema.HasDesignedComponent, fragmentId);
+                            _logger.LogTrace("Discovered optional fragment: '{FragmentId}'", fragmentId);
                         }
                         break;
                 }
@@ -571,12 +558,11 @@ namespace BlazorWebApp.Services
                 {
                     if (kvp.Value.Values.ContainsKey("width") && kvp.Value.Values.ContainsKey("height"))
                     {
-                        var schema = _workflowService.GetFragmentSchema(kvp.Value.FragmentFile);
                         _primaryLatentFragment = new FragmentReference
                         {
                             Id = kvp.Key,
                             Parameters = kvp.Value,
-                            Schema = schema
+                            Schema = null
                         };
                         _logger.LogDebug("Fallback: Using fragment '{FragmentId}' as latent (has width/height)", kvp.Key);
                         break;
@@ -584,7 +570,6 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            // Sort optional fragments by schema order
             _optionalFragments = _optionalFragments.OrderBy(f => f.Schema?.Order ?? 999).ToList();
 
             _logger.LogInformation(
@@ -593,6 +578,43 @@ namespace BlazorWebApp.Services
                 _primaryLatentFragment != null,
                 _primarySamplerFragment != null,
                 _optionalFragments.Count);
+        }
+
+        /// <summary>
+        /// Builds a FragmentSchema from C# FragmentMetadata.
+        /// </summary>
+        private static FragmentSchema BuildSchemaFromMetadata(FragmentMetadata metadata)
+        {
+            var schema = new FragmentSchema
+            {
+                Type = metadata.Type,
+                Title = metadata.Title,
+                Icon = metadata.Icon,
+                Order = metadata.Order,
+                DefaultCollapsed = metadata.Collapsible && metadata.DefaultCollapsed,
+                Collapsible = metadata.Collapsible,
+                Component = metadata.Component
+            };
+
+            if (metadata.Parameters != null)
+            {
+                schema.Parameters = new Dictionary<string, ParameterConstraints>(StringComparer.OrdinalIgnoreCase);
+                foreach (var param in metadata.Parameters)
+                {
+                    schema.Parameters[param.Name] = new ParameterConstraints
+                    {
+                        Default = param.DefaultValue,
+                        Min = param.Min,
+                        Max = param.Max,
+                        Step = param.Step,
+                        Options = param.Options?.ToList(),
+                        Source = param.Source?.NodeType,
+                        InputName = param.Source?.InputName
+                    };
+                }
+            }
+
+            return schema;
         }
 
         #region Fragment CRUD Operations
@@ -625,7 +647,7 @@ namespace BlazorWebApp.Services
         public void SetFragmentActive(string fragmentId, bool isActive)
         {
             var fragment = Current.GetFragment(fragmentId);
-            
+
             // If fragment doesn't exist and we're activating it, create it with defaults
             if (fragment == null && isActive)
             {
@@ -638,7 +660,7 @@ namespace BlazorWebApp.Services
                 Current.Fragments[fragmentId] = fragment;
                 _logger.LogDebug("Created fragment '{FragmentId}' with defaults on activation", fragmentId);
             }
-            
+
             if (fragment != null)
             {
                 fragment.IsActive = isActive;
@@ -654,25 +676,20 @@ namespace BlazorWebApp.Services
             return fragment?.IsActive ?? false;
         }
 
-        // TODO: Phase 9 - Node Chaining Support
-        // These methods are placeholders for chainable fragment functionality.
-        
         /// <inheritdoc />
         public (string fragmentId, FragmentParameters parameters) AddFragmentInstance(string fragmentFile, string? baseId = null)
         {
-            // Generate unique ID
             var baseName = baseId ?? Path.GetFileNameWithoutExtension(fragmentFile).Replace("-", "_");
             var index = 1;
             var fragmentId = baseName;
-            
+
             while (Current.Fragments.ContainsKey(fragmentId))
             {
                 fragmentId = $"{baseName}_{index++}";
             }
 
-            // Get max order
-            var maxOrder = Current.Fragments.Values.Any() 
-                ? Current.Fragments.Values.Max(f => f.Order) 
+            var maxOrder = Current.Fragments.Values.Any()
+                ? Current.Fragments.Values.Max(f => f.Order)
                 : 0;
 
             var parameters = new FragmentParameters
@@ -684,7 +701,7 @@ namespace BlazorWebApp.Services
 
             Current.Fragments[fragmentId] = parameters;
             _logger.LogDebug("Added fragment instance '{FragmentId}' for {FragmentFile}", fragmentId, fragmentFile);
-            
+
             PublishChange(GenerationParametersChangedEventArgs.FragmentAdded(fragmentId));
 
             return (fragmentId, parameters);
@@ -769,7 +786,6 @@ namespace BlazorWebApp.Services
         /// <inheritdoc />
         public void LoadParameters(GenerationParameters parameters)
         {
-            // Copy values into the State's GenerationParameters
             var current = Current;
             current.WorkflowId = parameters.WorkflowId;
             current.Fragments.Clear();
@@ -789,7 +805,7 @@ namespace BlazorWebApp.Services
             }
             current.Loras.Clear();
             current.Loras.AddRange(parameters.Loras);
-            
+
             _logger.LogDebug("Loaded generation parameters (WorkflowId: {WorkflowId})", current.WorkflowId);
             PublishChange(GenerationParametersChangedEventArgs.ParametersLoaded());
         }
@@ -860,7 +876,7 @@ namespace BlazorWebApp.Services
                         {
                             fragment.SetValue(paramName, options[0]);
                             defaultsSetCount++;
-                            _logger.LogDebug("Set default for {FragmentId}.{Parameter} = {Value} (from dynamic source)", 
+                            _logger.LogDebug("Set default for {FragmentId}.{Parameter} = {Value} (from dynamic source)",
                                 fragmentId, paramName, options[0]);
                         }
 
@@ -885,7 +901,7 @@ namespace BlazorWebApp.Services
                 _logger.LogInformation("Pre-resolved {ResolvedCount} dynamic sources, set {DefaultsCount} default values for workflow '{WorkflowTitle}'",
                     resolvedCount, defaultsSetCount, workflow.Title);
             }
-            
+
             // Notify UI components that dynamic sources are now available
             // This allows components to refresh their dropdown options
             PublishChange(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.DynamicSourcesResolved));
@@ -986,12 +1002,6 @@ namespace BlazorWebApp.Services
         /// <param name="inputName">The input field name (e.g., "model") - optional for Backend.* sources</param>
         private async Task<List<string>> ResolveNodeSourceAsync(string classType, string inputName)
         {
-            // Handle Backend.* sources - these come from IBackendService or ComfyUI special endpoints
-            if (classType.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase))
-            {
-                return await ResolveBackendSourceAsync(classType);
-            }
-
             var cacheKey = $"{classType}:{inputName}";
 
             if (_sourceOptionsCache.TryGetValue(cacheKey, out var cached))
@@ -1015,106 +1025,8 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
-        /// Resolves a Backend.* source from IBackendService or ComfyUI special endpoints.
-        /// Supported sources: Backend.Samplers, Backend.Schedulers, Backend.Upscalers, Backend.DetectionModels,
-        ///                    Backend.DetailerSamplers, Backend.DetailerSchedulers
+        /// Creates a fragment with default values from the C# workflow builder.
         /// </summary>
-        private async Task<List<string>> ResolveBackendSourceAsync(string backendSource)
-        {
-            var cacheKey = backendSource;
-
-            if (_sourceOptionsCache.TryGetValue(cacheKey, out var cached))
-            {
-                _logger.LogTrace("Returning cached Backend source options for {Source}", backendSource);
-                return cached;
-            }
-
-            List<string> options;
-
-            // Parse the Backend.* identifier
-            var sourceName = backendSource.Substring("Backend.".Length);
-
-            switch (sourceName.ToLowerInvariant())
-            {
-                case "samplers":
-                    options = _backendService.Samplers?.Select(s => s.Name).ToList() ?? new List<string>();
-                    break;
-
-                case "schedulers":
-                    options = _backendService.Schedulers?.Select(s => s.Name).ToList() ?? new List<string>();
-                    break;
-
-                case "upscalers":
-                    options = _backendService.Upscalers?.Select(u => u.Name).ToList() ?? new List<string>();
-                    break;
-
-                case "detectionmodels":
-                    // Get detection models from ComfyUI's GetBBoxDetailers endpoint
-                    try
-                    {
-                        options = await _comfyUIService.GetBBoxDetailers();
-                        _logger.LogDebug("Resolved {Count} detection models from ComfyUI", options.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get detection models from ComfyUI");
-                        options = new List<string>();
-                    }
-                    break;
-
-                case "detailersamplers":
-                    // Get detailer-specific samplers from ComfyUI's FaceDetailer node
-                    try
-                    {
-                        options = await _comfyUIService.GetDetailerSamplers();
-                        _logger.LogDebug("Resolved {Count} detailer samplers from ComfyUI", options.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get detailer samplers from ComfyUI");
-                        options = new List<string>();
-                    }
-                    break;
-
-                case "detailerschedulers":
-                    // Get detailer-specific schedulers from ComfyUI's FaceDetailer node
-                    try
-                    {
-                        options = await _comfyUIService.GetDetailerSchedulers();
-                        _logger.LogDebug("Resolved {Count} detailer schedulers from ComfyUI", options.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get detailer schedulers from ComfyUI");
-                        options = new List<string>();
-                    }
-                    break;
-
-                default:
-                    _logger.LogWarning("Unknown Backend source: {Source}", backendSource);
-                    options = new List<string>();
-                    break;
-            }
-
-            _sourceOptionsCache[cacheKey] = options;
-            _logger.LogDebug("Resolved {Count} options for Backend source {Source}", options.Count, backendSource);
-
-            return options;
-        }
-
-        /// <summary>
-        /// Creates a fragment with default values based on the fragment ID.
-        /// 
-        /// IMPORTANT: Only fragments defined in the current workflow's Pipeline can be created.
-        /// This ensures we always have the correct FragmentFile and defaults.
-        /// 
-        /// Default priority:
-        /// 1. Pipeline step defaults
-        /// 2. Schema defaults (#meta.ui.parameters.*.default)
-        /// 3. Dynamic source defaults (handled by PreResolveDynamicSourcesAsync)
-        /// </summary>
-        /// <param name="fragmentId">The fragment ID to create</param>
-        /// <returns>A new FragmentParameters with defaults, or null if not found in pipeline</returns>
         private FragmentParameters? CreateFragmentWithDefaults(string fragmentId)
         {
             // Get the current workflow - required to find fragment definition
@@ -1125,60 +1037,44 @@ namespace BlazorWebApp.Services
                 return null;
             }
 
-            var workflow = _workflowService.GetWorkflowById(workflowId.Value);
-            if (workflow == null)
+            var builder = _workflowService.GetWorkflowBuilder(workflowId.Value);
+            if (builder == null)
             {
-                _logger.LogWarning("Cannot create fragment '{FragmentId}' - workflow {WorkflowId} not found", fragmentId, workflowId);
+                _logger.LogWarning("Cannot create fragment '{FragmentId}' - no C# builder found", fragmentId);
                 return null;
             }
 
-            // Find the fragment in the workflow's pipeline
-            var pipelineSteps = _workflowService.GetPipelineSteps(workflow);
-            var matchingStep = pipelineSteps.FirstOrDefault(s => 
-                s.Id.Equals(fragmentId, StringComparison.OrdinalIgnoreCase) || 
-                Path.GetFileNameWithoutExtension(s.Fragment).Replace("-", "_").Equals(fragmentId, StringComparison.OrdinalIgnoreCase));
-            
-            if (matchingStep == null)
+            var fragmentBuilder = builder.GetFragments()
+                .FirstOrDefault(f => f.Metadata.Id.Equals(fragmentId, StringComparison.OrdinalIgnoreCase));
+
+            if (fragmentBuilder == null)
             {
-                _logger.LogWarning("Cannot create fragment '{FragmentId}' - not defined in workflow pipeline", fragmentId);
+                _logger.LogWarning("Cannot create fragment '{FragmentId}' - not defined in workflow", fragmentId);
                 return null;
             }
 
-            // Get schema for defaults and constraints
-            var schema = _workflowService.GetFragmentSchema(matchingStep.Fragment);
-
-            // Create the fragment using the pipeline step's fragment file
+            var metadata = fragmentBuilder.Metadata;
             var fragment = new FragmentParameters
             {
-                FragmentFile = matchingStep.Fragment,
+                FragmentFile = $"fluent:{fragmentId}",
                 IsActive = true,
                 Order = Current.Fragments.Values.Any() ? Current.Fragments.Values.Max(f => f.Order) + 1 : 0
             };
 
-            // Priority 1: Apply pipeline defaults
-            foreach (var kvp in matchingStep.DefaultValues)
+            if (metadata.Parameters != null)
             {
-                fragment.Values[kvp.Key] = kvp.Value;
-            }
-
-            // Priority 2: Apply schema defaults for any missing values
-            if (schema?.Parameters != null)
-            {
-                foreach (var (paramName, constraints) in schema.Parameters)
+                foreach (var param in metadata.Parameters)
                 {
-                    if (!fragment.Values.ContainsKey(paramName) && constraints.Default != null)
+                    if (param.DefaultValue != null)
                     {
-                        fragment.Values[paramName] = constraints.Default;
+                        fragment.Values[param.Name] = param.DefaultValue;
                     }
                 }
             }
 
-            // Note: Fragment body defaults are NOT used - Scriban rendering fallbacks only
-            // Note: Priority 3 (dynamic sources) would require async, handled separately
+            _logger.LogDebug("Created fragment '{FragmentId}' with {ValueCount} default values",
+                fragmentId, fragment.Values.Count);
 
-            _logger.LogDebug("Created fragment '{FragmentId}' with {ValueCount} default values from {FragmentFile}", 
-                fragmentId, fragment.Values.Count, matchingStep.Fragment);
-            
             return fragment;
         }
 

@@ -1,0 +1,107 @@
+@inject ISettingsService Settings
+@using BlazorWebApp.Events
+@inject ISettingsService Settings
+@inject IEventService Events
+@inject CivitaiService Api
+
+<MudText Typo="Typo.subtitle2" Class="mb-1">Base Model Filters</MudText>
+<div class="d-flex flex-wrap gap-1 mb-2">
+    @foreach (var family in Api.BaseModelsData.Families)
+    {
+        var familyKey = family.Key;
+        var isDisabled = Settings.Settings.Resources.Civitai.DisabledFamilies.Contains(familyKey);
+        var isSelected = _selectedFamily == familyKey;
+        <MudChip Size="Size.Small"
+                 Variant="@(isDisabled ? Variant.Outlined : Variant.Filled)"
+                 Color="@(isSelected ? Color.Primary : isDisabled ? Color.Default : Color.Dark)"
+                 Style="@(isDisabled ? "opacity:0.5;" : "")"
+                 OnClick="@(() => HandleFamilyClick(familyKey))"
+                 Icon="@(isDisabled ? Icons.Material.Filled.VisibilityOff : null)">
+            @family.Name
+        </MudChip>
+    }
+    @{
+        var hasUngrouped = Api.BaseModelsData.Models.Any(m => string.IsNullOrEmpty(m.Family) && m.Hidden != true);
+    }
+    @if (hasUngrouped)
+    {
+        var isSelected = _selectedFamily == "__other";
+        <MudChip Size="Size.Small"
+                 Variant="@(isSelected ? Variant.Filled : Variant.Filled)"
+                 Color="@(isSelected ? Color.Primary : Color.Dark)"
+                 OnClick="@(() => HandleFamilyClick("__other"))">
+            Other
+        </MudChip>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(_selectedFamily))
+{
+    var models = _selectedFamily == "__other"
+        ? Api.BaseModelsData.Models.Where(m => string.IsNullOrEmpty(m.Family) && m.Hidden != true).ToList()
+        : Api.BaseModelsData.Models.Where(m => m.Family == _selectedFamily && m.Hidden != true).ToList();
+
+    <MudPaper Class="pa-2" Elevation="0" Outlined Style="max-height:120px; overflow-y:auto;">
+        <div class="d-flex flex-wrap gap-1">
+            @foreach (var model in models)
+            {
+                var modelName = model.Name;
+                var isModelDisabled = Settings.Settings.Resources.Civitai.DisabledModels.Contains(modelName);
+                <MudChip Size="Size.Small"
+                         Variant="@(isModelDisabled ? Variant.Outlined : Variant.Filled)"
+                         Color="@(isModelDisabled ? Color.Default : Color.Secondary)"
+                         Style="@(isModelDisabled ? "opacity:0.5; text-decoration:line-through;" : "")"
+                         OnClick="@(() => ToggleModel(modelName, !isModelDisabled))">
+                    @model.Name
+                </MudChip>
+            }
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private string? _selectedFamily;
+
+    private void HandleFamilyClick(string familyKey)
+    {
+        if (_selectedFamily == familyKey)
+        {
+            // Second click on same family toggles it
+            if (familyKey != "__other")
+                ToggleFamily(familyKey);
+            _selectedFamily = null;
+        }
+        else
+        {
+            // First click selects to show models
+            _selectedFamily = familyKey;
+        }
+    }
+
+    private void ToggleFamily(string familyKey)
+    {
+        var list = Settings.Settings.Resources.Civitai.DisabledFamilies;
+        if (list.Contains(familyKey))
+            list.Remove(familyKey);
+        else
+            list.Add(familyKey);
+        Settings.SaveSettings();
+        Events.Publish(new CivitaiSettingsChangedEventArgs());
+    }
+
+    private void ToggleModel(string modelName, bool disable)
+    {
+        var list = Settings.Settings.Resources.Civitai.DisabledModels;
+        if (disable)
+        {
+            if (!list.Contains(modelName))
+                list.Add(modelName);
+        }
+        else
+        {
+            list.Remove(modelName);
+        }
+        Settings.SaveSettings();
+        Events.Publish(new CivitaiSettingsChangedEventArgs());
+    }
+}

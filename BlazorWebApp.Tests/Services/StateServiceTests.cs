@@ -87,7 +87,7 @@ namespace BlazorWebApp.Tests.Services
         {
             // Arrange
             var savedGenParams = new GenerationParameters();
-            var samplerFragment = savedGenParams.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            var samplerFragment = savedGenParams.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, 30);
             
             var savedState = new State
@@ -353,7 +353,7 @@ namespace BlazorWebApp.Tests.Services
         public async Task SaveState_PersistsFragments()
         {
             // Arrange
-            var samplerFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            var samplerFragment = _sut.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, 50);
             samplerFragment.SetValue(FragmentKeys.Params.Cfg, 10.0);
 
@@ -377,7 +377,7 @@ namespace BlazorWebApp.Tests.Services
         {
             // Arrange
             var savedGenParams = new GenerationParameters();
-            var samplerFragment = savedGenParams.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            var samplerFragment = savedGenParams.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, 75);
             samplerFragment.SetValue(FragmentKeys.Params.Cfg, 12.0);
             

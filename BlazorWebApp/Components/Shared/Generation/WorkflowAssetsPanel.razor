@@ -35,13 +35,6 @@
                             @_assetCount assets
                         </MudChip>
                     }
-                    <MudSpacer />
-                    <MudIconButton Icon="fa-solid fa-floppy-disk" 
-                                   Size="Size.Small" 
-                                   Color="Color.Info"
-                                   Title="Save current models as defaults"
-                                   OnClick="SaveAsDefaults"
-                                   OnClick:stopPropagation />
                 </MudStack>
             </TitleContent>
             <ChildContent>
@@ -172,35 +165,6 @@
         if (OnAssetsChanged.HasDelegate)
         {
             await OnAssetsChanged.InvokeAsync();
-        }
-    }
-
-    private void SaveAsDefaults()
-    {
-        var workflow = GetWorkflow();
-        if (workflow?.Assets == null || workflow.Assets.Count == 0)
-        {
-            Snackbar.Add("No assets to save.", Severity.Warning);
-            return;
-        }
-
-        // Get current asset values for this mode
-        var currentAssets = M.GetWorkflowAssetsForMode(Mode);
-        if (currentAssets == null || currentAssets.Count == 0)
-        {
-            Snackbar.Add("No asset values set.", Severity.Warning);
-            return;
-        }
-
-        // Save to template file, passing the full workflows list so in-memory defaults are updated
-        var success = WorkflowService.SaveAssetDefaults(workflow, currentAssets, State.State?.Generation?.Workflows);
-        if (success)
-        {
-            Snackbar.Add("Asset defaults saved to workflow template.", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add("Failed to save defaults. Template may be read-only.", Severity.Error);
         }
     }
 

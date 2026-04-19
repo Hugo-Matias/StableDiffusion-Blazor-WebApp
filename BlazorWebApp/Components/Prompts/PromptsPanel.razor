@@ -118,7 +118,7 @@
                 var prompt = pinnedPrompts[index];
                 
                 // Update GenerationParameters (primary)
-                var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+                var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
                 var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
                 var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
                 promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, prompt.Positive));
@@ -150,7 +150,7 @@
                 var prompt = pinnedPrompts[index];
                 
                 // Update GenerationParameters (primary)
-                var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+                var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
                 var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
                 var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
                 promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, prompt.Positive));

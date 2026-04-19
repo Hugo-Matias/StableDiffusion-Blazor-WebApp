@@ -41,16 +41,16 @@ namespace BlazorWebApp.Tests.Integration
             var stateService = new StateService(mockDb.Object, mockConfig.Object, mockEvents.Object, mockSettings.Object);
 
             // Set up specific parameter values using GenerationParameters
-            var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "test prompt for round-trip");
             promptsFragment.SetValue(FragmentKeys.Params.Negative, "test negative prompt");
             
-            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, 42);
             samplerFragment.SetValue(FragmentKeys.Params.Cfg, 8.5);
             samplerFragment.SetValue(FragmentKeys.Params.Seed, 12345L);
             
-            var latentFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent, FragmentKeys.Files.EmptyLatent);
+            var latentFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
             latentFragment.SetValue(FragmentKeys.Params.Width, 768);
             latentFragment.SetValue(FragmentKeys.Params.Height, 1024);
             
@@ -116,15 +116,15 @@ namespace BlazorWebApp.Tests.Integration
             var stateService = new StateService(mockDb.Object, mockConfig.Object, mockEvents.Object, mockSettings.Object);
 
             // Set up video generation parameters using GenerationParameters
-            var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Files.Prompts);
+            var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "video generation prompt");
             
-            var videoFragment = stateService.GenerationParameters.GetOrCreateFragment("video_settings", "video.sbn");
+            var videoFragment = stateService.GenerationParameters.GetOrCreateFragment("video_settings");
             videoFragment.SetValue("length", 97);
             videoFragment.SetValue("frame_rate", 24);
             videoFragment.SetValue("motion_amplitude", 1.5f);
             
-            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler, FragmentKeys.Files.Sampler);
+            var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, 12);
             samplerFragment.SetValue(FragmentKeys.Params.Cfg, 2.5);
             samplerFragment.SetValue("shift", 7);

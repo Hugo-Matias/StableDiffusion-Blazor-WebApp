@@ -20,14 +20,14 @@ namespace BlazorWebApp.Tests.TestFixtures
             };
         }
 
-        public static List<Models.Sampler> GetSampleSamplers()
+        public static List<BlazorWebApp.Models.Sampler> GetSampleSamplers()
         {
-            return new List<Models.Sampler>
+            return new List<BlazorWebApp.Models.Sampler>
             {
-                new Models.Sampler { Name = "Euler" },
-                new Models.Sampler { Name = "Euler a" },
-                new Models.Sampler { Name = "DPM++ 2M Karras" },
-                new Models.Sampler { Name = "DPM++ SDE Karras" }
+                new BlazorWebApp.Models.Sampler { Name = "Euler" },
+                new BlazorWebApp.Models.Sampler { Name = "Euler a" },
+                new BlazorWebApp.Models.Sampler { Name = "DPM++ 2M Karras" },
+                new BlazorWebApp.Models.Sampler { Name = "DPM++ SDE Karras" }
             };
         }
 

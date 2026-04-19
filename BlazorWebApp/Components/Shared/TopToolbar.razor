@@ -64,11 +64,18 @@
             </MudButtonGroup>
         </MudItem>
     </MudGrid>
+
+    @if (CurrentPage == "/civitai")
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarCivitaiSettings />
+    }
 </div>
 
 @code {
     [CascadingParameter] public Action? OnThemeChanged { get; set; }
-    
+    [Parameter] public string CurrentPage { get; set; } = "/";
+
     private BlazorWebApp.Data.Entities.State? _selectedState;
     private List<BlazorWebApp.Data.Entities.State> _states = new();
 

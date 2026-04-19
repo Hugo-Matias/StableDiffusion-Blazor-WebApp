@@ -1,11 +1,11 @@
 /* ===========================================
+   /* ===========================================
    Video Card - Base Styles (Matching ImageCard)
    =========================================== */
 
 .video-card {
     position: relative;
     width: 100%;
-    height: 100%;
     border-radius: 8px;
     overflow: hidden;
     background: var(--mud-palette-surface);
@@ -31,12 +31,13 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
+    background: #000;
 }
 
 .card-video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     display: block;
     transition: transform 0.3s ease;
@@ -51,7 +52,7 @@
    =========================================== */
 
 .video-card.fixed-size {
-    height: 350px;
+    max-height: 350px;
 }
 
 .video-card.fixed-size .video-wrapper {
@@ -344,13 +345,13 @@
 
 @media (max-width: 1400px) {
     .video-card.fixed-size {
-        height: 320px;
+        max-height: 320px;
     }
 }
 
 @media (max-width: 1200px) {
     .video-card.fixed-size {
-        height: 300px;
+        max-height: 300px;
     }
     
     .quick-actions {
@@ -371,13 +372,13 @@
 
 @media (max-width: 992px) {
     .video-card.fixed-size {
-        height: 280px;
+        max-height: 280px;
     }
 }
 
 @media (max-width: 768px) {
     .video-card.fixed-size {
-        height: 250px;
+        max-height: 250px;
     }
     
     .quick-actions {
@@ -409,7 +410,7 @@
 
 @media (max-width: 480px) {
     .video-card.fixed-size {
-        height: 200px;
+        max-height: 200px;
     }
     
     .quick-actions {
