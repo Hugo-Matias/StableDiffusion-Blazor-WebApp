@@ -35,20 +35,20 @@ public class UpscaleFragment : IFragmentBuilder
                 Name = "upscale_width",
                 Label = "Width",
                 Type = ParameterType.Slider,
-                Min = 64,
+                Min = 0,
                 Max = 4096,
                 Step = 8,
-                DefaultValue = 1744
+                DefaultValue = 0
             },
             new FragmentParameter
             {
                 Name = "upscale_height",
                 Label = "Height",
                 Type = ParameterType.Slider,
-                Min = 64,
+                Min = 0,
                 Max = 4096,
                 Step = 8,
-                DefaultValue = 2496
+                DefaultValue = 0
             },
             new FragmentParameter
             {
@@ -86,15 +86,30 @@ public class UpscaleFragment : IFragmentBuilder
     public record Parameters
     {
         public string UpscaleModel { get; init; } = "4x-UltraSharpV2.safetensors";
-        public int UpscaleWidth { get; init; } = 1744;
-        public int UpscaleHeight { get; init; } = 2496;
+        /// <summary>
+        /// Target width. When 0, computed as LatentWidth * Scale.
+        /// </summary>
+        public int UpscaleWidth { get; init; } = 0;
+        /// <summary>
+        /// Target height. When 0, computed as LatentHeight * Scale.
+        /// </summary>
+        public int UpscaleHeight { get; init; } = 0;
         public int UpscaleSteps { get; init; } = 20;
         public double UpscaleDenoise { get; init; } = 1.0;
+        public double Scale { get; init; } = 2.0;
         public string SamplerName { get; init; } = "multistep/res_2m";
         public string Scheduler { get; init; } = "beta";
         public double Cfg { get; init; } = 1.0;
         public long Seed { get; init; } = 42;
         public string Scope { get; init; } = "";
+        /// <summary>
+        /// Latent/source width used when UpscaleWidth is 0.
+        /// </summary>
+        public int LatentWidth { get; init; } = 1024;
+        /// <summary>
+        /// Latent/source height used when UpscaleHeight is 0.
+        /// </summary>
+        public int LatentHeight { get; init; } = 1024;
     }
 
     public void Build(
@@ -104,6 +119,14 @@ public class UpscaleFragment : IFragmentBuilder
     {
         var scope = parameters.Scope;
         var stepsPerPhase = Math.Max(1, parameters.UpscaleSteps / 4);
+
+        // Resolve target dimensions: when 0, compute from latent size * scale
+        var targetWidth = parameters.UpscaleWidth > 0
+            ? parameters.UpscaleWidth
+            : (int)(parameters.LatentWidth * parameters.Scale);
+        var targetHeight = parameters.UpscaleHeight > 0
+            ? parameters.UpscaleHeight
+            : (int)(parameters.LatentHeight * parameters.Scale);
 
         // 1. Load upscale model
         builder.AddNode("upscale_model_loader", node => node
@@ -130,8 +153,8 @@ public class UpscaleFragment : IFragmentBuilder
             .ClassType("ImageScale")
             .Title("Upscale Image")
             .Input("upscale_method", "lanczos")
-            .Input("width", parameters.UpscaleWidth)
-            .Input("height", parameters.UpscaleHeight)
+            .Input("width", targetWidth)
+            .Input("height", targetHeight)
             .Input("crop", "disabled")
             .InputFromNode("image", "upscale_with_model", 0));
 
@@ -195,18 +218,22 @@ public class UpscaleFragment : IFragmentBuilder
         var fragment = parameters.GetFragment(Metadata.Id);
         if (fragment?.IsActive != true) return;
 
+        var latentFragment = parameters.GetFragment("latent");
         Build(builder, registry, new Parameters
         {
             UpscaleModel = fragment.GetString("upscale_model", "4x-UltraSharpV2.safetensors"),
-            UpscaleWidth = fragment.GetInt("upscale_width", 1744),
-            UpscaleHeight = fragment.GetInt("upscale_height", 2496),
+            UpscaleWidth = fragment.GetInt("upscale_width", 0),
+            UpscaleHeight = fragment.GetInt("upscale_height", 0),
             UpscaleSteps = fragment.GetInt("upscale_steps", 20),
             UpscaleDenoise = fragment.GetDouble("upscale_denoise", 1.0),
+            Scale = fragment.GetDouble("upscale_scale", 2.0),
             SamplerName = parameters.GetFragment("main_sampler")?.GetString("sampler_name", "multistep/res_2m") ?? "multistep/res_2m",
             Scheduler = parameters.GetFragment("main_sampler")?.GetString("scheduler", "beta") ?? "beta",
             Cfg = parameters.GetFragment("main_sampler")?.GetDouble("cfg", 1.0) ?? 1.0,
             Seed = parameters.GetFragment("main_sampler")?.GetLong("seed", 42) ?? 42,
-            Scope = scope
+            Scope = scope,
+            LatentWidth = latentFragment?.GetInt("width", 1024) ?? 1024,
+            LatentHeight = latentFragment?.GetInt("height", 1024) ?? 1024
         });
     }
 }

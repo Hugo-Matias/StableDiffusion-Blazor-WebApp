@@ -34,6 +34,11 @@ public class LoadDiffusionWithPromptsFragment : IFragmentBuilder
         public int Width { get; set; } = 1024;
         public int Height { get; set; } = 1024;
         public int BatchSize { get; set; } = 1;
+        /// <summary>
+        /// When true, wraps the CLIP loader output with a T5TokenizerOptions node.
+        /// Used by Chroma workflows that require T5 tokenizer configuration.
+        /// </summary>
+        public bool UseT5Tokenizer { get; set; } = false;
     }
 
     public void Build(
@@ -110,6 +115,20 @@ public class LoadDiffusionWithPromptsFragment : IFragmentBuilder
             .Input("type", p.ClipType)
             .Input("device", "default"));
 
+        // Determine the effective clip source node
+        // When T5TokenizerOptions is enabled, it wraps the CLIP output
+        var clipSourceNode = $"{scope}clip_loader";
+        if (p.UseT5Tokenizer)
+        {
+            builder.AddNode($"{scope}t5_tokenizer", node => node
+                .Type("T5TokenizerOptions")
+                .Title($"{scopeTitle}T5TokenizerOptions")
+                .Input("min_padding", 1)
+                .Input("min_length", 0)
+                .InputRef("clip", ($"{scope}clip_loader", 0)));
+            clipSourceNode = $"{scope}t5_tokenizer";
+        }
+
         // VAE Loader
         builder.AddNode($"{scope}vae_loader", node => node
             .Type("VAELoader")
@@ -134,7 +153,7 @@ public class LoadDiffusionWithPromptsFragment : IFragmentBuilder
             .Title($"{scopeTitle}LoRAs (Positive)")
             .InputRef("text", ($"{scope}text_positive", 0))
             .InputRef("model", ($"{scope}unet_loader", 0))
-            .InputRef("clip", ($"{scope}clip_loader", 0)));
+            .InputRef("clip", (clipSourceNode, 0)));
 
         // LoRA loader for negative
         builder.AddNode($"{scope}lora_negative", node => node
@@ -142,7 +161,7 @@ public class LoadDiffusionWithPromptsFragment : IFragmentBuilder
             .Title($"{scopeTitle}LoRAs (Negative)")
             .InputRef("text", ($"{scope}text_negative", 0))
             .InputRef("model", ($"{scope}unet_loader", 0))
-            .InputRef("clip", ($"{scope}clip_loader", 0)));
+            .InputRef("clip", (clipSourceNode, 0)));
 
         // Encode positive
         builder.AddNode($"{scope}encode_positive", node => node

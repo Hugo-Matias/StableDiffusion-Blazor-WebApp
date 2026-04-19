@@ -1,7 +1,7 @@
 # Workflow System Migration to Fluent Builder API - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 10 - Convert SD Txt2Img Workflow
+**Current Phase:** Phase 12 - UI Component Updates
 
 ---
 
@@ -750,15 +750,19 @@ Z-Image Txt2Img verified working in ComfyUI. Z-Image Turbo does not natively sup
 ### Phase 9: Convert Qwen Workflows and Fragments
 **Objective:** Convert Qwen-specific fragments and both Qwen workflows (Txt2Img + Img2Img Edit)
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Create `Workflows/Fragments/Qwen/LoadQwenEditFragment.cs`
-- [ ] Create `Workflows/Fragments/Qwen/EncodeEditFragment.cs`
-- [ ] Create `Workflows/Templates/Qwen/QwenTxt2ImgWorkflow.cs`
-- [ ] Create `Workflows/Templates/Qwen/QwenImg2ImgEditWorkflow.cs`
-- [ ] Add unit tests for Qwen fragments and workflows
-- [ ] Delete `qwen/*.sbn` files
+- [x] Create `Workflows/Fragments/Core/ModelSamplingAuraFlowFragment.cs`
+- [x] Create `Workflows/Fragments/Qwen/LoadQwenEditFragment.cs`
+- [x] Create `Workflows/Fragments/Qwen/EncodeEditFragment.cs`
+- [x] Create `Workflows/Templates/Qwen/QwenTxt2ImgWorkflow.cs`
+- [x] Create `Workflows/Templates/Qwen/QwenImg2ImgEditWorkflow.cs`
+- [x] Add unit tests for Qwen fragments and workflows (76 tests)
+- [ ] Delete `qwen/*.sbn` files (deferred to cleanup phase)
+
+#### Notes
+Qwen Txt2Img uses LoadDiffusionWithPromptsFragment (qwen_image CLIP) + ModelSamplingAuraFlowFragment + ClownsharKSampler. Qwen Img2Img Edit uses LoadQwenEditFragment (UNet + LoRA + ModelSampling + CFGNorm) + EncodeEditFragment (TextEncodeQwenImageEditPlus) + SamplerStandard (KSampler). All 76 tests passing, 857 total tests passing.
 
 ---
 
@@ -780,13 +784,16 @@ SD Txt2Img uses `LoadCheckpointFragment` (single checkpoint file loads model+cli
 ### Phase 11: Convert Chroma Txt2Img Workflow
 **Objective:** Decompose monolithic Chroma template (828 lines) into fragment-based C# workflow
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
-- [ ] Analyze monolithic template structure and identify fragments
-- [ ] Create `Workflows/Templates/Chroma/ChromaTxt2ImgWorkflow.cs`
-- [ ] Add unit tests
-- [ ] Delete `chroma/txt2img.sbn`
+- [x] Add `UseT5Tokenizer` parameter to `LoadDiffusionWithPromptsFragment` (backwards-compatible, defaults false)
+- [x] Create `Workflows/Templates/Chroma/ChromaTxt2ImgWorkflow.cs`
+- [x] Add unit tests (32 tests)
+- [ ] Delete `chroma/txt2img.sbn` (deferred to cleanup phase)
+
+#### Notes
+Chroma is architecturally similar to Flux but uses single T5 CLIP (type `chroma`) wrapped with `T5TokenizerOptions` node. The monolithic 828-line template with 4 save nodes and 3 FlowSelect routing nodes was reduced to a clean C# workflow using conditional fragment inclusion. `UseT5Tokenizer` parameter added to `LoadDiffusionWithPromptsFragment` with no impact on existing workflows (117 non-Chroma workflow tests verified passing). Upscale uses existing `UpscaleFragment` chain (unsample/resample). Detailer uses scoped `LoadDiffusionWithPromptsFragment` + `DetailerFragment`.
 
 ---
 

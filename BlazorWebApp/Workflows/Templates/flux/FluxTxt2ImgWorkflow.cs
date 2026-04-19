@@ -144,15 +144,18 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
             _upscaleFragment.Build(builder, registry, new UpscaleFragment.Parameters
             {
                 UpscaleModel = upscaleFragmentParams.GetString("upscale_model", "4x-UltraSharpV2.safetensors"),
-                UpscaleWidth = upscaleFragmentParams.GetInt("upscale_width", width * 2),
-                UpscaleHeight = upscaleFragmentParams.GetInt("upscale_height", height * 2),
+                UpscaleWidth = upscaleFragmentParams.GetInt("upscale_width", 0),
+                UpscaleHeight = upscaleFragmentParams.GetInt("upscale_height", 0),
                 UpscaleSteps = upscaleFragmentParams.GetInt("upscale_steps", 20),
                 UpscaleDenoise = upscaleFragmentParams.GetDouble("upscale_denoise", 1.0),
+                Scale = upscaleFragmentParams.GetDouble("upscale_scale", 2.0),
                 SamplerName = samplerFragment?.GetString("sampler_name", "multistep/res_2m") ?? "multistep/res_2m",
                 Scheduler = samplerFragment?.GetString("scheduler", "beta") ?? "beta",
                 Cfg = 1, // Flux uses CFG 1
                 Seed = seed,
-                Scope = "" // Main scope for model references
+                Scope = "",
+                LatentWidth = width,
+                LatentHeight = height
             });
         }
 

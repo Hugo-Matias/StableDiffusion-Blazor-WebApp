@@ -113,19 +113,11 @@ namespace BlazorWebApp.Services
             ImagesDto images = new();
             _currentGenerationParams = parameters;
             _currentWorkflow = workflow;
-            
-            // Capture original seed values to restore after generation (for random seed support)
-            var samplerFragment = parameters.GetFragment(Fragments.MainSampler)
-                ?? parameters.GetFragment(Fragments.SamplerAdvanced);
-            var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
-
-            var detailerFragment = parameters.GetFragment(Fragments.Detailer);
-            var originalDetailerSeed = detailerFragment?.GetValueOrDefault(Params.DetailerSeed, -1L) ?? -1L;
 
             try
             {
-                // Build a generation-ready clone with wildcards, styles, and LoRAs applied to prompts.
-                // Seeds are randomized on the original so the UI resets correctly after generation.
+                // Build a generation-ready clone with wildcards, styles, LoRAs, and random seeds applied.
+                // The original parameters (and UI state) are never mutated.
                 var prepared = await PrepareGenerationParametersAsync(parameters);
 
                 _currentModel = parameters.Assets.GetValueOrDefault("Model", "")
@@ -154,21 +146,6 @@ namespace BlazorWebApp.Services
             {
                 _logger.LogError(e, "Error during image generation for workflow: {WorkflowTitle}", workflow.Title);
             }
-            finally
-            {
-                // Restore seed fields to -1 so next generation randomizes again
-                if (originalSeed == -1 && samplerFragment != null)
-                {
-                    samplerFragment.SetValue(Params.Seed, -1L);
-                    _logger.LogDebug("Restored seed to -1 for next random generation");
-                }
-
-                if (originalDetailerSeed == -1 && detailerFragment != null)
-                {
-                    detailerFragment.SetValue(Params.DetailerSeed, -1L);
-                    _logger.LogDebug("Restored detailer seed to -1 for next random generation");
-                }
-            }
 
             _progress.IsConverging = false;
             _state.State.Generation.IsInterrupted = false;
@@ -179,13 +156,12 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Prepares a generation-ready clone of the parameters.
-        /// Wildcards, styles, and LoRA strings are applied to the clone's prompts only.
-        /// Seed randomization mutates the original so the UI sampler resets to -1 next generation.
-        /// The live parameters (and therefore UI textboxes) are never touched.
+        /// Wildcards, styles, LoRA strings, and random seeds are applied to the clone only.
+        /// The live parameters (and therefore UI) are never touched.
         /// </summary>
         private async Task<GenerationParameters> PrepareGenerationParametersAsync(GenerationParameters parameters)
         {
-            // Clone so all prompt mutations stay isolated from the live UI state
+            // Clone so all mutations stay isolated from the live UI state
             var prepared = parameters.Clone();
 
             // Apply wildcard expansion, styles, and LoRA injection to the clone's prompts
@@ -219,10 +195,9 @@ namespace BlazorWebApp.Services
                 _logger.LogWarning("No prompts fragment found for generation");
             }
 
-            // Seed randomization is applied to the ORIGINAL (not the clone) so the UI resets
-            // to -1 after generation and the next run gets a fresh random seed
-            var samplerFragment = parameters.GetFragment(Fragments.MainSampler)
-                ?? parameters.GetFragment(Fragments.SamplerAdvanced);
+            // Seed randomization applied to the CLONE only - the original stays at -1
+            var samplerFragment = prepared.GetFragment(Fragments.MainSampler)
+                ?? prepared.GetFragment(Fragments.SamplerAdvanced);
             if (samplerFragment != null)
             {
                 var fragmentSeed = samplerFragment.GetValueOrDefault(Params.Seed, -1L);
@@ -230,8 +205,6 @@ namespace BlazorWebApp.Services
                 {
                     var actualSeed = (long)new Random().Next(0, int.MaxValue);
                     samplerFragment.SetValue(Params.Seed, actualSeed);
-                    prepared.GetFragment(Fragments.MainSampler)?.SetValue(Params.Seed, actualSeed);
-                    prepared.GetFragment(Fragments.SamplerAdvanced)?.SetValue(Params.Seed, actualSeed);
                     _state.State.Generation.Seed = actualSeed;
                 }
                 else
@@ -240,8 +213,8 @@ namespace BlazorWebApp.Services
                 }
             }
 
-            // Detailer seed randomization also on the original (same reasoning)
-            var detailerFragment = parameters.GetFragment(Fragments.Detailer);
+            // Detailer seed randomization also on the clone only
+            var detailerFragment = prepared.GetFragment(Fragments.Detailer);
             if (detailerFragment != null && detailerFragment.IsActive)
             {
                 var detailerSeed = detailerFragment.GetValueOrDefault(Params.DetailerSeed, -1L);
@@ -249,7 +222,6 @@ namespace BlazorWebApp.Services
                 {
                     var actualSeed = (long)new Random().Next(0, int.MaxValue);
                     detailerFragment.SetValue(Params.DetailerSeed, actualSeed);
-                    prepared.GetFragment(Fragments.Detailer)?.SetValue(Params.DetailerSeed, actualSeed);
                     _logger.LogDebug("Randomized detailer seed to {Seed}", actualSeed);
                 }
             }
@@ -368,15 +340,10 @@ namespace BlazorWebApp.Services
             _currentGenerationParams = parameters;
             _currentWorkflow = workflow;
 
-            // Capture original seed value to restore after generation (for random seed support)
-            var samplerFragment = parameters.GetFragment(Fragments.MainSampler)
-                ?? parameters.GetFragment(Fragments.SamplerAdvanced);
-            var originalSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L) ?? -1L;
-
             try
             {
-                // Build a generation-ready clone with wildcards, styles, and LoRAs applied to prompts.
-                // Seeds are randomized on the original so the UI resets correctly after generation.
+                // Build a generation-ready clone with wildcards, styles, LoRAs, and random seeds applied.
+                // The original parameters (and UI state) are never mutated.
                 var prepared = await PrepareGenerationParametersAsync(parameters);
 
                 _currentModel = parameters.Assets.GetValueOrDefault(Assets.HighModel, "")
@@ -403,15 +370,6 @@ namespace BlazorWebApp.Services
             catch (Exception e)
             {
                 _logger.LogError(e, "Error during video generation for workflow: {WorkflowTitle}", workflow.Title);
-            }
-            finally
-            {
-                // Restore seed to -1 so next generation randomizes again
-                if (originalSeed == -1 && samplerFragment != null)
-                {
-                    samplerFragment.SetValue(Params.Seed, -1L);
-                    _logger.LogDebug("Restored seed to -1 for next random generation");
-                }
             }
 
             _progress.IsConverging = false;
