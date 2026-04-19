@@ -24,6 +24,11 @@ namespace BlazorWebApp.Services
         private readonly ILogger<CivitaiService> _logger;
         private readonly List<string> _ignoreFileType = new() { "config" };
         private readonly List<CivitaiModelType> _ignoreModelTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
+        private const string BaseModelsJsonPath = "Data/CivitAI/basemodels.json";
+        private static CivitaiBaseModelsData? _cachedBaseModelsData;
+        private static readonly object _baseModelsLock = new();
+
+        public CivitaiBaseModelsData BaseModelsData { get; private set; } = new();
 
         public CivitaiService(HttpClient httpClient, IConfiguration configuration, IImageService img, IIOService io, IEventService events, IDatabaseService db, IProgressService progress, ILogger<CivitaiService> logger)
         {
@@ -37,6 +42,40 @@ namespace BlazorWebApp.Services
             _httpClient = httpClient;
             _httpClient.BaseAddress = new Uri("https://civitai.com/api/");
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _configuration["CivitaiApiToken"]);
+            LoadBaseModelsData();
+        }
+
+        private void LoadBaseModelsData()
+        {
+            lock (_baseModelsLock)
+            {
+                if (_cachedBaseModelsData != null)
+                {
+                    BaseModelsData = _cachedBaseModelsData;
+                    return;
+                }
+            }
+
+            try
+            {
+                var json = _io.LoadText(BaseModelsJsonPath);
+                if (json != null)
+                {
+                    var data = JsonSerializer.Deserialize<CivitaiBaseModelsData>(json);
+                    if (data != null)
+                    {
+                        lock (_baseModelsLock)
+                        {
+                            _cachedBaseModelsData = data;
+                        }
+                        BaseModelsData = data;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load base models data from {Path}", BaseModelsJsonPath);
+            }
         }
 
         public async Task<CivitaiCreatorsDto> GetCreators(CivitaiBaseRequest req)
@@ -160,7 +199,7 @@ namespace BlazorWebApp.Services
             var sort = req.Sort != null ? $"sort={req.Sort.ToString().Replace("_", " ")}&" : string.Empty;
             var period = req.Period != null ? $"period={req.Period}&" : string.Empty;
             var rating = req.Rating > -1 ? $"rating={req.Rating}&" : string.Empty;
-            var baseModels = req.BaseModels != null && req.BaseModels != "All" ? $"baseModels={req.BaseModels}&" : string.Empty;
+            var baseModels = req.BaseModels != null && req.BaseModels.Any() ? string.Join("&", req.BaseModels.Select(b => $"baseModels={Uri.EscapeDataString(b)}")) + "&" : string.Empty;
             //var page = req.Page > 0 ? $"page={req.Page}&" : string.Empty;
             //var favorites = req.Favorites != null ? $"favorites={req.Favorites.ToString().ToLower()}&" : string.Empty;
             //var hidden = req.Hidden != null ? $"hidden={req.Hidden.ToString().ToLower()}&" : string.Empty;

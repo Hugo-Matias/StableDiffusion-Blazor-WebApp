@@ -1,3 +1,24 @@
 ﻿::deep .page-number .mud-icon-root {
 	font-size: 0.8rem;
 }
+
+::deep .base-model-select .mud-list-item-disabled {
+	opacity: 1 !important;
+	pointer-events: none;
+	min-height: unset;
+	padding: 0;
+}
+
+::deep .base-model-select .mud-list-item-disabled .mud-list-item-icon {
+	display: none;
+}
+
+::deep .base-model-group-header {
+	font-size: 0.7rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--mud-palette-text-secondary);
+	padding: 8px 8px 2px 8px;
+	border-top: 1px solid var(--mud-palette-lines-default);
+}

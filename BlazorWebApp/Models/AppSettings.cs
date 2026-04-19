@@ -425,7 +425,8 @@ namespace BlazorWebApp.Models
         public string ImageMissingFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(125deg)";
         public string ImageExtraFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(25deg)";
         public string ImageOkFilter { get; set; } = "grayscale(70%) brightness(70%)";
-        public List<string> BaseModels { get; set; } = new() { "All", "ODOR", "SD 1.4", "SD 1.5", "SD 1.5 LCM", "SD 1.5 Hyper", "SD 2.0", "SD 2.0 768", "SD 2.1", "SD 2.1 768", "SD 2.1 Unclip", "SDXL 0.9", "SDXL 1.0", "SD 3", "Pony", "Flux.1 S", "Flux.1 D", "AuraFlow", "SDXL 1.0 LCM", "SDXL Distilled", "SDXL Turbo", "SDXL Lightning", "SDXL Hyper", "Stable Cascade", "SVD", "SVD XT", "Playground v2", "PixArt a", "PixArt E", "Hunyuan 1", "Lumina", "Kolors", "Other" };
+        public List<string> DisabledFamilies { get; set; } = new();
+        public List<string> DisabledModels { get; set; } = new();
         public CivitaiLimitSettingsModel Limit { get; set; } = new();
     }
 

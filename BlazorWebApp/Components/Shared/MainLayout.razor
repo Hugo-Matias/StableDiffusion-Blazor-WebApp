@@ -80,7 +80,7 @@
         <MudExpansionPanels Style="position: fixed; width:100%; z-index:1301; top: 0px;">
             <MudExpansionPanel HideIcon=true @bind-IsExpanded="_isToolbarOpen">
                 <CascadingValue Value="@((Action)HandleThemeChanged)">
-                    <TopToolbar />
+                    <TopToolbar CurrentPage="@_currentPagePath" />
                 </CascadingValue>
             </MudExpansionPanel>
         </MudExpansionPanels>
@@ -101,12 +101,14 @@
     private MudTheme _currentTheme = new MudTheme();
     private List<ModelBase> _workflowBases = new();
     private InfoDrawer? _infoDrawer;
+    private string _currentPagePath = "/";
     
     // Pages that should NOT redirect when Base changes (non-generation pages)
     private static readonly string[] _safePages = { "/", "/prompts", "/resources", "/danbooru" };
 
     protected override void OnInitialized()
     {
+        _currentPagePath = new Uri(NavManager.Uri).AbsolutePath;
         Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
         Events.Subscribe<ModelsChangedEventArgs>(OnSDModelsChange);
         Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
@@ -250,8 +252,10 @@
 
     private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
+        _currentPagePath = new Uri(NavManager.Uri).AbsolutePath;
         // Close drawer when navigating away from page
         _infoDrawer?.Close();
+        InvokeAsync(StateHasChanged);
     }
 
     private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();

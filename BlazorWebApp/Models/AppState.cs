@@ -1,8 +1,11 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Converters;
 using BlazorWebApp.Data.Dtos.Ollama;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
 using MudBlazor;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Models
@@ -254,7 +257,8 @@ namespace BlazorWebApp.Models
         public CivitaiModelType? Type { get; set; } = null;
         public CivitaiSort Sort { get; set; } = CivitaiSort.Highest_Rated;
         public CivitaiPeriod Period { get; set; } = CivitaiPeriod.AllTime;
-        public string BaseModels { get; set; } = "All";
+        [JsonConverter(typeof(StringOrListConverter))]
+        public List<string> BaseModels { get; set; } = new List<string>();
         public int Rating { get; set; } = -1;
         public bool Favorites { get; set; } = false;
         public bool Hidden { get; set; } = false;

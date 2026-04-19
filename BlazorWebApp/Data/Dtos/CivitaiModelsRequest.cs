@@ -12,7 +12,7 @@
         public bool? Hidden { get; set; }
         public bool? IsPrimaryFileOnly { get; set; }
         public string? Hash { get; set; }
-        public string? BaseModels { get; set; }
+        public IEnumerable<string>? BaseModels { get; set; }
     }
 
     public enum CivitaiModelType { All, Checkpoint, LORA, LoCon, DoRA, TextualInversion, Hypernetwork, AestheticGradient, Controlnet, Upscaler, MotionModule, VAE, Poses, Wildcards, Workflows, Other }
