@@ -34,14 +34,14 @@ The workflow template system uses a **Fluent Builder API** where:
 
 ### Key Design Goals
 
-| Goal | Description |
-|------|-------------|
-| **Modularity** | Fragments can be reused across multiple workflows and architectures |
-| **Flexibility** | Any fragment can be instantiated multiple times with different scopes |
-| **Architecture-Agnostic** | Features like Detailer/Upscale work with any model base |
-| **Streamlined** | Single `scope` parameter controls namespace isolation |
-| **Type Safety** | Compile-time validation, IntelliSense, and strongly-typed parameters |
-| **Testability** | Unit tests for every fragment and workflow |
+| Goal                      | Description                                                           |
+| ------------------------- | --------------------------------------------------------------------- |
+| **Modularity**            | Fragments can be reused across multiple workflows and architectures   |
+| **Flexibility**           | Any fragment can be instantiated multiple times with different scopes |
+| **Architecture-Agnostic** | Features like Detailer/Upscale work with any model base               |
+| **Streamlined**           | Single `scope` parameter controls namespace isolation                 |
+| **Type Safety**           | Compile-time validation, IntelliSense, and strongly-typed parameters  |
+| **Testability**           | Unit tests for every fragment and workflow                            |
 
 ### Architecture
 
@@ -72,15 +72,15 @@ ComfyUI Workflow JSON
 
 All outputs follow the pattern: `{scope}{type}_output`
 
-| Output Name | Description |
-|-------------|-------------|
-| `model_output` | Model/UNet output |
-| `clip_output` | CLIP encoder output |
-| `vae_output` | VAE output |
-| `latent_output` | Latent image output |
+| Output Name       | Description           |
+| ----------------- | --------------------- |
+| `model_output`    | Model/UNet output     |
+| `clip_output`     | CLIP encoder output   |
+| `vae_output`      | VAE output            |
+| `latent_output`   | Latent image output   |
 | `positive_output` | Positive conditioning |
 | `negative_output` | Negative conditioning |
-| `image_output` | Decoded image output |
+| `image_output`    | Decoded image output  |
 
 ### 2. Scope System
 
@@ -121,6 +121,7 @@ Save (no scope)              -> reads image_output (always exists)
 ```
 
 **Why this works:**
+
 - Conditional fragments (detailer, upscale) overwrite `image_output` when active
 - When skipped, the previous `image_output` remains valid
 - `save` always finds `image_output` regardless of which optional fragments ran
@@ -158,12 +159,12 @@ public WorkflowMetadata Metadata => new()
 };
 ```
 
-| Field | Description |
-|-------|-------------|
-| `Title` | Display name in UI |
-| `Base` | Model base enum: `StableDiffusion`, `Flux`, `Chroma`, `Qwen`, `ZImage`, `Wan`, `Anima` |
-| `Mode` | Mode type: `Txt2Img`, `Img2Img`, `Upscale`, `Img2Vid` |
-| `Assets` | Dynamic model selectors (see [Assets System](#assets-system)) |
+| Field    | Description                                                                            |
+| -------- | -------------------------------------------------------------------------------------- |
+| `Title`  | Display name in UI                                                                     |
+| `Base`   | Model base enum: `StableDiffusion`, `Flux`, `Chroma`, `Qwen`, `ZImage`, `Wan`, `Anima` |
+| `Mode`   | Mode type: `Txt2Img`, `Img2Img`, `Upscale`, `Img2Vid`                                  |
+| `Assets` | Dynamic model selectors (see [Assets System](#assets-system))                          |
 
 ### GetFragments()
 
@@ -202,24 +203,24 @@ new WorkflowAsset
 
 ### Asset Properties
 
-| Property | Required | Type | Description |
-|----------|----------|------|-------------|
-| `Parameter` | Yes | string | Key used to retrieve value: `parameters.Assets?.GetValueOrDefault("Model")` |
-| `Label` | No | string | Display name in UI. Defaults to `Parameter` |
-| `Type` | Yes | AssetType | Asset type enum (see below) |
-| `DefaultValue` | No | string | Default filename from ComfyUI |
-| `Order` | No | int | Display order (lower = first). Default: 0 |
-| `ColumnSize` | No | int | Grid column width (1-12). Default: 6 |
+| Property       | Required | Type      | Description                                                                 |
+| -------------- | -------- | --------- | --------------------------------------------------------------------------- |
+| `Parameter`    | Yes      | string    | Key used to retrieve value: `parameters.Assets?.GetValueOrDefault("Model")` |
+| `Label`        | No       | string    | Display name in UI. Defaults to `Parameter`                                 |
+| `Type`         | Yes      | AssetType | Asset type enum (see below)                                                 |
+| `DefaultValue` | No       | string    | Default filename from ComfyUI                                               |
+| `Order`        | No       | int       | Display order (lower = first). Default: 0                                   |
+| `ColumnSize`   | No       | int       | Grid column width (1-12). Default: 6                                        |
 
 ### Asset Types
 
-| Type | ComfyUI Endpoint | Description |
-|------|------------------|-------------|
-| `CheckpointModel` | `checkpoints` | Traditional SD checkpoint files (.safetensors, .ckpt) |
-| `DiffusionModel` | `diffusion_models` / `unet` | Diffusion/UNet model files (Flux, Anima, ZImage, etc.) |
-| `Vae` | `vae` | VAE model files |
-| `Clip` | `text_encoders` / `clip` | CLIP text encoder models |
-| `ClipVision` | `clip_vision` | CLIP vision encoder models |
+| Type              | ComfyUI Endpoint            | Description                                            |
+| ----------------- | --------------------------- | ------------------------------------------------------ |
+| `CheckpointModel` | `checkpoints`               | Traditional SD checkpoint files (.safetensors, .ckpt)  |
+| `DiffusionModel`  | `diffusion_models` / `unet` | Diffusion/UNet model files (Flux, Anima, ZImage, etc.) |
+| `Vae`             | `vae`                       | VAE model files                                        |
+| `Clip`            | `text_encoders` / `clip`    | CLIP text encoder models                               |
+| `ClipVision`      | `clip_vision`               | CLIP vision encoder models                             |
 
 ### Using Assets in Workflows
 
@@ -231,12 +232,12 @@ var clipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "default-clip.saf
 
 ### Column Layout
 
-| ColumnSize | Width | Use Case |
-|------------|-------|----------|
-| 12 | Full width | Single large dropdown |
-| 6 | Half width | Two dropdowns per row |
-| 4 | One-third | Three dropdowns per row (Model + CLIP + VAE) |
-| 3 | One-quarter | Four dropdowns per row (Flux: Model + 2 CLIPs + VAE) |
+| ColumnSize | Width       | Use Case                                             |
+| ---------- | ----------- | ---------------------------------------------------- |
+| 12         | Full width  | Single large dropdown                                |
+| 6          | Half width  | Two dropdowns per row                                |
+| 4          | One-third   | Three dropdowns per row (Model + CLIP + VAE)         |
+| 3          | One-quarter | Four dropdowns per row (Flux: Model + 2 CLIPs + VAE) |
 
 ---
 
@@ -310,14 +311,15 @@ Parameters =
 
 Parameters can fetch their options dynamically from ComfyUI:
 
-| Source | Description |
-|--------|-------------|
-| `new DynamicSource("Backend", "Samplers")` | Sampler algorithms available in ComfyUI |
-| `new DynamicSource("Backend", "Schedulers")` | Scheduler types available in ComfyUI |
+| Source                                       | Description                             |
+| -------------------------------------------- | --------------------------------------- |
+| `new DynamicSource("Backend", "Samplers")`   | Sampler algorithms available in ComfyUI |
+| `new DynamicSource("Backend", "Schedulers")` | Scheduler types available in ComfyUI    |
 
 ### Dual Build Pattern
 
 Fragments support two build methods:
+
 1. **From GenerationParameters** (interface method) - reads from fragment state dictionary
 2. **From explicit Parameters** (overload) - direct construction by workflow
 
@@ -333,12 +335,12 @@ public void Build(ComfyWorkflowBuilder builder, NodeRegistry registry,
 
 ### Fragment Types
 
-| Type | Scope Behavior | Example |
-|------|----------------|---------|
-| **Loader** | Writes outputs to scope | `LoadDiffusionFragment`, `LoadCheckpointFragment` |
-| **Processor** | Reads from scope, writes to main | `SamplerFragment`, `VaeDecodeFragment` |
-| **Feature** | Reads models from scope, reads/writes pipeline to main | `DetailerFragment`, `UpscaleFragment` |
-| **Terminal** | Reads from main only | `SaveFragment` |
+| Type          | Scope Behavior                                         | Example                                           |
+| ------------- | ------------------------------------------------------ | ------------------------------------------------- |
+| **Loader**    | Writes outputs to scope                                | `LoadDiffusionFragment`, `LoadCheckpointFragment` |
+| **Processor** | Reads from scope, writes to main                       | `SamplerFragment`, `VaeDecodeFragment`            |
+| **Feature**   | Reads models from scope, reads/writes pipeline to main | `DetailerFragment`, `UpscaleFragment`             |
+| **Terminal**  | Reads from main only                                   | `SaveFragment`                                    |
 
 ---
 
@@ -347,6 +349,7 @@ public void Build(ComfyWorkflowBuilder builder, NodeRegistry registry,
 ### Single Parameter Design
 
 The `scope` parameter serves dual purpose:
+
 - For loaders: Prefix for output names
 - For processors/features: Prefix for input lookups
 
@@ -360,10 +363,10 @@ var modelRef = registry.GetRef($"{scope}model_output");
 
 ### Standard Scopes
 
-| Scope | Usage |
-|-------|-------|
-| `""` (empty) | Main generation pipeline |
-| `"detailer_"` | Detailer model loading |
+| Scope         | Usage                    |
+| ------------- | ------------------------ |
+| `""` (empty)  | Main generation pipeline |
+| `"detailer_"` | Detailer model loading   |
 
 ---
 
@@ -459,6 +462,7 @@ Sampler       -> reads model_output* for sampling
 ```
 
 **Two LoRA approaches:**
+
 1. **App-generated nodes** (`LoraLoaderFragment`): Explicit `LoraLoader` nodes that chain `model_output` and `clip_output`. Used by UNet-based workflows (Anima, ZImage, Flux).
 2. **PCLazyLoader** (`LoadCheckpointFragment`): LoRA syntax parsed from prompt text by `PCLazyLoraLoader` nodes. Used by checkpoint-based workflows (StableDiffusion).
 
@@ -523,44 +527,46 @@ var modelRef = registry.GetRef($"{scope}model_output");
 
 Before creating a new fragment, check if an existing one handles the node type. Fragments should be generic enough to work across model bases:
 
-| Node Pattern | Existing Fragment |
-|--------------|-------------------|
-| UNETLoader + CLIPLoader + VAELoader | `LoadDiffusionFragment` |
-| CheckpointLoaderSimple + PCLazy prompts | `LoadCheckpointFragment` |
+| Node Pattern                                  | Existing Fragment                  |
+| --------------------------------------------- | ---------------------------------- |
+| UNETLoader + CLIPLoader + VAELoader           | `LoadDiffusionFragment`            |
+| CheckpointLoaderSimple + PCLazy prompts       | `LoadCheckpointFragment`           |
 | UNETLoader + CLIPLoader + VAELoader + prompts | `LoadDiffusionWithPromptsFragment` |
-| UNETLoader + DualCLIPLoader (Flux) | `LoadFluxFragment` |
-| KSampler | `SamplerStandardFragment` |
-| ClownsharKSampler_Beta | `SamplerFragment` |
-| EmptyLatentImage / EmptySD3LatentImage | `EmptyLatentFragment` |
-| CLIPTextEncode (positive + negative) | `PromptsFragment` |
-| VAEDecode | `VaeDecodeFragment` |
-| SaveImage | `SaveFragment` |
-| LoraLoader (app-generated) | `LoraLoaderFragment` |
-| FaceDetailer | `DetailerFragment` |
-| SeedVR2 upscale pipeline | `SeedVR2UpscaleFragment` |
-| ImageUpscaleWithModel + sampler | `UpscaleFragment` |
+| UNETLoader + DualCLIPLoader (Flux)            | `LoadFluxFragment`                 |
+| KSampler                                      | `SamplerStandardFragment`          |
+| ClownsharKSampler_Beta                        | `SamplerFragment`                  |
+| EmptyLatentImage / EmptySD3LatentImage        | `EmptyLatentFragment`              |
+| CLIPTextEncode (positive + negative)          | `PromptsFragment`                  |
+| VAEDecode                                     | `VaeDecodeFragment`                |
+| SaveImage                                     | `SaveFragment`                     |
+| LoraLoader (app-generated)                    | `LoraLoaderFragment`               |
+| FaceDetailer                                  | `DetailerFragment`                 |
+| SeedVR2 upscale pipeline                      | `SeedVR2UpscaleFragment`           |
+| ImageUpscaleWithModel + sampler               | `UpscaleFragment`                  |
 
 ### 5. Hardcoded vs UI-Exposed Values
 
 When implementing a workflow, some values are hardcoded (not relevant to the end user) while others are exposed via fragment parameters:
 
-| Category | Examples | Exposed? |
-|----------|----------|----------|
-| Model infrastructure | `clip_type`, `weight_dtype`, `device` | No - hardcoded |
-| Latent class | `EmptyLatentImage` vs `EmptySD3LatentImage` | No - hardcoded per base |
-| Save prefix | `tmp/img` | No - always temp folder |
-| Sampler class | `KSampler` vs `ClownsharKSampler_Beta` | No - hardcoded per workflow |
-| Prompt text | positive/negative | Yes - via PromptsFragment |
-| Resolution | width/height/batch | Yes - via EmptyLatentFragment |
-| Sampler params | steps/cfg/denoise/seed | Yes - via SamplerFragment |
-| Sampler/Scheduler | algorithm names | Yes - dynamic from ComfyUI |
-| Model files | model/clip/vae | Yes - via Assets |
+| Category             | Examples                                    | Exposed?                      |
+| -------------------- | ------------------------------------------- | ----------------------------- |
+| Model infrastructure | `clip_type`, `weight_dtype`, `device`       | No - hardcoded                |
+| Latent class         | `EmptyLatentImage` vs `EmptySD3LatentImage` | No - hardcoded per base       |
+| Save prefix          | `tmp/img`                                   | No - always temp folder       |
+| Sampler class        | `KSampler` vs `ClownsharKSampler_Beta`      | No - hardcoded per workflow   |
+| Prompt text          | positive/negative                           | Yes - via PromptsFragment     |
+| Resolution           | width/height/batch                          | Yes - via EmptyLatentFragment |
+| Sampler params       | steps/cfg/denoise/seed                      | Yes - via SamplerFragment     |
+| Sampler/Scheduler    | algorithm names                             | Yes - dynamic from ComfyUI    |
+| Model files          | model/clip/vae                              | Yes - via Assets              |
 
 ---
 
 ## Converting Raw Workflows
 
 This section provides a step-by-step guide for converting raw ComfyUI workflow JSON files into the fluent builder system.
+
+> **Agent-driven workflow:** Use the `.github/prompts/workflow-conversion.prompt.md` prompt in Copilot Chat to run the conversion as a guided, multi-phase agent session. The agent follows the exact steps below, presents a plan for user approval before writing any code, and confirms the build at the end.
 
 ### Conversion Process
 
@@ -582,7 +588,7 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
 
 #### Step 2: Planning Phase (Required)
 
-**Before creating any files, discuss and document:**
+**Before creating any files, discuss and document all of the following with the user:**
 
 1. **Fragment Reuse Assessment**
    - Map each node to an existing fragment (see table above)
@@ -602,26 +608,53 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
    - `KSampler`: Use `SamplerStandardFragment`
    - `ClownsharKSampler_Beta`: Use `SamplerFragment` (advanced features like eta, bongmath)
 
-5. **Enhancement Fragments**
-   - Image workflows typically include: SeedVR2Upscale, Detailer
-   - Some bases may also include: Upscale, SeedVarianceEnhancer, ConditioningVariation
+5. **Enhancement Fragments** (discuss with user — these are always optional add-ons)
 
-6. **Hardcoded vs Exposed Values**
-   - Document which values are hardcoded and why
-   - Document all UI-exposed parameters with their defaults
+   Applicable to **image generation** workflows (Txt2Img, Img2Img):
+
+   | Enhancement            | Fragment                                                | Description                                                                                       |
+   | ---------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+   | SeedVR2 Upscale        | `SeedVR2UpscaleFragment`                                | High-quality latent upscaling via unsampling/resampling. Recommended default for image workflows. |
+   | FaceDetailer           | `DetailerFragment` + `LoadDiffusionWithPromptsFragment` | Facial detail pass with optional separate model and prompts. Requires scoped loader.              |
+   | Standard Upscale       | `UpscaleFragment`                                       | Image upscaling using an upscale model + optional resampling pass.                                |
+   | Seed Variance          | `SeedVarianceEnhancerFragment`                          | Subtle variation injection. Rarely used.                                                          |
+   | Conditioning Variation | `ConditioningVariationFragment`                         | Prompt conditioning variation. Rarely used.                                                       |
+
+   **Not applicable** to video workflows (Img2Vid). For video, discuss frame interpolation instead.
+
+   Explicitly ask the user:
+   - Which enhancements to include
+   - Whether the detailer should share the main model or use a separate model asset
+
+6. **Hardcoded vs UI-Exposed Values**
+
+   Present a table for user validation before proceeding:
+
+   | Parameter      | Value in JSON      | Exposed in UI? | Reason                           |
+   | -------------- | ------------------ | -------------- | -------------------------------- |
+   | Sampler name   | `euler`            | Yes            | User controls sampling algorithm |
+   | Steps          | `20`               | Yes            | User controls quality vs speed   |
+   | CFG            | `7.0`              | Yes            | User controls prompt adherence   |
+   | Seed           | `-1`               | Yes            | User controls reproducibility    |
+   | Width/Height   | `1024`             | Yes            | User controls resolution         |
+   | `clip_type`    | `stable_diffusion` | No             | Infrastructure detail            |
+   | `weight_dtype` | `default`          | No             | Infrastructure detail            |
+   | Save prefix    | `tmp/img`          | No             | Always temp folder               |
+
+   Use this table as a template; fill in values from the actual workflow JSON.
 
 7. **Default Values**
    - Use values from the raw JSON as sensible defaults
    - CFG, steps, sampler, scheduler should match the model's recommended settings
 
-**Request approval before proceeding to implementation.**
+> **Validation gate:** Do NOT proceed to implementation until the user explicitly approves the full plan, including the enhancement selection and the UI-exposed vs hardcoded table.
 
 #### Step 3: Implementation
 
 1. **Add ModelBase enum value** (if new base) in `Data/Enums.cs`
-2. **Create workflow class** in `Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
-3. **Create any new fragments** in appropriate `Workflows/Fragments/` subdirectory
-4. **Build and test**
+2. **Create any new fragment classes** in the appropriate `Workflows/Fragments/` subdirectory
+3. **Create the workflow class** in `Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
+4. **Build and verify compilation**
 
 #### Step 4: Verification
 
@@ -806,12 +839,12 @@ if (detailerFragment?.IsActive == true)
 
 ### Scope Parameter
 
-| Fragment Type | scope controls | Writes to |
-|---------------|----------------|-----------|
-| Loader | Output prefix | `{scope}model_output`, etc. |
-| Processor | Input prefix | Main (`latent_output`, etc.) |
-| Feature | Model input prefix | Main (`image_output`) |
-| Terminal | N/A | N/A |
+| Fragment Type | scope controls     | Writes to                    |
+| ------------- | ------------------ | ---------------------------- |
+| Loader        | Output prefix      | `{scope}model_output`, etc.  |
+| Processor     | Input prefix       | Main (`latent_output`, etc.) |
+| Feature       | Model input prefix | Main (`image_output`)        |
+| Terminal      | N/A                | N/A                          |
 
 ### Common Build Order (Image Txt2Img)
 
@@ -829,10 +862,10 @@ if (detailerFragment?.IsActive == true)
 
 ### Parameter Type Reference
 
-| ParameterType | UI Control | Example |
-|---------------|------------|---------|
-| `Slider` | Range slider | Steps, CFG, Denoise |
-| `Number` | Number input | Seed |
-| `TextArea` | Multi-line text | Prompts |
-| `Select` | Dropdown | Sampler, Scheduler (dynamic from ComfyUI) |
-| `Toggle` | Checkbox | Feature on/off |
+| ParameterType | UI Control      | Example                                   |
+| ------------- | --------------- | ----------------------------------------- |
+| `Slider`      | Range slider    | Steps, CFG, Denoise                       |
+| `Number`      | Number input    | Seed                                      |
+| `TextArea`    | Multi-line text | Prompts                                   |
+| `Select`      | Dropdown        | Sampler, Scheduler (dynamic from ComfyUI) |
+| `Toggle`      | Checkbox        | Feature on/off                            |

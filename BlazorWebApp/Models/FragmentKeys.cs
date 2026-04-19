@@ -57,6 +57,11 @@ namespace BlazorWebApp.Models
             // Qwen/Edit fragments
             public const string LoadQwenEdit = "load_qwen_edit";
             public const string EncodeEdit = "encode_edit";
+
+            // LTX video generation fragments
+            public const string LtxVideoSettings = "ltx_video_settings";
+            public const string LtxSampler = "ltx_sampler";
+            public const string LtxLoadImage = "ltx_load_image";
         }
 
         /// <summary>

@@ -1,0 +1,139 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("LtxVideoSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudSlider T="int"
+                   @bind-Value="_localDuration"
+                   @bind-Value:after="OnDurationChanged"
+                   Min="_durationMin"
+                   Max="_durationMax"
+                   Step="_durationStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Duration:</small> @_localDuration<small>s</small>
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int"
+                   @bind-Value="_localFrameRate"
+                   @bind-Value:after="OnFrameRateChanged"
+                   Min="_frameRateMin"
+                   Max="_frameRateMax"
+                   Step="_frameRateStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Frame Rate:</small> @_localFrameRate<small>fps</small>
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int"
+                   @bind-Value="_localImgCompression"
+                   @bind-Value:after="OnImgCompressionChanged"
+                   Min="_imgCompressionMin"
+                   Max="_imgCompressionMax"
+                   Step="_imgCompressionStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Image Compression:</small> @_localImgCompression
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double"
+                   @bind-Value="_localI2vStrength"
+                   @bind-Value:after="OnI2vStrengthChanged"
+                   Min="_i2vStrengthMin"
+                   Max="_i2vStrengthMax"
+                   Step="_i2vStrengthStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>I2V Strength:</small> @_localI2vStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _localDuration;
+    private int _localFrameRate;
+    private int _localImgCompression;
+    private double _localI2vStrength;
+
+    private int _durationMin = 1, _durationMax = 15, _durationStep = 1;
+    private int _frameRateMin = 8, _frameRateMax = 30, _frameRateStep = 1;
+    private int _imgCompressionMin = 1, _imgCompressionMax = 30, _imgCompressionStep = 1;
+    private double _i2vStrengthMin = 0.0, _i2vStrengthMax = 1.0, _i2vStrengthStep = 0.05;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localDuration = ParameterService.GetFragmentProperty(Fragment, "duration", 5);
+        _localFrameRate = ParameterService.GetFragmentProperty(Fragment, "frame_rate", 25);
+        _localImgCompression = ParameterService.GetFragmentProperty(Fragment, "img_compression", 18);
+        _localI2vStrength = ParameterService.GetFragmentProperty(Fragment, "i2v_strength", 0.7);
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("duration", out var durationConstraints))
+        {
+            _durationMin = durationConstraints.GetMin(1);
+            _durationMax = durationConstraints.GetMax(15);
+            _durationStep = durationConstraints.GetStep(1);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("frame_rate", out var fpsConstraints))
+        {
+            _frameRateMin = fpsConstraints.GetMin(8);
+            _frameRateMax = fpsConstraints.GetMax(30);
+            _frameRateStep = fpsConstraints.GetStep(1);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("img_compression", out var compConstraints))
+        {
+            _imgCompressionMin = compConstraints.GetMin(1);
+            _imgCompressionMax = compConstraints.GetMax(30);
+            _imgCompressionStep = compConstraints.GetStep(1);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("i2v_strength", out var strengthConstraints))
+        {
+            _i2vStrengthMin = strengthConstraints.GetMin(0.0);
+            _i2vStrengthMax = strengthConstraints.GetMax(1.0);
+            _i2vStrengthStep = strengthConstraints.GetStep(0.05);
+        }
+    }
+
+    private async Task OnDurationChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "duration", _localDuration, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnFrameRateChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "frame_rate", _localFrameRate, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnImgCompressionChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "img_compression", _localImgCompression, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnI2vStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "i2v_strength", _localI2vStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}
