@@ -1,4 +1,6 @@
-﻿namespace BlazorWebApp.Models
+﻿using System.Text.Json.Serialization;
+
+namespace BlazorWebApp.Models
 {
     public class Lora
     {
@@ -23,16 +25,19 @@
         /// <summary>
         /// Indicates if this LoRA has a high noise model variant configured.
         /// </summary>
+        [JsonIgnore]
         public bool HasHighPath => !string.IsNullOrWhiteSpace(HighPath);
 
         /// <summary>
         /// Indicates if this LoRA has a low noise model variant configured.
         /// </summary>
+        [JsonIgnore]
         public bool HasLowPath => !string.IsNullOrWhiteSpace(LowPath);
 
         /// <summary>
         /// Indicates if this is a dual-model LoRA (has either high or low path set).
         /// </summary>
+        [JsonIgnore]
         public bool IsDualModel => HasHighPath || HasLowPath;
 
         public Lora() { }

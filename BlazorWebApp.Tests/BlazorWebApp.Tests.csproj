@@ -25,8 +25,4 @@
     <ProjectReference Include="..\BlazorWebApp\BlazorWebApp.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Models\" />
-  </ItemGroup>
-
 </Project>

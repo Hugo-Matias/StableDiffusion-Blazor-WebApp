@@ -282,14 +282,7 @@ namespace BlazorWebApp.Services
 
             // Loras from saved state (if any)
             current.Loras.Clear();
-            current.Loras.AddRange(savedState.Loras.Select(l => new Lora
-            {
-                Name = l.Name,
-                Path = l.Path,
-                Strength = l.Strength,
-                IsEnabled = l.IsEnabled,
-                IsNegative = l.IsNegative
-            }));
+            current.Loras.AddRange(savedState.Loras.Select(l => new Lora(l)));
 
             // Check for any new fragments in the C# workflow that weren't in saved state
             var builder = _workflowService.GetWorkflowBuilder(workflow.Id);

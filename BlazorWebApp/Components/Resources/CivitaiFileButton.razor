@@ -5,10 +5,13 @@
 
 <div>
     <MudStack Class=@Class>
-        <MudSelect Label="Resource Type" T="string" @bind-Value=State.State.Civitai.ResourceTypeOverride Variant="Variant.Filled" Dense>
-            <MudSelectItem Value="@("Checkpoint")">Checkpoint</MudSelectItem>
-            <MudSelectItem Value="@("Diffusion")">Diffusion</MudSelectItem>
-        </MudSelect>
+        @if (ModelType == "Checkpoint")
+        {
+            <MudSelect Label="Resource Type" T="string" @bind-Value=State.State.Civitai.ResourceTypeOverride Variant="Variant.Filled" Dense>
+                <MudSelectItem Value="@("Checkpoint")">Checkpoint</MudSelectItem>
+                <MudSelectItem Value="@("Diffusion")">Diffusion</MudSelectItem>
+            </MudSelect>
+        }
         <MudAutocomplete Label="Sub-Type" T="string" @bind-Value=State.State.Civitai.ResourceSubtype SearchFunc="DB.GetResourceSubtypeNames" MaxItems="50" MaxHeight="900" CoerceValue ResetValueOnEmptyText Clearable />
         <MudTextField Label="Filename" @bind-Value=_selected.Name />
         <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
@@ -99,6 +102,7 @@
 
 @code {
     [Parameter] public string Class { get; set; }
+    [Parameter] public string ModelType { get; set; }
     [Parameter] public CivitaiModelVersionDto ModelVersion { get; set; }
     [Parameter] public EventCallback<CivitaiModelVersionFileDto> OnDownload { get; set; }
     private CivitaiModelVersionFileDto _selected;

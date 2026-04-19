@@ -51,14 +51,7 @@ namespace BlazorWebApp.Models
                     kvp => kvp.Key,
                     kvp => kvp.Value.Clone()
                 ),
-                Loras = Loras.Select(l => new Lora
-                {
-                    Name = l.Name,
-                    Path = l.Path,
-                    Strength = l.Strength,
-                    IsEnabled = l.IsEnabled,
-                    IsNegative = l.IsNegative
-                }).ToList(),
+                Loras = Loras.Select(l => new Lora(l)).ToList(),
                 Fragments = Fragments.ToDictionary(
                     kvp => kvp.Key,
                     kvp => kvp.Value.Clone()

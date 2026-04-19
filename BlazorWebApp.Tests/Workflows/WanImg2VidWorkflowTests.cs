@@ -320,6 +320,30 @@ public class WanImg2VidWorkflowTests
         lowSamplingInputs.GetProperty("model")[0].GetString().Should().Be("low_torch");
     }
 
+    [Fact]
+    public void Build_WithDualLora_ShouldUseSameStrengthForBothModels()
+    {
+        var parameters = CreateDefaultParameters();
+        parameters.Loras.Add(new Lora
+        {
+            Name = "dual_lora",
+            Path = "loras/dual.safetensors",
+            HighPath = "loras/dual_high.safetensors",
+            LowPath = "loras/dual_low.safetensors",
+            Strength = 0.7f,
+            IsEnabled = true
+        });
+
+        var result = _workflow.Build(parameters);
+        var json = JsonDocument.Parse(result.Json);
+
+        var highLoraInputs = json.RootElement.GetProperty("high_lora_loader_0").GetProperty("inputs");
+        highLoraInputs.GetProperty("strength_model").GetDouble().Should().BeApproximately(0.7, 0.01);
+
+        var lowLoraInputs = json.RootElement.GetProperty("low_lora_loader_0").GetProperty("inputs");
+        lowLoraInputs.GetProperty("strength_model").GetDouble().Should().BeApproximately(0.7, 0.01);
+    }
+
     #endregion
 
     #region Build - Frame Interpolation

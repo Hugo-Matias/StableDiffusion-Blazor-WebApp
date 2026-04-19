@@ -144,6 +144,7 @@ public class WanImg2VidWorkflow : IWorkflowBuilder
         // 4. LoRAs (optional, per model)
         var currentHighOutput = "high_model_output";
         var currentLowOutput = "low_model_output";
+        var currentClipOutput = "clip_output";
 
         if (parameters.Loras?.Count > 0)
         {
@@ -162,9 +163,12 @@ public class WanImg2VidWorkflow : IWorkflowBuilder
                         LoraStrength = lora.Strength,
                         ModelInputName = currentHighOutput,
                         ModelOutputName = "high_lora_model_output",
+                        ClipInputName = currentClipOutput,
+                        ClipOutputName = "high_lora_clip_output",
                         Title = $"LoRA (High) {i}"
                     });
                     currentHighOutput = "high_lora_model_output";
+                    currentClipOutput = "high_lora_clip_output";
                 }
 
                 if (lora.HasLowPath)
@@ -177,9 +181,12 @@ public class WanImg2VidWorkflow : IWorkflowBuilder
                         LoraStrength = lora.Strength,
                         ModelInputName = currentLowOutput,
                         ModelOutputName = "low_lora_model_output",
+                        ClipInputName = currentClipOutput,
+                        ClipOutputName = "low_lora_clip_output",
                         Title = $"LoRA (Low) {i}"
                     });
                     currentLowOutput = "low_lora_model_output";
+                    currentClipOutput = "low_lora_clip_output";
                 }
             }
         }
