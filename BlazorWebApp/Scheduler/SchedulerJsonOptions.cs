@@ -1,11 +1,15 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BlazorWebApp.Data.Converters;
 
 namespace BlazorWebApp.Scheduler
 {
     /// <summary>
     /// Centralized <see cref="JsonSerializerOptions"/> for persisting Scheduler aggregates
     /// (<see cref="Models.Job"/>, directives, variations, targets).
+    /// Registers the project-wide <see cref="GenerationParametersJsonConverter"/> and
+    /// <see cref="FragmentParametersJsonConverter"/> so nested <see cref="BlazorWebApp.Models.GenerationParameters"/>
+    /// values (stored on <see cref="Models.Job.BaseParameters"/>) round-trip with full type fidelity.
     /// </summary>
     public static class SchedulerJsonOptions
     {
@@ -25,7 +29,12 @@ namespace BlazorWebApp.Scheduler
             PropertyNameCaseInsensitive = true,
             WriteIndented = writeIndented,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters = { new JsonStringEnumConverter() }
+            Converters =
+            {
+                new JsonStringEnumConverter(),
+                new GenerationParametersJsonConverter(),
+                new FragmentParametersJsonConverter()
+            }
         };
     }
 }

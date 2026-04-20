@@ -34,16 +34,16 @@ namespace BlazorWebApp.Data
 
             // Explicitly ignore all non-entity types that EF Core might discover through navigation properties
             // These are Models/DTOs that should not be mapped to database tables
-            
+
             // Workflow-related models
             modelBuilder.Ignore<Workflow>();
-            
+
             // State and generation models
             modelBuilder.Ignore<Lora>();
             modelBuilder.Ignore<AppState>();
             modelBuilder.Ignore<GeneratedVideo>();
             modelBuilder.Ignore<GeneratedVideos>();
-            
+
             // GenerationParameters and related types
             modelBuilder.Ignore<GenerationParameters>();
             modelBuilder.Ignore<FragmentParameters>();
@@ -62,7 +62,7 @@ namespace BlazorWebApp.Data
 
             // Custom JSON options with our converters to preserve value types
             var generationParamsJsonOptions = new JsonSerializerOptions
-            { 
+            {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 Converters = { new GenerationParametersJsonConverter() }
             };
@@ -70,7 +70,7 @@ namespace BlazorWebApp.Data
             var opt = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
             var stateConverter = new ValueConverter<AppState, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<AppState>(v, opt));
             var generationParamsConverter = new ValueConverter<GenerationParameters, string>(
-                v => JsonSerializer.Serialize(v, generationParamsJsonOptions), 
+                v => JsonSerializer.Serialize(v, generationParamsJsonOptions),
                 v => JsonSerializer.Deserialize<GenerationParameters>(v, generationParamsJsonOptions) ?? new GenerationParameters());
             var listIntConverter = new ValueConverter<List<int>, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<List<int>>(v, opt));
             var listIntComparer = new ValueComparer<List<int>>((c1, c2) => c1.SequenceEqual(c2), c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())), c => c.ToList());
@@ -136,10 +136,31 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<WorkflowState>()
                 .HasIndex(ws => ws.WorkflowId)
                 .IsUnique();
-            
+
             modelBuilder.Entity<WorkflowState>()
                 .Property(nameof(WorkflowState.Parameters))
                 .HasConversion(generationParamsConverter);
+
+            // JobEntity (Scheduler): full Job stored as JSON in Body, denormalized columns for listing.
+            var jobBodyConverter = new ValueConverter<Scheduler.Models.Job, string>(
+                v => JsonSerializer.Serialize(v, Scheduler.SchedulerJsonOptions.Compact),
+                v => JsonSerializer.Deserialize<Scheduler.Models.Job>(v, Scheduler.SchedulerJsonOptions.Compact)
+                     ?? new Scheduler.Models.Job());
+
+            modelBuilder.Entity<JobEntity>()
+                .HasIndex(j => j.JobId)
+                .IsUnique();
+
+            modelBuilder.Entity<JobEntity>()
+                .HasIndex(j => j.Status);
+
+            modelBuilder.Entity<JobEntity>()
+                .Property(j => j.Body)
+                .HasConversion(jobBodyConverter);
+
+            modelBuilder.Entity<JobEntity>()
+                .Property(j => j.Status)
+                .HasConversion<string>();
         }
 
         public DbSet<Image> Images { get; set; }
@@ -159,5 +180,6 @@ namespace BlazorWebApp.Data
         public DbSet<WildcardEntry> WildcardEntries { get; set; }
         public DbSet<SystemPromptTemplate> SystemPromptTemplates { get; set; }
         public DbSet<WorkflowState> WorkflowStates { get; set; }
+        public DbSet<JobEntity> Jobs { get; set; }
     }
 }

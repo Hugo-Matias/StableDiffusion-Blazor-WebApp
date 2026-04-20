@@ -82,6 +82,9 @@ builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 // Workflow state persistence service (per-workflow saved parameters)
 builder.Services.AddSingleton<IWorkflowStateService, WorkflowStateService>();
 
+// Scheduler job persistence
+builder.Services.AddSingleton<BlazorWebApp.Scheduler.Persistence.IJobRepository, BlazorWebApp.Scheduler.Persistence.JobRepository>();
+
 // Component registry for fragment-to-component mapping
 builder.Services.AddSingleton<IComponentRegistry, ComponentRegistry>();
 

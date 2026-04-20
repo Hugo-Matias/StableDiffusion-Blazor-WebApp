@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 1 complete (14 pts, 25/25 tests). Ready for Phase 2.
+**Current Phase:** Phase 2 complete (8 pts, 37/37 tests cumulative). Ready for Phase 3.
 
 ---
 
