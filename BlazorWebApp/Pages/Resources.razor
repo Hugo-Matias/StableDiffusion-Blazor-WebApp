@@ -5,17 +5,21 @@
 @inject IIOService IO
 @inject IDatabaseService DB
 @inject IResourcesService ResourcesService
+@inject IOrchestratorService Orchestrator
 @inject CivitaiService Civitai
 @inject IConfiguration Configuration
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject NavigationManager NavManager
 @implements IDisposable
 
-<MudTabs @bind-ActivePanelIndex=State.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
+<MudTabs @bind-ActivePanelIndex=State.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded
+         Centered>
     @foreach (var resource in _resources)
     {
         <MudTabPanel Text=@(resource.Key.Name == "TextualInversion" ? "Embedding" : resource.Key.Name)>
-            <ResourcePanel Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) : LoadResource(r, r.Files[0])) />
+            <ResourcePanel Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) :
+                                                                              LoadResource(r, r.Files[0])) />
         </MudTabPanel>
     }
 </MudTabs>
@@ -113,15 +117,40 @@
                     Refresh();
                 }
                 else if (command == "Toggle") Refresh();
-                else if (command.Equals("Load", comp) && resource.Type.Name.Equals("Checkpoint", comp))
+                else if (result.Data is ValueTuple<string, bool> loraTuple && loraTuple.Item1 == "AddLora")
                 {
-                    // TODO: Checkpoint loading from Resources page is disabled pending model type refactoring
-                }
-                else
-                {
-                    var target = (ValueTuple<ModeType, bool>)result.Data;
+                    // LoRA: add to loader panel (no specific workflow)
+                    var target = (ModeType.Txt2Img, !loraTuple.Item2);
                     await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
                     await DB.UpdateResourceLoadedDate(file.ResourceId);
+                    NavManager.NavigateTo("/generate");
+                }
+                else if (result.Data is ValueTuple<string, Workflow> wfTuple)
+                {
+                    if (wfTuple.Item1 == "SendToWorkflow")
+                    {
+                        // Checkpoint: send to compatible workflow and navigate
+                        Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id, wfTuple.Item2.Mode);
+                        await DB.UpdateResourceLoadedDate(file.ResourceId);
+                        NavManager.NavigateTo($"/generate/{wfTuple.Item2.Id}");
+                    }
+                    else if (wfTuple.Item1 == "AddLoraToWorkflow")
+                    {
+                        // LoRA: switch to target workflow, add LoRA, navigate
+                        Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id, wfTuple.Item2.Mode);
+                        var target = (ModeType.Txt2Img, true);
+                        await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
+                        await DB.UpdateResourceLoadedDate(file.ResourceId);
+                        NavManager.NavigateTo($"/generate/{wfTuple.Item2.Id}");
+                    }
+                }
+                else if (result.Data is bool isPrompt)
+                {
+                    // Non-LoRA resource (TextualInversion, Hypernetwork, etc.)
+                    var target = (ModeType.Txt2Img, isPrompt);
+                    await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
+                    await DB.UpdateResourceLoadedDate(file.ResourceId);
+                    NavManager.NavigateTo("/generate");
                 }
             }
         }
@@ -172,7 +201,8 @@
         if (!confirmationResult.Canceled)
         {
             var deleteFiles = confirmationResult.Data != null && (bool)confirmationResult.Data == true;
-            await ResourcesService.DeleteResource(resource, deleteFiles, file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
+            await ResourcesService.DeleteResource(resource, deleteFiles, file.File.Directory.FullName,
+file.File.Name.Replace(file.File.Extension, ""));
             Snackbar.Add(deleteFiles ? "Resource and files were" : "Resource was" + " deleted successfully.", Severity.Success);
         }
     }

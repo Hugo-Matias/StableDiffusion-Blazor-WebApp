@@ -1,24 +1,19 @@
 @using static BlazorWebApp.Data.Enums
+@using BlazorWebApp.Events
 @inject IRouterService Router
+@inject IOrchestratorService M
+@inject IResourceFilterService ResourceFilter
+@inject IResourceFilterStateService FilterState
+@inject IEventService Events
+@implements IDisposable
 
-<MudText Typo="Typo.caption">Loras</MudText>
-<MudAutocomplete 
-    T="string" 
-    @bind-Value=_lora 
-    Label="Search..." 
-    SearchFunc="SearchLoras" 
-    Adornment="Adornment.End"
-    AdornmentIcon="fa-solid fa-plus"
-    OnAdornmentClick="AddLora"
-    MaxItems="null" 
-    MaxHeight="600" 
-    CoerceValue="true"
-    CoerceText="true"
-    ResetValueOnEmptyText="true"
-    Clearable="true"
-    SelectOnClick="false" 
-    ToStringFunc="@(s => string.IsNullOrWhiteSpace(s) ? string.Empty : s.Substring(0, s.LastIndexOf('.')))"/>
-@if (Loras != null && Loras.Count > 0){
+<MudText Typo="Typo.caption" Class="mb-1">Loras</MudText>
+<MudAutocomplete T="string" @bind-Value=_lora Label="Search..." SearchFunc="SearchLoras" Adornment="Adornment.End"
+                 AdornmentIcon="fa-solid fa-plus" OnAdornmentClick="AddLora" MaxItems="null" MaxHeight="600" CoerceValue="true"
+                 CoerceText="true" ResetValueOnEmptyText="true" Clearable="true" SelectOnClick="false"
+                 ToStringFunc="@(s => string.IsNullOrWhiteSpace(s) ? string.Empty : s.Substring(0, s.LastIndexOf('.')))" />
+@if (Loras != null && Loras.Count > 0)
+{
     if (Loras.Count(l => l.IsEnabled) > 0)
     {
         <MudExpansionPanel Text=@($"Enabled Loras ({Loras.Count(l => l.IsEnabled)})") @bind-IsExpanded=_isEnabledExpanded>
@@ -30,8 +25,7 @@
     }
     if (Loras.Count(l => !l.IsEnabled) > 0)
     {
-        <MudExpansionPanel Text=@($"Disabled Loras ({Loras.Count(l => !l.IsEnabled)})") @bind-IsExpanded=_isDisabledExpanded
-        >
+        <MudExpansionPanel Text=@($"Disabled Loras ({Loras.Count(l => !l.IsEnabled)})") @bind-IsExpanded=_isDisabledExpanded>
             @foreach (var lora in Loras.Where(l => !l.IsEnabled))
             {
                 <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
@@ -56,9 +50,29 @@
     override protected void OnInitialized()
     {
         if (Loras == null) Loras = new List<Lora>();
+        Events.Subscribe<ResourceFilterChangedEventArgs>(OnFilterChanged);
+        Events.Subscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
     }
 
-    public Task<IEnumerable<string>> SearchLoras(string search) => Router.SearchLoras(Backend, search); 
+    public async Task<IEnumerable<string>> SearchLoras(string search)
+    {
+        var results = await Router.SearchLoras(Backend, search);
+        var resultList = results.ToList();
+
+        var workflow = M.GetCurrentWorkflow();
+        if (workflow == null)
+            return resultList;
+
+        await FilterState.EnsureInitializedForWorkflowAsync(workflow);
+        var effectiveBaseModels = FilterState.GetEffectiveBaseModels();
+
+        if (effectiveBaseModels == null)
+            return await ResourceFilter.FilterLorasByWorkflowAsync(resultList, workflow, includeUntracked:
+FilterState.IncludeUntracked);
+
+        return await ResourceFilter.FilterByBaseModelsAsync(resultList, effectiveBaseModels, includeUntracked:
+FilterState.IncludeUntracked);
+    }
 
     public async Task AddLora()
     {
@@ -89,5 +103,21 @@
     public async Task UpdateLora(Lora lora)
     {
         await OnLorasUpdated.InvokeAsync();
+    }
+
+    private void OnFilterChanged(ResourceFilterChangedEventArgs args)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnResourcesChanged(ResourcesChangedEventArgs args)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<ResourceFilterChangedEventArgs>(OnFilterChanged);
+        Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
     }
 }

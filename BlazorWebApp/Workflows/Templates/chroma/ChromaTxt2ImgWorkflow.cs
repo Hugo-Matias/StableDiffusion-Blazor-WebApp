@@ -63,7 +63,8 @@ public class ChromaTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 3,
                 ColumnSize = 4
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Chroma"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

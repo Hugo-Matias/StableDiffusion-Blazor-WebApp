@@ -64,6 +64,15 @@ builder.Services.AddSingleton<IProgressService, ProgressService>();
 // Resources service - interface-only for testability
 builder.Services.AddSingleton<IResourcesService, ResourcesService>();
 
+// Resource cache service - in-memory cache with event-based invalidation
+builder.Services.AddSingleton<IResourceCacheService, ResourceCacheService>();
+
+// Resource filter service - filters assets/LoRAs by workflow compatibility
+builder.Services.AddSingleton<IResourceFilterService, ResourceFilterService>();
+
+// Resource filter state service - per-circuit filter settings (persists across page navigations, resets on workflow change)
+builder.Services.AddScoped<IResourceFilterStateService, ResourceFilterStateService>();
+
 // Router service - interface-only
 builder.Services.AddSingleton<IRouterService, RouterService>();
 
@@ -118,14 +127,14 @@ if (app.Environment.IsDevelopment())
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     var workflowService = app.Services.GetRequiredService<IWorkflowService>();
     var workflows = workflowService.GetWorkflows();
-    
+
     logger.LogInformation("Discovered {Count} C# workflow builder(s)", workflows.Count);
-    
+
     foreach (var workflow in workflows)
     {
         logger.LogInformation("  - {Title} ({Base}/{Mode})", workflow.Title, workflow.Base, workflow.Mode);
     }
-    
+
     if (workflows.Count == 0)
     {
         logger.LogWarning("No C# workflow builders found! Users will have no available workflows.");

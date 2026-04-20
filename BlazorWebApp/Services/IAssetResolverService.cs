@@ -60,6 +60,15 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetCachedAssetOptions(AssetType assetType);
 
         /// <summary>
+        /// Gets cached asset options filtered by the workflow's CompatibleResourceBaseModels.
+        /// Falls back to unfiltered list if filtering yields no results.
+        /// </summary>
+        /// <param name="assetType">The asset type to get options for</param>
+        /// <param name="workflow">The workflow to filter by</param>
+        /// <returns>Filtered (or unfiltered fallback) options</returns>
+        Task<List<string>> GetFilteredAssetOptions(AssetType assetType, Workflow workflow);
+
+        /// <summary>
         /// Clears the asset options cache, forcing a reload on next access.
         /// </summary>
         void ClearCache();

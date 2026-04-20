@@ -46,6 +46,13 @@ public record WorkflowMetadata
     public IEnumerable<WorkflowSource> Sources { get; init; } = Array.Empty<WorkflowSource>();
 
     /// <summary>
+    /// CivitAI base model strings that this workflow is compatible with.
+    /// Used to filter asset selectors and LoRA lists to only show compatible resources.
+    /// Valid values come from Data/CivitAI/basemodels.json.
+    /// </summary>
+    public List<string> CompatibleResourceBaseModels { get; init; } = [];
+
+    /// <summary>
     /// Generates a deterministic GUID from workflow metadata using UUID v5 (RFC 4122).
     /// Same inputs always produce the same GUID, preventing copy-paste collisions.
     /// </summary>

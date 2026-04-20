@@ -64,7 +64,8 @@ public class QwenTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 3,
                 ColumnSize = 4
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Qwen", "Qwen 2"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

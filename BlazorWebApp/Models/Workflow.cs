@@ -25,6 +25,12 @@ namespace BlazorWebApp.Models
         /// Used for Img2Img, Img2Vid, ControlNet inputs, etc.
         /// </summary>
         public List<WorkflowSource>? Sources { get; set; }
+
+        /// <summary>
+        /// CivitAI base model strings that this workflow is compatible with.
+        /// Used to filter asset selectors and LoRA lists to only show compatible resources.
+        /// </summary>
+        public List<string>? CompatibleResourceBaseModels { get; set; }
     }
 
     /// <summary>

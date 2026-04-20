@@ -13,7 +13,9 @@
     <MudGrid Justify="Justify.FlexEnd">
         @* Row 1: Folder, Project, and Theme selectors *@
         <MudItem xs="5">
-            <MudSelect T=string Value=State.State.Gallery.FolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect T=string Value=State.State.Gallery.FolderName ValueChanged="HandleFolderSelected" Label="Folder"
+                       AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft">
                 <MudSelectItem Value=@("")>All</MudSelectItem>
                 @if (Gallery.Folders != null)
                 {
@@ -25,7 +27,9 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="5">
-            <MudSelect T=string Value=State.State.Gallery.ProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect T=string Value=State.State.Gallery.ProjectName ValueChanged="HandleProjectSelected"
+                       Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success"
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 @if (Gallery.Projects != null)
                 {
                     @foreach (var project in Gallery.Projects)
@@ -36,7 +40,9 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="2">
-            <MudSelect T="string" Value="@(State.State.CurrentTheme ?? "Default")" ValueChanged="HandleThemeSelected" Label="Theme" AdornmentIcon="@Icons.Material.Filled.Palette" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect T="string" Value="@(State.State.CurrentTheme ?? "Default")" ValueChanged="HandleThemeSelected"
+                       Label="Theme" AdornmentIcon="@Icons.Material.Filled.Palette" AdornmentColor="Color.Info"
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 @foreach (var themeName in ThemeService.ThemeNames)
                 {
                     <MudSelectItem Value="@themeName">@themeName</MudSelectItem>
@@ -46,7 +52,9 @@
 
         @* Row 2: State Presets and action buttons *@
         <MudItem xs="10">
-            <MudSelect @bind-Value=_selectedState T="BlazorWebApp.Data.Entities.State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelect @bind-Value=_selectedState T="BlazorWebApp.Data.Entities.State" Label="State Preset"
+                       Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft">
                 @if (_states != null)
                 {
                     @foreach (var state in _states)
@@ -58,9 +66,12 @@
         </MudItem>
         <MudItem xs="2">
             <MudButtonGroup Class="w-100" OverrideStyles=false>
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-plus" Color=Color.Primary OnClick=@(() => ShowStateDialog(new())) Title="Create new state" />
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-pen" Color=Color.Info OnClick=@(() => ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) Title="Edit state" />
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() => LoadStatePreset(_selectedState)) Disabled=@(_selectedState == null) Title="Load state" />
+                <MudIconButton Style="flex:1;" Icon="fa-solid fa-plus" Color=Color.Primary OnClick=@(() =>
+                                                                                                                               ShowStateDialog(new())) Title="Create new state" />
+                <MudIconButton Style="flex:1;" Icon="fa-solid fa-pen" Color=Color.Info OnClick=@(() =>
+                                                                                                                           ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) Title="Edit state" />
+                <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() =>
+                                                                                                                               LoadStatePreset(_selectedState)) Disabled=@(_selectedState == null) Title="Load state" />
             </MudButtonGroup>
         </MudItem>
     </MudGrid>
@@ -69,6 +80,12 @@
     {
         <MudDivider Class="my-3" />
         <ToolbarCivitaiSettings />
+    }
+
+    @if (CurrentPage.StartsWith("/generate"))
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarResourceFilters />
     }
 </div>
 
@@ -160,7 +177,7 @@
         {
             await Gallery.SetCurrentFolder(0);
         }
-        else 
+        else
         {
             var folder = await DB.GetFolder(selected);
             if (folder != null)

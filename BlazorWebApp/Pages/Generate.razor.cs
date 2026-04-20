@@ -113,6 +113,21 @@ public partial class Generate : IDisposable
             }
         }
 
+        // Fallback: check CurrentWorkflowId set by SetCurrentWorkflow (e.g. from Resources page)
+        if (_selectedWorkflow == null)
+        {
+            var currentId = State.State?.Generation?.CurrentWorkflowId;
+            if (currentId.HasValue)
+            {
+                var fallbackWorkflow = _workflows?.FirstOrDefault(w => w.Id == currentId.Value);
+                if (fallbackWorkflow != null)
+                {
+                    await OnWorkflowSelected(fallbackWorkflow, updateUrl: true);
+                    return;
+                }
+            }
+        }
+
         // If still no workflow and we have some, select the first
         if (_selectedWorkflow == null && _workflows?.Count > 0)
         {

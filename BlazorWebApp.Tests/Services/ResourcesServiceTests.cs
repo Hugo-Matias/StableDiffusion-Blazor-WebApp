@@ -1,4 +1,5 @@
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using FluentAssertions;
@@ -18,6 +19,7 @@ namespace BlazorWebApp.Tests.Services
         private readonly Mock<IIOService> _mockIO;
         private readonly Mock<IDatabaseService> _mockDb;
         private readonly Mock<IConfiguration> _mockConfig;
+        private readonly Mock<IEventService> _mockEvents;
         private readonly GenerationParameters _generationParameters;
         private readonly ResourcesService _service;
 
@@ -27,6 +29,7 @@ namespace BlazorWebApp.Tests.Services
             _mockIO = new Mock<IIOService>();
             _mockDb = new Mock<IDatabaseService>();
             _mockConfig = new Mock<IConfiguration>();
+            _mockEvents = new Mock<IEventService>();
 
             // Setup default configuration
             _mockConfig.Setup(x => x["ResourcesPath"]).Returns(Path.Combine(Path.GetTempPath(), "resources"));
@@ -38,7 +41,7 @@ namespace BlazorWebApp.Tests.Services
             {
                 Resources = new AppStateResources { Weight = 1.0f, LoadTriggerWords = true }
             });
-            
+
             // Setup GenerationParameters
             _generationParameters = new GenerationParameters();
             var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
@@ -46,7 +49,7 @@ namespace BlazorWebApp.Tests.Services
             promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
             _mockState.Setup(x => x.GenerationParameters).Returns(_generationParameters);
 
-            _service = new ResourcesService(_mockState.Object, _mockIO.Object, _mockDb.Object, _mockConfig.Object);
+            _service = new ResourcesService(_mockState.Object, _mockIO.Object, _mockDb.Object, _mockConfig.Object, _mockEvents.Object);
         }
 
         #region CreateLocalResourcesByType Tests
@@ -387,7 +390,7 @@ namespace BlazorWebApp.Tests.Services
             mockConfig.Setup(x => x["ResourcesPath"]).Returns("/test/path");
             mockState.Setup(x => x.GenerationParameters).Returns(new GenerationParameters());
 
-            var service = new ResourcesService(mockState.Object, mockIO.Object, mockDb.Object, mockConfig.Object);
+            var service = new ResourcesService(mockState.Object, mockIO.Object, mockDb.Object, mockConfig.Object, new Mock<IEventService>().Object);
 
             // Assert - service should be created without errors
             service.Should().NotBeNull();

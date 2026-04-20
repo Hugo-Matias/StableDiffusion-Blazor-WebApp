@@ -118,7 +118,7 @@ public class WorkflowServiceTests
         // Arrange
         var service = CreateWorkflowService();
         var builders = service.GetWorkflowBuilders();
-        
+
         if (builders.Count == 0)
         {
             return; // Skip if no builders discovered
@@ -157,6 +157,59 @@ public class WorkflowServiceTests
 
         // Assert
         Assert.Null(workflow);
+    }
+
+    [Fact]
+    public void GetWorkflows_AllWorkflows_ShouldHaveNonEmptyCompatibleResourceBaseModels()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+
+        // Act
+        var workflows = service.GetWorkflows();
+
+        // Assert
+        foreach (var workflow in workflows)
+        {
+            Assert.NotNull(workflow.CompatibleResourceBaseModels);
+            Assert.True(workflow.CompatibleResourceBaseModels.Count > 0,
+                $"Workflow '{workflow.Title}' (Base={workflow.Base}) should declare CompatibleResourceBaseModels");
+        }
+    }
+
+    [Fact]
+    public void GetWorkflows_CompatibleResourceBaseModels_ShouldPropagateThroughConversion()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+
+        // Act
+        var workflows = service.GetWorkflows();
+        var builders = service.GetWorkflowBuilders();
+
+        // Assert - verify each workflow's CompatibleResourceBaseModels matches its builder's metadata
+        foreach (var workflow in workflows)
+        {
+            var builder = builders[workflow.Id];
+            var expected = builder.Metadata.CompatibleResourceBaseModels;
+
+            Assert.Equal(expected, workflow.CompatibleResourceBaseModels);
+        }
+    }
+
+    [Fact]
+    public void GetWorkflows_DeterministicId_ShouldBeUnaffectedByCompatibleResourceBaseModels()
+    {
+        // Arrange
+        var service = CreateWorkflowService();
+        var workflows = service.GetWorkflows();
+
+        // Act & Assert - IDs should be deterministic from Base + Mode + Title only
+        foreach (var workflow in workflows)
+        {
+            var expectedId = BlazorWebApp.Workflows.Models.WorkflowMetadata.GenerateDeterministicId(workflow.Base, workflow.Mode, workflow.Title);
+            Assert.Equal(expectedId, workflow.Id);
+        }
     }
 
     #endregion

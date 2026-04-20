@@ -65,7 +65,8 @@ public class ErnieTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 3,
                 ColumnSize = 4
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Ernie"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

@@ -103,7 +103,8 @@ public class WanSteadyDancerWorkflow : IWorkflowBuilder
                 Type = SourceType.Image,
                 Required = false
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Wan Video 14B i2v 480p", "Wan Video 14B i2v 720p"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

@@ -91,7 +91,8 @@ public class WanImg2VidWorkflow : IWorkflowBuilder
                 Type = SourceType.Image,
                 Required = true
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Wan Video 2.2 I2V-A14B"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

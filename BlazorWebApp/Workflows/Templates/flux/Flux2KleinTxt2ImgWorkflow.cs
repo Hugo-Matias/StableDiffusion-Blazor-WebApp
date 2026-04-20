@@ -65,7 +65,8 @@ public class Flux2KleinTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 3,
                 ColumnSize = 4
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Flux.2 D", "Flux.2 Klein 9B", "Flux.2 Klein 9B-base", "Flux.2 Klein 4B", "Flux.2 Klein 4B-base"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

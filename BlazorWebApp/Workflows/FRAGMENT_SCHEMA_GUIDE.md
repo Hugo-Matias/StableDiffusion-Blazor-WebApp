@@ -64,14 +64,14 @@ This guide documents the C# fragment system used for building ComfyUI workflows.
 
 ### Key Principles
 
-| Principle | Description |
-|-----------|-------------|
-| **Single Source of Truth** | Fragment C# class defines both node logic and UI schema via `FragmentMetadata` |
-| **Workflow Owns Defaults** | Workflow `Build()` method provides default values via `GenerationParameters` |
-| **Metadata Owns Constraints** | Min/max/step live in `FragmentParameter`, not AppSettings |
-| **Type-Based Discovery** | `FragmentType` enum drives UI layout decisions |
-| **Compile-Time Safety** | All fragment logic is validated at build time |
-| **Hybrid Rendering** | Designed components for mature fragments, dynamic fields for experimental |
+| Principle                     | Description                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| **Single Source of Truth**    | Fragment C# class defines both node logic and UI schema via `FragmentMetadata` |
+| **Workflow Owns Defaults**    | Workflow `Build()` method provides default values via `GenerationParameters`   |
+| **Metadata Owns Constraints** | Min/max/step live in `FragmentParameter`, not AppSettings                      |
+| **Type-Based Discovery**      | `FragmentType` enum drives UI layout decisions                                 |
+| **Compile-Time Safety**       | All fragment logic is validated at build time                                  |
+| **Hybrid Rendering**          | Designed components for mature fragments, dynamic fields for experimental      |
 
 ---
 
@@ -82,7 +82,7 @@ This guide documents the C# fragment system used for building ComfyUI workflows.
 ```
 WorkflowService.GetWorkflows()
     +-- Reflection scans for IWorkflowBuilder implementations
-        +-- Each workflow exposes WorkflowMetadata (Id, Title, Base, Mode, Assets, Sources)
+        +-- Each workflow exposes WorkflowMetadata (Id, Title, Base, Mode, Assets, Sources, CompatibleResourceBaseModels)
         +-- Each workflow declares fragment instances -> FragmentMetadata available
 ```
 
@@ -211,28 +211,28 @@ public class SamplerFragment : IFragmentBuilder
 
 Defined in `Workflows/Models/FragmentMetadata.cs`:
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Id` | string | **Required** | Unique identifier for parameter storage and UI rendering |
-| `Type` | FragmentType | **Required** | Fragment classification (see [FragmentType](#fragmenttype-enum)) |
-| `Title` | string | **Required** | Display title in UI |
-| `Component` | string? | `null` | Blazor component name, or null for dynamic field rendering |
-| `Icon` | string? | `null` | FontAwesome icon class |
-| `Order` | int | `100` | Display order (lower = higher priority) |
-| `Collapsible` | bool | `true` | Whether fragment can be collapsed in UI |
-| `DefaultCollapsed` | bool | `false` | Initial collapsed state; if `true`, fragment starts inactive |
-| `IsHidden` | bool | `false` | Hidden from UI (utility/loader fragments) |
-| `Parameters` | IEnumerable&lt;FragmentParameter&gt; | `[]` | Parameter definitions for UI and validation |
-| `InclusionCondition` | Func&lt;GenerationParameters, bool&gt;? | `null` | Lambda controlling conditional inclusion |
+| Property             | Type                                    | Default      | Description                                                      |
+| -------------------- | --------------------------------------- | ------------ | ---------------------------------------------------------------- |
+| `Id`                 | string                                  | **Required** | Unique identifier for parameter storage and UI rendering         |
+| `Type`               | FragmentType                            | **Required** | Fragment classification (see [FragmentType](#fragmenttype-enum)) |
+| `Title`              | string                                  | **Required** | Display title in UI                                              |
+| `Component`          | string?                                 | `null`       | Blazor component name, or null for dynamic field rendering       |
+| `Icon`               | string?                                 | `null`       | FontAwesome icon class                                           |
+| `Order`              | int                                     | `100`        | Display order (lower = higher priority)                          |
+| `Collapsible`        | bool                                    | `true`       | Whether fragment can be collapsed in UI                          |
+| `DefaultCollapsed`   | bool                                    | `false`      | Initial collapsed state; if `true`, fragment starts inactive     |
+| `IsHidden`           | bool                                    | `false`      | Hidden from UI (utility/loader fragments)                        |
+| `Parameters`         | IEnumerable&lt;FragmentParameter&gt;    | `[]`         | Parameter definitions for UI and validation                      |
+| `InclusionCondition` | Func&lt;GenerationParameters, bool&gt;? | `null`       | Lambda controlling conditional inclusion                         |
 
 ### Order Ranges
 
-| Range | Purpose | Examples |
-|-------|---------|----------|
-| 0-49 | Core inputs | Prompts (10), LoRAs (15) |
-| 50-99 | Primary generation | Latent (20), Sampler (50) |
-| 100-149 | Enhancement | Upscale (100), Detailer (120) |
-| 150+ | Advanced/experimental | Custom nodes |
+| Range   | Purpose               | Examples                      |
+| ------- | --------------------- | ----------------------------- |
+| 0-49    | Core inputs           | Prompts (10), LoRAs (15)      |
+| 50-99   | Primary generation    | Latent (20), Sampler (50)     |
+| 100-149 | Enhancement           | Upscale (100), Detailer (120) |
+| 150+    | Advanced/experimental | Custom nodes                  |
 
 ---
 
@@ -276,18 +276,18 @@ switch (metadata.Type)
 
 Defined in `Workflows/Models/FragmentParameter.cs`:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Id` | string | Parameter key (matches key in `FragmentParameters.Values`) |
-| `Label` | string? | Display label (defaults to Id if null) |
-| `DefaultValue` | object? | Default value for initialization |
-| `Min` | double? | Minimum value (for numeric inputs) |
-| `Max` | double? | Maximum value (for numeric inputs) |
-| `Step` | double? | Step increment (for sliders) |
-| `Source` | string? | ComfyUI node class_type for dynamic options |
-| `InputName` | string? | Node input field name for dynamic options |
-| `Options` | string[]? | Static option list for select fields |
-| `Column` | int | Bootstrap column width (default 6) |
+| Property       | Type      | Description                                                |
+| -------------- | --------- | ---------------------------------------------------------- |
+| `Id`           | string    | Parameter key (matches key in `FragmentParameters.Values`) |
+| `Label`        | string?   | Display label (defaults to Id if null)                     |
+| `DefaultValue` | object?   | Default value for initialization                           |
+| `Min`          | double?   | Minimum value (for numeric inputs)                         |
+| `Max`          | double?   | Maximum value (for numeric inputs)                         |
+| `Step`         | double?   | Step increment (for sliders)                               |
+| `Source`       | string?   | ComfyUI node class_type for dynamic options                |
+| `InputName`    | string?   | Node input field name for dynamic options                  |
+| `Options`      | string[]? | Static option list for select fields                       |
+| `Column`       | int       | Bootstrap column width (default 6)                         |
 
 ### Dynamic Source Configuration
 
@@ -312,36 +312,36 @@ The service calls ComfyUI's `/object_info/{Source}` API and extracts options fro
 
 **Responsibility:** Workflow discovery, composition, and fragment metadata access
 
-| Method | Purpose |
-|--------|---------|
-| `GetWorkflows()` | Discover all `IWorkflowBuilder` implementations via reflection |
-| `RefreshWorkflows()` | Re-scan assemblies for workflow classes |
-| `ComposeWorkflow()` | Call `IWorkflowBuilder.Build()` to generate ComfyUI JSON |
-| `GetFragmentMetadata()` | Get `FragmentMetadata` for a workflow's fragments |
+| Method                  | Purpose                                                        |
+| ----------------------- | -------------------------------------------------------------- |
+| `GetWorkflows()`        | Discover all `IWorkflowBuilder` implementations via reflection |
+| `RefreshWorkflows()`    | Re-scan assemblies for workflow classes                        |
+| `ComposeWorkflow()`     | Call `IWorkflowBuilder.Build()` to generate ComfyUI JSON       |
+| `GetFragmentMetadata()` | Get `FragmentMetadata` for a workflow's fragments              |
 
 ### GenerationParameterService
 
 **Responsibility:** Runtime parameter state management
 
-| Method | Purpose |
-|--------|---------|
-| `InitializeFromWorkflow()` | Set up parameters from workflow metadata |
-| `SetFragmentValue()` | Update a fragment parameter value |
-| `SetFragmentActive()` | Enable/disable a fragment |
-| `GetFragmentValue<T>()` | Read a typed parameter value |
+| Method                        | Purpose                                  |
+| ----------------------------- | ---------------------------------------- |
+| `InitializeFromWorkflow()`    | Set up parameters from workflow metadata |
+| `SetFragmentValue()`          | Update a fragment parameter value        |
+| `SetFragmentActive()`         | Enable/disable a fragment                |
+| `GetFragmentValue<T>()`       | Read a typed parameter value             |
 | `ResolveSourceOptionsAsync()` | Query ComfyUI for dynamic select options |
-| `CreateSnapshot()` | Clone current state for persistence |
-| `LoadParameters()` | Restore state from snapshot |
+| `CreateSnapshot()`            | Clone current state for persistence      |
+| `LoadParameters()`            | Restore state from snapshot              |
 
 ### ImageService
 
 **Responsibility:** Generation orchestration, file saving, database persistence
 
-| Method | Purpose |
-|--------|---------|
-| `GenerateImagesAsync()` | Unified image generation |
-| `GenerateVideoAsync()` | Unified video generation |
-| `SaveImages()` | Save to disk and database |
+| Method                  | Purpose                   |
+| ----------------------- | ------------------------- |
+| `GenerateImagesAsync()` | Unified image generation  |
+| `GenerateVideoAsync()`  | Unified video generation  |
+| `SaveImages()`          | Save to disk and database |
 
 ---
 
@@ -375,11 +375,11 @@ private readonly Dictionary<string, Type> _components = new()
 
 **Priority Order** (documented in `IGenerationParameterService`):
 
-| Priority | Source | Description | Persisted |
-|----------|--------|-------------|-----------|
-| **1 (Highest)** | Saved Workflow State | Previously saved parameters for this workflow (database) | Yes |
-| **2** | FragmentParameter.DefaultValue | Default from fragment's metadata `Parameters` collection | No |
-| **3** | Dynamic Source Resolution | First option from ComfyUI API query (for fields with `Source`) | No |
+| Priority        | Source                         | Description                                                    | Persisted |
+| --------------- | ------------------------------ | -------------------------------------------------------------- | --------- |
+| **1 (Highest)** | Saved Workflow State           | Previously saved parameters for this workflow (database)       | Yes       |
+| **2**           | FragmentParameter.DefaultValue | Default from fragment's metadata `Parameters` collection       | No        |
+| **3**           | Dynamic Source Resolution      | First option from ComfyUI API query (for fields with `Source`) | No        |
 
 ### Important Conventions
 
@@ -630,26 +630,26 @@ public class MyFragment : IFragmentBuilder
 
 ### FragmentType Values
 
-| Type | Use For |
-|------|---------|
-| `Loader` | Model loading fragments (typically hidden) |
-| `Prompts` | Prompt encoding |
-| `Latent` | Resolution/latent settings |
-| `Sampler` | Sampling settings |
-| `Conditioning` | CLIP/conditioning |
-| `Enhancement` | Upscale/detailer/optional features |
-| `Output` | Save/preview nodes |
-| `Utility` | Helper fragments, no UI |
+| Type           | Use For                                    |
+| -------------- | ------------------------------------------ |
+| `Loader`       | Model loading fragments (typically hidden) |
+| `Prompts`      | Prompt encoding                            |
+| `Latent`       | Resolution/latent settings                 |
+| `Sampler`      | Sampling settings                          |
+| `Conditioning` | CLIP/conditioning                          |
+| `Enhancement`  | Upscale/detailer/optional features         |
+| `Output`       | Save/preview nodes                         |
+| `Utility`      | Helper fragments, no UI                    |
 
 ### Type-Safe Output Types
 
-| Type | Use For |
-|------|---------|
-| `ModelOutput` | UNet/DiT model outputs |
-| `ClipOutput` | Text encoder outputs |
-| `VaeOutput` | VAE model outputs |
-| `LatentOutput` | Latent image outputs |
-| `ImageOutput` | Decoded image outputs |
+| Type                 | Use For                   |
+| -------------------- | ------------------------- |
+| `ModelOutput`        | UNet/DiT model outputs    |
+| `ClipOutput`         | Text encoder outputs      |
+| `VaeOutput`          | VAE model outputs         |
+| `LatentOutput`       | Latent image outputs      |
+| `ImageOutput`        | Decoded image outputs     |
 | `ConditioningOutput` | CLIP conditioning outputs |
 
 ### Type-Safe Parameter Accessors
@@ -664,4 +664,4 @@ fragment.GetBool("key", false)
 
 ---
 
-*This guide is the authoritative reference for the fragment system. Update this document when making architectural changes.*
+_This guide is the authoritative reference for the fragment system. Update this document when making architectural changes._

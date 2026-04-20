@@ -67,7 +67,8 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
                 Type = SourceType.Image,
                 Required = true
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["LTXV2", "LTXV 2.3"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

@@ -114,7 +114,13 @@ For each selected enhancement, confirm:
 
 State whether the workflow requires a new `ModelBase` enum value or reuses an existing one.
 
-### 2e. Default Values Summary
+### 2e. Compatible Resource Base Models
+
+Determine the `CompatibleResourceBaseModels` for the workflow. Read `BlazorWebApp/Data/CivitAI/basemodels.json` to find the matching CivitAI base model strings for this workflow's architecture. Include all base model variants that the workflow can load (e.g., for SD 1.5: include `"SD 1.5"`, `"SD 1.5 LCM"`, `"SD 1.5 Hyper"`, `"SD 1.4"`, etc.).
+
+Present the list for user confirmation.
+
+### 2f. Default Values Summary
 
 List the key defaults that will be used (sampler, scheduler, steps, CFG, denoise, resolution).
 
@@ -143,6 +149,7 @@ After the user approves, implement in this order:
 3. **Workflow class**: Create in `BlazorWebApp/Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
    - Implement `IWorkflowBuilder`
    - Declare fragment fields, `Metadata`, `GetFragments()`, and `Build()`
+   - Include `CompatibleResourceBaseModels` in `Metadata` with the values confirmed in Phase 2e
    - Build order: Load -> LoRA -> EmptyLatent/Input -> Prompts -> Sampler -> VaeDecode -> [Enhancements] -> Save
    - Conditional enhancements must be gated with `parameters.GetFragment("id")?.IsActive == true`
 4. **Build**: Run `dotnet build` on the project

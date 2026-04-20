@@ -155,16 +155,29 @@ public WorkflowMetadata Metadata => new()
     Title = "Txt2Img",
     Base = Data.Enums.ModelBase.Anima,
     Mode = ModeType.Txt2Img,
-    Assets = [ ... ]
+    Assets = [ ... ],
+    CompatibleResourceBaseModels = ["Anima"]
 };
 ```
 
-| Field    | Description                                                                            |
-| -------- | -------------------------------------------------------------------------------------- |
-| `Title`  | Display name in UI                                                                     |
-| `Base`   | Model base enum: `StableDiffusion`, `Flux`, `Chroma`, `Qwen`, `ZImage`, `Wan`, `Anima` |
-| `Mode`   | Mode type: `Txt2Img`, `Img2Img`, `Upscale`, `Img2Vid`                                  |
-| `Assets` | Dynamic model selectors (see [Assets System](#assets-system))                          |
+| Field                          | Description                                                                            |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| `Title`                        | Display name in UI                                                                     |
+| `Base`                         | Model base enum: `StableDiffusion`, `Flux`, `Chroma`, `Qwen`, `ZImage`, `Wan`, `Anima` |
+| `Mode`                         | Mode type: `Txt2Img`, `Img2Img`, `Upscale`, `Img2Vid`                                  |
+| `Assets`                       | Dynamic model selectors (see [Assets System](#assets-system))                          |
+| `CompatibleResourceBaseModels` | CivitAI base model strings for filtering asset selectors and LoRA lists (see below)    |
+
+#### CompatibleResourceBaseModels
+
+This property declares which CivitAI base model types are compatible with the workflow. It is used to:
+
+- Filter checkpoint/diffusion model dropdowns in the asset selector to show only compatible models
+- Filter LoRA autocomplete results to show only LoRAs trained for compatible architectures
+
+**How to pick the right values:** Reference `Data/CivitAI/basemodels.json` for the complete list of valid CivitAI base model strings. Choose all entries that the workflow's architecture can load. For example, an SD 1.5 workflow should include `"SD 1.5"`, `"SD 1.5 LCM"`, `"SD 1.5 Hyper"`, `"SD 1.4"`, etc.
+
+> **Important:** Do not hardcode base model strings without checking `basemodels.json`. New entries may be added as CivitAI evolves.
 
 ### GetFragments()
 
@@ -686,6 +699,7 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
         Title = "Txt2Img",
         Base = Data.Enums.ModelBase.Anima,
         Mode = ModeType.Txt2Img,
+        CompatibleResourceBaseModels = ["Anima"],
         Assets =
         [
             new WorkflowAsset { Parameter = "Model", Label = "Model", Type = AssetType.DiffusionModel,

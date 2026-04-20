@@ -68,7 +68,8 @@ public class QwenImg2ImgEditWorkflow : IWorkflowBuilder
                 Type = SourceType.Image,
                 Required = true
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Qwen", "Qwen 2"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

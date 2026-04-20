@@ -46,6 +46,13 @@ public class SDTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 1,
                 ColumnSize = 6
             }
+        ],
+        CompatibleResourceBaseModels =
+        [
+            "SD 1.4", "SD 1.5", "SD 1.5 LCM", "SD 1.5 Hyper",
+            "SD 2.0", "SD 2.0 768", "SD 2.1", "SD 2.1 768", "SD 2.1 Unclip",
+            "SDXL 0.9", "SDXL 1.0", "SDXL 1.0 LCM", "SDXL Lightning", "SDXL Hyper", "SDXL Distilled",
+            "Pony", "Illustrious", "NoobAI"
         ]
     };
 

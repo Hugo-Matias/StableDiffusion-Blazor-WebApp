@@ -76,7 +76,8 @@ public class ZImageImg2ImgWorkflow : IWorkflowBuilder
                 Type = SourceType.Image,
                 Required = true
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["ZImageTurbo", "ZImageBase"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()

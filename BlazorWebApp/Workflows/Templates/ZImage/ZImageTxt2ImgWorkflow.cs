@@ -66,7 +66,8 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 3,
                 ColumnSize = 4
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["ZImageTurbo", "ZImageBase"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()
@@ -192,15 +193,15 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
             // Load separate models for detailer with detailer_ scope
             _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
             {
-                UnetName = detailerFragment.GetString("detailer_checkpoint") 
-                           ?? parameters.Assets?.GetValueOrDefault("Model") 
+                UnetName = detailerFragment.GetString("detailer_checkpoint")
+                           ?? parameters.Assets?.GetValueOrDefault("Model")
                            ?? "z_image_turbo_bf16.safetensors",
                 ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_3_4b.safetensors",
                 ClipType = "lumina2",
                 VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "ae.safetensors",
-                Positive = detailerFragment.GetString("detailer_prompt") 
+                Positive = detailerFragment.GetString("detailer_prompt")
                            ?? promptsFragment?.GetString("positive", "") ?? "",
-                Negative = detailerFragment.GetString("detailer_negative_prompt") 
+                Negative = detailerFragment.GetString("detailer_negative_prompt")
                            ?? promptsFragment?.GetString("negative", "") ?? "",
                 Width = latentFragment?.GetInt("width", 872) ?? 872,
                 Height = latentFragment?.GetInt("height", 1248) ?? 1248,

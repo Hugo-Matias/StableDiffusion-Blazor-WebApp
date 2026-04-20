@@ -1,4 +1,5 @@
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Services
@@ -9,15 +10,17 @@ namespace BlazorWebApp.Services
         private readonly IIOService _io;
         private readonly IDatabaseService _db;
         private readonly IConfiguration _configuration;
+        private readonly IEventService _events;
         private readonly Dictionary<string, string> _resourceTypeDirectories;
 
-        public ResourcesService(IStateService state, IIOService io, IDatabaseService db, IConfiguration configuration)
+        public ResourcesService(IStateService state, IIOService io, IDatabaseService db, IConfiguration configuration, IEventService events)
         {
             _state = state;
             _io = io;
             _db = db;
             _configuration = configuration;
-            
+            _events = events;
+
             // Build resource type directories from configuration
             var baseDir = _configuration["ResourcesPath"];
             _resourceTypeDirectories = new()
@@ -226,6 +229,7 @@ namespace BlazorWebApp.Services
             destPath = Path.Combine(destPath, file.Filename);
             _io.MoveFile(file.File.FullName, destPath);
             await _db.ToggleResourceState(file.ResourceId);
+            _events.Publish(new ResourcesChangedEventArgs("Toggle"));
         }
     }
 }

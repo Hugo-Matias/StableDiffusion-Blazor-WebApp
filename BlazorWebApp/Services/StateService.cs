@@ -18,10 +18,10 @@ namespace BlazorWebApp.Services
         private readonly ISettingsService _settings;
 
         public AppState State { get; private set; }
-        
+
         /// <inheritdoc />
         public GenerationParameters GenerationParameters { get; private set; } = new();
-        
+
         /// <summary>
         /// Initializes GenerationParameters with default values from settings.
         /// Called when starting fresh (no saved state) or resetting parameters.
@@ -29,9 +29,9 @@ namespace BlazorWebApp.Services
         public void InitializeGenerationParameters()
         {
             var settings = _settings.Settings;
-            
+
             GenerationParameters = new GenerationParameters();
-            
+
             // Create default prompts fragment
             var promptsFragment = new FragmentParameters
             {
@@ -41,7 +41,7 @@ namespace BlazorWebApp.Services
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "");
             promptsFragment.SetValue(FragmentKeys.Params.Negative, "");
             GenerationParameters.Fragments[FragmentKeys.Fragments.Prompts] = promptsFragment;
-            
+
             // Create default main_sampler fragment with settings defaults
             var samplerFragment = new FragmentParameters
             {
@@ -55,7 +55,7 @@ namespace BlazorWebApp.Services
             samplerFragment.SetValue(FragmentKeys.Params.Scheduler, "normal");
             samplerFragment.SetValue(FragmentKeys.Params.Denoise, settings.Generation.Shared.Denoising.Value);
             GenerationParameters.Fragments[FragmentKeys.Fragments.MainSampler] = samplerFragment;
-            
+
             // Create default latent/resolution fragment
             var latentFragment = new FragmentParameters
             {
@@ -101,14 +101,14 @@ namespace BlazorWebApp.Services
         private async Task LoadStateInternal(int stateId)
         {
             var dbState = await _db.GetState(stateId);
-            
+
             if (dbState != null)
             {
                 // Load AppState if present
                 if (dbState.AppState != null)
                 {
                     State = dbState.AppState;
-                    
+
                     // IMPORTANT: Do NOT restore workflows from database state
                     // Workflows must always be loaded fresh from disk template files
                     // because they may have been updated (e.g., Sources added)
@@ -119,7 +119,7 @@ namespace BlazorWebApp.Services
                         State.Generation.Workflows = null;
                     }
                 }
-                
+
                 // Load GenerationParameters if present
                 if (dbState.GenerationParameters != null && dbState.GenerationParameters.Fragments.Count > 0)
                 {
@@ -146,7 +146,7 @@ namespace BlazorWebApp.Services
             // Get the latest AutoSave for current StateVersion
             var stateVersion = int.Parse(_configuration["StateVersion"]);
             var entity = await _db.GetState(1); // DatabaseService.GetState(1) has fallback logic
-            
+
             if (entity == null)
             {
                 // No AutoSave exists for this version, create new one
@@ -176,7 +176,7 @@ namespace BlazorWebApp.Services
                 ChangeType = StateChangeType.AppState,
                 NewValue = State
             });
-            
+
             // Publish GenerationParameters changed event
             _events.Publish(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
         }
@@ -192,11 +192,26 @@ namespace BlazorWebApp.Services
             // Ensure fragments exist
             var promptsFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             var samplerFragment = GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
-            
-            // Set prompts
-            promptsFragment.SetValue(FragmentKeys.Params.Positive, image.Prompt ?? "");
-            promptsFragment.SetValue(FragmentKeys.Params.Negative, image.NegativePrompt ?? "");
-            
+
+            // Extract LoRAs from prompts and use cleaned text
+            var positivePrompt = image.Prompt ?? "";
+            var negativePrompt = image.NegativePrompt ?? "";
+
+            var positiveLoras = Parser.ExtractLorasFromPrompt(positivePrompt, out var cleanedPositive, isNegative: false);
+            var negativeLoras = Parser.ExtractLorasFromPrompt(negativePrompt, out var cleanedNegative, isNegative: true);
+
+            // Set cleaned prompts (LoRA tags stripped)
+            promptsFragment.SetValue(FragmentKeys.Params.Positive, cleanedPositive);
+            promptsFragment.SetValue(FragmentKeys.Params.Negative, cleanedNegative);
+
+            // Load extracted LoRAs into the LoRA panel (avoid duplicates)
+            foreach (var lora in positiveLoras.Concat(negativeLoras))
+            {
+                if (string.IsNullOrWhiteSpace(lora.Name)) continue;
+                if (!GenerationParameters.Loras.Any(x => string.Equals(x.Name, lora.Name, StringComparison.InvariantCultureIgnoreCase)))
+                    GenerationParameters.Loras.Add(new Lora(lora));
+            }
+
             // Set sampler values
             var samplerName = await _db.GetSampler(image.SamplerId);
             samplerFragment.SetValue(FragmentKeys.Params.Seed, image.Seed);
@@ -205,7 +220,7 @@ namespace BlazorWebApp.Services
             samplerFragment.SetValue(FragmentKeys.Params.SamplerName, samplerName ?? "euler");
             samplerFragment.SetValue(FragmentKeys.Params.Scheduler, image.Scheduler ?? "normal");
             samplerFragment.SetValue(FragmentKeys.Params.Denoise, image.DenoisingStrength);
-            
+
             // Set resolution in any fragment that has it (latent, loader, etc.)
             foreach (var fragment in GenerationParameters.Fragments.Values)
             {
@@ -215,7 +230,7 @@ namespace BlazorWebApp.Services
                     fragment.SetValue(FragmentKeys.Params.Height, image.Height);
                 }
             }
-            
+
             // If no fragment has width/height, create/update latent fragment
             if (!GenerationParameters.Fragments.Values.Any(f => f.HasValue(FragmentKeys.Params.Width)))
             {
@@ -223,7 +238,7 @@ namespace BlazorWebApp.Services
                 latentFragment.SetValue(FragmentKeys.Params.Width, image.Width);
                 latentFragment.SetValue(FragmentKeys.Params.Height, image.Height);
             }
-            
+
             // Publish event
             _events.Publish(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
         }
@@ -279,7 +294,7 @@ namespace BlazorWebApp.Services
         {
             // Clear existing assets first
             GenerationParameters.Assets.Clear();
-            
+
             // Get the new workflow for each mode and set assets to its defaults
             var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
 
@@ -294,7 +309,7 @@ namespace BlazorWebApp.Services
                 // Set to workflow defaults (merge, don't overwrite existing)
                 foreach (var asset in workflow.Assets)
                 {
-                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue) && 
+                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue) &&
                         !GenerationParameters.Assets.ContainsKey(asset.Parameter))
                     {
                         GenerationParameters.Assets[asset.Parameter] = asset.DefaultValue;

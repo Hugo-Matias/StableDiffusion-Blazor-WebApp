@@ -168,7 +168,10 @@ namespace BlazorWebApp.Services
                     Required = s.Required,
                     AllowMultiple = s.AllowMultiple,
                     Parameter = s.Parameter
-                }).ToList()
+                }).ToList(),
+                CompatibleResourceBaseModels = metadata.CompatibleResourceBaseModels.Count > 0
+                    ? metadata.CompatibleResourceBaseModels
+                    : null
             };
         }
 

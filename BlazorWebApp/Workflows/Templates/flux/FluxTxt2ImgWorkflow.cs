@@ -71,7 +71,8 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 4,
                 ColumnSize = 3
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Flux.1 S", "Flux.1 D", "Flux.1 Krea"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()
@@ -168,11 +169,11 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
         {
             // Load separate models for detailer with detailer_ scope
             var detailerPrompt = detailerFragmentParams.GetString("detailer_prompt") ?? positive;
-            
+
             _loadFluxFragment.Build(builder, registry, new LoadFluxFragment.Parameters
             {
-                UnetName = detailerFragmentParams.GetString("detailer_checkpoint") 
-                           ?? parameters.Assets?.GetValueOrDefault("Model") 
+                UnetName = detailerFragmentParams.GetString("detailer_checkpoint")
+                           ?? parameters.Assets?.GetValueOrDefault("Model")
                            ?? "flux1-krea-dev_fp8_scaled.safetensors",
                 ClipName1 = parameters.Assets?.GetValueOrDefault("Clip1") ?? "t5xxl_fp8_e4m3fn_scaled.safetensors",
                 ClipName2 = parameters.Assets?.GetValueOrDefault("Clip2") ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors",

@@ -12,22 +12,28 @@ namespace BlazorWebApp.Services
     public class AssetResolverService : IAssetResolverService
     {
         private readonly ComfyUIService _comfy;
+        private readonly IResourceFilterService _resourceFilter;
+        private readonly IResourceFilterStateService _filterState;
         private readonly ISnackbar _snackbar;
         private readonly ILogger<AssetResolverService> _logger;
-        
+
         // Cache of asset options by type to avoid repeated API calls
         private readonly ConcurrentDictionary<AssetType, List<string>> _assetOptionsCache = new();
         private readonly ConcurrentDictionary<AssetType, DateTime> _cacheTimestamps = new();
-        
+
         // Cache expiration time (5 minutes)
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
 
         public AssetResolverService(
-            ComfyUIService comfy, 
+            ComfyUIService comfy,
+            IResourceFilterService resourceFilter,
+            IResourceFilterStateService filterState,
             ISnackbar snackbar,
             ILogger<AssetResolverService> logger)
         {
             _comfy = comfy;
+            _resourceFilter = resourceFilter;
+            _filterState = filterState;
             _snackbar = snackbar;
             _logger = logger;
         }
@@ -67,11 +73,11 @@ namespace BlazorWebApp.Services
 
             // Load fresh options
             var options = await GetAssetOptions(assetType);
-            
+
             // Update cache
             _assetOptionsCache[assetType] = options;
             _cacheTimestamps[assetType] = DateTime.UtcNow;
-            
+
             return options;
         }
 
@@ -102,12 +108,12 @@ namespace BlazorWebApp.Services
                 {
                     return (currentStateValue, true);
                 }
-                
+
                 // Check for partial match (filename without path)
-                var filenameMatch = options.FirstOrDefault(o => 
+                var filenameMatch = options.FirstOrDefault(o =>
                     Path.GetFileName(o).Equals(currentStateValue, StringComparison.OrdinalIgnoreCase) ||
                     o.EndsWith(currentStateValue, StringComparison.OrdinalIgnoreCase));
-                    
+
                 if (filenameMatch != null)
                 {
                     return (filenameMatch, true);
@@ -122,15 +128,15 @@ namespace BlazorWebApp.Services
                 {
                     return (asset.DefaultValue, true);
                 }
-                
+
                 // Check for partial match
-                var defaultMatch = options.FirstOrDefault(o => 
+                var defaultMatch = options.FirstOrDefault(o =>
                     Path.GetFileName(o).Equals(asset.DefaultValue, StringComparison.OrdinalIgnoreCase) ||
                     o.EndsWith(asset.DefaultValue, StringComparison.OrdinalIgnoreCase));
-                    
+
                 if (defaultMatch != null)
                 {
-                    _logger.LogDebug("{Label}: Using matched default '{Match}' for '{Default}'", 
+                    _logger.LogDebug("{Label}: Using matched default '{Match}' for '{Default}'",
                         asset.Label, defaultMatch, asset.DefaultValue);
                     return (defaultMatch, true);
                 }
@@ -138,12 +144,12 @@ namespace BlazorWebApp.Services
 
             // Priority 3: Fallback to first available option
             var fallback = options.First();
-            _logger.LogWarning("{Label}: Default '{Default}' not found, falling back to '{Fallback}'", 
+            _logger.LogWarning("{Label}: Default '{Default}' not found, falling back to '{Fallback}'",
                 asset.Label, asset.DefaultValue, fallback);
-            
-            _snackbar.Add($"{asset.Label}: Default '{asset.DefaultValue}' not found, using '{Path.GetFileName(fallback)}'", 
+
+            _snackbar.Add($"{asset.Label}: Default '{asset.DefaultValue}' not found, using '{Path.GetFileName(fallback)}'",
                 Severity.Warning);
-                
+
             return (fallback, true);
         }
 
@@ -180,7 +186,7 @@ namespace BlazorWebApp.Services
                 }
 
                 // Check if value exists in options
-                var exists = options.Any(o => 
+                var exists = options.Any(o =>
                     o.Equals(currentValue, StringComparison.OrdinalIgnoreCase) ||
                     Path.GetFileName(o).Equals(currentValue, StringComparison.OrdinalIgnoreCase));
 
@@ -210,15 +216,15 @@ namespace BlazorWebApp.Services
 
                 if (!isValid)
                 {
-                    _logger.LogWarning("Failed to resolve valid value for asset '{Label}' ({Parameter})", 
+                    _logger.LogWarning("Failed to resolve valid value for asset '{Label}' ({Parameter})",
                         asset.Label, asset.Parameter);
                     allSuccessful = false;
                 }
 
                 // Set the resolved value (even if invalid, we set what we have)
                 workflowAssets[asset.Parameter] = resolvedValue;
-                
-                _logger.LogDebug("Initialized {Parameter} = {Value} (valid: {IsValid})", 
+
+                _logger.LogDebug("Initialized {Parameter} = {Value} (valid: {IsValid})",
                     asset.Parameter, resolvedValue, isValid);
             }
 
@@ -253,6 +259,48 @@ namespace BlazorWebApp.Services
             });
 
             await Task.WhenAll(loadTasks);
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<string>> GetFilteredAssetOptions(AssetType assetType, Workflow workflow)
+        {
+            var options = await GetCachedAssetOptions(assetType);
+
+            if (options.Count == 0)
+                return options;
+
+            await _filterState.EnsureInitializedForWorkflowAsync(workflow);
+            var effectiveBaseModels = _filterState.GetEffectiveBaseModels();
+
+            List<string> filtered;
+            if (effectiveBaseModels == null)
+            {
+                // AllowAll or no filter state - use full workflow compatibility
+                filtered = await _resourceFilter.FilterAssetsByWorkflowAsync(options, workflow, _filterState.IncludeUntracked);
+            }
+            else
+            {
+                filtered = await _resourceFilter.FilterByBaseModelsAsync(options, effectiveBaseModels, _filterState.IncludeUntracked);
+            }
+
+            // Graceful degradation: if chip filtering removes everything, fall back to full workflow compatibility
+            if (filtered.Count == 0 && options.Count > 0)
+            {
+                _logger.LogDebug("Chip filtering {AssetType} for workflow '{Title}' returned no results, falling back to workflow compatibility ({Count} options)",
+                    assetType, workflow.Title, options.Count);
+
+                // Fall back to workflow-level filtering (all compatible base models), not completely unfiltered
+                filtered = await _resourceFilter.FilterAssetsByWorkflowAsync(options, workflow, _filterState.IncludeUntracked);
+
+                if (filtered.Count == 0)
+                {
+                    _logger.LogDebug("Workflow compatibility filtering also returned no results for {AssetType}, returning all {Count} options",
+                        assetType, options.Count);
+                    return options;
+                }
+            }
+
+            return filtered;
         }
     }
 }

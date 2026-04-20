@@ -1,0 +1,100 @@
+@using BlazorWebApp.Events
+@inject IResourceFilterStateService FilterState
+@inject IOrchestratorService M
+@inject IEventService Events
+@implements IDisposable
+
+@if (_isInitialized && FilterState.AvailableBaseModels.Count > 0)
+{
+    <MudText Typo="Typo.subtitle2" Class="mb-1">Resource Filters</MudText>
+    <div class="d-flex flex-wrap gap-1 align-center mb-2">
+        <MudChip Size="Size.Small" Variant="@(FilterState.AllowAll? Variant.Filled: Variant.Outlined)"
+                 Color="@(FilterState.AllowAll ? Color.Success : Color.Default)"
+                 OnClick="@(() => FilterState.SetAllowAll(!FilterState.AllowAll))">
+            All Models
+        </MudChip>
+        <MudChip Size="Size.Small" Variant="@(FilterState.IncludeUntracked? Variant.Filled: Variant.Outlined)"
+                 Color="@(FilterState.IncludeUntracked ? Color.Info : Color.Default)"
+                 Style="@(!FilterState.IncludeUntracked ? "opacity:0.5;" : "")"
+                 OnClick="@(() => FilterState.SetIncludeUntracked(!FilterState.IncludeUntracked))">
+            Untracked
+        </MudChip>
+        <MudDivider Vertical FlexItem Class="mx-1" />
+        @foreach (var baseModel in FilterState.AvailableBaseModels)
+        {
+            var model = baseModel;
+            var isEnabled = FilterState.EnabledBaseModels.Contains(model);
+            <span @ondblclick="@(() => SoloModel(model))" @ondblclick:preventDefault @ondblclick:stopPropagation>
+                <MudChip Size="Size.Small" Variant="@(isEnabled? Variant.Filled: Variant.Outlined)"
+                         Color="@(isEnabled ? Color.Secondary : Color.Default)"
+                         Style="@(!isEnabled ? "opacity:0.5; text-decoration:line-through;" : "")" Disabled="@FilterState.AllowAll"
+                         OnClick="@(() => ToggleModel(model))">
+                    @model
+                </MudChip>
+            </span>
+        }
+    </div>
+}
+
+@code {
+    private bool _isInitialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Subscribe<ResourceFilterChangedEventArgs>(OnFilterChanged);
+        Events.Subscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
+
+        var workflow = M.GetCurrentWorkflow();
+        if (workflow != null)
+        {
+            await FilterState.EnsureInitializedForWorkflowAsync(workflow);
+            _isInitialized = true;
+        }
+    }
+
+    private async void OnWorkflowChanged(WorkflowChangedEventArgs args)
+    {
+        var workflow = M.GetCurrentWorkflow();
+        if (workflow != null)
+        {
+            await FilterState.EnsureInitializedForWorkflowAsync(workflow);
+            _isInitialized = true;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFilterChanged(ResourceFilterChangedEventArgs args)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnResourcesChanged(ResourcesChangedEventArgs args)
+    {
+        FilterState.InvalidateCurrentWorkflow();
+        var workflow = M.GetCurrentWorkflow();
+        if (workflow != null)
+        {
+            await FilterState.EnsureInitializedForWorkflowAsync(workflow);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleModel(string baseModel)
+    {
+        FilterState.ToggleBaseModel(baseModel);
+    }
+
+    private void SoloModel(string baseModel)
+    {
+        if (FilterState.AllowAll) return;
+        FilterState.SoloBaseModel(baseModel);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Unsubscribe<ResourceFilterChangedEventArgs>(OnFilterChanged);
+        Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
+    }
+}

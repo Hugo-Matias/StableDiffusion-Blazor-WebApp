@@ -35,16 +35,10 @@ else if (_workflowAssets != null && _workflowAssets.Count > 0)
             <MudItem xs="@GetColumnSize(asset)">
                 @if (_assetOptions.TryGetValue(asset.Type, out var options) && options.Count > 0)
                 {
-                    <MudSelect T="string" 
-                               Value="@GetAssetValue(asset.Parameter)"
-                               ValueChanged="@((string v) => HandleAssetChanged(asset.Parameter, v))"
-                               Label="@asset.Label"
-                               AdornmentIcon="@GetAssetIcon(asset.Type)"
-                               AdornmentColor="@GetAssetColor(asset.Type)"
-                               AnchorOrigin="Origin.BottomLeft" 
-                               TransformOrigin="Origin.TopLeft"
-                               MaxHeight="400"
-                               Dense="@Dense"
+                    <MudSelect T="string" Value="@GetAssetValue(asset.Parameter)"
+                               ValueChanged="@((string v) => HandleAssetChanged(asset.Parameter, v))" Label="@asset.Label"
+                               AdornmentIcon="@GetAssetIcon(asset.Type)" AdornmentColor="@GetAssetColor(asset.Type)"
+                               AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400" Dense="@Dense"
                                Variant="@Variant">
                         @foreach (var option in options)
                         {
@@ -55,13 +49,9 @@ else if (_workflowAssets != null && _workflowAssets.Count > 0)
                 else
                 {
                     @* Fallback to text field if no options available *@
-                    <MudTextField T="string" 
-                                  Value="@GetAssetValue(asset.Parameter)"
-                                  ValueChanged="@((string v) => HandleAssetChanged(asset.Parameter, v))"
-                                  Label="@asset.Label"
-                                  Variant="@Variant"
-                                  HelperText="No options available"
-                                  HelperTextOnFocus />
+                    <MudTextField T="string" Value="@GetAssetValue(asset.Parameter)"
+                                  ValueChanged="@((string v) => HandleAssetChanged(asset.Parameter, v))" Label="@asset.Label"
+                                  Variant="@Variant" HelperText="No options available" HelperTextOnFocus />
                 }
             </MudItem>
         }
@@ -118,6 +108,8 @@ else if (ShowEmptyMessage)
     {
         Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
         Events.Subscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Subscribe<ResourceFilterChangedEventArgs>(OnResourceFilterChanged);
+        Events.Subscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
         
         await LoadAssetsAsync();
     }
@@ -150,12 +142,12 @@ else if (ShowEmptyMessage)
             // Preload options for all asset types
             await AssetResolver.PreloadAssetOptions(workflow);
 
-            // Get cached options for each asset type
+            // Get cached options for each asset type (filtered by workflow compatibility)
             _assetOptions.Clear();
             var assetTypes = _workflowAssets.Select(a => a.Type).Distinct();
             foreach (var assetType in assetTypes)
             {
-                var options = await AssetResolver.GetCachedAssetOptions(assetType);
+                var options = await AssetResolver.GetFilteredAssetOptions(assetType, workflow);
                 _assetOptions[assetType] = options;
             }
 
@@ -266,9 +258,26 @@ else if (ShowEmptyMessage)
         };
     }
 
+    private async void OnResourceFilterChanged(ResourceFilterChangedEventArgs args)
+    {
+        await LoadAssetsAsync();
+    }
+
+    private async void OnResourcesChanged(ResourcesChangedEventArgs args)
+    {
+        await InvokeAsync(async () =>
+        {
+            AssetResolver.ClearCache();
+            _assetOptions.Clear();
+            await LoadAssetsAsync();
+        });
+    }
+
     public void Dispose()
     {
         Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
         Events.Unsubscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Unsubscribe<ResourceFilterChangedEventArgs>(OnResourceFilterChanged);
+        Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
     }
 }

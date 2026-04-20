@@ -65,7 +65,8 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
                 Order = 3,
                 ColumnSize = 4
             }
-        ]
+        ],
+        CompatibleResourceBaseModels = ["Anima"]
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()
