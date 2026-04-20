@@ -31,14 +31,14 @@ namespace BlazorWebApp.Tests.TestFixtures
             };
         }
 
-        public static List<Scheduler> GetSampleSchedulers()
+        public static List<BlazorWebApp.Models.Scheduler> GetSampleSchedulers()
         {
-            return new List<Scheduler>
+            return new List<BlazorWebApp.Models.Scheduler>
             {
-                new Scheduler { Name = "normal" },
-                new Scheduler { Name = "karras" },
-                new Scheduler { Name = "exponential" },
-                new Scheduler { Name = "sgm_uniform" }
+                new BlazorWebApp.Models.Scheduler { Name = "normal" },
+                new BlazorWebApp.Models.Scheduler { Name = "karras" },
+                new BlazorWebApp.Models.Scheduler { Name = "exponential" },
+                new BlazorWebApp.Models.Scheduler { Name = "sgm_uniform" }
             };
         }
 

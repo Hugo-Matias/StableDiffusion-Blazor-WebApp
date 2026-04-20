@@ -15,7 +15,7 @@
                 @if (Resource.CivitaiId != null)
                 {
                     <MudLink Target="_blank" Href=@($"https://civitai.com/models/{Resource.CivitaiId}") Color="Color.Info"
-                             Typo="Typo.caption" Style="opacity: 0.3; font-size:0.7rem; margin-top: -1.2rem;">@($"Model:    {Resource.CivitaiId}{(File.CivitaiId != null ? $" | File: {File.CivitaiId}" : "")}")</MudLink>
+                             Typo="Typo.caption" Style="opacity: 0.3; font-size:0.7rem; margin-top: -1.2rem;">@($"Model:                  {Resource.CivitaiId}{(File.CivitaiId != null ? $" | File: {File.CivitaiId}" : "")}")</MudLink>
                 }
             </MudStack>
             <MudSpacer />
@@ -57,8 +57,9 @@
                             {
                                 var w = word;
                                 var isSelected = _selectedTriggerWords.Contains(w);
-                                <span @ondblclick="@(() => SoloTriggerWord(w))" @ondblclick:preventDefault @ondblclick:stopPropagation>
-                                    <MudChip Color="@(isSelected ? Color.Primary : Color.Default)" Label=true
+                                <span @ondblclick="@(() => SoloTriggerWord(w))" @ondblclick:preventDefault
+                                      @ondblclick:stopPropagation>
+                                    <MudChip Color="@(isSelected? Color.Primary: Color.Default)" Label=true
                                              Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
                                              Style="@($"max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;{(!isSelected ? " opacity:0.5; text-decoration:line-through;" : "")}")"
                                              title="@w" OnClick="@(() => ToggleTriggerWord(w))">@w</MudChip>
@@ -97,7 +98,7 @@
                                        ValueLabel><small>Resource Weight: </small> @State.State.Resources.Weight</MudSlider>
                         }
                         @if (!(Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase) &&
-                                        (File.TriggerWords == null || File.TriggerWords.Count == 0)))
+                                                                (File.TriggerWords == null || File.TriggerWords.Count == 0)))
                         {
                             @if (_isLoraType)
                             {
@@ -197,7 +198,8 @@
 
     private void AddLoraToLoader(bool isNegative) => MudDialog.Close(("AddLora", isNegative, _selectedTriggerWords));
 
-    private void AddLoraToWorkflow(Workflow workflow) => MudDialog.Close(("AddLoraToWorkflow", workflow, _selectedTriggerWords));
+    private void AddLoraToWorkflow(Workflow workflow) => MudDialog.Close(("AddLoraToWorkflow", workflow,
+_selectedTriggerWords));
 
     private void ToggleTriggerWord(string word)
     {

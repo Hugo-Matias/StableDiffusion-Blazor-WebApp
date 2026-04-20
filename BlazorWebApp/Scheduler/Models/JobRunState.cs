@@ -1,0 +1,29 @@
+namespace BlazorWebApp.Scheduler.Models
+{
+    /// <summary>
+    /// Runtime progress state for a <see cref="Job"/>. Serialized alongside the job for resume support.
+    /// </summary>
+    public sealed class JobRunState
+    {
+        /// <summary>Zero-based index of the action currently executing or next to execute.</summary>
+        public int CurrentActionIndex { get; set; }
+
+        /// <summary>Zero-based iteration index within the current action.</summary>
+        public int CurrentIterationIndex { get; set; }
+
+        /// <summary>Total iterations computed across all actions (after Limit capping). Zero until planned.</summary>
+        public int TotalIterations { get; set; }
+
+        /// <summary>Count of images successfully generated so far.</summary>
+        public int CompletedImages { get; set; }
+
+        /// <summary>Count of failed generations so far.</summary>
+        public int FailedImages { get; set; }
+
+        /// <summary>Timestamp when the current (or last) run started.</summary>
+        public DateTime? StartedAt { get; set; }
+
+        /// <summary>Timestamp of the most recent progress update.</summary>
+        public DateTime? UpdatedAt { get; set; }
+    }
+}
