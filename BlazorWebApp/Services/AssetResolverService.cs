@@ -278,13 +278,27 @@ namespace BlazorWebApp.Services
                 // AllowAll or no filter state - use full workflow compatibility
                 filtered = await _resourceFilter.FilterAssetsByWorkflowAsync(options, workflow, _filterState.IncludeUntracked);
             }
+            else if (effectiveBaseModels.Count == 0)
+            {
+                // All chips disabled - check untracked toggle
+                if (_filterState.IncludeUntracked)
+                {
+                    // Show only untracked resources (no base model match, no tracked model)
+                    filtered = await _resourceFilter.FilterByBaseModelsAsync(options, effectiveBaseModels, includeUntracked: true);
+                }
+                else
+                {
+                    // No chips, no untracked - fall back to full workflow compatibility without untracked
+                    filtered = await _resourceFilter.FilterAssetsByWorkflowAsync(options, workflow, includeUntracked: false);
+                }
+            }
             else
             {
                 filtered = await _resourceFilter.FilterByBaseModelsAsync(options, effectiveBaseModels, _filterState.IncludeUntracked);
             }
 
             // Graceful degradation: if chip filtering removes everything, fall back to full workflow compatibility
-            if (filtered.Count == 0 && options.Count > 0)
+            if (filtered.Count == 0 && options.Count > 0 && effectiveBaseModels != null && effectiveBaseModels.Count > 0)
             {
                 _logger.LogDebug("Chip filtering {AssetType} for workflow '{Title}' returned no results, falling back to workflow compatibility ({Count} options)",
                     assetType, workflow.Title, options.Count);

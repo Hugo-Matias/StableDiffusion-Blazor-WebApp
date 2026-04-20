@@ -330,4 +330,65 @@ public class ResourceFilterServiceTests
     }
 
     #endregion
+
+    #region FilterByBaseModelsAsync with empty allowed set
+
+    [Fact]
+    public async Task FilterByBaseModels_EmptyAllowedSet_UntrackedTrue_ReturnsOnlyUntracked()
+    {
+        var svc = CreateService();
+        SetupCacheFinds(("tracked.safetensors", "SD 1.5"));
+        _mockCache.Setup(c => c.FindByFilenameAsync("untracked.safetensors"))
+            .ReturnsAsync((Resource?)null);
+
+        var input = new List<string> { "tracked.safetensors", "untracked.safetensors" };
+        var result = await svc.FilterByBaseModelsAsync(input, [], includeUntracked: true);
+
+        Assert.Single(result);
+        Assert.Equal("untracked.safetensors", result[0]);
+    }
+
+    [Fact]
+    public async Task FilterByBaseModels_EmptyAllowedSet_UntrackedFalse_ReturnsEmpty()
+    {
+        var svc = CreateService();
+        SetupCacheFinds(("tracked.safetensors", "SD 1.5"));
+        _mockCache.Setup(c => c.FindByFilenameAsync("untracked.safetensors"))
+            .ReturnsAsync((Resource?)null);
+
+        var input = new List<string> { "tracked.safetensors", "untracked.safetensors" };
+        var result = await svc.FilterByBaseModelsAsync(input, [], includeUntracked: false);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task FilterByBaseModels_EmptyAllowedSet_NullBaseModel_UntrackedTrue_Included()
+    {
+        var svc = CreateService();
+        SetupCacheFinds(("nobase.safetensors", null));
+
+        var result = await svc.FilterByBaseModelsAsync(["nobase.safetensors"], [], includeUntracked: true);
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public async Task FilterByBaseModels_NonEmptySet_FiltersCorrectly()
+    {
+        var svc = CreateService();
+        SetupCacheFinds(
+            ("sd15.safetensors", "SD 1.5"),
+            ("flux.safetensors", "Flux.1 D")
+        );
+
+        var result = await svc.FilterByBaseModelsAsync(
+            ["sd15.safetensors", "flux.safetensors"],
+            ["SD 1.5"]);
+
+        Assert.Single(result);
+        Assert.Equal("sd15.safetensors", result[0]);
+    }
+
+    #endregion
 }

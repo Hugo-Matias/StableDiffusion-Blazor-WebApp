@@ -6,6 +6,7 @@
 @inject IDatabaseService DB
 @inject IResourcesService ResourcesService
 @inject IOrchestratorService Orchestrator
+@inject IGenerationParameterService ParameterService
 @inject CivitaiService Civitai
 @inject IConfiguration Configuration
 @inject IDialogService DialogService
@@ -19,7 +20,7 @@
     {
         <MudTabPanel Text=@(resource.Key.Name == "TextualInversion" ? "Embedding" : resource.Key.Name)>
             <ResourcePanel Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) :
-                                                                              LoadResource(r, r.Files[0])) />
+                                                                                                                                                LoadResource(r, r.Files[0])) />
         </MudTabPanel>
     }
 </MudTabs>
@@ -117,32 +118,30 @@
                     Refresh();
                 }
                 else if (command == "Toggle") Refresh();
-                else if (result.Data is ValueTuple<string, bool> loraTuple && loraTuple.Item1 == "AddLora")
+                else if (result.Data is ValueTuple<string, bool, List<string>> loraTuple && loraTuple.Item1 == "AddLora")
                 {
                     // LoRA: add to loader panel (no specific workflow)
-                    var target = (ModeType.Txt2Img, !loraTuple.Item2);
-                    await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
+                    QueueLoraForGenerate(file, resource.Type.Name);
+                    QueueTriggerWords(loraTuple.Item3);
                     await DB.UpdateResourceLoadedDate(file.ResourceId);
                     NavManager.NavigateTo("/generate");
                 }
-                else if (result.Data is ValueTuple<string, Workflow> wfTuple)
+                else if (result.Data is ValueTuple<string, Workflow, List<string>> wfLoraTuple && wfLoraTuple.Item1 == "AddLoraToWorkflow")
                 {
-                    if (wfTuple.Item1 == "SendToWorkflow")
-                    {
-                        // Checkpoint: send to compatible workflow and navigate
-                        Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id, wfTuple.Item2.Mode);
-                        await DB.UpdateResourceLoadedDate(file.ResourceId);
-                        NavManager.NavigateTo($"/generate/{wfTuple.Item2.Id}");
-                    }
-                    else if (wfTuple.Item1 == "AddLoraToWorkflow")
-                    {
-                        // LoRA: switch to target workflow, add LoRA, navigate
-                        Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id, wfTuple.Item2.Mode);
-                        var target = (ModeType.Txt2Img, true);
-                        await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
-                        await DB.UpdateResourceLoadedDate(file.ResourceId);
-                        NavManager.NavigateTo($"/generate/{wfTuple.Item2.Id}");
-                    }
+                    // LoRA: queue LoRA and navigate to workflow
+                    QueueLoraForGenerate(file, resource.Type.Name);
+                    QueueTriggerWords(wfLoraTuple.Item3);
+                    Orchestrator.SetCurrentWorkflow(wfLoraTuple.Item2.Id, wfLoraTuple.Item2.Mode);
+                    await DB.UpdateResourceLoadedDate(file.ResourceId);
+                    NavManager.NavigateTo($"/generate/{wfLoraTuple.Item2.Id}");
+                }
+                else if (result.Data is ValueTuple<string, Workflow> wfTuple && wfTuple.Item1 == "SendToWorkflow")
+                {
+                    // Checkpoint: queue asset value and navigate to workflow
+                    QueueCheckpointForWorkflow(file, wfTuple.Item2);
+                    Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id, wfTuple.Item2.Mode);
+                    await DB.UpdateResourceLoadedDate(file.ResourceId);
+                    NavManager.NavigateTo($"/generate/{wfTuple.Item2.Id}");
                 }
                 else if (result.Data is bool isPrompt)
                 {
@@ -242,5 +241,43 @@ file.File.Name.Replace(file.File.Extension, ""));
         Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
         Events.Unsubscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
         Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesStateChanged);
+    }
+
+    private void QueueCheckpointForWorkflow(LocalResourceFile file, Workflow workflow)
+    {
+        if (workflow.Assets == null) return;
+
+        // Find the first checkpoint/diffusion model asset parameter in the workflow
+        var checkpointAsset = workflow.Assets.FirstOrDefault(a =>
+            a.Type == AssetType.DiffusionModel ||
+            a.Type == AssetType.CheckpointModel);
+
+        if (checkpointAsset == null) return;
+
+        // Queue the filename so it survives workflow initialization
+        ParameterService.QueuePendingAsset(checkpointAsset.Parameter, file.Filename);
+    }
+
+    private void QueueLoraForGenerate(LocalResourceFile file, string resourceType)
+    {
+        var comp = StringComparison.InvariantCultureIgnoreCase;
+        var filename = file.File.Name.Replace(file.File.Extension, "");
+        var weight = State.State.Resources.Weight;
+
+        var resourcesPath = Configuration["ResourcesPath"];
+        var loraBasePath = Path.Combine(resourcesPath!, resourceType);
+        var fullPath = file.File.FullName;
+        var subPath = fullPath.StartsWith(loraBasePath, comp)
+            ? fullPath.Substring(loraBasePath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            : file.File.Name;
+
+        var newLora = new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = false, IsEnabled = true };
+        ParameterService.QueuePendingLora(newLora);
+    }
+
+    private void QueueTriggerWords(List<string> triggerWords)
+    {
+        if (triggerWords == null || triggerWords.Count == 0) return;
+        ParameterService.QueuePendingPromptAppend(string.Join(", ", triggerWords));
     }
 }

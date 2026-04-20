@@ -51,15 +51,19 @@
                     </MudChipSet>
                     @if (File.TriggerWords != null && File.TriggerWords.Count >= 1)
                     {
-                        <MudStack Row=true>
-                            <MudCheckBox Checked="State.State.Resources.LoadTriggerWords"
-                                         CheckedChanged="HandleLoadTriggerWordsChanged" T="bool">Trigger Words</MudCheckBox>
-                            <MudChipSet ReadOnly=true>
-                                @foreach (var word in File.TriggerWords)
-                                {
-                                    <MudChip Color="Color.Primary" Text="@word" Label=true />
-                                }
-                            </MudChipSet>
+                        <MudStack Row=true Class="align-center flex-wrap">
+                            <MudText Typo="Typo.caption" Class="me-2">Trigger Words</MudText>
+                            @foreach (var word in File.TriggerWords)
+                            {
+                                var w = word;
+                                var isSelected = _selectedTriggerWords.Contains(w);
+                                <span @ondblclick="@(() => SoloTriggerWord(w))" @ondblclick:preventDefault @ondblclick:stopPropagation>
+                                    <MudChip Color="@(isSelected ? Color.Primary : Color.Default)" Label=true
+                                             Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                             Style="@($"max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;{(!isSelected ? " opacity:0.5; text-decoration:line-through;" : "")}")"
+                                             title="@w" OnClick="@(() => ToggleTriggerWord(w))">@w</MudChip>
+                                </span>
+                            }
                         </MudStack>
                     }
                     @if (Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase))
@@ -162,6 +166,7 @@
     private List<ResourceImage> _images;
     private List<Workflow> _compatibleWorkflows = new();
     private bool _isLoraType;
+    private List<string> _selectedTriggerWords = new();
 
     protected async override Task OnInitializedAsync()
     {
@@ -169,6 +174,10 @@
 
         var comp = StringComparison.InvariantCultureIgnoreCase;
         _isLoraType = Resource.Type.Name.Equals("LORA", comp) || Resource.Type.Name.Equals("LoCon", comp);
+
+        // Initialize all trigger words as selected
+        if (File.TriggerWords != null && File.TriggerWords.Count > 0)
+            _selectedTriggerWords = new List<string>(File.TriggerWords);
 
         // Build compatible workflows list for checkpoints and LoRAs
         if (!string.IsNullOrWhiteSpace(Resource.BaseModel))
@@ -186,19 +195,29 @@
 
     private void LoadResource(bool isPrompt) => MudDialog.Close(isPrompt);
 
-    private void AddLoraToLoader(bool isNegative) => MudDialog.Close(("AddLora", isNegative));
+    private void AddLoraToLoader(bool isNegative) => MudDialog.Close(("AddLora", isNegative, _selectedTriggerWords));
 
-    private void AddLoraToWorkflow(Workflow workflow) => MudDialog.Close(("AddLoraToWorkflow", workflow));
+    private void AddLoraToWorkflow(Workflow workflow) => MudDialog.Close(("AddLoraToWorkflow", workflow, _selectedTriggerWords));
+
+    private void ToggleTriggerWord(string word)
+    {
+        if (_selectedTriggerWords.Contains(word))
+            _selectedTriggerWords.Remove(word);
+        else
+            _selectedTriggerWords.Add(word);
+    }
+
+    private void SoloTriggerWord(string word)
+    {
+        if (_selectedTriggerWords.Count == 1 && _selectedTriggerWords.Contains(word))
+            _selectedTriggerWords = new List<string>(File.TriggerWords);
+        else
+            _selectedTriggerWords = new List<string> { word };
+    }
 
     private void HandleResourceWeightChanged(float value)
     {
         State.State.Resources.Weight = value;
-        Settings.SaveSettings();
-    }
-
-    private void HandleLoadTriggerWordsChanged(bool value)
-    {
-        State.State.Resources.LoadTriggerWords = value;
         Settings.SaveSettings();
     }
 

@@ -37,8 +37,6 @@ public class ResourceFilterService : IResourceFilterService
             return Task.FromResult(names);
 
         var compatibleSet = new HashSet<string>(allowedBaseModels, StringComparer.OrdinalIgnoreCase);
-        if (compatibleSet.Count == 0)
-            return Task.FromResult(names);
 
         return FilterCoreAsync(names, compatibleSet, includeUntracked);
     }

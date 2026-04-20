@@ -235,6 +235,24 @@ namespace BlazorWebApp.Services
         void QueuePendingOverride(string fragmentId, string key, object? value);
 
         /// <summary>
+        /// Queues a LoRA to be added after the next InitializeFromWorkflowAsync.
+        /// Used when navigating from Resources page so the LoRA survives workflow initialization.
+        /// </summary>
+        void QueuePendingLora(Lora lora);
+
+        /// <summary>
+        /// Queues an asset override to be applied after the next InitializeFromWorkflowAsync.
+        /// Used when navigating from Resources page so the asset value survives workflow initialization.
+        /// </summary>
+        void QueuePendingAsset(string parameter, string value);
+
+        /// <summary>
+        /// Queues text to be appended to the positive prompt after the next InitializeFromWorkflowAsync.
+        /// Used when navigating from Resources page so trigger words survive workflow initialization.
+        /// </summary>
+        void QueuePendingPromptAppend(string text);
+
+        /// <summary>
         /// Resolves a data source to a list of string options.
         /// Uses constraint.Source (node class_type) and constraint.InputName (input field) 
         /// to query ComfyUI's object_info API.

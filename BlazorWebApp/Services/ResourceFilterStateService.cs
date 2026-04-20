@@ -22,6 +22,10 @@ public class ResourceFilterStateService : IResourceFilterStateService
     {
         _cache = cache;
         _events = events;
+
+        // Self-subscribe to resource changes so the filter state is invalidated
+        // even when the toolbar component isn't mounted (e.g. user on Resources page)
+        _events.Subscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
     }
 
     public IReadOnlyList<string> AvailableBaseModels => _availableBaseModels;
@@ -95,6 +99,11 @@ public class ResourceFilterStateService : IResourceFilterStateService
     public void InvalidateCurrentWorkflow()
     {
         _currentWorkflowId = null;
+    }
+
+    private void OnResourcesChanged(ResourcesChangedEventArgs args)
+    {
+        InvalidateCurrentWorkflow();
     }
 
     public IReadOnlyList<string>? GetEffectiveBaseModels()

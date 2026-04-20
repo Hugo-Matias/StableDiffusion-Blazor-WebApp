@@ -44,6 +44,24 @@ namespace BlazorWebApp.Services
         /// </summary>
         private readonly List<(string FragmentId, string Key, object? Value)> _pendingOverrides = new();
 
+        /// <summary>
+        /// Pending LoRAs queued via QueuePendingLora.
+        /// Applied and cleared after the next InitializeFromWorkflowAsync.
+        /// </summary>
+        private readonly List<Lora> _pendingLoras = new();
+
+        /// <summary>
+        /// Pending asset overrides queued via QueuePendingAsset.
+        /// Applied and cleared after the next InitializeFromWorkflowAsync.
+        /// </summary>
+        private readonly List<(string Parameter, string Value)> _pendingAssets = new();
+
+        /// <summary>
+        /// Pending prompt appends queued via QueuePendingPromptAppend.
+        /// Applied and cleared after the next InitializeFromWorkflowAsync.
+        /// </summary>
+        private readonly List<string> _pendingPromptAppends = new();
+
         /// <inheritdoc />
         public GenerationParameters Current => _stateService.GenerationParameters;
 
@@ -159,20 +177,80 @@ namespace BlazorWebApp.Services
             _logger.LogDebug("Queued pending override: {FragmentId}.{Key}", fragmentId, key);
         }
 
+        /// <inheritdoc />
+        public void QueuePendingLora(Lora lora)
+        {
+            _pendingLoras.Add(new Lora(lora));
+            _logger.LogDebug("Queued pending LoRA: {LoraName}", lora.Name);
+        }
+
+        /// <inheritdoc />
+        public void QueuePendingAsset(string parameter, string value)
+        {
+            _pendingAssets.Add((parameter, value));
+            _logger.LogDebug("Queued pending asset: {Parameter} = {Value}", parameter, value);
+        }
+
+        /// <inheritdoc />
+        public void QueuePendingPromptAppend(string text)
+        {
+            _pendingPromptAppends.Add(text);
+            _logger.LogDebug("Queued pending prompt append: {Text}", text);
+        }
+
         /// <summary>
-        /// Applies and clears all pending parameter overrides.
+        /// Applies and clears all pending parameter overrides, LoRAs, and assets.
         /// </summary>
         private void ApplyPendingOverrides()
         {
-            if (_pendingOverrides.Count == 0) return;
+            var hasChanges = _pendingOverrides.Count > 0 || _pendingLoras.Count > 0 || _pendingAssets.Count > 0 || _pendingPromptAppends.Count > 0;
+            if (!hasChanges) return;
 
-            _logger.LogDebug("Applying {Count} pending parameter override(s)", _pendingOverrides.Count);
-            foreach (var (fragmentId, key, value) in _pendingOverrides)
+            if (_pendingOverrides.Count > 0)
             {
-                var fragment = Current.GetOrCreateFragment(fragmentId);
-                fragment.SetValue(key, value);
+                _logger.LogDebug("Applying {Count} pending parameter override(s)", _pendingOverrides.Count);
+                foreach (var (fragmentId, key, value) in _pendingOverrides)
+                {
+                    var fragment = Current.GetOrCreateFragment(fragmentId);
+                    fragment.SetValue(key, value);
+                }
+                _pendingOverrides.Clear();
             }
-            _pendingOverrides.Clear();
+
+            if (_pendingLoras.Count > 0)
+            {
+                _logger.LogDebug("Applying {Count} pending LoRA(s)", _pendingLoras.Count);
+                var comp = StringComparison.OrdinalIgnoreCase;
+                foreach (var lora in _pendingLoras)
+                {
+                    if (!Current.Loras.Any(l => l.Name.Equals(lora.Name, comp)))
+                    {
+                        Current.Loras.Add(lora);
+                    }
+                }
+                _pendingLoras.Clear();
+            }
+
+            if (_pendingAssets.Count > 0)
+            {
+                _logger.LogDebug("Applying {Count} pending asset override(s)", _pendingAssets.Count);
+                foreach (var (parameter, value) in _pendingAssets)
+                {
+                    Current.Assets[parameter] = value;
+                }
+                _pendingAssets.Clear();
+            }
+
+            if (_pendingPromptAppends.Count > 0)
+            {
+                _logger.LogDebug("Applying {Count} pending prompt append(s)", _pendingPromptAppends.Count);
+                var promptsFragment = Current.GetOrCreateFragment(FragmentKeys.Fragments.Prompts, FragmentKeys.Fragments.Prompts);
+                var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
+                var appendText = string.Join(", ", _pendingPromptAppends);
+                var separator = string.IsNullOrWhiteSpace(currentPositive) ? "" : ", ";
+                promptsFragment.SetValue(FragmentKeys.Params.Positive, currentPositive + separator + appendText);
+                _pendingPromptAppends.Clear();
+            }
 
             PublishChange(new GenerationParametersChangedEventArgs(GenerationParameterChangeType.ParametersLoaded));
         }
