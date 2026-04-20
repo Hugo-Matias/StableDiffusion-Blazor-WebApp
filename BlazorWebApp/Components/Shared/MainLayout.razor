@@ -9,6 +9,7 @@
 @inject ThemeService ThemeService
 @inject NavigationManager NavManager
 @inject IInfoService InfoService
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
@@ -98,6 +99,8 @@
 @code {
     private bool _isToolbarOpen = false;
     private bool _isModelLoading = false;
+    private bool _isAppReady = false;
+    private bool _loaderDismissed = false;
     private MudTheme _currentTheme = new MudTheme();
     private List<ModelBase> _workflowBases = new();
     private InfoDrawer? _infoDrawer;
@@ -123,17 +126,35 @@
         // Load persisted state from database via Orchestrator
         // This ensures workflows are refreshed from disk templates (not just from database)
         await M.LoadState();
-        
+
         // Check backend availability using BackendService
         var isBackendAvailable = await Backend.CheckBackendAvailability();
-        
+
         // Load backend-dependent resources if backend is available
         if (isBackendAvailable)
         {
             await M.LoadBackendDependentResources();
         }
-        
+
         LoadWorkflowBases();
+        _isAppReady = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Dismiss the bootstrap loader (rendered in _Layout.cshtml) once the app
+        // has initialized and painted with the correct theme. This hides the
+        // theme-flash / empty-navbar phase from the user.
+        if (firstRender && _isAppReady && !_loaderDismissed)
+        {
+            _loaderDismissed = true;
+            try
+            {
+                await JS.InvokeVoidAsync("appLoader.hide");
+            }
+            catch (JSException) { /* loader already gone */ }
+            catch (InvalidOperationException) { /* prerender phase; ignore */ }
+        }
     }
 
     private async void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args)

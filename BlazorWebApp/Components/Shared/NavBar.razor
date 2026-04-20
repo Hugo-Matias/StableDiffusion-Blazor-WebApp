@@ -8,7 +8,11 @@
 
 <div>
     <MudNavMenu Class="navbar-horizontal" Rounded>
-        <MudNavLink Href="/" Match=NavLinkMatch.All><i class="fas fa-images me-1" /> Gallery</MudNavLink>
+        <MudTooltip Text="Gallery" Placement="Placement.Bottom" Arrow="true">
+            <MudNavLink Href="/" Match=NavLinkMatch.All>
+                <i class="fas fa-images me-1" /><span class="nav-label">Gallery</span>
+            </MudNavLink>
+        </MudTooltip>
         @if (Gallery.Projects.Count > 0)
         {
             if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null &&
@@ -16,43 +20,66 @@
             {
                 var w = State.State.Generation.Workflows;
                 var b = State.State.Generation.WorkflowBase;
-                
+
                 @* Txt2Img workflows *@
                 @foreach (var workflow in w.Where(w => w.Mode == ModeType.Txt2Img && w.Base == b))
                 {
-                    <MudNavLink Href=@($"/generate/{workflow.Id}") Match=NavLinkMatch.Prefix>
-                        <MudIcon Icon="fa-regular fa-file-lines" Size="Size.Small" Class="me-1" Color="Color.Primary" />
-                        @workflow.Title
-                    </MudNavLink>
+                    <MudTooltip Text=@workflow.Title Placement="Placement.Bottom" Arrow="true">
+                        <MudNavLink Href=@($"/generate/{workflow.Id}") Match=NavLinkMatch.Prefix>
+                            <MudIcon Icon="fa-regular fa-file-lines" Size="Size.Small" Class="me-1" Color="Color.Primary" />
+                            <span class="nav-label">@workflow.Title</span>
+                        </MudNavLink>
+                    </MudTooltip>
                 }
-                
+
                 @* Img2Img workflows *@
                 @foreach (var workflow in w.Where(w => w.Mode == ModeType.Img2Img && w.Base == b))
                 {
-                    <MudNavLink Href=@($"/generate/{workflow.Id}") Match=NavLinkMatch.Prefix>
-                        <MudIcon Icon="fa-regular fa-file-image" Size="Size.Small" Class="me-1" Color="Color.Secondary" />
-                        @workflow.Title
-                    </MudNavLink>
+                    <MudTooltip Text=@workflow.Title Placement="Placement.Bottom" Arrow="true">
+                        <MudNavLink Href=@($"/generate/{workflow.Id}") Match=NavLinkMatch.Prefix>
+                            <MudIcon Icon="fa-regular fa-file-image" Size="Size.Small" Class="me-1" Color="Color.Secondary" />
+                            <span class="nav-label">@workflow.Title</span>
+                        </MudNavLink>
+                    </MudTooltip>
                 }
-                
+
                 @* Img2Vid workflows *@
                 @foreach (var workflow in w.Where(w => w.Mode == ModeType.Img2Vid && w.Base == b))
                 {
-                    <MudNavLink Href=@($"/generate/{workflow.Id}") Match=NavLinkMatch.Prefix>
-                        <MudIcon Icon="fa-solid fa-video" Size="Size.Small" Class="me-1" Color="Color.Tertiary" />
-                        @workflow.Title
-                    </MudNavLink>
+                    <MudTooltip Text=@workflow.Title Placement="Placement.Bottom" Arrow="true">
+                        <MudNavLink Href=@($"/generate/{workflow.Id}") Match=NavLinkMatch.Prefix>
+                            <MudIcon Icon="fa-solid fa-video" Size="Size.Small" Class="me-1" Color="Color.Tertiary" />
+                            <span class="nav-label">@workflow.Title</span>
+                        </MudNavLink>
+                    </MudTooltip>
                 }
             }
         }
-        <MudNavLink Href="/resources" Match=NavLinkMatch.Prefix><i class="fa-solid fa-download me-1" /> Resources
-        </MudNavLink>
-        <MudNavLink Href="/civitai" Match=NavLinkMatch.Prefix><i class="fa-solid fa-globe me-1" /> CivitAI</MudNavLink>
-        <MudNavLink Href="/danbooru" Match=NavLinkMatch.Prefix><i class="fa-solid fa-box me-1" /> Danbooru</MudNavLink>
-        <MudNavLink Href="/prompts" Match=NavLinkMatch.Prefix><i class="fa-solid fa-quote-left me-1" /> Prompts
-        </MudNavLink>
-        <MudNavLink Href="/scheduler" Match=NavLinkMatch.Prefix><i class="fa-solid fa-calendar-check me-1" /> Scheduler
-        </MudNavLink>
+        <MudTooltip Text="Scheduler" Placement="Placement.Bottom" Arrow="true">
+            <MudNavLink Href="/scheduler" Match=NavLinkMatch.Prefix>
+                <i class="fa-solid fa-calendar-check me-1" /><span class="nav-label">Scheduler</span>
+            </MudNavLink>
+        </MudTooltip>
+        <MudTooltip Text="Resources" Placement="Placement.Bottom" Arrow="true">
+            <MudNavLink Href="/resources" Match=NavLinkMatch.Prefix>
+                <i class="fa-solid fa-download me-1" /><span class="nav-label">Resources</span>
+            </MudNavLink>
+        </MudTooltip>
+        <MudTooltip Text="CivitAI" Placement="Placement.Bottom" Arrow="true">
+            <MudNavLink Href="/civitai" Match=NavLinkMatch.Prefix>
+                <i class="fa-solid fa-globe me-1" /><span class="nav-label">CivitAI</span>
+            </MudNavLink>
+        </MudTooltip>
+        <MudTooltip Text="Danbooru" Placement="Placement.Bottom" Arrow="true">
+            <MudNavLink Href="/danbooru" Match=NavLinkMatch.Prefix>
+                <i class="fa-solid fa-box me-1" /><span class="nav-label">Danbooru</span>
+            </MudNavLink>
+        </MudTooltip>
+        <MudTooltip Text="Prompts" Placement="Placement.Bottom" Arrow="true">
+            <MudNavLink Href="/prompts" Match=NavLinkMatch.Prefix>
+                <i class="fa-solid fa-quote-left me-1" /><span class="nav-label">Prompts</span>
+            </MudNavLink>
+        </MudTooltip>
     </MudNavMenu>
 </div>
 
