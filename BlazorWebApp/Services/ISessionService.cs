@@ -30,6 +30,12 @@ namespace BlazorWebApp.Services
         /// </summary>
         List<PendingSourceImage> PendingSourceImages { get; }
 
+        /// <summary>
+        /// Publishes an event to notify subscribers that pending source images are available.
+        /// Call this after adding images to PendingSourceImages.
+        /// </summary>
+        void NotifyPendingSourceImages();
+
         // Image Editor
         ImageEditorState ImageEditorState { get; set; }
         void ResetImageEditorState();

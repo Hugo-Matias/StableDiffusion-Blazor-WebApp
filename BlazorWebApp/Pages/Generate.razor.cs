@@ -61,6 +61,9 @@ public partial class Generate : IDisposable
         // Subscribe to events
         Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+        Events.Subscribe<PendingSourceImagesChangedEventArgs>(OnPendingSourceImages);
+        Events.Subscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
+        Events.Subscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
 
         // Load all workflows
         _workflows = new List<Workflow>();
@@ -161,6 +164,17 @@ public partial class Generate : IDisposable
         }
 
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Returns true if there are any pending session images for the given workflow.
+    /// </summary>
+    private bool HasPendingSessionImages(Workflow workflow)
+    {
+        if (Session.PendingSourceImages.Count > 0) return true;
+        if (!string.IsNullOrEmpty(Session.Img2ImgInputImage) && workflow.Mode == ModeType.Img2Img) return true;
+        if (!string.IsNullOrEmpty(Session.Img2VidInputImage) && workflow.Mode == ModeType.Img2Vid) return true;
+        return false;
     }
 
     /// <summary>
@@ -562,10 +576,49 @@ public partial class Generate : IDisposable
 
     #region Dispose
 
+    private void OnPendingSourceImages(PendingSourceImagesChangedEventArgs args)
+    {
+        if (_selectedWorkflow == null) return;
+        if (!HasPendingSessionImages(_selectedWorkflow)) return;
+
+        _ = InvokeAsync(async () =>
+        {
+            await LoadSessionSourcesAsync(_selectedWorkflow);
+            StateHasChanged();
+        });
+    }
+
+    private void OnInputImageChanged(Img2ImgInputImageChangedEventArgs args)
+    {
+        if (_selectedWorkflow == null) return;
+        if (!HasPendingSessionImages(_selectedWorkflow)) return;
+
+        _ = InvokeAsync(async () =>
+        {
+            await LoadSessionSourcesAsync(_selectedWorkflow);
+            StateHasChanged();
+        });
+    }
+
+    private void OnInputVideoChanged(Img2VidInputImageChangedEventArgs args)
+    {
+        if (_selectedWorkflow == null) return;
+        if (!HasPendingSessionImages(_selectedWorkflow)) return;
+
+        _ = InvokeAsync(async () =>
+        {
+            await LoadSessionSourcesAsync(_selectedWorkflow);
+            StateHasChanged();
+        });
+    }
+
     public void Dispose()
     {
         Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+        Events.Unsubscribe<PendingSourceImagesChangedEventArgs>(OnPendingSourceImages);
+        Events.Unsubscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
+        Events.Unsubscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
 
         // Save workflow state and global state on dispose
         _ = Task.Run(async () =>

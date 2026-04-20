@@ -44,6 +44,13 @@ namespace BlazorWebApp.Events
     }
 
     /// <summary>
+    /// Event args for pending source images changes (Send To).
+    /// </summary>
+    public class PendingSourceImagesChangedEventArgs : EventArgs
+    {
+    }
+
+    /// <summary>
     /// Actions that can occur on session videos collection.
     /// </summary>
     public enum SessionVideoAction

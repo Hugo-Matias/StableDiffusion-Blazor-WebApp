@@ -45,6 +45,11 @@ namespace BlazorWebApp.Services
 
         public List<PendingSourceImage> PendingSourceImages { get; } = new();
 
+        public void NotifyPendingSourceImages()
+        {
+            _events.Publish(new PendingSourceImagesChangedEventArgs());
+        }
+
         public string Img2ImgInputImage
         {
             get => _img2ImgInputImage;
