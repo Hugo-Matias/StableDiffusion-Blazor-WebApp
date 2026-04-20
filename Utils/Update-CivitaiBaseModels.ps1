@@ -3,11 +3,12 @@
     Fetches CivitAI base model constants from GitHub and generates a structured basemodels.json file.
 
 .DESCRIPTION
-    Downloads the base-model.constants.ts file from the CivitAI GitHub repository,
-    parses the three main data structures (baseModelFamilyConfig, baseModelConfig,
-    baseModelGroupConfig), then outputs a structured JSON file.
+    Downloads basemodel.constants.ts from the CivitAI GitHub repository (V2 ecosystem-based schema),
+    parses ecosystemFamilies, ecosystems, and baseModelRecords, then outputs a structured JSON file
+    compatible with the app's CivitaiBaseModelsData schema.
 
-    The TypeScript source file is NOT kept in the repository - only the parsed JSON output.
+    Family keys in the output use the numeric family id (as a string) from the source.
+    The "groups" array is kept empty for backwards compatibility with the existing DTO.
 
 .EXAMPLE
     .\Update-CivitaiBaseModels.ps1
@@ -17,7 +18,7 @@
 [CmdletBinding()]
 param(
     [string]$OutputPath,
-    [string]$SourceUrl = "https://raw.githubusercontent.com/civitai/civitai/refs/heads/main/src/shared/constants/base-model.constants.ts"
+    [string]$SourceUrl = "https://raw.githubusercontent.com/civitai/civitai/refs/heads/main/src/shared/constants/basemodel.constants.ts"
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,160 +29,157 @@ if (-not $OutputPath) {
     $OutputPath = Join-Path $scriptDir "..\BlazorWebApp\Data\CivitAI\basemodels.json"
 }
 
-Write-Host "Fetching base-model.constants.ts from CivitAI GitHub..." -ForegroundColor Cyan
+Write-Host "Fetching basemodel.constants.ts from CivitAI GitHub..." -ForegroundColor Cyan
 $tsContent = Invoke-WebRequest -Uri $SourceUrl -UseBasicParsing | Select-Object -ExpandProperty Content
 Write-Host "Downloaded $($tsContent.Length) characters." -ForegroundColor Green
 
-# =============================================================================
-# Parse baseModelFamilyConfig (families)
-# =============================================================================
-Write-Host "Parsing baseModelFamilyConfig..." -ForegroundColor Cyan
-
-$families = [ordered]@{}
-$familyBlock = [regex]::Match($tsContent, 'export const baseModelFamilyConfig[^=]*=\s*\{([\s\S]*?)\};\s*\n')
-if (-not $familyBlock.Success) { throw "Failed to find baseModelFamilyConfig block" }
-
-# Match each family entry: key: { name: '...', description: '...' }
-$familyEntries = [regex]::Matches($familyBlock.Groups[1].Value, "(\w+)\s*:\s*\{([\s\S]*?)\}")
-foreach ($entry in $familyEntries) {
-    $key = $entry.Groups[1].Value
-    $body = $entry.Groups[2].Value
-
-    $name = [regex]::Match($body, "name\s*:\s*'([^']*)'").Groups[1].Value
-    $desc = [regex]::Match($body, "description\s*:\s*'([^']*)'").Groups[1].Value
-    # Handle escaped apostrophes in descriptions
-    if (-not $desc) {
-        $descMatch = [regex]::Match($body, 'description\s*:\s*"([^"]*)"')
-        if ($descMatch.Success) { $desc = $descMatch.Groups[1].Value }
-    }
-
-    $family = [ordered]@{
-        key         = $key
-        name        = $name
-        description = $desc
-    }
-
-    $disabledMatch = [regex]::Match($body, 'disabled\s*:\s*true')
-    if ($disabledMatch.Success) { $family["disabled"] = $true }
-
-    $families[$key] = [PSCustomObject]$family
+# Returns the body text of each flat (no nested braces) object { ... } found in a block
+function Get-FlatObjectBodies([string]$block) {
+    [regex]::Matches($block, '\{([^{}]+)\}') | ForEach-Object { $_.Groups[1].Value }
 }
-Write-Host "  Found $($families.Count) families." -ForegroundColor Gray
 
-# =============================================================================
-# Parse baseModelGroupConfig (groups with family references)
-# =============================================================================
-Write-Host "Parsing baseModelGroupConfig..." -ForegroundColor Cyan
-
-$groups = [ordered]@{}
-$groupBlock = [regex]::Match($tsContent, 'export const baseModelGroupConfig[^=]*=\s*\{([\s\S]*?)\};\s*\n')
-if (-not $groupBlock.Success) { throw "Failed to find baseModelGroupConfig block" }
-
-# Match entries - handle both simple keys and quoted keys like 'WanVideo-22-TI2V-5B'
-$groupEntries = [regex]::Matches($groupBlock.Groups[1].Value, "(?:'([^']+)'|(\w+))\s*:\s*\{([\s\S]*?)\}")
-foreach ($entry in $groupEntries) {
-    $key = if ($entry.Groups[1].Value) { $entry.Groups[1].Value } else { $entry.Groups[2].Value }
-    $body = $entry.Groups[3].Value
-
-    $name = [regex]::Match($body, "name\s*:\s*'([^']*)'").Groups[1].Value
-    $descMatch = [regex]::Match($body, "description\s*:\s*'([^']*)'")
-    $desc = if ($descMatch.Success) { $descMatch.Groups[1].Value } else { $null }
-    # Handle multi-line or complex descriptions
-    if (-not $desc) {
-        $descAltMatch = [regex]::Match($body, "description\s*:\s*\n?\s*'([^']*)'")
-        if ($descAltMatch.Success) { $desc = $descAltMatch.Groups[1].Value }
-    }
-
-    $familyMatch = [regex]::Match($body, "family\s*:\s*'(\w+)'")
-    $family = if ($familyMatch.Success) { $familyMatch.Groups[1].Value } else { $null }
-
-    $selectorMatch = [regex]::Match($body, "selector\s*:\s*'([^']*)'")
-    $selector = if ($selectorMatch.Success) { $selectorMatch.Groups[1].Value } else { $null }
-
-    $group = [ordered]@{
-        key         = $key
-        name        = $name
-    }
-    if ($desc) { $group["description"] = $desc }
-    if ($family) { $group["family"] = $family }
-    if ($selector) { $group["selector"] = $selector }
-
-    $groups[$key] = [PSCustomObject]$group
+# Returns the value of a named string field (single or double quoted) from an object body
+function Get-StringField([string]$body, [string]$field) {
+    $m = [regex]::Match($body, "$field\s*:\s*'([^']*)'")
+    if ($m.Success) { return $m.Groups[1].Value }
+    $m = [regex]::Match($body, "$field\s*:\s*`"([^`"]*)`"")
+    if ($m.Success) { return $m.Groups[1].Value }
+    return $null
 }
-Write-Host "  Found $($groups.Count) groups." -ForegroundColor Gray
 
 # =============================================================================
-# Parse baseModelConfig (base models)
+# 1. Parse ECO constant block (name -> numeric id map)
 # =============================================================================
-Write-Host "Parsing baseModelConfig..." -ForegroundColor Cyan
+Write-Host "Parsing ECO constants..." -ForegroundColor Cyan
 
-$baseModels = @()
-$bmBlock = [regex]::Match($tsContent, 'const baseModelConfig\s*=\s*\[([\s\S]*?)\]\s*as\s+const')
-if (-not $bmBlock.Success) { throw "Failed to find baseModelConfig block" }
+$ecoConstBlock = [regex]::Match($tsContent, 'export const ECO\s*=\s*\{([\s\S]*?)\}\s*as const')
+if (-not $ecoConstBlock.Success) { throw "Failed to find ECO constant block" }
 
-$bmObjects = [regex]::Matches($bmBlock.Groups[1].Value, '\{([\s\S]*?)\}')
-foreach ($obj in $bmObjects) {
-    $body = $obj.Groups[1].Value
-
-    $name = [regex]::Match($body, "name\s*:\s*'([^']*)'").Groups[1].Value
-    $type = [regex]::Match($body, "type\s*:\s*'([^']*)'").Groups[1].Value
-    $groupKey = [regex]::Match($body, "group\s*:\s*'([^']*)'").Groups[1].Value
-
-    $hidden = $body -match 'hidden\s*:\s*true'
-
-    $ecosystemMatch = [regex]::Match($body, "ecosystem\s*:\s*'([^']*)'")
-    $ecosystem = if ($ecosystemMatch.Success) { $ecosystemMatch.Groups[1].Value } else { $null }
-
-    $engineMatch = [regex]::Match($body, "engine\s*:\s*'([^']*)'")
-    $engine = if ($engineMatch.Success) { $engineMatch.Groups[1].Value } else { $null }
-
-    $familyMatch = [regex]::Match($body, "family\s*:\s*'([^']*)'")
-    $familyDirect = if ($familyMatch.Success) { $familyMatch.Groups[1].Value } else { $null }
-
-    # Resolve the family: direct family on model > family from group config > null
-    $resolvedFamily = $familyDirect
-    if (-not $resolvedFamily -and $groups.Contains($groupKey)) {
-        $groupObj = $groups[$groupKey]
-        if ($groupObj.family) { $resolvedFamily = $groupObj.family }
-    }
-
-    # Get display name from group config
-    $groupDisplayName = $null
-    if ($groups.Contains($groupKey)) {
-        $groupDisplayName = $groups[$groupKey].name
-    }
-
-    # Get family display name
-    $familyDisplayName = $null
-    if ($resolvedFamily -and $families.Contains($resolvedFamily)) {
-        $familyDisplayName = $families[$resolvedFamily].name
-    }
-
-    $model = [ordered]@{
-        name             = $name
-        type             = $type
-        group            = $groupKey
-        groupDisplayName = $groupDisplayName
-    }
-    if ($resolvedFamily) { $model["family"] = $resolvedFamily }
-    if ($familyDisplayName) { $model["familyDisplayName"] = $familyDisplayName }
-    if ($hidden) { $model["hidden"] = $true }
-    if ($ecosystem) { $model["ecosystem"] = $ecosystem }
-    if ($engine) { $model["engine"] = $engine }
-
-    $baseModels += [PSCustomObject]$model
+$ecoMap = @{}
+[regex]::Matches($ecoConstBlock.Groups[1].Value, '(\w+)\s*:\s*(\d+)') | ForEach-Object {
+    $ecoMap[$_.Groups[1].Value] = [int]$_.Groups[2].Value
 }
-Write-Host "  Found $($baseModels.Count) base models." -ForegroundColor Gray
+Write-Host "  Found $($ecoMap.Count) ECO entries." -ForegroundColor Gray
 
 # =============================================================================
-# Build and write JSON output
+# 2. Parse ecosystemFamilies -> families output list
+# =============================================================================
+Write-Host "Parsing ecosystemFamilies..." -ForegroundColor Cyan
+
+$famArrBlock = [regex]::Match($tsContent, 'export const ecosystemFamilies[^=]*=\s*\[([\s\S]*?)\];')
+if (-not $famArrBlock.Success) { throw "Failed to find ecosystemFamilies block" }
+
+$familiesById = @{}
+$familiesList = @(Get-FlatObjectBodies $famArrBlock.Groups[1].Value | ForEach-Object {
+        $body = $_
+        $idMatch = [regex]::Match($body, 'id\s*:\s*(\d+)')
+        if (-not $idMatch.Success) { return }
+
+        $id = [int]$idMatch.Groups[1].Value
+        $name = Get-StringField $body 'name'
+        $desc = Get-StringField $body 'description'
+
+        $entry = [PSCustomObject][ordered]@{
+            key         = $id.ToString()
+            name        = if ($name) { $name } else { '' }
+            description = if ($desc) { $desc } else { '' }
+        }
+        $familiesById[$id] = $entry
+        $entry
+    })
+Write-Host "  Found $($familiesList.Count) families." -ForegroundColor Gray
+
+# =============================================================================
+# 3. Parse ecosystems array -> lookup table (id -> key, displayName, familyId)
+#    Groups have been removed in V2; ecosystems serve as the equivalent concept.
+# =============================================================================
+Write-Host "Parsing ecosystems..." -ForegroundColor Cyan
+
+$ecoArrBlock = [regex]::Match($tsContent, 'export const ecosystems[^=]*=\s*\[([\s\S]*?)\];')
+if (-not $ecoArrBlock.Success) { throw "Failed to find ecosystems block" }
+
+$ecosystemsById = @{}
+Get-FlatObjectBodies $ecoArrBlock.Groups[1].Value | ForEach-Object {
+    $body = $_
+    # id field references the ECO constant: id: ECO.Flux1
+    $ecoRefMatch = [regex]::Match($body, '\bid\s*:\s*ECO\.(\w+)')
+    if (-not $ecoRefMatch.Success) { return }
+
+    $ecoName = $ecoRefMatch.Groups[1].Value
+    if (-not $ecoMap.ContainsKey($ecoName)) { return }
+    $id = $ecoMap[$ecoName]
+
+    $displayName = Get-StringField $body 'displayName'
+    $familyIdMatch = [regex]::Match($body, 'familyId\s*:\s*(\d+)')
+    $familyId = if ($familyIdMatch.Success) { [int]$familyIdMatch.Groups[1].Value } else { $null }
+
+    $ecosystemsById[$id] = [PSCustomObject]@{
+        id = $id; displayName = $displayName; familyId = $familyId
+    }
+}
+Write-Host "  Found $($ecosystemsById.Count) ecosystems." -ForegroundColor Gray
+
+# =============================================================================
+# 4. Parse baseModelRecords -> models output list
+# =============================================================================
+Write-Host "Parsing baseModelRecords..." -ForegroundColor Cyan
+
+$bmArrBlock = [regex]::Match($tsContent, 'export const baseModelRecords[^=]*=\s*\[([\s\S]*?)\];')
+if (-not $bmArrBlock.Success) { throw "Failed to find baseModelRecords block" }
+
+$modelsList = @(Get-FlatObjectBodies $bmArrBlock.Groups[1].Value | ForEach-Object {
+        $body = $_
+
+        # Skip models explicitly disabled at the record level
+        if ($body -match 'disabled\s*:\s*true') { return }
+
+        $name = Get-StringField $body 'name'
+        if (-not $name) { return }
+
+        # type is a single string ('image'/'video') or an array (['image','video'])
+        # For array types, fall back to 'image' - the field is informational only
+        $type = Get-StringField $body 'type'
+        if (-not $type) { $type = 'image' }
+
+        $hidden = $body -match 'hidden\s*:\s*true'
+
+        # ecosystemId references the ECO constant: ecosystemId: ECO.Flux1
+        $ecoRefMatch = [regex]::Match($body, 'ecosystemId\s*:\s*ECO\.(\w+)')
+        if (-not $ecoRefMatch.Success) { return }
+        $ecoName = $ecoRefMatch.Groups[1].Value
+        if (-not $ecoMap.ContainsKey($ecoName)) { return }
+        $ecosystemId = $ecoMap[$ecoName]
+
+        # Resolve family key and display name via ecosystem -> familyId chain
+        $familyKey = $null
+        $familyDisplayName = $null
+        if ($ecosystemsById.ContainsKey($ecosystemId)) {
+            $eco = $ecosystemsById[$ecosystemId]
+            if ($null -ne $eco.familyId -and $familiesById.ContainsKey($eco.familyId)) {
+                $fam = $familiesById[$eco.familyId]
+                $familyKey = $fam.key
+                $familyDisplayName = $fam.name
+            }
+        }
+
+        $model = [ordered]@{ name = $name; type = $type }
+        if ($familyKey) { $model['family'] = $familyKey }
+        if ($familyDisplayName) { $model['familyDisplayName'] = $familyDisplayName }
+        if ($hidden) { $model['hidden'] = $true }
+
+        [PSCustomObject]$model
+    })
+Write-Host "  Found $($modelsList.Count) base models." -ForegroundColor Gray
+
+# =============================================================================
+# 5. Build and write JSON output
 # =============================================================================
 Write-Host "Building JSON output..." -ForegroundColor Cyan
 
 $output = [ordered]@{
-    families = $families.Values | ForEach-Object { $_ }
-    groups   = $groups.Values | ForEach-Object { $_ }
-    models   = $baseModels
+    families = $familiesList
+    groups   = @()       # Removed in V2 schema; kept empty for DTO compatibility
+    models   = $modelsList
 }
 
 $outputDir = Split-Path $OutputPath -Parent
@@ -195,6 +193,5 @@ $json = $output | ConvertTo-Json -Depth 10
 Write-Host ""
 Write-Host "Successfully generated basemodels.json" -ForegroundColor Green
 Write-Host "  Output: $OutputPath" -ForegroundColor Gray
-Write-Host "  Families: $($families.Count)" -ForegroundColor Gray
-Write-Host "  Groups: $($groups.Count)" -ForegroundColor Gray
-Write-Host "  Base Models: $($baseModels.Count)" -ForegroundColor Gray
+Write-Host "  Families: $($familiesList.Count)" -ForegroundColor Gray
+Write-Host "  Base Models: $($modelsList.Count)" -ForegroundColor Gray
