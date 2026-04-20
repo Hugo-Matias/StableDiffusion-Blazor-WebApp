@@ -17,6 +17,9 @@
 @inject IEventService Events
 @inject IDatabaseService DB
 @inject IJSRuntime JS
+@inject NavigationManager NavManager
+@inject BlazorWebApp.Scheduler.IScheduleSnapshotService ScheduleSnapshot
+@inject ISnackbar Snackbar
 @implements IAsyncDisposable
 @implements IDisposable
 
@@ -26,53 +29,36 @@
             <MudItem xs="9">
                 <MudStack>
                     <MudStack>
-                        <TextFieldAutocomplete 
-                            Class="prompt" 
-                            Lines="_promptLines" 
-                            Label="Prompt" 
-                            Value="@Prompt"
-                            ValueChanged="HandlePromptValueChanged"
-                            OnAdornmentClick="() => PromptDrawer.Visible = true" 
-                            AdornmentIcon="fa-solid fa-tags"
-                            MinCharsToTrigger="2"
-                            MaxSuggestions="15"
-                            EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
-                            EnableDictionary="true" 
-                            EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
-                            IsNegative="false"
-                            OnLoraSelected="HandleLoraSelected"
-                            OnStyleSelected="HandleStyleSelected" />
+                        <TextFieldAutocomplete Class="prompt" Lines="_promptLines" Label="Prompt" Value="@Prompt"
+                                               ValueChanged="HandlePromptValueChanged" OnAdornmentClick="() => PromptDrawer.Visible = true"
+                                               AdornmentIcon="fa-solid fa-tags" MinCharsToTrigger="2" MaxSuggestions="15"
+                                               EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                                               EnableDictionary="true" EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
+                                               IsNegative="false" OnLoraSelected="HandleLoraSelected"
+                                               OnStyleSelected="HandleStyleSelected" />
                         
-                        <TextFieldAutocomplete 
-                            Class="negative-prompt" 
-                            Lines="_negativePromptLines" 
-                            Label="Negative Prompt" 
-                            Value="@NegativePrompt"
-                            ValueChanged="HandleNegativePromptValueChanged"
-                            OnAdornmentClick="() => NegativePromptDrawer.Visible = true" 
-                            AdornmentIcon="fa-solid fa-tags"
-                            Disabled="Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase)"
-                            MinCharsToTrigger="2"
-                            MaxSuggestions="15"
-                            EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
-                            EnableDictionary="true"
-                            EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
-                            IsNegative="true"
-                            OnLoraSelected="HandleLoraSelected"
-                            OnStyleSelected="HandleStyleSelected" />
+                        <TextFieldAutocomplete Class="negative-prompt" Lines="_negativePromptLines"
+                                               Label="Negative Prompt" Value="@NegativePrompt"
+                                               ValueChanged="HandleNegativePromptValueChanged"
+                                               OnAdornmentClick="() => NegativePromptDrawer.Visible = true"
+                                               AdornmentIcon="fa-solid fa-tags"
+                                               Disabled="Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase)"
+                                               MinCharsToTrigger="2" MaxSuggestions="15"
+                                               EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                                               EnableDictionary="true" EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
+                                               IsNegative="true" OnLoraSelected="HandleLoraSelected"
+                                               OnStyleSelected="HandleStyleSelected" />
                     </MudStack>
                     <MudStack Row=true Spacing="2">
                         <MudTooltip Text="Toggle autocomplete suggestions">
-                            <MudSwitch Checked="State.State.Generation.Autocomplete.IsEnabled" 
+                            <MudSwitch Checked="State.State.Generation.Autocomplete.IsEnabled"
                                        CheckedChanged="@((bool value) => HandleAutocompleteChanged(value))"
-                                       Color="Color.Primary" 
-                                       Label="Autocomplete"/>
+                                       Color="Color.Primary" Label="Autocomplete" />
                         </MudTooltip>
                         <MudTooltip Text="Toggle fuzzy subsequence matching (e.g., 'cascl' matches 'casual clothing')">
-                            <MudSwitch Checked="State.State.Generation.Autocomplete.EnableFuzzySearch" 
+                            <MudSwitch Checked="State.State.Generation.Autocomplete.EnableFuzzySearch"
                                        CheckedChanged="@((bool value) => HandleFuzzySearchChanged(value))"
-                                       Color="Color.Primary" 
-                                       Label="Fuzzy Search" 
+                                       Color="Color.Primary" Label="Fuzzy Search"
                                        Disabled="!State.State.Generation.Autocomplete.IsEnabled" />
                         </MudTooltip>
                     </MudStack>
@@ -90,31 +76,48 @@
                         }
                     </MudChipSet>
                     <MudStack Row=true>
-                        <MudSelect Label="Styles" Text="" SelectedValues="State.State.Generation.Styles" SelectedValuesChanged=HandleStylesSelectionChanged T="PromptStyle" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600" AdornmentIcon="fa-solid fa-delete-left" OnAdornmentClick="() => HandleStylesSelectionChanged(new List<PromptStyle>())" Adornment="Adornment.End" MultiSelection>
+                        <MudSelect Label="Styles" Text="" SelectedValues="State.State.Generation.Styles"
+                                   SelectedValuesChanged=HandleStylesSelectionChanged T="PromptStyle"
+                                   AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600"
+                                   AdornmentIcon="fa-solid fa-delete-left"
+                                   OnAdornmentClick="() => HandleStylesSelectionChanged(new List<PromptStyle>())"
+                                   Adornment="Adornment.End" MultiSelection>
                             @if (_availableStyles != null)
                             {
                                 @foreach (var style in _availableStyles)
                                 {
-                                    if (!(string.IsNullOrWhiteSpace(style.Prompt) && string.IsNullOrWhiteSpace(style.NegativePrompt)))
+                                    if (!(string.IsNullOrWhiteSpace(style.Prompt) &&
+                            string.IsNullOrWhiteSpace(style.NegativePrompt)))
                                     {
                                         <MudSelectItem Value=style T="PromptStyle">@style.Name</MudSelectItem>
                                     }
                                 }
                             }
                         </MudSelect>
-                        <MudTooltip Delay="1600" Duration="600" Text="Write selected styles to the prompts and clear the list." Placement="Placement.Start">
+                        <MudTooltip Delay="1600" Duration="600"
+                                    Text="Write selected styles to the prompts and clear the list." Placement="Placement.Start">
                             <MudIconButton Icon="fa-solid fa-pencil" OnClick="WritePrompts" />
                         </MudTooltip>
                     </MudStack>
-                    <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate" OnSkip="OnSkip" OnInterrupt="OnInterrupt" IsDisabled="ButtonDisabled" />
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate" OnSkip="OnSkip"
+                                        OnInterrupt="OnInterrupt" IsDisabled="ButtonDisabled" />
+                        <MudTooltip Text="Capture current parameters as a new Scheduler job">
+                            <MudIconButton Icon="@Icons.Material.Filled.EventNote" Color="Color.Info"
+                                           Variant="Variant.Filled" OnClick="ScheduleCurrent" />
+                        </MudTooltip>
+                    </MudStack>
                 </MudStack>
             </MudItem>
         </MudGrid>
     </MudPaper>
 </div>
 
-<TagDrawer @ref="PromptDrawer" OnAppendTags="HandlePromptTagAppended" HeaderBgColor="var(--mud-palette-success)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
-<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="HandleNegativePromptTagAppended" HeaderBgColor="var(--mud-palette-error)" ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true" />
+<TagDrawer @ref="PromptDrawer" OnAppendTags="HandlePromptTagAppended" HeaderBgColor="var(--mud-palette-success)"
+           ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="HandleNegativePromptTagAppended"
+           HeaderBgColor="var(--mud-palette-error)" ButtonTags="_buttonTags"
+           OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true" />
 
 @code {
     #region Parameters
@@ -204,6 +207,22 @@
     private PromptButton? _buttonTags;
     private ElementReference _containerRef;
     private GenerateButton? _generateButtonRef;
+
+    private void ScheduleCurrent()
+    {
+        var snapshot = State.GenerationParameters?.Clone() ?? new BlazorWebApp.Models.GenerationParameters();
+        var job = new BlazorWebApp.Scheduler.Models.Job
+        {
+            Name = "New scheduled job",
+            Status = BlazorWebApp.Scheduler.Models.JobStatus.Draft,
+            WorkflowId = snapshot.WorkflowId,
+            BaseParameters = snapshot,
+            Actions = { new BlazorWebApp.Scheduler.Models.JobAction { Order = 0, Label = "Action 1" } },
+        };
+        ScheduleSnapshot.Set(job);
+        Snackbar.Add("Parameters captured. Opening Scheduler Editor...", Severity.Info);
+        NavManager.NavigateTo("/scheduler/editor");
+    }
     private IJSObjectReference? _jsModule;
     private DotNetObjectReference<PromptsForm>? _dotNetRef;
     
@@ -286,8 +305,8 @@
         }
     }
 
-    private async Task HandleStylesSelectionChanged(IEnumerable<PromptStyle> styles) 
-    { 
+    private async Task HandleStylesSelectionChanged(IEnumerable<PromptStyle> styles)
+    {
         State.State.Generation.Styles = styles;
         await OnStylesChanged.InvokeAsync();
     }
@@ -324,7 +343,8 @@
         if (styles.Any())
         {
             var newPrompt = Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
-            var newNegative = NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(), true);
+            var newNegative = NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(),
+true);
             
             await PromptChanged.InvokeAsync(newPrompt);
             await NegativePromptChanged.InvokeAsync(newNegative);
@@ -413,7 +433,11 @@
         try
         {
             var json = IO.GetJsonAsString("Data/example.json");
-            _buttonTags = JsonSerializer.Deserialize<PromptButton>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+            _buttonTags = JsonSerializer.Deserialize<PromptButton>(json, new JsonSerializerOptions()
+            {
+                PropertyNameCaseInsensitive =
+true
+            });
         }
         catch
         {

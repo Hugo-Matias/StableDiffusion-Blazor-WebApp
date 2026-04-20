@@ -95,6 +95,9 @@ builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IDirectiveExecutor, Bla
 builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IJobGenerationRunner, BlazorWebApp.Scheduler.Engine.ImageServiceJobGenerationRunner>();
 builder.Services.AddScoped<BlazorWebApp.Scheduler.ISchedulerService, BlazorWebApp.Scheduler.SchedulerService>();
 
+// Scheduler snapshot buffer (Generate -> Editor handoff)
+builder.Services.AddScoped<BlazorWebApp.Scheduler.IScheduleSnapshotService, BlazorWebApp.Scheduler.ScheduleSnapshotService>();
+
 // Component registry for fragment-to-component mapping
 builder.Services.AddSingleton<IComponentRegistry, ComponentRegistry>();
 

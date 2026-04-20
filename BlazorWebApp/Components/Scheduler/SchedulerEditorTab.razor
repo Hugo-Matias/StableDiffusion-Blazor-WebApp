@@ -13,6 +13,7 @@
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject IEventService Events
+@inject IScheduleSnapshotService SnapshotService
 @implements IDisposable
 
 <MudGrid>
@@ -250,6 +251,14 @@
         Events.Subscribe<JobCompletedEventArgs>(OnJobEvent);
         _workflows = Workflows.GetWorkflows() ?? new();
         await ReloadAsync();
+
+        // If the Generate page just handed us a snapshot, load it into the form.
+        var pending = SnapshotService.Consume();
+        if (pending is not null)
+        {
+            _editing = pending;
+            Snackbar.Add("Parameters loaded from Generate. Adjust actions then Save.", Severity.Normal);
+        }
     }
 
     private async Task ReloadAsync()
