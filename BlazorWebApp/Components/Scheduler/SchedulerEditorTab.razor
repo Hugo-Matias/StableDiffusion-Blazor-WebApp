@@ -1,0 +1,465 @@
+@using System.Text.Json
+@using BlazorWebApp.Events
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Persistence
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+@using BlazorWebApp.Services
+@using BlazorWebApp.Workflows.Models
+@inject IJobRepository JobRepo
+@inject IWorkflowService Workflows
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject IEventService Events
+@implements IDisposable
+
+<MudGrid>
+    <MudItem xs="12" md="4" lg="3">
+        <MudPaper Class="pa-3" Elevation="1">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                <MudText Typo="Typo.h6">Jobs</MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small"
+                               OnClick="NewJob" Title="New job" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="ReloadAsync"
+                               Title="Refresh" />
+            </MudStack>
+            @if (_jobs is null)
+            {
+                <MudProgressLinear Indeterminate Color="Color.Primary" />
+            }
+            else if (_jobs.Count == 0)
+            {
+                <MudText Typo="Typo.caption">No jobs yet. Click + to create one.</MudText>
+            }
+            else
+            {
+                <MudStack Spacing="1">
+                    @foreach (var j in _jobs)
+                    {
+                        var localJob = j;
+                        var isSelected = _editing?.Id == localJob.Id;
+                        <MudButton OnClick="@(() => SelectJob(localJob))"
+                                   Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(isSelected ? Color.Primary : Color.Default)" FullWidth="true" Class="justify-start">
+                            <MudStack Row AlignItems="AlignItems.Center" Style="width:100%;">
+                                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
+                                <div>
+                                    <MudText Typo="Typo.body2"><strong>@localJob.Name</strong></MudText>
+                                    <MudText Typo="Typo.caption">@localJob.Status - @localJob.Actions.Count action(s)</MudText>
+                                </div>
+                            </MudStack>
+                        </MudButton>
+                    }
+                </MudStack>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="8" lg="9">
+        @if (_editing is null)
+        {
+            <MudAlert Severity="Severity.Info">Select a job from the list or click + to create a new one.</MudAlert>
+        }
+        else
+        {
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                    <MudText Typo="Typo.h6">Edit Job</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.caption">Total generations: <strong>@TotalGenerations</strong></MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveAsync">Save</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="DuplicateAsync">Duplicate</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+                               OnClick="DeleteAsync">Delete</MudButton>
+                </MudStack>
+
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_editing.Name" Label="Name" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="Guid?" Value="_editing.WorkflowId" ValueChanged="OnWorkflowChanged" Label="Workflow"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">(None)</MudSelectItem>
+                            @foreach (var wf in _workflows)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)wf.Id)">@wf.Title</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_editing.Description" Label="Description" Variant="Variant.Outlined"
+                                      Lines="2" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_editing.OutputConfig.ProjectName" Label="Default Project"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_editing.OutputConfig.FolderName" Label="Default Folder"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-4" />
+
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                    <MudText Typo="Typo.subtitle1">Actions (@_editing.Actions.Count)</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="AddAction">Add Action</MudButton>
+                </MudStack>
+
+                @for (int i = 0; i < _editing.Actions.Count; i++)
+                {
+                    var idx = i;
+                    var action = _editing.Actions[idx];
+                    <MudPaper Class="pa-3 mb-2" Elevation="0" Outlined>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                            <MudText Typo="Typo.body1"><strong>Action #@(idx + 1)</strong></MudText>
+                            <MudText Typo="Typo.caption">Iterations: <strong>@ComputeIterations(action)</strong></MudText>
+                            <MudSpacer />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Disabled="@(idx == 0)"
+                                           OnClick="() => MoveAction(idx, -1)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                           Disabled="@(idx == _editing.Actions.Count - 1)" OnClick="() => MoveAction(idx, 1)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="() => RemoveAction(idx)" />
+                        </MudStack>
+                        <MudGrid>
+                            <MudItem xs="12" md="5">
+                                <MudTextField @bind-Value="action.Label" Label="Label" Variant="Variant.Outlined"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudNumericField T="int?" Value="action.Limit" ValueChanged="@(v => action.Limit = v)"
+                                                 Label="Limit" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable />
+                            </MudItem>
+                            <MudItem xs="6" md="3">
+                                <MudSelect T="PermutationOrder" Value="action.PermutationOrder"
+                                           ValueChanged="@(v => action.PermutationOrder = v)" Label="Permutation"
+                                           Variant="Variant.Outlined" Margin="Margin.Dense">
+                                    <MudSelectItem T="PermutationOrder" Value="PermutationOrder.Sequential">Sequential
+                                    </MudSelectItem>
+                                    <MudSelectItem T="PermutationOrder" Value="PermutationOrder.Random">Random</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudNumericField T="int?" Value="action.RandomPermutationSeed"
+                                                 ValueChanged="@(v => action.RandomPermutationSeed = v)" Label="Seed"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense" Clearable />
+                            </MudItem>
+                        </MudGrid>
+
+                        @* Directives *@
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mt-3 mb-1">
+                            <MudText Typo="Typo.subtitle2">Directives (@action.Directives.Count)</MudText>
+                            <MudMenu Label="Add Directive" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Outlined"
+                                     Size="Size.Small" Dense>
+                                @foreach (var kv in DirectiveTypes)
+                                {
+                                    <MudMenuItem OnClick="() => AddDirective(action, kv.Value)">@kv.Key</MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudStack>
+                        @foreach (var d in action.Directives.ToList())
+                        {
+                            var local = d;
+                            <MudStack Row AlignItems="AlignItems.Center" Class="mb-1">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Info">
+                                    @local.GetType().Name
+                                </MudChip>
+                                <MudText Typo="Typo.caption" Class="flex-grow-1">
+                                    @DirectiveSummary(local)
+                                </MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                               OnClick="@(() => EditDirectiveJsonAsync(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => action.Directives.Remove(local))" />
+                            </MudStack>
+                        }
+
+                        @* Variations *@
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mt-3 mb-1">
+                            <MudText Typo="Typo.subtitle2">Variations (@action.Variations.Count)</MudText>
+                            <MudMenu Label="Add Variation" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Outlined"
+                                     Size="Size.Small" Dense>
+                                @foreach (var kv in VariationTypes)
+                                {
+                                    <MudMenuItem OnClick="() => AddVariation(action, kv.Value)">@kv.Key</MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudStack>
+                        @foreach (var v in action.Variations.ToList())
+                        {
+                            var local = v;
+                            <MudStack Row AlignItems="AlignItems.Center" Class="mb-1">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary">
+                                    @local.GetType().Name
+                                </MudChip>
+                                <MudText Typo="Typo.caption" Class="flex-grow-1">@local.Label</MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                               OnClick="@(() => EditVariationJsonAsync(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => action.Variations.Remove(local))" />
+                            </MudStack>
+                        }
+                    </MudPaper>
+                }
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<Job>? _jobs;
+    private List<Workflow> _workflows = new();
+    private Job? _editing;
+
+    private static readonly Dictionary<string, Func<Directive>> DirectiveTypes = new()
+    {
+        ["SetValue"] = () => new SetValueDirective(),
+        ["AppendPrompt"] = () => new AppendPromptDirective { Text = "" },
+        ["ReplacePrompt"] = () => new ReplacePromptDirective { Search = "", Replace = "" },
+        ["AddLora"] = () => new AddLoraDirective(),
+        ["RemoveLora"] = () => new RemoveLoraDirective(),
+        ["ToggleLora"] = () => new ToggleLoraDirective(),
+        ["AddPromptStyle"] = () => new AddPromptStyleDirective { StyleNames = new() },
+        ["SwapAsset"] = () => new SwapAssetDirective(),
+        ["SetOutput"] = () => new SetOutputDirective(),
+    };
+
+    private static readonly Dictionary<string, Func<Variation>> VariationTypes = new()
+    {
+        ["List"] = () => new ListVariation { Values = new() },
+        ["Range"] = () => new RangeVariation(),
+        ["Random"] = () => new RandomVariation(),
+        ["Wildcard"] = () => new WildcardVariation { CollectionName = "" },
+        ["LLM"] = () => new LlmVariation { BasePrompt = "" },
+        ["SearchReplace"] = () => new SearchReplaceVariation { Search = "", Replacements = new() },
+        ["Toggle"] = () => new ToggleVariation(),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Events.Subscribe<JobCompletedEventArgs>(OnJobEvent);
+        _workflows = Workflows.GetWorkflows() ?? new();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _jobs = await JobRepo.ListAsync();
+        StateHasChanged();
+    }
+
+    private void SelectJob(Job? job) => _editing = job;
+    private void OnJobSelectionChanged(Job? job) => _editing = job;
+
+    private async void OnJobEvent<T>(T _) where T : EventArgs
+    {
+        await InvokeAsync(ReloadAsync);
+    }
+
+    private void NewJob()
+    {
+        _editing = new Job
+        {
+            Name = "New Job",
+            Status = JobStatus.Draft,
+            CreatedAt = DateTime.UtcNow,
+        };
+    }
+
+    private void OnWorkflowChanged(Guid? workflowId)
+    {
+        if (_editing is not null) _editing.WorkflowId = workflowId;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editing is null) return;
+
+        // CreateAsync if brand new; UpdateAsync otherwise.
+        var existing = await JobRepo.GetByIdAsync(_editing.Id);
+        if (existing is null) await JobRepo.CreateAsync(_editing);
+        else await JobRepo.UpdateAsync(_editing);
+
+        Snackbar.Add($"Saved '{_editing.Name}'", Severity.Success);
+        await ReloadAsync();
+    }
+
+    private async Task DuplicateAsync()
+    {
+        if (_editing is null) return;
+
+        var json = JsonSerializer.Serialize(_editing, SchedulerJsonOptions.Compact);
+        var clone = JsonSerializer.Deserialize<Job>(json, SchedulerJsonOptions.Compact)!;
+        clone.Id = Guid.NewGuid();
+        clone.Name = _editing.Name + " (copy)";
+        clone.Status = JobStatus.Draft;
+        clone.CreatedAt = DateTime.UtcNow;
+        clone.LastRunAt = null;
+        clone.RunState = new JobRunState();
+        await JobRepo.CreateAsync(clone);
+        _editing = clone;
+        Snackbar.Add("Job duplicated", Severity.Success);
+        await ReloadAsync();
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_editing is null) return;
+
+        var ok = await Dialogs.ShowMessageBox("Delete job",
+            $"Delete '{_editing.Name}'? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (ok != true) return;
+
+        await JobRepo.DeleteAsync(_editing.Id);
+        _editing = null;
+        Snackbar.Add("Job deleted", Severity.Success);
+        await ReloadAsync();
+    }
+
+    private void AddAction()
+    {
+        if (_editing is null) return;
+        _editing.Actions.Add(new JobAction
+        {
+            Order = _editing.Actions.Count,
+            Label = $"Action {_editing.Actions.Count + 1}",
+        });
+    }
+
+    private void RemoveAction(int index)
+    {
+        if (_editing is null) return;
+        _editing.Actions.RemoveAt(index);
+        for (int i = 0; i < _editing.Actions.Count; i++)
+            _editing.Actions[i].Order = i;
+    }
+
+    private void MoveAction(int index, int delta)
+    {
+        if (_editing is null) return;
+        var newIdx = index + delta;
+        if (newIdx < 0 || newIdx >= _editing.Actions.Count) return;
+        (_editing.Actions[index], _editing.Actions[newIdx]) =
+            (_editing.Actions[newIdx], _editing.Actions[index]);
+        for (int i = 0; i < _editing.Actions.Count; i++)
+            _editing.Actions[i].Order = i;
+    }
+
+    private void AddDirective(JobAction action, Func<Directive> factory)
+    {
+        action.Directives.Add(factory());
+        StateHasChanged();
+    }
+
+    private void AddVariation(JobAction action, Func<Variation> factory)
+    {
+        action.Variations.Add(factory());
+        StateHasChanged();
+    }
+
+    private async Task EditDirectiveJsonAsync(JobAction action, Directive directive)
+    {
+        var updated = await ShowJsonDialogAsync<Directive>(directive, "Edit Directive");
+        if (updated is null) return;
+        var index = action.Directives.IndexOf(directive);
+        if (index >= 0) action.Directives[index] = updated;
+    }
+
+    private async Task EditVariationJsonAsync(JobAction action, Variation variation)
+    {
+        var updated = await ShowJsonDialogAsync<Variation>(variation, "Edit Variation");
+        if (updated is null) return;
+        var index = action.Variations.IndexOf(variation);
+        if (index >= 0) action.Variations[index] = updated;
+    }
+
+    private async Task<T?> ShowJsonDialogAsync<T>(T value, string title) where T : class
+    {
+        var json = JsonSerializer.Serialize(value, value.GetType(), SchedulerJsonOptions.Default);
+        var parameters = new DialogParameters
+        {
+            ["Title"] = title,
+            ["InitialJson"] = json,
+        };
+        var dlg = await Dialogs.ShowAsync<SchedulerJsonEditorDialog>(title, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dlg.Result;
+        if (result is null || result.Canceled || result.Data is not string edited) return null;
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<T>(edited, SchedulerJsonOptions.Default);
+            return parsed;
+        }
+        catch (JsonException ex)
+        {
+            Snackbar.Add($"Invalid JSON: {ex.Message}", Severity.Error);
+            return null;
+        }
+    }
+
+    private int ComputeIterations(JobAction action)
+    {
+        if (action.Variations.Count == 0) return 1;
+        long total = 1;
+        foreach (var v in action.Variations)
+        {
+            long size = v switch
+            {
+                ListVariation lv => Math.Max(1, lv.Values?.Count ?? 0),
+                ToggleVariation => 2,
+                RangeVariation r => RangeSize(r),
+                RandomVariation r => Math.Max(1, r.Count),
+                SearchReplaceVariation s => Math.Max(1, s.Replacements?.Count ?? 0),
+                _ => 1,
+            };
+            total *= size;
+            if (total > int.MaxValue) { total = int.MaxValue; break; }
+        }
+        int result = (int)total;
+        if (action.Limit is int lim && lim > 0 && lim < result) result = lim;
+        return result;
+    }
+
+    private static long RangeSize(RangeVariation r)
+    {
+        if (r.Step == 0) return 1;
+        var n = (long)Math.Floor(Math.Abs((r.End - r.Start) / r.Step)) + 1;
+        return Math.Max(1, n);
+    }
+
+    private int TotalGenerations => _editing?.Actions.Sum(a => ComputeIterations(a)) ?? 0;
+
+    private static string DirectiveSummary(Directive d) => d switch
+    {
+        SetValueDirective s => $"-> value",
+        AppendPromptDirective a => $"append: \"{Truncate(a.Text, 40)}\"",
+        ReplacePromptDirective r => $"replace: \"{Truncate(r.Search, 20)}\" -> \"{Truncate(r.Replace, 20)}\"",
+        AddLoraDirective l => $"add LoRA",
+        RemoveLoraDirective l => $"remove LoRA",
+        ToggleLoraDirective l => $"toggle LoRA",
+        AddPromptStyleDirective s => $"styles: {string.Join(", ", s.StyleNames ?? new())}",
+        SwapAssetDirective => "swap asset",
+        SetOutputDirective => "set output",
+        _ => d.GetType().Name,
+    };
+
+    private static string Truncate(string? s, int max)
+        => string.IsNullOrEmpty(s) ? "" : (s!.Length <= max ? s : s.Substring(0, max) + "...");
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<JobCompletedEventArgs>(OnJobEvent);
+    }
+}

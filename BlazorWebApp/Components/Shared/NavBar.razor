@@ -11,7 +11,8 @@
         <MudNavLink Href="/" Match=NavLinkMatch.All><i class="fas fa-images me-1" /> Gallery</MudNavLink>
         @if (Gallery.Projects.Count > 0)
         {
-            if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null && State.State.Generation.Workflows.Count > 0 && HasWorkflowBaseSelected())
+            if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null &&
+        State.State.Generation.Workflows.Count > 0 && HasWorkflowBaseSelected())
             {
                 var w = State.State.Generation.Workflows;
                 var b = State.State.Generation.WorkflowBase;
@@ -44,10 +45,14 @@
                 }
             }
         }
-        <MudNavLink Href="/resources" Match=NavLinkMatch.Prefix><i class="fa-solid fa-download me-1" /> Resources</MudNavLink>
+        <MudNavLink Href="/resources" Match=NavLinkMatch.Prefix><i class="fa-solid fa-download me-1" /> Resources
+        </MudNavLink>
         <MudNavLink Href="/civitai" Match=NavLinkMatch.Prefix><i class="fa-solid fa-globe me-1" /> CivitAI</MudNavLink>
         <MudNavLink Href="/danbooru" Match=NavLinkMatch.Prefix><i class="fa-solid fa-box me-1" /> Danbooru</MudNavLink>
-        <MudNavLink Href="/prompts" Match=NavLinkMatch.Prefix><i class="fa-solid fa-quote-left me-1" /> Prompts</MudNavLink>
+        <MudNavLink Href="/prompts" Match=NavLinkMatch.Prefix><i class="fa-solid fa-quote-left me-1" /> Prompts
+        </MudNavLink>
+        <MudNavLink Href="/scheduler" Match=NavLinkMatch.Prefix><i class="fa-solid fa-calendar-check me-1" /> Scheduler
+        </MudNavLink>
     </MudNavMenu>
 </div>
 

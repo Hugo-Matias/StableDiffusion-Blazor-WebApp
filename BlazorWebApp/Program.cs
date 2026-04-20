@@ -85,6 +85,16 @@ builder.Services.AddSingleton<IWorkflowStateService, WorkflowStateService>();
 // Scheduler job persistence
 builder.Services.AddSingleton<BlazorWebApp.Scheduler.Persistence.IJobRepository, BlazorWebApp.Scheduler.Persistence.JobRepository>();
 
+// Scheduler variation engine
+builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IVariationMaterializer, BlazorWebApp.Scheduler.Engine.VariationMaterializer>();
+builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IVariationSequencer, BlazorWebApp.Scheduler.Engine.VariationSequencer>();
+
+// Scheduler execution engine
+builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IParameterApplier, BlazorWebApp.Scheduler.Engine.ParameterApplier>();
+builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IDirectiveExecutor, BlazorWebApp.Scheduler.Engine.DirectiveExecutor>();
+builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IJobGenerationRunner, BlazorWebApp.Scheduler.Engine.ImageServiceJobGenerationRunner>();
+builder.Services.AddScoped<BlazorWebApp.Scheduler.ISchedulerService, BlazorWebApp.Scheduler.SchedulerService>();
+
 // Component registry for fragment-to-component mapping
 builder.Services.AddSingleton<IComponentRegistry, ComponentRegistry>();
 

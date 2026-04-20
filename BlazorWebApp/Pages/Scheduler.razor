@@ -1,0 +1,53 @@
+@page "/scheduler"
+@page "/scheduler/{Tab}"
+@using BlazorWebApp.Components.Scheduler
+@using BlazorWebApp.Scheduler
+@inject NavigationManager Nav
+
+<PageTitle>Scheduler</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.EventNote" Class="me-2" />
+        Scheduler
+    </MudText>
+
+    <MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4"
+             ActivePanelIndex="@_activeIndex" ActivePanelIndexChanged="OnTabChanged">
+        <MudTabPanel Text="Runs" Icon="@Icons.Material.Filled.PlaylistPlay">
+            <SchedulerRunsTab />
+        </MudTabPanel>
+        <MudTabPanel Text="Editor" Icon="@Icons.Material.Filled.Edit">
+            <SchedulerEditorTab />
+        </MudTabPanel>
+        <MudTabPanel Text="Results" Icon="@Icons.Material.Filled.Collections">
+            <SchedulerResultsTab JobIdQuery="@_jobIdQuery" />
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    [Parameter] public string? Tab { get; set; }
+
+    private int _activeIndex;
+    private Guid? _jobIdQuery;
+
+    protected override void OnParametersSet()
+    {
+        _activeIndex = (Tab?.ToLowerInvariant()) switch
+        {
+            "editor" => 1,
+            "results" => 2,
+            _ => 0,
+        };
+
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("jobId", out var raw) && Guid.TryParse(raw.ToString(), out var jid))
+            _jobIdQuery = jid;
+        else
+            _jobIdQuery = null;
+    }
+
+    private void OnTabChanged(int index) => _activeIndex = index;
+}

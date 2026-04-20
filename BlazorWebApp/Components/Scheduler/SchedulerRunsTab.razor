@@ -1,0 +1,213 @@
+@using BlazorWebApp.Events
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Persistence
+@inject IJobRepository JobRepo
+@inject ISchedulerService Scheduler
+@inject IEventService Events
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialogs
+@implements IDisposable
+
+<MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+    <MudText Typo="Typo.h6">Jobs</MudText>
+    <MudSpacer />
+    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary" OnClick="ReloadAsync"
+                   Title="Refresh list" />
+</MudStack>
+
+@if (_jobs is null)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" />
+}
+else if (_jobs.Count == 0)
+{
+    <MudPaper Class="pa-6 d-flex flex-column align-center" Elevation="0">
+        <MudIcon Icon="@Icons.Material.Filled.PlaylistAddCheck" Size="Size.Large" Color="Color.Default" />
+        <MudText Typo="Typo.body1" Class="mt-2">No Scheduler jobs yet.</MudText>
+        <MudText Typo="Typo.caption">Create jobs programmatically via <code>IJobRepository</code> (Editor UI lands in Phase
+            7).</MudText>
+        </MudPaper>
+    }
+else
+    {
+        <MudTable Items="@_jobs" Hover="true" Dense="false" Bordered="false" Striped="true" Elevation="1">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Actions</MudTh>
+                <MudTh>Last Run</MudTh>
+                <MudTh>Progress</MudTh>
+                <MudTh Style="width: 360px;">Controls</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="job">
+                <MudTd DataLabel="Name">
+                    <MudText Typo="Typo.body2"><strong>@job.Name</strong></MudText>
+                    @if (!string.IsNullOrWhiteSpace(job.Description))
+                    {
+                        <MudText Typo="Typo.caption">@job.Description</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(job.Status)" Variant="Variant.Filled">
+                        @job.Status
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions">@job.Actions.Count</MudTd>
+                <MudTd DataLabel="Last Run">
+                    @(job.LastRunAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")
+                </MudTd>
+                <MudTd DataLabel="Progress">
+                    @{
+                        var total = job.RunState.TotalIterations;
+                        var done = job.RunState.CompletedImages + job.RunState.FailedImages;
+                        var pct = total > 0 ? (double)done / total * 100.0 : 0.0;
+                    }
+                    @if (total > 0)
+                    {
+                        <MudTooltip
+                            Text="@($"{done}/{total} (completed {job.RunState.CompletedImages}, failed {job.RunState.FailedImages})")">
+                            <MudProgressLinear Value="@pct" Color="@StatusColor(job.Status)" Size="Size.Small" Rounded />
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption">-</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Controls">
+                    <MudStack Row Spacing="1">
+                        @{
+                            bool isRunningThis = Scheduler.RunningJobId == job.Id;
+                            bool anyRunning = Scheduler.RunningJobId.HasValue;
+                            bool canRun = !anyRunning && job.Status is not JobStatus.Running and not JobStatus.Paused;
+                            bool canResume = !anyRunning && job.Status == JobStatus.Paused;
+                        }
+                        <MudTooltip Text="Run">
+                            <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Color="Color.Success"
+                                           Disabled="@(!canRun)" OnClick="() => RunAsync(job.Id)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Resume">
+                            <MudIconButton Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Info"
+                                           Disabled="@(!canResume)" OnClick="() => ResumeAsync(job.Id)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Pause">
+                            <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning"
+                                           Disabled="@(!isRunningThis)" OnClick="PauseAsync" />
+                        </MudTooltip>
+                        <MudTooltip Text="Stop">
+                            <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error"
+                                           Disabled="@(!isRunningThis)" OnClick="StopAsync" />
+                        </MudTooltip>
+                        <MudTooltip Text="Skip current">
+                            <MudIconButton Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small" Color="Color.Default"
+                                           Disabled="@(!isRunningThis)" OnClick="SkipAsync" />
+                        </MudTooltip>
+                        <MudTooltip Text="View results">
+                            <MudIconButton Icon="@Icons.Material.Filled.Collections" Size="Size.Small"
+                                           OnClick="() => ViewResults(job.Id)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Delete">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           Disabled="@(anyRunning && isRunningThis)" OnClick="() => DeleteAsync(job)" />
+                        </MudTooltip>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+@code {
+    private List<Job>? _jobs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Events.Subscribe<JobStartedEventArgs>(OnJobEvent);
+        Events.Subscribe<JobProgressChangedEventArgs>(OnJobEvent);
+        Events.Subscribe<JobActionChangedEventArgs>(OnJobEvent);
+        Events.Subscribe<JobCompletedEventArgs>(OnJobEvent);
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _jobs = await JobRepo.ListAsync();
+        StateHasChanged();
+    }
+
+    private async void OnJobEvent<T>(T _) where T : EventArgs
+    {
+        // Any job event may mutate status/progress for the row; reload and re-render.
+        await InvokeAsync(async () =>
+        {
+            await ReloadAsync();
+        });
+    }
+
+    private async Task RunAsync(Guid jobId)
+    {
+        try { _ = Scheduler.RunAsync(jobId); Snackbar.Add("Job started", Severity.Info); }
+        catch (Exception ex) { Snackbar.Add($"Run failed: {ex.Message}", Severity.Error); }
+        await ReloadAsync();
+    }
+
+    private async Task ResumeAsync(Guid jobId)
+    {
+        try { _ = Scheduler.ResumeAsync(jobId); Snackbar.Add("Job resumed", Severity.Info); }
+        catch (Exception ex) { Snackbar.Add($"Resume failed: {ex.Message}", Severity.Error); }
+        await ReloadAsync();
+    }
+
+    private async Task PauseAsync()
+    {
+        await Scheduler.PauseAsync();
+        Snackbar.Add("Pause requested", Severity.Normal);
+    }
+
+    private async Task StopAsync()
+    {
+        await Scheduler.StopAsync();
+        Snackbar.Add("Stop requested", Severity.Warning);
+    }
+
+    private async Task SkipAsync()
+    {
+        await Scheduler.SkipCurrentAsync();
+        Snackbar.Add("Skip current requested", Severity.Normal);
+    }
+
+    private void ViewResults(Guid jobId) =>
+        Nav.NavigateTo($"/scheduler/results?jobId={jobId}");
+
+    private async Task DeleteAsync(Job job)
+    {
+        var confirm = await Dialogs.ShowMessageBox("Delete job",
+            $"Delete '{job.Name}'? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirm != true) return;
+
+        await JobRepo.DeleteAsync(job.Id);
+        Snackbar.Add("Job deleted", Severity.Success);
+        await ReloadAsync();
+    }
+
+    private static Color StatusColor(JobStatus s) => s switch
+    {
+        JobStatus.Running => Color.Primary,
+        JobStatus.Paused => Color.Warning,
+        JobStatus.Completed => Color.Success,
+        JobStatus.Failed => Color.Error,
+        JobStatus.Cancelled => Color.Dark,
+        JobStatus.Queued => Color.Info,
+        _ => Color.Default,
+    };
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<JobStartedEventArgs>(OnJobEvent);
+        Events.Unsubscribe<JobProgressChangedEventArgs>(OnJobEvent);
+        Events.Unsubscribe<JobActionChangedEventArgs>(OnJobEvent);
+        Events.Unsubscribe<JobCompletedEventArgs>(OnJobEvent);
+    }
+}
