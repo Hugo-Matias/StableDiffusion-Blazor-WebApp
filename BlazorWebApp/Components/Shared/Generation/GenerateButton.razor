@@ -7,7 +7,7 @@
 <EditForm Model="_dummyModel" OnSubmit="@Generate" class="gen-btn-form">
     @{
         // Triple-state logic:
-        //   Idle           -> single [Generate]
+        //   Idle           -> split [Generate | dropdown]
         //   Running (q<=1) -> split [Queue | Cancel]
         //   Running + q>1  -> split [Queue | Cancel | Clear]
         var hasQueue = _queueRemaining > 1;
@@ -16,7 +16,9 @@
 
     @if (!running)
     {
-        <button type="submit" class="gen-btn gen-btn--generate" disabled="@IsDisabled">
+        @* Idle: single full-width Generate button. Secondary actions (e.g. Schedule)
+           live elsewhere in the prompts area so this button stays focused. *@
+        <button type="submit" class="gen-btn gen-btn--generate gen-btn--solo" disabled="@IsDisabled">
             <i class="fa-solid fa-circle-half-stroke"></i>
             <span>Generate</span>
         </button>
@@ -64,6 +66,11 @@
     [Parameter] public EventCallback OnClearQueue { get; set; }
 
     /// <summary>
+    /// Called when the user picks Schedule from the idle-state dropdown.
+    /// </summary>
+    [Parameter] public EventCallback OnSchedule { get; set; }
+
+    /// <summary>
     /// Whether the submit button is disabled (e.g. backend unavailable).
     /// </summary>
     [Parameter] public bool IsDisabled { get; set; }
@@ -104,6 +111,7 @@
 
     private Task HandleCancel() => OnInterrupt.InvokeAsync();
     private Task HandleClearQueue() => OnClearQueue.InvokeAsync();
+    private Task HandleSchedule() => OnSchedule.InvokeAsync();
 
     public void Dispose()
     {

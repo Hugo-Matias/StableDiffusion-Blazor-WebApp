@@ -14,24 +14,28 @@
                  ToStringFunc="@(s => string.IsNullOrWhiteSpace(s) ? string.Empty : s.Substring(0, s.LastIndexOf('.')))" />
 @if (Loras != null && Loras.Count > 0)
 {
-    if (Loras.Count(l => l.IsEnabled) > 0)
-    {
-        <MudExpansionPanel Text=@($"Enabled Loras ({Loras.Count(l => l.IsEnabled)})") @bind-IsExpanded=_isEnabledExpanded>
-            @foreach (var lora in Loras.Where(l => l.IsEnabled))
-            {
-                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
-            }
-        </MudExpansionPanel>
-    }
-    if (Loras.Count(l => !l.IsEnabled) > 0)
-    {
-        <MudExpansionPanel Text=@($"Disabled Loras ({Loras.Count(l => !l.IsEnabled)})") @bind-IsExpanded=_isDisabledExpanded>
-            @foreach (var lora in Loras.Where(l => !l.IsEnabled))
-            {
-                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
-            }
-        </MudExpansionPanel>
-    }
+    <div class="loras-panels-flush">
+        @if (Loras.Count(l => l.IsEnabled) > 0)
+        {
+            <MudExpansionPanel Text=@($"Enabled Loras ({Loras.Count(l => l.IsEnabled)})") @bind-IsExpanded=_isEnabledExpanded
+                               Style="background-color: transparent; background-image: none; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--mud-palette-divider);">
+                @foreach (var lora in Loras.Where(l => l.IsEnabled))
+                {
+                    <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                }
+            </MudExpansionPanel>
+        }
+        @if (Loras.Count(l => !l.IsEnabled) > 0)
+        {
+            <MudExpansionPanel Text=@($"Disabled Loras ({Loras.Count(l => !l.IsEnabled)})") @bind-IsExpanded=_isDisabledExpanded
+                               Style="background-color: transparent; background-image: none; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--mud-palette-divider);">
+                @foreach (var lora in Loras.Where(l => !l.IsEnabled))
+                {
+                    <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                }
+            </MudExpansionPanel>
+        }
+    </div>
 }
 @code {
     [Parameter]

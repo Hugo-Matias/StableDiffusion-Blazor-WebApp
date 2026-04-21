@@ -1,0 +1,99 @@
+/* Workflow strip: narrow context bar shown on the Generate page.
+   - Dark theme-following background (no color wash).
+   - Thin saturated accent strip at the bottom, colored by the active
+     workflow's mode - gives the visual cue without dominating the UI.
+   - Active button text picks up the mode color too (no underline needed). */
+
+.workflow-strip {
+    --workflow-strip-height: 3.5rem;
+    --workflow-strip-accent-height: 3px;
+    --workflow-strip-bg: var(--mud-palette-appbar-background);
+
+    /* Mode accent colors - full saturation, used for the bottom strip
+       and for the active button text. */
+    --workflow-strip-accent: var(--mud-palette-primary);
+    --workflow-strip-mode-txt2img: var(--mud-palette-primary);
+    --workflow-strip-mode-img2img: var(--mud-palette-secondary);
+    --workflow-strip-mode-img2vid: var(--mud-palette-tertiary);
+
+    position: relative;
+    height: var(--workflow-strip-height);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--workflow-strip-bg);
+    transition: filter 0.25s ease;
+    padding-top: 0.5rem;
+}
+
+/* Bottom accent strip - thin, full-saturation line that tracks the mode. */
+.workflow-strip::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--workflow-strip-accent-height);
+    background: var(--workflow-strip-accent);
+    transition: background-color 0.25s ease;
+}
+
+.workflow-strip.mode-txt2img { --workflow-strip-accent: var(--workflow-strip-mode-txt2img); }
+.workflow-strip.mode-img2img { --workflow-strip-accent: var(--workflow-strip-mode-img2img); }
+.workflow-strip.mode-img2vid { --workflow-strip-accent: var(--workflow-strip-mode-img2vid); }
+
+/* Inner container keeps buttons centered as a group. */
+.workflow-strip-inner {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    height: 100%;
+}
+
+.workflow-strip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 100%;
+    padding: 0 0.85rem;
+    color: var(--mud-palette-text-primary);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.workflow-strip-btn:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Active: color the label/icon with the matching mode color (no underline -
+   the bottom accent strip already encodes the mode). */
+.workflow-strip-btn.active.mode-txt2img { color: var(--workflow-strip-mode-txt2img); }
+.workflow-strip-btn.active.mode-img2img { color: var(--workflow-strip-mode-img2img); }
+.workflow-strip-btn.active.mode-img2vid { color: var(--workflow-strip-mode-img2vid); }
+
+/* Icon sizing - Size.Small on MudIcon is ~1.25rem; we override a touch
+   smaller so icons read as decorative "glitter" next to the labels.
+   Hierarchy: logo (1.75) > page nav (1.15) > workflow (0.95). */
+.workflow-strip-icon {
+    font-size: 0.95rem !important;
+    width: 0.95rem !important;
+    height: 0.95rem !important;
+}
+
+.workflow-strip-label {
+    white-space: nowrap;
+}
+
+/* Pulse animation triggered when the workflow set changes (e.g. base switch). */
+@keyframes workflow-strip-pulse {
+    0% { filter: brightness(1); }
+    40% { filter: brightness(1.35); }
+    100% { filter: brightness(1); }
+}
+
+.workflow-strip.pulse {
+    animation: workflow-strip-pulse 0.9s ease-out;
+}

@@ -136,6 +136,29 @@ namespace BlazorWebApp.Services
             return _state.State.Generation.Workflows.Where(w => w.Mode == mode).OrderBy(w => w.Title).ToList();
         }
 
+        /// <summary>
+        /// Resolves the best workflow id to route to for the current (or specified) base.
+        /// Prefers the last-used workflow for that base (persisted in <see cref="AppStateGeneration.LastWorkflowByBase"/>);
+        /// falls back to the first workflow available for the base; returns null if none exist.
+        /// Used by the global Generate navigation button.
+        /// </summary>
+        public Guid? ResolveWorkflowForBase(ModelBase? baseModel = null)
+        {
+            var gen = _state.State?.Generation;
+            if (gen?.Workflows == null || gen.Workflows.Count == 0) return null;
+
+            var target = baseModel ?? gen.WorkflowBase;
+
+            if (gen.LastWorkflowByBase != null
+                && gen.LastWorkflowByBase.TryGetValue(target, out var lastId)
+                && gen.Workflows.Any(w => w.Id == lastId && w.Base == target))
+            {
+                return lastId;
+            }
+
+            return gen.Workflows.FirstOrDefault(w => w.Base == target)?.Id;
+        }
+
         public void GetComfyWorkflows() => _state.State.Generation.Workflows = _workflow.GetWorkflows();
 
         /// <summary>
@@ -168,6 +191,7 @@ namespace BlazorWebApp.Services
 
             _state.State.Generation.CurrentWorkflowId = workflowId;
             _state.State.Generation.WorkflowBase = workflow.Base;
+            _state.State.Generation.LastWorkflowByBase[workflow.Base] = workflowId;
 
             _events.Publish(new StateChangedEventArgs());
             _events.Publish(new WorkflowChangedEventArgs(workflowId, "Set"));
@@ -180,6 +204,7 @@ namespace BlazorWebApp.Services
 
             _state.State.Generation.CurrentWorkflowId = workflowId;
             _state.State.Generation.WorkflowBase = workflow.Base;
+            _state.State.Generation.LastWorkflowByBase[workflow.Base] = workflowId;
 
             // Note: Do NOT set GenerationParameters.WorkflowId here.
             // It will be updated by InitializeFromWorkflowAsync/InitializeFromWorkflowInternal

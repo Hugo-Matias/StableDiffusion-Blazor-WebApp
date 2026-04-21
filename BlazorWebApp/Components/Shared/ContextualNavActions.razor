@@ -1,0 +1,73 @@
+@*
+    ContextualNavActions
+    --------------------
+    Route-aware container rendered in the top AppBar between the main
+    NavBar and the right-hand toolbar (base selector, theme, settings).
+
+    Each page can contribute shortcut buttons here. Buttons are styled
+    as outlined, icon+label, slightly smaller than the primary nav
+    links so they read as secondary page-level actions rather than
+    global navigation.
+
+    To add a shortcut for a new page, extend the @switch below with a
+    case for the route prefix and render the appropriate MudButton.
+*@
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Scheduler.Models
+@inject NavigationManager NavManager
+@inject IStateService State
+@inject IScheduleSnapshotService ScheduleSnapshot
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+@if (_pagePath.StartsWith("/generate", StringComparison.OrdinalIgnoreCase))
+{
+    <div class="contextual-nav-actions">
+        <MudTooltip Text="Capture current parameters and open the Scheduler editor"
+                    Placement="Placement.Bottom" Arrow="true">
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.EventNote"
+                       Class="contextual-nav-action-btn"
+                       OnClick="ScheduleCurrent">
+                Schedule Prompt
+            </MudButton>
+        </MudTooltip>
+    </div>
+}
+
+@code {
+    private string _pagePath = "/";
+
+    protected override void OnInitialized()
+    {
+        _pagePath = new Uri(NavManager.Uri).AbsolutePath;
+        NavManager.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _pagePath = new Uri(NavManager.Uri).AbsolutePath;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ScheduleCurrent()
+    {
+        var snapshot = State.GenerationParameters?.Clone() ?? new BlazorWebApp.Models.GenerationParameters();
+        var job = new Job
+        {
+            Name = "New scheduled job",
+            Status = JobStatus.Draft,
+            WorkflowId = snapshot.WorkflowId,
+            BaseParameters = snapshot,
+            Actions = { new JobAction { Order = 0, Label = "Action 1" } },
+        };
+        ScheduleSnapshot.Set(job);
+        Snackbar.Add("Parameters captured. Opening Scheduler Editor...", Severity.Info);
+        NavManager.NavigateTo("/scheduler/editor");
+    }
+
+    public void Dispose()
+    {
+        NavManager.LocationChanged -= HandleLocationChanged;
+    }
+}

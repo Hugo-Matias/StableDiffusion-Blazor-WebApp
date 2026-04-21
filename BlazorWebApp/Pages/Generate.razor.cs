@@ -100,6 +100,19 @@ public partial class Generate : IDisposable
                 }
             }
         }
+        else if (string.IsNullOrEmpty(WorkflowId))
+        {
+            // Route is /generate (no id). Resolve the best workflow for the current
+            // base (last-used preferred, first-available fallback) and redirect so the
+            // URL reflects the selected workflow. This is the entry point used by the
+            // global Generate nav button.
+            var resolvedId = Orchestrator.ResolveWorkflowForBase();
+            if (resolvedId.HasValue)
+            {
+                NavManager.NavigateTo($"/generate/{resolvedId.Value}", forceLoad: false, replace: true);
+                return;
+            }
+        }
 
         // If no URL parameter, try to restore from state
         if (_selectedWorkflow == null && Parameters.WorkflowId.HasValue)
@@ -150,6 +163,7 @@ public partial class Generate : IDisposable
         {
             State.State.Generation.CurrentWorkflowId = workflow.Id;
             State.State.Generation.WorkflowBase = workflow.Base;
+            State.State.Generation.LastWorkflowByBase[workflow.Base] = workflow.Id;
         }
 
         // Initialize parameters from workflow

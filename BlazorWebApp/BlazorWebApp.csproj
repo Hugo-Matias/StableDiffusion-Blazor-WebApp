@@ -36,7 +36,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="MudBlazor" Version="6.1.8" />
+    <PackageReference Include="MudBlazor" Version="6.20.0" />
     <PackageReference Include="Syllabore" Version="3.0.1-alpha" />
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.2.6-b0002" />

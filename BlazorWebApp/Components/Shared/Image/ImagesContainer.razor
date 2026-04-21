@@ -12,33 +12,37 @@
     <div class="images-container-toolbar">
         @if (Images.Images is not null && Images.Images.Count > 0)
         {
-            <div class="toolbar-buttons" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; width: 100%;">
-                <MudButton OnClick="() => OpenViewer(0)" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary" Size="Size.Small">Fullscreen</MudButton>
-                <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary" Size="Size.Small">Selections</MudButton>
+            <div class="toolbar-buttons" style="display: flex; flex-direction: column; gap: 6px; align-items: center; width: 100%;">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center;">
+                    <MudButton OnClick="() => OpenViewer(0)" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary" Size="Size.Small">Fullscreen</MudButton>
+                    <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary" Size="Size.Small">Selections</MudButton>
+                    @if (ShowClearButton)
+                    {
+                        <MudButton OnClick="HandleClearClicked" StartIcon="fa-solid fa-border-none"
+                                   Color="Color.Error" Size="Size.Small" Variant="Variant.Text">
+                            Clear
+                        </MudButton>
+                    }
+                    @if (Images.PageCount > 1)
+                    {
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="Images.PageCount" Selected="_currentPage" SelectedChanged="page => HandlePageChanged(page)" Size="Size.Small" />
+                    }
+                    @if (ShowPageSizeField)
+                    {
+                        <MudNumericField T="int" Value="PageSize" ValueChanged="HandlePageSizeChanged"
+                                            Label="Page size" Min="1" Max="200" Step="1"
+                                            Variant="Variant.Text" Margin="Margin.Dense"
+                                            Class="page-size-field" />
+                    }
+                </div>
                 @if (CanSelect && Gallery.SelectedImageIds.Count > 0)
                 {
-                    <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary" Size="Size.Small">Set Project</MudButton>
-                    <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error" Size="Size.Small">Delete</MudButton>
-                    <MudButton OnClick="Gallery.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning" Size="Size.Small">Clear (@Gallery.SelectedImageIds.Count)</MudButton>
-                    <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info" Size="Size.Small">Select All</MudButton>
-                }
-                @if (Images.PageCount > 1)
-                {
-                    <MudPagination BoundaryCount="2" MiddleCount="3" Count="Images.PageCount" Selected="_currentPage" SelectedChanged="page => HandlePageChanged(page)" Size="Size.Small" />
-                }
-                @if (ShowPageSizeField)
-                {
-                    <MudNumericField T="int" Value="PageSize" ValueChanged="HandlePageSizeChanged"
-                                     Label="Page size" Min="1" Max="200" Step="1"
-                                     Variant="Variant.Outlined" Margin="Margin.Dense"
-                                     Class="page-size-field" />
-                }
-                @if (ShowClearButton)
-                {
-                    <MudButton OnClick="HandleClearClicked" StartIcon="fa-solid fa-trash-can"
-                               Color="Color.Error" Size="Size.Small" Variant="Variant.Text">
-                        Clear
-                    </MudButton>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center;">
+                        <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Secondary" Size="Size.Small">Set Project</MudButton>
+                        <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error" Size="Size.Small">Delete</MudButton>
+                        <MudButton OnClick="Gallery.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning" Size="Size.Small">Deselect (@Gallery.SelectedImageIds.Count)</MudButton>
+                        <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info" Size="Size.Small">Select All</MudButton>
+                    </div>
                 }
             </div>
         }

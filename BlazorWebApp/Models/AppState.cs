@@ -89,6 +89,12 @@ namespace BlazorWebApp.Models
         public List<Workflow> Workflows { get; set; }
         public ModelBase WorkflowBase { get; set; }
         public Guid? CurrentWorkflowId { get; set; }
+        /// <summary>
+        /// Last-selected workflow id per base. Used by the global Generate nav button
+        /// to restore the user's previous selection when returning to the generation page,
+        /// and when switching bases to prefer the previously-used workflow under that base.
+        /// </summary>
+        public Dictionary<ModelBase, Guid> LastWorkflowByBase { get; set; } = new();
         public List<Lora> Loras { get; set; }
         public AppStateLLMEnhancer LLM { get; set; } = new();
         public AppStateGenerationAutocomplete Autocomplete { get; set; } = new();

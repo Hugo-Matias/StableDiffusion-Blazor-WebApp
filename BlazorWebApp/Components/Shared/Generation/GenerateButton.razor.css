@@ -116,6 +116,56 @@
         0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
+/* Solo Generate button (idle, no dropdown) - fills the sticky wrapper width. */
+.gen-btn--solo {
+    width: 100%;
+    border-radius: 10px;
+    box-shadow:
+        0 6px 18px -6px var(--mud-palette-success),
+        0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* --- idle split: Generate (wide) + dropdown caret (narrow, dark) --- */
+.gen-btn-group--idle {
+    grid-template-columns: 1fr auto;
+}
+
+.gen-btn-group--idle .gen-btn--generate {
+    box-shadow: none;
+}
+
+/* Dropdown caret button. MudMenu renders an IconButton; we style the host
+   element (.gen-btn--more) as a dark panel with an info-colored icon so the
+   primary Generate color can change through phases without the dropdown
+   visually shifting with it.
+   Heights are forced on BOTH the host and the inner MudIconButton so the
+   caret matches the primary Generate button perfectly. */
+::deep .gen-btn--more {
+    height: 100%;
+    min-height: 100%;
+    min-width: 2.75rem;
+    padding: 0;
+    background-color: var(--mud-palette-surface);
+    border-radius: 0;
+    display: inline-flex;
+    align-items: stretch;
+    justify-content: stretch;
+    border-left: 1px solid rgba(0, 0, 0, 0.35);
+    transition: background-color 0.15s ease;
+}
+
+::deep .gen-btn--more:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+::deep .gen-btn--more .mud-icon-button {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    border-radius: 0;
+    color: var(--mud-palette-info);
+}
+
 /* --- split group -------------------------------------------------- */
 .gen-btn-group {
     display: grid;

@@ -264,12 +264,23 @@ namespace BlazorWebApp.Services
 
             if (previousBase != workflowBase)
             {
-                // Update CurrentWorkflowId to the first workflow matching the new base
-                // so the UI can pick up the change. Do NOT touch GenerationParameters here -
-                // InitializeFromWorkflowAsync will save the previous workflow's state and
-                // restore (or freshly initialize) the new workflow's state.
-                var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
-                State.Generation.CurrentWorkflowId = defaultWorkflow?.Id;
+                // Update CurrentWorkflowId to the last-used workflow for this base if still valid,
+                // otherwise fall back to the first workflow matching the new base. Do NOT touch
+                // GenerationParameters here - InitializeFromWorkflowAsync will save the previous
+                // workflow's state and restore (or freshly initialize) the new workflow's state.
+                Guid? resolvedId = null;
+                if (State.Generation.LastWorkflowByBase != null
+                    && State.Generation.LastWorkflowByBase.TryGetValue(workflowBase, out var lastId)
+                    && State.Generation.Workflows?.Any(w => w.Id == lastId && w.Base == workflowBase) == true)
+                {
+                    resolvedId = lastId;
+                }
+                else
+                {
+                    var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
+                    resolvedId = defaultWorkflow?.Id;
+                }
+                State.Generation.CurrentWorkflowId = resolvedId;
             }
 
             // Publish StateChangedEventArgs for components using EventService

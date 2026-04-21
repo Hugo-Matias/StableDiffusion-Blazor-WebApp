@@ -24,3 +24,23 @@
 ::deep .navbar-horizontal .mud-nav-link {
 	justify-content: center;
 }
+
+/* Icon sizing tiers:
+   - Logo (brand) icon is sized by MainLayout (largest).
+   - Page nav icons use --nav-page-size (slightly larger than before for better
+	 legibility at icon-only sizes). Workflow strip uses its own token and is
+	 intentionally larger than page icons for emphasis. */
+::deep .navbar-horizontal .nav-icon {
+	--nav-page-size: 1.15rem;
+	font-size: var(--nav-page-size) !important;
+	width: var(--nav-page-size) !important;
+	height: var(--nav-page-size) !important;
+}
+
+/* Disabled Generate nav link state: used when no workflow is available for the
+   current base. Block the click and dim the icon/label. */
+::deep .navbar-horizontal .mud-nav-link.nav-disabled {
+	pointer-events: none;
+	opacity: 0.45;
+	cursor: not-allowed;
+}

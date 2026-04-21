@@ -101,6 +101,13 @@ namespace BlazorWebApp.Services
         List<Workflow> GetWorkflowsForMode(ModeType mode);
 
         /// <summary>
+        /// Resolves the best workflow id to route to for the specified (or current) base.
+        /// Prefers the last-used workflow for that base, falling back to the first available.
+        /// Returns null if no workflow exists for the base.
+        /// </summary>
+        Guid? ResolveWorkflowForBase(ModelBase? baseModel = null);
+
+        /// <summary>
         /// Loads workflows from the workflow service.
         /// </summary>
         void GetComfyWorkflows();

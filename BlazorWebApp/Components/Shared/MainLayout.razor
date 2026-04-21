@@ -22,10 +22,15 @@
     <MudLayout Style="overflow:hidden;">
         <MudAppBar Style="z-index: 1400;">
             <ProgressContainer />
-            <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" />
+            <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" Style="font-size: 1.75rem;" />
             <NavBar />
             <MudSpacer />
-            
+
+            @* Page-contextual shortcut actions (e.g. Schedule Prompt on /generate).
+               Sits between the main NavBar and the right-hand toolbar so each page
+               can surface its own top-level actions without cluttering the content. *@
+            <ContextualNavActions />
+
             @* Right-aligned toolbar items *@
             <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
                 @* Base Selector (ComfyUI only) *@
@@ -86,6 +91,13 @@
             </MudExpansionPanel>
         </MudExpansionPanels>
         <MudMainContent>
+            @* Context-dependent workflow selector: full-width, flush below the app bar,
+               only rendered on /generate routes. Sits outside the padded container so
+               it spans the full viewport width. *@
+            @if (_currentPagePath.StartsWith("/generate", StringComparison.OrdinalIgnoreCase))
+            {
+                <WorkflowStrip />
+            }
             <MudContainer Class="mt-5" MaxWidth="MaxWidth.ExtraLarge">
                 @Body
             </MudContainer>

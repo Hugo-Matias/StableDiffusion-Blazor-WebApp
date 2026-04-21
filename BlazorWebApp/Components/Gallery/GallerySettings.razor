@@ -9,7 +9,7 @@
 <div>
     <!-- Tabs with Action Buttons in Header -->
     <div class="tabs-header-container">
-        <MudTabs Elevation="3" ActivePanelIndexChanged="HandleFolderSelected" Class="flex-grow-1">
+        <MudTabs Elevation="3" ActivePanelIndex="@_activeFolderTabIndex" ActivePanelIndexChanged="HandleFolderSelected" Class="flex-grow-1">
             <MudTabPanel Text="All" ID=-1 />
             @foreach (var folder in Gallery.Folders)
             {
@@ -318,11 +318,21 @@
 
     private bool _showFilters = false;
     private bool _showReorderArrows = false;
+    private int _activeFolderTabIndex = 0;
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
 
     protected override void OnInitialized()
     {
         Events.Subscribe<FolderChangedEventArgs>(OnFolderChanged);
+        _activeFolderTabIndex = ComputeActiveFolderTabIndex();
+    }
+
+    private int ComputeActiveFolderTabIndex()
+    {
+        var folderId = State.State.Gallery.FolderId;
+        if (folderId <= 0 || Gallery.Folders == null) return 0;
+        var idx = Gallery.Folders.FindIndex(f => f.Id == folderId);
+        return idx >= 0 ? idx + 1 : 0;
     }
 
     private async void OnFolderChanged(FolderChangedEventArgs args)
@@ -449,6 +459,7 @@
 
     private async Task HandleFolderSelected(int selected)
     {
+        _activeFolderTabIndex = selected;
         if (selected == 0)
             await Gallery.SetCurrentFolder(selected);
         else

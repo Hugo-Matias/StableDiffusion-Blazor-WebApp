@@ -201,6 +201,6 @@
 
 /* Inline page-size numeric field inside the toolbar */
 ::deep .page-size-field {
-    max-width: 90px;
+    max-width: 70px;
 }
 

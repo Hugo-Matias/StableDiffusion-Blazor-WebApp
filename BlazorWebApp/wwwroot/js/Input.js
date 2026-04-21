@@ -184,14 +184,14 @@ export function initializePromptFieldsKeyboard(containerRef, dotNetHelper) {
         containerRef.removeEventListener('keydown', oldHandler, true);
     }
 
-    // Keydown handler: intercepts Ctrl+Enter
+    // Keydown handler: intercepts Ctrl+Enter and prompt-tab switching shortcuts.
     const keydownHandler = (e) => {
         // Check for Ctrl+Enter (or Cmd+Enter on Mac)
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
             // Prevent default behavior immediately
             e.preventDefault();
             e.stopPropagation();
-            
+
             // Call .NET method asynchronously
             (async () => {
                 try {
@@ -200,7 +200,38 @@ export function initializePromptFieldsKeyboard(containerRef, dotNetHelper) {
                     console.error('Error handling Ctrl+Enter:', error);
                 }
             })();
-            
+
+            return false;
+        }
+
+        // Prompt tab switching: Ctrl+Tab (next), Ctrl+Shift+Tab (previous),
+        // Alt+1 / Alt+2 (direct to tab index). Only intercepts within this
+        // container so page-level Tab navigation is unaffected elsewhere.
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
+            e.preventDefault();
+            e.stopPropagation();
+            const direction = e.shiftKey ? -1 : 1;
+            (async () => {
+                try {
+                    await dotNetHelper.invokeMethodAsync('HandleTabSwitch', direction);
+                } catch (error) {
+                    console.error('Error handling prompt tab switch:', error);
+                }
+            })();
+            return false;
+        }
+
+        if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '1' || e.key === '2' || e.key === '3')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const index = parseInt(e.key, 10) - 1;
+            (async () => {
+                try {
+                    await dotNetHelper.invokeMethodAsync('HandleTabSelect', index);
+                } catch (error) {
+                    console.error('Error handling prompt tab select:', error);
+                }
+            })();
             return false;
         }
     };
@@ -219,3 +250,95 @@ export function initializePromptFieldsKeyboard(containerRef, dotNetHelper) {
     // Remove focus outline for better UX
     containerRef.style.outline = 'none';
 }
+
+// Tracks wrapper -> resize handler mapping for autogrow, so we can re-invoke
+// measurements on external value changes without rebinding listeners.
+const autoGrowHandlers = new WeakMap();
+
+/**
+ * Turns the textarea inside `wrapperRef` into an auto-growing field.
+ * Replaces MudBlazor's built-in AutoGrow because it misbehaves inside
+ * deferred-mount containers (MudTabs) and with external value changes.
+ *
+ * @param {HTMLElement} wrapperRef - the MudTextField wrapper element
+ * @param {number} maxLines - max lines before scrolling. 0 = uncapped.
+ */
+export function initializeAutoGrow(wrapperRef, maxLines) {
+    if (!wrapperRef) return;
+    const textarea = wrapperRef.querySelector('textarea');
+    if (!textarea) {
+        // Textarea may not be in DOM yet if MudTextField renders lazily.
+        // Retry once on the next frame before giving up.
+        requestAnimationFrame(() => {
+            const retry = wrapperRef.querySelector('textarea');
+            if (retry) bindAutoGrow(wrapperRef, retry, maxLines);
+        });
+        return;
+    }
+    bindAutoGrow(wrapperRef, textarea, maxLines);
+}
+
+function bindAutoGrow(wrapperRef, textarea, maxLines) {
+    // Use !important to beat any MudBlazor scoped CSS that would clamp height.
+    textarea.style.setProperty('resize', 'none', 'important');
+    textarea.style.setProperty('overflow-y', 'hidden', 'important');
+    textarea.style.setProperty('box-sizing', 'border-box', 'important');
+    // Drop the rows attribute so the browser doesn't enforce a minimum height
+    // that our inline height would have to fight.
+    textarea.removeAttribute('rows');
+
+    const resize = () => {
+        const prevScroll = window.scrollY;
+        textarea.style.setProperty('height', 'auto', 'important');
+        let target = textarea.scrollHeight;
+        if (maxLines && maxLines > 0) {
+            const cs = getComputedStyle(textarea);
+            const lh = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.4);
+            const padTop = parseFloat(cs.paddingTop) || 0;
+            const padBot = parseFloat(cs.paddingBottom) || 0;
+            const cap = lh * maxLines + padTop + padBot;
+            if (target > cap) {
+                target = cap;
+                textarea.style.setProperty('overflow-y', 'auto', 'important');
+            } else {
+                textarea.style.setProperty('overflow-y', 'hidden', 'important');
+            }
+        }
+        textarea.style.setProperty('height', target + 'px', 'important');
+        window.scrollTo({ top: prevScroll });
+    };
+
+    // Clean up any prior binding on this wrapper.
+    const prior = autoGrowHandlers.get(wrapperRef);
+    if (prior && prior.textarea) {
+        prior.textarea.removeEventListener('input', prior.resize);
+    }
+    textarea.addEventListener('input', resize);
+    autoGrowHandlers.set(wrapperRef, { textarea, resize });
+
+    // Multi-pass first measurement: two rAFs cover MudTabs reveal + font loading,
+    // and a final setTimeout covers any late style application.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        resize();
+        setTimeout(resize, 120);
+    }));
+}
+
+/**
+ * Forces a re-measure of a previously registered autogrow textarea.
+ * Called on external Value changes (programmatic updates) so the field
+ * reflows when content is set from outside user typing.
+ */
+export function resizeAutoGrow(wrapperRef) {
+    if (!wrapperRef) return;
+    const entry = autoGrowHandlers.get(wrapperRef);
+    if (!entry) {
+        // Not initialized yet (race between first render and parent re-render).
+        // Try to initialize now if possible.
+        const textarea = wrapperRef.querySelector('textarea');
+        if (textarea) bindAutoGrow(wrapperRef, textarea, 0);
+        return;
+    }
+    entry.resize();
+}
+

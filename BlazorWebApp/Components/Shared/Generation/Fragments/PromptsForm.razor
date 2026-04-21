@@ -23,99 +23,160 @@
 @implements IAsyncDisposable
 @implements IDisposable
 
-<div @ref="_containerRef" tabindex="-1">
-    <MudPaper Class="pa-6 mb-5 mt-n4">
-        <MudGrid>
-            <MudItem xs="9">
-                <MudStack>
-                    <MudStack>
-                        <TextFieldAutocomplete Class="prompt" Lines="_promptLines" Label="Prompt" Value="@Prompt"
-                                               ValueChanged="HandlePromptValueChanged" OnAdornmentClick="() => PromptDrawer.Visible = true"
-                                               AdornmentIcon="fa-solid fa-tags" MinCharsToTrigger="2" MaxSuggestions="15"
-                                               EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
-                                               EnableDictionary="true" EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
-                                               IsNegative="false" OnLoraSelected="HandleLoraSelected"
-                                               OnStyleSelected="HandleStyleSelected" />
-                        
-                        <TextFieldAutocomplete Class="negative-prompt" Lines="_negativePromptLines"
-                                               Label="Negative Prompt" Value="@NegativePrompt"
-                                               ValueChanged="HandleNegativePromptValueChanged"
-                                               OnAdornmentClick="() => NegativePromptDrawer.Visible = true"
-                                               AdornmentIcon="fa-solid fa-tags"
-                                               Disabled="Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase)"
-                                               MinCharsToTrigger="2" MaxSuggestions="15"
-                                               EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
-                                               EnableDictionary="true" EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
-                                               IsNegative="true" OnLoraSelected="HandleLoraSelected"
-                                               OnStyleSelected="HandleStyleSelected" />
-                    </MudStack>
-                    <MudStack Row=true Spacing="2">
-                        <MudTooltip Text="Toggle autocomplete suggestions">
-                            <MudSwitch Checked="State.State.Generation.Autocomplete.IsEnabled"
-                                       CheckedChanged="@((bool value) => HandleAutocompleteChanged(value))"
-                                       Color="Color.Primary" Label="Autocomplete" />
-                        </MudTooltip>
-                        <MudTooltip Text="Toggle fuzzy subsequence matching (e.g., 'cascl' matches 'casual clothing')">
-                            <MudSwitch Checked="State.State.Generation.Autocomplete.EnableFuzzySearch"
-                                       CheckedChanged="@((bool value) => HandleFuzzySearchChanged(value))"
-                                       Color="Color.Primary" Label="Fuzzy Search"
-                                       Disabled="!State.State.Generation.Autocomplete.IsEnabled" />
-                        </MudTooltip>
-                    </MudStack>
-                </MudStack>
-            </MudItem>
-            <MudItem xs="3">
-                <MudStack Class="h-100 w-100">
-                    <MudChipSet Style="height: 10vh; overflow: scroll;" ReadOnly>
-                        @if (State.State.Generation.Styles != null && State.State.Generation.Styles.Count() > 0)
-                        {
+<div @ref="_containerRef" tabindex="-1" class="prompts-form-root">
+    <MudPaper Class="pa-6 mb-5 mt-n4 prompts-paper">
+        <MudStack Spacing="3">
+                    @* Tabbed prompts: positive / negative. Flush with the paper top
+                       (custom CSS removes tab rounding and aligns the underline to
+                       the paper border) to keep the design simple and continuous.
+                       A bullet indicator is appended to tab labels when the
+                       corresponding field has content, regardless of active tab. *@
+                    <MudTabs @bind-ActivePanelIndex="_activePromptTab"
+                             Elevation="0" Rounded="false" Border="false" ApplyEffectsToContainer="true"
+                             Class="@($"prompt-tabs prompt-tabs-{GetActiveTabAccent()}")"
+                             PanelClass="pa-0">
+                        <MudTabPanel Text="@GetPromptTabLabel()">
+                            <div class="prompt-row">
+                                <div class="prompt-field">
+                                    <TextFieldAutocomplete Class="prompt" Lines="2" AutoGrow="true" MaxLines="12"
+                                                           Label="" Value="@Prompt"
+                                                           ValueChanged="HandlePromptValueChanged"
+                                                           Adornment="Adornment.None"
+                                                           MinCharsToTrigger="2" MaxSuggestions="15"
+                                                           EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                                                           EnableDictionary="true"
+                                                           EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
+                                                           IsNegative="false" OnLoraSelected="HandleLoraSelected"
+                                                           OnStyleSelected="HandleStyleSelected" />
+                                </div>
+                                <div class="prompt-side">
+                                        <MudButton StartIcon="fa-solid fa-wand-sparkles" Color="Color.Primary" Size="Size.Small"
+                                                   OnClick="() => PromptDrawer.Visible = true"
+                                                   Class="prompt-side-btn prompt-side-util-btn" Variant="Variant.Outlined">
+                                            Utilities
+                                        </MudButton>
+                                    <MudTooltip Text="Toggle autocomplete suggestions" Placement="Placement.Left">
+                                        <MudChip Icon="@(State.State.Generation.Autocomplete.IsEnabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                                 Color="@(State.State.Generation.Autocomplete.IsEnabled ? Color.Primary : Color.Default)"
+                                                 Variant="@(State.State.Generation.Autocomplete.IsEnabled ? Variant.Outlined : Variant.Text)"
+                                                 Size="Size.Small" Class="prompt-side-chip"
+                                                 OnClick="@(() => HandleAutocompleteChanged(!State.State.Generation.Autocomplete.IsEnabled))">
+                                            Autocomplete
+                                        </MudChip>
+                                    </MudTooltip>
+                                    <MudTooltip Text="Toggle fuzzy subsequence matching" Placement="Placement.Left">
+                                        <MudChip Icon="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                                 Color="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Color.Primary : Color.Default)"
+                                                 Variant="Variant.Outlined"
+                                                 Size="Size.Small" Class="prompt-side-chip"
+                                                 Disabled="!State.State.Generation.Autocomplete.IsEnabled"
+                                                 OnClick="@(() => HandleFuzzySearchChanged(!State.State.Generation.Autocomplete.EnableFuzzySearch))">
+                                            Fuzzy Search
+                                        </MudChip>
+                                    </MudTooltip>
+                                </div>
+                            </div>
+                        </MudTabPanel>
+                        <MudTabPanel Text="@GetNegativePromptTabLabel()"
+                                     Disabled="@(Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase))">
+                            <div class="prompt-row">
+                                <div class="prompt-field">
+                                    <TextFieldAutocomplete Class="negative-prompt" Lines="2" AutoGrow="true" MaxLines="12"
+                                                           Label="" Value="@NegativePrompt"
+                                                           ValueChanged="HandleNegativePromptValueChanged"
+                                                           Adornment="Adornment.None"
+                                                           Disabled="Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase)"
+                                                           MinCharsToTrigger="2" MaxSuggestions="15"
+                                                           EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                                                           EnableDictionary="true"
+                                                           EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled"
+                                                           IsNegative="true" OnLoraSelected="HandleLoraSelected"
+                                                           OnStyleSelected="HandleStyleSelected" />
+                                </div>
+                                <div class="prompt-side">
+                                        <MudButton StartIcon="fa-solid fa-wand-sparkles" Color="Color.Primary" Size="Size.Small"
+                                                   OnClick="() => NegativePromptDrawer.Visible = true"
+                                                   Class="prompt-side-btn prompt-side-util-btn" Variant="Variant.Outlined">
+                                            Utilities
+                                        </MudButton>
+                                    <MudTooltip Text="Toggle autocomplete suggestions" Placement="Placement.Left">
+                                        <MudChip Icon="@(State.State.Generation.Autocomplete.IsEnabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                                 Color="@(State.State.Generation.Autocomplete.IsEnabled ? Color.Primary : Color.Default)"
+                                                 Variant="@(State.State.Generation.Autocomplete.IsEnabled ? Variant.Outlined : Variant.Text)"
+                                                 Size="Size.Small" Class="prompt-side-chip"
+                                                 OnClick="@(() => HandleAutocompleteChanged(!State.State.Generation.Autocomplete.IsEnabled))">
+                                            Autocomplete
+                                        </MudChip>
+                                    </MudTooltip>
+                                    <MudTooltip Text="Toggle fuzzy subsequence matching" Placement="Placement.Left">
+                                        <MudChip Icon="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                                 Color="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Color.Primary : Color.Default)"
+                                                 Variant="Variant.Outlined"
+                                                 Size="Size.Small" Class="prompt-side-chip"
+                                                 Disabled="!State.State.Generation.Autocomplete.IsEnabled"
+                                                 OnClick="@(() => HandleFuzzySearchChanged(!State.State.Generation.Autocomplete.EnableFuzzySearch))">
+                                            Fuzzy Search
+                                        </MudChip>
+                                    </MudTooltip>
+                                </div>
+                            </div>
+                        </MudTabPanel>
+                        @* Styles tab: search + inline apply button, then a checkable list. *@
+                        <MudTabPanel Text="@GetStylesTabLabel()">
+                            <div class="styles-panel">
+                                <div class="styles-search-row">
+                                    <MudTextField @bind-Value="_stylesSearchText"
+                                                  Placeholder="Search styles..." Immediate="true"
+                                                  Variant="Variant.Text" Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  Clearable="true" Class="styles-search" />
+                                    @if (State.State.Generation.Styles != null && State.State.Generation.Styles.Any())
+                                    {
+                                        <MudTooltip Delay="800" Duration="400"
+                                                    Text="Write selected styles to the prompts and clear the list."
+                                                    Placement="Placement.Top">
+                                            <MudIconButton Icon="fa-solid fa-pencil" Size="Size.Small"
+                                                           Color="Color.Info" OnClick="WritePrompts" />
+                                        </MudTooltip>
+                                    }
+                                </div>
+                                <div class="styles-list">
+                                    @foreach (var style in GetFilteredStyles())
+                                    {
+                                        var isSelected = IsStyleSelected(style);
+                                        <div class="style-row @(isSelected ? "selected" : "")"
+                                             @onclick="() => ToggleStyle(style)">
+                                            <MudCheckBox T="bool" Value="isSelected" Dense="true"
+                                                         Size="Size.Small" ReadOnly="true" />
+                                            <span class="style-name">@style.Name</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </MudTabPanel>
+                    </MudTabs>
+
+                    @if (State.State.Generation.Styles != null && State.State.Generation.Styles.Any())
+                    {
+                        <MudChipSet Class="applied-styles-chips" AllClosable="true"
+                                    OnClose="HandleAppliedChipClosed">
                             @foreach (var style in State.State.Generation.Styles)
                             {
-                                <MudChip Color="Color.Primary">@style.Name</MudChip>
+                                <MudChip Variant="Variant.Outlined" Color="Color.Primary"
+                                         Size="Size.Small" Value="@style">@style.Name</MudChip>
                             }
-                        }
-                    </MudChipSet>
-                    <MudStack Row=true>
-                        <MudSelect Label="Styles" Text="" SelectedValues="State.State.Generation.Styles"
-                                   SelectedValuesChanged=HandleStylesSelectionChanged T="PromptStyle"
-                                   AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="600"
-                                   AdornmentIcon="fa-solid fa-delete-left"
-                                   OnAdornmentClick="() => HandleStylesSelectionChanged(new List<PromptStyle>())"
-                                   Adornment="Adornment.End" MultiSelection>
-                            @if (_availableStyles != null)
-                            {
-                                @foreach (var style in _availableStyles)
-                                {
-                                    if (!(string.IsNullOrWhiteSpace(style.Prompt) &&
-                            string.IsNullOrWhiteSpace(style.NegativePrompt)))
-                                    {
-                                        <MudSelectItem Value=style T="PromptStyle">@style.Name</MudSelectItem>
-                                    }
-                                }
-                            }
-                        </MudSelect>
-                        <MudTooltip Delay="1600" Duration="600"
-                                    Text="Write selected styles to the prompts and clear the list." Placement="Placement.Start">
-                            <MudIconButton Icon="fa-solid fa-pencil" OnClick="WritePrompts" />
-                        </MudTooltip>
-                    </MudStack>
-                    <MudStack Spacing="2">
-                        <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate"
-                                        OnClearQueue="OnClearQueue" OnInterrupt="OnInterrupt"
-                                        IsDisabled="ButtonDisabled" />
-                        <div class="gen-btn-schedule-wrap">
-                            <MudTooltip Text="Capture current parameters as a new Scheduler job">
-                                <MudButton StartIcon="@Icons.Material.Outlined.EventNote" Variant="Variant.Outlined"
-                                           Color="Color.Info" OnClick="ScheduleCurrent" FullWidth="true" Size="Size.Small"
-                                           Class="gen-btn-schedule">
-                                    Schedule
-                                </MudButton>
-                            </MudTooltip>
-                        </div>
-                    </MudStack>
+                        </MudChipSet>
+                    }
                 </MudStack>
-            </MudItem>
-        </MudGrid>
+
+        @* Sticky split Generate button that overlaps the paper's bottom edge
+           for a distinctive focal point. Padding-bottom is added to the paper
+           so neither the styles row above nor the button itself cover content. *@
+        <div class="gen-btn-sticky">
+            <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate"
+                            OnClearQueue="OnClearQueue" OnInterrupt="OnInterrupt"
+                            IsDisabled="ButtonDisabled" />
+        </div>
     </MudPaper>
 </div>
 
@@ -204,12 +265,12 @@
     #endregion
     
     #region Private Fields
-    
-    private int _promptLines = 6;
-    private int _negativePromptLines = 4;
+
+    private int _activePromptTab = 0;
     private bool _isConverging = false;
     private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux, ModelBase.Qwen };
     private List<PromptStyle>? _availableStyles;
+    private string _stylesSearchText = string.Empty;
     private PromptButton? _buttonTags;
     private ElementReference _containerRef;
     private GenerateButton? _generateButtonRef;
@@ -454,7 +515,7 @@ true
     #endregion
     
     #region Keyboard Shortcuts
-    
+
     [JSInvokable]
     public async Task HandleCtrlEnter()
     {
@@ -463,7 +524,127 @@ true
             _generateButtonRef.Generate();
         }
     }
-    
+
+    /// <summary>
+    /// Cycles between prompt tabs. direction = 1 (next) or -1 (previous).
+    /// Invoked from JS on Ctrl+Tab / Ctrl+Shift+Tab.
+    /// </summary>
+    [JSInvokable]
+    public Task HandleTabSwitch(int direction)
+    {
+        const int tabCount = 3;
+        _activePromptTab = ((_activePromptTab + direction) % tabCount + tabCount) % tabCount;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Jumps to a specific prompt tab index. Invoked from JS on Alt+1 / Alt+2 / Alt+3.
+    /// </summary>
+    [JSInvokable]
+    public Task HandleTabSelect(int index)
+    {
+        if (index >= 0 && index <= 2)
+        {
+            _activePromptTab = index;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Builds the positive-prompt tab label, appending a bullet indicator when the
+    /// field has content so users can see populated state across both tabs at a glance.
+    /// </summary>
+    private string GetPromptTabLabel()
+        => string.IsNullOrWhiteSpace(Prompt) ? "Prompt" : "Prompt \u2022";
+
+    private string GetNegativePromptTabLabel()
+        => string.IsNullOrWhiteSpace(NegativePrompt) ? "Negative" : "Negative \u2022";
+
+    /// <summary>
+    /// Builds the styles tab label, appending the selected count when non-zero.
+    /// </summary>
+    private string GetStylesTabLabel()
+    {
+        var count = State.State?.Generation?.Styles?.Count() ?? 0;
+        return count > 0 ? $"Styles ({count})" : "Styles";
+    }
+
+    /// <summary>
+    /// Maps the active tab index to a CSS accent class used to tint the slider,
+    /// the active tab label, and the textarea underline below it.
+    /// </summary>
+    private string GetActiveTabAccent() => _activePromptTab switch
+    {
+        0 => "positive",
+        1 => "negative",
+        2 => "styles",
+        _ => "positive"
+    };
+
+    #endregion
+
+    #region Styles Tab
+
+    /// <summary>
+    /// Returns the filtered list of available styles based on the search text.
+    /// Empty-prompt styles are skipped. Matching is case-insensitive on the Name.
+    /// </summary>
+    private IEnumerable<PromptStyle> GetFilteredStyles()
+    {
+        if (_availableStyles == null) return Enumerable.Empty<PromptStyle>();
+
+        var query = _availableStyles
+            .Where(s => !(string.IsNullOrWhiteSpace(s.Prompt) && string.IsNullOrWhiteSpace(s.NegativePrompt)));
+
+        if (!string.IsNullOrWhiteSpace(_stylesSearchText))
+        {
+            var needle = _stylesSearchText.Trim();
+            query = query.Where(s => s.Name != null
+                && s.Name.Contains(needle, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return query.OrderBy(s => s.Name);
+    }
+
+    private bool IsStyleSelected(PromptStyle style)
+        => State.State?.Generation?.Styles?.Any(s => s.Name == style.Name) ?? false;
+
+    /// <summary>
+    /// Toggles a style in the selected set. Called from the styles tab checkbox rows.
+    /// </summary>
+    private async Task ToggleStyle(PromptStyle style)
+    {
+        var current = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        var existing = current.FirstOrDefault(s => s.Name == style.Name);
+        if (existing != null)
+        {
+            current.Remove(existing);
+        }
+        else
+        {
+            current.Add(style);
+        }
+        await HandleStylesSelectionChanged(current);
+    }
+
+    /// <summary>
+    /// Handles the close-button click on an individual applied-styles chip.
+    /// MudChipSet invokes this with the chip's Value so we can remove it.
+    /// </summary>
+    private async Task HandleAppliedChipClosed(MudChip chip)
+    {
+        if (chip?.Value is not PromptStyle style) return;
+        var current = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        var existing = current.FirstOrDefault(s => s.Name == style.Name);
+        if (existing != null)
+        {
+            current.Remove(existing);
+            await HandleStylesSelectionChanged(current);
+        }
+    }
+
     #endregion
     
     #region Dispose

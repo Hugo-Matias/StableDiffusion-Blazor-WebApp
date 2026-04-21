@@ -279,6 +279,70 @@ body:has(.image-editor-overlay) .mud-menu-popover {
 }
 
 /* Add a subtle border on hover to show token boundaries */
+
+/* ==================================================================
+   Flush generation panels
+   ------------------------------------------------------------------
+   The Generate page uses MudPaper / MudExpansionPanel for the LoRAs
+   and optional feature sections. By default these render as raised
+   surface-colored cards which visually disconnect them from the
+   surrounding parameter column. The rules below render them flush
+   with the page background and use a thin bottom divider as the
+   only affordance that they are expandable sections.
+
+   These are global rules (rather than scoped ::deep) so they apply
+   reliably regardless of how MudBlazor renders its internal DOM.
+   ================================================================== */
+
+.feature-section-flush.mud-paper {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid var(--mud-palette-divider) !important;
+}
+
+.feature-section-flush .feature-section-header {
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+}
+
+.feature-section-flush .feature-section-header:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+/* LoRAs expansion panels - same flush treatment. Targets both the
+   container and each panel so there is no residual card background. */
+.loras-panels-flush .mud-expansion-panels,
+.loras-panels-flush .mud-expand-panel,
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-header,
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-content,
+.loras-panels-flush .mud-expand-panel .mud-collapse-container {
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
+.loras-panels-flush .mud-expand-panel {
+    box-shadow: none !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--mud-palette-divider) !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+}
+
+.loras-panels-flush .mud-expand-panel + .mud-expand-panel {
+    margin-top: 0 !important;
+}
+
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-header {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-content {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
 .token-item:hover::before {
     content: '';
     position: absolute;

@@ -271,6 +271,16 @@
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public string Label { get; set; } = "Prompt";
     [Parameter] public int Lines { get; set; } = 4;
+    /// <summary>
+    /// When true, the textarea grows automatically as content is entered, up to <see cref="MaxLines"/>.
+    /// Uses a custom JS observer (see Input.js initializeAutoGrow) rather than MudBlazor's AutoGrow,
+    /// which has timing issues with deferred-mount containers like MudTabs.
+    /// </summary>
+    [Parameter] public bool AutoGrow { get; set; } = false;
+    /// <summary>
+    /// Maximum number of lines the textarea can grow to before scrolling. 0 = no cap.
+    /// </summary>
+    [Parameter] public int MaxLines { get; set; } = 0;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public Adornment Adornment { get; set; } = Adornment.End;
     [Parameter] public string AdornmentIcon { get; set; } = "";
@@ -661,13 +671,32 @@
         {
             try
             {
-                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Input.js");
+#if DEBUG
+                // Bust the browser's ES module cache during development so edits to
+                // Input.js are picked up on the next circuit without a hard refresh.
+                // The cache-buster is stripped from Release builds.
+                var modulePath = $"./js/Input.js?v={DateTime.UtcNow.Ticks}";
+#else
+                var modulePath = "./js/Input.js";
+#endif
+                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", modulePath);
                 await _jsModule.InvokeVoidAsync("initializeAutocomplete", _wrapperRef, _dotNetRef);
+                if (AutoGrow)
+                {
+                    await _jsModule.InvokeVoidAsync("initializeAutoGrow", _wrapperRef, MaxLines);
+                }
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error initializing autocomplete");
             }
+        }
+        else if (AutoGrow && _jsModule != null)
+        {
+            // Re-measure after non-first renders (e.g. when Value is updated externally
+            // - style presets written, parameters restored on workflow switch, etc.).
+            try { await _jsModule.InvokeVoidAsync("resizeAutoGrow", _wrapperRef); }
+            catch { /* module may be disposed during teardown */ }
         }
     }
 

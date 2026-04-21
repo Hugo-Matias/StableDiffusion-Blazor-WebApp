@@ -8,8 +8,9 @@
     - Deactivating: Automatically collapses the section
 *@
 
-<MudPaper Elevation="1" Class="mb-3">
-    <div class="d-flex align-items-center pa-2" 
+<MudPaper Elevation="0" Class="mb-3 feature-section-flush"
+          Style="background-color: transparent; background-image: none; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--mud-palette-divider);">
+    <div class="d-flex align-items-center pa-2 feature-section-header" 
          style="@($"cursor: {(_localIsActive ? "pointer" : "default")};")">
         <MudSwitch T="bool" 
                    @bind-Checked="_localIsActive"
