@@ -97,11 +97,11 @@ namespace BlazorWebApp.Services
         }
 
         public async Task SetSDModel(string modelTitle) => await SetCurrentModel(modelTitle);
-        public string? GetCurrentVae(ModeType? mode = null) => GetWorkflowAsset("Vae", mode);
+        public string? GetCurrentVae(ModeType? mode = null) => GetWorkflowAsset("Vae");
 
         public async Task SetCurrentVae(string vae, ModeType? mode = null)
         {
-            SetWorkflowAsset("Vae", vae, mode);
+            SetWorkflowAsset("Vae", vae);
             await SaveState();
         }
 
@@ -161,7 +161,7 @@ namespace BlazorWebApp.Services
                 "RefreshFromDisk"));
         }
 
-        public void SetCurrentWorkflow(Guid workflowId, ModeType? mode = null)
+        public void SetCurrentWorkflow(Guid workflowId)
         {
             var workflow = GetWorkflowById(workflowId);
             if (workflow == null) return;
@@ -173,7 +173,7 @@ namespace BlazorWebApp.Services
             _events.Publish(new WorkflowChangedEventArgs(workflowId, "Set"));
         }
 
-        public async Task<bool> SetCurrentWorkflowAsync(Guid workflowId, IAssetResolverService assetResolver, ModeType? mode = null)
+        public async Task<bool> SetCurrentWorkflowAsync(Guid workflowId, IAssetResolverService assetResolver)
         {
             var workflow = GetWorkflowById(workflowId);
             if (workflow == null) return false;
@@ -188,7 +188,7 @@ namespace BlazorWebApp.Services
             bool assetsInitialized = true;
             if (workflow.Assets != null && workflow.Assets.Count > 0)
             {
-                var assets = GetOrCreateWorkflowAssetsForMode(mode);
+                var assets = GetOrCreateWorkflowAssets();
                 assetsInitialized = await assetResolver.InitializeWorkflowAssets(workflow, assets);
             }
 
@@ -202,7 +202,7 @@ namespace BlazorWebApp.Services
         public void SetWorkflowBase(ModelBase workflowBase)
         {
             _state.SetWorkflowBase(workflowBase);
-            
+
             // After setting base, ensure we have a valid workflow ID selected
             // SetWorkflowBase in StateService now updates CurrentWorkflowId, so we just need to sync
             var currentId = _state.State.Generation.CurrentWorkflowId;
@@ -210,9 +210,15 @@ namespace BlazorWebApp.Services
             {
                 _events.Publish(new WorkflowChangedEventArgs(currentId.Value, "SetBase"));
             }
-            
+
             _events.Publish(new StateChangedEventArgs());
-            SetDefaultBaseModel();
+
+            // NOTE: Do NOT call SetDefaultBaseModel() here. It would mutate
+            // GenerationParameters.Assets["Model"] directly while the downstream
+            // InitializeFromWorkflowAsync (invoked by Generate.OnStateChanged) is
+            // racing to save the previous workflow's state and restore the new one,
+            // corrupting both. Asset defaults are owned by InitializeFromWorkflowAsync
+            // via the workflow's metadata, so nothing needs to be written here.
         }
 
         public void ResetCurrentWorkflow()
@@ -220,8 +226,7 @@ namespace BlazorWebApp.Services
             _state.State.Generation.CurrentWorkflowId = null;
             _state.State.Generation.WorkflowBase = default;
 
-            foreach (var mode in new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras })
-                GetOrCreateWorkflowAssetsForMode(mode).Clear();
+            GetOrCreateWorkflowAssets().Clear();
 
             _events.Publish(new WorkflowChangedEventArgs(Guid.Empty, "Reset"));
         }
@@ -247,9 +252,8 @@ namespace BlazorWebApp.Services
 
         #region Workflow Assets
 
-        public string? GetWorkflowAsset(string parameter, ModeType? mode = null)
+        public string? GetWorkflowAsset(string parameter)
         {
-            // Use GenerationParameters.Assets (unified model)
             if (_state.GenerationParameters?.Assets?.TryGetValue(parameter, out var value) == true)
             {
                 if (!string.IsNullOrWhiteSpace(value))
@@ -258,21 +262,18 @@ namespace BlazorWebApp.Services
             return null;
         }
 
-        public void SetWorkflowAsset(string parameter, string value, ModeType? mode = null)
+        public void SetWorkflowAsset(string parameter, string value)
         {
-            // Update GenerationParameters.Assets (unified model)
             _state.GenerationParameters.Assets[parameter] = value;
         }
 
-        public Dictionary<string, string>? GetWorkflowAssetsForMode(ModeType? mode)
+        public Dictionary<string, string>? GetWorkflowAssets()
         {
-            // Return GenerationParameters.Assets (unified model)
             return _state.GenerationParameters?.Assets;
         }
 
-        private Dictionary<string, string> GetOrCreateWorkflowAssetsForMode(ModeType? mode)
+        private Dictionary<string, string> GetOrCreateWorkflowAssets()
         {
-            // Return GenerationParameters.Assets (unified model)
             return _state.GenerationParameters.Assets;
         }
 

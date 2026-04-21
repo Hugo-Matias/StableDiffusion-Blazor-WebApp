@@ -142,17 +142,27 @@ else if (ShowEmptyMessage)
             // Preload options for all asset types
             await AssetResolver.PreloadAssetOptions(workflow);
 
-            // Get cached options for each asset type (filtered by workflow compatibility)
+            // Get cached options for each asset type (filtered by workflow compatibility).
+            // Pass in the currently-selected values for this asset type so that a selection
+            // the user made is preserved even when resource filters would otherwise hide it.
             _assetOptions.Clear();
+            var currentAssetsSnapshot = M.GetWorkflowAssets();
             var assetTypes = _workflowAssets.Select(a => a.Type).Distinct();
             foreach (var assetType in assetTypes)
             {
-                var options = await AssetResolver.GetFilteredAssetOptions(assetType, workflow);
+                var selectedForType = _workflowAssets
+                    .Where(a => a.Type == assetType)
+                    .Select(a => currentAssetsSnapshot?.GetValueOrDefault(a.Parameter))
+                    .Where(v => !string.IsNullOrWhiteSpace(v))
+                    .Select(v => v!)
+                    .ToList();
+
+                var options = await AssetResolver.GetFilteredAssetOptions(assetType, workflow, selectedForType);
                 _assetOptions[assetType] = options;
             }
 
             // Initialize asset values if not already set
-            var currentAssets = M.GetWorkflowAssetsForMode(Mode);
+            var currentAssets = M.GetWorkflowAssets();
             foreach (var asset in _workflowAssets)
             {
                 var currentValue = currentAssets?.GetValueOrDefault(asset.Parameter);
@@ -161,7 +171,7 @@ else if (ShowEmptyMessage)
                     var (resolvedValue, _) = await AssetResolver.ResolveAssetValue(asset, currentValue);
                     if (!string.IsNullOrWhiteSpace(resolvedValue))
                     {
-                        M.SetWorkflowAsset(asset.Parameter, resolvedValue, Mode);
+                        M.SetWorkflowAsset(asset.Parameter, resolvedValue);
                     }
                 }
             }
@@ -179,12 +189,12 @@ else if (ShowEmptyMessage)
 
     private string GetAssetValue(string parameter)
     {
-        return M.GetWorkflowAsset(parameter, Mode) ?? "";
+        return M.GetWorkflowAsset(parameter) ?? "";
     }
 
     private async Task HandleAssetChanged(string parameter, string value)
     {
-        M.SetWorkflowAsset(parameter, value, Mode);
+        M.SetWorkflowAsset(parameter, value);
         
         if (OnAssetChanged.HasDelegate)
         {

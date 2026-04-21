@@ -204,10 +204,30 @@ namespace BlazorWebApp.Services
         {
             if (workflow?.Assets == null || workflow.Assets.Count == 0)
             {
-                return true; // Nothing to initialize
+                // Nothing is declared by this workflow. Drop any stale keys so
+                // callers don't keep showing asset values from a previous workflow.
+                workflowAssets?.Clear();
+                return true;
             }
 
             var allSuccessful = true;
+
+            // Prune keys not declared by the new workflow before resolving.
+            // Asset parameter names are shared across workflows by design (e.g. "Model"),
+            // so a value written by a different workflow would otherwise be reused as
+            // the "current value" input to ResolveAssetValue and leak across switches.
+            var declaredKeys = new HashSet<string>(
+                workflow.Assets.Select(a => a.Parameter),
+                StringComparer.Ordinal);
+            var staleKeys = workflowAssets.Keys
+                .Where(k => !declaredKeys.Contains(k))
+                .ToList();
+            foreach (var key in staleKeys)
+            {
+                workflowAssets.Remove(key);
+                _logger.LogDebug("Pruned stale asset '{AssetName}' not declared by workflow '{WorkflowTitle}'",
+                    key, workflow.Title);
+            }
 
             foreach (var asset in workflow.Assets.OrderBy(a => a.Order))
             {
@@ -262,7 +282,7 @@ namespace BlazorWebApp.Services
         }
 
         /// <inheritdoc/>
-        public async Task<List<string>> GetFilteredAssetOptions(AssetType assetType, Workflow workflow)
+        public async Task<List<string>> GetFilteredAssetOptions(AssetType assetType, Workflow workflow, IEnumerable<string>? alwaysInclude = null)
         {
             var options = await GetCachedAssetOptions(assetType);
 
@@ -311,6 +331,28 @@ namespace BlazorWebApp.Services
                     _logger.LogDebug("Workflow compatibility filtering also returned no results for {AssetType}, returning all {Count} options",
                         assetType, options.Count);
                     return options;
+                }
+            }
+
+            // Preserve currently-selected values even if filtering would have removed them.
+            // Without this, toggling a resource filter chip can make the user's current
+            // selection silently disappear from the dropdown, which looks like "the model
+            // changed on its own" and forces a re-pick. We only re-include values that
+            // exist in the full options list (i.e. the file still exists in ComfyUI).
+            if (alwaysInclude != null)
+            {
+                var existing = new HashSet<string>(filtered, StringComparer.OrdinalIgnoreCase);
+                var sourceSet = new HashSet<string>(options, StringComparer.OrdinalIgnoreCase);
+                foreach (var value in alwaysInclude)
+                {
+                    if (string.IsNullOrWhiteSpace(value)) continue;
+                    if (existing.Contains(value)) continue;
+                    if (!sourceSet.Contains(value)) continue;
+
+                    filtered.Add(value);
+                    existing.Add(value);
+                    _logger.LogDebug("Preserved selected {AssetType} value '{Value}' in filtered options",
+                        assetType, value);
                 }
             }
 

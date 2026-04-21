@@ -422,6 +422,25 @@ namespace BlazorWebApp.Services
                         _logger.LogDebug("Added new asset '{AssetName}' from updated workflow", asset.Parameter);
                     }
                 }
+
+                // Prune any saved asset keys that the new workflow does not declare.
+                // Asset parameter names are intentionally shared across workflows
+                // (e.g. "Model"), so without pruning a value persisted by a different
+                // workflow can leak into this one (e.g. an SD checkpoint showing up
+                // on a Flux workflow that defines its own "Model" diffusion asset,
+                // or a stale key surviving when a workflow no longer defines it).
+                var declaredKeys = new HashSet<string>(
+                    workflow.Assets.Select(a => a.Parameter),
+                    StringComparer.Ordinal);
+                var staleKeys = current.Assets.Keys
+                    .Where(k => !declaredKeys.Contains(k))
+                    .ToList();
+                foreach (var key in staleKeys)
+                {
+                    current.Assets.Remove(key);
+                    _logger.LogDebug("Pruned stale asset '{AssetName}' not declared by workflow '{WorkflowTitle}'",
+                        key, workflow.Title);
+                }
             }
 
             _logger.LogDebug("Restored {FragmentCount} fragments, {AssetCount} assets from saved state",

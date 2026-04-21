@@ -105,9 +105,6 @@
     private List<ModelBase> _workflowBases = new();
     private InfoDrawer? _infoDrawer;
     private string _currentPagePath = "/";
-    
-    // Pages that should NOT redirect when Base changes (non-generation pages)
-    private static readonly string[] _safePages = { "/", "/prompts", "/resources", "/danbooru" };
 
     protected override void OnInitialized()
     {
@@ -204,16 +201,13 @@
 
     private async Task HandleWorkflowBaseSelected(ModelBase selected)
     {
-        var previousBase = State.State.Generation.WorkflowBase;
-        
         M.SetWorkflowBase(selected);
         await Models.GetWorkflowModels();
-        
-        // If base changed and user is on a generation page, redirect to Index
-        if (previousBase != selected && !IsOnSafePage())
-        {
-            NavManager.NavigateTo("/");
-        }
+
+        // No manual navigation: if we're on /generate, StateService.SetWorkflowBase
+        // publishes a StateChangedEventArgs that Generate.razor handles by calling
+        // InitializeFromWorkflowAsync on the new base's default workflow and updating
+        // the URL in place. Pages that don't listen simply stay put.
     }
 
     private void RefreshWorkflows()
@@ -221,26 +215,6 @@
         M.RefreshWorkflowsFromDisk();
         LoadWorkflowBases();
         StateHasChanged();
-    }
-
-    /// <summary>
-    /// Checks if the current page is a "safe" page that shouldn't redirect on Base change.
-    /// Safe pages: Index, Prompts, Resources, Danbooru
-    /// </summary>
-    private bool IsOnSafePage()
-    {
-        var currentPath = NavManager.ToBaseRelativePath(NavManager.Uri);
-        var normalizedPath = "/" + currentPath.ToLowerInvariant().TrimEnd('/');
-        
-        // Check exact matches first
-        if (_safePages.Any(p => normalizedPath.Equals(p, StringComparison.OrdinalIgnoreCase)))
-            return true;
-        
-        // Check prefix matches for sub-pages (e.g., /prompts/123)
-        if (_safePages.Any(p => p != "/" && normalizedPath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-            return true;
-        
-        return false;
     }
 
     private void DrawerToggler() 

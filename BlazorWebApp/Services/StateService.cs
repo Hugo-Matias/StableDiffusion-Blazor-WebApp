@@ -248,8 +248,13 @@ namespace BlazorWebApp.Services
         #region Workflow Management
 
         /// <summary>
-        /// Sets the workflow base and resets workflow assets to defaults if the base changes.
-        /// Publishes StateChangedEventArgs to notify components.
+        /// Sets the workflow base and selects the first workflow matching that base.
+        /// Publishes StateChangedEventArgs so consumers (e.g. Generate.razor) can drive
+        /// the full workflow switch via IGenerationParameterService.InitializeFromWorkflowAsync,
+        /// which owns save/restore of per-workflow parameters (including Assets).
+        /// This method intentionally does NOT mutate GenerationParameters.Assets: doing so
+        /// before InitializeFromWorkflowAsync runs would destroy the previous workflow's
+        /// state before it can be persisted.
         /// </summary>
         /// <param name="workflowBase">The new workflow base to set</param>
         public void SetWorkflowBase(ModelBase workflowBase)
@@ -257,25 +262,14 @@ namespace BlazorWebApp.Services
             var previousBase = State.Generation.WorkflowBase;
             State.Generation.WorkflowBase = workflowBase;
 
-            // If base changed, reset workflow assets to use workflow defaults
             if (previousBase != workflowBase)
             {
-                ResetWorkflowAssetsToDefaults();
-
                 // Update CurrentWorkflowId to the first workflow matching the new base
-                // This ensures the UI switches to the correct workflow and doesn't display stale assets
-                // Only update CurrentWorkflowId (UI state) here.
-                // Do NOT update GenerationParameters.WorkflowId - it must retain the previous workflow's ID
-                // so that InitializeFromWorkflowAsync can save the previous state before switching.
+                // so the UI can pick up the change. Do NOT touch GenerationParameters here -
+                // InitializeFromWorkflowAsync will save the previous workflow's state and
+                // restore (or freshly initialize) the new workflow's state.
                 var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
-                if (defaultWorkflow != null)
-                {
-                    State.Generation.CurrentWorkflowId = defaultWorkflow.Id;
-                }
-                else
-                {
-                    State.Generation.CurrentWorkflowId = null;
-                }
+                State.Generation.CurrentWorkflowId = defaultWorkflow?.Id;
             }
 
             // Publish StateChangedEventArgs for components using EventService
@@ -284,52 +278,6 @@ namespace BlazorWebApp.Services
                 ChangeType = StateChangeType.WorkflowBase,
                 NewValue = workflowBase
             });
-        }
-
-        /// <summary>
-        /// Resets all workflow assets to use the workflow template defaults.
-        /// This is called when WorkflowBase changes to ensure the correct models are loaded.
-        /// </summary>
-        private void ResetWorkflowAssetsToDefaults()
-        {
-            // Clear existing assets first
-            GenerationParameters.Assets.Clear();
-
-            // Get the new workflow for each mode and set assets to its defaults
-            var modes = new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid, ModeType.Extras };
-
-            foreach (var mode in modes)
-            {
-                var workflows = GetWorkflowsForMode(mode);
-                var workflow = workflows?.FirstOrDefault(w => w.Base == State.Generation.WorkflowBase);
-
-                if (workflow?.Assets == null || workflow.Assets.Count == 0)
-                    continue;
-
-                // Set to workflow defaults (merge, don't overwrite existing)
-                foreach (var asset in workflow.Assets)
-                {
-                    if (!string.IsNullOrWhiteSpace(asset.DefaultValue) &&
-                        !GenerationParameters.Assets.ContainsKey(asset.Parameter))
-                    {
-                        GenerationParameters.Assets[asset.Parameter] = asset.DefaultValue;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets workflows filtered by mode from the current workflows list.
-        /// </summary>
-        private List<Workflow> GetWorkflowsForMode(ModeType mode)
-        {
-            if (State?.Generation?.Workflows == null)
-                return new List<Workflow>();
-
-            return State.Generation.Workflows
-                .Where(w => w.Mode == mode)
-                .OrderBy(w => w.Title)
-                .ToList();
         }
 
         /// <summary>

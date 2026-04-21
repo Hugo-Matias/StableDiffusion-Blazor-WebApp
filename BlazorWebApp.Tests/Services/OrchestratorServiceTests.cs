@@ -372,13 +372,13 @@ public class OrchestratorServiceTests
     }
 
     [Fact]
-    public void GetWorkflowAssetsForMode_ShouldReturnGenerationParametersAssets()
+    public void GetWorkflowAssets_ShouldReturnGenerationParametersAssets()
     {
         // Arrange
         _generationParameters.Assets["Model"] = "test.safetensors";
 
         // Act
-        var result = _service.GetWorkflowAssetsForMode(ModeType.Txt2Img);
+        var result = _service.GetWorkflowAssets();
 
         // Assert
         Assert.Same(_generationParameters.Assets, result);

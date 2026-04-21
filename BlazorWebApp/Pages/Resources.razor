@@ -132,7 +132,7 @@
                     // LoRA: queue LoRA and navigate to workflow
                     QueueLoraForGenerate(file, resource.Type.Name);
                     QueueTriggerWords(wfLoraTuple.Item3);
-                    Orchestrator.SetCurrentWorkflow(wfLoraTuple.Item2.Id, wfLoraTuple.Item2.Mode);
+                    Orchestrator.SetCurrentWorkflow(wfLoraTuple.Item2.Id);
                     await DB.UpdateResourceLoadedDate(file.ResourceId);
                     NavManager.NavigateTo($"/generate/{wfLoraTuple.Item2.Id}");
                 }
@@ -140,7 +140,7 @@
                 {
                     // Checkpoint: queue asset value and navigate to workflow
                     QueueCheckpointForWorkflow(file, wfTuple.Item2);
-                    Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id, wfTuple.Item2.Mode);
+                    Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id);
                     await DB.UpdateResourceLoadedDate(file.ResourceId);
                     NavManager.NavigateTo($"/generate/{wfTuple.Item2.Id}");
                 }

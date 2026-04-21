@@ -62,11 +62,15 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Gets cached asset options filtered by the workflow's CompatibleResourceBaseModels.
         /// Falls back to unfiltered list if filtering yields no results.
+        /// Any values in <paramref name="alwaysInclude"/> that exist in the full options
+        /// list are guaranteed to be in the result, even if filtering would exclude them.
+        /// This preserves the user's current selection when filters change.
         /// </summary>
         /// <param name="assetType">The asset type to get options for</param>
         /// <param name="workflow">The workflow to filter by</param>
+        /// <param name="alwaysInclude">Values (typically currently-selected) to preserve in the output</param>
         /// <returns>Filtered (or unfiltered fallback) options</returns>
-        Task<List<string>> GetFilteredAssetOptions(AssetType assetType, Workflow workflow);
+        Task<List<string>> GetFilteredAssetOptions(AssetType assetType, Workflow workflow, IEnumerable<string>? alwaysInclude = null);
 
         /// <summary>
         /// Clears the asset options cache, forcing a reload on next access.

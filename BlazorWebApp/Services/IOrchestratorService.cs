@@ -114,12 +114,12 @@ namespace BlazorWebApp.Services
         /// <summary>
         /// Sets the current workflow by ID.
         /// </summary>
-        void SetCurrentWorkflow(Guid workflowId, ModeType? mode = null);
+        void SetCurrentWorkflow(Guid workflowId);
 
         /// <summary>
         /// Sets the current workflow asynchronously with asset initialization.
         /// </summary>
-        Task<bool> SetCurrentWorkflowAsync(Guid workflowId, IAssetResolverService assetResolver, ModeType? mode = null);
+        Task<bool> SetCurrentWorkflowAsync(Guid workflowId, IAssetResolverService assetResolver);
 
         /// <summary>
         /// Sets the workflow base model type.
@@ -141,19 +141,19 @@ namespace BlazorWebApp.Services
         #region Workflow Assets
 
         /// <summary>
-        /// Gets a workflow asset value for the specified parameter and mode.
+        /// Gets a workflow asset value for the specified parameter.
         /// </summary>
-        string? GetWorkflowAsset(string parameter, ModeType? mode = null);
+        string? GetWorkflowAsset(string parameter);
 
         /// <summary>
-        /// Sets a workflow asset value for the specified parameter and mode.
+        /// Sets a workflow asset value for the specified parameter.
         /// </summary>
-        void SetWorkflowAsset(string parameter, string value, ModeType? mode = null);
+        void SetWorkflowAsset(string parameter, string value);
 
         /// <summary>
-        /// Gets the workflow assets dictionary for the specified mode.
+        /// Gets the current workflow's assets dictionary (shared across modes).
         /// </summary>
-        Dictionary<string, string>? GetWorkflowAssetsForMode(ModeType? mode);
+        Dictionary<string, string>? GetWorkflowAssets();
 
         /// <summary>
         /// Gets the assets defined in the current workflow.

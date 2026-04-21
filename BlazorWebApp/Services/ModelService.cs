@@ -148,7 +148,7 @@ namespace BlazorWebApp.Services
 
             // Set model using WorkflowAssets
             var modelKey = mode == ModeType.Img2Vid ? "HighModel" : "Model";
-            SetWorkflowAsset(modelKey, modelTitle, mode);
+            SetWorkflowAsset(modelKey, modelTitle);
 
             PublishModelChanged();
             await _state.SaveState();
@@ -159,7 +159,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         public async Task SetCurrentVae(string vae, ModeType? mode = null)
         {
-            SetWorkflowAsset("Vae", vae, mode);
+            SetWorkflowAsset("Vae", vae);
             await _state.SaveState();
         }
 
@@ -171,7 +171,7 @@ namespace BlazorWebApp.Services
         public string GetCurrentModel(ModeType? mode = null)
         {
             var modelKey = mode == ModeType.Img2Vid ? "HighModel" : "Model";
-            var value = GetWorkflowAsset(modelKey, mode);
+            var value = GetWorkflowAsset(modelKey);
             return !string.IsNullOrWhiteSpace(value) ? value : "Loading...";
         }
 
@@ -180,7 +180,7 @@ namespace BlazorWebApp.Services
         /// </summary>
         public string? GetCurrentVae(ModeType? mode = null)
         {
-            return GetWorkflowAsset("Vae", mode);
+            return GetWorkflowAsset("Vae");
         }
 
         /// <summary>
@@ -238,21 +238,19 @@ namespace BlazorWebApp.Services
             return _state.State.Generation.Workflows.FirstOrDefault();
         }
 
-        private string? GetWorkflowAsset(string parameter, ModeType? mode)
+        private string? GetWorkflowAsset(string parameter)
         {
-            // Use GenerationParameters.Assets (unified model)
             if (_state.GenerationParameters?.Assets?.TryGetValue(parameter, out var genParamValue) == true)
             {
                 if (!string.IsNullOrWhiteSpace(genParamValue))
                     return genParamValue;
             }
-            
+
             return null;
         }
 
-        private void SetWorkflowAsset(string parameter, string value, ModeType? mode)
+        private void SetWorkflowAsset(string parameter, string value)
         {
-            // Update GenerationParameters.Assets (unified model)
             _state.GenerationParameters.Assets[parameter] = value;
         }
 
