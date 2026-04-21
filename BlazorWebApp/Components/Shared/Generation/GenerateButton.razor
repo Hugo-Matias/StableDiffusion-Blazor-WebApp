@@ -1,49 +1,94 @@
 ﻿@using BlazorWebApp.Events
 @inject IStateService State
 @inject IEventService Events
+@inject IProgressService Progress
 @implements IDisposable
 
-<EditForm Model="_dummyModel" OnSubmit="@Generate" class="d-flex flex-column justify-content-center">
-    <MudStack Class="d-flex flex-column justify-content-center align-items-center w-100 h-100">
-        @if (!_isConverging)
-        {
-            <MudButton Variant="Variant.Filled" Color=Color.Success ButtonType="ButtonType.Submit" StartIcon="fa-solid fa-circle-half-stroke" Disabled="@IsDisabled" FullWidth>Generate</MudButton>
-        }
-        else
-        {
-            <MudButtonGroup Variant=Variant.Filled Color=Color.Primary OverrideStyles=false Class="w-100">
-                <MudButton OnClick=@(() => OnSkip.InvokeAsync()) Variant=Variant.Filled Color=Color.Warning StartIcon="fa-solid fa-forward" ButtonType="ButtonType.Button" Class="w-100" FullWidth>Skip</MudButton>
-            <MudButton OnClick=@(() => OnInterrupt.InvokeAsync()) Variant=Variant.Filled Color=Color.Error StartIcon="fa-solid fa-ban" ButtonType="ButtonType.Button" FullWidth>Interrupt</MudButton>
-        </MudButtonGroup>
-        }
-    </MudStack>
+<EditForm Model="_dummyModel" OnSubmit="@Generate" class="gen-btn-form">
+    @{
+        // Triple-state logic:
+        //   Idle           -> single [Generate]
+        //   Running (q<=1) -> split [Queue | Cancel]
+        //   Running + q>1  -> split [Queue | Cancel | Clear]
+        var hasQueue = _queueRemaining > 1;
+        var running = _isConverging || _queueRemaining > 0;
+    }
+
+    @if (!running)
+    {
+        <button type="submit" class="gen-btn gen-btn--generate" disabled="@IsDisabled">
+            <i class="fa-solid fa-circle-half-stroke"></i>
+            <span>Generate</span>
+        </button>
+    }
+    else
+    {
+        <div class="gen-btn-group @(hasQueue ? "gen-btn-group--triple" : "gen-btn-group--double")">
+            <button type="submit" class="gen-btn gen-btn--queue" title="Queue another prompt">
+                <i class="fa-solid fa-plus"></i>
+                <span>Queue</span>
+            </button>
+            <button type="button" class="gen-btn gen-btn--cancel" @onclick="HandleCancel"
+                    title="Interrupt the currently running prompt">
+                <i class="fa-solid fa-ban"></i>
+                <span>Cancel</span>
+            </button>
+            @if (hasQueue)
+            {
+                <button type="button" class="gen-btn gen-btn--clear" @onclick="HandleClearQueue"
+                        title="Clear remaining queued prompts">
+                    <i class="fa-solid fa-broom"></i>
+                    <span>Clear</span>
+                    <span class="gen-btn__badge">@(_queueRemaining - 1)</span>
+                </button>
+            }
+        </div>
+    }
 </EditForm>
 
 @code {
     /// <summary>
-    /// Called when generate is clicked.
+    /// Called when the main Generate / Queue action is clicked.
+    /// Both buttons submit the current parameters; ComfyUI handles queuing natively.
     /// </summary>
     [Parameter] public EventCallback OnGenerateClicked { get; set; }
-    
-    [Parameter] public EventCallback OnSkip { get; set; }
-    [Parameter] public EventCallback OnInterrupt { get; set; }
-    
+
     /// <summary>
-    /// Whether the button is disabled.
+    /// Called when the user cancels the currently running prompt (/interrupt).
+    /// </summary>
+    [Parameter] public EventCallback OnInterrupt { get; set; }
+
+    /// <summary>
+    /// Called when the user clears the remaining queue (/queue {clear:true}).
+    /// </summary>
+    [Parameter] public EventCallback OnClearQueue { get; set; }
+
+    /// <summary>
+    /// Whether the submit button is disabled (e.g. backend unavailable).
     /// </summary>
     [Parameter] public bool IsDisabled { get; set; }
 
-    private bool _isConverging = false;
-    private object _dummyModel = new();
+    private bool _isConverging;
+    private int _queueRemaining;
+    private readonly object _dummyModel = new();
 
     protected override void OnInitialized()
     {
+        _isConverging = Progress.IsConverging;
+        _queueRemaining = Progress.QueueRemaining;
         Events.Subscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+        Events.Subscribe<QueueChangedEventArgs>(OnQueueChanged);
     }
 
     private void OnConvergingChanged(ConvergingChangedEventArgs args)
     {
         _isConverging = args.IsConverging;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnQueueChanged(QueueChangedEventArgs args)
+    {
+        _queueRemaining = args.QueueRemaining;
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -53,12 +98,17 @@
         {
             await OnGenerateClicked.InvokeAsync();
         }
-        
+
         await State.SaveState();
     }
+
+    private Task HandleCancel() => OnInterrupt.InvokeAsync();
+    private Task HandleClearQueue() => OnClearQueue.InvokeAsync();
 
     public void Dispose()
     {
         Events.Unsubscribe<ConvergingChangedEventArgs>(OnConvergingChanged);
+        Events.Unsubscribe<QueueChangedEventArgs>(OnQueueChanged);
     }
 }
+

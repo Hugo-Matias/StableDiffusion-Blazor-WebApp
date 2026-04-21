@@ -59,37 +59,50 @@
             @if (Session.SessionGeneratedVideos.Videos.Count > 0)
             {
                 <div class="gallery-toolbar">
-                    <MudButton OnClick="() => OpenSessionViewer(0)" 
-                               StartIcon="fa-solid fa-window-maximize" 
+                    <MudButton OnClick="() => OpenSessionViewer(0)"
+                               StartIcon="fa-solid fa-window-maximize"
                                Color="Color.Secondary"
                                Size="Size.Small">
                         Fullscreen
                     </MudButton>
                     @if (Gallery.SelectedImageIds.Count > 0)
                     {
-                        <MudButton OnClick="Gallery.ClearSelectedImages" 
-                                   StartIcon="fa-regular fa-square" 
+                        <MudButton OnClick="Gallery.ClearSelectedImages"
+                                   StartIcon="fa-regular fa-square"
                                    Color="Color.Warning"
-                                   Size="Size.Small">Clear</MudButton>
+                                   Size="Size.Small">Clear (@Gallery.SelectedImageIds.Count)</MudButton>
                     }
-                    <MudButton OnClick="ClearGallery" 
-                               StartIcon="fa-solid fa-trash-can" 
+                    @if (_galleryPageCount > 1)
+                    {
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_galleryPageCount"
+                                       Selected="_galleryPage"
+                                       SelectedChanged="HandleGalleryPageChanged"
+                                       Size="Size.Small" />
+                    }
+                    <MudNumericField T="int" Value="State.State.Generation.ResultsPageSize"
+                                     ValueChanged="HandleGalleryPageSizeChanged"
+                                     Label="Page size" Min="1" Max="200" Step="1"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Class="page-size-field" />
+                    <MudButton OnClick="HandleClearGallery"
+                               StartIcon="fa-solid fa-trash-can"
                                Color="Color.Error"
-                               Size="Size.Small">
-                        Clear All (@Session.SessionGeneratedVideos.Videos.Count)
+                               Size="Size.Small"
+                               Variant="Variant.Text">
+                        Clear
                     </MudButton>
                 </div>
             }
-            
+
             @* Video Grid *@
             <div class="video-gallery">
-                @if (Session.SessionGeneratedVideos.Videos.Count > 0)
+                @if (_galleryVideos.Count > 0)
                 {
                     <MudGrid Spacing="2" Justify="Justify.Center">
-                        @for (int i = 0; i < Session.SessionGeneratedVideos.Videos.Count; i++)
+                        @for (int i = 0; i < _galleryVideos.Count; i++)
                         {
-                            var index = i;
-                            var video = Session.SessionGeneratedVideos.Videos[i];
+                            var index = (_galleryPage - 1) * State.State.Generation.ResultsPageSize + i;
+                            var video = _galleryVideos[i];
                             <MudItem xs="12" sm="6" md="4" lg="3">
                                 <VideoCard Video="@video"
                                            Index="@index"
@@ -101,6 +114,15 @@
                             </MudItem>
                         }
                     </MudGrid>
+
+                    @if (_galleryPageCount > 1)
+                    {
+                        <div class="pagination-bottom" style="display: flex; justify-content: center; margin-top: 1rem;">
+                            <MudPagination BoundaryCount="2" MiddleCount="5" Count="_galleryPageCount"
+                                           Selected="_galleryPage"
+                                           SelectedChanged="HandleGalleryPageChanged" />
+                        </div>
+                    }
                 }
                 else
                 {
@@ -364,10 +386,15 @@
     [Parameter] public GeneratedVideos GeneratedVideos { get; set; }
 
     private GeneratedVideo _currentVideo;
-    
+
     // Session viewer state (for generated videos not yet in database)
     private bool _showSessionViewer;
     private int _sessionViewerIndex;
+
+    // Gallery tab pagination state (session-wide accumulator view)
+    private int _galleryPage = 1;
+    private int _galleryPageCount = 1;
+    private List<GeneratedVideo> _galleryVideos = new();
     
     // Selected tab state
     private ImagesDto _selectedImages;
@@ -389,13 +416,15 @@
         Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
         Events.Subscribe<ImageSelectionChangedEventArgs>(OnSelectedImagesChanged);
         Events.Subscribe<SessionVideosChangedEventArgs>(OnSessionVideosChanged);
-        
+
         // Set current video from session if available
         if (Session.SessionGeneratedVideos.Videos.Count > 0)
         {
             _currentVideo = Session.SessionGeneratedVideos.Videos.First();
         }
-        
+
+        RebuildGalleryView();
+
         // Load selected items
         await LoadSelectedPage(1);
     }
@@ -429,6 +458,7 @@
         {
             _currentVideo = Session.SessionGeneratedVideos.Videos.First();
         }
+        RebuildGalleryView();
         InvokeAsync(StateHasChanged);
     }
 
@@ -590,23 +620,62 @@
         }
     }
 
-    private async Task ClearGallery()
+    /// <summary>
+    /// Clears the session-wide video gallery without a confirmation dialog, to
+    /// mirror the Images Results tab behaviour. Only removes videos from the
+    /// in-memory session list - files on disk are untouched.
+    /// </summary>
+    private void HandleClearGallery()
     {
-        var parameters = new DialogParameters();
-        parameters.Add("OkButtonText", "Yes");
-        parameters.Add("CancelButtonText", "No");
-        parameters.Add("OkButtonColor", Color.Error);
-        parameters.Add("Content", new MarkupString(@"<span>Are you sure you want to clear all videos from the session gallery?</span><br/><small>This only removes them from gallery view, not from disk.</small>"));
-        
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Clear Gallery", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
-        var result = await dialog.Result;
-        
-        if (!result.Canceled)
+        Session.ClearSessionVideos();
+        _currentVideo = null;
+        _galleryPage = 1;
+        // RebuildGalleryView will be driven by the SessionVideosChanged event,
+        // but call it locally for an immediate UI flip to the empty state.
+        RebuildGalleryView();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Builds the paginated slice of <see cref="ISessionService.SessionGeneratedVideos"/>
+    /// shown on the Gallery tab, using the shared <c>ResultsPageSize</c> setting.
+    /// </summary>
+    private void RebuildGalleryView()
+    {
+        var all = Session.SessionGeneratedVideos.Videos;
+        var count = all?.Count ?? 0;
+
+        if (count == 0)
         {
-            Session.ClearSessionVideos();
-            _currentVideo = null;
-            Snackbar.Add("Session gallery cleared", Severity.Success);
+            _galleryVideos = new List<GeneratedVideo>();
+            _galleryPageCount = 1;
+            _galleryPage = 1;
+            return;
         }
+
+        var pageSize = Math.Max(1, State.State.Generation.ResultsPageSize);
+        _galleryPageCount = Math.Max(1, (int)Math.Ceiling(count / (double)pageSize));
+        if (_galleryPage < 1) _galleryPage = 1;
+        if (_galleryPage > _galleryPageCount) _galleryPage = _galleryPageCount;
+
+        var skip = (_galleryPage - 1) * pageSize;
+        _galleryVideos = all.Skip(skip).Take(pageSize).ToList();
+    }
+
+    private void HandleGalleryPageChanged(int page)
+    {
+        _galleryPage = page;
+        RebuildGalleryView();
+        StateHasChanged();
+    }
+
+    private async Task HandleGalleryPageSizeChanged(int size)
+    {
+        State.State.Generation.ResultsPageSize = size;
+        _galleryPage = 1;
+        RebuildGalleryView();
+        StateHasChanged();
+        await State.SaveState();
     }
 
     private void ToggleCurrentFavorite()

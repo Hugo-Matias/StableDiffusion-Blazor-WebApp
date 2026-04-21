@@ -23,6 +23,11 @@ namespace BlazorWebApp.Services
         bool IsConverging { get; set; }
 
         /// <summary>
+        /// Number of prompts remaining on the backend queue (includes the currently running one).
+        /// </summary>
+        int QueueRemaining { get; set; }
+
+        /// <summary>
         /// Event fired when progress is updated, added, or removed.
         /// </summary>
         event Action OnUpdate;

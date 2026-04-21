@@ -682,12 +682,78 @@ namespace BlazorWebApp.Services
 
         public async Task<HttpResponseMessage> PostClearQueue()
         {
+            // Fetch the current queue first so we know which prompt IDs are pending.
+            // ComfyUI does not emit execution_* events for queue items that get
+            // cleared before they run, which would otherwise leave their awaiting
+            // TaskCompletionSources (and the in-flight counter in ImageService)
+            // stuck forever.
+            var pendingIds = new List<Guid>();
+            try
+            {
+                using var queueResponse = await _httpClient.GetAsync("/queue");
+                if (queueResponse.IsSuccessStatusCode)
+                {
+                    using var stream = await queueResponse.Content.ReadAsStreamAsync();
+                    using var doc = await JsonDocument.ParseAsync(stream);
+                    if (doc.RootElement.TryGetProperty("queue_pending", out var pending) &&
+                        pending.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in pending.EnumerateArray())
+                        {
+                            // Each item is a tuple-style array: [number, prompt_id, prompt, extra, outputs]
+                            if (item.ValueKind == JsonValueKind.Array && item.GetArrayLength() >= 2)
+                            {
+                                var idElement = item[1];
+                                if (idElement.ValueKind == JsonValueKind.String &&
+                                    Guid.TryParse(idElement.GetString(), out var pid))
+                                {
+                                    pendingIds.Add(pid);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to read /queue before clearing; awaiting jobs may hang.");
+            }
+
             var payload = new { clear = true }; // Anonymous type
             var content = JsonContent.Create(payload, options: _jsonIgnoreNull);
             var response = await _httpClient.PostAsync("/queue", content);
             response.EnsureSuccessStatusCode();
 
+            // Release any TCS waiting on the dropped prompts so their awaiters exit.
+            foreach (var pid in pendingIds)
+            {
+                if (_pendingJobs.TryRemove(pid, out var obj))
+                {
+                    TryFailTcs(obj, "Queue cleared by user");
+                }
+            }
+
             return response;
+        }
+
+        private static void TryFailTcs(object tcsObject, string message)
+        {
+            // _pendingJobs stores various TaskCompletionSource<T> shapes; use reflection
+            // through the non-generic base so we can resolve all of them in one place.
+            switch (tcsObject)
+            {
+                case TaskCompletionSource<GeneratedImages> img:
+                    img.TrySetException(new OperationCanceledException(message));
+                    break;
+                case TaskCompletionSource<GeneratedVideos> vid:
+                    vid.TrySetException(new OperationCanceledException(message));
+                    break;
+                default:
+                    // Fallback: invoke TrySetException(Exception) via reflection.
+                    var method = tcsObject.GetType().GetMethod("TrySetException", new[] { typeof(Exception) });
+                    method?.Invoke(tcsObject, new object[] { new OperationCanceledException(message) });
+                    break;
+            }
         }
 
         public async Task<LLMResponse> GeneratePromptWithLLM(LLMRequest request, string clientId)

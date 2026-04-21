@@ -99,13 +99,19 @@
                             <MudIconButton Icon="fa-solid fa-pencil" OnClick="WritePrompts" />
                         </MudTooltip>
                     </MudStack>
-                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
-                        <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate" OnSkip="OnSkip"
-                                        OnInterrupt="OnInterrupt" IsDisabled="ButtonDisabled" />
-                        <MudTooltip Text="Capture current parameters as a new Scheduler job">
-                            <MudIconButton Icon="@Icons.Material.Filled.EventNote" Color="Color.Info"
-                                           Variant="Variant.Filled" OnClick="ScheduleCurrent" />
-                        </MudTooltip>
+                    <MudStack Spacing="2">
+                        <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate"
+                                        OnClearQueue="OnClearQueue" OnInterrupt="OnInterrupt"
+                                        IsDisabled="ButtonDisabled" />
+                        <div class="gen-btn-schedule-wrap">
+                            <MudTooltip Text="Capture current parameters as a new Scheduler job">
+                                <MudButton StartIcon="@Icons.Material.Outlined.EventNote" Variant="Variant.Outlined"
+                                           Color="Color.Info" OnClick="ScheduleCurrent" FullWidth="true" Size="Size.Small"
+                                           Class="gen-btn-schedule">
+                                    Schedule
+                                </MudButton>
+                            </MudTooltip>
+                        </div>
                     </MudStack>
                 </MudStack>
             </MudItem>
@@ -145,10 +151,10 @@
     [Parameter] public EventCallback OnGenerate { get; set; }
     
     /// <summary>
-    /// Called when skip button is clicked.
+    /// Called when the user clears the remaining queued prompts.
     /// </summary>
-    [Parameter] public EventCallback OnSkip { get; set; }
-    
+    [Parameter] public EventCallback OnClearQueue { get; set; }
+
     /// <summary>
     /// Called when interrupt button is clicked.
     /// </summary>

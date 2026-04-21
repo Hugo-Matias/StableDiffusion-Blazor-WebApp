@@ -26,6 +26,20 @@
                 {
                     <MudPagination BoundaryCount="2" MiddleCount="3" Count="Images.PageCount" Selected="_currentPage" SelectedChanged="page => HandlePageChanged(page)" Size="Size.Small" />
                 }
+                @if (ShowPageSizeField)
+                {
+                    <MudNumericField T="int" Value="PageSize" ValueChanged="HandlePageSizeChanged"
+                                     Label="Page size" Min="1" Max="200" Step="1"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Class="page-size-field" />
+                }
+                @if (ShowClearButton)
+                {
+                    <MudButton OnClick="HandleClearClicked" StartIcon="fa-solid fa-trash-can"
+                               Color="Color.Error" Size="Size.Small" Variant="Variant.Text">
+                        Clear
+                    </MudButton>
+                }
             </div>
         }
     </div>
@@ -95,6 +109,25 @@
     [Parameter] public EventCallback OnCoverChanged { get; set; }
     [Parameter] public string Style { get; set; }
     [Parameter] public bool CanSelect { get; set; }
+
+    /// <summary>
+    /// When true, renders an inline numeric "Page size" field in the toolbar.
+    /// The value is bound via <see cref="PageSize"/> / <see cref="PageSizeChanged"/>.
+    /// </summary>
+    [Parameter] public bool ShowPageSizeField { get; set; }
+
+    /// <summary>
+    /// Current page size for the consumer's pagination. Two-way bindable.
+    /// </summary>
+    [Parameter] public int PageSize { get; set; } = 12;
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+
+    /// <summary>
+    /// When true, renders an inline text-variant "Clear" button in the toolbar.
+    /// Fires <see cref="OnClear"/> when clicked.
+    /// </summary>
+    [Parameter] public bool ShowClearButton { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
 
     private int _currentPage = 1;
     private bool _showViewer;
@@ -179,6 +212,15 @@
         _currentPage = page;
         OnPageSelected.InvokeAsync(page);
     }
+
+    private Task HandlePageSizeChanged(int value)
+    {
+        // Don't mutate the [Parameter] directly; let the parent flow the new
+        // value back via PageSizeChanged on the next render.
+        return PageSizeChanged.InvokeAsync(value);
+    }
+
+    private Task HandleClearClicked() => OnClear.InvokeAsync();
 
     private void ShowSelectionsDialog()
     {

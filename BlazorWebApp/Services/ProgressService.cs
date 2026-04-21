@@ -12,6 +12,7 @@ namespace BlazorWebApp.Services
         private readonly IEventService _events;
         private int _currentProgress;
         private bool _isConverging;
+        private int _queueRemaining;
 
         /// <summary>
         /// Collection of active progress trackers.
@@ -41,6 +42,20 @@ namespace BlazorWebApp.Services
             {
                 _isConverging = value;
                 _events.Publish(new ConvergingChangedEventArgs(_isConverging));
+            }
+        }
+
+        /// <summary>
+        /// Number of prompts remaining on the backend queue (includes the currently running one).
+        /// </summary>
+        public int QueueRemaining
+        {
+            get => _queueRemaining;
+            set
+            {
+                if (_queueRemaining == value) return;
+                _queueRemaining = value;
+                _events.Publish(new QueueChangedEventArgs(_queueRemaining));
             }
         }
 

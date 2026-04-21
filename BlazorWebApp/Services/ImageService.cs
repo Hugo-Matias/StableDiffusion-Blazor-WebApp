@@ -30,13 +30,18 @@ namespace BlazorWebApp.Services
         private readonly IWildcardService _wildcardService;
         private readonly IEventService _events;
         private PeriodicTimer? _timer;
-        
+
         // Legacy field - kept for backward compatibility during transition
         private string _currentModel = string.Empty;
-        
+
         // New fields for GenerationParameters-based flow
         private GenerationParameters? _currentGenerationParams;
         private Workflow? _currentWorkflow;
+
+        // Queue-aware generation state
+        private int _inFlightCount;
+        private readonly object _accumulatorLock = new();
+        private List<Image>? _batchImages;
 
         #region Generation Results
 
@@ -108,6 +113,16 @@ namespace BlazorWebApp.Services
             }
 
             _logger.LogInformation("Starting image generation with GenerationParameters for workflow: {WorkflowTitle}", workflow.Title);
+
+            // Session-wide accumulator: results from every generation in this session
+            // (across workflows) are collected until the user clears them via
+            // ClearGeneratedImages(). The accumulator is initialised lazily on the
+            // first call.
+            lock (_accumulatorLock)
+            {
+                _batchImages ??= new List<Image>();
+            }
+            Interlocked.Increment(ref _inFlightCount);
             _progress.IsConverging = true;
 
             ImagesDto images = new();
@@ -141,16 +156,45 @@ namespace BlazorWebApp.Services
 
                 _logger.LogInformation("Image generation completed for workflow: {WorkflowTitle}, generated {ImageCount} images",
                     workflow.Title, images?.Images?.Count ?? 0);
+
+                // Append to the session-wide accumulator, newest first, so the
+                // Results tab shows latest generations at the top. The accumulator
+                // persists across workflows and batches until the user explicitly
+                // clears it via ClearGeneratedImages().
+                if (images?.Images?.Count > 0)
+                {
+                    lock (_accumulatorLock)
+                    {
+                        _batchImages ??= new List<Image>();
+                        // Insert in reverse so the *last* image of the batch ends up
+                        // second from top (preserves intra-batch order while keeping
+                        // the newest batch at the very top of the list).
+                        for (var i = images.Images.Count - 1; i >= 0; i--)
+                        {
+                            _batchImages.Insert(0, images.Images[i]);
+                        }
+                        GeneratedImageEntities = BuildEntitiesSnapshotLocked();
+                    }
+                }
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error during image generation for workflow: {WorkflowTitle}", workflow.Title);
             }
+            finally
+            {
+                // Only flip IsConverging off when the *last* in-flight generation finishes,
+                // so preview / cancel UI stays alive for the whole queue.
+                var remaining = Interlocked.Decrement(ref _inFlightCount);
+                if (remaining <= 0)
+                {
+                    _progress.IsConverging = false;
+                    _state.State.Generation.IsInterrupted = false;
+                }
 
-            _progress.IsConverging = false;
-            _state.State.Generation.IsInterrupted = false;
+                NotifyStateChanged();
+            }
 
-            NotifyStateChanged();
             return images;
         }
 
@@ -333,10 +377,9 @@ namespace BlazorWebApp.Services
                 _logger.LogError("Cannot generate video: workflow is null");
                 return new GeneratedVideos();
             }
-
             _logger.LogInformation("Starting video generation with GenerationParameters for workflow: {WorkflowTitle}", workflow.Title);
+            Interlocked.Increment(ref _inFlightCount);
             _progress.IsConverging = true;
-            GeneratedVideos = null;
             _currentGenerationParams = parameters;
             _currentWorkflow = workflow;
 
@@ -371,11 +414,18 @@ namespace BlazorWebApp.Services
             {
                 _logger.LogError(e, "Error during video generation for workflow: {WorkflowTitle}", workflow.Title);
             }
+            finally
+            {
+                var remaining = Interlocked.Decrement(ref _inFlightCount);
+                if (remaining <= 0)
+                {
+                    _progress.IsConverging = false;
+                    _state.State.Generation.IsInterrupted = false;
+                }
 
-            _progress.IsConverging = false;
-            _state.State.Generation.IsInterrupted = false;
+                NotifyStateChanged();
+            }
 
-            NotifyStateChanged();
             return GeneratedVideos;
         }
 
@@ -599,6 +649,39 @@ namespace BlazorWebApp.Services
 
         private void NotifyStateChanged(bool success = true, int count = 0) 
             => _events.Publish(new ImagesGeneratedEventArgs(success, count));
+
+        /// <summary>
+        /// Builds a fresh <see cref="ImagesDto"/> snapshot of the accumulator.
+        /// MUST be called while holding <see cref="_accumulatorLock"/>.
+        /// A new reference is returned on every call so Blazor parameter-change
+        /// detection re-renders the results container.
+        /// </summary>
+        private ImagesDto BuildEntitiesSnapshotLocked()
+        {
+            return new ImagesDto
+            {
+                Images = _batchImages == null ? new List<Image>() : new List<Image>(_batchImages),
+                PageCount = 1,
+                HasNext = false,
+                HasPrev = false,
+                CurrentPage = 1,
+            };
+        }
+
+        /// <summary>
+        /// Clears the session-wide accumulator of generated images and publishes
+        /// an <see cref="ImagesGeneratedEventArgs"/> so subscribers refresh.
+        /// Does NOT touch videos or progress state.
+        /// </summary>
+        public void ClearGeneratedImages()
+        {
+            lock (_accumulatorLock)
+            {
+                _batchImages = new List<Image>();
+                GeneratedImageEntities = BuildEntitiesSnapshotLocked();
+            }
+            NotifyStateChanged();
+        }
 
         #endregion
     }

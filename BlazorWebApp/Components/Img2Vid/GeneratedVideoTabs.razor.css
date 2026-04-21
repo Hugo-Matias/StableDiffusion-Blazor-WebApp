@@ -159,3 +159,9 @@
         height: 200px;
     }
 }
+
+/* Inline page-size numeric field inside the gallery toolbar */
+::deep .page-size-field {
+    max-width: 90px;
+}
+

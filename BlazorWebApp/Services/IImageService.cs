@@ -59,6 +59,13 @@ namespace BlazorWebApp.Services
         #region Utility Methods
 
         /// <summary>
+        /// Clears the session-wide accumulator of generated images. Publishes an
+        /// <see cref="Events.ImagesGeneratedEventArgs"/> so the Results tab refreshes.
+        /// Videos and progress state are not affected.
+        /// </summary>
+        void ClearGeneratedImages();
+
+        /// <summary>
         /// Downloads an image from a URL and saves it as PNG.
         /// </summary>
         /// <param name="url">URL of the image to download.</param>

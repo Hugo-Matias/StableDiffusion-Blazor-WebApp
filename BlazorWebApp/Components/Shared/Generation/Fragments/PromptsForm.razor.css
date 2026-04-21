@@ -1,0 +1,16 @@
+/* Ensure the Schedule button (wrapped by MudTooltip) expands to the
+   full column width like the GenerateButton above it. MudTooltip
+   renders its child inside an inline-block wrapper which ignores the
+   FullWidth MudButton prop by default. */
+.gen-btn-schedule-wrap {
+    width: 100%;
+}
+
+.gen-btn-schedule-wrap ::deep .mud-tooltip-root {
+    display: block;
+    width: 100%;
+}
+
+.gen-btn-schedule-wrap ::deep .gen-btn-schedule {
+    width: 100%;
+}

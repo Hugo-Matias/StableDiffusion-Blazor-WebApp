@@ -92,6 +92,12 @@ namespace BlazorWebApp.Models
         public List<Lora> Loras { get; set; }
         public AppStateLLMEnhancer LLM { get; set; } = new();
         public AppStateGenerationAutocomplete Autocomplete { get; set; } = new();
+
+        /// <summary>
+        /// Page size for the session-wide Results gallery on the Generate page.
+        /// Persisted with the rest of the app state.
+        /// </summary>
+        public int ResultsPageSize { get; set; } = 12;
         
         // Legacy properties - kept for state migration, will be removed in future versions
         [Obsolete("Use ParametersTxt2Img.Model or ParametersImg2Img.Model instead")]

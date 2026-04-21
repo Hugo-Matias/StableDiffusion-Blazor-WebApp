@@ -504,10 +504,8 @@ public partial class Generate : IDisposable
 
                 default: // Txt2Img and Img2Img
                     var images = await ImageService.GenerateImagesAsync(Parameters, _selectedWorkflow);
-                    if (images?.Images?.Count > 0)
-                    {
-                        ImageService.GeneratedImageEntities = images;
-                    }
+                    // GeneratedImageEntities is owned and accumulated by ImageService
+                    // across the queue; no assignment needed here.
                     break;
             }
 
@@ -528,7 +526,7 @@ public partial class Generate : IDisposable
         }
     }
 
-    private async Task SkipAsync()
+    private async Task ClearQueueAsync()
     {
         try
         {
@@ -536,7 +534,7 @@ public partial class Generate : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error skipping generation");
+            Logger.LogError(ex, "Error clearing generation queue");
         }
     }
 

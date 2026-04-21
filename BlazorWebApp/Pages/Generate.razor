@@ -29,7 +29,7 @@
 
     @* Prompts + Generate Button (full width) *@
     <PromptsForm Prompt="@GetPromptValue()" PromptChanged="HandlePromptChanged" NegativePrompt="@GetNegativePromptValue()"
-                 NegativePromptChanged="HandleNegativePromptChanged" OnGenerate="GenerateAsync" OnSkip="SkipAsync"
+                 NegativePromptChanged="HandleNegativePromptChanged" OnGenerate="GenerateAsync" OnClearQueue="ClearQueueAsync"
                  OnInterrupt="InterruptAsync" OnLoraSelected="HandleLoraAdded" OnStylesChanged="HandleStylesChanged"
                  OnPromptTagAppended="HandlePromptTagAppended" OnNegativePromptTagAppended="HandleNegativePromptTagAppended"
                  ButtonDisabled="@_isGenerating" />

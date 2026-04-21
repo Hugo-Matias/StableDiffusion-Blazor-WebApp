@@ -94,6 +94,19 @@ namespace BlazorWebApp.Services
                         using var doc = JsonDocument.Parse(json);
                         var type = doc.RootElement.GetProperty("type").GetString();
 
+                        if (type == "status")
+                        {
+                            // ComfyUI sends: { type: "status", data: { status: { exec_info: { queue_remaining: N } } } }
+                            if (doc.RootElement.TryGetProperty("data", out var statusData)
+                                && statusData.TryGetProperty("status", out var statusObj)
+                                && statusObj.TryGetProperty("exec_info", out var execInfo)
+                                && execInfo.TryGetProperty("queue_remaining", out var queueRemaining)
+                                && queueRemaining.TryGetInt32(out var remaining))
+                            {
+                                _progressService.QueueRemaining = remaining;
+                            }
+                        }
+
                         if (type == "execution_start")
                         {
                             _imageService.Progress = new() { State = new() { Job = "Execution Started" } };

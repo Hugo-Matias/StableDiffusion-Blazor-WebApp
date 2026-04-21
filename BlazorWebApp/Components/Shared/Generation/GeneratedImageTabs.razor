@@ -28,9 +28,15 @@
         }
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-image">
-        @if (ImageService.GeneratedImageEntities != null)
+        @if (_resultsView != null && _resultsView.Images != null && _resultsView.Images.Count > 0)
         {
-            <ImagesContainer Images="ImageService.GeneratedImageEntities" CanSelect=true />
+            <ImagesContainer Images="_resultsView" CanSelect="true"
+                             OnPageSelected="HandleResultsPageChanged"
+                             ShowPageSizeField="true"
+                             PageSize="@State.State.Generation.ResultsPageSize"
+                             PageSizeChanged="HandleResultsPageSizeChanged"
+                             ShowClearButton="true"
+                             OnClear="HandleClearResults" />
         }
         else
         {
@@ -276,11 +282,15 @@
     private ImagesDto _randomImages;
     private int _selectedImagesPage = 1;
     private int _randomPage = 1;
-    
+
+    // Results tab (session-wide accumulator) view state
+    private ImagesDto _resultsView;
+    private int _resultsPage = 1;
+
     // Selected viewer state
     private bool _showSelectedViewer;
     private int _selectedViewerIndex;
-    
+
     // Random viewer state
     private bool _showRandomViewer;
     private int _randomViewerIndex;
@@ -290,9 +300,75 @@
     protected async override Task OnInitializedAsync()
     {
         await LoadSelectedPage(1);
+        RebuildResultsView();
         Events.Subscribe<ImagesGeneratedEventArgs>(OnImagesGenerated);
         Events.Subscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
         Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
+    }
+
+    /// <summary>
+    /// Builds a paginated slice of <see cref="IImageService.GeneratedImageEntities"/>
+    /// for the Results tab using the user's configured page size.
+    /// </summary>
+    private void RebuildResultsView()
+    {
+        var all = ImageService.GeneratedImageEntities?.Images;
+
+        if (all == null || all.Count == 0)
+        {
+            _resultsView = new ImagesDto
+            {
+                Images = new List<Image>(),
+                PageCount = 1,
+                CurrentPage = 1,
+                HasNext = false,
+                HasPrev = false,
+            };
+            _resultsPage = 1;
+            return;
+        }
+
+        var pageSize = Math.Max(1, State.State.Generation.ResultsPageSize);
+        var pageCount = Math.Max(1, (int)Math.Ceiling(all.Count / (double)pageSize));
+        if (_resultsPage < 1) _resultsPage = 1;
+        if (_resultsPage > pageCount) _resultsPage = pageCount;
+
+        var skip = (_resultsPage - 1) * pageSize;
+        _resultsView = new ImagesDto
+        {
+            Images = all.Skip(skip).Take(pageSize).ToList(),
+            PageCount = pageCount,
+            CurrentPage = _resultsPage,
+            HasNext = _resultsPage < pageCount,
+            HasPrev = _resultsPage > 1,
+        };
+    }
+
+    private void HandleResultsPageChanged(int page)
+    {
+        _resultsPage = page;
+        RebuildResultsView();
+        StateHasChanged();
+    }
+
+    private async Task HandleResultsPageSizeChanged(int size)
+    {
+        State.State.Generation.ResultsPageSize = size;
+        _resultsPage = 1;
+        RebuildResultsView();
+        StateHasChanged();
+        await State.SaveState();
+    }
+
+    private async Task HandleClearResults()
+    {
+        ImageService.ClearGeneratedImages();
+        _resultsPage = 1;
+        // RebuildResultsView will be driven by the ImagesGenerated event, but
+        // call it locally too so the UI flips to the placeholder immediately.
+        RebuildResultsView();
+        StateHasChanged();
+        await Task.CompletedTask;
     }
 
     private bool IsVideoFile(string path)
@@ -436,6 +512,7 @@
     private async void Refresh()
     {
         await LoadSelectedImages();
+        RebuildResultsView();
         await InvokeAsync(StateHasChanged);
     }
 
