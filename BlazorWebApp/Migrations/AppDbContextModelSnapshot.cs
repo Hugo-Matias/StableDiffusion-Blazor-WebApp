@@ -469,6 +469,27 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("Samplers");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.SchedulerDraft", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EditingJobId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SchedulerDrafts");
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Selection", b =>
                 {
                     b.Property<int>("Id")

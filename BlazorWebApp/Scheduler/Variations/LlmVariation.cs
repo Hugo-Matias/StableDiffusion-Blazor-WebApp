@@ -2,8 +2,9 @@ namespace BlazorWebApp.Scheduler.Variations
 {
     /// <summary>
     /// Produces <see cref="Count"/> prompt variations by asking Ollama to generate alternatives of
-    /// <see cref="BasePrompt"/>, optionally guided by <see cref="SystemPrompt"/>. Materialization
-    /// is pipelined with image generation by the Scheduler (Phase 4) to hide latency.
+    /// <see cref="BasePrompt"/>, optionally guided by a system-prompt template selected from the
+    /// Prompts page (see <see cref="SystemPromptTemplateId"/>). Materialization is pipelined with
+    /// image generation by the Scheduler (Phase 4) to hide latency.
     /// </summary>
     public sealed class LlmVariation : Variation
     {
@@ -18,9 +19,11 @@ namespace BlazorWebApp.Scheduler.Variations
         public string BasePrompt { get; set; } = string.Empty;
 
         /// <summary>
-        /// Optional system prompt guiding the LLM. When null, a default is used.
+        /// Optional id of a `SystemPromptTemplate` (from the Prompts page) whose messages are used
+        /// as the conversation seed. When null, the default <see cref="Services.OllamaService.ExpandPrompt"/>
+        /// path is used.
         /// </summary>
-        public string? SystemPrompt { get; set; }
+        public int? SystemPromptTemplateId { get; set; }
 
         /// <summary>
         /// Number of variations to produce.

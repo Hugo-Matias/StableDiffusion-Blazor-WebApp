@@ -123,9 +123,9 @@ public class DirectiveExecutorTests
     {
         var p = new GenerationParameters();
         var o = new JobOutputConfig { ProjectName = "Orig", FolderName = "OrigFolder" };
-        _sut.Apply(p, o, new SetOutputDirective { ProjectName = "Override", FolderName = null });
+        _sut.Apply(p, o, new SetOutputDirective { ProjectName = "Override" });
         o.ProjectName.Should().Be("Override");
-        o.FolderName.Should().Be("OrigFolder"); // null preserves existing
+        o.FolderName.Should().Be("OrigFolder"); // untouched: directive only targets the project
     }
 
     [Fact]

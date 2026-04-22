@@ -161,6 +161,16 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<JobEntity>()
                 .Property(j => j.Status)
                 .HasConversion<string>();
+
+            // SchedulerDraft (single-row): holds the unsaved Editor draft between sessions.
+            var schedulerDraftBodyConverter = new ValueConverter<Scheduler.Models.Job, string>(
+                v => JsonSerializer.Serialize(v, Scheduler.SchedulerJsonOptions.Compact),
+                v => JsonSerializer.Deserialize<Scheduler.Models.Job>(v, Scheduler.SchedulerJsonOptions.Compact)
+                     ?? new Scheduler.Models.Job());
+
+            modelBuilder.Entity<SchedulerDraft>()
+                .Property(d => d.Body)
+                .HasConversion(schedulerDraftBodyConverter);
         }
 
         public DbSet<Image> Images { get; set; }
@@ -181,5 +191,6 @@ namespace BlazorWebApp.Data
         public DbSet<SystemPromptTemplate> SystemPromptTemplates { get; set; }
         public DbSet<WorkflowState> WorkflowStates { get; set; }
         public DbSet<JobEntity> Jobs { get; set; }
+        public DbSet<SchedulerDraft> SchedulerDrafts { get; set; }
     }
 }

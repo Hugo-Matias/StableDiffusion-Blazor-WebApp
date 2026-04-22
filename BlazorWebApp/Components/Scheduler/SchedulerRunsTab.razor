@@ -106,6 +106,10 @@ else
                             <MudIconButton Icon="@Icons.Material.Filled.Collections" Size="Size.Small"
                                            OnClick="() => ViewResults(job.Id)" />
                         </MudTooltip>
+                        <MudTooltip Text="View base parameters">
+                            <MudIconButton Icon="@Icons.Material.Filled.Tune" Size="Size.Small"
+                                           OnClick="() => ShowBaseParamsAsync(job)" />
+                        </MudTooltip>
                         <MudTooltip Text="Delete">
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                            Disabled="@(anyRunning && isRunningThis)" OnClick="() => DeleteAsync(job)" />
@@ -177,6 +181,17 @@ else
 
     private void ViewResults(Guid jobId) =>
         Nav.NavigateTo($"/scheduler/results?jobId={jobId}");
+
+    private async Task ShowBaseParamsAsync(Job job)
+    {
+        var parameters = new DialogParameters<JobBaseParamsDialog>
+        {
+            { x => x.Parameters, job.BaseParameters },
+            { x => x.Title, $"Base parameters - {job.Name}" }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
+        await Dialogs.ShowAsync<JobBaseParamsDialog>(string.Empty, parameters, options);
+    }
 
     private async Task DeleteAsync(Job job)
     {

@@ -108,7 +108,7 @@ Ask the user which optional post-processing modules to include. Only offer enhan
 For each selected enhancement, confirm:
 
 - Whether it uses the main model or a separate model asset
-- Detailer: does the user want a separate prompt for the detailer pass?
+- Detailer: the form exposes per-pass prompt injection (positive + negative) with fallback to the main prompts when blank, a standalone detailer LoRA list (per pass), and supports **chained passes** via a tabbed UI. The workflow template must implement the multi-pass loop described in `TEMPLATE_GUIDE.md#detailer-multi-pass-conventions`.
 
 ### 2d. ModelBase Enum
 
@@ -173,7 +173,15 @@ After the build:
 
 - Scope convention: `{scope}model_output`, `{scope}clip_output`, `{scope}vae_output`
 - Pipeline outputs (`latent_output`, `image_output`) always written without scope prefix
-- Detailer always uses scope `"detailer_"` with `LoadDiffusionWithPromptsFragment`
+- Detailer pass 0 uses scope `"detailer_"` (legacy); chained passes use `"detailer_{i}_"` for `i >= 1`
+- Detailer template loop (required for every detailer-capable workflow):
+    1. `for i in 0..pass_count-1` where `pass_count = detailerFragment.GetInt("pass_count", 1)`
+    2. Key prefix per pass: pass 0 uses bare `detailer_xxx`; pass `i >= 1` uses `pass_{i}_detailer_xxx`
+    3. Build scoped loader (`LoadDiffusionWithPromptsFragment` / equivalent)
+    4. `_loraLoaderFragment.BuildAll(builder, registry, parameters.GetDetailerLoras(i), scope: scope)`
+    5. `_detailerFragment.Build(...)` with `Scope = scope`
+- Prompt fallback: `detailer_prompt` / `detailer_negative_prompt` (and their `pass_{i}_`-prefixed variants)
+  must resolve via `GetStringOrFallback(key, mainPrompt)` so blank overrides transparently use the main prompt
 - Save always writes to `tmp/img` prefix
 - Seed: if value from parameters is < 0, randomize with `Random.Shared.NextInt64(0, int.MaxValue)`
 - `GetFragments()` returns only UI-visible fragments; utility/loader fragments are excluded

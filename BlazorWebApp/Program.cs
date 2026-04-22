@@ -84,6 +84,7 @@ builder.Services.AddSingleton<IWorkflowStateService, WorkflowStateService>();
 
 // Scheduler job persistence
 builder.Services.AddSingleton<BlazorWebApp.Scheduler.Persistence.IJobRepository, BlazorWebApp.Scheduler.Persistence.JobRepository>();
+builder.Services.AddScoped<BlazorWebApp.Scheduler.Persistence.ISchedulerDraftStore, BlazorWebApp.Scheduler.Persistence.SchedulerDraftStore>();
 
 // Scheduler variation engine
 builder.Services.AddScoped<BlazorWebApp.Scheduler.Engine.IVariationMaterializer, BlazorWebApp.Scheduler.Engine.VariationMaterializer>();
@@ -98,11 +99,17 @@ builder.Services.AddScoped<BlazorWebApp.Scheduler.ISchedulerService, BlazorWebAp
 // Scheduler snapshot buffer (Generate -> Editor handoff)
 builder.Services.AddScoped<BlazorWebApp.Scheduler.IScheduleSnapshotService, BlazorWebApp.Scheduler.ScheduleSnapshotService>();
 
+// Scheduler editor draft state (in-memory + debounced persistence for unsaved work)
+builder.Services.AddScoped<BlazorWebApp.Scheduler.ISchedulerEditorState, BlazorWebApp.Scheduler.SchedulerEditorState>();
+
 // Component registry for fragment-to-component mapping
 builder.Services.AddSingleton<IComponentRegistry, ComponentRegistry>();
 
 // Generation parameter service for dynamic parameter management
 builder.Services.AddScoped<IGenerationParameterService, GenerationParameterService>();
+
+// Image "Send To" service - context-aware routing of images/parameters to available workflows
+builder.Services.AddScoped<IImageSendToService, ImageSendToService>();
 
 builder.Services.AddSingleton<DynamicPromptsService>();
 

@@ -19,8 +19,20 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return defaultValue;
-        
+
         return value?.ToString() ?? defaultValue;
+    }
+
+    /// <summary>
+    /// Gets a string value from the fragment parameters, falling back to <paramref name="fallback"/>
+    /// when the stored value is null, missing, empty, or whitespace only.
+    /// Intended for optional prompt-injection fields (e.g. <c>detailer_prompt</c>) that should
+    /// transparently reuse the main prompt when the user leaves them blank.
+    /// </summary>
+    public static string GetStringOrFallback(this FragmentParameters? fragment, string key, string fallback)
+    {
+        var value = fragment.GetString(key, string.Empty);
+        return string.IsNullOrWhiteSpace(value) ? fallback : value;
     }
 
     /// <summary>

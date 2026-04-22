@@ -374,6 +374,13 @@ namespace BlazorWebApp.Services
             current.Loras.Clear();
             current.Loras.AddRange(savedState.Loras.Select(l => new Lora(l)));
 
+            // Per-pass detailer Loras from saved state
+            current.DetailerLorasByPass.Clear();
+            foreach (var kvp in savedState.DetailerLorasByPass)
+            {
+                current.DetailerLorasByPass[kvp.Key] = kvp.Value.Select(l => new Lora(l)).ToList();
+            }
+
             // Check for any new fragments in the C# workflow that weren't in saved state
             var builder = _workflowService.GetWorkflowBuilder(workflow.Id);
             if (builder != null)
@@ -914,6 +921,11 @@ namespace BlazorWebApp.Services
             }
             current.Loras.Clear();
             current.Loras.AddRange(parameters.Loras);
+            current.DetailerLorasByPass.Clear();
+            foreach (var kvp in parameters.DetailerLorasByPass)
+            {
+                current.DetailerLorasByPass[kvp.Key] = new List<Lora>(kvp.Value);
+            }
 
             _logger.LogDebug("Loaded generation parameters (WorkflowId: {WorkflowId})", current.WorkflowId);
             PublishChange(GenerationParametersChangedEventArgs.ParametersLoaded());

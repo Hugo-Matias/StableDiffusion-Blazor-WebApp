@@ -231,7 +231,7 @@ namespace BlazorWebApp.Services
         public async Task<Selection> GetSelection(int id)
         {
             using var context = await _factory.CreateDbContextAsync();
-            return await context.Selections.FirstOrDefaultAsync(s => s.Id == id);
+            return await context.Selections.Include(s => s.Images).FirstOrDefaultAsync(s => s.Id == id);
         }
 
         public async Task CreateSelection(Selection selection)

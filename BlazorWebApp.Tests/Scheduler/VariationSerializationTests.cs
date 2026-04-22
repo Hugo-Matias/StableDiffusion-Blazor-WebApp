@@ -97,7 +97,7 @@ public class VariationSerializationTests
             BasePrompt = "a cat",
             Count = 3,
             IsNegative = false,
-            SystemPrompt = "be creative"
+            SystemPromptTemplateId = 42
         };
         var json = JsonSerializer.Serialize<Variation>(original, Options);
         var back = JsonSerializer.Deserialize<Variation>(json, Options);
@@ -105,7 +105,7 @@ public class VariationSerializationTests
         l.ModelName.Should().Be("llama3");
         l.BasePrompt.Should().Be("a cat");
         l.Count.Should().Be(3);
-        l.SystemPrompt.Should().Be("be creative");
+        l.SystemPromptTemplateId.Should().Be(42);
     }
 
     [Fact]

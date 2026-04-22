@@ -71,11 +71,24 @@
         var parameters = new DialogParameters();
         parameters.Add("OkButtonText", "Replace");
         parameters.Add("CancelButtonText", "Cancel");
-        parameters.Add("OkButtonColor", Color.Success);
-        parameters.Add("Content", new MarkupString($@"<span class='lead'>Do you want to replace the selection with the currently selected images?</span><br /><small>There are {Gallery.SelectedImageIds.Count} images selected.</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Replace Selection", parameters, _dialogOptions);
+        parameters.Add("OkButtonColor", Color.Warning);
+        parameters.Add("ExtraButtonEnabled", true);
+        parameters.Add("ExtraButtonText", "Append");
+        parameters.Add("ExtraButtonColor", Color.Success);
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Do you want to update the selection with the currently selected images?</span><br /><small>There are {Gallery.SelectedImageIds.Count} images selected.</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Update Selection", parameters, _dialogOptions);
         var result = await dialog.Result;
-        if (!result.Canceled) await DB.UpdateSelection(id, Gallery.SelectedImageIds);
+        if (result.Canceled) return;
+        if (result.Data is string action && action == "extra")
+        {
+            var existing = await DB.GetSelection(id);
+            var combined = existing.Images.Select(i => i.Id).Union(Gallery.SelectedImageIds).ToList();
+            await DB.UpdateSelection(id, combined);
+        }
+        else
+        {
+            await DB.UpdateSelection(id, Gallery.SelectedImageIds);
+        }
     }
 
     private async Task ShowDeleteSelectionModal(int id)

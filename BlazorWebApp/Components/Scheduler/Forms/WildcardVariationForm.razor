@@ -1,0 +1,60 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+@using BlazorWebApp.Services
+@inject IWildcardService Wildcards
+
+<MudStack Spacing="2">
+    <ParameterTargetPicker Value="Variation.Target" ValueChanged="OnTargetChanged" Job="Job"
+                           AllowedKinds="@_allowedKinds"
+                           FragmentValueFilter="ParameterTargetPicker.FragmentValueTypeFilter.PromptLikeString" />
+
+    <MudAutocomplete T="string" Value="Variation.CollectionName" ValueChanged="OnCollectionChanged"
+                     Label="Wildcard collection" SearchFunc="SearchCollectionsAsync"
+                     Variant="Variant.Text" ResetValueOnEmptyText="false" CoerceValue="true"
+                     HelperText="Collection name as defined on the Prompts page. Typing searches the index." />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            <MudNumericField T="int?" @bind-Value="Variation.Count" Label="Count" Min="0"
+                             Variant="Variant.Text"
+                             HelperText="Leave empty to use the whole collection (no repeats)." />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSwitch T="bool" @bind-Value="Variation.AllowRepeats" Color="Color.Primary" Label="Allow repeats" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSwitch T="bool" @bind-Value="Variation.Weighted" Color="Color.Primary" Label="Weighted" />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public WildcardVariation Variation { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    // Wildcards produce string values intended for prompt-like text. Fragment is kept so users can
+    // target detailer prompts (detailer.detailer_prompt, detailer.pass_1_detailer_negative_prompt, ...);
+    // the PromptLikeString filter keeps non-prompt string params out of the list.
+    private static readonly ParameterTargetPicker.TargetKind[] _allowedKinds = new[]
+    {
+        ParameterTargetPicker.TargetKind.Fragment,
+        ParameterTargetPicker.TargetKind.Prompt,
+    };
+
+    private void OnTargetChanged(ParameterTarget? target) => Variation.Target = target!;
+    private void OnCollectionChanged(string? value) => Variation.CollectionName = value ?? string.Empty;
+
+    private async Task<IEnumerable<string>> SearchCollectionsAsync(string? query)
+    {
+        query ??= string.Empty;
+        var results = await Wildcards.SearchCollections(query, maxResults: 20);
+        // Display folder/name (e.g., clothes/shoes) so users can distinguish collections
+        // that share a leaf name across categories.
+        return results
+            .Select(c => string.IsNullOrWhiteSpace(c.Category) ? c.Name : $"{c.Category}/{c.Name}")
+            .Where(n => !string.IsNullOrEmpty(n));
+    }
+}
+

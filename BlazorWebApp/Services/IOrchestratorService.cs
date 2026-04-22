@@ -264,9 +264,10 @@ namespace BlazorWebApp.Services
         void SetLoras(IEnumerable<Lora> loras, bool isImg2Img);
 
         /// <summary>
-        /// Parses a prompt, extracts LoRAs, and cleans style text.
+        /// Parses a prompt, extracts LoRAs, resolves their relative paths against the
+        /// available LoRAs on the backend, and cleans style text.
         /// </summary>
-        string ParseAndCleanCopiedPrompt(string prompt, bool isNegative, bool isImg2Img);
+        Task<string> ParseAndCleanCopiedPrompt(string prompt, bool isNegative, bool isImg2Img);
 
         #endregion
 
@@ -281,13 +282,13 @@ namespace BlazorWebApp.Services
         /// Sets a single generation parameter from an image (applies immediately).
         /// Use for same-page parameter updates.
         /// </summary>
-        void SetGenerationParameter(Image source, string parameter, bool isImg2Img);
+        Task SetGenerationParameter(Image source, string parameter, bool isImg2Img);
 
         /// <summary>
         /// Queues a generation parameter override from an image.
         /// Use when navigating to a different workflow — overrides are applied after InitializeFromWorkflowAsync.
         /// </summary>
-        void QueueGenerationParameter(Image source, string parameter, bool isImg2Img);
+        Task QueueGenerationParameter(Image source, string parameter, bool isImg2Img);
 
         #endregion
 

@@ -2,7 +2,10 @@
 @page "/scheduler/{Tab}"
 @using BlazorWebApp.Components.Scheduler
 @using BlazorWebApp.Scheduler
+@using BlazorWebApp.Services
 @inject NavigationManager Nav
+@inject IInfoService InfoService
+@implements IDisposable
 
 <PageTitle>Scheduler</PageTitle>
 
@@ -32,6 +35,11 @@
     private int _activeIndex;
     private Guid? _jobIdQuery;
 
+    protected override void OnInitialized()
+    {
+        InfoService.SetInfo(SchedulerInfoContent.Build());
+    }
+
     protected override void OnParametersSet()
     {
         _activeIndex = (Tab?.ToLowerInvariant()) switch
@@ -50,4 +58,9 @@
     }
 
     private void OnTabChanged(int index) => _activeIndex = index;
+
+    public void Dispose()
+    {
+        InfoService.ClearInfo();
+    }
 }

@@ -97,8 +97,8 @@ main {
 
 /* Base Selector in AppBar */
 ::deep .base-selector {
-    min-width: 90px;
-    max-width: 140px;
+    min-width: 130px;
+    max-width: 180px;
     margin-right: 8px;
 }
 

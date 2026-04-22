@@ -1,0 +1,118 @@
+/* ================================================================
+   DetailerForm - scoped styles
+   - Pass navigation uses MudDynamicTabs, styled flush with the
+     surrounding collapsible panel background.
+   - Prompt tabs mimic the main PromptsForm visual language
+     (green/red accent, flush tabs, underline textfield) so the
+     detailer reads as a smaller variant of the main prompts.
+     These rules are intentionally DUPLICATED from
+     PromptsForm.razor.css to avoid cross-component coupling.
+   ================================================================ */
+
+/* ---------- Pass navigation (MudDynamicTabs) -------------------
+   MudDynamicTabs renders a MudToolBar inside .mud-tabs-tabbar which
+   carries its own background color. Override both layers and use
+   !important so the header reads flush with the surrounding
+   collapsible panel background. */
+::deep .detailer-pass-tabs,
+::deep .detailer-pass-tabs .mud-tabs-tabbar,
+::deep .detailer-pass-tabs .mud-tabs-toolbar,
+::deep .detailer-pass-tabs .mud-toolbar {
+    background-color: transparent !important;
+    border-radius: 0;
+}
+
+::deep .detailer-pass-tabs .mud-tabs-tabbar {
+    min-height: 2.25rem;
+}
+
+::deep .detailer-pass-tabs .mud-tabs-tabbar-inner {
+    min-height: 2.25rem;
+}
+
+::deep .detailer-pass-tabs .mud-tab {
+    min-height: 2.25rem;
+    text-transform: none;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    padding: 0 0.75rem;
+}
+
+/* Duplicate icon sits inside the tab header; keep it compact. */
+.pass-tab-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.pass-tab-header ::deep .pass-duplicate-btn {
+    padding: 2px;
+    min-width: 0;
+    min-height: 0;
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.pass-tab-header ::deep .pass-duplicate-btn .mud-icon-root {
+    font-size: 0.8rem;
+}
+
+/* ---------- Compact action bar (copy / clear) ------------------ */
+.detailer-actions {
+    margin-bottom: 0.25rem;
+}
+
+.detailer-actions ::deep .mud-button-group-root .mud-button {
+    text-transform: none;
+    min-height: 1.75rem;
+    padding: 0 0.6rem;
+    font-size: 0.75rem;
+}
+
+/* ---------- Prompt tabs (duplicated from PromptsForm) ----------
+   Same flush treatment as the pass tabbar so both headers share
+   the detailer panel's background. */
+::deep .prompt-tabs,
+::deep .prompt-tabs .mud-tabs-tabbar,
+::deep .prompt-tabs .mud-tabs-toolbar,
+::deep .prompt-tabs .mud-toolbar {
+    background-color: transparent !important;
+    border-radius: 0;
+}
+
+::deep .prompt-tabs .mud-tabs-tabbar {
+    min-height: 2.25rem;
+}
+
+::deep .prompt-tabs .mud-tabs-tabbar-inner {
+    min-height: 2.25rem;
+}
+
+::deep .prompt-tabs .mud-tab {
+    min-height: 2.25rem;
+    text-transform: none;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+}
+
+::deep .prompt-tabs .mud-tabs-panels {
+    padding-top: 0.5rem;
+}
+
+::deep .prompt-tabs-positive .mud-tab.mud-tab-active {
+    color: var(--mud-palette-success) !important;
+}
+
+::deep .prompt-tabs-positive .mud-input.mud-input-underline::before,
+::deep .prompt-tabs-positive .mud-input.mud-input-underline::after {
+    border-bottom-color: var(--mud-palette-success) !important;
+}
+
+::deep .prompt-tabs-negative .mud-tab.mud-tab-active {
+    color: var(--mud-palette-error) !important;
+}
+
+::deep .prompt-tabs-negative .mud-input.mud-input-underline::before,
+::deep .prompt-tabs-negative .mud-input.mud-input-underline::after {
+    border-bottom-color: var(--mud-palette-error) !important;
+}

@@ -376,10 +376,55 @@ var modelRef = registry.GetRef($"{scope}model_output");
 
 ### Standard Scopes
 
-| Scope         | Usage                    |
-| ------------- | ------------------------ |
-| `""` (empty)  | Main generation pipeline |
-| `"detailer_"` | Detailer model loading   |
+| Scope               | Usage                                              |
+| ------------------- | -------------------------------------------------- |
+| `""` (empty)        | Main generation pipeline                           |
+| `"detailer_"`       | Detailer pass 0 (legacy / single-pass default)     |
+| `"detailer_{i}_"`   | Chained detailer pass `i >= 1` (head/hands/etc.)   |
+
+Pass 0 intentionally uses the unindexed `"detailer_"` scope to preserve back-compat with
+saved parameter snapshots from the single-pass era.
+
+### Detailer Multi-Pass Conventions
+
+The Detailer block is **chainable**: a workflow can run N passes in sequence (e.g. face, hands, feet). Each pass:
+
+1. Loads its own (potentially different) UNet/CLIP/VAE using the scoped loader fragment.
+2. Loads its own LoRA stack from `parameters.GetDetailerLoras(i)`.
+3. Reads the latest `image_output` from the main registry and writes `image_output` back, so the next pass continues from the freshly-detailed image.
+
+Per-pass parameter storage on the `detailer` fragment:
+
+| Key prefix    | Applies to |
+| ------------- | ---------- |
+| (none)        | Pass 0 - keys like `detailer_prompt`, `detailer_seed`, ... (legacy) |
+| `pass_{i}_`   | Pass `i >= 1` - keys like `pass_1_detailer_prompt`, `pass_1_detailer_seed`, ... |
+
+Additional top-level detailer key:
+
+| Key            | Meaning                                                         |
+| -------------- | --------------------------------------------------------------- |
+| `pass_count`   | Number of chained detailer passes. Default `1` when absent.     |
+
+### Detailer Prompt Fallback
+
+`detailer_prompt` / `detailer_negative_prompt` (and their `pass_{i}_`-prefixed variants) are
+**optional overrides**: an empty or whitespace-only value must transparently fall back to the
+main prompts. Always resolve via `FragmentParameters.GetStringOrFallback(key, main)` (or the
+equivalent extension on `FragmentParameters?`). Never use `??` alone - it treats `""` as set.
+
+### Detailer LoRA Wiring
+
+Every detailer-capable workflow must emit the detailer-scoped LoRA loop:
+
+```csharp
+_loraLoaderFragment.BuildAll(builder, registry, parameters.GetDetailerLoras(i), scope: scope);
+```
+
+after the scoped loader and before the `DetailerFragment.Build` call. `GetDetailerLoras(i)`
+returns (and lazily creates) the list for pass `i`. Lists are independent across passes and
+independent from the main `parameters.Loras`. `LoraLoaderFragment.BuildAll` prefixes node IDs
+with the scope so passes never collide.
 
 ---
 
@@ -435,21 +480,27 @@ var modelRef = registry.GetRef($"{scope}model_output");
 |   WRITES: image_output (overwrites)                      |
 +----------------------------------------------------------+
                           |
-                          v
+                          v   (repeat per pass 0..N-1)
 +----------------------------------------------------------+
-| LoadDiffusionWithPrompts (scope: "detailer_")             |
-|   WRITES: detailer_model_output, detailer_clip_output,   |
-|           detailer_vae_output, detailer_positive_output,  |
-|           detailer_negative_output                       |
+| LoadDiffusionWithPrompts (scope: "detailer_{i}_")         |
+|   WRITES: {scope}model_output, {scope}clip_output,       |
+|           {scope}vae_output, {scope}positive_output,     |
+|           {scope}negative_output                         |
 +----------------------------------------------------------+
                           |
                           v
 +----------------------------------------------------------+
-| Detailer (scope: "detailer_")           [CONDITIONAL]     |
-|   READS: detailer_model_output, detailer_clip_output,    |
-|          detailer_vae_output, detailer_positive_output,  |
-|          detailer_negative_output, image_output (main!)  |
-|   WRITES: image_output (overwrites main)                 |
+| LoraLoader(s) (scope: "detailer_{i}_")  [PER PASS]        |
+|   READS/WRITES: {scope}model_output, {scope}clip_output  |
++----------------------------------------------------------+
+                          |
+                          v
++----------------------------------------------------------+
+| Detailer (scope: "detailer_{i}_")       [CONDITIONAL]     |
+|   READS: {scope}model_output, {scope}clip_output,        |
+|          {scope}vae_output, {scope}positive_output,      |
+|          {scope}negative_output, image_output (main)     |
+|   WRITES: image_output (overwrites; next pass chains)    |
 +----------------------------------------------------------+
                           |
                           v

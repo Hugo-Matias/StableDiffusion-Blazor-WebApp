@@ -256,15 +256,16 @@ public class DetailerFragment : IFragmentBuilder
         var negativeRef = registry.GetRef($"{p.Scope}negative_output");
 
         // BBox detector provider
-        builder.AddNode("detailer_bbox_provider", node => node
+        builder.AddNode($"{p.Scope}bbox_provider", node => node
             .Type("UltralyticsDetectorProvider")
-            .Title("Detailer BBox Detector Provider")
+            .Title($"{(string.IsNullOrEmpty(p.Scope) ? "Detailer " : p.Scope.Replace('_', ' ').TrimEnd())} BBox Detector Provider".Trim())
             .Input("model_name", p.DetectionModel));
 
         // FaceDetailer node
-        builder.AddNode("detailer", node => node
+        var faceDetailerId = $"{p.Scope}face_detailer";
+        builder.AddNode(faceDetailerId, node => node
             .Type("FaceDetailer")
-            .Title("FaceDetailer")
+            .Title($"{(string.IsNullOrEmpty(p.Scope) ? "Detailer " : p.Scope.Replace('_', ' ').TrimEnd())} FaceDetailer".Trim())
             .Input("guide_size", p.GuideSize)
             .Input("guide_size_for", true)
             .Input("max_size", p.MaxSize)
@@ -299,9 +300,10 @@ public class DetailerFragment : IFragmentBuilder
             .InputRef("vae", vaeRef)
             .InputRef("positive", positiveRef)
             .InputRef("negative", negativeRef)
-            .InputRef("bbox_detector", ("detailer_bbox_provider", 0)));
+            .InputRef("bbox_detector", ($"{p.Scope}bbox_provider", 0)));
 
-        // Overwrite image_output with detailed version
-        registry.Register("image_output", "detailer", 0);
+        // Overwrite image_output with detailed version. Subsequent chained detailer passes
+        // pick this up through imageRef on the next loop iteration.
+        registry.Register("image_output", faceDetailerId, 0);
     }
 }

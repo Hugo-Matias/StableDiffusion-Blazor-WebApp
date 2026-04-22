@@ -1,0 +1,285 @@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+
+<MudStack Spacing="2">
+    <MudSelect T="TargetKind" Value="_kind" ValueChanged="OnKindChangedAsync" Label="Target kind"
+               Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomCenter">
+        @foreach (var k in _availableKinds)
+        {
+            <MudSelectItem Value="@k">@LabelFor(k)</MudSelectItem>
+        }
+    </MudSelect>
+
+    @switch (_kind)
+    {
+        case TargetKind.Fragment:
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" Value="_fragmentId" ValueChanged="OnFragmentChangedAsync"
+                               Label="Fragment" Variant="Variant.Text" Dense="true"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var id in _availableFragmentIds)
+                        {
+                            <MudSelectItem T="string" Value="@id">@id</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" Value="_paramKey" ValueChanged="OnParamKeyChanged"
+                               Label="Parameter" Variant="Variant.Text" Dense="true"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@string.IsNullOrEmpty(_fragmentId)">
+                        @foreach (var key in _availableParamKeys)
+                        {
+                            <MudSelectItem T="string" Value="@key">@key</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+            break;
+
+        case TargetKind.Lora:
+            <MudSelect T="string" Value="_loraName" ValueChanged="OnLoraChanged"
+                       Label="LoRA" Variant="Variant.Text" Dense="true"
+                       AnchorOrigin="Origin.BottomCenter">
+                @foreach (var name in _availableLoras)
+                {
+                    <MudSelectItem T="string" Value="@name">@name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_availableLoras.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense>
+                    No LoRAs in base parameters. Use AddLora directive to introduce one first.
+                </MudAlert>
+            }
+            break;
+
+        case TargetKind.Asset:
+            <MudSelect T="string" Value="_assetKey" ValueChanged="OnAssetChanged"
+                       Label="Asset key" Variant="Variant.Text" Dense="true"
+                       AnchorOrigin="Origin.BottomCenter">
+                @foreach (var key in _availableAssets)
+                {
+                    <MudSelectItem T="string" Value="@key">@key</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_availableAssets.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense>
+                    No assets declared on the workflow snapshot.
+                </MudAlert>
+            }
+            break;
+
+        case TargetKind.Prompt:
+            <MudSwitch T="bool" Value="_isNegative" ValueChanged="OnPromptNegativeChanged"
+                       Color="Color.Primary" Label="@(_isNegative ? "Negative prompt" : "Positive prompt")" />
+            break;
+
+        case TargetKind.Output:
+            <MudSelect T="OutputField" Value="_outputField" ValueChanged="OnOutputFieldChanged"
+                       Label="Output field" Variant="Variant.Text" Dense="true"
+                       AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="OutputField.Project">Project</MudSelectItem>
+                <MudSelectItem Value="OutputField.Folder">Folder</MudSelectItem>
+            </MudSelect>
+            break;
+    }
+</MudStack>
+
+@code {
+    /// <summary>Enumerates the concrete <see cref="ParameterTarget"/> subtypes for picker UI.</summary>
+    public enum TargetKind { Fragment, Lora, Asset, Prompt, Output }
+
+    /// <summary>
+    /// Filters fragment parameter keys by the runtime value type stored in <see cref="FragmentParameters.Values"/>.
+    /// Used by numeric-only variations (Range / Random) and text-only ones (Wildcard) to avoid nonsensical pairings.
+    /// <see cref="PromptLikeString"/> additionally narrows string params to prompt-looking keys (positive/negative/prompt)
+    /// so wildcards don't surface things like scheduler names.
+    /// </summary>
+    public enum FragmentValueTypeFilter { Any, Numeric, String, Boolean, PromptLikeString }
+
+    [Parameter] public ParameterTarget? Value { get; set; }
+    [Parameter] public EventCallback<ParameterTarget?> ValueChanged { get; set; }
+
+    /// <summary>Job whose base parameters provide the picker's domain (fragments, LoRAs, assets).</summary>
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    /// <summary>Optional restriction on which kinds the user may pick.</summary>
+    [Parameter] public IEnumerable<TargetKind>? AllowedKinds { get; set; }
+
+    /// <summary>Restricts fragment parameter keys to those whose stored value matches the chosen runtime type.</summary>
+    [Parameter] public FragmentValueTypeFilter FragmentValueFilter { get; set; } = FragmentValueTypeFilter.Any;
+
+    private TargetKind _kind;
+    private bool _kindInitialized;
+    private string? _fragmentId;
+    private string? _paramKey;
+    private string? _loraName;
+    private string? _assetKey;
+    private bool _isNegative;
+    private OutputField _outputField;
+
+    private List<TargetKind> _availableKinds = new();
+    private List<string> _availableFragmentIds = new();
+    private List<string> _availableParamKeys = new();
+    private List<string> _availableLoras = new();
+    private List<string> _availableAssets = new();
+
+    protected override void OnParametersSet()
+    {
+        _availableKinds = (AllowedKinds ?? Enum.GetValues<TargetKind>()).ToList();
+
+        _availableFragmentIds = Job?.BaseParameters?.Fragments?.Keys.OrderBy(k => k).ToList() ?? new();
+        _availableLoras = Job?.BaseParameters?.Loras?
+            .Where(l => !string.IsNullOrWhiteSpace(l.Name))
+            .Select(l => l.Name!)
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList() ?? new();
+        _availableAssets = Job?.BaseParameters?.Assets?.Keys.OrderBy(k => k).ToList() ?? new();
+
+        // Hydrate UI state from the current Value. When Value is null we intentionally keep the
+        // user's current _kind selection so that switching the kind dropdown (which temporarily
+        // nulls the emitted value before a sub-selection is made) doesn't snap back to Fragment.
+        switch (Value)
+        {
+            case FragmentTarget f:
+                _kind = TargetKind.Fragment;
+                _fragmentId = f.FragmentId;
+                _paramKey = f.ParamKey;
+                RefreshParamKeys();
+                break;
+            case LoraTarget l:
+                _kind = TargetKind.Lora;
+                _loraName = l.LoraName;
+                break;
+            case AssetTarget a:
+                _kind = TargetKind.Asset;
+                _assetKey = a.AssetKey;
+                break;
+            case PromptTarget p:
+                _kind = TargetKind.Prompt;
+                _isNegative = p.IsNegative;
+                break;
+            case OutputTarget o:
+                _kind = TargetKind.Output;
+                _outputField = o.Field;
+                break;
+            case null:
+                // First render with no value: fall back to the first allowed kind.
+                if (!_kindInitialized) _kind = _availableKinds.FirstOrDefault();
+                break;
+        }
+        _kindInitialized = true;
+
+        // Ensure _kind is in AllowedKinds; coerce only if currently out-of-range.
+        if (_availableKinds.Count > 0 && !_availableKinds.Contains(_kind))
+        {
+            _kind = _availableKinds[0];
+            _fragmentId = null; _paramKey = null;
+            _loraName = null; _assetKey = null;
+            _isNegative = false; _outputField = OutputField.Project;
+            _availableParamKeys = new();
+        }
+    }
+
+    private static string LabelFor(TargetKind k) => k switch
+    {
+        TargetKind.Fragment => "Fragment parameter",
+        TargetKind.Lora => "LoRA",
+        TargetKind.Asset => "Asset",
+        TargetKind.Prompt => "Prompt text",
+        TargetKind.Output => "Output routing",
+        _ => k.ToString()
+    };
+
+    private async Task OnKindChangedAsync(TargetKind kind)
+    {
+        _kind = kind;
+        // Reset subtype-specific fields so stale selections don't leak into the emitted value.
+        _fragmentId = null;
+        _paramKey = null;
+        _loraName = null;
+        _assetKey = null;
+        _isNegative = false;
+        _outputField = OutputField.Project;
+        _availableParamKeys = new();
+        await EmitAsync();
+    }
+
+    private async Task OnFragmentChangedAsync(string? value)
+    {
+        _fragmentId = value;
+        _paramKey = null;
+        RefreshParamKeys();
+        await EmitAsync();
+    }
+
+    private void RefreshParamKeys()
+    {
+        if (string.IsNullOrEmpty(_fragmentId) || Job?.BaseParameters?.Fragments is null)
+        {
+            _availableParamKeys = new();
+            return;
+        }
+        if (!Job.BaseParameters.Fragments.TryGetValue(_fragmentId, out var frag) || frag?.Values is null)
+        {
+            _availableParamKeys = new();
+            return;
+        }
+        _availableParamKeys = frag.Values
+            .Where(kv => MatchesValueFilter(kv.Key, kv.Value))
+            .Select(kv => kv.Key)
+            .OrderBy(k => k)
+            .ToList();
+    }
+
+    private bool MatchesValueFilter(string key, object? value) => FragmentValueFilter switch
+    {
+        FragmentValueTypeFilter.Any => true,
+        FragmentValueTypeFilter.Numeric => value is sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal,
+        FragmentValueTypeFilter.String => value is string,
+        FragmentValueTypeFilter.Boolean => value is bool,
+        FragmentValueTypeFilter.PromptLikeString => value is string && LooksLikePromptKey(key),
+        _ => true,
+    };
+
+    // Heuristic: prompt-ish params match these tokens in their key name. Covers the main prompts
+    // fragment (positive/negative) and the detailer fragment's *_prompt / *_negative_prompt keys.
+    private static bool LooksLikePromptKey(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return false;
+        var k = key.ToLowerInvariant();
+        return k.Contains("prompt") || k.Contains("positive") || k.Contains("negative");
+    }
+
+    private Task OnParamKeyChanged(string? value) { _paramKey = value; return EmitAsync(); }
+    private Task OnLoraChanged(string? value) { _loraName = value; return EmitAsync(); }
+    private Task OnAssetChanged(string? value) { _assetKey = value; return EmitAsync(); }
+    private Task OnPromptNegativeChanged(bool value) { _isNegative = value; return EmitAsync(); }
+    private Task OnOutputFieldChanged(OutputField value) { _outputField = value; return EmitAsync(); }
+
+    private Task EmitAsync()
+    {
+        ParameterTarget? next = _kind switch
+        {
+            TargetKind.Fragment when !string.IsNullOrEmpty(_fragmentId) && !string.IsNullOrEmpty(_paramKey)
+                => new FragmentTarget { FragmentId = _fragmentId!, ParamKey = _paramKey! },
+            TargetKind.Lora when !string.IsNullOrEmpty(_loraName)
+                => new LoraTarget { LoraName = _loraName! },
+            TargetKind.Asset when !string.IsNullOrEmpty(_assetKey)
+                => new AssetTarget { AssetKey = _assetKey! },
+            TargetKind.Prompt
+                => new PromptTarget { IsNegative = _isNegative },
+            TargetKind.Output
+                => new OutputTarget { Field = _outputField },
+            _ => null,
+        };
+        Value = next;
+        return ValueChanged.InvokeAsync(next);
+    }
+}
+

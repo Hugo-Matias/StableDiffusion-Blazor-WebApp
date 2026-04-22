@@ -19,7 +19,7 @@ public class VariationMaterializerTests
         // OllamaService is a concrete class with dependencies we don't need here; these tests
         // that touch the LLM path use a dedicated harness below.
         _ollama = null!;
-        _sut = new VariationMaterializer(_wildcards.Object, _ollama!, NullLogger<VariationMaterializer>.Instance);
+        _sut = new VariationMaterializer(_wildcards.Object, _ollama!, Mock.Of<IDatabaseService>(), NullLogger<VariationMaterializer>.Instance);
     }
 
     private static ParameterTarget TargetOf() => new FragmentTarget { FragmentId = "f", ParamKey = "p" };

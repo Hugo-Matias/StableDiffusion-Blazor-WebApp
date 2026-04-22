@@ -34,6 +34,42 @@ namespace BlazorWebApp.Models
         public List<Lora> Loras { get; set; } = new();
 
         /// <summary>
+        /// LoRAs scoped to the Detailer enhancement pass 0. Independent of <see cref="Loras"/>;
+        /// mutating one list does not affect the other. Used by workflow templates to emit
+        /// <c>detailer_</c>-scoped LoRA loader nodes for the Detailer sub-pipeline.
+        /// Backed by <see cref="DetailerLorasByPass"/>[0] so both views stay in sync.
+        /// </summary>
+        public List<Lora> DetailerLoras
+        {
+            get => GetDetailerLoras(0);
+            set
+            {
+                DetailerLorasByPass[0] = value ?? new List<Lora>();
+            }
+        }
+
+        /// <summary>
+        /// Per-pass detailer LoRA lists. Pass 0 is the primary detailer; additional entries
+        /// hold LoRAs for chained detailer passes (pass 1, 2, ...). Lists are independent
+        /// across passes. Use <see cref="GetDetailerLoras"/> to read/auto-create a pass.
+        /// </summary>
+        public Dictionary<int, List<Lora>> DetailerLorasByPass { get; set; } = new();
+
+        /// <summary>
+        /// Returns the LoRA list for a given detailer pass index, creating an empty list
+        /// on demand so callers never see a null reference.
+        /// </summary>
+        public List<Lora> GetDetailerLoras(int passIndex)
+        {
+            if (!DetailerLorasByPass.TryGetValue(passIndex, out var list))
+            {
+                list = new List<Lora>();
+                DetailerLorasByPass[passIndex] = list;
+            }
+            return list;
+        }
+
+        /// <summary>
         /// Current workflow reference.
         /// </summary>
         public Guid? WorkflowId { get; set; }
@@ -52,6 +88,10 @@ namespace BlazorWebApp.Models
                     kvp => kvp.Value.Clone()
                 ),
                 Loras = Loras.Select(l => new Lora(l)).ToList(),
+                DetailerLorasByPass = DetailerLorasByPass.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value.Select(l => new Lora(l)).ToList()
+                ),
                 Fragments = Fragments.ToDictionary(
                     kvp => kvp.Key,
                     kvp => kvp.Value.Clone()

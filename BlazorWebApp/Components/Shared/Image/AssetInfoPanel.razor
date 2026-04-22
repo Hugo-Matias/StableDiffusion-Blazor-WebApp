@@ -10,6 +10,7 @@
 @inject ISessionService Session
 @inject ISnackbar Snackbar
 @inject NavigationManager NavManager
+@inject IImageSendToService SendTo
 
 <div class="info-panel-header">
     <MudIcon Icon="@(IsVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
@@ -32,31 +33,31 @@
             @if (!IsVideo)
             {
                 @* Send image to workflows *@
-                @if (GetAvailableWorkflows().Any())
+                @if (SendTo.GetImageWorkflows().Any())
                 {
                     <div class="send-to-section">
                         <span class="send-to-label">Send image to:</span>
                         <div class="send-to-buttons">
-                            @foreach (var workflow in GetAvailableWorkflows())
+                            @foreach (var workflow in SendTo.GetImageWorkflows())
                             {
-                                var multiSource = GetMultiSourceDefinition(workflow);
+                                var multiSource = SendTo.GetMultiSourceDefinition(workflow);
                                 @if (multiSource != null)
                                 {
                                     @* Multi-source workflow: show per-slot buttons + Add *@
-                                    @foreach (var slot in GetSourceSlots(workflow, multiSource))
+                                    @foreach (var slot in SendTo.GetSourceSlots(workflow, multiSource))
                                     {
                                         var slotCapture = slot;
-                                        <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)"
-                                                @onclick="() => SendImageToSourceSlot(workflow, slotCapture.Key)"
+                                        <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode)"
+                                                @onclick="() => SendTo.SendImageToSourceSlot(Asset!, workflow, slotCapture.Key)"
                                                 title="Send to @workflow.Title - @slotCapture.Label">
-                                            <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                            <MudIcon Icon="@SendTo.GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
                                             <span>@slotCapture.Label</span>
                                         </button>
                                     }
                                     var wfCapture = workflow;
                                     var msCapture = multiSource;
-                                    <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode) send-to-add"
-                                            @onclick="() => SendImageToNewSlot(wfCapture, msCapture)"
+                                    <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode) send-to-add"
+                                            @onclick="() => SendTo.SendImageToNewSlot(Asset!, wfCapture, msCapture)"
                                             title="Add new reference and send to @workflow.Title">
                                         <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
                                         <span>@(workflow.Title) Add</span>
@@ -65,10 +66,10 @@
                                 else
                                 {
                                     @* Single-source workflow: standard button *@
-                                    <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)"
-                                            @onclick="() => SendImageToWorkflow(workflow)"
+                                    <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode)"
+                                            @onclick="() => SendTo.SendImageToWorkflow(Asset!, workflow)"
                                             title="Send to @workflow.Title">
-                                        <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                        <MudIcon Icon="@SendTo.GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
                                         <span>@workflow.Title</span>
                                     </button>
                                 }
@@ -76,19 +77,19 @@
                         </div>
                     </div>
                 }
-                
+
                 @* Send parameters to workflows *@
-                @if (GetAvailableParameterWorkflows().Any())
+                @if (SendTo.GetParameterWorkflows().Any())
                 {
                     <div class="send-to-section">
                         <span class="send-to-label">Send parameters to:</span>
                         <div class="send-to-buttons">
-                            @foreach (var workflow in GetAvailableParameterWorkflows())
+                            @foreach (var workflow in SendTo.GetParameterWorkflows())
                             {
-                                <button class="send-to-btn @GetWorkflowModeClass(workflow.Mode)" 
+                                <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode)" 
                                         @onclick="() => SendParametersToWorkflow(workflow)" 
                                         title="Send to @workflow.Title">
-                                    <MudIcon Icon="@GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                    <MudIcon Icon="@SendTo.GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
                                     <span>@workflow.Title</span>
                                 </button>
                             }
@@ -359,185 +360,15 @@
         };
     }
 
-    private bool HasWorkflowForMode(ModeType mode)
-    {
-        if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null)
-        {
-            var currentBase = State.State.Generation.WorkflowBase;
-            return State.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
-        }
-        return false;
-    }
-
-    private Workflow? GetWorkflowForMode(ModeType mode)
-    {
-        if (State.State.Generation.Workflows == null) return null;
-        var currentBase = State.State.Generation.WorkflowBase;
-        return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
-    }
-
-    /// <summary>
-    /// Gets workflows that accept images as input (Img2Img, Img2Vid)
-    /// </summary>
-    private List<Workflow> GetAvailableWorkflows()
-    {
-        if (!Backend.IsBackendAvailable || State.State.Generation.Workflows == null)
-            return new List<Workflow>();
-
-        var currentBase = State.State.Generation.WorkflowBase;
-        return State.State.Generation.Workflows
-            .Where(w => w.Base == currentBase && (w.Mode == ModeType.Img2Img || w.Mode == ModeType.Img2Vid))
-            .OrderBy(w => w.Mode)
-            .ThenBy(w => w.Title)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Gets workflows that accept generation parameters (Txt2Img, Img2Img)
-    /// </summary>
-    private List<Workflow> GetAvailableParameterWorkflows()
-    {
-        if (!Backend.IsBackendAvailable || State.State.Generation.Workflows == null)
-            return new List<Workflow>();
-
-        var currentBase = State.State.Generation.WorkflowBase;
-        return State.State.Generation.Workflows
-            .Where(w => w.Base == currentBase && (w.Mode == ModeType.Txt2Img || w.Mode == ModeType.Img2Img))
-            .OrderBy(w => w.Mode)
-            .ThenBy(w => w.Title)
-            .ToList();
-    }
-
-    private string GetWorkflowIcon(ModeType mode)
-    {
-        return mode switch
-        {
-            ModeType.Txt2Img => "fa-solid fa-font",
-            ModeType.Img2Img => "fa-solid fa-image",
-            ModeType.Img2Vid => "fa-solid fa-video",
-            ModeType.Extras => "fa-solid fa-panorama",
-            _ => "fa-solid fa-circle"
-        };
-    }
-
-    private string GetWorkflowModeClass(ModeType mode)
-    {
-        return mode switch
-        {
-            ModeType.Txt2Img => "mode-txt2img",
-            ModeType.Img2Img => "mode-img2img",
-            ModeType.Img2Vid => "mode-img2vid",
-            ModeType.Extras => "mode-extras",
-            _ => ""
-        };
-    }
-
-    private void SendImageToWorkflow(Workflow workflow)
+    private async Task SendParametersToWorkflow(Workflow workflow)
     {
         if (Asset == null) return;
-
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Asset.Path)}";
-
-        switch (workflow.Mode)
+        await SendTo.SendParametersToWorkflow(Asset, workflow, _selectedParams);
+        if (_selectedParams.Count > 0)
         {
-            case ModeType.Img2Img:
-                Session.Img2ImgInputImage = data;
-                break;
-            case ModeType.Img2Vid:
-                Session.Img2VidInputImage = data;
-                break;
+            _selectedParams.Clear();
+            await SelectedParamsChanged.InvokeAsync(_selectedParams);
         }
-
-        NavManager.NavigateTo($"/generate/{workflow.Id}");
-        Snackbar.Add($"Image sent to {workflow.Title}", Severity.Success);
-    }
-
-    private WorkflowSource? GetMultiSourceDefinition(Workflow workflow)
-    {
-        return workflow.Sources?.FirstOrDefault(s => s.AllowMultiple);
-    }
-
-    private record SourceSlotInfo(string Key, string Label);
-
-    private List<SourceSlotInfo> GetSourceSlots(Workflow workflow, WorkflowSource multiSource)
-    {
-        var slots = new List<SourceSlotInfo>();
-        var baseId = multiSource.Id;
-
-        // If this workflow is currently active, read existing slots from state
-        if (State.GenerationParameters.WorkflowId == workflow.Id)
-        {
-            var existingKeys = State.GenerationParameters.Sources.Keys
-                .Where(k => k == baseId || k.StartsWith($"{baseId}_"))
-                .OrderBy(k => k)
-                .ToList();
-
-            for (var i = 0; i < existingKeys.Count; i++)
-            {
-                slots.Add(new SourceSlotInfo(existingKeys[i], $"{workflow.Title} Ref {i + 1}"));
-            }
-        }
-
-        // Minimum: always show at least the base slot
-        if (slots.Count == 0)
-        {
-            slots.Add(new SourceSlotInfo(baseId, $"{workflow.Title} Ref 1"));
-        }
-
-        return slots;
-    }
-
-    private void SendImageToSourceSlot(Workflow workflow, string sourceKey)
-    {
-        if (Asset == null) return;
-
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Asset.Path)}";
-
-        Session.PendingSourceImages.Clear();
-        Session.PendingSourceImages.Add(new PendingSourceImage(sourceKey, data, Asset.Path));
-        Session.NotifyPendingSourceImages();
-
-        NavManager.NavigateTo($"/generate/{workflow.Id}");
-        Snackbar.Add($"Image sent to {workflow.Title}", Severity.Success);
-    }
-
-    private void SendImageToNewSlot(Workflow workflow, WorkflowSource multiSource)
-    {
-        if (Asset == null) return;
-
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Asset.Path)}";
-
-        Session.PendingSourceImages.Clear();
-        Session.PendingSourceImages.Add(new PendingSourceImage(
-            SourceKey: multiSource.Id,
-            Data: data,
-            FilePath: Asset.Path,
-            Label: multiSource.Label,
-            IsNewSlot: true));
-        Session.NotifyPendingSourceImages();
-
-        NavManager.NavigateTo($"/generate/{workflow.Id}");
-        Snackbar.Add($"Image sent to {workflow.Title} (new reference)", Severity.Success);
-    }
-
-    private void SendParametersToWorkflow(Workflow workflow)
-    {
-        if (Asset == null || _selectedParams.Count == 0)
-        {
-            Snackbar.Add("Select parameters to send by clicking on them", Severity.Warning);
-            return;
-        }
-
-        var isImg2Img = workflow.Mode == ModeType.Img2Img;
-        foreach (var param in _selectedParams)
-        {
-            M.QueueGenerationParameter(Asset, param, isImg2Img);
-        }
-
-        NavManager.NavigateTo($"/generate/{workflow.Id}");
-        Snackbar.Add($"Sent {_selectedParams.Count} parameter(s) to {workflow.Title}", Severity.Success);
-        _selectedParams.Clear();
-        SelectedParamsChanged.InvokeAsync(_selectedParams);
     }
 
     private void ToggleParam(string param)

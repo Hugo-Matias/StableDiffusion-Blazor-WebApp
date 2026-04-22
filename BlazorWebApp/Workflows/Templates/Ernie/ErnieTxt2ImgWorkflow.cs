@@ -156,42 +156,52 @@ public class ErnieTxt2ImgWorkflow : IWorkflowBuilder
         var detailerFragment = parameters.GetFragment("detailer");
         if (detailerFragment?.IsActive == true)
         {
-            _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
+            var passCount = Math.Max(1, detailerFragment.GetInt("pass_count", 1));
+            for (int i = 0; i < passCount; i++)
             {
-                UnetName = detailerFragment.GetString("detailer_checkpoint")
-                           ?? parameters.Assets?.GetValueOrDefault("Model")
-                           ?? "ernie-image.safetensors",
-                ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "ministral-3-3b.safetensors",
-                ClipType = "flux2",
-                VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "flux2-vae.safetensors",
-                Positive = detailerFragment.GetString("detailer_prompt")
-                           ?? promptsFragment?.GetString("positive", "") ?? "",
-                Negative = detailerFragment.GetString("detailer_negative_prompt")
-                           ?? promptsFragment?.GetString("negative", "") ?? "",
-                Width = latentFragment?.GetInt("width", 1024) ?? 1024,
-                Height = latentFragment?.GetInt("height", 1024) ?? 1024,
-                BatchSize = latentFragment?.GetInt("batch_size", 1) ?? 1
-            }, scope: "detailer_", scopeTitle: "Detailer ");
+                var scope = i == 0 ? "detailer_" : $"detailer_{i}_";
+                var scopeTitle = i == 0 ? "Detailer " : $"Detailer {i + 1} ";
+                var kp = i == 0 ? string.Empty : $"pass_{i}_";
 
-            _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
-            {
-                Scope = "detailer_",
-                DetectionModel = detailerFragment.GetString("detailer_detection_model", "bbox/face_yolov8m.pt"),
-                Sampler = detailerFragment.GetString("detailer_sampler", "dpmpp_2m"),
-                Scheduler = detailerFragment.GetString("detailer_scheduler", "simple"),
-                Seed = detailerFragment.GetLong("detailer_seed", resolvedSeed),
-                Steps = detailerFragment.GetInt("detailer_steps", 20),
-                Cfg = detailerFragment.GetDouble("detailer_cfg", 4.0),
-                Denoise = detailerFragment.GetDouble("detailer_denoise", 0.65),
-                Feather = detailerFragment.GetInt("detailer_feather", 5),
-                BboxThreshold = detailerFragment.GetDouble("detailer_bbox_threshold", 0.7),
-                BboxDilation = detailerFragment.GetInt("detailer_bbox_dilation", 10),
-                BboxCropFactor = detailerFragment.GetDouble("detailer_bbox_crop_factor", 3.0),
-                DropSize = detailerFragment.GetInt("detailer_drop_size", 70),
-                GuideSize = detailerFragment.GetInt("detailer_guide_size", 512),
-                MaxSize = detailerFragment.GetInt("detailer_max_size", 1024),
-                Cycle = detailerFragment.GetInt("detailer_cycle", 1)
-            });
+                _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
+                {
+                    UnetName = detailerFragment.GetString($"{kp}detailer_checkpoint")
+                               ?? parameters.Assets?.GetValueOrDefault("Model")
+                               ?? "ernie-image.safetensors",
+                    ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "ministral-3-3b.safetensors",
+                    ClipType = "flux2",
+                    VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "flux2-vae.safetensors",
+                    Positive = detailerFragment.GetStringOrFallback($"{kp}detailer_prompt",
+                                     promptsFragment?.GetString("positive", "") ?? ""),
+                    Negative = detailerFragment.GetStringOrFallback($"{kp}detailer_negative_prompt",
+                                     promptsFragment?.GetString("negative", "") ?? ""),
+                    Width = latentFragment?.GetInt("width", 1024) ?? 1024,
+                    Height = latentFragment?.GetInt("height", 1024) ?? 1024,
+                    BatchSize = latentFragment?.GetInt("batch_size", 1) ?? 1
+                }, scope: scope, scopeTitle: scopeTitle);
+
+                _loraLoaderFragment.BuildAll(builder, registry, parameters.GetDetailerLoras(i), scope: scope);
+
+                _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
+                {
+                    Scope = scope,
+                    DetectionModel = detailerFragment.GetString($"{kp}detailer_detection_model", "bbox/face_yolov8m.pt"),
+                    Sampler = detailerFragment.GetString($"{kp}detailer_sampler", "dpmpp_2m"),
+                    Scheduler = detailerFragment.GetString($"{kp}detailer_scheduler", "simple"),
+                    Seed = detailerFragment.GetLong($"{kp}detailer_seed", resolvedSeed),
+                    Steps = detailerFragment.GetInt($"{kp}detailer_steps", 20),
+                    Cfg = detailerFragment.GetDouble($"{kp}detailer_cfg", 4.0),
+                    Denoise = detailerFragment.GetDouble($"{kp}detailer_denoise", 0.65),
+                    Feather = detailerFragment.GetInt($"{kp}detailer_feather", 5),
+                    BboxThreshold = detailerFragment.GetDouble($"{kp}detailer_bbox_threshold", 0.7),
+                    BboxDilation = detailerFragment.GetInt($"{kp}detailer_bbox_dilation", 10),
+                    BboxCropFactor = detailerFragment.GetDouble($"{kp}detailer_bbox_crop_factor", 3.0),
+                    DropSize = detailerFragment.GetInt($"{kp}detailer_drop_size", 70),
+                    GuideSize = detailerFragment.GetInt($"{kp}detailer_guide_size", 512),
+                    MaxSize = detailerFragment.GetInt($"{kp}detailer_max_size", 1024),
+                    Cycle = detailerFragment.GetInt($"{kp}detailer_cycle", 1)
+                });
+            }
         }
 
         // 9. Save

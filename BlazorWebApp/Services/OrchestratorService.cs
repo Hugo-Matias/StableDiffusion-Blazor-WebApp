@@ -384,11 +384,45 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public string ParseAndCleanCopiedPrompt(string prompt, bool isNegative, bool isImg2Img)
+        public async Task<string> ParseAndCleanCopiedPrompt(string prompt, bool isNegative, bool isImg2Img)
         {
             var loras = Parser.ExtractLorasFromPrompt(prompt, out var cleanedFromLoras, isNegative);
+            await ResolveLoraPathsAsync(loras);
             SetLoras(loras, isImg2Img);
 
+            return CleanStylesFromPrompt(cleanedFromLoras, isNegative);
+        }
+
+        /// <summary>
+        /// Variant of <see cref="ParseAndCleanCopiedPrompt"/> used when the caller needs to
+        /// either apply loras immediately or queue them for a pending workflow switch.
+        /// </summary>
+        private async Task<string> ParseAndCleanCopiedPromptInternal(string prompt, bool isNegative, bool isImg2Img, bool queueLoras)
+        {
+            var loras = Parser.ExtractLorasFromPrompt(prompt, out var cleanedFromLoras, isNegative);
+            await ResolveLoraPathsAsync(loras);
+
+            if (queueLoras)
+            {
+                // When navigating to a different workflow, InitializeFromWorkflowAsync clears
+                // Current.Loras before ApplyPendingOverrides is invoked. Queue them so they
+                // survive the workflow switch and land in Current.Loras afterwards.
+                foreach (var lora in loras)
+                {
+                    if (string.IsNullOrWhiteSpace(lora.Name)) continue;
+                    _parameterService.QueuePendingLora(lora);
+                }
+            }
+            else
+            {
+                SetLoras(loras, isImg2Img);
+            }
+
+            return CleanStylesFromPrompt(cleanedFromLoras, isNegative);
+        }
+
+        private string CleanStylesFromPrompt(string cleanedFromLoras, bool isNegative)
+        {
             var cleanedFromStyles = cleanedFromLoras;
             if (_state.State?.Generation?.Styles != null)
             {
@@ -419,28 +453,32 @@ namespace BlazorWebApp.Services
         {
             // Update GenerationParameters (unified model)
             await _state.LoadGenerationParametersFromImage(image);
+
+            // Resolve full relative paths for LoRAs extracted from the prompt
+            // (inline <lora:filename:strength> only captures the filename).
+            await ResolveLoraPathsAsync(_state.GenerationParameters?.Loras);
         }
 
-        public void SetGenerationParameter(Image source, string parameter, bool isImg2Img)
+        public Task SetGenerationParameter(Image source, string parameter, bool isImg2Img)
         {
-            SetOrQueueGenerationParameter(source, parameter, isImg2Img, queue: false);
+            return SetOrQueueGenerationParameter(source, parameter, isImg2Img, queue: false);
         }
 
-        public void QueueGenerationParameter(Image source, string parameter, bool isImg2Img)
+        public Task QueueGenerationParameter(Image source, string parameter, bool isImg2Img)
         {
-            SetOrQueueGenerationParameter(source, parameter, isImg2Img, queue: true);
+            return SetOrQueueGenerationParameter(source, parameter, isImg2Img, queue: true);
         }
 
-        private void SetOrQueueGenerationParameter(Image source, string parameter, bool isImg2Img, bool queue)
+        private async Task SetOrQueueGenerationParameter(Image source, string parameter, bool isImg2Img, bool queue)
         {
             switch (parameter)
             {
                 case "Prompt":
-                    var cleanedPrompt = ParseAndCleanCopiedPrompt(source.Prompt, false, isImg2Img);
+                    var cleanedPrompt = await ParseAndCleanCopiedPromptInternal(source.Prompt, false, isImg2Img, queueLoras: queue);
                     ApplyOrQueue(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Positive, cleanedPrompt, queue);
                     break;
                 case "NegativePrompt":
-                    var cleanedNegative = ParseAndCleanCopiedPrompt(source.NegativePrompt, true, isImg2Img);
+                    var cleanedNegative = await ParseAndCleanCopiedPromptInternal(source.NegativePrompt, true, isImg2Img, queueLoras: queue);
                     ApplyOrQueue(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Negative, cleanedNegative, queue);
                     break;
                 case "SamplerIndex":
@@ -496,6 +534,45 @@ namespace BlazorWebApp.Services
         {
             var fragment = _state.GenerationParameters.GetOrCreateFragment(fragmentId);
             fragment.SetValue(key, value);
+        }
+
+        /// <summary>
+        /// Resolves the full relative path (including subfolders) for each LoRA by matching
+        /// its Name against the list of available LoRAs reported by ComfyUI. The inline
+        /// prompt syntax <c>&lt;lora:filename:strength&gt;</c> only captures the filename,
+        /// but ComfyUI's LoraLoader requires the relative path (e.g. <c>style/anime.safetensors</c>).
+        /// Only LoRAs missing a Path are updated; existing Path values are preserved.
+        /// </summary>
+        private async Task ResolveLoraPathsAsync(IEnumerable<Lora>? loras)
+        {
+            if (loras == null) return;
+            var pending = loras.Where(l => l != null && !string.IsNullOrWhiteSpace(l.Name) && string.IsNullOrWhiteSpace(l.Path)).ToList();
+            if (pending.Count == 0) return;
+
+            List<string> available;
+            try
+            {
+                available = await _capi.GetLoras() ?? new List<string>();
+            }
+            catch
+            {
+                // If the backend is unreachable we keep the original Name-only value;
+                // the workflow builder will still attempt it as a fallback.
+                return;
+            }
+            if (available.Count == 0) return;
+
+            var comp = StringComparison.InvariantCultureIgnoreCase;
+            foreach (var lora in pending)
+            {
+                var match = available.FirstOrDefault(a => string.Equals(Path.GetFileNameWithoutExtension(a), lora.Name, comp))
+                            ?? available.FirstOrDefault(a => string.Equals(Path.GetFileName(a), lora.Name, comp));
+                if (!string.IsNullOrWhiteSpace(match))
+                {
+                    lora.Path = match;
+                    lora.Name = Path.GetFileNameWithoutExtension(match);
+                }
+            }
         }
 
         #endregion

@@ -14,29 +14,22 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-
     width: 100%;
     min-height: 3.25rem;
     padding: 0 1rem;
-
     font-family: inherit;
     font-size: 0.95rem;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #fff;
+    color: var(--mud-palette-dark);
 
     border: 0;
     border-radius: 10px;
     cursor: pointer;
     overflow: hidden;
     isolation: isolate;
-
-    transition:
-        transform 180ms ease,
-        box-shadow 220ms ease,
-        filter 220ms ease,
-        background-position 400ms ease;
+    transition: transform 180ms ease, box-shadow 220ms ease, filter 220ms ease, background-position 400ms ease;
     background-size: 180% 180%;
     background-position: 0% 50%;
 }

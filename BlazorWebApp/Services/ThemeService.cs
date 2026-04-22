@@ -54,12 +54,13 @@ namespace BlazorWebApp.Services
                     Secondary = "#BA68C8",
                     Tertiary = "#FFB74D",
                     Info = "#4DD0E1",
-                    Success = "#81C784",
+                    Success = "#5ee04e",
                     Warning = "#FFB74D",
                     Error = "#E57373",
                     AppbarBackground = "#1A1A1A",
-                    Surface = "#1E1E1E",
+                    Surface = "#1A1A1A",
                     Background = "#121212",
+                    Dark = "#131313",
                     DrawerBackground = "#1A1A1A"
                 }
             };

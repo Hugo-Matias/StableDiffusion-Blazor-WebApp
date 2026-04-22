@@ -23,6 +23,7 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
     // Enhancement fragments
     private readonly UpscaleFragment _upscaleFragment = new();
     private readonly DetailerFragment _detailerFragment = new();
+    private readonly LoraLoaderFragment _loraLoaderFragment = new();
 
     // UI fragments (prompts handled internally by LoadFluxFragment for encoding)
     private readonly PromptsFragment _promptsFragment = new();
@@ -163,52 +164,60 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
         // 4. VAE Decode
         _vaeDecodeFragment.Build(builder, registry);
 
-        // 5. Detailer (conditional) - requires its own model loader
+        // 5. Detailer (conditional) - requires its own model loader. Supports chained passes.
         var detailerFragmentParams = parameters.GetFragment("detailer");
         if (detailerFragmentParams?.IsActive == true)
         {
-            // Load separate models for detailer with detailer_ scope
-            var detailerPrompt = detailerFragmentParams.GetString("detailer_prompt") ?? positive;
-
-            _loadFluxFragment.Build(builder, registry, new LoadFluxFragment.Parameters
+            var passCount = Math.Max(1, detailerFragmentParams.GetInt("pass_count", 1));
+            for (int i = 0; i < passCount; i++)
             {
-                UnetName = detailerFragmentParams.GetString("detailer_checkpoint")
-                           ?? parameters.Assets?.GetValueOrDefault("Model")
-                           ?? "flux1-krea-dev_fp8_scaled.safetensors",
-                ClipName1 = parameters.Assets?.GetValueOrDefault("Clip1") ?? "t5xxl_fp8_e4m3fn_scaled.safetensors",
-                ClipName2 = parameters.Assets?.GetValueOrDefault("Clip2") ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors",
-                VaeName = parameters.Assets?.GetValueOrDefault("VAE") ?? "ae.safetensors",
-                Positive = detailerPrompt,
-                Guidance = samplerFragment?.GetDouble("guidance", 3.5) ?? 3.5,
-                RefluxEnabled = false,
-                Scaling = "exponential",
-                MaxShift = 1.35,
-                BaseShift = 0.85,
-                Width = width,
-                Height = height,
-                BatchSize = batchSize
-            }, scope: "detailer_", scopeTitle: "Detailer ");
+                var scope = i == 0 ? "detailer_" : $"detailer_{i}_";
+                var scopeTitle = i == 0 ? "Detailer " : $"Detailer {i + 1} ";
+                var kp = i == 0 ? string.Empty : $"pass_{i}_";
 
-            // Apply detailer (note: Flux uses CFG 1)
-            _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
-            {
-                Scope = "detailer_",
-                DetectionModel = detailerFragmentParams.GetString("detailer_detection_model", "bbox/face_yolov8m.pt"),
-                Sampler = detailerFragmentParams.GetString("detailer_sampler", "dpmpp_2m"),
-                Scheduler = detailerFragmentParams.GetString("detailer_scheduler", "beta"),
-                Seed = detailerFragmentParams.GetLong("detailer_seed", seed),
-                Steps = detailerFragmentParams.GetInt("detailer_steps", 20),
-                Cfg = detailerFragmentParams.GetDouble("detailer_cfg", 1.0), // Flux uses CFG 1
-                Denoise = detailerFragmentParams.GetDouble("detailer_denoise", 0.65),
-                Feather = detailerFragmentParams.GetInt("detailer_feather", 5),
-                BboxThreshold = detailerFragmentParams.GetDouble("detailer_bbox_threshold", 0.7),
-                BboxDilation = detailerFragmentParams.GetInt("detailer_bbox_dilation", 10),
-                BboxCropFactor = detailerFragmentParams.GetDouble("detailer_bbox_crop_factor", 3.0),
-                DropSize = detailerFragmentParams.GetInt("detailer_drop_size", 70),
-                GuideSize = detailerFragmentParams.GetInt("detailer_guide_size", 512),
-                MaxSize = detailerFragmentParams.GetInt("detailer_max_size", 1024),
-                Cycle = detailerFragmentParams.GetInt("detailer_cycle", 1)
-            });
+                var detailerPrompt = detailerFragmentParams.GetStringOrFallback($"{kp}detailer_prompt", positive);
+
+                _loadFluxFragment.Build(builder, registry, new LoadFluxFragment.Parameters
+                {
+                    UnetName = detailerFragmentParams.GetString($"{kp}detailer_checkpoint")
+                               ?? parameters.Assets?.GetValueOrDefault("Model")
+                               ?? "flux1-krea-dev_fp8_scaled.safetensors",
+                    ClipName1 = parameters.Assets?.GetValueOrDefault("Clip1") ?? "t5xxl_fp8_e4m3fn_scaled.safetensors",
+                    ClipName2 = parameters.Assets?.GetValueOrDefault("Clip2") ?? "ViT-L-14-BEST-smooth-GmP-TE-only-HF-format.safetensors",
+                    VaeName = parameters.Assets?.GetValueOrDefault("VAE") ?? "ae.safetensors",
+                    Positive = detailerPrompt,
+                    Guidance = samplerFragment?.GetDouble("guidance", 3.5) ?? 3.5,
+                    RefluxEnabled = false,
+                    Scaling = "exponential",
+                    MaxShift = 1.35,
+                    BaseShift = 0.85,
+                    Width = width,
+                    Height = height,
+                    BatchSize = batchSize
+                }, scope: scope, scopeTitle: scopeTitle);
+
+                _loraLoaderFragment.BuildAll(builder, registry, parameters.GetDetailerLoras(i), scope: scope);
+
+                _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
+                {
+                    Scope = scope,
+                    DetectionModel = detailerFragmentParams.GetString($"{kp}detailer_detection_model", "bbox/face_yolov8m.pt"),
+                    Sampler = detailerFragmentParams.GetString($"{kp}detailer_sampler", "dpmpp_2m"),
+                    Scheduler = detailerFragmentParams.GetString($"{kp}detailer_scheduler", "beta"),
+                    Seed = detailerFragmentParams.GetLong($"{kp}detailer_seed", seed),
+                    Steps = detailerFragmentParams.GetInt($"{kp}detailer_steps", 20),
+                    Cfg = detailerFragmentParams.GetDouble($"{kp}detailer_cfg", 1.0),
+                    Denoise = detailerFragmentParams.GetDouble($"{kp}detailer_denoise", 0.65),
+                    Feather = detailerFragmentParams.GetInt($"{kp}detailer_feather", 5),
+                    BboxThreshold = detailerFragmentParams.GetDouble($"{kp}detailer_bbox_threshold", 0.7),
+                    BboxDilation = detailerFragmentParams.GetInt($"{kp}detailer_bbox_dilation", 10),
+                    BboxCropFactor = detailerFragmentParams.GetDouble($"{kp}detailer_bbox_crop_factor", 3.0),
+                    DropSize = detailerFragmentParams.GetInt($"{kp}detailer_drop_size", 70),
+                    GuideSize = detailerFragmentParams.GetInt($"{kp}detailer_guide_size", 512),
+                    MaxSize = detailerFragmentParams.GetInt($"{kp}detailer_max_size", 1024),
+                    Cycle = detailerFragmentParams.GetInt($"{kp}detailer_cycle", 1)
+                });
+            }
         }
 
         // 6. Save

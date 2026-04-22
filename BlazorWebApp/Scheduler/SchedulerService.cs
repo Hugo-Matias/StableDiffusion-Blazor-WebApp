@@ -153,7 +153,8 @@ namespace BlazorWebApp.Scheduler
                 ct.ThrowIfCancellationRequested();
                 var plan = await _sequencer.BuildPlanAsync(action, ct);
                 plans.Add(plan);
-                totalIterations += plan.EffectiveCount;
+                var repeat = Math.Max(1, action.Repeat);
+                totalIterations += plan.EffectiveCount * repeat;
             }
             job.RunState.TotalIterations = totalIterations;
 
@@ -172,28 +173,33 @@ namespace BlazorWebApp.Scheduler
 
                     var action = job.Actions[actionIndex];
                     var plan = plans[actionIndex];
+                    var repeat = Math.Max(1, action.Repeat);
+                    var effectiveCount = plan.EffectiveCount * repeat;
 
-                    _events.Publish(new JobActionChangedEventArgs(job.Id, actionIndex, plan.EffectiveCount, action.Label));
+                    _events.Publish(new JobActionChangedEventArgs(job.Id, actionIndex, effectiveCount, action.Label));
 
                     int startIteration = actionIndex == job.RunState.CurrentActionIndex
                         ? job.RunState.CurrentIterationIndex
                         : 0;
 
                     int iterationInPlan = 0;
-                    foreach (var iterationSet in _sequencer.Enumerate(plan))
+                    for (int rep = 0; rep < repeat; rep++)
                     {
-                        if (iterationInPlan < startIteration) { iterationInPlan++; continue; }
+                        foreach (var iterationSet in _sequencer.Enumerate(plan))
+                        {
+                            if (iterationInPlan < startIteration) { iterationInPlan++; continue; }
 
-                        ct.ThrowIfCancellationRequested();
-                        await WaitIfPausedAsync(job, ct);
+                            ct.ThrowIfCancellationRequested();
+                            await WaitIfPausedAsync(job, ct);
 
-                        job.RunState.CurrentActionIndex = actionIndex;
-                        job.RunState.CurrentIterationIndex = iterationInPlan;
-                        job.RunState.UpdatedAt = DateTime.UtcNow;
+                            job.RunState.CurrentActionIndex = actionIndex;
+                            job.RunState.CurrentIterationIndex = iterationInPlan;
+                            job.RunState.UpdatedAt = DateTime.UtcNow;
 
-                        await RunIterationAsync(job, actionIndex, action, iterationSet, workflow, ct);
+                            await RunIterationAsync(job, actionIndex, action, iterationSet, workflow, ct);
 
-                        iterationInPlan++;
+                            iterationInPlan++;
+                        }
                     }
                 }
 

@@ -11,6 +11,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavManager
+@inject IImageSendToService SendTo
 @implements IDisposable
 
 <div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
@@ -100,43 +101,56 @@
                              Class="more-menu">
                         <ChildContent>
                             <div class="action-menu">
-                                @* Only show "Send To" section if there are available workflows *@
-                                @if (HasWorkflowForMode(ModeType.Img2Img) || HasWorkflowForMode(ModeType.Img2Vid) || HasWorkflowForMode(ModeType.Extras))
+                                @{
+                                    var imageWorkflows = SendTo.GetImageWorkflows();
+                                    var paramWorkflows = SendTo.GetParameterWorkflows();
+                                }
+                                @* Only show "Send image to" section if there are compatible workflows *@
+                                @if (imageWorkflows.Any())
                                 {
                                     <div class="menu-section">
-                                        <div class="menu-section-title">Send To</div>
-                                        @if (HasWorkflowForMode(ModeType.Img2Img))
+                                        <div class="menu-section-title">Send image to</div>
+                                        @foreach (var workflow in imageWorkflows)
                                         {
-                                            <MudMenuItem OnClick="@(() => SendTo(img2img: true))" Class="menu-item">
-                                                <div class="menu-item-content">
-                                                    <i class="fa-solid fa-file-image menu-icon warning"></i>
-                                                    <span>Img2Img</span>
-                                                </div>
-                                            </MudMenuItem>
-                                        }
-                                        @if (HasWorkflowForMode(ModeType.Img2Vid))
-                                        {
-                                            <MudMenuItem OnClick="SendToImg2Vid" Class="menu-item">
-                                                <div class="menu-item-content">
-                                                    <i class="fa-solid fa-video menu-icon info"></i>
-                                                    <span>Img2Vid</span>
-                                                </div>
-                                            </MudMenuItem>
-                                        }
-                                        @if (HasWorkflowForMode(ModeType.Extras))
-                                        {
-                                            <MudMenuItem OnClick="@(() => SendTo(img2img: false))" Class="menu-item">
-                                                <div class="menu-item-content">
-                                                    <i class="fa-solid fa-panorama menu-icon warning"></i>
-                                                    <span>Upscale</span>
-                                                </div>
-                                            </MudMenuItem>
+                                            var multiSource = SendTo.GetMultiSourceDefinition(workflow);
+                                            if (multiSource != null)
+                                            {
+                                                @foreach (var slot in SendTo.GetSourceSlots(workflow, multiSource))
+                                                {
+                                                    var slotCapture = slot;
+                                                    var wfRef = workflow;
+                                                    <MudMenuItem OnClick="@(() => SendTo.SendImageToSourceSlot(Image, wfRef, slotCapture.Key))" Class="menu-item">
+                                                        <div class="menu-item-content">
+                                                            <i class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
+                                                            <span>@slotCapture.Label</span>
+                                                        </div>
+                                                    </MudMenuItem>
+                                                }
+                                                var wfAdd = workflow;
+                                                var msAdd = multiSource;
+                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToNewSlot(Image, wfAdd, msAdd))" Class="menu-item">
+                                                    <div class="menu-item-content">
+                                                        <i class="fa-solid fa-plus menu-icon @GetModeIconColor(wfAdd.Mode)"></i>
+                                                        <span>@(wfAdd.Title) Add</span>
+                                                    </div>
+                                                </MudMenuItem>
+                                            }
+                                            else
+                                            {
+                                                var wfRef = workflow;
+                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToWorkflow(Image, wfRef))" Class="menu-item">
+                                                    <div class="menu-item-content">
+                                                        <i class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
+                                                        <span>@wfRef.Title</span>
+                                                    </div>
+                                                </MudMenuItem>
+                                            }
                                         }
                                     </div>
-                                    
+
                                     <div class="menu-divider"></div>
                                 }
-                                
+
                                 <div class="menu-section">
                                     <div class="menu-section-title">Organize</div>
                                     <MudMenuItem OnClick="ShowSwitchProjectDialog" Class="menu-item">
@@ -261,22 +275,14 @@
         }
     }
 
-    private bool HasWorkflowForMode(ModeType mode)
+    private static string GetModeIconColor(ModeType mode) => mode switch
     {
-        if (Backend.IsBackendAvailable && State.State.Generation.Workflows != null)
-        {
-            var currentBase = State.State.Generation.WorkflowBase;
-            return State.State.Generation.Workflows.Any(w => w.Base == currentBase && w.Mode == mode);
-        }
-        return false;
-    }
-
-    private Workflow? GetWorkflowForMode(ModeType mode)
-    {
-        if (State.State.Generation.Workflows == null) return null;
-        var currentBase = State.State.Generation.WorkflowBase;
-        return State.State.Generation.Workflows.FirstOrDefault(w => w.Base == currentBase && w.Mode == mode);
-    }
+        ModeType.Img2Img => "warning",
+        ModeType.Img2Vid => "info",
+        ModeType.Txt2Img => "primary",
+        ModeType.Extras => "warning",
+        _ => "secondary"
+    };
 
     private async Task ToggleFavorite(bool isChecked)
     {
@@ -303,47 +309,6 @@
         await DB.SetProjectCover(State.State.Gallery.ProjectId, Image.Path);
         await OnCoverChanged.InvokeAsync();
         Snackbar.Add($"Cover image selected for project {State.State.Gallery.ProjectName}.", Severity.Success);
-    }
-
-    private void SendTo(bool img2img)
-    {
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
-        
-        if (img2img)
-        {
-            var workflow = GetWorkflowForMode(ModeType.Img2Img);
-            if (workflow != null)
-            {
-                Session.Img2ImgInputImage = data;
-                NavManager.NavigateTo($"/img2img/{workflow.Id}");
-                Snackbar.Add("Image sent to Img2Img", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add("No Img2Img workflow found for current model base", Severity.Warning);
-            }
-        }
-        else
-        {
-            Snackbar.Add("Upscale page not yet implemented", Severity.Info);
-        }
-    }
-
-    private void SendToImg2Vid()
-    {
-        var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
-        Session.Img2VidInputImage = data;
-        
-        var workflow = GetWorkflowForMode(ModeType.Img2Vid);
-        if (workflow != null)
-        {
-            NavManager.NavigateTo($"/img2vid/{workflow.Id}");
-            Snackbar.Add("Image sent to Img2Vid", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add("No Img2Vid workflow found for current model base", Severity.Warning);
-        }
     }
 
     private void ToggleInfoDrawer()

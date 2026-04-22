@@ -129,12 +129,11 @@ public class DirectiveSerializationTests
     public void SetOutputDirective_RoundTrips()
     {
         var json = JsonSerializer.Serialize<Directive>(
-            new SetOutputDirective { ProjectName = "P", FolderName = null },
+            new SetOutputDirective { ProjectName = "P" },
             Options);
         var back = JsonSerializer.Deserialize<Directive>(json, Options);
         var o = back.Should().BeOfType<SetOutputDirective>().Subject;
         o.ProjectName.Should().Be("P");
-        o.FolderName.Should().BeNull();
     }
 
     [Fact]

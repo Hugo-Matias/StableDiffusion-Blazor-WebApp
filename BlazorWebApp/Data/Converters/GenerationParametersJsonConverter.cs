@@ -285,6 +285,23 @@ namespace BlazorWebApp.Data.Converters
                         result.Loras = JsonSerializer.Deserialize<List<Lora>>(ref reader, options) ?? new List<Lora>();
                         break;
 
+                    case nameof(GenerationParameters.DetailerLoras):
+                        // Legacy pass-0-only shape: stored as a flat List<Lora>. Hydrate into pass 0 of the dictionary.
+                        result.DetailerLorasByPass[0] = JsonSerializer.Deserialize<List<Lora>>(ref reader, options) ?? new List<Lora>();
+                        break;
+
+                    case nameof(GenerationParameters.DetailerLorasByPass):
+                        var byPass = JsonSerializer.Deserialize<Dictionary<string, List<Lora>>>(ref reader, options);
+                        if (byPass != null)
+                        {
+                            result.DetailerLorasByPass = byPass
+                                .Where(kvp => int.TryParse(kvp.Key, out _))
+                                .ToDictionary(
+                                    kvp => int.Parse(kvp.Key),
+                                    kvp => kvp.Value ?? new List<Lora>());
+                        }
+                        break;
+
                     default:
                         reader.Skip();
                         break;
@@ -323,6 +340,13 @@ namespace BlazorWebApp.Data.Converters
             // Loras
             writer.WritePropertyName(nameof(GenerationParameters.Loras));
             JsonSerializer.Serialize(writer, value.Loras, options);
+
+            // DetailerLorasByPass - authoritative multi-pass store
+            writer.WritePropertyName(nameof(GenerationParameters.DetailerLorasByPass));
+            JsonSerializer.Serialize(
+                writer,
+                value.DetailerLorasByPass.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value),
+                options);
 
             writer.WriteEndObject();
         }

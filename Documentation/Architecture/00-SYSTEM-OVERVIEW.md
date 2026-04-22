@@ -272,6 +272,8 @@ Events.Subscribe<ParametersChangedEventArgs>(e => {
 9. **Modes**: Generation mode presets
 10. **Samplers**: Available sampling methods
 
+> For JSON-backed entity patterns, hand-authored migrations, and EF Core gotchas, see [`03-PERSISTENCE-AND-MIGRATIONS.md`](./03-PERSISTENCE-AND-MIGRATIONS.md).
+
 ## Configuration
 
 The application requires configuration in `appsettings.json` (not version controlled):

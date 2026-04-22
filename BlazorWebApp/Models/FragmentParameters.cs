@@ -373,6 +373,17 @@ namespace BlazorWebApp.Models
         /// </summary>
         public string? GetString(string key) => GetValue<string>(key);
 
+        /// <summary>
+        /// Gets a string value, falling back to <paramref name="fallback"/> when the stored value
+        /// is null, missing, empty, or whitespace only. Used for optional prompt-injection fields
+        /// that should transparently reuse a default when the user leaves them blank.
+        /// </summary>
+        public string GetStringOrFallback(string key, string fallback)
+        {
+            var value = GetString(key, string.Empty);
+            return string.IsNullOrWhiteSpace(value) ? fallback : value;
+        }
+
         #endregion
     }
 }

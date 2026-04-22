@@ -97,7 +97,7 @@ public class LoraLoaderFragment : IFragmentBuilder
 
             BuildInternal(builder, registry, new Parameters
             {
-                LoraLoaderId = $"lora_loader_{i}",
+                LoraLoaderId = $"{scope}lora_loader_{i}",
                 LoraName = lora.Name ?? "",
                 LoraPath = lora.Path,
                 LoraStrength = lora.Strength

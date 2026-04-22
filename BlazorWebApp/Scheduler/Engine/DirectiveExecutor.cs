@@ -38,7 +38,6 @@ namespace BlazorWebApp.Scheduler.Engine
                 case SwapAssetDirective sa: parameters.Assets[sa.AssetKey] = sa.AssetValue; break;
                 case SetOutputDirective so:
                     if (so.ProjectName is not null) output.ProjectName = so.ProjectName;
-                    if (so.FolderName is not null) output.FolderName = so.FolderName;
                     break;
                 default:
                     _logger.LogWarning("Unknown directive type: {Type}", directive.GetType().Name);

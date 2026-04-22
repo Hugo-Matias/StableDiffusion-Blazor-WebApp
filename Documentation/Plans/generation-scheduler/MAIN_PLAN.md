@@ -2,7 +2,9 @@
 
 ## Status
 
-**Current Phase:** ALL PHASES COMPLETE (1-9, 72 pts total, 92/92 Scheduler tests passing). Phase 10 (Grid Output) remains as an optional nice-to-have.
+**Current Phase:** Phases 1-9 COMPLETE (72 pts, 92/92 Scheduler tests passing). UX expansion in progress: Phases 12-15 planned to address user-friendliness, data-bound selectors, draft persistence, and a dual-mode (Form / JSON) editor with a context-aware help drawer.
+
+Phase 10 (Grid Output) and Phase 11 (Multi-Workflow Chaining) remain as deferred / future work.
 
 ---
 
@@ -358,6 +360,134 @@ Recommendation: start with the join table for cleaner separation and to carry `A
 **Objective:** Allow actions to use different workflows and chain outputs between actions.
 **Complexity:** 13 points
 **Status:** [ ] Not Started - Future Consideration
+
+---
+
+### Phase 12: Base Parameters Read-Only Summary
+
+**Objective:** Show a clear, readonly view of the parameters each job is built on top of, in both the Editor and Runs detail panes.
+**Complexity:** 3 points
+**Status:** [ ] Not Started
+
+#### Steps
+
+- [ ] Step 1 - Create `JobBaseParamsSummary.razor` rendering a curated plain-text block: Prompt (positive), Prompt (negative), Seed, Sampler/Scheduler, Steps, CFG, Size, LoRAs - in that exact order [2 pts]
+- [ ] Step 2 - Add an "Show all" toggle that swaps the curated block for a scrollable fixed-height container using the existing `JsonTreeView` component over `BaseParameters` (Fragments + Assets + Loras + Prompt) [2 pts]
+- [ ] Step 3 - Embed the summary at the top of the right pane in `SchedulerEditorTab` (collapsible) and in the Runs detail view (collapsed by default) [1 pt]
+- [ ] Step 4 - Resilient rendering: when a curated field is unavailable for the current workflow, label the row "-" rather than omitting it, so the layout stays stable across workflow families (Flux/Wan/LTX/etc.) [1 pt]
+
+#### Success Criteria
+
+- Curated summary lists the seven fields in the agreed order and formats multi-line prompts cleanly.
+- "Show all" view is a tree, scrolls inside a fixed-height box, and does not grow the page.
+- Workflows without matching curated fields render placeholders, not errors.
+
+---
+
+### Phase 13: Project / Folder Selectors
+
+**Objective:** Replace free-text `ProjectName` / `FolderName` inputs with data-bound selectors sourced from the same service the Gallery uses; creation is not allowed here.
+**Complexity:** 3 points
+**Status:** [ ] Not Started
+
+#### Steps
+
+- [ ] Step 1 - Identify the service used by the Gallery (likely `IDatabaseService` / `IGalleryService`) and expose a minimal `GetProjects()` + `GetFolders(projectName)` accessor reusable from the Scheduler editor [1 pt]
+- [ ] Step 2 - Introduce a shared `ProjectFolderSelector.razor` component with two dependent `MudSelect<string>` controls; Folder options refresh whenever Project changes; empty option labelled "(default)" for the job-level and "(inherit from job)" for per-action overrides [3 pts]
+- [ ] Step 3 - Replace the free-text inputs in `SchedulerEditorTab` for the job's `OutputConfig` and for the action's `OutputOverride`; storage stays name-based (no schema change) [2 pts]
+- [ ] Step 4 - On load, if a saved `ProjectName` / `FolderName` no longer exists, render the value as a warning-chip and require re-selection before Save [1 pt]
+
+#### Success Criteria
+
+- Users can only pick existing Projects / Folders; no creation UI appears in the Scheduler.
+- Orphaned values from older jobs surface a visible warning instead of silently applying at run time.
+- Folder list always matches the currently selected Project.
+
+---
+
+### Phase 14: Editor Draft Persistence
+
+**Objective:** No lost work when switching tabs, navigating pages, or restarting the app. One draft slot shared across jobs.
+**Complexity:** 5 points
+**Status:** [ ] Not Started
+
+#### Steps
+
+- [ ] Step 1 - Introduce `ISchedulerEditorState` (Scoped) holding `Job? Draft`, `Guid? EditingJobId`, `bool IsDirty`, `DateTime? UpdatedAt`; notifies via `IEventService` with a new `SchedulerDraftChangedEventArgs` [2 pts]
+- [ ] Step 2 - Wire `SchedulerEditorTab` through the state: every field mutation marks dirty; initial load restores the draft if one exists [3 pts]
+- [ ] Step 3 - Persist the draft across restarts via an `AppState`-style JSON blob (or a dedicated `JobDraft` row in `AppDbContext`, whichever matches the existing pattern); debounced write 2 s after last change [3 pts]
+- [ ] Step 4 - Opening a different job while a dirty draft exists for another job opens a `ConfirmationDialog`: **Save & switch / Discard & switch / Cancel** [2 pts]
+- [ ] Step 5 - Restart banner: if `EditingJobId` matches an existing job at startup, show "Unsaved draft recovered - [Restore] / [Discard]"; if `EditingJobId` is null (new unsaved job), recover into the editor directly with the same banner [2 pts]
+- [ ] Step 6 - Add `NavigationManager.LocationChanging` guard and a dirty `*` marker next to the Save button [1 pt]
+
+#### Success Criteria
+
+- Tab-switching, leaving `/scheduler`, and app restart all preserve in-progress edits.
+- Switching between jobs with a dirty draft always prompts the user; no silent data loss.
+- Only a single draft slot is maintained at any time.
+
+---
+
+### Phase 15: Dual-Mode Editor (Form + JSON) & Context-Aware Help
+
+**Objective:** Make Directive / Variation composition accessible via a typed form editor (default) while preserving raw JSON editing (advanced). Ship a context-aware Scheduler section in the existing `InfoDrawer` with structured (non-markdown) content.
+**Complexity:** 16 points (split into 15a / 15b / 15c for commit checkpoints)
+**Status:** [ ] Not Started
+
+#### Phase 15a - Structured Info Sections & Scheduler Help Content [3 pts]
+
+- [ ] Step 1 - Extend `InfoContent` with an optional `List<InfoSection> Sections` (record `InfoSection(string Title, string? Icon, List<InfoItem> Items)` where `InfoItem(string? Label, string Text)`). Backwards compatible with existing Overview / Shortcuts / Tips content [2 pts]
+- [ ] Step 2 - Update `InfoDrawer.razor` to render `Sections` below the existing blocks, each section as a collapsible `MudExpansionPanel` with icon + item list. No markdown parsing; `MudText` only [2 pts]
+- [ ] Step 3 - Author Scheduler help `InfoContent` seeds covering: What is a Job, Directives overview (one InfoSection per directive subtype with purpose, required fields, example values), Variations overview (same per subtype), Targets, Limit vs Cartesian size, Permutation order, Project/Folder overrides, Advanced JSON tips [3 pts]
+- [ ] Step 4 - Context-awareness: `SchedulerEditorTab` sets the Info content on mount; when a specific Directive or Variation form is opened, the drawer scrolls to / expands the matching section [2 pts]
+
+#### Phase 15b - Form-Mode Editor (priority subtypes) [8 pts]
+
+- [ ] Step 1 - Introduce `ParameterTargetPicker.razor` driven by the current workflow metadata; cascading selects Target kind -> (FragmentId + ParamKey from `WorkflowMetadata` / `FragmentKeys` | LoRA from the Base Params LoRA stack | Asset key from `AssetKey` enum | Prompt positive/negative | Output Project/Folder) [5 pts]
+- [ ] Step 2 - `DirectiveFormFactory` + per-subtype forms for priority set: `SetValueDirectiveForm`, `AppendPromptDirectiveForm`, `AddLoraDirectiveForm`, `ToggleLoraDirectiveForm`. Rendered inside a new `DirectiveEditorDialog` replacing the current JSON dialog as default [5 pts]
+- [ ] Step 3 - `VariationFormFactory` + per-subtype forms for priority set: `ListVariationForm`, `RangeVariationForm`, `WildcardVariationForm`, `SearchReplaceVariationForm`. Rendered inside a new `VariationEditorDialog`. Each includes a live value-count preview and, where deterministic, a small preview of the first ~5 materialized values [5 pts]
+- [ ] Step 4 - "View JSON" toggle inside the form dialog: read-only pane showing the serialized value so users can learn the JSON representation [1 pt]
+- [ ] Step 5 - Demote the existing `SchedulerJsonEditorDialog` to an "Advanced -> Edit JSON" overflow entry on each Directive / Variation card [1 pt]
+
+#### Phase 15c - Remaining Subtypes & JSON Polish [5 pts]
+
+- [ ] Step 1 - Add the remaining Directive forms: `ReplacePromptDirectiveForm`, `RemoveLoraDirectiveForm`, `AddPromptStyleDirectiveForm`, `SwapAssetDirectiveForm`, `SetOutputDirectiveForm` [5 pts]
+- [ ] Step 2 - Add the remaining Variation forms: `RandomVariationForm`, `LlmVariationForm`, `ToggleVariationForm` [3 pts]
+- [ ] Step 3 - JSON editor polish: parse-on-blur validation via `System.Text.Json`, inline error text, "Format" button that reserializes with indentation [2 pts]
+- [ ] Step 4 - Extend the help-section seeds (Phase 15a) with any subtypes added here [1 pt]
+
+#### Success Criteria
+
+- Form mode is the primary entry point: new Directive / Variation cards open the typed dialog by default.
+- All nine Directive subtypes and all seven Variation subtypes are creatable and editable via form.
+- Target picker only exposes targets valid for the current workflow (no invalid FragmentId/ParamKey combinations).
+- Raw JSON remains reachable under an "Advanced" overflow entry and validates on blur.
+- `InfoDrawer` shows a dedicated Scheduler section with per-subtype structured entries; opening a form auto-expands the matching section.
+
+---
+
+### Phase 16: Editor Tab UX Refinements
+
+**Objective:** Post-revamp polish pass on the Editor tab: align form styling with the Generate page (design-language seed), restrict target kinds per Directive / Variation, consolidate output routing around `SetOutputDirective`, and data-bind the LoRA / Asset / Wildcard / LLM system-prompt pickers to their existing services.
+**Complexity:** 21 points (split into 16a..16g, see `PHASE_16.md`)
+**Status:** [x] Complete (all sub-phases landed; `BlazorWebApp` builds 0 errors; pre-existing `OrchestratorServiceTests.cs` failure is unrelated).
+
+#### Sub-phases
+
+- 16a - Variant.Text sweep across Scheduler forms [2 pts]
+- 16b - `ParameterTargetPicker` AllowedKinds + fragment value-type filter [3 pts]
+- 16c - Consolidate output routing (drop `SetOutputDirective.FolderName`; folder becomes filter only) [5 pts]
+- 16d - `AddLoraDirectiveForm` + `SwapAssetDirectiveForm` data-bound pickers [5 pts]
+- 16e - Wildcard collection selector shows `Category/Name` [2 pts]
+- 16f - LLM system prompt backed by `SystemPromptTemplate` DB rows [3 pts]
+- 16g - Fragment filtering for numeric-only variations (Range / Random) [1 pt, folded into 16b]
+
+#### Success Criteria
+
+- Scheduler Editor controls match the Generate page baseline visually.
+- Target picker only shows valid kinds per type; Range / Random only list numeric fragment params.
+- `SetOutputDirective` persists only `ProjectName`; `Folder` in the form is a filter with an "all" option.
+- LoRA / Asset value / Wildcard collection / LLM system-prompt fields are bound to DB / backend; no guess-typed values.
 
 ---
 
@@ -799,9 +929,11 @@ foreach (var action in job.Actions.OrderBy(a => a.Order))
 
 ## Changelog
 
-| Phase    | Changes              |
-| -------- | -------------------- |
-| Planning | Initial plan created |
+| Phase       | Changes                                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Planning    | Initial plan created                                                                                                                                                  |
+| Phases 1-9  | Delivered (72 pts, 92/92 Scheduler tests green). Status header corrected.                                                                                             |
+| Phase 12-15 | UX expansion planned: base-params summary, Project/Folder selectors, editor draft persistence, dual-mode (form + JSON) editor, context-aware `InfoDrawer` sections.   |
 
 ---
 
@@ -816,3 +948,6 @@ foreach (var action in job.Actions.OrderBy(a => a.Order))
 - [ArtistBrowserService.GenerateBatchPreviewsAsync](../../../BlazorWebApp/Services/ArtistBrowserService.cs) - reference implementation of a simple hardcoded batch loop
 - [EventService](../../../BlazorWebApp/Services/EventService.cs) - required pub/sub pattern for all events
 - [AppDbContext](../../../BlazorWebApp/Data/AppDbContext.cs) - JSON-backed entity pattern to follow for `Job`
+- [InfoDrawer](../../../BlazorWebApp/Components/Shared/InfoDrawer.razor) + [IInfoService](../../../BlazorWebApp/Services/IInfoService.cs) - context-aware help surface to extend for Scheduler
+- [JsonTreeView](../../../BlazorWebApp/Components/Shared/JsonTreeView.razor) - tree control reused in the Base Params "Show all" view
+- [ConfirmationDialog](../../../BlazorWebApp/Components/Shared/ConfirmationDialog.razor) - reused for the draft switch / discard prompt

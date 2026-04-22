@@ -28,6 +28,12 @@ namespace BlazorWebApp.Scheduler.Models
         /// <summary>Seed used when <see cref="PermutationOrder"/> is <see cref="PermutationOrder.Random"/>.</summary>
         public int? RandomPermutationSeed { get; set; }
 
+        /// <summary>
+        /// Repeats the entire iteration plan this many times before advancing to the next action.
+        /// Defaults to 1 (no repeat). Values &lt;= 0 are treated as 1 at runtime.
+        /// </summary>
+        public int Repeat { get; set; } = 1;
+
         /// <summary>Optional per-action output override.</summary>
         public JobOutputConfig? OutputOverride { get; set; }
 

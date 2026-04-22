@@ -1,3 +1,4 @@
+@using System.Text.Json
 @inherits MudComponentBase
 
 <MudDialog>
@@ -5,15 +6,29 @@
         <MudText Typo="Typo.h6">@Title</MudText>
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.caption" Class="mb-2">
-            Edit JSON directly. The <code>$type</code> discriminator is required for polymorphic values.
-        </MudText>
-        <MudTextField @bind-Value="_json" Lines="18" Variant="Variant.Outlined"
-                      Style="font-family: monospace; font-size: 12px;" />
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.caption">
+                Edit JSON directly. The <code>$type</code> discriminator is required for polymorphic values.
+            </MudText>
+
+            <MudTextField T="string" Value="_json" ValueChanged="OnJsonChanged"
+                          DebounceInterval="300" OnBlur="Validate"
+                          Lines="18" Variant="Variant.Text" Immediate="false"
+                          Style="font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace; font-size: 12px;" />
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Dense>@_error</MudAlert>
+            }
+        </MudStack>
     </DialogContent>
     <DialogActions>
+        <MudButton OnClick="Format" Disabled="@(!string.IsNullOrEmpty(_error))"
+                   StartIcon="@Icons.Material.Filled.AutoFixHigh">Format</MudButton>
+        <MudSpacer />
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Ok">OK</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Ok"
+                   Disabled="@(!string.IsNullOrEmpty(_error))">OK</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -22,13 +37,83 @@
     [Parameter] public string Title { get; set; } = "Edit";
     [Parameter] public string InitialJson { get; set; } = "{}";
 
+    /// <summary>
+    /// Optional probe serializer hook. When set, the dialog runs <c>Deserialize</c> on Format / OK
+    /// to catch polymorphic schema errors (e.g. missing or unknown <c>$type</c>) in addition to
+    /// raw JSON syntax errors. Callers supply their own <see cref="JsonSerializerOptions"/>.
+    /// </summary>
+    [Parameter] public Func<string, bool>? ValidateSchema { get; set; }
+
     private string _json = "{}";
+    private string? _error;
 
     protected override void OnInitialized()
     {
         _json = InitialJson ?? "{}";
+        Validate();
     }
 
-    private void Ok() => MudDialog.Close(DialogResult.Ok(_json));
+    private void OnJsonChanged(string? text)
+    {
+        _json = text ?? string.Empty;
+        Validate();
+    }
+
+    private void Validate()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_json))
+        {
+            _error = "JSON cannot be empty.";
+            return;
+        }
+        try
+        {
+            // Syntax check via JsonDocument: cheap and surfaces line/position on failure.
+            using var _ = JsonDocument.Parse(_json);
+        }
+        catch (JsonException ex)
+        {
+            _error = $"Invalid JSON at line {ex.LineNumber + 1}, column {ex.BytePositionInLine + 1}: {ex.Message}";
+            return;
+        }
+
+        if (ValidateSchema is not null)
+        {
+            try
+            {
+                if (!ValidateSchema(_json))
+                    _error = "Schema check failed. Ensure \"$type\" matches a known discriminator.";
+            }
+            catch (Exception ex)
+            {
+                _error = $"Schema error: {ex.Message}";
+            }
+        }
+    }
+
+    private void Format()
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(_json);
+            _json = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+            _error = null;
+        }
+        catch (JsonException ex)
+        {
+            _error = $"Cannot format: {ex.Message}";
+        }
+    }
+
+    private void Ok()
+    {
+        Validate();
+        if (!string.IsNullOrEmpty(_error)) return;
+        MudDialog.Close(DialogResult.Ok(_json));
+    }
+
     private void Cancel() => MudDialog.Cancel();
 }
+
+

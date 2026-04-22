@@ -29,6 +29,7 @@ public class QwenTxt2ImgWorkflow : IWorkflowBuilder
 
     // Detailer fragments
     private readonly DetailerFragment _detailerFragment = new();
+    private readonly LoraLoaderFragment _loraLoaderFragment = new();
 
     public WorkflowMetadata Metadata => new()
     {
@@ -153,42 +154,51 @@ public class QwenTxt2ImgWorkflow : IWorkflowBuilder
             });
         }
 
-        // 7. Detailer (conditional)
+        // 7. Detailer (conditional) - supports chained passes
         var detailerFragment = parameters.GetFragment("detailer");
         if (detailerFragment?.IsActive == true)
         {
-            // Load separate models for detailer with detailer_ scope
-            _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
+            var passCount = Math.Max(1, detailerFragment.GetInt("pass_count", 1));
+            for (int i = 0; i < passCount; i++)
             {
-                UnetName = detailerFragment.GetString("detailer_checkpoint")
-                           ?? parameters.Assets?.GetValueOrDefault("Model")
-                           ?? "qwen_image_fp8_e4m3fn.safetensors",
-                ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_2.5_vl_7b_fp8_scaled.safetensors",
-                ClipType = "qwen_image",
-                VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "qwen_image_vae.safetensors",
-                Positive = detailerFragment.GetString("detailer_prompt") ?? positive,
-                Negative = detailerFragment.GetString("detailer_negative_prompt") ?? negative
-            }, scope: "detailer_", scopeTitle: "Detailer ");
+                var scope = i == 0 ? "detailer_" : $"detailer_{i}_";
+                var scopeTitle = i == 0 ? "Detailer " : $"Detailer {i + 1} ";
+                var kp = i == 0 ? string.Empty : $"pass_{i}_";
 
-            _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
-            {
-                Scope = "detailer_",
-                DetectionModel = detailerFragment.GetString("detailer_detection_model", "bbox/face_yolov8m.pt"),
-                Sampler = detailerFragment.GetString("detailer_sampler", "dpmpp_2m"),
-                Scheduler = detailerFragment.GetString("detailer_scheduler", "beta"),
-                Seed = detailerFragment.GetLong("detailer_seed", resolvedSeed),
-                Steps = detailerFragment.GetInt("detailer_steps", 20),
-                Cfg = detailerFragment.GetDouble("detailer_cfg", 8.0),
-                Denoise = detailerFragment.GetDouble("detailer_denoise", 0.65),
-                Feather = detailerFragment.GetInt("detailer_feather", 5),
-                BboxThreshold = detailerFragment.GetDouble("detailer_bbox_threshold", 0.7),
-                BboxDilation = detailerFragment.GetInt("detailer_bbox_dilation", 10),
-                BboxCropFactor = detailerFragment.GetDouble("detailer_bbox_crop_factor", 3.0),
-                DropSize = detailerFragment.GetInt("detailer_drop_size", 70),
-                GuideSize = detailerFragment.GetInt("detailer_guide_size", 512),
-                MaxSize = detailerFragment.GetInt("detailer_max_size", 1024),
-                Cycle = detailerFragment.GetInt("detailer_cycle", 1)
-            });
+                _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
+                {
+                    UnetName = detailerFragment.GetString($"{kp}detailer_checkpoint")
+                               ?? parameters.Assets?.GetValueOrDefault("Model")
+                               ?? "qwen_image_fp8_e4m3fn.safetensors",
+                    ClipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+                    ClipType = "qwen_image",
+                    VaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "qwen_image_vae.safetensors",
+                    Positive = detailerFragment.GetStringOrFallback($"{kp}detailer_prompt", positive),
+                    Negative = detailerFragment.GetStringOrFallback($"{kp}detailer_negative_prompt", negative)
+                }, scope: scope, scopeTitle: scopeTitle);
+
+                _loraLoaderFragment.BuildAll(builder, registry, parameters.GetDetailerLoras(i), scope: scope);
+
+                _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters
+                {
+                    Scope = scope,
+                    DetectionModel = detailerFragment.GetString($"{kp}detailer_detection_model", "bbox/face_yolov8m.pt"),
+                    Sampler = detailerFragment.GetString($"{kp}detailer_sampler", "dpmpp_2m"),
+                    Scheduler = detailerFragment.GetString($"{kp}detailer_scheduler", "beta"),
+                    Seed = detailerFragment.GetLong($"{kp}detailer_seed", resolvedSeed),
+                    Steps = detailerFragment.GetInt($"{kp}detailer_steps", 20),
+                    Cfg = detailerFragment.GetDouble($"{kp}detailer_cfg", 8.0),
+                    Denoise = detailerFragment.GetDouble($"{kp}detailer_denoise", 0.65),
+                    Feather = detailerFragment.GetInt($"{kp}detailer_feather", 5),
+                    BboxThreshold = detailerFragment.GetDouble($"{kp}detailer_bbox_threshold", 0.7),
+                    BboxDilation = detailerFragment.GetInt($"{kp}detailer_bbox_dilation", 10),
+                    BboxCropFactor = detailerFragment.GetDouble($"{kp}detailer_bbox_crop_factor", 3.0),
+                    DropSize = detailerFragment.GetInt($"{kp}detailer_drop_size", 70),
+                    GuideSize = detailerFragment.GetInt($"{kp}detailer_guide_size", 512),
+                    MaxSize = detailerFragment.GetInt($"{kp}detailer_max_size", 1024),
+                    Cycle = detailerFragment.GetInt($"{kp}detailer_cycle", 1)
+                });
+            }
         }
 
         // 8. Save

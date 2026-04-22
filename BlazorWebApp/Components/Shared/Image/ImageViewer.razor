@@ -438,7 +438,7 @@
             _selectedParams.Remove("Height");
     }
 
-    private void SendSelectedTo(bool isImg2Img)
+    private async Task SendSelectedTo(bool isImg2Img)
     {
         if (CurrentImage == null || _selectedParams.Count == 0)
         {
@@ -448,7 +448,7 @@
 
         foreach (var param in _selectedParams)
         {
-            M.SetGenerationParameter(CurrentImage, param, isImg2Img);
+            await M.SetGenerationParameter(CurrentImage, param, isImg2Img);
         }
 
         var target = isImg2Img ? "Img2Img" : "Txt2Img";

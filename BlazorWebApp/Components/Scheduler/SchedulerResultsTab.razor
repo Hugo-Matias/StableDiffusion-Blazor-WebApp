@@ -12,7 +12,7 @@
 
 <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
     <MudSelect T="Guid?" Value="_selectedJobId" ValueChanged="OnJobSelectionChanged" Label="Job"
-               Variant="Variant.Outlined" Dense="true" AnchorOrigin="Origin.BottomCenter" Style="min-width:320px;">
+               Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomCenter" Style="min-width:320px;">
         <MudSelectItem T="Guid?" Value="@((Guid?)null)">(Select job)</MudSelectItem>
         @if (_jobs is not null)
         {
@@ -228,3 +228,4 @@ else
         Events.Unsubscribe<JobCompletedEventArgs>(OnJobEvent);
     }
 }
+

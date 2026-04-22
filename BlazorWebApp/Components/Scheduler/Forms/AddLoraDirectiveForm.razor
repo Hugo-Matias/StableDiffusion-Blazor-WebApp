@@ -1,0 +1,61 @@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Services
+@using static BlazorWebApp.Data.Enums
+@inject IRouterService Router
+
+<MudStack Spacing="2">
+    <MudAutocomplete T="string" Value="_selectedPath" ValueChanged="OnLoraSelected"
+                     Label="LoRA" SearchFunc="SearchLorasAsync" Variant="Variant.Text"
+                     ResetValueOnEmptyText="false" CoerceValue="true" CoerceText="true"
+                     Clearable="true" MaxHeight="400"
+                     ToStringFunc="@(p => string.IsNullOrWhiteSpace(p) ? string.Empty : System.IO.Path.GetFileNameWithoutExtension(p))"
+                     HelperText="Backed by ComfyUI's available LoRAs; selecting one sets both name and path." />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudNumericField T="float" @bind-Value="Directive.Lora.Strength" Label="Strength"
+                             Step="0.05f" Min="-2f" Max="2f" Variant="Variant.Text" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSwitch T="bool" @bind-Value="Directive.Lora.IsEnabled" Color="Color.Primary" Label="Enabled" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSwitch T="bool" @bind-Value="Directive.Lora.IsNegative" Color="Color.Primary" Label="Negative" />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public AddLoraDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private string? _selectedPath;
+
+    protected override void OnInitialized()
+    {
+        Directive.Lora ??= new Lora { Name = "", Path = "", Strength = 1.0f, IsEnabled = true };
+        _selectedPath = string.IsNullOrEmpty(Directive.Lora.Path) ? null : Directive.Lora.Path;
+    }
+
+    private async Task<IEnumerable<string>> SearchLorasAsync(string? query)
+    {
+        var results = await Router.SearchLoras(Backend.ComfyUI, query ?? string.Empty);
+        return results;
+    }
+
+    private void OnLoraSelected(string? path)
+    {
+        _selectedPath = path;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            Directive.Lora.Name = string.Empty;
+            Directive.Lora.Path = string.Empty;
+            return;
+        }
+        Directive.Lora.Path = path;
+        Directive.Lora.Name = System.IO.Path.GetFileNameWithoutExtension(path);
+    }
+}
+

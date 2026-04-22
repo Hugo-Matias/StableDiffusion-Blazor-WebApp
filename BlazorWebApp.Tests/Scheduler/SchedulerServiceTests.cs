@@ -95,7 +95,7 @@ public class SchedulerServiceTests
         var applier = new ParameterApplier(NullLogger<ParameterApplier>.Instance);
         var directives = new DirectiveExecutor(applier, NullLogger<DirectiveExecutor>.Instance);
         var wildcards = new Mock<IWildcardService>();
-        var materializer = new VariationMaterializer(wildcards.Object, null!, NullLogger<VariationMaterializer>.Instance);
+        var materializer = new VariationMaterializer(wildcards.Object, null!, Mock.Of<IDatabaseService>(), NullLogger<VariationMaterializer>.Instance);
         var sequencer = new VariationSequencer(materializer);
 
         var svc = new SchedulerService(

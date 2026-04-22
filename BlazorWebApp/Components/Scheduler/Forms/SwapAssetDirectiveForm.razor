@@ -1,0 +1,83 @@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Services
+@inject IAssetResolverService AssetResolver
+@inject IWorkflowService Workflows
+
+<MudStack Spacing="2">
+    <MudSelect T="string" Value="Directive.AssetKey" ValueChanged="OnAssetKeyChangedAsync"
+               Label="Asset key" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomCenter">
+        @foreach (var key in _assetKeys)
+        {
+            <MudSelectItem T="string" Value="@key">@key</MudSelectItem>
+        }
+    </MudSelect>
+    @if (_assetKeys.Count == 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense>
+            No assets declared on the workflow snapshot. You can still type a value manually after switching to JSON.
+        </MudAlert>
+    }
+
+    <MudAutocomplete T="string" Value="Directive.AssetValue" ValueChanged="OnAssetValueChanged"
+                     Label="Asset value" SearchFunc="SearchValuesAsync" Variant="Variant.Text"
+                     ResetValueOnEmptyText="false" CoerceValue="true" CoerceText="true"
+                     Clearable="true" MaxHeight="400"
+                     HelperText="Backed by ComfyUI; values match what the Generate page offers for this asset." />
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public SwapAssetDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private List<string> _assetKeys = new();
+    private List<string> _availableValues = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _assetKeys = Job?.BaseParameters?.Assets?.Keys.OrderBy(k => k).ToList() ?? new();
+        await LoadValuesAsync(Directive.AssetKey);
+    }
+
+    private async Task OnAssetKeyChangedAsync(string? value)
+    {
+        Directive.AssetKey = value ?? string.Empty;
+        // Clear the current value when switching asset kinds; the old value is unlikely to match.
+        Directive.AssetValue = string.Empty;
+        await LoadValuesAsync(Directive.AssetKey);
+    }
+
+    private void OnAssetValueChanged(string? value) => Directive.AssetValue = value ?? string.Empty;
+
+    private Task<IEnumerable<string>> SearchValuesAsync(string? query)
+    {
+        query ??= string.Empty;
+        var filtered = string.IsNullOrEmpty(query)
+            ? _availableValues
+            : _availableValues.Where(v => v.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        return Task.FromResult<IEnumerable<string>>(filtered);
+    }
+
+    private async Task LoadValuesAsync(string? assetKey)
+    {
+        _availableValues = new();
+        if (string.IsNullOrEmpty(assetKey)) return;
+        if (Job?.WorkflowId is null) return;
+
+        var workflow = Workflows.GetWorkflowById(Job.WorkflowId.Value);
+        var meta = workflow?.Assets?.FirstOrDefault(a => string.Equals(a.Parameter, assetKey, StringComparison.Ordinal));
+        if (meta is null) return;
+
+        try
+        {
+            _availableValues = await AssetResolver.GetCachedAssetOptions(meta.Type);
+        }
+        catch
+        {
+            // Backend unreachable; leave the autocomplete empty so the user can still type a value.
+            _availableValues = new();
+        }
+    }
+}
+

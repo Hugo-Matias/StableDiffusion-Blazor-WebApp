@@ -1,5 +1,18 @@
 # Detailer Prompts & LoRA Support - Implementation Plan (FINAL v4)
 
+> **ARCHIVED / SUPERSEDED.** This plan targeted the old Scriban (`.sbn`) fragment system
+> and is **not applicable** to the current C# `IFragmentBuilder` architecture.
+> The authoritative plan for detailer prompts, per-pass LoRAs, and chained detailers is:
+>
+>    `Documentation/Plans/detailer-prompts-loras-chaining/MAIN_PLAN.md`
+>
+> The decisions below (separate `Scope` on `Lora`, `SimplePromptsForm` component,
+> scope-parameter on Scriban prompts fragment) were **reconsidered**. The implemented
+> design uses separate per-pass LoRA lists on `GenerationParameters`, inlines the
+> tabbed prompt UI directly into `DetailerForm`, and extends the C# fragment scope
+> convention to indexed `detailer_{i}_` scopes. See `TEMPLATE_GUIDE.md` for the
+> up-to-date conventions.
+
 ## Overview
 
 This plan implements detailer prompts and LoRA support through **abstraction, simplification, and unification**:
@@ -13,7 +26,7 @@ This plan implements detailer prompts and LoRA support through **abstraction, si
 
 ---
 
-## Core Principles
+
 
 ### 1. **SIMPLIFY**
 - Single `Lora` list with `Scope` property

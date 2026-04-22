@@ -86,6 +86,64 @@
                         </MudList>
                     </MudStack>
                 }
+
+                @* Structured Sections *@
+                @if (InfoService.CurrentInfo.Sections?.Any() == true)
+                {
+                    <MudDivider />
+                    <MudExpansionPanels MultiExpansion="true" Dense="true">
+                        @foreach (var sec in InfoService.CurrentInfo.Sections)
+                        {
+                            var isHighlighted = !string.IsNullOrEmpty(InfoService.HighlightedSectionId)
+                                && string.Equals(sec.Id, InfoService.HighlightedSectionId, StringComparison.Ordinal);
+                            <MudExpansionPanel IsInitiallyExpanded="@isHighlighted"
+                                               @key="@($"{sec.Id}::{InfoService.HighlightedSectionId}")">
+                                <TitleContent>
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        @if (!string.IsNullOrEmpty(sec.Icon))
+                                        {
+                                            <MudIcon Icon="@sec.Icon" Size="Size.Small" Color="Color.Primary" />
+                                        }
+                                        <MudText Typo="Typo.subtitle2">@sec.Title</MudText>
+                                    </MudStack>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudStack Spacing="1">
+                                        @foreach (var item in sec.Items)
+                                        {
+                                            <div>
+                                                @if (!string.IsNullOrEmpty(item.Label))
+                                                {
+                                                    <MudText Typo="Typo.body2"><strong>@item.Label</strong></MudText>
+                                                }
+                                                @if (item.IsCode)
+                                                {
+                                                    <pre class="mud-theme-surface"
+                                                         style="font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+                                                                font-size: 0.80rem;
+                                                                padding: 8px 10px;
+                                                                border-radius: 4px;
+                                                                margin: 4px 0 0 0;
+                                                                white-space: pre-wrap;
+                                                                word-break: break-word;
+                                                                overflow-x: auto;"><code>@item.Text</code></pre>
+                                                }
+                                                else
+                                                {
+                                                    <MudText Typo="Typo.body2"
+                                                             Color="Color.Default"
+                                                             Style="white-space: pre-wrap; word-break: break-word;">
+                                                        @item.Text
+                                                    </MudText>
+                                                }
+                                            </div>
+                                        }
+                                    </MudStack>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
+                }
             </MudStack>
         }
         else

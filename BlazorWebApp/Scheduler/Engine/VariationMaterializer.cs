@@ -1,3 +1,4 @@
+using BlazorWebApp.Data.Dtos.Ollama;
 using BlazorWebApp.Scheduler.Variations;
 using BlazorWebApp.Services;
 
@@ -12,15 +13,18 @@ namespace BlazorWebApp.Scheduler.Engine
     {
         private readonly IWildcardService _wildcards;
         private readonly OllamaService _ollama;
+        private readonly IDatabaseService _database;
         private readonly ILogger<VariationMaterializer> _logger;
 
         public VariationMaterializer(
             IWildcardService wildcards,
             OllamaService ollama,
+            IDatabaseService database,
             ILogger<VariationMaterializer> logger)
         {
             _wildcards = wildcards;
             _ollama = ollama;
+            _database = database;
             _logger = logger;
         }
 
@@ -118,12 +122,45 @@ namespace BlazorWebApp.Scheduler.Engine
         {
             if (l.Count <= 0 || string.IsNullOrWhiteSpace(l.ModelName)) return Array.Empty<object?>();
 
+            // When a system-prompt template is selected, use it as the chat seed and substitute {prompt}.
+            List<OllamaChatMessage>? templateMessages = null;
+            if (l.SystemPromptTemplateId is int templateId && templateId > 0)
+            {
+                var template = await _database.GetSystemPromptTemplate(templateId);
+                if (template is not null)
+                {
+                    templateMessages = template.Messages;
+                }
+                else
+                {
+                    _logger.LogWarning("SystemPromptTemplate {Id} not found; falling back to default ExpandPrompt.", templateId);
+                }
+            }
+
             var values = new List<object?>(l.Count);
             for (int i = 0; i < l.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                var expanded = await _ollama.ExpandPrompt(l.BasePrompt, l.ModelName, l.IsNegative);
-                values.Add(expanded);
+
+                string text;
+                if (templateMessages is not null)
+                {
+                    var messages = templateMessages
+                        .Select(m => new OllamaChatMessage
+                        {
+                            Role = m.Role,
+                            Content = (m.Content ?? string.Empty).Replace("{prompt}", l.BasePrompt),
+                        })
+                        .ToList();
+                    var response = await _ollama.SendChatMessage(l.ModelName, messages);
+                    text = response?.Message?.Content ?? l.BasePrompt;
+                }
+                else
+                {
+                    text = await _ollama.ExpandPrompt(l.BasePrompt, l.ModelName, l.IsNegative);
+                }
+
+                values.Add(text);
             }
             return values;
         }
