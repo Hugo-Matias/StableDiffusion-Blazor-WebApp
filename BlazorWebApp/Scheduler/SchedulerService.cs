@@ -60,12 +60,12 @@ namespace BlazorWebApp.Scheduler
         public JobStatus? RunningJobStatus => _runningStatus;
 
         /// <inheritdoc />
-        public Task RunAsync(Guid jobId, CancellationToken cancellationToken = default)
-            => ExecuteJobAsync(jobId, resume: false, cancellationToken);
+        public Task RunAsync(Guid jobId, Guid? sourceRunId = null, CancellationToken cancellationToken = default)
+            => ExecuteJobAsync(jobId, resume: false, sourceRunId: sourceRunId, cancellationToken);
 
         /// <inheritdoc />
         public Task ResumeAsync(Guid jobId, CancellationToken cancellationToken = default)
-            => ExecuteJobAsync(jobId, resume: true, cancellationToken);
+            => ExecuteJobAsync(jobId, resume: true, sourceRunId: null, cancellationToken);
 
         /// <inheritdoc />
         public Task PauseAsync()
@@ -90,7 +90,7 @@ namespace BlazorWebApp.Scheduler
             return Task.CompletedTask;
         }
 
-        private async Task ExecuteJobAsync(Guid jobId, bool resume, CancellationToken cancellationToken)
+        private async Task ExecuteJobAsync(Guid jobId, bool resume, Guid? sourceRunId, CancellationToken cancellationToken)
         {
             var job = await _jobs.GetByIdAsync(jobId)
                 ?? throw new InvalidOperationException($"Job {jobId} not found.");
@@ -107,14 +107,52 @@ namespace BlazorWebApp.Scheduler
             {
                 if (!resume)
                 {
+                    // Snapshot the job definition into a brand-new Run. The run's base parameters
+                    // and actions are cloned so subsequent edits to the job don't rewrite history.
+                    // When sourceRunId is provided the snapshot is copied from that historical run
+                    // instead of the job's current (mutable) definition, implementing "Re-run this
+                    // snapshot" without touching the source run or its results.
+                    Run? source = null;
+                    if (sourceRunId is Guid srcId)
+                    {
+                        source = job.Runs.FirstOrDefault(r => r.Id == srcId)
+                            ?? throw new InvalidOperationException(
+                                $"Source run {srcId} not found on job {jobId}.");
+                    }
+
+                    job.RunCounter++;
+                    var run = new Run
+                    {
+                        JobId = job.Id,
+                        RunNumber = job.RunCounter,
+                        Name = $"{job.Name} - Run #{job.RunCounter}",
+                        StartedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        Status = JobStatus.Running,
+                        WorkflowId = source?.WorkflowId ?? job.WorkflowId,
+                        BaseParameters = source is not null
+                            ? source.BaseParameters.Clone()
+                            : job.BaseParameters.Clone(),
+                        Actions = source is not null
+                            ? CloneActions(source.Actions)
+                            : CloneActions(job.Actions),
+                        OutputConfig = new JobOutputConfig
+                        {
+                            ProjectName = source?.OutputConfig.ProjectName ?? job.OutputConfig.ProjectName,
+                            FolderName = source?.OutputConfig.FolderName ?? job.OutputConfig.FolderName,
+                        },
+                    };
+                    job.Runs.Add(run);
+
                     job.RunState = new JobRunState
                     {
                         CurrentActionIndex = 0,
                         CurrentIterationIndex = 0,
                         CompletedImages = 0,
                         FailedImages = 0,
-                        StartedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
+                        StartedAt = run.StartedAt,
+                        UpdatedAt = run.UpdatedAt,
+                        CurrentRunId = run.Id,
                     };
                 }
                 else if (job.RunState.StartedAt is null)
@@ -138,17 +176,29 @@ namespace BlazorWebApp.Scheduler
 
         private async Task RunInternalAsync(Job job, CancellationToken ct)
         {
-            var workflow = job.WorkflowId.HasValue ? _workflows.GetWorkflowById(job.WorkflowId.Value) : null;
+            // The Run snapshot is the source of truth for execution. Runs are immutable once
+            // triggered, so mid-flight edits (or re-runs of an older snapshot) never read the
+            // live Job.Actions / Job.BaseParameters. Legacy jobs created before the Runs model
+            // existed fall back to the job's live definition.
+            var run = CurrentRun(job);
+            var workflowId = run?.WorkflowId ?? job.WorkflowId;
+            var actionsSource = run?.Actions ?? job.Actions;
+            var baseParameters = run?.BaseParameters ?? job.BaseParameters;
+            var defaultOutput = run?.OutputConfig ?? job.OutputConfig;
+
+            var workflow = workflowId.HasValue ? _workflows.GetWorkflowById(workflowId.Value) : null;
             if (workflow is null)
             {
                 await FailAsync(job, "Job is not bound to a valid workflow.");
                 return;
             }
 
+            var orderedActions = actionsSource.OrderBy(a => a.Order).ToList();
+
             // Build all action plans up front so total iteration count is known for progress reporting.
-            var plans = new List<VariationPlan>(job.Actions.Count);
+            var plans = new List<VariationPlan>(orderedActions.Count);
             int totalIterations = 0;
-            foreach (var action in job.Actions.OrderBy(a => a.Order))
+            foreach (var action in orderedActions)
             {
                 ct.ThrowIfCancellationRequested();
                 var plan = await _sequencer.BuildPlanAsync(action, ct);
@@ -158,6 +208,9 @@ namespace BlazorWebApp.Scheduler
             }
             job.RunState.TotalIterations = totalIterations;
 
+            // Propagate the planned total onto the current run snapshot.
+            if (run is not null) run.TotalIterations = totalIterations;
+
             job.Status = JobStatus.Running;
             job.LastRunAt = DateTime.UtcNow;
             _runningStatus = job.Status;
@@ -166,12 +219,12 @@ namespace BlazorWebApp.Scheduler
 
             try
             {
-                for (int actionIndex = job.RunState.CurrentActionIndex; actionIndex < job.Actions.Count; actionIndex++)
+                for (int actionIndex = job.RunState.CurrentActionIndex; actionIndex < orderedActions.Count; actionIndex++)
                 {
                     ct.ThrowIfCancellationRequested();
                     await WaitIfPausedAsync(job, ct);
 
-                    var action = job.Actions[actionIndex];
+                    var action = orderedActions[actionIndex];
                     var plan = plans[actionIndex];
                     var repeat = Math.Max(1, action.Repeat);
                     var effectiveCount = plan.EffectiveCount * repeat;
@@ -196,7 +249,7 @@ namespace BlazorWebApp.Scheduler
                             job.RunState.CurrentIterationIndex = iterationInPlan;
                             job.RunState.UpdatedAt = DateTime.UtcNow;
 
-                            await RunIterationAsync(job, actionIndex, action, iterationSet, workflow, ct);
+                            await RunIterationAsync(job, actionIndex, action, iterationSet, workflow, baseParameters, defaultOutput, ct);
 
                             iterationInPlan++;
                         }
@@ -206,6 +259,7 @@ namespace BlazorWebApp.Scheduler
                 job.Status = JobStatus.Completed;
                 job.RunState.UpdatedAt = DateTime.UtcNow;
                 _runningStatus = job.Status;
+                MirrorRunStatus(job, JobStatus.Completed);
                 await _jobs.SaveRunStateAsync(job.Id, job.RunState, job.Status);
                 _events.Publish(new JobCompletedEventArgs(
                     job.Id, job.Status, job.RunState.CompletedImages, job.RunState.FailedImages,
@@ -217,6 +271,7 @@ namespace BlazorWebApp.Scheduler
                 {
                     job.Status = JobStatus.Paused;
                     _runningStatus = job.Status;
+                    MirrorRunStatus(job, JobStatus.Paused);
                     await _jobs.SaveRunStateAsync(job.Id, job.RunState, job.Status);
                     _events.Publish(new JobCompletedEventArgs(
                         job.Id, job.Status, job.RunState.CompletedImages, job.RunState.FailedImages,
@@ -226,6 +281,7 @@ namespace BlazorWebApp.Scheduler
                 {
                     job.Status = JobStatus.Cancelled;
                     _runningStatus = job.Status;
+                    MirrorRunStatus(job, JobStatus.Cancelled);
                     await _jobs.SaveRunStateAsync(job.Id, job.RunState, job.Status);
                     _events.Publish(new JobCompletedEventArgs(
                         job.Id, job.Status, job.RunState.CompletedImages, job.RunState.FailedImages,
@@ -240,16 +296,17 @@ namespace BlazorWebApp.Scheduler
 
         private async Task RunIterationAsync(
             Job job, int actionIndex, JobAction action, IterationValueSet iteration,
-            Workflow workflow, CancellationToken ct)
+            Workflow workflow, GenerationParameters baseParameters, JobOutputConfig defaultOutput,
+            CancellationToken ct)
         {
-            // 1. Clone base parameters
-            var parameters = job.BaseParameters.Clone();
+            // 1. Clone base parameters from the immutable run snapshot.
+            var parameters = baseParameters.Clone();
 
-            // 2. Resolve output config: job default <- action override <- directives/targets
+            // 2. Resolve output config: run snapshot default <- action override <- directives/targets
             var output = new JobOutputConfig
             {
-                ProjectName = action.OutputOverride?.ProjectName ?? job.OutputConfig.ProjectName,
-                FolderName = action.OutputOverride?.FolderName ?? job.OutputConfig.FolderName,
+                ProjectName = action.OutputOverride?.ProjectName ?? defaultOutput.ProjectName,
+                FolderName = action.OutputOverride?.FolderName ?? defaultOutput.FolderName,
             };
 
             // 3. Apply enabled directives in declared order
@@ -322,10 +379,47 @@ namespace BlazorWebApp.Scheduler
         {
             job.Status = JobStatus.Failed;
             _runningStatus = job.Status;
+            MirrorRunStatus(job, JobStatus.Failed, error);
             await _jobs.SaveRunStateAsync(job.Id, job.RunState, job.Status);
             _events.Publish(new JobCompletedEventArgs(
                 job.Id, job.Status, job.RunState.CompletedImages, job.RunState.FailedImages,
                 totalIterations ?? job.RunState.TotalIterations, error, DateTime.UtcNow));
+        }
+
+        /// <summary>
+        /// Returns the run within <paramref name="job"/> that matches <see cref="JobRunState.CurrentRunId"/>,
+        /// or <c>null</c> if none is tracked yet.
+        /// </summary>
+        private static Run? CurrentRun(Job job)
+        {
+            if (job.RunState.CurrentRunId is not Guid id) return null;
+            return job.Runs.FirstOrDefault(r => r.Id == id);
+        }
+
+        /// <summary>
+        /// Propagates a terminal status to the current run so its history entry matches the job state.
+        /// </summary>
+        private static void MirrorRunStatus(Job job, JobStatus status, string? error = null)
+        {
+            var run = CurrentRun(job);
+            if (run is null) return;
+            run.Status = status;
+            run.UpdatedAt = DateTime.UtcNow;
+            if (status is JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed)
+                run.CompletedAt = DateTime.UtcNow;
+            if (error is not null)
+                run.Error = error;
+        }
+
+        /// <summary>
+        /// Deep-clones the ordered action list through the Scheduler's JSON converter so polymorphic
+        /// directives and variations retain their <c>$type</c> discriminators in the snapshot.
+        /// </summary>
+        private static List<JobAction> CloneActions(IEnumerable<JobAction> actions)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(actions, SchedulerJsonOptions.Compact);
+            return System.Text.Json.JsonSerializer.Deserialize<List<JobAction>>(json, SchedulerJsonOptions.Compact)
+                ?? new List<JobAction>();
         }
     }
 }

@@ -1,6 +1,7 @@
 using BlazorWebApp.Models;
 using BlazorWebApp.Scheduler.Models;
 using BlazorWebApp.Scheduler.Targets;
+using System.Text.Json;
 using static BlazorWebApp.Models.FragmentKeys;
 
 namespace BlazorWebApp.Scheduler.Engine
@@ -21,6 +22,11 @@ namespace BlazorWebApp.Scheduler.Engine
         /// <inheritdoc />
         public void Apply(GenerationParameters parameters, JobOutputConfig output, ParameterTarget target, object? value)
         {
+            // Directives and variations hydrated from JSON (e.g. Run snapshots, persisted jobs)
+            // arrive as JsonElement. Unwrap once at the boundary so every downstream reader
+            // observes plain CLR primitives.
+            value = UnwrapJsonElement(value);
+
             switch (target)
             {
                 case FragmentTarget ft: ApplyFragment(parameters, ft, value); break;
@@ -45,7 +51,29 @@ namespace BlazorWebApp.Scheduler.Engine
         {
             var fragment = p.GetOrCreateFragment(Fragments.Prompts);
             var key = target.IsNegative ? Params.Negative : Params.Positive;
-            fragment.Values[key] = value?.ToString() ?? string.Empty;
+            var produced = value?.ToString() ?? string.Empty;
+
+            if (target.Mode == PromptWriteMode.Replace || string.IsNullOrEmpty(produced))
+            {
+                // Replace explicitly, or nothing to combine - just write the produced value.
+                fragment.Values[key] = produced;
+                return;
+            }
+
+            var current = fragment.Values.TryGetValue(key, out var existing) ? existing?.ToString() ?? string.Empty : string.Empty;
+            if (string.IsNullOrEmpty(current))
+            {
+                // Nothing to append/prepend to; skip the separator to avoid leading/trailing commas.
+                fragment.Values[key] = produced;
+                return;
+            }
+
+            var sep = target.Separator ?? string.Empty;
+            fragment.Values[key] = target.Mode switch
+            {
+                PromptWriteMode.Prepend => produced + sep + current,
+                _ => current + sep + produced, // Append (default)
+            };
         }
 
         private void ApplyLora(GenerationParameters p, LoraTarget target, object? value)
@@ -89,5 +117,24 @@ namespace BlazorWebApp.Scheduler.Engine
                 System.Globalization.CultureInfo.InvariantCulture, out var parsed) => parsed,
             _ => Convert.ToSingle(value, System.Globalization.CultureInfo.InvariantCulture)
         };
+
+        /// <summary>
+        /// Normalizes <see cref="JsonElement"/> values that result from JSON-cloned directives and
+        /// variations back into plain CLR primitives (<see cref="string"/>, <see cref="long"/>,
+        /// <see cref="double"/>, <see cref="bool"/>). Objects / arrays are left as-is.
+        /// </summary>
+        private static object? UnwrapJsonElement(object? value)
+        {
+            if (value is not JsonElement el) return value;
+            return el.ValueKind switch
+            {
+                JsonValueKind.String => el.GetString(),
+                JsonValueKind.Number => el.TryGetInt64(out var l) ? (object)l : el.GetDouble(),
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Null => null,
+                _ => value,
+            };
+        }
     }
 }

@@ -15,6 +15,8 @@ public static class SchedulerInfoContent
     public static class Sections
     {
         public const string Jobs = "jobs";
+        public const string Runs = "runs";
+        public const string Results = "results";
         public const string Targets = "targets";
         public const string Limit = "limit";
         public const string Permutation = "permutation";
@@ -56,10 +58,13 @@ public static class SchedulerInfoContent
 
     public static InfoContent Build() => new(
         Title: "Scheduler",
-        Overview: "Compose multi-iteration generation campaigns from the current workflow. " +
-                  "Each Job holds a snapshot of base parameters and a sequence of Actions. " +
-                  "Every Action produces one or more generations by applying Directives (unit " +
-                  "operations) and Variations (value sequences combined via cartesian product).",
+        Overview: "The Scheduler is split across three tabs: " +
+                  "Jobs (mutable templates: base parameters + ordered Actions), " +
+                  "Runs (immutable log of every execution - each run snapshots the job definition " +
+                  "at trigger time so edits cannot rewrite history), and " +
+                  "Results (per-run gallery of generated images). " +
+                  "Each Action produces one or more generations by applying Directives (unit operations) " +
+                  "and Variations (value sequences combined via cartesian product).",
         Shortcuts: new List<ShortcutInfo>(),
         Tips: new List<string>
         {
@@ -67,6 +72,9 @@ public static class SchedulerInfoContent
             "Use directives for fixed changes, variations for sequences of values.",
             "The Limit caps an action's iterations when the cartesian product is large.",
             "Switching jobs while the editor is dirty prompts before losing changes.",
+            "Runs are read-only snapshots: editing a job never alters existing runs, re-running a job always creates a new run entry.",
+            "Every run is numbered per job (\"<Job> - Run #N\"). Deleting a run preserves the counter so numbering never collides.",
+            "View run parameters on the Runs tab to inspect the exact base params + action cards that a run executed with.",
         },
         Sections: BuildSections()
     );
@@ -79,15 +87,47 @@ public static class SchedulerInfoContent
         {
             new InfoSection(
                 Id: Sections.Jobs,
-                Title: "Jobs",
-                Icon: Icons.Material.Filled.PlayCircle,
+                Title: "Jobs tab",
+                Icon: Icons.Material.Filled.Edit,
                 Items: new List<InfoItem>
                 {
-                    new(null, "A Job captures a workflow, base generation parameters, and an ordered list of Actions."),
-                    new("Base parameters", "Snapshotted from the Generate page via the Schedule button. Readonly inside the editor."),
+                    new(null, "The Jobs tab is where you define and edit Job templates. A Job captures a workflow, base generation parameters, an ordered list of Actions, and default output routing."),
+                    new("Base parameters", "Snapshotted from the Generate page via the Schedule button. Readonly inside the editor - edit them upstream if you need to change the starting point for new runs."),
                     new("Workflow", "Readonly after creation. Changing the workflow would invalidate targeted Directives and Variations."),
                     new("Output config", "Default Project and Folder for saved images. Individual actions can override through SetOutput."),
-                    new("Status", "Draft -> Queued -> Running -> Paused / Completed / Failed / Cancelled. Resume picks up from the last completed iteration."),
+                    new("Run button", "Triggers a brand-new Run from the current job definition. Disabled while the editor has unsaved changes or another job is executing. The page navigates to the Runs tab so you can monitor progress."),
+                    new("Mutability", "Jobs are mutable: rename them, add or remove Actions, tweak Directives at any time. Edits never affect runs that are already queued, paused, or completed - runs are frozen snapshots."),
+                    new("Status chip", "Mirrors the latest run's lifecycle (Running / Paused / Completed / Failed / Cancelled / Draft) for quick at-a-glance health."),
+                }
+            ),
+            new InfoSection(
+                Id: Sections.Runs,
+                Title: "Runs tab",
+                Icon: Icons.Material.Filled.PlaylistPlay,
+                Items: new List<InfoItem>
+                {
+                    new(null, "The Runs tab is a flat log of every execution across every job, newest first. A Run is an immutable snapshot taken at trigger time - its base parameters, actions, directives, variations, and output routing are frozen even if the source job is later edited or deleted."),
+                    new("Run naming", "Each run is labelled \"<Job Name> - Run #N\" where N comes from a monotonic per-job counter. The counter only increments, so deleting old runs never reuses their numbers."),
+                    new("Re-run this snapshot", "The Run button on each row replays that row's frozen snapshot as a brand-new run (with the next counter value). The source run and its images are never touched - results are grouped per run. Use the Jobs tab's Run button instead when you want to capture a fresh snapshot from the current (mutable) job definition."),
+                    new("Pause / Resume", "Only the currently executing run can be paused. Resuming picks up at the last completed iteration, still reading from the run's frozen snapshot so edits made to the job during the pause cannot leak in."),
+                    new("Stop / Skip", "Stop cancels the active run (terminal: Cancelled). Skip cancels only the in-flight iteration and advances to the next."),
+                    new("View run parameters", "Opens a read-only modal with the run's Base parameters summary and Action cards (directives + variations) exactly as they were captured."),
+                    new("View results", "Jumps to the Results tab pre-filtered to this job + run."),
+                    new("Delete run", "Removes a single run from the job's history. The job itself and other runs are untouched; the job's run counter is preserved."),
+                    new("Legacy jobs", "Jobs created before the Runs model existed fall back to reading from the live Job definition on execution; the first new Run triggered on them starts the history from Run #1."),
+                }
+            ),
+            new InfoSection(
+                Id: Sections.Results,
+                Title: "Results tab",
+                Icon: Icons.Material.Filled.Collections,
+                Items: new List<InfoItem>
+                {
+                    new(null, "The Results tab is the gallery view of images produced by a specific Run. Two dropdowns narrow the selection: Job first, then one of its Runs."),
+                    new("Run selector", "Lists every run for the chosen job as \"Run #N - <date> (Status)\", newest first. The default selection is the currently running run if any, otherwise the most recent run."),
+                    new("Deep links", "The Runs tab's \"View results\" button navigates here with both jobId and runId in the URL so bookmarks and back/forward work."),
+                    new("Progress panel", "Reflects the selected run's counters (completed / failed / total), status chip, and elapsed time - independent of any other run that might be executing."),
+                    new("Image grid", "Powered by the shared ImagesContainer component: fullscreen viewer, multi-select, move to project, pagination - newest image first."),
                 }
             ),
             new InfoSection(
@@ -100,7 +140,7 @@ public static class SchedulerInfoContent
                     new("Fragment", "A parameter inside a workflow fragment. Discriminator: \"$type\": \"fragment\". Example: { \"$type\": \"fragment\", \"fragmentId\": \"main_sampler\", \"paramKey\": \"steps\" }."),
                     new("LoRA", "Refers to a LoRA by name inside the base parameters' LoRA stack. Discriminator: \"$type\": \"lora\". Example: { \"$type\": \"lora\", \"loraName\": \"detailer_v2\" }."),
                     new("Asset", "Workflow asset slot: Model, Vae, Clip, etc. Discriminator: \"$type\": \"asset\". Example: { \"$type\": \"asset\", \"assetKey\": \"Model\" }."),
-                    new("Prompt", "Either the positive or negative prompt text. Discriminator: \"$type\": \"prompt\". Example: { \"$type\": \"prompt\", \"isNegative\": false }."),
+                    new("Prompt", "Either the positive or negative prompt text. Discriminator: \"$type\": \"prompt\". Includes a Mode (Append / Prepend / Replace, defaults to Append) and a Separator used when appending or prepending, so variations like Wildcard add to the base prompt instead of overwriting it. Example: { \"$type\": \"prompt\", \"isNegative\": false, \"mode\": \"Append\", \"separator\": \", \" }."),
                     new("Output", "Project or Folder field on the job's output config. Discriminator: \"$type\": \"output\". Field is an enum: Project or Folder. Example: { \"$type\": \"output\", \"field\": \"Project\" }."),
                 }
             ),
@@ -421,11 +461,15 @@ public static class SchedulerInfoContent
                 new("Discriminator", "\"$type\": \"wildcard\"", IsCode: true),
                 new("Required", "Target, CollectionName."),
                 new("Options", "Count (null -> all entries without repeats), AllowRepeats, Weighted."),
+                new("Prompt target behaviour",
+                    "When the target is a Prompt, the produced value is combined with the base prompt according to the target's Mode " +
+                    "(Append / Prepend / Replace). The default is Append with Separator ', ', so the sampled wildcard value is added to the existing prompt instead of overwriting it. " +
+                    "Switch Mode to Replace if you want a wildcard to swap the whole prompt."),
                 new("Note", "Materialized at run time; collection edits after save are honoured."),
                 new("JSON example", IsCode: true, Text:
                     "{\n" +
                     "  \"$type\": \"wildcard\",\n" +
-                    "  \"target\": { \"$type\": \"prompt\", \"isNegative\": false },\n" +
+                    "  \"target\": { \"$type\": \"prompt\", \"isNegative\": false, \"mode\": \"Append\", \"separator\": \", \" },\n" +
                     "  \"collectionName\": \"characters\",\n" +
                     "  \"count\": 5,\n" +
                     "  \"allowRepeats\": false,\n" +

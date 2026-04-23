@@ -565,10 +565,10 @@ public class OrchestratorServiceTests
     }
 
     [Fact]
-    public void ParseAndCleanCopiedPrompt_WithEmptyPrompt_ShouldReturnEmpty()
+    public async Task ParseAndCleanCopiedPrompt_WithEmptyPrompt_ShouldReturnEmpty()
     {
         // Act
-        var result = _service.ParseAndCleanCopiedPrompt("", isNegative: false, isImg2Img: false);
+        var result = await _service.ParseAndCleanCopiedPrompt("", isNegative: false, isImg2Img: false);
 
         // Assert
         Assert.Empty(result);

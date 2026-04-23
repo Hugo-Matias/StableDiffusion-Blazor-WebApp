@@ -30,6 +30,14 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetAllEntryValues(string collectionName);
 
         /// <summary>
+        /// Returns the number of entries in a collection, or <c>0</c> when the collection does
+        /// not exist. Cheaper than <see cref="GetAllEntryValues(string)"/> when only the count
+        /// is needed (e.g. Scheduler cartesian-product estimation).
+        /// </summary>
+        /// <param name="collectionName">Name of the collection (e.g., "clothing/tops").</param>
+        Task<int> GetCollectionSize(string collectionName);
+
+        /// <summary>
         /// Checks if a collection exists in the database.
         /// </summary>
         /// <param name="collectionName">Name of the collection to check</param>

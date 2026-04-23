@@ -74,8 +74,24 @@
             break;
 
         case TargetKind.Prompt:
-            <MudSwitch T="bool" Value="_isNegative" ValueChanged="OnPromptNegativeChanged"
-                       Color="Color.Primary" Label="@(_isNegative ? "Negative prompt" : "Positive prompt")" />
+            <MudStack Spacing="2">
+                <MudSwitch T="bool" Value="_isNegative" ValueChanged="OnPromptNegativeChanged"
+                           Color="Color.Primary" Label="@(_isNegative ? "Negative prompt" : "Positive prompt")" />
+                <MudSelect T="PromptWriteMode" Value="_promptMode" ValueChanged="OnPromptModeChanged"
+                           Label="Write mode" Variant="Variant.Text" Dense="true"
+                           AnchorOrigin="Origin.BottomCenter"
+                           HelperText="How each iteration's value combines with the existing prompt.">
+                    <MudSelectItem Value="PromptWriteMode.Append">Append</MudSelectItem>
+                    <MudSelectItem Value="PromptWriteMode.Prepend">Prepend</MudSelectItem>
+                    <MudSelectItem Value="PromptWriteMode.Replace">Replace</MudSelectItem>
+                </MudSelect>
+                @if (_promptMode != PromptWriteMode.Replace)
+                {
+                    <MudTextField T="string" Value="_promptSeparator" ValueChanged="OnPromptSeparatorChanged"
+                                  Label="Separator" Variant="Variant.Text" Margin="Margin.Dense"
+                                  HelperText="Inserted between the existing prompt and the produced value." />
+                }
+            </MudStack>
             break;
 
         case TargetKind.Output:
@@ -120,6 +136,8 @@
     private string? _loraName;
     private string? _assetKey;
     private bool _isNegative;
+    private PromptWriteMode _promptMode = PromptWriteMode.Append;
+    private string _promptSeparator = ", ";
     private OutputField _outputField;
 
     private List<TargetKind> _availableKinds = new();
@@ -163,6 +181,8 @@
             case PromptTarget p:
                 _kind = TargetKind.Prompt;
                 _isNegative = p.IsNegative;
+                _promptMode = p.Mode;
+                _promptSeparator = p.Separator ?? ", ";
                 break;
             case OutputTarget o:
                 _kind = TargetKind.Output;
@@ -182,6 +202,8 @@
             _fragmentId = null; _paramKey = null;
             _loraName = null; _assetKey = null;
             _isNegative = false; _outputField = OutputField.Project;
+            _promptMode = PromptWriteMode.Append;
+            _promptSeparator = ", ";
             _availableParamKeys = new();
         }
     }
@@ -205,6 +227,8 @@
         _loraName = null;
         _assetKey = null;
         _isNegative = false;
+        _promptMode = PromptWriteMode.Append;
+        _promptSeparator = ", ";
         _outputField = OutputField.Project;
         _availableParamKeys = new();
         await EmitAsync();
@@ -260,6 +284,8 @@
     private Task OnLoraChanged(string? value) { _loraName = value; return EmitAsync(); }
     private Task OnAssetChanged(string? value) { _assetKey = value; return EmitAsync(); }
     private Task OnPromptNegativeChanged(bool value) { _isNegative = value; return EmitAsync(); }
+    private Task OnPromptModeChanged(PromptWriteMode value) { _promptMode = value; return EmitAsync(); }
+    private Task OnPromptSeparatorChanged(string value) { _promptSeparator = value ?? string.Empty; return EmitAsync(); }
     private Task OnOutputFieldChanged(OutputField value) { _outputField = value; return EmitAsync(); }
 
     private Task EmitAsync()
@@ -273,7 +299,12 @@
             TargetKind.Asset when !string.IsNullOrEmpty(_assetKey)
                 => new AssetTarget { AssetKey = _assetKey! },
             TargetKind.Prompt
-                => new PromptTarget { IsNegative = _isNegative },
+                => new PromptTarget
+                {
+                    IsNegative = _isNegative,
+                    Mode = _promptMode,
+                    Separator = _promptSeparator ?? ", ",
+                },
             TargetKind.Output
                 => new OutputTarget { Field = _outputField },
             _ => null,

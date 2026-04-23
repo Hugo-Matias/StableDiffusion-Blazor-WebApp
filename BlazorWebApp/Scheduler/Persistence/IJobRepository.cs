@@ -16,6 +16,17 @@ namespace BlazorWebApp.Scheduler.Persistence
         /// <summary>Overwrites an existing job. Creates the row if one with the same Id does not exist.</summary>
         Task UpdateAsync(Job job, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Editor-safe update path. Persists only user-authored "definition" fields
+        /// (<see cref="Job.Name"/>, <see cref="Job.Description"/>, <see cref="Job.WorkflowId"/>,
+        /// <see cref="Job.BaseParameters"/>, <see cref="Job.Actions"/>, <see cref="Job.OutputConfig"/>)
+        /// and preserves runtime-owned state (<see cref="Job.Runs"/>, <see cref="Job.RunCounter"/>,
+        /// <see cref="Job.RunState"/>, <see cref="Job.LastRunAt"/>, and <see cref="Job.Status"/> while
+        /// the job is Running/Paused) read from the currently persisted row. Use this from the Job
+        /// editor so saving edits mid-run cannot wipe the run history or reset the run counter.
+        /// </summary>
+        Task UpdateDefinitionAsync(Job job, CancellationToken cancellationToken = default);
+
         /// <summary>Deletes a job by id. No-op when the job does not exist.</summary>
         Task DeleteAsync(Guid jobId, CancellationToken cancellationToken = default);
 
@@ -38,5 +49,13 @@ namespace BlazorWebApp.Scheduler.Persistence
         /// progress updates cheap.
         /// </summary>
         Task SaveRunStateAsync(Guid jobId, JobRunState runState, JobStatus status, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Removes the <see cref="Run"/> with <paramref name="runId"/> from the owning job's
+        /// <see cref="Job.Runs"/> history. The job's <see cref="Job.RunCounter"/> is left untouched
+        /// so numbering of future runs never collides with a previously deleted entry.
+        /// No-op when the run or job is missing.
+        /// </summary>
+        Task DeleteRunAsync(Guid jobId, Guid runId, CancellationToken cancellationToken = default);
     }
 }

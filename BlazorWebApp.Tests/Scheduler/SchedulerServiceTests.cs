@@ -29,6 +29,21 @@ public class SchedulerServiceTests
 
         public Task<Job> CreateAsync(Job job, CancellationToken ct = default) { Store[job.Id] = job; return Task.FromResult(job); }
         public Task UpdateAsync(Job job, CancellationToken ct = default) { Store[job.Id] = job; return Task.CompletedTask; }
+        public Task UpdateDefinitionAsync(Job job, CancellationToken ct = default)
+        {
+            // Mirror production semantics: preserve runtime-owned fields from the persisted copy.
+            if (Store.TryGetValue(job.Id, out var persisted))
+            {
+                job.Runs = persisted.Runs;
+                job.RunCounter = persisted.RunCounter;
+                job.RunState = persisted.RunState;
+                job.LastRunAt = persisted.LastRunAt;
+                if (persisted.Status is JobStatus.Running or JobStatus.Paused)
+                    job.Status = persisted.Status;
+            }
+            Store[job.Id] = job;
+            return Task.CompletedTask;
+        }
         public Task DeleteAsync(Guid id, CancellationToken ct = default) { Store.Remove(id); return Task.CompletedTask; }
         public Task<Job?> GetByIdAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Store.TryGetValue(id, out var j) ? j : null);
         public Task<List<Job>> ListAsync(CancellationToken ct = default) => Task.FromResult(Store.Values.ToList());
@@ -51,6 +66,17 @@ public class SchedulerServiceTests
             {
                 job.RunState = s;
                 job.Status = status;
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteRunAsync(Guid jobId, Guid runId, CancellationToken ct = default)
+        {
+            if (Store.TryGetValue(jobId, out var job))
+            {
+                var run = job.Runs.FirstOrDefault(r => r.Id == runId);
+                if (run != null) job.Runs.Remove(run);
+                if (job.RunState.CurrentRunId == runId) job.RunState.CurrentRunId = null;
             }
             return Task.CompletedTask;
         }

@@ -53,6 +53,42 @@ namespace BlazorWebApp.Scheduler.Persistence
         }
 
         /// <inheritdoc />
+        public async Task UpdateDefinitionAsync(Job job, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var existing = await context.Jobs.FirstOrDefaultAsync(j => j.JobId == job.Id, cancellationToken);
+            if (existing == null)
+            {
+                // No runtime state exists yet; fall through to a regular insert.
+                context.Jobs.Add(ToEntity(job, existing: null));
+                await context.SaveChangesAsync(cancellationToken);
+                _logger.LogDebug("Inserted job {JobId} via UpdateDefinitionAsync", job.Id);
+                return;
+            }
+
+            // Restore runtime-owned fields from the persisted row so editor saves mid-run cannot
+            // wipe run history, run counter, or live progress state.
+            var persisted = existing.Body;
+            job.Runs = persisted.Runs ?? new List<Run>();
+            job.RunCounter = persisted.RunCounter;
+            job.RunState = persisted.RunState ?? new JobRunState();
+            job.LastRunAt = persisted.LastRunAt;
+
+            // Status is runtime-owned while a run is live; otherwise trust the editor (so Draft->Queued
+            // flows from the UI still work). Running/Paused states are owned by SchedulerService.
+            if (persisted.Status is JobStatus.Running or JobStatus.Paused)
+            {
+                job.Status = persisted.Status;
+            }
+
+            SyncEntity(existing, job);
+            context.Entry(existing).Property(e => e.Body).IsModified = true;
+            await context.SaveChangesAsync(cancellationToken);
+            _logger.LogDebug("Updated job definition {JobId} (preserved {RunCount} runs, counter={Counter})",
+                job.Id, job.Runs.Count, job.RunCounter);
+        }
+
+        /// <inheritdoc />
         public async Task DeleteAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
@@ -116,10 +152,57 @@ namespace BlazorWebApp.Scheduler.Persistence
                 body.LastRunAt = runState.StartedAt ?? DateTime.UtcNow;
             }
 
+            // Mirror live progress onto the current run's snapshot so the job's historical
+            // run log reflects the latest state without a full UpdateAsync round-trip.
+            if (runState.CurrentRunId is Guid runId)
+            {
+                var run = body.Runs.FirstOrDefault(r => r.Id == runId);
+                if (run != null)
+                {
+                    run.TotalIterations = runState.TotalIterations;
+                    run.CompletedImages = runState.CompletedImages;
+                    run.FailedImages = runState.FailedImages;
+                    run.CurrentActionIndex = runState.CurrentActionIndex;
+                    run.CurrentIterationIndex = runState.CurrentIterationIndex;
+                    run.GeneratedImageIds = new List<int>(runState.GeneratedImageIds);
+                    run.UpdatedAt = runState.UpdatedAt ?? DateTime.UtcNow;
+                    run.Status = status;
+                    if (status is JobStatus.Completed or JobStatus.Cancelled or JobStatus.Failed)
+                    {
+                        run.CompletedAt = DateTime.UtcNow;
+                    }
+                }
+            }
+
             SyncEntity(existing, body);
             // Force the Body column to be re-serialized even though its reference didn't change.
             context.Entry(existing).Property(e => e.Body).IsModified = true;
             await context.SaveChangesAsync(cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task DeleteRunAsync(Guid jobId, Guid runId, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var existing = await context.Jobs.FirstOrDefaultAsync(j => j.JobId == jobId, cancellationToken);
+            if (existing == null) return;
+
+            var body = existing.Body;
+            var run = body.Runs.FirstOrDefault(r => r.Id == runId);
+            if (run == null) return;
+
+            body.Runs.Remove(run);
+            // If the deleted run was tracked as the "current" run, clear the pointer so stale
+            // state doesn't bleed into future saves. RunCounter is intentionally left untouched.
+            if (body.RunState.CurrentRunId == runId)
+            {
+                body.RunState.CurrentRunId = null;
+            }
+
+            SyncEntity(existing, body);
+            context.Entry(existing).Property(e => e.Body).IsModified = true;
+            await context.SaveChangesAsync(cancellationToken);
+            _logger.LogDebug("Deleted run {RunId} from job {JobId}", runId, jobId);
         }
 
         private static JobEntity ToEntity(Job job, JobEntity? existing)

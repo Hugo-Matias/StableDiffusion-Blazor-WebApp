@@ -153,6 +153,21 @@ namespace BlazorWebApp.Services
             }
         }
 
+        public async Task<int> GetCollectionSize(string collectionName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(collectionName)) return 0;
+                var collection = await ResolveCollection(collectionName);
+                return collection?.Entries?.Count ?? 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting size of collection '{CollectionName}'", collectionName);
+                return 0;
+            }
+        }
+
         public async Task<bool> CollectionExists(string collectionName)
         {
             try

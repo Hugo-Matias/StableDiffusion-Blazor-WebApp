@@ -20,7 +20,15 @@ namespace BlazorWebApp.Scheduler
         /// Runs a job from scratch. Resets <see cref="Job.RunState"/> to zero and sets status to Running.
         /// Returns when the job reaches a terminal state (Completed/Canceled/Failed/Paused).
         /// </summary>
-        Task RunAsync(Guid jobId, CancellationToken cancellationToken = default);
+        /// <param name="jobId">Owning job id.</param>
+        /// <param name="sourceRunId">
+        /// When provided, the new <see cref="Run"/> snapshot is built by deep-cloning the specified
+        /// historical run's frozen definition (base parameters, actions, output config, workflow)
+        /// instead of the job's current mutable definition. The source run and its generated images
+        /// are left untouched. Used by the "Re-run this snapshot" action on the Runs tab so users can
+        /// replay a previous execution without the surrounding job edits affecting the replay.
+        /// </param>
+        Task RunAsync(Guid jobId, Guid? sourceRunId = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Resumes a previously paused job from its persisted <see cref="JobRunState"/>.

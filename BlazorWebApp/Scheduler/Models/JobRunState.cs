@@ -32,5 +32,12 @@ namespace BlazorWebApp.Scheduler.Models
         /// Reset when the job is started fresh via <see cref="SchedulerService.RunAsync"/>.
         /// </summary>
         public List<int> GeneratedImageIds { get; set; } = new();
+
+        /// <summary>
+        /// Id of the <see cref="Run"/> currently executing (or most recently executed). When present
+        /// the scheduler mirrors progress updates onto that run's snapshot so the job's historical
+        /// run log stays in sync with live state.
+        /// </summary>
+        public Guid? CurrentRunId { get; set; }
     }
 }

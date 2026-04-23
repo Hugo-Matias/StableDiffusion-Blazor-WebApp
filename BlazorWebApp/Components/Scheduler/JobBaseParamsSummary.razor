@@ -89,7 +89,9 @@ else
                 ("Steps", placeholder),
                 ("CFG", placeholder),
                 ("Size", placeholder),
+                ("Batch size", placeholder),
                 ("LoRAs", placeholder),
+                ("Enhancements", placeholder),
             };
         }
 
@@ -106,6 +108,7 @@ else
         var width = FindFirst(p, FragmentKeys.Params.Width);
         var height = FindFirst(p, FragmentKeys.Params.Height);
         var size = width is null && height is null ? placeholder : $"{width ?? placeholder} x {height ?? placeholder}";
+        var batchSize = FindFirst(p, FragmentKeys.Params.BatchSize) ?? placeholder;
 
         string loras;
         if (p.Loras is { Count: > 0 })
@@ -132,8 +135,33 @@ else
             ("Steps", steps),
             ("CFG", cfg),
             ("Size", size),
+            ("Batch size", batchSize),
             ("LoRAs", loras),
+            ("Enhancements", BuildEnhancements(p)),
         };
+    }
+
+    private static readonly (string FragmentId, string Label)[] _enhancementFragments = new[]
+    {
+        (FragmentKeys.Fragments.Upscale, "Upscale"),
+        (FragmentKeys.Fragments.Detailer, "Detailer"),
+        (FragmentKeys.Fragments.RefinerSampler, "Refiner"),
+        (FragmentKeys.Fragments.SeedVR2, "SeedVR2"),
+        (FragmentKeys.Fragments.ConditioningVariation, "Conditioning Variation"),
+        (FragmentKeys.Fragments.SeedVarianceEnhancer, "Seed Variance"),
+        (FragmentKeys.Fragments.Llm, "LLM Prompt Enhancer"),
+        (FragmentKeys.Fragments.FrameInterpolation, "Frame Interpolation"),
+    };
+
+    private static string BuildEnhancements(GenerationParameters p)
+    {
+        var names = new List<string>();
+        foreach (var (id, label) in _enhancementFragments)
+        {
+            if (p.Fragments.TryGetValue(id, out var frag) && frag is { IsActive: true })
+                names.Add(label);
+        }
+        return names.Count == 0 ? "-" : string.Join(", ", names);
     }
 
     /// <summary>

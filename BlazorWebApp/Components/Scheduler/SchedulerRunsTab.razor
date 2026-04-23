@@ -2,126 +2,140 @@
 @using BlazorWebApp.Scheduler
 @using BlazorWebApp.Scheduler.Models
 @using BlazorWebApp.Scheduler.Persistence
+@using BlazorWebApp.Services
 @inject IJobRepository JobRepo
 @inject ISchedulerService Scheduler
 @inject IEventService Events
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 @inject IDialogService Dialogs
+@inject IDatabaseService DB
 @implements IDisposable
 
-<MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
-    <MudText Typo="Typo.h6">Jobs</MudText>
-    <MudSpacer />
-    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary" OnClick="ReloadAsync"
-                   Title="Refresh list" />
-</MudStack>
-
-@if (_jobs is null)
+@if (_runs is null)
 {
     <MudProgressLinear Indeterminate Color="Color.Primary" />
 }
-else if (_jobs.Count == 0)
+else if (_runs.Count == 0)
 {
     <MudPaper Class="pa-6 d-flex flex-column align-center" Elevation="0">
         <MudIcon Icon="@Icons.Material.Filled.PlaylistAddCheck" Size="Size.Large" Color="Color.Default" />
-        <MudText Typo="Typo.body1" Class="mt-2">No Scheduler jobs yet.</MudText>
+        <MudText Typo="Typo.body1" Class="mt-2">No runs yet. Trigger a job from the Jobs tab.</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary" OnClick="ReloadAsync"
+                       Title="Refresh" Size="Size.Small" Class="mt-2" />
     </MudPaper>
-    }
+}
 else
-    {
-        <MudTable Items="@_jobs" Hover="true" Dense="false" Bordered="false" Striped="true" Elevation="1">
-            <HeaderContent>
-                <MudTh>Name</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Actions</MudTh>
-                <MudTh>Last Run</MudTh>
-                <MudTh>Progress</MudTh>
-                <MudTh Style="width: 360px;">Controls</MudTh>
-            </HeaderContent>
-            <RowTemplate Context="job">
-                <MudTd DataLabel="Name">
-                    <MudText Typo="Typo.body2"><strong>@job.Name</strong></MudText>
-                    @if (!string.IsNullOrWhiteSpace(job.Description))
-                    {
-                        <MudText Typo="Typo.caption">@job.Description</MudText>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Status">
-                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(job.Status)" Variant="Variant.Filled">
-                        @job.Status
-                    </MudChip>
-                </MudTd>
-                <MudTd DataLabel="Actions">@job.Actions.Count</MudTd>
-                <MudTd DataLabel="Last Run">
-                    @(job.LastRunAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")
-                </MudTd>
-                <MudTd DataLabel="Progress">
+{
+    <MudTable Items="@_runs" Hover="true" Dense="false" Bordered="false" Striped="true" Elevation="1">
+        <HeaderContent>
+            <MudTh>Run</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Started</MudTh>
+            <MudTh>Duration</MudTh>
+            <MudTh>Progress</MudTh>
+            <MudTh Style="width: 360px;">
+                <div class="d-flex align-center" style="gap: 4px;">
+                    <span style="flex: 1;">Controls</span>
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary" OnClick="ReloadAsync"
+                                   Title="Refresh" Size="Size.Small" />
+                </div>
+            </MudTh>
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <MudTd DataLabel="Run">
+                <MudText Typo="Typo.body2"><strong>@row.Run.Name</strong></MudText>
+                <MudText Typo="Typo.caption">@row.Job.Name</MudText>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small" Color="@StatusColor(row.Run.Status)" Variant="Variant.Filled">
+                    @row.Run.Status
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Started">
+                @row.Run.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            </MudTd>
+            <MudTd DataLabel="Duration">
+                @{
+                    var end = row.Run.CompletedAt ?? row.Run.UpdatedAt ?? DateTime.UtcNow;
+                    var elapsed = end - row.Run.StartedAt;
+                }
+                <MudText Typo="Typo.caption">@elapsed.ToString(@"hh\:mm\:ss")</MudText>
+            </MudTd>
+            <MudTd DataLabel="Progress">
+                @{
+                    var total = row.Run.TotalIterations;
+                    var done = row.Run.CompletedImages + row.Run.FailedImages;
+                    var pct = total > 0 ? (double)done / total * 100.0 : 0.0;
+                }
+                @if (total > 0)
+                {
+                    <MudTooltip Text="@($"{done}/{total} (completed {row.Run.CompletedImages}, failed {row.Run.FailedImages})")">
+                        <MudProgressLinear Value="@pct" Color="@StatusColor(row.Run.Status)" Size="Size.Small" Rounded />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption">-</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Controls">
+                <MudStack Row Spacing="1">
                     @{
-                        var total = job.RunState.TotalIterations;
-                        var done = job.RunState.CompletedImages + job.RunState.FailedImages;
-                        var pct = total > 0 ? (double)done / total * 100.0 : 0.0;
+                        bool isCurrentRun = Scheduler.RunningJobId == row.Job.Id && row.Job.RunState.CurrentRunId == row.Run.Id;
+                        bool isPausedCurrent = row.Job.Status == JobStatus.Paused && row.Job.RunState.CurrentRunId == row.Run.Id;
+                        bool anyRunning = Scheduler.RunningJobId.HasValue;
+                        bool canRerun = !anyRunning
+                            && row.Job.Status is not JobStatus.Running and not JobStatus.Paused
+                            && row.Job.WorkflowId.HasValue;
+                        bool canResume = !anyRunning && isPausedCurrent;
+                        var jobId = row.Job.Id;
+                        var runId = row.Run.Id;
+                        var captureJob = row.Job;
+                        var captureRun = row.Run;
                     }
-                    @if (total > 0)
-                    {
-                        <MudTooltip
-                            Text="@($"{done}/{total} (completed {job.RunState.CompletedImages}, failed {job.RunState.FailedImages})")">
-                            <MudProgressLinear Value="@pct" Color="@StatusColor(job.Status)" Size="Size.Small" Rounded />
-                        </MudTooltip>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.caption">-</MudText>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Controls">
-                    <MudStack Row Spacing="1">
-                        @{
-                            bool isRunningThis = Scheduler.RunningJobId == job.Id;
-                            bool anyRunning = Scheduler.RunningJobId.HasValue;
-                            bool canRun = !anyRunning && job.Status is not JobStatus.Running and not JobStatus.Paused;
-                            bool canResume = !anyRunning && job.Status == JobStatus.Paused;
-                        }
-                        <MudTooltip Text="Run">
-                            <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Color="Color.Success"
-                                           Disabled="@(!canRun)" OnClick="() => RunAsync(job.Id)" />
-                        </MudTooltip>
-                        <MudTooltip Text="Resume">
-                            <MudIconButton Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Info"
-                                           Disabled="@(!canResume)" OnClick="() => ResumeAsync(job.Id)" />
-                        </MudTooltip>
-                        <MudTooltip Text="Pause">
-                            <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning"
-                                           Disabled="@(!isRunningThis)" OnClick="PauseAsync" />
-                        </MudTooltip>
-                        <MudTooltip Text="Stop">
-                            <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error"
-                                           Disabled="@(!isRunningThis)" OnClick="StopAsync" />
-                        </MudTooltip>
-                        <MudTooltip Text="Skip current">
-                            <MudIconButton Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small" Color="Color.Default"
-                                           Disabled="@(!isRunningThis)" OnClick="SkipAsync" />
-                        </MudTooltip>
-                        <MudTooltip Text="View results">
-                            <MudIconButton Icon="@Icons.Material.Filled.Collections" Size="Size.Small"
-                                           OnClick="() => ViewResults(job.Id)" />
-                        </MudTooltip>
-                        <MudTooltip Text="View base parameters">
-                            <MudIconButton Icon="@Icons.Material.Filled.Tune" Size="Size.Small"
-                                           OnClick="() => ShowBaseParamsAsync(job)" />
-                        </MudTooltip>
-                        <MudTooltip Text="Delete">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                           Disabled="@(anyRunning && isRunningThis)" OnClick="() => DeleteAsync(job)" />
-                        </MudTooltip>
-                    </MudStack>
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
-    }
+                    <MudTooltip Text="Re-run this snapshot (creates a new run)">
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Color="Color.Success"
+                                       Disabled="@(!canRerun)" OnClick="() => RunFromSnapshotAsync(jobId, runId)" />
+                    </MudTooltip>
+                    <MudTooltip Text="Resume">
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Info"
+                                       Disabled="@(!canResume)" OnClick="() => ResumeAsync(jobId)" />
+                    </MudTooltip>
+                    <MudTooltip Text="Pause">
+                        <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning"
+                                       Disabled="@(!isCurrentRun)" OnClick="PauseAsync" />
+                    </MudTooltip>
+                    <MudTooltip Text="Stop">
+                        <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error"
+                                       Disabled="@(!isCurrentRun)" OnClick="StopAsync" />
+                    </MudTooltip>
+                    <MudTooltip Text="Skip current">
+                        <MudIconButton Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small" Color="Color.Default"
+                                       Disabled="@(!isCurrentRun)" OnClick="SkipAsync" />
+                    </MudTooltip>
+                    <MudTooltip Text="View results">
+                        <MudIconButton Icon="@Icons.Material.Filled.Collections" Size="Size.Small"
+                                       OnClick="() => ViewResults(jobId, runId)" />
+                    </MudTooltip>
+                    <MudTooltip Text="View run parameters">
+                        <MudIconButton Icon="@Icons.Material.Filled.Tune" Size="Size.Small"
+                                       OnClick="() => ShowRunParamsAsync(captureJob, captureRun)" />
+                    </MudTooltip>
+                    <MudTooltip Text="Delete run">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       Disabled="@(isCurrentRun)" OnClick="() => DeleteRunAsync(captureJob, captureRun)" />
+                    </MudTooltip>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
 
 @code {
-    private List<Job>? _jobs;
+    private record RunRow(Job Job, Run Run);
+
+    private List<RunRow>? _runs;
 
     protected override async Task OnInitializedAsync()
     {
@@ -134,29 +148,40 @@ else
 
     private async Task ReloadAsync()
     {
-        _jobs = await JobRepo.ListAsync();
+        var jobs = await JobRepo.ListAsync();
+        _runs = jobs
+            .SelectMany(j => j.Runs.Select(r => new RunRow(j, r)))
+            .OrderByDescending(r => r.Run.StartedAt)
+            .ToList();
         StateHasChanged();
     }
 
     private async void OnJobEvent<T>(T _) where T : EventArgs
     {
-        // Any job event may mutate status/progress for the row; reload and re-render.
-        await InvokeAsync(async () =>
-        {
-            await ReloadAsync();
-        });
+        await InvokeAsync(ReloadAsync);
     }
 
     private async Task RunAsync(Guid jobId)
     {
-        try { _ = Scheduler.RunAsync(jobId); Snackbar.Add("Job started", Severity.Info); }
+        try { _ = Scheduler.RunAsync(jobId); Snackbar.Add("Run started", Severity.Info); }
         catch (Exception ex) { Snackbar.Add($"Run failed: {ex.Message}", Severity.Error); }
+        await ReloadAsync();
+    }
+
+    private async Task RunFromSnapshotAsync(Guid jobId, Guid sourceRunId)
+    {
+        try
+        {
+            _ = Scheduler.RunAsync(jobId, sourceRunId);
+            Snackbar.Add("Snapshot re-run started", Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add($"Re-run failed: {ex.Message}", Severity.Error); }
         await ReloadAsync();
     }
 
     private async Task ResumeAsync(Guid jobId)
     {
-        try { _ = Scheduler.ResumeAsync(jobId); Snackbar.Add("Job resumed", Severity.Info); }
+        try { _ = Scheduler.ResumeAsync(jobId); Snackbar.Add("Run resumed", Severity.Info); }
         catch (Exception ex) { Snackbar.Add($"Resume failed: {ex.Message}", Severity.Error); }
         await ReloadAsync();
     }
@@ -179,29 +204,58 @@ else
         Snackbar.Add("Skip current requested", Severity.Normal);
     }
 
-    private void ViewResults(Guid jobId) =>
-        Nav.NavigateTo($"/scheduler/results?jobId={jobId}");
+    private void ViewResults(Guid jobId, Guid runId) =>
+        Nav.NavigateTo($"/scheduler/results?jobId={jobId}&runId={runId}");
 
-    private async Task ShowBaseParamsAsync(Job job)
+    private async Task ShowRunParamsAsync(Job job, Run run)
     {
         var parameters = new DialogParameters<JobBaseParamsDialog>
         {
-            { x => x.Parameters, job.BaseParameters },
-            { x => x.Title, $"Base parameters - {job.Name}" }
+            { x => x.Parameters, run.BaseParameters },
+            { x => x.Actions, run.Actions },
+            { x => x.Title, $"Run parameters - {run.Name}" }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
         await Dialogs.ShowAsync<JobBaseParamsDialog>(string.Empty, parameters, options);
     }
 
-    private async Task DeleteAsync(Job job)
+    private async Task DeleteRunAsync(Job job, Run run)
     {
-        var confirm = await Dialogs.ShowMessageBox("Delete job",
-            $"Delete '{job.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirm != true) return;
+        var imageCount = run.GeneratedImageIds?.Count ?? 0;
+        var parameters = new DialogParameters
+        {
+            ["OkButtonText"] = "Delete",
+            ["OkButtonColor"] = Color.Error,
+            ["CancelButtonText"] = "Cancel",
+            ["Content"] = new MarkupString(
+                $"<span class='lead'>Delete <strong>{run.Name}</strong>?</span>" +
+                "<br /><small>This removes the run entry from the job's history. " +
+                "The job's run counter is preserved so future runs keep incrementing.</small>"),
+            ["CheckboxEnabled"] = imageCount > 0,
+            ["CheckboxContent"] = $"Also delete {imageCount} generated image{(imageCount == 1 ? "" : "s")}",
+            ["CheckboxColor"] = Color.Error,
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, CloseButton = true };
+        var dialog = await Dialogs.ShowAsync<ConfirmationDialog>("Delete run", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
 
-        await JobRepo.DeleteAsync(job.Id);
-        Snackbar.Add("Job deleted", Severity.Success);
+        // When checkbox was shown and ticked, result.Data is the bool _isChecked value.
+        var alsoDeleteImages = imageCount > 0 && result.Data is true;
+
+        if (alsoDeleteImages && run.GeneratedImageIds is { Count: > 0 } ids)
+        {
+            var images = await DB.GetImages(ids.Distinct().ToList());
+            foreach (var image in images)
+            {
+                await DB.DeleteImage(image);
+            }
+        }
+
+        await JobRepo.DeleteRunAsync(job.Id, run.Id);
+        Snackbar.Add(alsoDeleteImages
+            ? $"Run deleted along with {imageCount} image{(imageCount == 1 ? "" : "s")}."
+            : "Run deleted.", Severity.Success);
         await ReloadAsync();
     }
 

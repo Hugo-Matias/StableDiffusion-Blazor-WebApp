@@ -15,6 +15,8 @@
 @inject IEventService Events
 @inject IScheduleSnapshotService SnapshotService
 @inject ISchedulerEditorState EditorState
+@inject ISchedulerService Scheduler
+@inject IWildcardService Wildcards
 @inject NavigationManager Nav
 @inject IInfoService InfoService
 @implements IDisposable
@@ -94,6 +96,10 @@
                     <MudText Typo="Typo.h6">Edit Job</MudText>
                     <MudSpacer />
                     <MudText Typo="Typo.caption">Total generations: <strong>@TotalGenerations</strong></MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
+                               OnClick="RunSelectedAsync"
+                               Disabled="@(!CanRunSelected)"
+                               Title="Trigger a new run of this job">Run</MudButton>
                     <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save"
                                OnClick="SaveAsync">@(EditorState.IsDirty ? "Save *" : "Save")</MudButton>
                     <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
@@ -273,6 +279,16 @@
     private Job? _editing;
     private ProjectFolderSelector? _outputSelector;
 
+    /// <summary>
+    /// Cache of wildcard collection sizes keyed by collection name. Populated asynchronously
+    /// by <see cref="PrefetchWildcardSizesAsync"/> and consumed by <see cref="WildcardSize"/>
+    /// when computing the cartesian-product estimate for the "Total generations" readout.
+    /// </summary>
+    private readonly Dictionary<string, int> _wildcardSizes = new(StringComparer.Ordinal);
+
+    /// <summary>Names that have been requested from <see cref="IWildcardService"/> but not yet resolved.</summary>
+    private readonly HashSet<string> _wildcardSizesInFlight = new(StringComparer.Ordinal);
+
     /// <summary>Hash of the baseline (last load / last save) used to detect user edits.</summary>
     private string? _baselineHash;
 
@@ -341,6 +357,11 @@
     protected override void OnAfterRender(bool firstRender)
     {
         if (_editing is null || _baselineHash is null) return;
+
+        // Kick off wildcard collection-size lookups needed by the "Total generations" estimate.
+        // Fire-and-forget: each resolved size re-triggers a render via StateHasChanged so the
+        // count stabilizes once the async lookups complete.
+        _ = PrefetchWildcardSizesAsync();
 
         // Poll-style dirty detection: comparing serialized hashes catches any binding
         // mutation without instrumenting every field.
@@ -523,6 +544,41 @@
         if (_editing is not null) _editing.WorkflowId = workflowId;
     }
 
+    private bool CanRunSelected => _editing is not null
+        && !EditorState.IsDirty
+        && _editing.WorkflowId.HasValue
+        && !Scheduler.RunningJobId.HasValue
+        && _editing.Status is not JobStatus.Running and not JobStatus.Paused;
+
+    private async Task RunSelectedAsync()
+    {
+        if (_editing is null) return;
+        if (EditorState.IsDirty)
+        {
+            Snackbar.Add("Save your changes before starting a run.", Severity.Warning);
+            return;
+        }
+        if (_editing.WorkflowId is null)
+        {
+            Snackbar.Add("Assign a workflow to this job before running.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var jobId = _editing.Id;
+            // Fire-and-forget: the scheduler drives progress events; we just navigate to Runs.
+            _ = Scheduler.RunAsync(jobId);
+            Snackbar.Add($"Run triggered for '{_editing.Name}'.", Severity.Info);
+            await Task.Yield();
+            Nav.NavigateTo("/scheduler/runs");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Run failed: {ex.Message}", Severity.Error);
+        }
+    }
+
     private Task SaveAsync() => SaveCoreAsync(skipReload: false);
 
     private async Task SaveCoreAsync(bool skipReload)
@@ -535,10 +591,28 @@
             return;
         }
 
-        // CreateAsync if brand new; UpdateAsync otherwise.
+        // CreateAsync if brand new; UpdateDefinitionAsync otherwise so mid-run editor saves
+        // preserve the job's run history, counter, and live progress state.
         var existing = await JobRepo.GetByIdAsync(_editing.Id);
-        if (existing is null) await JobRepo.CreateAsync(_editing);
-        else await JobRepo.UpdateAsync(_editing);
+        if (existing is null)
+        {
+            await JobRepo.CreateAsync(_editing);
+        }
+        else
+        {
+            await JobRepo.UpdateDefinitionAsync(_editing);
+
+            // Re-hydrate runtime-owned fields into the in-memory editor copy so the UI reflects
+            // what was actually persisted (runs/counter/state can have advanced during editing).
+            _editing.Runs = existing.Runs ?? new();
+            _editing.RunCounter = existing.RunCounter;
+            _editing.RunState = existing.RunState ?? new();
+            _editing.LastRunAt = existing.LastRunAt;
+            if (existing.Status is JobStatus.Running or JobStatus.Paused)
+            {
+                _editing.Status = existing.Status;
+            }
+        }
 
         // Successful save -> clear draft state and rebase.
         _baselineHash = ComputeHash(_editing);
@@ -833,6 +907,8 @@
                 RangeVariation r => RangeSize(r),
                 RandomVariation r => Math.Max(1, r.Count),
                 SearchReplaceVariation s => Math.Max(1, s.Replacements?.Count ?? 0),
+                WildcardVariation w => WildcardSize(w),
+                LlmVariation l => Math.Max(1, l.Count),
                 _ => 1,
             };
             total *= size;
@@ -848,6 +924,65 @@
         if (r.Step == 0) return 1;
         var n = (long)Math.Floor(Math.Abs((r.End - r.Start) / r.Step)) + 1;
         return Math.Max(1, n);
+    }
+
+    /// <summary>
+    /// Resolves a Wildcard variation's contribution to the cartesian product.
+    /// Count-bounded mode uses <see cref="WildcardVariation.Count"/> directly; full-sweep mode
+    /// reads the collection size from <see cref="_wildcardSizes"/> (prefetched asynchronously by
+    /// <see cref="PrefetchWildcardSizesAsync"/>). While a size is still loading we report 1 so the
+    /// estimate stabilizes on the next render.
+    /// </summary>
+    private long WildcardSize(WildcardVariation w)
+    {
+        if (w.Count is int c && c > 0) return c;
+        if (!string.IsNullOrWhiteSpace(w.CollectionName)
+            && _wildcardSizes.TryGetValue(w.CollectionName, out var size) && size > 0)
+        {
+            return size;
+        }
+        return 1;
+    }
+
+    /// <summary>
+    /// Scans the editing job's wildcard variations whose size is not yet cached and resolves
+    /// them via <see cref="IWildcardService.GetCollectionSize(string)"/>. Triggers a re-render
+    /// after each lookup so the cartesian-product estimate picks up the new value.
+    /// </summary>
+    private async Task PrefetchWildcardSizesAsync()
+    {
+        if (_editing is null) return;
+
+        var names = _editing.Actions
+            .SelectMany(a => a.Variations.OfType<WildcardVariation>())
+            .Where(w => w.Count is null or 0)
+            .Select(w => w.CollectionName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.Ordinal)
+            .Where(n => !_wildcardSizes.ContainsKey(n) && !_wildcardSizesInFlight.Contains(n))
+            .ToList();
+
+        if (names.Count == 0) return;
+
+        foreach (var name in names) _wildcardSizesInFlight.Add(name);
+
+        foreach (var name in names)
+        {
+            try
+            {
+                var size = await Wildcards.GetCollectionSize(name);
+                _wildcardSizes[name] = size;
+            }
+            catch
+            {
+                // Swallow: a failed lookup leaves the name uncached (fallback of 1 applies).
+            }
+            finally
+            {
+                _wildcardSizesInFlight.Remove(name);
+            }
+            StateHasChanged();
+        }
     }
 
     private int TotalGenerations => _editing?.Actions.Sum(a => ComputeIterations(a)) ?? 0;

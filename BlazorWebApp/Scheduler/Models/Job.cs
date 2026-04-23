@@ -45,5 +45,19 @@ namespace BlazorWebApp.Scheduler.Models
 
         /// <summary>Last-known run state, used to resume paused/interrupted jobs.</summary>
         public JobRunState RunState { get; set; } = new();
+
+        /// <summary>
+        /// Monotonic counter used to assign <see cref="Run.RunNumber"/> to newly created runs.
+        /// Incremented whenever a fresh run is triggered and never decremented, so deleting
+        /// older runs does not cause numbering collisions.
+        /// </summary>
+        public int RunCounter { get; set; }
+
+        /// <summary>
+        /// Immutable history of executions for this job. Each entry is a frozen snapshot of the
+        /// base parameters and actions that were in effect when the run was triggered, plus
+        /// runtime progress metadata. Newest runs are appended to the end of the list.
+        /// </summary>
+        public List<Run> Runs { get; set; } = new();
     }
 }

@@ -13,16 +13,18 @@ namespace BlazorWebApp.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<DatabaseService> _logger;
         private readonly OllamaService _ollamaService;
+        private readonly IIOService _io;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger, OllamaService ollamaService)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger, OllamaService ollamaService, IIOService io)
         {
             _factory = factory;
             _capi = capi;
             _configuration = configuration;
             _logger = logger;
             _ollamaService = ollamaService;
+            _io = io;
             PageSize = 5;
 
             InitializeDatabase();
@@ -560,6 +562,20 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             var response = context.Remove(image);
             await context.SaveChangesAsync();
+
+            // Delete the physical file after the entity is removed so a DB failure does
+            // not leave the record orphaned while the file is already gone.
+            if (!string.IsNullOrWhiteSpace(image.Path))
+            {
+                try { _io.DeleteFile(image.Path); }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "DeleteImage: entity {Id} removed from DB but file '{Path}' could not be deleted.",
+                        image.Id, image.Path);
+                }
+            }
+
             return response.Entity;
         }
 
