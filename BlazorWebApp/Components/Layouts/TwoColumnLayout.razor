@@ -1,0 +1,76 @@
+@namespace BlazorWebApp.Components.Layouts
+
+@*
+    Two-column layout variant for tabbed pages.
+
+    Default layout for data-heavy pages. Left column is a sidebar (settings,
+    filters, browse tree); right column is the main content. Gap between the
+    two surfaces = inner gutter.
+
+    Sidebar width is proportional (var(--app-sidebar-width)) and clamped
+    between --app-sidebar-min and --app-sidebar-max.
+
+    Set Collapsible=true to allow the user to collapse the sidebar to a narrow
+    rail (var(--app-sidebar-rail-width)), always keeping an expand affordance
+    visible. The Collapsed parameter is two-way bindable so pages can persist
+    the state via IStateService. Scope: Resources and CivitAI only - see the
+    Layout section in 04-UI-DESIGN-LANGUAGE.md.
+
+    See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md (Layout section).
+*@
+
+<div class="app-two-column @(Collapsible && Collapsed ? "collapsed" : null)">
+    <MudPaper Elevation="@LayoutDefaults.SurfaceElevation" Class="app-sidebar-surface" Square="false">
+        @if (Collapsible)
+        {
+            <div class="app-sidebar-toggle">
+                <MudIconButton Icon="@ToggleIcon"
+                               Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Default"
+                               OnClick="ToggleCollapsed"
+                               aria-label="@(Collapsed ? "Expand sidebar" : "Collapse sidebar")" />
+            </div>
+        }
+        @if (!Collapsible || !Collapsed)
+        {
+            <div class="app-sidebar-body">
+                @Sidebar
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(SidebarTitle))
+        {
+            <div class="app-sidebar-rail-title">@SidebarTitle</div>
+        }
+    </MudPaper>
+    <MudPaper Elevation="@LayoutDefaults.SurfaceElevation" Class="app-content-surface" Square="false">
+        @Content
+    </MudPaper>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Sidebar { get; set; }
+    [Parameter] public RenderFragment? Content { get; set; }
+
+    /// <summary>Enables the collapsible rail behavior. Off by default.</summary>
+    [Parameter] public bool Collapsible { get; set; }
+
+    /// <summary>Current collapsed state. Two-way bindable via <c>@bind-Collapsed</c>.</summary>
+    [Parameter] public bool Collapsed { get; set; }
+
+    [Parameter] public EventCallback<bool> CollapsedChanged { get; set; }
+
+    /// <summary>Optional label shown vertically in the rail when collapsed.</summary>
+    [Parameter] public string? SidebarTitle { get; set; }
+
+    private string ToggleIcon => Collapsed
+        ? Icons.Material.Filled.ChevronRight
+        : Icons.Material.Filled.ChevronLeft;
+
+    private Task ToggleCollapsed()
+    {
+        Collapsed = !Collapsed;
+        return CollapsedChanged.InvokeAsync(Collapsed);
+    }
+}
+

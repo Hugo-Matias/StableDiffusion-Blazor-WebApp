@@ -1,6 +1,6 @@
 @inject IDatabaseService DB
 
-<MudPaper Elevation="1" Class="category-browser pa-4">
+<div class="category-browser">
     <MudStack Spacing="3">
         <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
             <MudText Typo="Typo.h6">Categories</MudText>
@@ -106,7 +106,7 @@
             </MudList>
         }
     </MudStack>
-</MudPaper>
+</div>
 
 @code {
     private const string FAVORITES_FILTER = "__favorites__";

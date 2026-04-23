@@ -4,9 +4,9 @@
 
 .civitai-card {
     position: relative;
-    width: 14rem;
-    min-width: 14rem;
-    max-width: 14rem;
+    width: var(--civitai-card-width, 14rem);
+    min-width: var(--civitai-card-width, 14rem);
+    max-width: var(--civitai-card-width, 14rem);
     aspect-ratio: 3 / 4;
     border-radius: 8px;
     overflow: hidden;

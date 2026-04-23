@@ -12,8 +12,9 @@
 @inject IDatabaseService DB
 @implements IDisposable
 
-@if (_runs is null)
-{
+<ContentOnlyLayout>
+    @if (_runs is null)
+    {
     <MudProgressLinear Indeterminate Color="Color.Primary" />
 }
 else if (_runs.Count == 0)
@@ -27,7 +28,7 @@ else if (_runs.Count == 0)
 }
 else
 {
-    <MudTable Items="@_runs" Hover="true" Dense="false" Bordered="false" Striped="true" Elevation="1">
+    <MudTable Items="@_runs" Hover="true" Dense="false" Bordered="false" Striped="true" Elevation="0">
         <HeaderContent>
             <MudTh>Run</MudTh>
             <MudTh>Status</MudTh>
@@ -130,7 +131,8 @@ else
             </MudTd>
         </RowTemplate>
     </MudTable>
-}
+    }
+</ContentOnlyLayout>
 
 @code {
     private record RunRow(Job Job, Run Run);

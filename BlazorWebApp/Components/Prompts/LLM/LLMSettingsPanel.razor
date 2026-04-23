@@ -4,7 +4,7 @@
 @inject OllamaService OllamaService
 @inject ISnackbar Snackbar
 
-<MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+<div class="llm-settings-panel" style="height: calc(100vh - 200px); overflow-y: auto;">
     <MudStack Spacing="3">
         <div>
             <MudText Typo="Typo.subtitle2" Class="mb-2">Model</MudText>
@@ -15,7 +15,7 @@
             else if (_availableModels != null && _availableModels.Any())
             {
                 <MudSelect @bind-Value="SelectedModel"
-                          Variant="Variant.Outlined"
+                          Variant="Variant.Text"
                           AnchorOrigin="Origin.BottomLeft"
                           TransformOrigin="Origin.TopLeft">
                     @foreach (var model in _availableModels)
@@ -61,7 +61,7 @@
                 <div class="d-flex gap-2 align-center">
                     <MudNumericField @bind-Value="State.State.Generation.LLM.Options.Seed"
                                     Label="Seed"
-                                    Variant="Variant.Outlined"
+                                    Variant="Variant.Text"
                                     Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
                                     Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max"
                                     Style="flex: 1;" />
@@ -103,33 +103,33 @@
                 <MudStack Spacing="2">
                     <MudNumericField @bind-Value="State.State.Generation.LLM.Options.TopK"
                                    Label="Top K"
-                                   Variant="Variant.Outlined"
+                                   Variant="Variant.Text"
                                    Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
                                    Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
                     
                     <MudNumericField @bind-Value="State.State.Generation.LLM.Options.MinP"
                                    Label="Min P"
-                                   Variant="Variant.Outlined"
+                                   Variant="Variant.Text"
                                    Min="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
                                    Max="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
                                    Step="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Step" />
                     
                     <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumPredict"
                                    Label="Max Tokens"
-                                   Variant="Variant.Outlined"
+                                   Variant="Variant.Text"
                                    Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
                                    Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
                     
                     <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumCtx"
                                    Label="Context Length"
-                                   Variant="Variant.Outlined"
+                                   Variant="Variant.Text"
                                    Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
                                    Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max" />
                 </MudStack>
             </MudExpansionPanel>
         </MudExpansionPanels>
     </MudStack>
-</MudPaper>
+</div>
 
 @code {
     [Parameter]

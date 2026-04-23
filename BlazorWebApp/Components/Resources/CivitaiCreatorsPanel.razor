@@ -2,47 +2,56 @@
 @inject ISettingsService Settings
 @inject CivitaiService Api
 
-<EditForm Model=Request OnSubmit="Search">
-    <MudGrid Class="px-4 mb-7 mt-5">
-        <MudItem xs="5">
-            <MudTextField @bind-Value=Request.Query Label="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
-        </MudItem>
-        <MudItem xs="3">
-            <MudSlider @bind-Value=Request.Limit Min="Settings.Settings.Resources.Civitai.Limit.Min" Max="Settings.Settings.Resources.Civitai.Limit.Max" Step="Settings.Settings.Resources.Civitai.Limit.Step"><small>Quantity:</small> @Request.Limit</MudSlider>
-        </MudItem>
-        <MudItem xs="2">
-            <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
-        </MudItem>
-        <MudItem xs="2">
-            <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
-        </MudItem>
-    </MudGrid>
-</EditForm>
+<TwoColumnLayout Collapsible="true"
+                 @bind-Collapsed="State.State.Civitai.SidebarCollapsed"
+                 SidebarTitle="Filters">
+    <Sidebar>
+        <EditForm Model="Request" OnSubmit="Search">
+            <MudStack Spacing="2">
+                <MudTextField @bind-Value="Request.Query" Label="Search" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
+                <MudSlider @bind-Value="Request.Limit"
+                           Min="Settings.Settings.Resources.Civitai.Limit.Min"
+                           Max="Settings.Settings.Resources.Civitai.Limit.Max"
+                           Step="Settings.Settings.Resources.Civitai.Limit.Step">
+                    <small>Quantity:</small> @Request.Limit
+                </MudSlider>
+                <MudNumericField @bind-Value="Request.Page" Label="Page" Variant="Variant.Text" Min="1" />
 
-@if (_creators != null)
-{
-    <MudTable Items=@_creators.Creators Loading=_isSearching Dense Hover>
-    <HeaderContent>
-        <MudTh>Username</MudTh>
-        <MudTh>Model Count</MudTh>
-        <MudTh></MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd>@context.Username</MudTd>
-        <MudTd>@context.ModelCount</MudTd>
-        <MudTd><MudIconButton OnClick=@(async () => await OnSearchCreator.InvokeAsync(context.Username)) Icon="@Icons.Material.Filled.Search" /></MudTd>
-    </RowTemplate>
-    <PagerContent>
-        <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=(int)Request.Page BoundaryCount="2" MiddleCount="5" Count="_creators.Metadata.TotalPages" />
-        </div>
-    </PagerContent>
-</MudTable>
-}
-else if (_creators == null && _isSearching)
-{
-    <LoadingSpinner />
-}
+                <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true"
+                           Class="mt-3">Search</MudButton>
+            </MudStack>
+        </EditForm>
+    </Sidebar>
+    <Content>
+        @if (_creators != null)
+        {
+            <div class="civitai-scroll-container">
+                <MudTable Items="@_creators.Creators" Loading="_isSearching" Dense Hover>
+                    <HeaderContent>
+                        <MudTh>Username</MudTh>
+                        <MudTh>Model Count</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Username</MudTd>
+                        <MudTd>@context.ModelCount</MudTd>
+                        <MudTd><MudIconButton OnClick=@(async () => await OnSearchCreator.InvokeAsync(context.Username)) Icon="@Icons.Material.Filled.Search" /></MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <div class="d-flex flex-column align-center pa-3">
+                            <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2" MiddleCount="5" Count="_creators.Metadata.TotalPages" />
+                        </div>
+                    </PagerContent>
+                </MudTable>
+            </div>
+        }
+        else if (_creators == null && _isSearching)
+        {
+            <LoadingSpinner />
+        }
+    </Content>
+</TwoColumnLayout>
 
 @code {
     [Parameter] public EventCallback<string> OnSearchCreator { get; set; }

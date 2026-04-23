@@ -5,7 +5,7 @@
         <MudStack Spacing="3">
             <MudTextField @bind-Value="@_name"
                           Label="Template Name"
-                          Variant="Variant.Outlined"
+                          Variant="Variant.Text"
                           Required
                           RequiredError="Name is required"
                           Placeholder="e.g., Story Generator, Code Explainer"
@@ -14,7 +14,7 @@
             
             <MudTextField @bind-Value="@_description"
                           Label="Description"
-                          Variant="Variant.Outlined"
+                          Variant="Variant.Text"
                           Lines="3"
                           Placeholder="Describe what this template does..."
                           FullWidth

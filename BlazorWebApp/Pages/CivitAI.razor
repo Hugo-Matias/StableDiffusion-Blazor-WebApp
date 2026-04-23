@@ -1,3 +1,21 @@
 @page "/civitai"
+@inject IStateService State
 
-<CivitaiPanel />
+<TabbedPageShell @bind-ActivePanelIndex="State.State.Civitai.ActiveTabIndex">
+    <MudTabPanel Text="Models">
+        <CivitaiModelsPanel />
+    </MudTabPanel>
+    <MudTabPanel Text="Images">
+        <CivitaiImagesPanel />
+    </MudTabPanel>
+    <MudTabPanel Text="Creators">
+        <CivitaiCreatorsPanel OnSearchCreator="SearchCreator" />
+    </MudTabPanel>
+</TabbedPageShell>
+
+@code {
+    private void SearchCreator(string name)
+    {
+        return;
+    }
+}

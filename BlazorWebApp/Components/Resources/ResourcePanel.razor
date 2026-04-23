@@ -1,78 +1,136 @@
 ﻿@inject IStateService State
 @inject ISettingsService Settings
-@inject CivitaiService Civitai
 
 @if (Resources != null)
 {
-    <MudGrid Class="my-3 pa-2">
-        <MudItem xs="5">
-            <MudStack>
-                <MudStack Row=true>
-                <MudTextField Label="Title" Value="State.State.Resources.Title" ValueChanged=HandleSearchTitle T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Immediate />
-                    <MudAutocomplete T="string" Value="State.State.Resources.Tag" ValueChanged=HandleSearchTag SearchFunc="GetTags" Label="Tag" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-tag" AdornmentColor=@(State.State.Resources.IsInclusive ? Color.Success : Color.Error) OnAdornmentClick=HandleTagInclusiveChanged ResetValueOnEmptyText Clearable Dense />
-                </MudStack>
-                <MudStack Row=true>
-                    <MudAutocomplete T="string" Value="State.State.Resources.Subtype" ValueChanged=HandleSearchSubtype SearchFunc="GetSubtypes" Label="Sub-Type" MaxItems="100" MaxHeight="1200" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-list" ResetValueOnEmptyText Clearable Dense />
-                    <MudAutocomplete T="string" Value="State.State.Resources.BaseModel" ValueChanged=HandleSearchBaseModel SearchFunc="GetBaseModels" Label="Base Model" MaxItems="100" MaxHeight="900" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-cube" ResetValueOnEmptyText Clearable Dense />
-                </MudStack>
-            </MudStack>
-        </MudItem>
-        <MudItem xs="1">
-            <MudStack>
-                <MudSelect Label="Order By" Value="State.State.Resources.OrderBy" ValueChanged=HandleOrderChanged T="string">
-                    @foreach (var option in Settings.Settings.Resources.OrderByOptions)
-                    {
-                        <MudSelectItem Value="option" />
-                    }
-                </MudSelect>
-                <MudCheckBox Checked=State.State.Resources.OrderByDescending CheckedChanged=HandleOrderDescendingChanged T="bool" Label=@(State.State.Resources.OrderByDescending ? "Desc" : "Asc") CheckedIcon="fa-solid fa-arrow-down-wide-short" UncheckedIcon="fa-solid fa-arrow-down-short-wide" />
-            </MudStack>
-        </MudItem>
-        <MudItem xs="4">
-            <MudStack>
-                <ResourceTemplatesBar />
-                <MudStack Row=true>
-                    <MudSlider T=int ValueChanged=@(v => HandleLimitChanged(v)) Value=State.State.Resources.Limit Min="Settings.Settings.Resources.Search.Limit.Min" Max="Settings.Settings.Resources.Search.Limit.Max" Step="Settings.Settings.Resources.Search.Limit.Step"><small>Quantity:</small> @State.State.Resources.Limit</MudSlider>
-                    <MudCheckBox T="bool?" Checked=State.State.Resources.ResourceIsEnabledFilter CheckedChanged=@(v => HandleEnabledChecked(v)) Color=@(State.State.Resources.ResourceIsEnabledFilter == null ? Color.Default : (bool)State.State.Resources.ResourceIsEnabledFilter ? Color.Success : Color.Error) TriState=true>Active</MudCheckBox>
-                </MudStack>
-            </MudStack>
-        </MudItem>
-        <MudItem xs="2">
-            <MudStack Style="height:100%;">
-                <MudButton Style="width:100%;" OnClick="Search" Color="Color.Success">Search</MudButton>
-                <MudButton Style="width:100%;" OnClick="UpdateBaseModels" Color="Color.Info" Size="Size.Small" Disabled="_isUpdating">
-                    @if (_isUpdating)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate />
-                        <span class="ml-2">Updating...</span>
-                    }
-                    else
-                    {
-                        <span>Update BaseModels</span>
-                    }
-                </MudButton>
-            </MudStack>
-        </MudItem>
-    </MudGrid>
+    <TwoColumnLayout Collapsible="true"
+                     @bind-Collapsed="State.State.Resources.SidebarCollapsed"
+                     SidebarTitle="Filters">
+        <Sidebar>
+            <MudStack Spacing="2">
+                <MudTextField Label="Title"
+                              Value="State.State.Resources.Title"
+                              ValueChanged="HandleSearchTitle"
+                              T="string"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="fa-solid fa-magnifying-glass"
+                              Clearable
+                              Immediate />
+                <MudAutocomplete T="string"
+                                 Value="State.State.Resources.Tag"
+                                 ValueChanged="HandleSearchTag"
+                                 SearchFunc="GetTags"
+                                 Label="Tag"
+                                 MaxItems="100"
+                                 MaxHeight="900"
+                                 Adornment="Adornment.End"
+                                 AdornmentIcon="fa-solid fa-tag"
+                                 AdornmentColor=@(State.State.Resources.IsInclusive ? Color.Success : Color.Error)
+                                 OnAdornmentClick="HandleTagInclusiveChanged"
+                                 ResetValueOnEmptyText
+                                 Clearable
+                                 Dense />
+                <MudAutocomplete T="string"
+                                 Value="State.State.Resources.Subtype"
+                                 ValueChanged="HandleSearchSubtype"
+                                 SearchFunc="GetSubtypes"
+                                 Label="Sub-Type"
+                                 MaxItems="100"
+                                 MaxHeight="1200"
+                                 Adornment="Adornment.End"
+                                 AdornmentIcon="fa-solid fa-list"
+                                 ResetValueOnEmptyText
+                                 Clearable
+                                 Dense />
+                <MudAutocomplete T="string"
+                                 Value="State.State.Resources.BaseModel"
+                                 ValueChanged="HandleSearchBaseModel"
+                                 SearchFunc="GetBaseModels"
+                                 Label="Base Model"
+                                 MaxItems="100"
+                                 MaxHeight="900"
+                                 Adornment="Adornment.End"
+                                 AdornmentIcon="fa-solid fa-cube"
+                                 ResetValueOnEmptyText
+                                 Clearable
+                                 Dense />
 
-    @if (State.State.Resources.TotalPages > 1)
-    {
-        <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=State.State.Resources.Page BoundaryCount="2" MiddleCount="5" Count=State.State.Resources.TotalPages />
-        </div>
-    }
-    <MudGrid Spacing="1" Justify="Justify.Center">
-        @foreach (var resource in _filteredResources)
-        {
-            <ResourceCard Resource=resource OnLoad="@(async () => await OnLoad.InvokeAsync(resource))" />
-        }
-    </MudGrid>
-    @if (State.State.Resources.TotalPages > 1)
-    {
-        <div class="d-flex flex-column align-center pa-3">
-            <MudPagination SelectedChanged=HandlePageSelected Selected=State.State.Resources.Page BoundaryCount="2" MiddleCount="5" Count=State.State.Resources.TotalPages />
-        </div>
-    }
+                <MudDivider Class="my-1" />
+
+                @* Order By + Asc/Desc toggle inline *@
+                <MudStack Row="true" AlignItems="AlignItems.End" Spacing="1">
+                    <MudSelect Label="Order By"
+                               Value="State.State.Resources.OrderBy"
+                               ValueChanged="HandleOrderChanged"
+                               T="string"
+                               Class="flex-grow-1">
+                        @foreach (var option in Settings.Settings.Resources.OrderByOptions)
+                        {
+                            <MudSelectItem Value="option" />
+                        }
+                    </MudSelect>
+                    <MudTooltip Text="@(State.State.Resources.OrderByDescending ? "Descending" : "Ascending")">
+                        <MudIconButton Icon="@(State.State.Resources.OrderByDescending ? "fa-solid fa-arrow-down-wide-short" : "fa-solid fa-arrow-down-short-wide")"
+                                       OnClick="@(() => HandleOrderDescendingChanged(!State.State.Resources.OrderByDescending))"
+                                       Size="Size.Small" />
+                    </MudTooltip>
+                </MudStack>
+                <ResourceTemplatesBar />
+
+                <MudDivider Class="my-1" />
+                <MudSlider T="int"
+                           ValueChanged="@(v => HandleLimitChanged(v))"
+                           Value="State.State.Resources.Limit"
+                           Min="4"
+                           Max="100"
+                           Step="4"><small>Quantity:</small> @State.State.Resources.Limit</MudSlider>
+
+
+
+                @* Active tri-state + Card size tri-state inline *@
+                <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center" Spacing="4">
+                    <MudCheckBox T="bool?"
+                                 Checked="State.State.Resources.ResourceIsEnabledFilter"
+                                 CheckedChanged="@(v => HandleEnabledChecked(v))"
+                                 Color=@(State.State.Resources.ResourceIsEnabledFilter == null ? Color.Default : (bool)State.State.Resources.ResourceIsEnabledFilter ? Color.Success : Color.Error)
+                                 TriState="true">@GetEnabledFilterLabel()</MudCheckBox>
+                    <MudTooltip Text="@($"Card size: {State.State.Resources.CardSize}")">
+                        <MudIconButton Icon="@GetCardSizeIcon()"
+                                       Color="Color.Primary"
+                                       OnClick="CycleCardSize"
+                                       Size="Size.Medium" />
+                    </MudTooltip>
+                </MudStack>
+
+                <MudButton OnClick="Search"
+                           Color="Color.Success"
+                           FullWidth="true"
+                           Class="mt-3">Search</MudButton>
+            </MudStack>
+        </Sidebar>
+        <Content>
+            @if (State.State.Resources.TotalPages > 1)
+            {
+                <div class="d-flex flex-column align-center pb-2">
+                    <MudPagination SelectedChanged="HandlePageSelected" Selected="State.State.Resources.Page" BoundaryCount="2" MiddleCount="5" Count="State.State.Resources.TotalPages" />
+                </div>
+            }
+            <div class="resources-scroll-container">
+                <MudGrid Spacing="1" Justify="Justify.Center">
+                    @foreach (var resource in _filteredResources)
+                    {
+                        <ResourceCard Resource="resource" Width="@CardWidth" OnLoad="@(async () => await OnLoad.InvokeAsync(resource))" />
+                    }
+                </MudGrid>
+            </div>
+            @if (State.State.Resources.TotalPages > 1)
+            {
+                <div class="d-flex flex-column align-center pt-2">
+                    <MudPagination SelectedChanged="HandlePageSelected" Selected="State.State.Resources.Page" BoundaryCount="2" MiddleCount="5" Count="State.State.Resources.TotalPages" />
+                </div>
+            }
+        </Content>
+    </TwoColumnLayout>
 }
 
 @code {
@@ -80,26 +138,48 @@
     [Parameter] public EventCallback<LocalResource> OnLoad { get; set; }
 
     private List<LocalResource> _filteredResources;
-    private bool _isUpdating = false;
+
+    private string CardWidth => State.State.Resources.CardSize switch
+    {
+        ResourceCardSize.Small => "11rem",
+        ResourceCardSize.Large => "22rem",
+        _ => "16rem"
+    };
+
+    private string GetEnabledFilterLabel() => State.State.Resources.ResourceIsEnabledFilter switch
+    {
+        true => "Active",
+        false => "Inactive",
+        _ => "All"
+    };
+
+    private void HandleCardSizeChanged(ResourceCardSize size)
+    {
+        State.State.Resources.CardSize = size;
+        StateHasChanged();
+    }
+
+    private void CycleCardSize()
+    {
+        State.State.Resources.CardSize = State.State.Resources.CardSize switch
+        {
+            ResourceCardSize.Small => ResourceCardSize.Medium,
+            ResourceCardSize.Medium => ResourceCardSize.Large,
+            _ => ResourceCardSize.Small
+        };
+        StateHasChanged();
+    }
+
+    private string GetCardSizeIcon() => State.State.Resources.CardSize switch
+    {
+        ResourceCardSize.Small => "fa-solid fa-grip",
+        ResourceCardSize.Large => "fa-solid fa-square",
+        _ => "fa-solid fa-table-cells-large"
+    };
 
     protected override void OnParametersSet()
     {
         Search();
-    }
-
-    private async Task UpdateBaseModels()
-    {
-        _isUpdating = true;
-        StateHasChanged();
-        try
-        {
-            await Civitai.UpdateResourceBaseModels();
-        }
-        finally
-        {
-            _isUpdating = false;
-            StateHasChanged();
-        }
     }
 
     private async Task<IEnumerable<string>> GetSubtypes(string value)

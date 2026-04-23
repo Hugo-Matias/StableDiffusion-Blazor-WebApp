@@ -5,10 +5,11 @@
 @inject ISnackbar Snackbar
 @inject IDatabaseService DB
 
-<MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+<div class="llm-main-panel" style="height: calc(100vh - 200px); overflow-y: auto;">
     <MudTabs @bind-ActivePanelIndex="_activeTab" 
              Elevation="0" 
-             Rounded 
+             Rounded
+             Centered="true"
              PanelClass="pt-4">
         <MudTabPanel Text="Process" Icon="@Icons.Material.Filled.AutoAwesome">
             <MudStack Spacing="3">
@@ -38,7 +39,7 @@
                     <MudSelect Value="_selectedTemplateId"
                                ValueChanged="OnTemplateChanged"
                                Label="Template"
-                               Variant="Variant.Outlined"
+                               Variant="Variant.Text"
                                Dense
                                AnchorOrigin="Origin.BottomLeft"
                                Style="min-width: 250px;"
@@ -128,7 +129,7 @@
                     @* Input Prompt - Below Controls *@
                     <MudTextField @bind-Value="_inputPrompt"
                                   Label="Input Prompt"
-                                  Variant="Variant.Outlined"
+                                  Variant="Variant.Text"
                                   Lines="4"
                                   Placeholder="Enter your prompt here..."
                                   Disabled="_isProcessing"
@@ -390,7 +391,7 @@
             }
         </MudTabPanel>
     </MudTabs>
-</MudPaper>
+</div>
 
 @code {
     [Parameter]

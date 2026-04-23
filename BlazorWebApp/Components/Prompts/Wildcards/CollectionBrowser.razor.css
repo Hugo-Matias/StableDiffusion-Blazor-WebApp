@@ -21,9 +21,27 @@
 }
 
 .mud-expansion-panel-header {
-    padding: 8px 16px !important;
+    padding: 2px 8px !important;
+    min-height: 32px !important;
 }
 
 .mud-expansion-panel-content {
     padding: 0 !important;
+}
+
+/* Compact list rows for a denser collection/folder browser. */
+::deep .collection-list .mud-list-item,
+::deep .mud-expansion-panel-content .mud-list-item {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    min-height: 28px !important;
+}
+
+::deep .mud-expansion-panels .mud-expansion-panel + .mud-expansion-panel {
+    margin-top: 0 !important;
+}
+
+::deep .mud-expansion-panel-text {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }

@@ -9,25 +9,17 @@
 
 <PageTitle>Scheduler</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-3">
-        <MudIcon Icon="@Icons.Material.Filled.EventNote" Class="me-2" />
-        Scheduler
-    </MudText>
-
-    <MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4"
-             ActivePanelIndex="@_activeIndex" ActivePanelIndexChanged="OnTabChanged">
-        <MudTabPanel Text="Jobs" Icon="@Icons.Material.Filled.Edit">
-            <SchedulerEditorTab />
-        </MudTabPanel>
-        <MudTabPanel Text="Runs" Icon="@Icons.Material.Filled.PlaylistPlay">
-            <SchedulerRunsTab />
-        </MudTabPanel>
-        <MudTabPanel Text="Results" Icon="@Icons.Material.Filled.Collections">
-            <SchedulerResultsTab JobIdQuery="@_jobIdQuery" RunIdQuery="@_runIdQuery" />
-        </MudTabPanel>
-    </MudTabs>
-</MudContainer>
+<TabbedPageShell ActivePanelIndex="@_activeIndex" ActivePanelIndexChanged="OnTabChanged">
+    <MudTabPanel Text="Jobs" Icon="@Icons.Material.Filled.Edit">
+        <SchedulerEditorTab />
+    </MudTabPanel>
+    <MudTabPanel Text="Runs" Icon="@Icons.Material.Filled.PlaylistPlay">
+        <SchedulerRunsTab />
+    </MudTabPanel>
+    <MudTabPanel Text="Results" Icon="@Icons.Material.Filled.Collections">
+        <SchedulerResultsTab JobIdQuery="@_jobIdQuery" RunIdQuery="@_runIdQuery" />
+    </MudTabPanel>
+</TabbedPageShell>
 
 @code {
     [Parameter] public string? Tab { get; set; }

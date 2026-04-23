@@ -221,9 +221,13 @@ namespace BlazorWebApp.Models
 
     public enum GalleryOrderBy { Random, Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }
 
+    public enum ResourceCardSize { Small, Medium, Large }
+
     public class AppStateResources
     {
         public int ActiveTabIndex { get; set; } = 0;
+        public bool SidebarCollapsed { get; set; } = false;
+        public ResourceCardSize CardSize { get; set; } = ResourceCardSize.Medium;
         public int Page { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
         public int Limit { get; set; }
@@ -242,6 +246,9 @@ namespace BlazorWebApp.Models
 
     public class AppStateCivitai
     {
+        public int ActiveTabIndex { get; set; } = 0;
+        public bool SidebarCollapsed { get; set; } = false;
+        public ResourceCardSize CardSize { get; set; } = ResourceCardSize.Medium;
         public string ResourceSubtype { get; set; }
         public string ResourceTypeOverride { get; set; } = "Checkpoint";
         public AppStateCivitaiCreators Creators { get; set; } = new();
@@ -293,6 +300,7 @@ namespace BlazorWebApp.Models
 
     public class AppStateDanbooru
     {
+        public int ActiveTabIndex { get; set; } = 0;
         public string SearchString { get; set; } = "order:rank";
     }
 

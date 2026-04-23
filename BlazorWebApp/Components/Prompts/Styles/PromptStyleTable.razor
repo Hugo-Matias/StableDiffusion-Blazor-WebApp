@@ -46,7 +46,7 @@
                               DebounceInterval="300"
                               OnDebounceIntervalElapsed="HandleSearch"
                               Clearable
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Text"
                               Margin="Margin.Dense"
                               Style="flex: 1;" />
             </div>
@@ -58,7 +58,7 @@
                            ValueChanged="HandleSortChanged"
                            Dense
                            Margin="Margin.Dense"
-                           Variant="Variant.Outlined"
+                           Variant="Variant.Text"
                            Style="min-width: 120px;">
                     <MudSelectItem Value="@("title")">Title</MudSelectItem>
                     <MudSelectItem Value="@("category")">Category</MudSelectItem>
@@ -129,7 +129,7 @@
                            Value="_pageSize" 
                            ValueChanged="OnPageSizeChanged"
                            Label="Per Page"
-                           Variant="Variant.Outlined"
+                           Variant="Variant.Text"
                            Margin="Margin.Dense"
                            Style="min-width: 80px;">
                     <MudSelectItem Value="12">12</MudSelectItem>

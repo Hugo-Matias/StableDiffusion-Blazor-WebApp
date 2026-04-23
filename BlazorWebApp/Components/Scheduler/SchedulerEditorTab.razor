@@ -21,8 +21,8 @@
 @inject IInfoService InfoService
 @implements IDisposable
 
-<MudGrid>
-    <MudItem xs="12" md="4" lg="3">
+<TwoColumnLayout>
+    <Sidebar>
         @if (_restoreBanner is not null)
         {
             <MudAlert Severity="Severity.Info" Class="mb-2" ShowCloseIcon="false" Dense>
@@ -43,7 +43,7 @@
                 </MudStack>
             </MudAlert>
         }
-        <MudPaper Class="pa-3" Elevation="1">
+        <div>
             <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
                 <MudText Typo="Typo.h6">Jobs</MudText>
                 <MudSpacer />
@@ -81,21 +81,23 @@
                     }
                 </MudStack>
             }
-        </MudPaper>
-    </MudItem>
+        </div>
+    </Sidebar>
 
-    <MudItem xs="12" md="8" lg="9">
+    <Content>
         @if (_editing is null)
         {
             <MudAlert Severity="Severity.Info">Select a job from the list or click + to create a new one.</MudAlert>
         }
         else
         {
-            <MudPaper Class="pa-4" Elevation="1">
+            <div>
                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
-                    <MudText Typo="Typo.h6">Edit Job</MudText>
+                    <MudStack>
+                        <MudText Typo="Typo.h6">Edit Job</MudText>
+                        <MudText Typo="Typo.caption">Total generations: <strong>@TotalGenerations</strong></MudText>
+                    </MudStack>
                     <MudSpacer />
-                    <MudText Typo="Typo.caption">Total generations: <strong>@TotalGenerations</strong></MudText>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
                                OnClick="RunSelectedAsync"
                                Disabled="@(!CanRunSelected)"
@@ -268,10 +270,10 @@
                         }
                     </MudPaper>
                 }
-            </MudPaper>
+            </div>
         }
-    </MudItem>
-</MudGrid>
+    </Content>
+</TwoColumnLayout>
 
 @code {
     private List<Job>? _jobs;

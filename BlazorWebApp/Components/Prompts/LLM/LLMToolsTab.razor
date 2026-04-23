@@ -2,17 +2,14 @@
 @inject IInfoService InfoService
 @implements IAsyncDisposable
 
-<MudGrid Spacing="2">
-    @* Settings Sidebar *@
-    <MudItem xs="12" md="4" lg="3">
+<TwoColumnLayout>
+    <Sidebar>
         <LLMSettingsPanel @bind-SelectedModel="_selectedModel" />
-    </MudItem>
-    
-    @* Main Content Area *@
-    <MudItem xs="12" md="8" lg="9">
+    </Sidebar>
+    <Content>
         <LLMMainPanel SelectedModel="@_selectedModel" />
-    </MudItem>
-</MudGrid>
+    </Content>
+</TwoColumnLayout>
 
 @code {
     private string _selectedModel = string.Empty;

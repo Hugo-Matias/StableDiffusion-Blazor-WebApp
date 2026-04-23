@@ -1,5 +1,13 @@
 ﻿::deep .images-container {
-	height: 70vh;
-	overflow: scroll;
 	align-content: flex-start;
+}
+
+/* Scrollable image grid wrapper - mirrors ResourcePanel pattern.
+   Replaces the old ".images-container { height: 70vh; overflow: scroll; }"
+   with a token-driven offset aligned with the rest of the page chrome. */
+.civitai-scroll-container {
+	max-height: calc(100vh - var(--civitai-scroll-offset, 280px));
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding-right: 4px;
 }

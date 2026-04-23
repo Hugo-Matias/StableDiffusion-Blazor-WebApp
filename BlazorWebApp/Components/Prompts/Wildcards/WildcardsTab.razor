@@ -9,10 +9,9 @@
 @implements IAsyncDisposable
 
 <div @ref="_containerRef" tabindex="-1">
-    <MudGrid Spacing="2">
-        <MudItem xs="12" md="4" lg="3">
-            <!-- Collections Browser -->
-            <MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+    <TwoColumnLayout>
+        <Sidebar>
+            <div class="wildcards-sidebar-body">
                 @if (_isLoading)
                 {
                     <MudStack Spacing="2">
@@ -41,12 +40,12 @@
                             Create your first wildcard collection to get started
                         </MudText>
                         <MudButtonGroup Variant="Variant.Filled">
-                            <MudButton Color="Color.Primary" 
+                            <MudButton Color="Color.Primary"
                                        StartIcon="@Icons.Material.Filled.Add"
                                        OnClick="ShowCreateCollectionDialog">
                                 Create Collection
                             </MudButton>
-                            <MudButton Color="Color.Secondary" 
+                            <MudButton Color="Color.Secondary"
                                        StartIcon="@Icons.Material.Filled.CloudDownload"
                                        OnClick="SeedSampleCollections">
                                 Load Sample Data
@@ -54,12 +53,10 @@
                         </MudButtonGroup>
                     </MudStack>
                 }
-            </MudPaper>
-        </MudItem>
-        
-        <MudItem xs="12" md="8" lg="9">
-            <!-- Entry Manager -->
-            <MudPaper Elevation="1" Class="pa-4" Style="height: calc(100vh - 200px); overflow-y: auto;">
+            </div>
+        </Sidebar>
+        <Content>
+            <div class="wildcards-content-body">
                 @if (_isLoading)
                 {
                     <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
@@ -83,9 +80,9 @@
                         </MudText>
                     </MudStack>
                 }
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+            </div>
+        </Content>
+    </TwoColumnLayout>
 </div>
 
 @code {

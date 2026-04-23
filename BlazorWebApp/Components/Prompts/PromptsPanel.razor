@@ -13,21 +13,18 @@
 @implements IAsyncDisposable
 
 <div @ref="_containerRef" tabindex="-1" class="prompts-panel-container">
-    <MudGrid Spacing="2">
-        @* Category Browser Sidebar *@
-        <MudItem xs="12" md="3">
-            <CategoryBrowser @ref="_categoryBrowser" 
+    <TwoColumnLayout>
+        <Sidebar>
+            <CategoryBrowser @ref="_categoryBrowser"
                              OnCategorySelected="HandleCategorySelected" />
-        </MudItem>
-        
-        @* Main Content Area *@
-        <MudItem xs="12" md="9">
+        </Sidebar>
+        <Content>
             <PromptStyleTable @ref="_promptStyleTable"
                               SelectedCategory="@_selectedCategory"
                               OnCategoryFilterChanged="HandleCategoryFilterChanged"
                               OnPromptChanged="HandlePromptChanged" />
-        </MudItem>
-    </MudGrid>
+        </Content>
+    </TwoColumnLayout>
 </div>
 
 @code {

@@ -10,7 +10,7 @@
         <MudSelect Value="_selectedTemplateId"
                   ValueChanged="OnTemplateSelectionChanged"
                   Label="Select Template"
-                  Variant="Variant.Outlined"
+                  Variant="Variant.Text"
                   Style="flex: 1;"
                   T="int">
             @if (_templates != null)
@@ -61,7 +61,7 @@
             <div class="d-flex justify-space-between align-center mb-2">
                 <MudText Typo="Typo.subtitle1">Messages</MudText>
                 <MudButton Size="Size.Small" 
-                           Variant="Variant.Outlined" 
+                           Variant="Variant.Text" 
                            StartIcon="@Icons.Material.Filled.Add"
                            OnClick="AddMessage">
                     Add Message
@@ -81,7 +81,7 @@
                                 <MudItem xs="12" md="3">
                                     <MudSelect @bind-Value="message.Role"
                                               Label="Role"
-                                              Variant="Variant.Outlined"
+                                              Variant="Variant.Text"
                                               Dense>
                                         <MudSelectItem Value="@("system")">
                                             <div class="d-flex align-center gap-1">
@@ -129,7 +129,7 @@
                                 <MudItem xs="12">
                                     <MudTextField @bind-Value="message.Content"
                                                 Label="Content"
-                                                Variant="Variant.Outlined"
+                                                Variant="Variant.Text"
                                                 Lines="4"
                                                 Immediate />
                                 </MudItem>

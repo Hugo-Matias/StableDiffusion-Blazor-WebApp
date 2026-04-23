@@ -90,7 +90,7 @@
                                       Clearable
                                       Immediate
                                       DebounceInterval="300"
-                                      Variant="Variant.Outlined"
+                                      Variant="Variant.Text"
                                       Margin="Margin.Dense"
                                       Style="max-width: 200px;" />
                     }
@@ -100,7 +100,7 @@
                                    Value="_pageSize" 
                                    ValueChanged="OnPageSizeChanged"
                                    Label="Per Page" 
-                                   Variant="Variant.Outlined"
+                                   Variant="Variant.Text"
                                    Margin="Margin.Dense"
                                    Style="min-width: 100px;">
                             @foreach (var size in _pageSizeOptions)
@@ -248,7 +248,7 @@
                                     <MudListItem Dense="true">
                                         <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                                             <MudText Typo="Typo.caption" Style="overflow: hidden; text-overflow: ellipsis;">
-                                                • @entry.Value.Truncate(40)
+                                                ï¿½ @entry.Value.Truncate(40)
                                             </MudText>
                                             <MudText Typo="Typo.caption" Color="Color.Secondary">~@probability.ToString("F1")%</MudText>
                                         </MudStack>

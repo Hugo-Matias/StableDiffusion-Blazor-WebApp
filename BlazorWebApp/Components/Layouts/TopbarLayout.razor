@@ -1,0 +1,25 @@
+@namespace BlazorWebApp.Components.Layouts
+
+@*
+    Topbar layout variant for tabbed pages.
+
+    Use when a small filter/search cluster sits above a large content surface
+    (e.g. Scheduler Results gallery, Danbooru Browse). Vertical stack with the
+    inner gutter as the gap between the two surfaces.
+
+    See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md (Layout section).
+*@
+
+<div class="app-topbar-layout">
+    <MudPaper Elevation="@LayoutDefaults.SurfaceElevation" Class="app-topbar-surface" Square="false">
+        @Topbar
+    </MudPaper>
+    <MudPaper Elevation="@LayoutDefaults.SurfaceElevation" Class="app-content-surface" Square="false">
+        @Content
+    </MudPaper>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Topbar { get; set; }
+    [Parameter] public RenderFragment? Content { get; set; }
+}

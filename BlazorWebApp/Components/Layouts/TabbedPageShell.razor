@@ -1,0 +1,37 @@
+@namespace BlazorWebApp.Components.Layouts
+
+@*
+    Outer shell for every tabbed page.
+
+    Renders a centered, rounded MudTabs with the shared TabsElevation, applies the
+    page-level outer gutter and max-width clamp, and gives panels a consistent top
+    gap via the inner gutter token.
+
+    Consumers place <MudTabPanel> children inside ChildContent. Each tab panel's
+    content should be wrapped in one of the allowed layout variants:
+    TwoColumnLayout, TopbarLayout, or ContentOnlyLayout.
+
+    See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md (Layout section).
+*@
+
+<div class="app-tabbed-shell">
+    <MudTabs Centered="true"
+             Rounded="true"
+             Elevation="@LayoutDefaults.TabsElevation"
+             ActivePanelIndex="@ActivePanelIndex"
+             ActivePanelIndexChanged="OnActivePanelIndexChanged">
+        @ChildContent
+    </MudTabs>
+</div>
+
+@code {
+    [Parameter] public int ActivePanelIndex { get; set; }
+    [Parameter] public EventCallback<int> ActivePanelIndexChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private Task OnActivePanelIndexChanged(int index)
+    {
+        ActivePanelIndex = index;
+        return ActivePanelIndexChanged.InvokeAsync(index);
+    }
+}

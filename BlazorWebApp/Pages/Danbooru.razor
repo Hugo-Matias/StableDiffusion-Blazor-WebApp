@@ -9,61 +9,91 @@
 @inject IDialogService DialogService
 @implements IAsyncDisposable
 
-<MudGrid Class="mb-3 px-4" Justify="Justify.Center">
-    <MudItem xs="10">
-        <MudTextField Label="Search" @bind-Value="State.State.Danbooru.SearchString" OnAdornmentClick=@(() => SearchDrawer.Visible = true) T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable />
-    </MudItem>
-    <MudItem xs="2">
-        <MudButton Class="w-100 h-100" OnClick=Search ButtonType="ButtonType.Button" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
-    </MudItem>
-    <MudItem xs="12">
-        <MudTextField Label="Black List Tags" ValueChanged=HandleBlacklistTagsChanged Value=Settings.Settings.Resources.Danbooru.BlacklistTags T="string" Lines="2" />
-    </MudItem>
-</MudGrid>
+<TabbedPageShell @bind-ActivePanelIndex="State.State.Danbooru.ActiveTabIndex">
+    <MudTabPanel Text="Search" Icon="@Icons.Material.Filled.Search">
+        <TopbarLayout>
+            <Topbar>
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudTextField Label="Search"
+                                      @bind-Value="State.State.Danbooru.SearchString"
+                                      OnAdornmentClick=@(() => SearchDrawer.Visible = true)
+                                      T="string"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="fa-solid fa-magnifying-glass"
+                                      Clearable
+                                      Style="flex-grow: 1;" />
+                        <MudButton OnClick="Search"
+                                   ButtonType="ButtonType.Button"
+                                   Color="Color.Success"
+                                   Variant="Variant.Text">Search</MudButton>
+                    </MudStack>
+                    <MudTextField Label="Black List Tags"
+                                  ValueChanged="HandleBlacklistTagsChanged"
+                                  Value="Settings.Settings.Resources.Danbooru.BlacklistTags"
+                                  T="string"
+                                  Lines="2" />
+                </MudStack>
+            </Topbar>
+            <Content>
+                @if (_initialLoading)
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate />
+                        <MudText Typo="Typo.caption">Loading images...</MudText>
+                    </MudStack>
+                }
+                else if (Posts != null && Posts.Count > 0)
+                {
+                    <div class="danbooru-masonry-wrapper">
+                        <div class="danbooru-masonry">
+                            @foreach (var post in Posts)
+                            {
+                                <div class="danbooru-item">
+                                    <DanbooruImageCard Post="post" OnSendTags=@(isImg2Img => WriteDanbooruTags(post, isImg2Img)) OnShowImage=@(() => ShowImageViewerDialog(post)) />
+                                </div>
+                            }
+                        </div>
 
-@if (_initialLoading)
-{
-    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
-        <MudProgressCircular Color="Color.Primary" Indeterminate />
-        <MudText Typo="Typo.caption">Loading images...</MudText>
-    </MudStack>
-}
-else if (Posts != null && Posts.Count > 0)
-{
-    <div class="danbooru-masonry-wrapper">
-        <div class="danbooru-masonry">
-            @foreach (var post in Posts)
-            {
-                <div class="danbooru-item">
-                    <DanbooruImageCard Post=post OnSendTags=@(isImg2Img => WriteDanbooruTags(post, isImg2Img)) OnShowImage=@(() => ShowImageViewerDialog(post)) />
-                </div>
-            }
-        </div>
-        
-        @if (_isLoadingMore)
-        {
-            <div class="load-more-spinner">
-                <MudProgressCircular Color="Color.Primary" Indeterminate />
-            </div>
-        }
-        else if (!_hasMore)
-        {
-            <div class="end-of-results">
-                <MudText Typo="Typo.caption">End of results</MudText>
-            </div>
-        }
-    </div>
-}
-else if (!_initialLoading && (Posts == null || Posts.Count == 0))
-{
-    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
-        <MudText Typo="Typo.body1" Style="opacity: 0.6;">No results found</MudText>
-    </MudStack>
-}
+                        @if (_isLoadingMore)
+                        {
+                            <div class="load-more-spinner">
+                                <MudProgressCircular Color="Color.Primary" Indeterminate />
+                            </div>
+                        }
+                        else if (!_hasMore)
+                        {
+                            <div class="end-of-results">
+                                <MudText Typo="Typo.caption">End of results</MudText>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (!_initialLoading && (Posts == null || Posts.Count == 0))
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+                        <MudText Typo="Typo.body1" Style="opacity: 0.6;">No results found</MudText>
+                    </MudStack>
+                }
+            </Content>
+        </TopbarLayout>
+    </MudTabPanel>
+    <MudTabPanel Text="Library" Icon="@Icons.Material.Filled.CollectionsBookmark">
+        <ContentOnlyLayout>
+            <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Class="py-12">
+                <MudIcon Icon="@Icons.Material.Filled.CollectionsBookmark" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6" Color="Color.Default">Library - Coming soon</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                    Save and organize Danbooru searches and images.
+                </MudText>
+            </MudStack>
+        </ContentOnlyLayout>
+    </MudTabPanel>
+</TabbedPageShell>
 
-<DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch=WriteSavedSearch OnAddCurrent=AddCurrentSearchToSaved/>
+<DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch="WriteSavedSearch" OnAddCurrent="AddCurrentSearchToSaved" />
 
-<ImageViewer @bind-IsVisible="_showViewer" 
+<ImageViewer @bind-IsVisible="_showViewer"
              Images="_viewerImages"
              StartIndex="_viewerStartIndex"
              IsExternal="true" />

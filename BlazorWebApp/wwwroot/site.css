@@ -4,6 +4,44 @@
 	font-weight: 300;
 }
 
+/* ===========================================
+   App Layout Tokens (global)
+   -------------------------------------------
+   Single source of truth for page-level
+   spacing, sidebar proportions, and shared
+   surface styling used by the tabbed-page
+   layout components under Components/Layouts/.
+   Tweak values here to re-tune all tabbed
+   pages (Prompts, Resources, CivitAI,
+   Scheduler, Danbooru) at once.
+
+   See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md
+   (Layout section) for usage rules.
+   =========================================== */
+:root {
+	/* Outer gutter: page <-> window/navbar edges. */
+	--app-gutter-outer: 12px;
+	/* Inner gutter: between shell elements (tabs<->panels, sidebar<->content, topbar<->content). */
+	--app-gutter-inner: 8px;
+
+	/* Sidebar proportional width, clamped to a sensible range. */
+	--app-sidebar-width: 22%;
+	--app-sidebar-min: 240px;
+	--app-sidebar-max: 340px;
+	/* Rail width when a collapsible sidebar is collapsed. */
+	--app-sidebar-rail-width: 40px;
+
+	/* Overall page max-width clamp; prevents ultra-wide layouts from stretching. */
+	--app-shell-max-width: 1600px;
+
+	/* Shared corner radius for sidebar / topbar / content surfaces. */
+	--app-surface-radius: 4px;
+
+	/* Internal padding for sidebar / topbar / content surfaces. Children render
+	   flush against this padding (they should NOT add their own pa-* classes). */
+	--app-surface-padding: 16px;
+}
+
 /*Bootstrap Overrides*/
 a:hover {
 	color: inherit !important;

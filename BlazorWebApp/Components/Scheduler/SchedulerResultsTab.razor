@@ -11,7 +11,9 @@
 @inject IEventService Events
 @implements IDisposable
 
-<MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+<TopbarLayout>
+    <Topbar>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
     <MudSelect T="Guid?" Value="_selectedJobId" ValueChanged="OnJobSelectionChanged" Label="Job"
                Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomCenter" Style="min-width:280px;">
         <MudSelectItem T="Guid?" Value="@((Guid?)null)">(Select job)</MudSelectItem>
@@ -43,7 +45,9 @@
 
     <MudSpacer />
     <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="ReloadAsync" Color="Color.Primary" Title="Refresh" />
-</MudStack>
+        </MudStack>
+    </Topbar>
+    <Content>
 
 @if (_selectedJob is null)
 {
@@ -93,6 +97,8 @@ else
         <ImagesContainer Images="_imagesDto" CanSelect="true" />
     }
 }
+    </Content>
+</TopbarLayout>
 
 @code {
     [Parameter] public Guid? JobIdQuery { get; set; }

@@ -467,6 +467,26 @@ The user has open:
 - {file2}
 ```
 
+### UI / Layout References
+
+Any planning session that touches UI (new page, tab, form, layout change, visual refactor)
+must consult the living design-language documents before proposing solutions:
+
+| Reference | Purpose |
+|---|---|
+| `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md` | Core design rules: input variants, density, cascading selectors, dialog shell, **Layout** section (tabbed-page shell, three layout variants, collapsible sidebar, spacing tokens) |
+| `BlazorWebApp/wwwroot/site.css` (`:root`) | Global spacing tokens: `--app-gutter-outer`, `--app-gutter-inner`, `--app-sidebar-width`, `--app-sidebar-min/max`, `--app-sidebar-rail-width`, `--app-shell-max-width`, `--app-surface-radius` |
+| `BlazorWebApp/Components/Layouts/LayoutDefaults.cs` | Shared elevation constants (`TabsElevation`, `SurfaceElevation`) that cannot be expressed as CSS vars |
+| `BlazorWebApp/Components/Layouts/` | Reusable layout primitives (`TabbedPageShell`, `TwoColumnLayout`, `TopbarLayout`, `ContentOnlyLayout`) - all tabbed pages must go through these |
+
+**Rules when planning UI work:**
+- Never propose hard-coded spacing (`px-5`, `pa-4`, etc.) on a tabbed page shell or top-level panel paper - tune the tokens instead.
+- Never render `MudTabs` directly in a page - use `TabbedPageShell`.
+- Pick one of the three documented layout variants (Two-column / Topbar / Content-only). Proposing a fourth variant requires a documented exception in the design-language doc.
+- Collapsible sidebar is scoped to pages where content benefits from added width (galleries, grids). Do not apply it to settings-heavy pages like Prompts.
+- Form controls default to `Variant.Text`; `Variant.Outlined` is reserved for emphasis and must be explicitly justified.
+- **Children of a layout slot render flush.** A component placed inside `Sidebar`, `Topbar`, or `Content` must not wrap its root in `MudPaper` / `MudCard`, must not apply `pa-*` padding classes at the root, and must not set `Elevation` at the root. The layout slot owns elevation, radius, and padding via the `--app-surface-*` tokens. A child may still use its own elevated paper inside the slot when a specific element needs **focus emphasis** (e.g. a header card at `Elevation=2`); that is an explicit exception, not the default.
+
 ---
 
 ## Communication Conventions

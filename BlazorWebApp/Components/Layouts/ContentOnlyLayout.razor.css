@@ -1,0 +1,13 @@
+/* ContentOnlyLayout - single canonical surface; children render flush inside
+   the surface padding and should NOT add their own pa-* / elevation. */
+
+.app-content-only {
+    width: 100%;
+}
+
+.app-content-only ::deep .app-content-surface {
+    border-radius: var(--app-surface-radius) !important;
+    padding: var(--app-surface-padding);
+    width: 100%;
+    min-height: 0;
+}
