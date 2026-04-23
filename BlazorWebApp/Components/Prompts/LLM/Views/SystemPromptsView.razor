@@ -1,0 +1,15 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+
+<SystemPromptEditor @ref="_editor" OnTemplateChanged="HandleTemplateChanged" />
+
+@code {
+    [Parameter] public EventCallback OnTemplatesChanged { get; set; }
+
+    private SystemPromptEditor? _editor;
+
+    private async Task HandleTemplateChanged(List<OllamaChatMessage> messages)
+    {
+        if (OnTemplatesChanged.HasDelegate)
+            await OnTemplatesChanged.InvokeAsync();
+    }
+}

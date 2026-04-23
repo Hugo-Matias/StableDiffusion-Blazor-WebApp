@@ -1,23 +1,66 @@
 @using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Components.Prompts.LLM.Views
+@using BlazorWebApp.Events
 @inject IInfoService InfoService
+@inject IStateService State
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject ISnackbar Snackbar
 @implements IAsyncDisposable
 
 <TwoColumnLayout>
     <Sidebar>
-        <LLMSettingsPanel @bind-SelectedModel="_selectedModel" />
+        <div class="d-flex flex-column" style="height: calc(100vh - 200px); gap: 8px;">
+            <LLMNavMenu ActiveViewId="@_activeViewId"
+                        IsCollapsed="@_isNavCollapsed"
+                        OnViewSelected="HandleViewSelected"
+                        OnCollapsedChanged="HandleCollapsedChanged" />
+            <MudDivider />
+            <div style="flex: 1; min-height: 0; overflow-y: auto;">
+                <LLMSettingsPanel @bind-SelectedModel="_selectedModel" />
+            </div>
+        </div>
     </Sidebar>
     <Content>
-        <LLMMainPanel SelectedModel="@_selectedModel" />
+        <div class="llm-main-panel" style="height: calc(100vh - 200px); overflow-y: auto;">
+            @switch (_activeViewId)
+            {
+                case "process":
+                    <ProcessView SelectedModel="@_selectedModel"
+                                 Templates="@_templates"
+                                 TemplatesVersion="@_templatesVersion"
+                                 PendingRestore="@_pendingRestore"
+                                 RestoreVersion="@_restoreVersion"
+                                 OnHistoryAdded="HandleHistoryAdded"
+                                 OnHistoryMutated="HandleHistoryMutated" />
+                    break;
+                case "system-prompts":
+                    <SystemPromptsView OnTemplatesChanged="HandleSystemPromptTemplatesChanged" />
+                    break;
+                case "history":
+                    <HistoryView RefreshVersion="@_historyVersion"
+                                 OnRestore="HandleHistoryRestore" />
+                    break;
+            }
+        </div>
     </Content>
 </TwoColumnLayout>
 
 @code {
     private string _selectedModel = string.Empty;
+    private string _activeViewId = "process";
+    private bool _isNavCollapsed = false;
 
-    // Info content
+    private List<SystemPromptTemplate>? _templates;
+    private int _templatesVersion;
+
+    private PromptHistoryEntry? _pendingRestore;
+    private int _restoreVersion;
+    private int _historyVersion;
+
     private readonly InfoContent _infoContent = new(
         Title: "LLM Tools - Quick Guide",
-        Overview: "Use AI language models to transform your image generation prompts with customizable templates. Configure model settings on the left, select a template from the toolbar, then process prompts individually or in batches.",
+        Overview: "Use AI language models to transform your image generation prompts with customizable templates. Configure model settings on the left, switch views via the sidebar nav, then process prompts individually or in batches.",
         Shortcuts: new List<ShortcutInfo>
         {
             new("Ctrl+Enter", "Process prompt with selected template"),
@@ -27,7 +70,7 @@
         Tips: new List<string>
         {
             "Templates define the behavior (enhance, simplify, translate, etc.)",
-            "Select templates directly from the Process tab toolbar",
+            "Select templates directly from the Process view toolbar",
             "Templates are shared across Single and Batch modes",
             "Switch between Single and Batch mode with the mode toggle buttons",
             "Single mode: Process one prompt at a time with real-time feedback",
@@ -38,14 +81,80 @@
             "History persists across sessions - restore any previous result with one click",
             "Batch results are expandable - click to see original vs processed comparison",
             "Save batch results to library individually with one click",
-            "Create custom templates in the Prompts page for specialized processing",
-            "Template selection determines the AI's behavior and output style"
+            "Create custom templates in the System Prompts view for specialized processing",
+            "Collapse the sidebar nav to reclaim horizontal space"
         }
     );
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         InfoService.SetInfo(_infoContent);
+
+        var llm = State.State.Prompts.LLM;
+        _activeViewId = string.IsNullOrWhiteSpace(llm.ActiveViewId) ? "process" : llm.ActiveViewId;
+        _isNavCollapsed = llm.IsNavCollapsed;
+
+        await LoadTemplates();
+    }
+
+    private async Task LoadTemplates()
+    {
+        try
+        {
+            _templates = await DB.GetSystemPromptTemplates();
+            _templatesVersion++;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading templates: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleViewSelected(string viewId)
+    {
+        var previous = _activeViewId;
+        _activeViewId = viewId;
+        State.State.Prompts.LLM.ActiveViewId = viewId;
+
+        Events.Publish(new LLMViewChangedEventArgs
+        {
+            PreviousViewId = previous,
+            ViewId = viewId
+        });
+
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task HandleCollapsedChanged(bool collapsed)
+    {
+        _isNavCollapsed = collapsed;
+        State.State.Prompts.LLM.IsNavCollapsed = collapsed;
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task HandleSystemPromptTemplatesChanged()
+    {
+        await LoadTemplates();
+        StateHasChanged();
+    }
+
+    private void HandleHistoryAdded(PromptHistoryEntry entry)
+    {
+        _historyVersion++;
+    }
+
+    private void HandleHistoryMutated()
+    {
+        _historyVersion++;
+    }
+
+    private async Task HandleHistoryRestore(PromptHistoryEntry entry)
+    {
+        _pendingRestore = entry;
+        _restoreVersion++;
+        await HandleViewSelected("process");
     }
 
     public ValueTask DisposeAsync()

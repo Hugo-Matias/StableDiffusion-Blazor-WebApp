@@ -104,7 +104,7 @@ namespace BlazorWebApp.Models
         /// Persisted with the rest of the app state.
         /// </summary>
         public int ResultsPageSize { get; set; } = 12;
-        
+
         // Legacy properties - kept for state migration, will be removed in future versions
         [Obsolete("Use ParametersTxt2Img.Model or ParametersImg2Img.Model instead")]
         public string? SDModel { get; set; }
@@ -211,7 +211,7 @@ namespace BlazorWebApp.Models
         public int Score { get; set; } = 0;
         public bool IsScore { get; set; } = false;
         public bool UseInfiniteScroll { get; set; } = true;
-        
+
         /// <summary>
         /// Seed for consistent random ordering across page navigations.
         /// Reset when filters are applied or OrderBy changes.
@@ -308,7 +308,14 @@ namespace BlazorWebApp.Models
     {
         public int ActiveTabIndex { get; set; } = 0;
         public AppStatePromptsWildcards Wildcards { get; set; } = new();
+        public AppStatePromptsLLM LLM { get; set; } = new();
         public List<string> FavoriteArtists { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLM
+    {
+        public string ActiveViewId { get; set; } = "process";
+        public bool IsNavCollapsed { get; set; } = false;
     }
 
     public class AppStatePromptsWildcards
