@@ -9,12 +9,8 @@
 
 @if (IsVisible)
 {
-    <div class="image-viewer-overlay" 
-         @onkeydown="HandleKeyDown" 
-         @onwheel="HandleWheel"
-         @onwheel:preventDefault="_isPanMode"
-         tabindex="0" 
-         @ref="_overlayRef">
+    <div class="image-viewer-overlay" @onkeydown="HandleKeyDown" @onwheel="HandleWheel" @onwheel:preventDefault="_isPanMode"
+         tabindex="0" @ref="_overlayRef">
         <div class="image-viewer-container">
             
             <!-- Close Button -->
@@ -24,25 +20,20 @@
 
             <!-- Main Image Display -->
             <div class="image-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
-                 @onclick="HandleStageClick"
-                 @onmousedown="HandleMouseDown"
-                 @onmousemove="HandleMouseMove"
-                 @onmouseup="HandleMouseUp"
-                 @onmouseleave="HandleMouseUp">
+                 @onclick="HandleStageClick" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove"
+                 @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
                 @if (IsCurrentVideo)
                 {
-                    <video @key="CurrentImage?.Path" class="viewer-media" controls loop muted autoplay @onclick:stopPropagation="true">
+                    <video @key="CurrentImage?.Path" class="viewer-media" controls loop muted autoplay
+                           @onclick:stopPropagation="true">
                         <source src="@CurrentImage?.Path" />
                     </video>
                 }
                 else
                 {
-                    <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")" 
-                         src="@IO.GetImageStaticFile(CurrentImage?.Path)" 
-                         alt="Image @(_currentIndex + 1)"
-                         style="@GetImageTransformStyle()"
-                         draggable="false"
-                         @onclick:stopPropagation="true" />
+                    <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
+                         src="@IO.GetImageStaticFile(CurrentImage?.Path)" alt="Image @(_currentIndex + 1)"
+                         style="@GetImageTransformStyle()" draggable="false" @onclick:stopPropagation="true" />
                 }
             </div>
 
@@ -52,10 +43,10 @@
                 @if (!IsExternal && CurrentImage?.Id > 0)
                 {
                     <div class="control-section">
-                        <button class="viewer-btn @(CurrentImage.Favorite ? "active-fav" : "")" 
-                                @onclick="ToggleFavorite" 
+                        <button class="viewer-btn @(CurrentImage.Favorite ? "active-fav" : "")" @onclick="ToggleFavorite"
                                 title="Favorite (F)">
-                            <MudIcon Icon="@(CurrentImage.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
+                            <MudIcon
+                            Icon="@(CurrentImage.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
                         </button>
                         @if (Images.Count > 1)
                         {
@@ -64,12 +55,8 @@
                             </button>
                         }
                         <div class="rating-container">
-                            <MudRating SelectedValue="CurrentImage.Score" 
-                                       SelectedValueChanged="SetScore" 
-                                       MaxValue="3" 
-                                       Size="Size.Medium"
-                                       FullIcon="fa-solid fa-star"
-                                       EmptyIcon="fa-regular fa-star" />
+                            <MudRating SelectedValue="CurrentImage.Score" SelectedValueChanged="SetScore" MaxValue="3"
+                                       Size="Size.Medium" FullIcon="fa-solid fa-star" EmptyIcon="fa-regular fa-star" />
                         </div>
                     </div>
                 }
@@ -104,19 +91,14 @@
                             </button>
                         </MudTooltip>
                         <div class="slideshow-controls">
-                            <input type="number" 
-                                   class="slideshow-input" 
-                                   @bind="_autoPlayInterval" 
-                                   @bind:event="onchange"
-                                   min="1" 
-                                   max="60" 
-                                   step="0.5"
-                                   title="Slideshow interval (seconds)" />
+                            <input type="number" class="slideshow-input" @bind="_autoPlayInterval" @bind:event="onchange"
+                                   min="1" max="60" step="0.5" title="Slideshow interval (seconds)" />
                             <span class="slideshow-unit">s</span>
                         </div>
                     }
                     <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
-                        <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode" title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
+                        <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode"
+                                title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
                             <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
                         </button>
                     </MudTooltip>
@@ -175,63 +157,68 @@
 
                         <!-- Clickable Meta Items -->
                         <div class="meta-grid">
-                            <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")" 
+                            <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")"
                                  @onclick="@(() => ToggleParam("Width"))" title="Resolution">
                                 <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
                                 <span>@(CurrentImage?.Width ?? 0) × @(CurrentImage?.Height ?? 0)</span>
                             </div>
-                            <div class="meta-item clickable @(_selectedParams.Contains("Seed") ? "selected" : "")" 
-                                 @onclick="@(() => ToggleParam("Seed"))" title="Seed">
-                                <MudIcon Icon="fa-solid fa-seedling" Size="Size.Small" />
-                                <span>@(CurrentImage?.Seed ?? 0)</span>
-                            </div>
-                            <div class="meta-item clickable @(_selectedParams.Contains("Steps") ? "selected" : "")" 
-                                 @onclick="@(() => ToggleParam("Steps"))" title="Steps">
-                                <MudIcon Icon="fa-solid fa-stairs" Size="Size.Small" />
-                                <span>@(CurrentImage?.Steps ?? 0) steps</span>
-                            </div>
-                            <div class="meta-item clickable @(_selectedParams.Contains("CfgScale") ? "selected" : "")" 
-                                 @onclick="@(() => ToggleParam("CfgScale"))" title="CFG">
-                                <MudIcon Icon="fa-solid fa-scale-unbalanced" Size="Size.Small" />
-                                <span>CFG @(CurrentImage?.CfgScale ?? 0)</span>
-                            </div>
-                            @if (CurrentImage?.DenoisingStrength != null)
+                            @if (ShowAiMetadata)
                             {
-                                <div class="meta-item clickable full-width @(_selectedParams.Contains("DenoisingStrength") ? "selected" : "")" 
-                                     @onclick="@(() => ToggleParam("DenoisingStrength"))" title="Denoising">
-                                    <MudIcon Icon="fa-solid fa-braille" Size="Size.Small" />
-                                    <span>Denoise @CurrentImage.DenoisingStrength</span>
+                                <div class="meta-item clickable @(_selectedParams.Contains("Seed") ? "selected" : "")"
+                                     @onclick="@(() => ToggleParam("Seed"))" title="Seed">
+                                    <MudIcon Icon="fa-solid fa-seedling" Size="Size.Small" />
+                                    <span>@(CurrentImage?.Seed ?? 0)</span>
                                 </div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(_currentSampler))
-                            {
-                                <div class="meta-item clickable @(_selectedParams.Contains("SamplerIndex") ? "selected" : "")" 
-                                     @onclick="@(() => ToggleParam("SamplerIndex"))" title="Sampler">
-                                    <MudIcon Icon="fa-solid fa-shuffle" Size="Size.Small" />
-                                    <span>@_currentSampler</span>
+                                <div class="meta-item clickable @(_selectedParams.Contains("Steps") ? "selected" : "")"
+                                     @onclick="@(() => ToggleParam("Steps"))" title="Steps">
+                                    <MudIcon Icon="fa-solid fa-stairs" Size="Size.Small" />
+                                    <span>@(CurrentImage?.Steps ?? 0) steps</span>
                                 </div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(CurrentImage?.Scheduler))
-                            {
-                                <div class="meta-item clickable @(_selectedParams.Contains("Scheduler") ? "selected" : "")" 
-                                     @onclick="@(() => ToggleParam("Scheduler"))" title="Scheduler">
-                                    <MudIcon Icon="fa-solid fa-clock" Size="Size.Small" />
-                                    <span>@CurrentImage.Scheduler</span>
+                                <div class="meta-item clickable @(_selectedParams.Contains("CfgScale") ? "selected" : "")"
+                                     @onclick="@(() => ToggleParam("CfgScale"))" title="CFG">
+                                    <MudIcon Icon="fa-solid fa-scale-unbalanced" Size="Size.Small" />
+                                    <span>CFG @(CurrentImage?.CfgScale ?? 0)</span>
                                 </div>
-                            }
-                            @if (CurrentImage?.Model != null && !string.IsNullOrWhiteSpace(CurrentImage.Model.Title))
-                            {
-                                <div class="meta-item full-width" title="@CurrentImage.Model.Title">
-                                    <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" />
-                                    <span class="text-truncate">@CurrentImage.Model.Title</span>
-                                </div>
-                            }
-                            else if (!string.IsNullOrWhiteSpace(_currentModelName))
-                            {
-                                <div class="meta-item full-width" title="@_currentModelName (not in database)">
-                                    <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" Style="color: var(--mud-palette-warning);" />
-                                    <span class="text-truncate" style="color: var(--mud-palette-warning);">@_currentModelName</span>
-                                </div>
+                                @if (CurrentImage?.DenoisingStrength != null)
+                                {
+                                    <div class="meta-item clickable full-width @(_selectedParams.Contains("DenoisingStrength") ? "selected" : "")"
+                                         @onclick="@(() => ToggleParam("DenoisingStrength"))" title="Denoising">
+                                        <MudIcon Icon="fa-solid fa-braille" Size="Size.Small" />
+                                        <span>Denoise @CurrentImage.DenoisingStrength</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(_currentSampler))
+                                {
+                                    <div class="meta-item clickable @(_selectedParams.Contains("SamplerIndex") ? "selected" : "")"
+                                         @onclick="@(() => ToggleParam("SamplerIndex"))" title="Sampler">
+                                        <MudIcon Icon="fa-solid fa-shuffle" Size="Size.Small" />
+                                        <span>@_currentSampler</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(CurrentImage?.Scheduler))
+                                {
+                                    <div class="meta-item clickable @(_selectedParams.Contains("Scheduler") ? "selected" : "")"
+                                         @onclick="@(() => ToggleParam("Scheduler"))" title="Scheduler">
+                                        <MudIcon Icon="fa-solid fa-clock" Size="Size.Small" />
+                                        <span>@CurrentImage.Scheduler</span>
+                                    </div>
+                                }
+                                @if (CurrentImage?.Model != null && !string.IsNullOrWhiteSpace(CurrentImage.Model.Title))
+                                {
+                                    <div class="meta-item full-width" title="@CurrentImage.Model.Title">
+                                        <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" />
+                                        <span class="text-truncate">@CurrentImage.Model.Title</span>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(_currentModelName))
+                                {
+                                    <div class="meta-item full-width" title="@_currentModelName (not in database)">
+                                        <MudIcon Icon="fa-solid fa-cube" Size="Size.Small"
+                                                 Style="color: var(--mud-palette-warning);" />
+                                        <span class="text-truncate"
+                                              style="color: var(--mud-palette-warning);">@_currentModelName</span>
+                                    </div>
+                                }
                             }
                             <div class="meta-item full-width">
                                 <MudIcon Icon="fa-solid fa-calendar" Size="Size.Small" />
@@ -295,6 +282,11 @@
     [Parameter] public int StartIndex { get; set; } = 0;
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public bool IsExternal { get; set; }
+    /// <summary>
+    /// When false, hides AI-generation metadata (Seed, Steps, CFG, Sampler, Scheduler, Model, Denoising).
+    /// Useful for non-AI images like Danbooru library items. Defaults to true for backward compatibility.
+    /// </summary>
+    [Parameter] public bool ShowAiMetadata { get; set; } = true;
     [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
     [Parameter] public EventCallback OnClosed { get; set; }
 
@@ -328,7 +320,7 @@
 
     private Image? CurrentImage => Images.Count > 0 && _currentIndex < Images.Count ? Images[_currentIndex] : null;
 
-    private bool IsCurrentVideo => CurrentImage?.Path != null && 
+    private bool IsCurrentVideo => CurrentImage?.Path != null &&
         (CurrentImage.Path.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
          CurrentImage.Path.EndsWith(".webm", StringComparison.OrdinalIgnoreCase) ||
          CurrentImage.Path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase));
@@ -391,8 +383,8 @@
             if (info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase) ||
                 info.TrimStart().StartsWith("{"))
             {
-                var jsonInfo = info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase) 
-                    ? info.Replace("prompt: ", "") 
+                var jsonInfo = info.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase)
+                    ? info.Replace("prompt: ", "")
                     : info;
                     
                 using var doc = System.Text.Json.JsonDocument.Parse(jsonInfo);

@@ -1,7 +1,9 @@
 using BlazorWebApp.Data;
+using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -23,6 +25,7 @@ builder.Services.AddHttpClient<ComfyUIService>();
 // Register the interface to resolve to the same ComfyUIService instance
 builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<ComfyUIService>());
 builder.Services.AddHttpClient<CivitaiService>();
+builder.Services.Configure<BlazorWebApp.Models.DanbooruOptions>(builder.Configuration.GetSection(BlazorWebApp.Models.DanbooruOptions.SectionName));
 builder.Services.AddHttpClient<DanbooruService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
 
@@ -84,6 +87,16 @@ builder.Services.AddSingleton<IWorkflowStateService, WorkflowStateService>();
 
 // Scheduler job persistence
 builder.Services.AddSingleton<BlazorWebApp.Scheduler.Persistence.IJobRepository, BlazorWebApp.Scheduler.Persistence.JobRepository>();
+
+// Danbooru library persistence
+builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ISavedDanbooruMediaRepository, BlazorWebApp.Data.Repositories.SavedDanbooruMediaRepository>();
+
+// Danbooru library service - plain HttpClient for CDN downloads (no auth headers needed)
+builder.Services.AddHttpClient<IDanbooruLibraryService, DanbooruLibraryService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("BlazorWebApp/1.0");
+});
 builder.Services.AddScoped<BlazorWebApp.Scheduler.Persistence.ISchedulerDraftStore, BlazorWebApp.Scheduler.Persistence.SchedulerDraftStore>();
 
 // Scheduler variation engine
@@ -190,6 +203,25 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcePreviewsPath"]),
     RequestPath = "/files/resource_previews"
 });
+
+var danbooruOptions = app.Services.GetRequiredService<IOptions<DanbooruOptions>>().Value;
+var danbooruLogger = app.Services.GetRequiredService<ILogger<Program>>();
+if (string.IsNullOrWhiteSpace(danbooruOptions.SavedMediaPath))
+{
+    danbooruLogger.LogWarning("Danbooru SavedMediaPath is not configured. Library save/view will not work.");
+}
+else if (!Directory.Exists(danbooruOptions.SavedMediaPath))
+{
+    danbooruLogger.LogWarning("Danbooru SavedMediaPath '{Path}' does not exist. Library save/view will not work.", danbooruOptions.SavedMediaPath);
+}
+else
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(danbooruOptions.SavedMediaPath),
+        RequestPath = "/files/danbooru"
+    });
+}
 
 app.UseRouting();
 

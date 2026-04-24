@@ -161,7 +161,7 @@ namespace BlazorWebApp.Services
 
         public string GetImageStaticFile(string path)
         {
-            if (string.IsNullOrWhiteSpace(path) || path.StartsWith("/image/") || path.StartsWith("http")) return path;
+            if (string.IsNullOrWhiteSpace(path) || path.StartsWith("/image/") || path.StartsWith("/files/") || path.StartsWith("http")) return path;
             var normalizedPath = Parser.NormalizePath(path);
             var normalizedImagePath = Parser.NormalizePath(_configuration["OutputDir"]);
             if (normalizedPath.Contains(normalizedImagePath))

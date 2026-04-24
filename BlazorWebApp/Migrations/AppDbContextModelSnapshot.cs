@@ -490,6 +490,66 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("SchedulerDrafts");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.SavedDanbooruMedia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DanbooruPostId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Extension")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsVideo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PreviewUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Rating")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SampleUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TagsBundle")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DanbooruPostId")
+                        .IsUnique();
+
+                    b.ToTable("SavedDanbooruMedia");
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Selection", b =>
                 {
                     b.Property<int>("Id")

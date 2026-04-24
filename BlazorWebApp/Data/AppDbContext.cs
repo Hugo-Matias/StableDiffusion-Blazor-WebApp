@@ -171,9 +171,19 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<SchedulerDraft>()
                 .Property(d => d.Body)
                 .HasConversion(schedulerDraftBodyConverter);
+
+            // SavedDanbooruMedia: tag bundle stored as JSON, unique index on DanbooruPostId.
+            modelBuilder.Entity<SavedDanbooruMedia>()
+                .HasIndex(m => m.DanbooruPostId)
+                .IsUnique();
+
+            modelBuilder.Entity<SavedDanbooruMedia>()
+                .Property(m => m.TagsBundle)
+                .HasConversion(new Converters.DanbooruTagBundleConverter());
         }
 
         public DbSet<Image> Images { get; set; }
+        public DbSet<SavedDanbooruMedia> SavedDanbooruMedia { get; set; }
         public DbSet<Entities.Sampler> Samplers { get; set; }
         public DbSet<Project> Projects { get; set; }
         public DbSet<Mode> Modes { get; set; }

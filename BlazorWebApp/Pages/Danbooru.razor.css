@@ -1,5 +1,9 @@
 /* ===========================================
-   Danbooru Masonry Gallery
+   Danbooru Masonry Gallery (pure CSS column masonry)
+   Uses CSS multi-column layout so items of varying heights pack
+   vertically without any JS measurement. Works reliably regardless
+   of how many items are in the list (1, 2, or hundreds) and is
+   immune to MudTabs panel transitions / initial zero-width render.
    =========================================== */
 
 .danbooru-masonry-wrapper {
@@ -10,18 +14,22 @@
 }
 
 .danbooru-masonry {
-    position: relative;
+    /* Column count scales with viewport via media queries below. */
+    column-count: 5;
+    column-gap: 16px;
     width: 100%;
-    min-height: 100px;
-    transition: height 0.3s ease;
 }
 
 .danbooru-item {
-    position: absolute !important;
-    box-sizing: border-box;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.4s ease-in-out, visibility 0s linear 0s;
+    /* break-inside:avoid keeps each card intact in a single column. */
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+    /* Fixes a Firefox/Chromium quirk where the first row of column
+       items can be clipped on initial paint. */
+    display: block;
+    width: 100%;
 }
 
 .danbooru-item > div {
@@ -46,11 +54,34 @@
 }
 
 /* ===========================================
-   Responsive Adjustments
+   Responsive Column Counts
+   Mirrors the breakpoints that the old JS masonry used.
    =========================================== */
+
+@media (max-width: 1600px) {
+    .danbooru-masonry {
+        column-count: 4;
+    }
+}
+
+@media (max-width: 1200px) {
+    .danbooru-masonry {
+        column-count: 3;
+    }
+}
 
 @media (max-width: 768px) {
     .danbooru-masonry-wrapper {
         max-width: 95vw;
+    }
+
+    .danbooru-masonry {
+        column-count: 2;
+    }
+}
+
+@media (max-width: 480px) {
+    .danbooru-masonry {
+        column-count: 1;
     }
 }

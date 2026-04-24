@@ -1,18 +1,18 @@
-﻿@inject IJSRuntime JS
+@inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
     <div class="image-wrapper">
-        @if (Post.IsVideo)
+        @if (Media.IsVideo)
         {
-            <video id="@_videoId" src="@Post.SampleUrl" poster="@Post.PreviewUrl" class="card-media" muted loop playsinline
-                   preload="metadata" />
+            <video id="@_videoId" src="/files/danbooru/@Media.FilePath" poster="@Media.PreviewUrl" class="card-media" muted
+                   loop playsinline preload="metadata" />
         }
         else
         {
-            <img src="@Post.SampleUrl" alt="Danbooru post" class="card-image" loading="lazy" />
+            <img src="/files/danbooru/@Media.FilePath" alt="Saved Danbooru media" class="card-image" loading="lazy" />
         }
-        
+
         @* Hover Overlay *@
         <div class="hover-overlay @(_isHovered ? "visible" : "")">
             @* Top Section - Rating Badge *@
@@ -20,54 +20,56 @@
                 <div class="rating-badge @GetRatingClass()">
                     @SetBadgeRating()
                 </div>
-                @if (Post.IsVideo)
+                @if (Media.IsVideo)
                 {
                     <div class="video-badge">
                         <i class="fa-solid fa-video"></i>
                     </div>
                 }
             </div>
-            
+
             @* Center Section - Quick Actions *@
             <div class="overlay-center @(_isHovered ? "visible" : "")">
                 <div class="quick-actions">
-                    <button class="action-btn" @onclick="@(() => SendTags(false))" @onclick:stopPropagation
-                            title="Copy Tags">
+                    <button class="action-btn" @onclick="HandleCopyTags" @onclick:stopPropagation title="Copy Tags">
                         <i class="fa-solid fa-file-lines"></i>
                     </button>
-                    <button class="action-btn" @onclick="@(() => SendTags(true))" @onclick:stopPropagation
+                    <button class="action-btn" @onclick="HandleSendImg2Img" @onclick:stopPropagation
                             title="Send to Img2Img">
                         <i class="fa-solid fa-file-image"></i>
                     </button>
-                    <button class="action-btn primary" @onclick="ShowImage" @onclick:stopPropagation
+                    <button class="action-btn primary" @onclick="HandleShowImage" @onclick:stopPropagation
                             title="View Fullscreen">
                         <i class="fa-solid fa-expand"></i>
                     </button>
-                    <button class="action-btn" @onclick="HandleSave" @onclick:stopPropagation title="Save to Library"
-                            disabled="@_isSaving">
-                        <i class="fa-solid fa-bookmark"></i>
+                    <button class="action-btn" @onclick="HandleOpenSource" @onclick:stopPropagation title="Open Source">
+                        <i class="fa-solid fa-external-link-alt"></i>
+                    </button>
+                    <button class="action-btn danger" @onclick="HandleDelete" @onclick:stopPropagation
+                            title="Delete from Library">
+                        <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
             </div>
-            
+
             @* Bottom Section - Info *@
             <div class="overlay-bottom @(_isHovered ? "visible" : "")">
                 <div class="info-row">
                     <span class="info-item">
                         <i class="fa-solid fa-star"></i>
-                        @Post.Score
+                        @Media.Score
                     </span>
                     <span class="info-item">
                         <i class="fa-solid fa-expand-alt"></i>
-                        @($"{Post.Width}×{Post.Height}")
+                        @($"{Media.Width}×{Media.Height}")
                     </span>
                     <span class="info-item">
-                        @Post.Extension.ToUpper()
+                        @Media.Extension.ToUpper()
                     </span>
                 </div>
             </div>
         </div>
-        
+
         @* Persistent Rating Indicator *@
         @if (!_isHovered)
         {
@@ -79,19 +81,20 @@
 </div>
 
 @code {
-    [Parameter] public DanbooruPost Post { get; set; }
-    [Parameter] public EventCallback<bool> OnSendTags { get; set; }
+    [Parameter] public SavedDanbooruMedia Media { get; set; }
+    [Parameter] public EventCallback OnCopyTags { get; set; }
+    [Parameter] public EventCallback OnSendImg2Img { get; set; }
     [Parameter] public EventCallback OnShowImage { get; set; }
-    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnOpenSource { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
 
     private IJSObjectReference? _jsModule;
-    private string _videoId = $"danbooru-video-{Guid.NewGuid():N}";
+    private string _videoId = $"library-video-{Guid.NewGuid():N}";
     private bool _isHovered;
-    private bool _isSaving;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && Post.IsVideo)
+        if (firstRender && Media.IsVideo)
         {
             _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/VideoCard.js");
         }
@@ -107,7 +110,7 @@
     private async Task HandleMouseEnter()
     {
         _isHovered = true;
-        if (Post.IsVideo && _jsModule != null)
+        if (Media.IsVideo && _jsModule != null)
         {
             try
             {
@@ -120,7 +123,7 @@
     private async Task HandleMouseLeave()
     {
         _isHovered = false;
-        if (Post.IsVideo && _jsModule != null)
+        if (Media.IsVideo && _jsModule != null)
         {
             try
             {
@@ -130,25 +133,15 @@
         }
     }
 
-    private async Task SendTags(bool isImg2Img) => await OnSendTags.InvokeAsync(isImg2Img);
-    private async Task ShowImage() => await OnShowImage.InvokeAsync();
-    private async Task HandleSave()
-    {
-        _isSaving = true;
-        try
-        {
-            await OnSave.InvokeAsync();
-        }
-        finally
-        {
-            _isSaving = false;
-            StateHasChanged();
-        }
-    }
+    private async Task HandleCopyTags() => await OnCopyTags.InvokeAsync();
+    private async Task HandleSendImg2Img() => await OnSendImg2Img.InvokeAsync();
+    private async Task HandleShowImage() => await OnShowImage.InvokeAsync();
+    private async Task HandleOpenSource() => await OnOpenSource.InvokeAsync();
+    private async Task HandleDelete() => await OnDelete.InvokeAsync();
 
     private string SetBadgeRating()
     {
-        return Post.Rating switch
+        return Media.Rating switch
         {
             "g" => "General",
             "s" => "Sensitive",
@@ -160,7 +153,7 @@
 
     private string GetRatingClass()
     {
-        return Post.Rating switch
+        return Media.Rating switch
         {
             "g" => "rating-general",
             "s" => "rating-sensitive",
