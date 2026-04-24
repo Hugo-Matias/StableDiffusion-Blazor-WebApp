@@ -34,6 +34,15 @@ public class ImageSendToService : IImageSendToService
         _snackbar = snackbar;
     }
 
+    public bool IsLocal(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        return !path.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            && !path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+    }
+
     public List<Workflow> GetImageWorkflows()
     {
         if (!_backend.IsBackendAvailable || _state.State.Generation.Workflows == null)
@@ -113,7 +122,14 @@ public class ImageSendToService : IImageSendToService
     {
         if (asset == null) return;
 
-        var data = $"data:image/png;base64,{_io.GetBase64FromFile(asset.Path)}";
+        var base64 = _io.GetBase64FromFile(asset.Path);
+        if (string.IsNullOrEmpty(base64))
+        {
+            _snackbar.Add($"Unable to read image file: {asset.Path}", Severity.Error);
+            return;
+        }
+
+        var data = $"data:image/png;base64,{base64}";
 
         switch (workflow.Mode)
         {
@@ -133,7 +149,14 @@ public class ImageSendToService : IImageSendToService
     {
         if (asset == null) return;
 
-        var data = $"data:image/png;base64,{_io.GetBase64FromFile(asset.Path)}";
+        var base64 = _io.GetBase64FromFile(asset.Path);
+        if (string.IsNullOrEmpty(base64))
+        {
+            _snackbar.Add($"Unable to read image file: {asset.Path}", Severity.Error);
+            return;
+        }
+
+        var data = $"data:image/png;base64,{base64}";
 
         _session.PendingSourceImages.Clear();
         _session.PendingSourceImages.Add(new PendingSourceImage(sourceKey, data, asset.Path));
@@ -147,7 +170,14 @@ public class ImageSendToService : IImageSendToService
     {
         if (asset == null) return;
 
-        var data = $"data:image/png;base64,{_io.GetBase64FromFile(asset.Path)}";
+        var base64 = _io.GetBase64FromFile(asset.Path);
+        if (string.IsNullOrEmpty(base64))
+        {
+            _snackbar.Add($"Unable to read image file: {asset.Path}", Severity.Error);
+            return;
+        }
+
+        var data = $"data:image/png;base64,{base64}";
 
         _session.PendingSourceImages.Clear();
         _session.PendingSourceImages.Add(new PendingSourceImage(

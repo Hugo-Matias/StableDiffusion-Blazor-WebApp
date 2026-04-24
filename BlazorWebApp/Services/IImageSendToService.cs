@@ -10,6 +10,9 @@ namespace BlazorWebApp.Services;
 /// </summary>
 public interface IImageSendToService
 {
+    /// <summary>Returns true if the path refers to a local file (not a remote URL).</summary>
+    bool IsLocal(string? path);
+
     /// <summary>Workflows that accept images as input (Img2Img, Img2Vid) for the current base.</summary>
     List<Workflow> GetImageWorkflows();
 

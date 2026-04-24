@@ -182,21 +182,74 @@ namespace BlazorWebApp.Services
 
         public string GetBase64FromFile(string path)
         {
-            if (!File.Exists(path)) return string.Empty;
+            var resolvedPath = ResolveFilePath(path);
+            if (!File.Exists(resolvedPath)) return string.Empty;
 
-            var bytes = File.ReadAllBytes(path);
+            var bytes = File.ReadAllBytes(resolvedPath);
 
             return Convert.ToBase64String(bytes);
         }
 
         public async Task<string?> GetBase64FromFileAsync(string path)
         {
-            if (!File.Exists(path)) return null;
+            var resolvedPath = ResolveFilePath(path);
+            if (!File.Exists(resolvedPath)) return null;
 
-            //var bytes = await GetByteArray(path);
-            var bytes = await File.ReadAllBytesAsync(path);
+            //var bytes = await GetByteArray(resolvedPath);
+            var bytes = await File.ReadAllBytesAsync(resolvedPath);
 
             return Convert.ToBase64String(bytes);
+        }
+
+        public string ResolveFilePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return path;
+
+            // Already a filesystem path (absolute or relative)
+            if (File.Exists(path)) return path;
+
+            // Map web request paths to filesystem paths
+            if (path.StartsWith("/files/danbooru/", StringComparison.OrdinalIgnoreCase))
+            {
+                var danbooruPath = _configuration["Danbooru:SavedMediaPath"];
+                if (!string.IsNullOrEmpty(danbooruPath))
+                {
+                    var relativePath = path.Substring("/files/danbooru/".Length);
+                    return Path.Combine(danbooruPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            if (path.StartsWith("/image/", StringComparison.OrdinalIgnoreCase))
+            {
+                var outputDir = _configuration["OutputDir"];
+                if (!string.IsNullOrEmpty(outputDir))
+                {
+                    var relativePath = path.Substring("/image/".Length);
+                    return Path.Combine(outputDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            if (path.StartsWith("/files/resources/", StringComparison.OrdinalIgnoreCase))
+            {
+                var resourcesPath = _configuration["ResourcesPath"];
+                if (!string.IsNullOrEmpty(resourcesPath))
+                {
+                    var relativePath = path.Substring("/files/resources/".Length);
+                    return Path.Combine(resourcesPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            if (path.StartsWith("/files/resource_previews/", StringComparison.OrdinalIgnoreCase))
+            {
+                var previewsPath = _configuration["ResourcePreviewsPath"];
+                if (!string.IsNullOrEmpty(previewsPath))
+                {
+                    var relativePath = path.Substring("/files/resource_previews/".Length);
+                    return Path.Combine(previewsPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            return path;
         }
 
         public int GetFileIndex(string path, Outdir dir)

@@ -147,6 +147,12 @@ namespace BlazorWebApp.Services
             return _repository.GetPagedAsync(filter, cancellationToken);
         }
 
+        /// <inheritdoc />
+        public Task<SavedDanbooruMedia?> GetByPostIdAsync(int danbooruPostId, CancellationToken cancellationToken = default)
+        {
+            return _repository.GetByPostIdAsync(danbooruPostId, cancellationToken);
+        }
+
         /// <summary>
         /// Resolve the rating folder name from the post rating value.
         /// </summary>

@@ -35,6 +35,11 @@ namespace BlazorWebApp.Services
         string GetResourceImagePath(string type, string filename);
         string GetBase64FromFile(string path);
         Task<string?> GetBase64FromFileAsync(string path);
+        /// <summary>
+        /// Resolve a web request path (e.g. /files/danbooru/...) to a filesystem path.
+        /// Returns the original path if it is already a filesystem path.
+        /// </summary>
+        string ResolveFilePath(string path);
 
         // Index/Pattern Operations
         int GetFileIndex(string path, Outdir dir);

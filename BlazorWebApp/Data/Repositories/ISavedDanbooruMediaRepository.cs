@@ -40,6 +40,9 @@ namespace BlazorWebApp.Data.Repositories
         /// <summary>Get a single entity by its database primary key.</summary>
         Task<SavedDanbooruMedia?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
+        /// <summary>Get a single entity by its Danbooru post ID.</summary>
+        Task<SavedDanbooruMedia?> GetByPostIdAsync(int danbooruPostId, CancellationToken cancellationToken = default);
+
         /// <summary>Get a paged, filtered list of saved media (ordered by creation date descending).</summary>
         Task<List<SavedDanbooruMedia>> GetPagedAsync(SavedDanbooruMediaFilter filter, CancellationToken cancellationToken = default);
 

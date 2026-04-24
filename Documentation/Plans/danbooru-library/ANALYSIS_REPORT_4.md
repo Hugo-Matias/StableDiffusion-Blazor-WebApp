@@ -280,6 +280,7 @@ The cap check drops the sentinel but never logs or reports truncation. A tag-sea
 Correctness: "no results" becomes indistinguishable from "results outside the scan window." This is a silent data-visibility bug that grows worse as the library grows.
 
 **Recommended Follow-Up Change**
+
 1. Inject `ILogger<SavedDanbooruMediaRepository>` and `LogWarning` when the cap is hit (recording `filter.TagSearch` and the cap value).
 2. Optional: extend `SavedDanbooruMediaFilter` / the return type to flag truncation so the page can show a Snackbar or inline hint.
 

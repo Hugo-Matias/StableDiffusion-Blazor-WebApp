@@ -37,5 +37,10 @@ namespace BlazorWebApp.Services
         /// Get a paged, filtered list of saved media.
         /// </summary>
         Task<List<SavedDanbooruMedia>> GetPagedAsync(Data.Repositories.SavedDanbooruMediaFilter filter, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get a single saved media entry by its Danbooru post ID.
+        /// </summary>
+        Task<SavedDanbooruMedia?> GetByPostIdAsync(int danbooruPostId, CancellationToken cancellationToken = default);
     }
 }

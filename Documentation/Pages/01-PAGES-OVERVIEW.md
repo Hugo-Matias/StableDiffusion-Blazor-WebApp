@@ -8,19 +8,19 @@ Blazor Diffusion uses Blazor Server with MudBlazor component library. Pages are 
 
 ### Navigation Routes
 
-| Route | Page | Purpose |
-|-------|------|---------|
-| `/` | Index.razor | Project gallery and image browsing |
-| `/webui/txt2img` | Txt2ImgWebUI.razor | Text-to-image generation (WebUI) |
-| `/webui/img2img` | Img2ImgWebUI.razor | Image-to-image generation (WebUI) |
-| `/webui/upscale` | UpscaleWebUI.razor | Image upscaling (WebUI) |
-| `/comfyui/txt2img` | Txt2ImgComfyUI.razor | Text-to-image generation (ComfyUI) |
+| Route              | Page                 | Purpose                             |
+| ------------------ | -------------------- | ----------------------------------- |
+| `/`                | Index.razor          | Project gallery and image browsing  |
+| `/webui/txt2img`   | Txt2ImgWebUI.razor   | Text-to-image generation (WebUI)    |
+| `/webui/img2img`   | Img2ImgWebUI.razor   | Image-to-image generation (WebUI)   |
+| `/webui/upscale`   | UpscaleWebUI.razor   | Image upscaling (WebUI)             |
+| `/comfyui/txt2img` | Txt2ImgComfyUI.razor | Text-to-image generation (ComfyUI)  |
 | `/comfyui/img2img` | Img2ImgComfyUI.razor | Image-to-image generation (ComfyUI) |
 | `/comfyui/img2vid` | Img2VidComfyUI.razor | Image-to-video generation (ComfyUI) |
-| `/resources` | Resources.razor | Model and resource management |
-| `/prompts` | Prompts.razor | Prompt templates and wildcards |
-| `/danbooru` | Danbooru.razor | Tag dataset browsing |
-| `/settings` | Settings.razor | Application settings |
+| `/resources`       | Resources.razor      | Model and resource management       |
+| `/prompts`         | Prompts.razor        | Prompt templates and wildcards      |
+| `/danbooru`        | Danbooru.razor       | Tag dataset browsing                |
+| `/settings`        | Settings.razor       | Application settings                |
 
 ## Page Details
 
@@ -30,22 +30,26 @@ Blazor Diffusion uses Blazor Server with MudBlazor component library. Pages are 
 **Route**: `/`
 
 #### Purpose
+
 Main application page displaying the project-based image gallery.
 
 #### Key Features
 
 **Project Selection**:
+
 - Folder/project hierarchy
 - Quick project switching
 - Recent projects
 - Project creation
 
 **Image Display**:
+
 - Two modes:
   1. **Pagination**: Standard page-based navigation
   2. **Infinite Scroll**: Continuous loading with masonry layout
 
 **Filtering**:
+
 - Date range
 - Model used
 - Favorite status
@@ -54,6 +58,7 @@ Main application page displaying the project-based image gallery.
 - Sampler/scheduler
 
 **Image Operations**:
+
 - View full details
 - Set as project cover
 - Delete
@@ -61,18 +66,21 @@ Main application page displaying the project-based image gallery.
 - Copy parameters to generation
 
 **Gallery Settings**:
+
 - Page size configuration
 - Navigation mode toggle
 - Filter presets
 - Sort options
 
 #### Components Used
+
 - `GallerySettings`: Filter and navigation controls
 - `ImagesContainer`: Paginated image grid
 - `InfiniteScrollMasonry`: Infinite scroll layout
 - `CreateProjectButton`: Quick project creation
 
 #### State Management
+
 ```csharp
 M.State.Gallery.FolderId       // Current folder
 M.State.Gallery.ProjectId      // Current project
@@ -81,6 +89,7 @@ M.State.Gallery.UseInfiniteScroll // Navigation mode
 ```
 
 #### User Flow
+
 ```
 1. User selects folder/project
    ↓
@@ -99,18 +108,21 @@ M.State.Gallery.UseInfiniteScroll // Navigation mode
 
 ### 2. Txt2Img (Text-to-Image) 🎨
 
-**Files**: 
+**Files**:
+
 - `Pages/WebUI/Txt2ImgWebUI.razor` (WebUI backend)
 - `Pages/ComfyUI/Txt2ImgComfyUI.razor` (ComfyUI backend)
 
 **Routes**: `/webui/txt2img`, `/comfyui/txt2img`
 
 #### Purpose
+
 Generate images from text prompts.
 
 #### Key Features
 
 **Prompt Input**:
+
 - Main prompt field with autocomplete
 - Negative prompt field
 - Tag drawer for quick prompt building
@@ -119,6 +131,7 @@ Generate images from text prompts.
 - LLM prompt enhancement (Ollama)
 
 **Basic Parameters**:
+
 - Width/Height (resolution)
 - Batch size/count
 - Steps (inference steps)
@@ -129,12 +142,14 @@ Generate images from text prompts.
 - Clip skip
 
 **Model Selection**:
+
 - Checkpoint model
 - VAE override
 - LoRA loading with weights
 - Textual Inversion embeddings
 
 **Advanced Extensions** (WebUI):
+
 - **ControlNet**: Image conditioning
 - **ADetailer**: Automatic face/detail refinement
 - **Dynamic Prompts**: Template-based generation
@@ -144,11 +159,13 @@ Generate images from text prompts.
 - **XYZ Plot**: Parameter grid exploration
 
 **Workflow Selection** (ComfyUI):
+
 - Workflow template picker
 - Asset selector (models, LoRAs, etc.)
 - Workflow-specific parameters
 
 #### Components Used
+
 - `PromptFields`: Prompt input with tag drawer
 - `GenerateFormTxt2Img`: Parameter form
 - `GeneratedImageTabs`: Result display
@@ -157,6 +174,7 @@ Generate images from text prompts.
 - `TagDrawer`: Tag-based prompt building
 
 #### User Flow
+
 ```
 1. Enter prompt (or use tag drawer)
    ↓
@@ -180,23 +198,27 @@ Generate images from text prompts.
 ### 3. Img2Img (Image-to-Image) 🖼️
 
 **Files**:
+
 - `Pages/WebUI/Img2ImgWebUI.razor`
 - `Pages/ComfyUI/Img2ImgComfyUI.razor`
 
 **Routes**: `/webui/img2img`, `/comfyui/img2img`
 
 #### Purpose
+
 Modify existing images or perform inpainting/outpainting.
 
 #### Key Features
 
 **Image Input**:
+
 - File upload
 - Drag and drop
 - Load from gallery
 - Paste from clipboard
 
 **Canvas Tools** (WebUI):
+
 - Drawing tools for sketching
 - Mask painting for inpainting
 - Eraser
@@ -209,12 +231,14 @@ Modify existing images or perform inpainting/outpainting.
 Controls how much the image changes (0.0 = no change, 1.0 = full regeneration).
 
 **Resize Modes**:
+
 - Just resize
 - Crop and resize
 - Resize and fill
 - Just resize (latent upscale)
 
 **Inpaint Settings**:
+
 - Inpaint masked/not masked
 - Mask blur
 - Inpaint at full resolution
@@ -224,13 +248,16 @@ Controls how much the image changes (0.0 = no change, 1.0 = full regeneration).
 Plus denoising and image input.
 
 #### Canvas Implementation
+
 Uses HTML Canvas with JSInterop for:
+
 - Real-time drawing
 - Layer compositing
 - Mask creation
 - Image manipulation
 
 #### User Flow
+
 ```
 1. Upload or select input image
    ↓
@@ -257,15 +284,18 @@ Uses HTML Canvas with JSInterop for:
 **Route**: `/comfyui/img2vid`
 
 #### Purpose
+
 Generate videos from static images using ComfyUI workflows.
 
 #### Key Features
 
 **Input Image**:
+
 - Upload image
 - Select from gallery
 
 **Video Parameters**:
+
 - Frame count
 - FPS (frames per second)
 - Motion strength
@@ -275,6 +305,7 @@ Generate videos from static images using ComfyUI workflows.
 Uses ComfyUI workflow templates for video generation pipelines.
 
 #### User Flow
+
 ```
 1. Select input image
    ↓
@@ -297,26 +328,32 @@ Uses ComfyUI workflow templates for video generation pipelines.
 **Route**: `/webui/upscale`
 
 #### Purpose
+
 Upscale images using GAN-based models.
 
 #### Key Features
 
 **Upscaler Selection**:
+
 - Multiple upscaler models
 - Model chaining (upscale twice)
 
 **Scaling**:
+
 - Scale factor (2x, 4x, etc.)
 - Target width/height
 
 **GFPGAN/CodeFormer**:
+
 - Face restoration
 - Visibility/weight control
 
 **Extras Options**:
+
 - Additional processing
 
 #### User Flow
+
 ```
 1. Select image to upscale
    ↓
@@ -341,11 +378,13 @@ Upscale images using GAN-based models.
 **Route**: `/resources`
 
 #### Purpose
+
 Browse, download, and manage AI models and resources.
 
 #### Tabs
 
 **1. CivitAI Tab**:
+
 - Browse models from CivitAI
 - Search by name, creator, tags
 - Filter by type, NSFW level
@@ -355,6 +394,7 @@ Browse, download, and manage AI models and resources.
 
 **2. Model Type Tabs**:
 One tab per model type:
+
 - Checkpoints
 - LoRAs
 - Embeddings (Textual Inversion)
@@ -364,6 +404,7 @@ One tab per model type:
 - AestheticGradients
 
 Each tab shows:
+
 - Local model files
 - Preview images
 - Version information
@@ -373,6 +414,7 @@ Each tab shows:
 - Organize into subtypes
 
 **3. Audit Tab**:
+
 - Scan filesystem for new models
 - Match local files to CivitAI
 - Update metadata
@@ -382,6 +424,7 @@ Each tab shows:
 #### Key Features
 
 **CivitAI Integration**:
+
 - Model search and discovery
 - Example image browsing
 - One-click download
@@ -389,6 +432,7 @@ Each tab shows:
 - Version detection
 
 **Local Management**:
+
 - File scanning
 - Hash-based identification
 - Preview management
@@ -396,6 +440,7 @@ Each tab shows:
 - Metadata editing
 
 **Quick Actions**:
+
 - Load model for generation
 - Set as default
 - Open in file explorer
@@ -403,6 +448,7 @@ Each tab shows:
 - View on CivitAI
 
 #### User Flow
+
 ```
 1. Browse CivitAI or local models
    ↓
@@ -423,11 +469,13 @@ Each tab shows:
 **Route**: `/prompts`
 
 #### Purpose
+
 Manage prompt templates and wildcards for dynamic generation.
 
 #### Tabs
 
 **1. Presets Tab**:
+
 - Create prompt templates
 - Save commonly used prompts
 - Categorize by theme/style
@@ -435,6 +483,7 @@ Manage prompt templates and wildcards for dynamic generation.
 - Edit existing presets
 
 **2. Wildcards Tab**:
+
 - Define wildcard collections
 - Random word/phrase substitution
 - Nested wildcards
@@ -444,6 +493,7 @@ Manage prompt templates and wildcards for dynamic generation.
 #### Features
 
 **Prompt Templates**:
+
 ```
 Template: "A {adjective} {subject} in {location}"
 Wildcards:
@@ -453,11 +503,13 @@ Wildcards:
 ```
 
 **Dynamic Prompts**:
+
 - Combinatorial generation
 - Magic prompt enhancement
 - Template syntax support
 
 #### User Flow
+
 ```
 1. Create wildcard collections
    ↓
@@ -478,9 +530,11 @@ Wildcards:
 **Route**: `/danbooru`
 
 #### Purpose
+
 Browse Danbooru tag dataset for inspiration and reference.
 
 #### Features
+
 - Search posts by tags
 - View example images
 - Explore tag relationships
@@ -495,38 +549,45 @@ Browse Danbooru tag dataset for inspiration and reference.
 **Route**: `/settings`
 
 #### Purpose
+
 Configure application behavior and preferences.
 
 #### Settings Categories
 
 **Appearance**:
+
 - Dark/light theme
 - Color scheme
 - Font size
 - Layout density
 
 **Generation Defaults**:
+
 - Default parameters per mode
 - Preferred models
 - Auto-save settings
 
 **Paths**:
+
 - Output directory
 - Resource directories
 - Preview locations
 
 **API**:
+
 - WebUI URL
 - ComfyUI URL
 - CivitAI token
 - Connection testing
 
 **Gallery**:
+
 - Default page size
 - Thumbnail quality
 - Metadata display
 
 **Behavior**:
+
 - Auto-refresh
 - Confirmation dialogs
 - Keyboard shortcuts
@@ -538,6 +599,7 @@ Configure application behavior and preferences.
 ### Shared Components
 
 #### Generation Components
+
 Located in `Components/Shared/Generation/`:
 
 - `PromptFields`: Main prompt input with tag integration
@@ -556,20 +618,39 @@ Located in `Components/Shared/Generation/`:
 - `WorkflowAssetsPanel`: Workflow asset management
 
 #### Gallery Components
+
 - `ImagesContainer`: Paginated image grid
 - `InfiniteScrollMasonry`: Infinite scroll layout
 - `GallerySettings`: Filter and navigation
-- `ImageViewer`: Full-size image modal
-- `ImageInfo`: Metadata display
+- `ImageViewer`: Full-size image modal overlay used by the Gallery and Danbooru page
+- `AssetInfoPanel`: Unified info panel component shared across `ImageViewer`, `AssetViewer`, and `AssetInfoDrawer`. Displays image metadata, AI generation parameters, and dynamic "Send image to workflow" buttons driven by `IImageSendToService`. Supports locality-aware behaviour:
+  - **Local images** (path does not start with `http://` or `https://`): full workflow send UI with multi-source slot support
+  - **External images** (remote URLs): workflow send buttons hidden; shows a bookmark call-to-action alert instead. Parameter send (prompt only) remains available.
+  - Locality is determined by `IImageSendToService.IsLocal(path)`. Metadata loading is short-circuited for external URLs to avoid unnecessary backend calls.
+- `ImageInfo`: Legacy metadata display (superseded by `AssetInfoPanel` in `ImageViewer`)
+
+##### Danbooru External-Image Bookmark Rule
+
+When the Danbooru Search tab displays external images in `ImageViewer`, the `AssetInfoPanel` renders a bookmark CTA instead of workflow send buttons. Clicking "Bookmark" triggers the `OnRequestBookmark` callback, which:
+
+1. Locates the corresponding `DanbooruPost` by matching the image URL
+2. Calls `LibraryService.SaveAsync(post)` to download and save the image to the local library
+3. Shows a snackbar message (success/info/error) based on the save result
+4. Updates the in-memory `Image.Path` to the local `/files/danbooru/{FilePath}` path, causing the viewer to flip to the local-file UI (with full workflow send buttons) without requiring the dialog to reopen
+
+This flow ensures users can bookmark external Danbooru images directly from the viewer and immediately gain access to the full "Send image to workflow" functionality.
 
 #### Resource Components
+
 - `CivitaiPanel`: Model browsing
 - `ResourcePanel`: Local file management
 - `ResourceVersionsDialog`: Version selector
 - `LoadResourceDialog`: Model loading options
 
 #### Prompt Components
+
 Located in `Components/Prompts/`:
+
 - `PromptsPanel`: Template management
 - `WildcardsPanel`: Wildcard editor
 - `PromptDialog`: Template creation
@@ -577,12 +658,14 @@ Located in `Components/Prompts/`:
 ### Layout Components
 
 **MainLayout**:
+
 - Navigation drawer
 - Top app bar
 - Backend status indicators
 - Progress overlay
 
 **Navigation Menu**:
+
 - Generation modes (WebUI/ComfyUI)
 - Resources
 - Prompts

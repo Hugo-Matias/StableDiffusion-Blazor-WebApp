@@ -7,34 +7,34 @@
    =========================================== */
 
 .danbooru-masonry-wrapper {
-    width: 100%;
-    max-width: 90vw;
-    margin: 1rem auto;
-    overflow: visible;
+  width: 100%;
+  max-width: 90vw;
+  margin: 1rem auto;
+  overflow: visible;
 }
 
 .danbooru-masonry {
-    /* Column count scales with viewport via media queries below. */
-    column-count: 5;
-    column-gap: 16px;
-    width: 100%;
+  /* Column count scales with viewport via media queries below. */
+  column-count: 5;
+  column-gap: 16px;
+  width: 100%;
 }
 
 .danbooru-item {
-    /* break-inside:avoid keeps each card intact in a single column. */
-    break-inside: avoid;
-    -webkit-column-break-inside: avoid;
-    page-break-inside: avoid;
-    margin-bottom: 16px;
-    /* Fixes a Firefox/Chromium quirk where the first row of column
+  /* break-inside:avoid keeps each card intact in a single column. */
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+  margin-bottom: 16px;
+  /* Fixes a Firefox/Chromium quirk where the first row of column
        items can be clipped on initial paint. */
-    display: block;
-    width: 100%;
+  display: block;
+  width: 100%;
 }
 
 .danbooru-item > div {
-    width: 100%;
-    height: auto;
+  width: 100%;
+  height: auto;
 }
 
 /* ===========================================
@@ -42,15 +42,15 @@
    =========================================== */
 
 .load-more-spinner {
-    display: flex;
-    justify-content: center;
-    margin: 2rem 0 3rem 0;
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0 3rem 0;
 }
 
 .end-of-results {
-    opacity: 0.4;
-    text-align: center;
-    margin: 3rem 0;
+  opacity: 0.4;
+  text-align: center;
+  margin: 3rem 0;
 }
 
 /* ===========================================
@@ -59,29 +59,29 @@
    =========================================== */
 
 @media (max-width: 1600px) {
-    .danbooru-masonry {
-        column-count: 4;
-    }
+  .danbooru-masonry {
+    column-count: 4;
+  }
 }
 
 @media (max-width: 1200px) {
-    .danbooru-masonry {
-        column-count: 3;
-    }
+  .danbooru-masonry {
+    column-count: 3;
+  }
 }
 
 @media (max-width: 768px) {
-    .danbooru-masonry-wrapper {
-        max-width: 95vw;
-    }
+  .danbooru-masonry-wrapper {
+    max-width: 95vw;
+  }
 
-    .danbooru-masonry {
-        column-count: 2;
-    }
+  .danbooru-masonry {
+    column-count: 2;
+  }
 }
 
 @media (max-width: 480px) {
-    .danbooru-masonry {
-        column-count: 1;
-    }
+  .danbooru-masonry {
+    column-count: 1;
+  }
 }

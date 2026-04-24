@@ -45,6 +45,15 @@ namespace BlazorWebApp.Data.Repositories
         }
 
         /// <inheritdoc />
+        public async Task<SavedDanbooruMedia?> GetByPostIdAsync(int danbooruPostId, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.SavedDanbooruMedia
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.DanbooruPostId == danbooruPostId, cancellationToken);
+        }
+
+        /// <inheritdoc />
         public async Task<List<SavedDanbooruMedia>> GetPagedAsync(SavedDanbooruMediaFilter filter, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
