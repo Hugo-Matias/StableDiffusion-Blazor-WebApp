@@ -125,7 +125,7 @@ Use this exact skeleton. Adapt section depth to the phase's complexity, but keep
 section order and headings consistent across all phases in the plan so the documents
 are predictable.
 
-```markdown
+````markdown
 # Phase {#}: {Phase Name}
 
 > **Main plan:** [MAIN_PLAN.md](./MAIN_PLAN.md#phase-{#}-{slug})
@@ -173,21 +173,24 @@ from the step list:
 ## 4. Files Inventory
 
 ### To Create
-| Path | Purpose |
-|------|---------|
+
+| Path                                               | Purpose                                |
+| -------------------------------------------------- | -------------------------------------- |
 | `BlazorWebApp/Data/Entities/SavedDanbooruMedia.cs` | New EF entity for saved Danbooru posts |
-| ... | ... |
+| ...                                                | ...                                    |
 
 ### To Modify
-| Path | Change |
-|------|--------|
+
+| Path                                | Change                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------- |
 | `BlazorWebApp/Data/AppDbContext.cs` | Add `DbSet<SavedDanbooruMedia>`, register converter, declare unique index |
-| `BlazorWebApp/Program.cs` | Register repository in DI |
-| ... | ... |
+| `BlazorWebApp/Program.cs`           | Register repository in DI                                                 |
+| ...                                 | ...                                                                       |
 
 ### To Leave Untouched (but referenced)
-| Path | Why it matters |
-|------|----------------|
+
+| Path                               | Why it matters         |
+| ---------------------------------- | ---------------------- |
 | `BlazorWebApp/Data/Converters/...` | Pattern reference only |
 
 ---
@@ -198,18 +201,22 @@ Each step below is a **commitable checkpoint**. Follow the stage order from
 `.github/prompts/plan-execution.prompt.md`: Code -> Build/Test -> Discuss -> Document.
 
 ### Step {#.1}: {Step Name}
+
 **Complexity:** {points}
 **Status:** [ ] Not Started
 
 #### Tasks
+
 - [ ] {Atomic task 1}
 - [ ] {Atomic task 2}
 
 #### Implementation Notes
+
 {Narrative: which classes to extend, which patterns to mirror, registration order,
 event wiring, threading concerns, nullability, etc.}
 
 #### Code Sketch
+
 ```csharp
 // BlazorWebApp/Data/Entities/SavedDanbooruMedia.cs
 public class SavedDanbooruMedia
@@ -221,24 +228,29 @@ public class SavedDanbooruMedia
     // ... (include every property the step requires, with defaults)
 }
 ```
+````
 
 {Add one snippet per artifact the step produces. Snippets may be partial but must
 compile in the target shape - do not invent APIs that do not exist.}
 
 #### Conventions to Respect
+
 - {Convention 1 verbatim from main plan or instructions}
 - {Convention 2}
 
 #### Validation
+
 - Build passes (`dotnet build BlazorWebApp/BlazorWebApp.csproj`).
 - {Ad-hoc check or unit test assertion for this step}
 
 #### Changes Made
+
 _To be filled in after the step is implemented._
 
 ---
 
 ### Step {#.2}: {Step Name}
+
 {Same structure...}
 
 ---
@@ -269,6 +281,7 @@ Summarize everything the phase has to wire into the running app:
 
 Extract every row from the main plan's **Stress Points & Risks** table that touches
 this phase, and add any new risks discovered while drafting the phase. For each risk:
+
 - Describe the failure mode concretely.
 - List the mitigation the executor must apply in-step (not after the fact).
 
@@ -298,10 +311,10 @@ If there are none, write `_None - phase is fully specified._`
 
 ## 11. Progress Tracking
 
-| Step | Status | Complexity | Notes |
-|------|--------|------------|-------|
-| {#.1} | [ ] | {pts} | |
-| {#.2} | [ ] | {pts} | |
+| Step  | Status | Complexity | Notes |
+| ----- | ------ | ---------- | ----- |
+| {#.1} | [ ]    | {pts}      |       |
+| {#.2} | [ ]    | {pts}      |       |
 
 ---
 
@@ -310,6 +323,7 @@ If there are none, write `_None - phase is fully specified._`
 _Populated during execution._
 
 ### Issue: {title}
+
 - **Impact:** {what broke or was blocked}
 - **Resolution:** {how it was solved, or `Pending`}
 
@@ -336,9 +350,10 @@ _To be filled in after the phase is complete._
 ## 15. Cross-References
 
 - Main plan section: [Phase {#}: {Name}](./MAIN_PLAN.md#phase-{#}-{slug})
-- Prior phase: [PHASE_{#-1}.md](./PHASE_{#-1}.md) (or `N/A` for Phase 1)
-- Next phase: [PHASE_{#+1}.md](./PHASE_{#+1}.md) (or `N/A` for final phase)
+- Prior phase: [PHASE\_{#-1}.md](./PHASE_{#-1}.md) (or `N/A` for Phase 1)
+- Next phase: [PHASE\_{#+1}.md](./PHASE_{#+1}.md) (or `N/A` for final phase)
 - Related plans / docs: {bullet list}
+
 ```
 
 ---
@@ -398,3 +413,4 @@ interpret `{plan-name}` as a path under `Documentation/Plans/` and begin at
 **Phase 1: Plan Ingestion** above. If no trigger is used but the user points at a
 `MAIN_PLAN.md` and asks to "generate phases" or "scaffold phase docs", apply the
 same workflow.
+```

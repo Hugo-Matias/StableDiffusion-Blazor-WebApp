@@ -2,7 +2,7 @@
 agent: agent
 description: >
   Convert a ComfyUI workflow JSON into the C# fluent builder system.
-  Guides you through analysis, user-validated planning, and implementation.
+  Guides you through analysis, user-validated planning, UI integration review, and implementation.
 tools:
   - search
   - read
@@ -12,7 +12,7 @@ tools:
 
 # ComfyUI Workflow Conversion Agent
 
-You are converting a ComfyUI workflow JSON into the Blazor WebUI C# fluent builder system.
+You are converting a ComfyUI workflow JSON into the Blazor WebUI C# fluent builder system, including the workflow's UI integration in the app.
 Follow the phases below strictly. **Do not create or edit any code files until the user has approved the plan (Phase 3).**
 
 ---
@@ -22,7 +22,11 @@ Follow the phases below strictly. **Do not create or edit any code files until t
 Before starting, read and internalize:
 
 - `BlazorWebApp/Workflows/TEMPLATE_GUIDE.md` - Complete conventions, patterns, and fragment reuse table
+- `BlazorWebApp/Workflows/FRAGMENT_SCHEMA_GUIDE.md` - Fragment metadata, fragment types, parameter defaults, and component registration conventions
+- `BlazorWebApp/Workflows/WORKFLOW_UI_CONVERSION_GUIDE.md` - Workflow UI integration standards, component reuse rules, field mappings, and verification checklist
+- `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md` - App-wide visual and MudBlazor design rules that new workflow UI must follow
 - `BlazorWebApp/Workflows/Fragments/` - All existing fragments (Core/, Enhancements/, Loaders/, flux/, wan/, qwen/)
+- `BlazorWebApp/Components/Shared/Generation/Fragments/` - Existing fragment form components for reuse and visual reference
 - `BlazorWebApp/Workflows/Templates/` - Existing workflow implementations for reference patterns
 - `BlazorWebApp/Data/Enums.cs` - Available ModelBase enum values
 
@@ -55,6 +59,7 @@ Analyze the ComfyUI workflow JSON provided by the user.
    - `KSampler` -> `SamplerStandardFragment`
    - `ClownsharKSampler_Beta` -> `SamplerFragment`
    - Other -> describe
+8. **UI surface audit** - For every UI-visible fragment, determine whether an existing form component can be reused or whether a new component is required
 
 ---
 
@@ -71,7 +76,26 @@ Present the full plan to the user for review. Structure it as follows:
 
 Mark each fragment as **Existing** or **New** (with proposed file path for new ones).
 
-### 2b. UI-Exposed vs Hardcoded Values
+### 2b. UI Component Review
+
+Validate UI concerns before the main plan is finalized.
+
+Build this table from the planned fragment set and the existing generation components:
+
+| Fragment          | Parameters exposed                   | Component decision | Status | Notes                                       |
+| ----------------- | ------------------------------------ | ------------------ | ------ | ------------------------------------------- |
+| `main_sampler`    | sampler, scheduler, steps, cfg, seed | `SamplerForm`      | Reuse  | Matches existing sampler UI                 |
+| `controlnet_tile` | strength                             | `ControlNetForm`   | New    | No existing controlnet form with this shape |
+
+For each UI-visible fragment, confirm:
+
+- Whether an existing component can be reused unchanged
+- Whether a new component must be created
+- Which existing components were inspected as style and interaction references
+- That the final UI follows `WORKFLOW_UI_CONVERSION_GUIDE.md` and `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md`
+- The field-to-control mapping for every exposed parameter
+
+### 2c. UI-Exposed vs Hardcoded Values
 
 Build this table from the actual JSON values:
 
@@ -89,7 +113,7 @@ Build this table from the actual JSON values:
 
 Add or remove rows as needed. Every parameter from the JSON should appear in this table.
 
-### 2c. Enhancements Discussion
+### 2d. Enhancements Discussion
 
 Ask the user which optional post-processing modules to include. Only offer enhancements applicable to the workflow type.
 
@@ -110,17 +134,17 @@ For each selected enhancement, confirm:
 - Whether it uses the main model or a separate model asset
 - Detailer: the form exposes per-pass prompt injection (positive + negative) with fallback to the main prompts when blank, a standalone detailer LoRA list (per pass), and supports **chained passes** via a tabbed UI. The workflow template must implement the multi-pass loop described in `TEMPLATE_GUIDE.md#detailer-multi-pass-conventions`.
 
-### 2d. ModelBase Enum
+### 2e. ModelBase Enum
 
 State whether the workflow requires a new `ModelBase` enum value or reuses an existing one.
 
-### 2e. Compatible Resource Base Models
+### 2f. Compatible Resource Base Models
 
 Determine the `CompatibleResourceBaseModels` for the workflow. Read `BlazorWebApp/Data/CivitAI/basemodels.json` to find the matching CivitAI base model strings for this workflow's architecture. Include all base model variants that the workflow can load (e.g., for SD 1.5: include `"SD 1.5"`, `"SD 1.5 LCM"`, `"SD 1.5 Hyper"`, `"SD 1.4"`, etc.).
 
 Present the list for user confirmation.
 
-### 2f. Default Values Summary
+### 2g. Default Values Summary
 
 List the key defaults that will be used (sampler, scheduler, steps, CFG, denoise, resolution).
 
@@ -134,7 +158,7 @@ Present a concise summary of the full plan and ask:
 
 > "Does this plan look correct? Please confirm or let me know what to change before I proceed with implementation."
 
-Wait for explicit user approval. Incorporate any requested changes and re-confirm if significant.
+Wait for explicit user approval. Incorporate any requested changes and re-confirm if significant. The summary must include UI component decisions and any new component work.
 
 ---
 
@@ -142,7 +166,7 @@ Wait for explicit user approval. Incorporate any requested changes and re-confir
 
 After the user approves the plan, but before integrating the workflow into the C# system, create these files under `Documentation/Plans/Workflows/{workflow-name}/`:
 
-1. `plan.md` - A conversion plan document capturing the approved analysis, fragment mapping, UI exposure decisions, enhancements, enum decision, compatible base models, and defaults summary
+1. `plan.md` - A conversion plan document capturing the approved analysis, fragment mapping, UI component decisions, field mappings, UI exposure decisions, enhancements, enum decision, compatible base models, and defaults summary
 2. `workflow.json` - The input JSON file from ComfyUI used for this conversion
 
 Requirements:
@@ -164,13 +188,18 @@ After the user approves, implement in this order:
 2. **New fragments** (if any): Create in the appropriate `BlazorWebApp/Workflows/Fragments/` subdirectory
    - Follow the dual-Build pattern (GenerationParameters overload + explicit Parameters overload)
    - Follow the scope conventions from TEMPLATE_GUIDE.md
-3. **Workflow class**: Create in `BlazorWebApp/Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
+3. **UI components** (if needed): Create or update fragment form components in `BlazorWebApp/Components/Shared/Generation/Fragments/`
+   - Follow `WORKFLOW_UI_CONVERSION_GUIDE.md`
+   - Follow `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md`
+   - Use `[FragmentComponent("...")]` so the component is auto-discovered
+   - Prefer dedicated new components over overloading unrelated existing forms
+4. **Workflow class**: Create in `BlazorWebApp/Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
    - Implement `IWorkflowBuilder`
    - Declare fragment fields, `Metadata`, `GetFragments()`, and `Build()`
    - Include `CompatibleResourceBaseModels` in `Metadata` with the values confirmed in Phase 2e
    - Build order: Load -> LoRA -> EmptyLatent/Input -> Prompts -> Sampler -> VaeDecode -> [Enhancements] -> Save
    - Conditional enhancements must be gated with `parameters.GetFragment("id")?.IsActive == true`
-4. **Build**: Run `dotnet build` on the project
+5. **Build**: Run `dotnet build` on the project
 
 ---
 
@@ -185,6 +214,10 @@ After the build:
    - Plan artifacts created under `Documentation/Plans/Workflows/{workflow-name}/`
    - Existing files modified
    - Enum values added
+4. Report UI integration status:
+   - Which components were reused
+   - Which components were created or updated
+   - Any remaining runtime UI risks that were not executable in validation
 
 ---
 

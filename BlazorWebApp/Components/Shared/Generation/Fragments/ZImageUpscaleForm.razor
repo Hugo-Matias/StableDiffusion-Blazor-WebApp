@@ -1,0 +1,119 @@
+@*
+    ZImageUpscaleForm - Form for Z-Image Turbo Upscale fragment
+    
+    Handles: upscale_by, strength
+    
+    This is a Z-Image specific enhancement that combines ControlNet tile guidance
+    with UltimateSDUpscale for high-resolution output.
+*@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("ZImageUpscaleForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localUpscaleBy" @bind-Value:after="OnUpscaleByChanged"
+                   Min="@_constraints.upscale_by.GetMin(1)" Max="@_constraints.upscale_by.GetMax(4)"
+                   Step="@_constraints.upscale_by.GetStep(0.1)" Variant="Variant.Filled" ValueLabel>
+            <small>Upscale Factor:</small> @_localUpscaleBy.ToString("F1")x
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localStrength" @bind-Value:after="OnStrengthChanged"
+                   Min="@_constraints.strength.GetMin(0)" Max="@_constraints.strength.GetMax(2)"
+                   Step="@_constraints.strength.GetStep(0.01)" Variant="Variant.Filled" ValueLabel>
+            <small>ControlNet Strength:</small> @_localStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" Class="align-items-center justify-content-center d-flex">
+        <MudText Typo="Typo.overline">@_resizeInfo</MudText>
+    </MudItem>
+    <MudItem xs="12">
+        <MudAlert Severity="Severity.Info" Dense="true">
+            <MudText Typo="Typo.caption">
+                <strong>Z-Image Turbo Upscale</strong> chains base generation into tiled upscale
+                with ControlNet tile guidance for high-resolution, structurally consistent output.
+                <br /><br />
+                <em>ControlNet strength controls tile guidance intensity. Lower values (0.1-0.3) preserve
+                    the original style; higher values (0.5+) enforce stricter structural guidance.</em>
+                </MudText>
+            </MudAlert>
+        </MudItem>
+    </MudGrid>
+
+@code {
+    /// <summary>
+    /// Fragment reference containing the fragment ID, parameters, and schema.
+    /// </summary>
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #region Local State (for MudBlazor binding - prevents snap-back)
+    
+    private double _localUpscaleBy;
+    private double _localStrength;
+    private MarkupString _resizeInfo = new();
+    
+    // Cached constraints from schema
+    private (ParameterConstraints upscale_by, ParameterConstraints strength) _constraints;
+    
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        
+        // Load constraints from schema
+        _constraints = (
+            Fragment.Schema.GetConstraints("upscale_by"),
+            Fragment.Schema.GetConstraints("strength")
+        );
+        
+        // Sync local state FROM service
+        _localUpscaleBy = ParameterService.GetFragmentProperty(Fragment, "upscale_by", 1.5);
+        _localStrength = ParameterService.GetFragmentProperty(Fragment, "strength", 0.2);
+        
+        RefreshResizeInfo();
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task OnUpscaleByChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "upscale_by", _localUpscaleBy, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "strength", _localStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    #endregion
+    
+    private void RefreshResizeInfo()
+    {
+        var baseWidth = 1568;
+        var baseHeight = 1356;
+        
+        // Try to read base dimensions from primary latent fragment
+        if (ParameterService.PrimaryLatentFragment != null)
+        {
+            var latentW = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "width", 872);
+            var latentH = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "height", 1248);
+            // Approximate pixel space from latent (Z-Image uses ~8x downsampling, but latent dims are already adjusted)
+            baseWidth = latentW;
+            baseHeight = latentH;
+        }
+        
+        var targetW = (int)(baseWidth * _localUpscaleBy);
+        var targetH = (int)(baseHeight * _localUpscaleBy);
+        _resizeInfo = new MarkupString($"From: {baseWidth}x{baseHeight} px &rarr; To: <strong>{targetW}x{targetH} px</strong> ({_localUpscaleBy:F1}x)");
+    }
+}

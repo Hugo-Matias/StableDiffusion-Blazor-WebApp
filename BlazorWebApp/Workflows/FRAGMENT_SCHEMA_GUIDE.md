@@ -2,7 +2,7 @@
 
 This guide documents the C# fragment system used for building ComfyUI workflows. Fragments are strongly-typed C# classes implementing `IFragmentBuilder` that generate reusable groups of ComfyUI nodes.
 
-**Last Updated:** Phase 13 - Final Cleanup (Scriban fully removed)
+**Last Updated:** April 2026 - aligned with the current fluent workflow metadata and UI bridge
 
 ---
 
@@ -71,7 +71,7 @@ This guide documents the C# fragment system used for building ComfyUI workflows.
 | **Metadata Owns Constraints** | Min/max/step live in `FragmentParameter`, not AppSettings                      |
 | **Type-Based Discovery**      | `FragmentType` enum drives UI layout decisions                                 |
 | **Compile-Time Safety**       | All fragment logic is validated at build time                                  |
-| **Hybrid Rendering**          | Designed components for mature fragments, dynamic fields for experimental      |
+| **Hybrid Rendering**          | Designed components are the active fluent UI path; metadata-only dynamic rendering is not wired yet |
 
 ---
 
@@ -101,7 +101,7 @@ Generate.razor.OnWorkflowSelected()
                 +-- Set IsActive = !metadata.DefaultCollapsed
 ```
 
-### 3. Fragment Discovery (Generate.razor)
+### 3. Fragment Discovery (GenerationParameterService)
 
 ```
 DiscoverFragments()
@@ -111,7 +111,10 @@ DiscoverFragments()
             |-- FragmentType.Sampler -> _samplerFragmentId
             |-- FragmentType.Latent -> _latentFragmentId
             |-- FragmentType.Prompts -> _promptsFragmentId
-            +-- FragmentType.Enhancement -> optional fragments
+            |-- FragmentType.Settings -> optional fragments
+            |-- FragmentType.Enhancement -> optional fragments
+            |-- FragmentType.Loader/Input -> latent fallback when width/height are present
+            +-- FragmentType.Unknown/Conditioning/Output -> optional when collapsible or component-backed
 ```
 
 ### 4. Generation (User clicks Generate)
@@ -167,11 +170,11 @@ public class SamplerFragment : IFragmentBuilder
         Order = 50,
         Collapsible = true,
         Parameters = [
-            new() { Id = "sampler_name", Source = "KSampler", InputName = "sampler_name" },
-            new() { Id = "scheduler", Source = "KSampler", InputName = "scheduler" },
-            new() { Id = "steps", Min = 1, Max = 150, Step = 1, DefaultValue = 20 },
-            new() { Id = "cfg", Min = 1, Max = 30, Step = 0.5, DefaultValue = 7.0 },
-            new() { Id = "seed", Min = -1, DefaultValue = -1L }
+            new() { Name = "sampler_name", Type = ParameterType.Select, Source = new DynamicSource("KSampler", "sampler_name") },
+            new() { Name = "scheduler", Type = ParameterType.Select, Source = new DynamicSource("KSampler", "scheduler") },
+            new() { Name = "steps", Type = ParameterType.Slider, Min = 1, Max = 150, Step = 1, DefaultValue = 20 },
+            new() { Name = "cfg", Type = ParameterType.Slider, Min = 1, Max = 30, Step = 0.5, DefaultValue = 7.0 },
+            new() { Name = "seed", Type = ParameterType.Number, Min = -1, DefaultValue = -1L }
         ]
     };
 
@@ -216,7 +219,7 @@ Defined in `Workflows/Models/FragmentMetadata.cs`:
 | `Id`                 | string                                  | **Required** | Unique identifier for parameter storage and UI rendering         |
 | `Type`               | FragmentType                            | **Required** | Fragment classification (see [FragmentType](#fragmenttype-enum)) |
 | `Title`              | string                                  | **Required** | Display title in UI                                              |
-| `Component`          | string?                                 | `null`       | Blazor component name, or null for dynamic field rendering       |
+| `Component`          | string?                                 | `null`       | Blazor component name. For fluent fragments, set this on user-visible fragments; metadata-only dynamic rendering is not implemented yet |
 | `Icon`               | string?                                 | `null`       | FontAwesome icon class                                           |
 | `Order`              | int                                     | `100`        | Display order (lower = higher priority)                          |
 | `Collapsible`        | bool                                    | `true`       | Whether fragment can be collapsed in UI                          |
@@ -241,29 +244,35 @@ Defined in `Workflows/Models/FragmentMetadata.cs`:
 ```csharp
 public enum FragmentType
 {
-    Unknown = 0,
+    Unknown,
     Loader,          // Model loading (typically hidden, no direct UI)
-    Prompts,         // Positive/negative prompts
+    Input,           // Image/video/source inputs that may also surface size controls
     Latent,          // Resolution/latent image settings
-    Sampler,         // KSampler, sampling settings
-    Conditioning,    // CLIP text encode, conditioning
-    Enhancement,     // Upscale, detailer, etc.
-    Output,          // Save, preview nodes
-    Utility          // Helper fragments with no UI
+    Prompts,         // Positive/negative prompts
+    Conditioning,    // CLIP, pose, edit, or other conditioning stages
+    Sampler,         // KSampler and sampler variants
+    Settings,        // Supplemental settings panels surfaced as optional UI fragments
+    Enhancement,     // Upscale, detailer, frame interpolation, etc.
+    Utility,         // Helper fragments with no UI
+    Output           // Decode/save/output stages
 }
 ```
 
-### Discovery in Generate.razor
+### Discovery in GenerationParameterService
 
 ```csharp
 switch (metadata.Type)
 {
+    case FragmentType.Prompts:
+        _promptsFragmentId ??= fragmentId;
+        break;
     case FragmentType.Sampler:
         _samplerFragmentId ??= fragmentId;
         break;
     case FragmentType.Latent:
         _latentFragmentId ??= fragmentId;
         break;
+    case FragmentType.Settings:
     case FragmentType.Enhancement:
         // Renders as optional collapsible section
         break;
@@ -278,16 +287,16 @@ Defined in `Workflows/Models/FragmentParameter.cs`:
 
 | Property       | Type      | Description                                                |
 | -------------- | --------- | ---------------------------------------------------------- |
-| `Id`           | string    | Parameter key (matches key in `FragmentParameters.Values`) |
-| `Label`        | string?   | Display label (defaults to Id if null)                     |
+| `Name`         | string    | Parameter key (matches key in `FragmentParameters.Values`) |
+| `Label`        | string?   | Display label (defaults to Name if null)                   |
+| `Type`         | ParameterType | UI control type for the parameter                     |
 | `DefaultValue` | object?   | Default value for initialization                           |
 | `Min`          | double?   | Minimum value (for numeric inputs)                         |
 | `Max`          | double?   | Maximum value (for numeric inputs)                         |
 | `Step`         | double?   | Step increment (for sliders)                               |
-| `Source`       | string?   | ComfyUI node class_type for dynamic options                |
-| `InputName`    | string?   | Node input field name for dynamic options                  |
-| `Options`      | string[]? | Static option list for select fields                       |
-| `Column`       | int       | Bootstrap column width (default 6)                         |
+| `Source`       | DynamicSource? | Dynamic option source (`NodeType` + `InputName`)     |
+| `Options`      | IEnumerable&lt;string&gt;? | Static option list for select fields    |
+| `Description`  | string?   | Optional help text for the UI                              |
 
 ### Dynamic Source Configuration
 
@@ -296,13 +305,13 @@ For select fields that query ComfyUI node info:
 ```csharp
 new FragmentParameter
 {
-    Id = "sampler_name",
-    Source = "KSampler",
-    InputName = "sampler_name"
+    Name = "sampler_name",
+    Type = ParameterType.Select,
+    Source = new DynamicSource("KSampler", "sampler_name")
 }
 ```
 
-The service calls ComfyUI's `/object_info/{Source}` API and extracts options from `input.required.{InputName}` or `input.optional.{InputName}`.
+The service calls ComfyUI's `/object_info/{Source.NodeType}` API and extracts options from `input.required.{Source.InputName}` or `input.optional.{Source.InputName}`.
 
 ---
 
@@ -347,20 +356,25 @@ The service calls ComfyUI's `/object_info/{Source}` API and extracts options fro
 
 ## Component Registry
 
-Designed components are registered in `ComponentRegistry.cs`:
+Fragment form components are registered through `[FragmentComponent("...")]` discovery in `ComponentRegistry.cs`, with manual registration used only as a fallback when no attributed components are found.
+
+Current attributed components in `Components/Shared/Generation/Fragments/` include:
 
 ```csharp
-private readonly Dictionary<string, Type> _components = new()
-{
-    ["PromptsForm"] = typeof(PromptsForm),
-    ["SamplerForm"] = typeof(SamplerForm),
-    ["LatentForm"] = typeof(LatentForm),
-    ["LoraForm"] = typeof(LoraForm),
-    ["SeedVR2Form"] = typeof(SeedVR2Form),
-    ["DetailerForm"] = typeof(DetailerForm),
-    ["ConditioningVariationForm"] = typeof(ConditioningVariationForm),
-    ["SeedVarianceEnhancerForm"] = typeof(SeedVarianceEnhancerForm),
-};
+ConditioningVariationForm
+DetailerForm
+DoubleSamplerForm
+FrameInterpolationForm
+LatentForm
+LtxSamplerForm
+LtxVideoSettingsForm
+PainterI2VForm
+PromptsForm
+ReferenceLatentSettingsForm
+SamplerForm
+SeedVarianceEnhancerForm
+SeedVR2Form
+UpscaleForm
 ```
 
 ### Component Naming Convention
@@ -368,6 +382,7 @@ private readonly Dictionary<string, Type> _components = new()
 - Match fragment class: `SamplerFragment` -> `SamplerForm`
 - PascalCase with `Form` suffix
 - Located in `Components/Shared/Generation/Fragments/`
+- For fluent workflow fragments, declare `Component` when the fragment should render in the UI
 
 ---
 
@@ -423,6 +438,8 @@ Priority 3: ComfyUI returns ["euler", "euler_ancestral", ...] -> Use "euler"
 
 ## Complete Examples
 
+Current runtime note: fluent fragments with `Component = null` do not automatically render a dynamic form yet. `FragmentRenderer` only renders registered components today, so metadata-only fragments should remain hidden or be paired with a component before being exposed in `GetFragments()`.
+
 ### Example 1: Utility Fragment (No UI)
 
 ```csharp
@@ -476,8 +493,8 @@ public class UpscaleFragment : IFragmentBuilder
         Collapsible = true,
         DefaultCollapsed = true,
         Parameters = [
-            new() { Id = "seedvr2_model", Source = "SeedVR2LoadDiTModel", InputName = "model" },
-            new() { Id = "seedvr2_resolution", Min = 512, Max = 4096, Step = 64, DefaultValue = 2048 }
+            new() { Name = "seedvr2_model", Type = ParameterType.Select, Source = new DynamicSource("SeedVR2LoadDiTModel", "model") },
+            new() { Name = "seedvr2_resolution", Type = ParameterType.Slider, Min = 512, Max = 4096, Step = 64, DefaultValue = 2048 }
         ]
     };
 
@@ -526,7 +543,7 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
     }
 
     public IEnumerable<IFragmentBuilder> GetFragments() =>
-        [_loader, _prompts, _latent, _sampler, _vaeDecode, _save, _upscale];
+        [_prompts, _latent, _sampler, _upscale];
 }
 ```
 
@@ -546,10 +563,11 @@ public class MyNodeFragment : IFragmentBuilder
         Id = "my_node",
         Type = FragmentType.Enhancement,
         Title = "My New Node",
+        Component = "MyNodeForm",
         Collapsible = true,
         DefaultCollapsed = true,
         Parameters = [
-            new() { Id = "strength", Label = "Strength", Min = 0, Max = 1, Step = 0.01, DefaultValue = 0.5, Column = 6 }
+            new() { Name = "strength", Label = "Strength", Type = ParameterType.Slider, Min = 0, Max = 1, Step = 0.01, DefaultValue = 0.5 }
         ]
     };
 
@@ -585,12 +603,12 @@ _myNode.Build(builder, parameters, registry);
 
 // In GetFragments():
 public IEnumerable<IFragmentBuilder> GetFragments() =>
-    [_loader, _sampler, _myNode, _save];
+    [_sampler, _myNode];
 ```
 
 3. **(Optional) Create designed component** if complex UI needed:
    - Create `Components/Shared/Generation/Fragments/MyNodeForm.razor`
-   - Register in `ComponentRegistry.cs`
+    - Add `[FragmentComponent("MyNodeForm")]` so `ComponentRegistry` can auto-discover it
    - Set `Component = "MyNodeForm"` in `FragmentMetadata`
 
 ---
@@ -607,14 +625,14 @@ public class MyFragment : IFragmentBuilder
         Id = "my_fragment",
         Type = FragmentType.Enhancement,
         Title = "Display Title",
-        Component = "ComponentName",    // null for dynamic rendering
+        Component = "ComponentName",    // Set this for user-visible fluent fragments
         Icon = "fa-solid fa-icon",
         Order = 100,
         Collapsible = true,
         DefaultCollapsed = true,
         IsHidden = false,
         Parameters = [
-            new() { Id = "param_name", Min = 0, Max = 100, Step = 1, DefaultValue = 50 }
+            new() { Name = "param_name", Type = ParameterType.Slider, Min = 0, Max = 100, Step = 1, DefaultValue = 50 }
         ],
         InclusionCondition = p => p.GetFragment("my_fragment")?.IsActive == true
     };
@@ -633,13 +651,15 @@ public class MyFragment : IFragmentBuilder
 | Type           | Use For                                    |
 | -------------- | ------------------------------------------ |
 | `Loader`       | Model loading fragments (typically hidden) |
+| `Input`        | Source/image/video input fragments         |
 | `Prompts`      | Prompt encoding                            |
 | `Latent`       | Resolution/latent settings                 |
 | `Sampler`      | Sampling settings                          |
 | `Conditioning` | CLIP/conditioning                          |
+| `Settings`     | Supplemental settings panels               |
 | `Enhancement`  | Upscale/detailer/optional features         |
-| `Output`       | Save/preview nodes                         |
 | `Utility`      | Helper fragments, no UI                    |
+| `Output`       | Decode/save/output nodes                   |
 
 ### Type-Safe Output Types
 

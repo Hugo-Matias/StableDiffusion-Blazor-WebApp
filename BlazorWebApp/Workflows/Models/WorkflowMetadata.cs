@@ -207,7 +207,9 @@ public enum AssetType
     Vae,
     Clip,
     ClipVision,
-    Lora
+    Lora,
+    ControlNet,
+    UpscaleModel
 }
 
 /// <summary>

@@ -2,6 +2,8 @@
 
 This document provides comprehensive documentation for creating and converting ComfyUI workflows into the modular C# fluent builder system.
 
+For workflow-specific UI integration standards, component reuse rules, and field-to-control mappings, also read `WORKFLOW_UI_CONVERSION_GUIDE.md` and `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md`.
+
 ---
 
 ## Table of Contents
@@ -263,8 +265,10 @@ Fragments/
   Core/           # Shared across all bases (Sampler, Prompts, Save, etc.)
   Enhancements/   # Optional features (Detailer, Upscale, LoRA, etc.)
   Loaders/        # Model loading with prompts
-  Flux/           # Flux-specific fragments
-  Wan/            # Wan-specific fragments
+    flux/           # Flux-specific fragments
+    ltx/            # LTX-specific fragments
+    qwen/           # Qwen-specific fragments
+    wan/            # Wan-specific fragments
 ```
 
 ### Required Interface
@@ -286,7 +290,7 @@ public FragmentMetadata Metadata => new()
     Id = "main_sampler",
     Type = FragmentType.Sampler,
     Title = "Sampler",
-    Component = "SamplerForm",      // Blazor component for UI
+    Component = "SamplerForm",      // Required today for user-visible fluent fragments
     Icon = "fa-solid fa-dice",
     Order = 50,
     Collapsible = true,
@@ -294,6 +298,10 @@ public FragmentMetadata Metadata => new()
     Parameters = [ ... ]
 };
 ```
+
+For the current fluent workflow runtime, user-visible fragments should declare a registered
+`Component`. `FragmentMetadata.Parameters` are bridged into schema constraints, but metadata-only
+dynamic field rendering is not implemented in `FragmentRenderer` yet.
 
 ### Fragment Parameters (UI Definition)
 
@@ -331,19 +339,25 @@ Parameters can fetch their options dynamically from ComfyUI:
 
 ### Dual Build Pattern
 
-Fragments support two build methods:
+Fragments always implement the interface build method, and many also expose fragment-specific
+overloads or helpers for clearer workflow composition.
 
 1. **From GenerationParameters** (interface method) - reads from fragment state dictionary
-2. **From explicit Parameters** (overload) - direct construction by workflow
+2. **From explicit `Parameters`** (common overload) - direct construction by workflow
+3. **Fragment-specific helpers** (when needed) - for example indexed overloads or `BuildAll()`
 
 ```csharp
 // Interface method - used when fragment reads its own state
 public void Build(ComfyWorkflowBuilder builder, GenerationParameters parameters,
                   NodeRegistry registry, string scope = "", string scopeTitle = "")
 
-// Explicit parameters - preferred in workflows for clarity
+// Explicit parameters - common when the workflow builds the fragment directly
 public void Build(ComfyWorkflowBuilder builder, NodeRegistry registry,
                   Parameters fragmentParams, string scope = "")
+
+// Helper method - used by fragments that expand multiple nodes from a collection
+public void BuildAll(ComfyWorkflowBuilder builder, NodeRegistry registry,
+                     IList<Lora>? loras, string scope = "")
 ```
 
 ### Fragment Types
@@ -376,11 +390,11 @@ var modelRef = registry.GetRef($"{scope}model_output");
 
 ### Standard Scopes
 
-| Scope               | Usage                                              |
-| ------------------- | -------------------------------------------------- |
-| `""` (empty)        | Main generation pipeline                           |
-| `"detailer_"`       | Detailer pass 0 (legacy / single-pass default)     |
-| `"detailer_{i}_"`   | Chained detailer pass `i >= 1` (head/hands/etc.)   |
+| Scope             | Usage                                            |
+| ----------------- | ------------------------------------------------ |
+| `""` (empty)      | Main generation pipeline                         |
+| `"detailer_"`     | Detailer pass 0 (legacy / single-pass default)   |
+| `"detailer_{i}_"` | Chained detailer pass `i >= 1` (head/hands/etc.) |
 
 Pass 0 intentionally uses the unindexed `"detailer_"` scope to preserve back-compat with
 saved parameter snapshots from the single-pass era.
@@ -395,16 +409,16 @@ The Detailer block is **chainable**: a workflow can run N passes in sequence (e.
 
 Per-pass parameter storage on the `detailer` fragment:
 
-| Key prefix    | Applies to |
-| ------------- | ---------- |
-| (none)        | Pass 0 - keys like `detailer_prompt`, `detailer_seed`, ... (legacy) |
-| `pass_{i}_`   | Pass `i >= 1` - keys like `pass_1_detailer_prompt`, `pass_1_detailer_seed`, ... |
+| Key prefix  | Applies to                                                                      |
+| ----------- | ------------------------------------------------------------------------------- |
+| (none)      | Pass 0 - keys like `detailer_prompt`, `detailer_seed`, ... (legacy)             |
+| `pass_{i}_` | Pass `i >= 1` - keys like `pass_1_detailer_prompt`, `pass_1_detailer_seed`, ... |
 
 Additional top-level detailer key:
 
-| Key            | Meaning                                                         |
-| -------------- | --------------------------------------------------------------- |
-| `pass_count`   | Number of chained detailer passes. Default `1` when absent.     |
+| Key          | Meaning                                                     |
+| ------------ | ----------------------------------------------------------- |
+| `pass_count` | Number of chained detailer passes. Default `1` when absent. |
 
 ### Detailer Prompt Fallback
 
@@ -630,7 +644,7 @@ When implementing a workflow, some values are hardcoded (not relevant to the end
 
 This section provides a step-by-step guide for converting raw ComfyUI workflow JSON files into the fluent builder system.
 
-> **Agent-driven workflow:** Use the `.github/prompts/workflow-conversion.prompt.md` prompt in Copilot Chat to run the conversion as a guided, multi-phase agent session. The agent follows the exact steps below, presents a plan for user approval before writing any code, and confirms the build at the end.
+> **Agent-driven workflow:** Use the `.github/prompts/workflow-conversion.prompt.md` prompt in Copilot Chat to run the conversion as a guided, multi-phase agent session. The agent follows the exact steps below, plans the workflow and its UI integration together, presents that plan for user approval before writing any code, and confirms build plus UI integration risks at the end.
 
 ### Conversion Process
 
@@ -690,7 +704,23 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
    - Which enhancements to include
    - Whether the detailer should share the main model or use a separate model asset
 
-6. **Hardcoded vs UI-Exposed Values**
+6. **UI Component Review**
+
+   Review every UI-visible fragment before the main plan is approved:
+   - Determine whether an existing form component can be reused unchanged
+   - Determine whether a new form component must be created
+   - Validate that the proposed UI follows `WORKFLOW_UI_CONVERSION_GUIDE.md`
+   - Validate that the visual approach follows `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md`
+   - Document the field-to-control mapping for each exposed parameter
+
+   Present a table for user validation:
+
+   | Fragment          | Parameters exposed                   | Component decision | Status | Notes                                    |
+   | ----------------- | ------------------------------------ | ------------------ | ------ | ---------------------------------------- |
+   | `main_sampler`    | sampler, scheduler, steps, cfg, seed | `SamplerForm`      | Reuse  | Matches existing sampler UX              |
+   | `controlnet_tile` | strength                             | `ControlNetForm`   | New    | No existing single-field controlnet form |
+
+7. **Hardcoded vs UI-Exposed Values**
 
    Present a table for user validation before proceeding:
 
@@ -707,23 +737,29 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
 
    Use this table as a template; fill in values from the actual workflow JSON.
 
-7. **Default Values**
+8. **Default Values**
    - Use values from the raw JSON as sensible defaults
    - CFG, steps, sampler, scheduler should match the model's recommended settings
 
-> **Validation gate:** Do NOT proceed to implementation until the user explicitly approves the full plan, including the enhancement selection and the UI-exposed vs hardcoded table.
+> **Validation gate:** Do NOT proceed to implementation until the user explicitly approves the full plan, including the enhancement selection, UI component decisions, field mappings, and the UI-exposed vs hardcoded table.
 
 #### Step 3: Implementation
 
 1. **Add ModelBase enum value** (if new base) in `Data/Enums.cs`
 2. **Create any new fragment classes** in the appropriate `Workflows/Fragments/` subdirectory
-3. **Create the workflow class** in `Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
-4. **Build and verify compilation**
+3. **Create or update fragment form components** in `Components/Shared/Generation/Fragments/` when the plan requires UI work
+   - Follow `WORKFLOW_UI_CONVERSION_GUIDE.md`
+   - Use `[FragmentComponent("...")]` for auto-discovery
+   - Follow the app's UI design language instead of copying legacy form quirks blindly
+4. **Create the workflow class** in `Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
+5. **Build and verify compilation**
 
 #### Step 4: Verification
 
 - Build compiles without errors
 - Workflow appears in UI with correct metadata
+- Every UI-visible fragment resolves to the intended component
+- New or reused form components match the current design language and field mapping plan
 - Assets populate correctly
 - Generation produces valid ComfyUI JSON
 - ComfyUI executes the workflow successfully
