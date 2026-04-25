@@ -138,7 +138,25 @@ Wait for explicit user approval. Incorporate any requested changes and re-confir
 
 ---
 
-## Phase 4: Implementation
+## Phase 4: Plan Artifact Output
+
+After the user approves the plan, but before integrating the workflow into the C# system, create these files under `Documentation/Plans/Workflows/{workflow-name}/`:
+
+1. `plan.md` - A conversion plan document capturing the approved analysis, fragment mapping, UI exposure decisions, enhancements, enum decision, compatible base models, and defaults summary
+2. `workflow.json` - The input JSON file from ComfyUI used for this conversion
+
+Requirements:
+
+- Derive `{workflow-name}` from the workflow being converted using a filesystem-safe folder name
+- Create the directory if it does not exist
+- Write `plan.md` before any code integration work begins
+- Rename and move the input JSON instead of recreating it
+- Mention `workflow.json` in the plan as the baseline guide for field values, node names, etc.
+- User must approve proceeding with Phase 5
+
+---
+
+## Phase 5: Implementation
 
 After the user approves, implement in this order:
 
@@ -156,7 +174,7 @@ After the user approves, implement in this order:
 
 ---
 
-## Phase 5: Verification
+## Phase 6: Verification
 
 After the build:
 
@@ -164,6 +182,7 @@ After the build:
 2. Fix any errors before concluding
 3. Summarize what was created:
    - New files created (with paths)
+   - Plan artifacts created under `Documentation/Plans/Workflows/{workflow-name}/`
    - Existing files modified
    - Enum values added
 
