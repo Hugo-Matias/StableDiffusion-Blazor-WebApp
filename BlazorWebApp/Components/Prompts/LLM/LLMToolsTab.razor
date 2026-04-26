@@ -14,7 +14,7 @@
             <LLMNavMenu ActiveViewId="@_activeViewId" OnViewSelected="HandleViewSelected" />
             <MudDivider Style="margin: 2px 0;" />
             <div style="flex: 1; min-height: 0; overflow-y: auto;">
-                <LLMSettingsPanel @bind-SelectedModel="_selectedModel" />
+                <LLMSettingsPanel SelectedModel="@_selectedModel" SelectedModelChanged="HandleSelectedModelChanged" />
             </div>
         </div>
     </Sidebar>
@@ -44,6 +44,9 @@
                     break;
                 case "inspiration":
                     <InspirationView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
+                    break;
+                case "scene-builder":
+                    <SceneBuilderView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
                     break;
             }
         </div>
@@ -97,6 +100,7 @@
         var llm = State.State.Prompts.LLM;
         _activeViewId = string.IsNullOrWhiteSpace(llm.ActiveViewId) ? "process" : llm.ActiveViewId;
         _isNavCollapsed = llm.IsNavCollapsed;
+        _selectedModel = llm.SelectedModel;
 
         await LoadTemplates();
     }
@@ -143,6 +147,13 @@
     {
         await LoadTemplates();
         StateHasChanged();
+    }
+
+    private async Task HandleSelectedModelChanged(string model)
+    {
+        _selectedModel = model;
+        State.State.Prompts.LLM.SelectedModel = model;
+        await State.SaveState();
     }
 
     private void HandleHistoryAdded(PromptHistoryEntry entry)

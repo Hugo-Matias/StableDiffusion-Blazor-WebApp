@@ -314,11 +314,23 @@ namespace BlazorWebApp.Models
 
     public class AppStatePromptsLLM
     {
+        public string SelectedModel { get; set; } = string.Empty;
         public string ActiveViewId { get; set; } = "process";
         public bool IsNavCollapsed { get; set; } = false;
         public AppStatePromptsLLMTagBuilder TagBuilder { get; set; } = new();
         public AppStatePromptsLLMMixer Mixer { get; set; } = new();
         public AppStatePromptsLLMInspiration Inspiration { get; set; } = new();
+        public AppStatePromptsLLMSceneBuilder SceneBuilder { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLMSceneBuilder
+    {
+        public string Subject { get; set; } = string.Empty;
+        public string Environment { get; set; } = string.Empty;
+        public string Lighting { get; set; } = string.Empty;
+        public string Mood { get; set; } = string.Empty;
+        public string Style { get; set; } = string.Empty;
+        public string? LastAssembled { get; set; }
     }
 
     public class AppStatePromptsLLMInspiration

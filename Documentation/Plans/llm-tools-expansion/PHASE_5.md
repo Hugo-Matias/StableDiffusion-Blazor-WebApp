@@ -3,8 +3,8 @@
 ## Status
 
 **Phase:** 5
-**Build Status:** Not yet attempted
-**Phase Status:** [ ] Not Started
+**Build Status:** Passed - 0 errors
+**Phase Status:** [x] Complete (Step 6 deferred to Phase 10)
 
 ---
 
@@ -53,7 +53,7 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 ### Step 1: `AppState.Prompts.LLM.SceneBuilder` sub-state + nav
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -83,7 +83,7 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 ### Step 2: Deterministic assembly + view skeleton
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -131,7 +131,7 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 ### Step 3: Refine with LLM
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -170,7 +170,7 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 ### Step 4: Convert to Danbooru Tags (Phase 2 integration)
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -211,7 +211,7 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 ### Step 5: Save as Style + Send to Process
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -251,7 +251,7 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 ### Step 6: Info content
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [!] Deferred to Phase 10 (Polish & Settings)
 
 #### Tasks
 
@@ -270,12 +270,12 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 
 | Step | Status | Complexity | Notes                                  |
 | ---- | ------ | ---------- | -------------------------------------- |
-| 1    | [ ]    | 1          | AppState sub-state + nav               |
-| 2    | [ ]    | 2          | View skeleton + deterministic assembly |
-| 3    | [ ]    | 1          | Refine with LLM                        |
-| 4    | [ ]    | 1          | Convert to Danbooru Tags (Phase 2)     |
-| 5    | [ ]    | 1          | Save as Style + Send to Process        |
-| 6    | [ ]    | 1          | Info content                           |
+| 1    | [x]    | 1          | AppState sub-state + nav               |
+| 2    | [x]    | 2          | View skeleton + deterministic assembly |
+| 3    | [x]    | 1          | Refine with LLM                        |
+| 4    | [x]    | 1          | Convert to Danbooru Tags (Phase 2)     |
+| 5    | [x]    | 1          | Save as Style + Send to Process        |
+| 6    | [!]    | 1          | Deferred to Phase 10                   |
 
 **Total:** 7 points (original plan estimate: 5).
 
@@ -283,7 +283,7 @@ Empty fields are omitted along with their adjacent comma. Rationale for this ord
 
 ## Issues & Resolutions
 
-_None yet._
+- **TagPromptService constructor signature**: `TagBuilderRequest` is a positional record (not object initializer). Fixed by using named positional args. Service injected via `@inject TagPromptService TagService` following the same pattern as TagBuilderView.
 
 ---
 
@@ -309,4 +309,4 @@ _None yet._
 
 ## Phase Summary
 
-_To be filled in on completion._
+Phase 5 implemented the Scene Builder — a structured-form prompt assembler with 5 fields (Subject, Environment, Lighting, Mood, Style). Assembly is deterministic C# joining non-empty fields as: `{Subject}, {Style}, {Environment}, {Lighting}, {Mood}`. Optional "Refine with LLM" uses the `Enhance` template. "Convert to Danbooru Tags" routes through TagPromptService. Save-as-Style writes tagged entries (`style:`, `env:`, `mood:`) to the Prompt library. Step 6 (info content) deferred to Phase 10.

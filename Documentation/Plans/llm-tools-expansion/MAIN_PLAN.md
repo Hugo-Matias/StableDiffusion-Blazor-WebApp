@@ -232,7 +232,7 @@ This keeps the LLM context small, guarantees every output tag exists in the voca
 
 **Objective:** Structured-form prompt assembly.
 **Complexity:** 5 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete - see `PHASE_5.md` (Step 6 deferred to Phase 10)
 
 #### Steps
 
@@ -462,7 +462,7 @@ Recorded here for future planning. When picked up, use this plan as reference co
 | 2   | Danbooru Tag Builder          | 13 (act:23) | 1                                  | [x]    |
 | 3   | Prompt Mixer                  | 3           | 1                                  | [x]    |
 | 4   | Random Inspiration + Roulette | 8           | 1                                  | [x]    |
-| 5   | Scene Builder                 | 5           | 1, (optional 2)                    | [ ]    |
+| 5   | Scene Builder                 | 8           | 1, (optional 2)                    | [x]    |
 | 6   | Template Engine               | 5           | 1                                  | [ ]    |
 | 7   | Prompt Remixer                | 3           | 1                                  | [ ]    |
 | 8   | Workshop                      | 13          | 1, (send-to-Workshop hooks in 2-7) | [ ]    |
