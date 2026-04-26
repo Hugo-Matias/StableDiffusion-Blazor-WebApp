@@ -38,6 +38,12 @@
                 @Sidebar
             </div>
         }
+        else if (CollapsedSidebar is not null)
+        {
+            <div class="app-sidebar-rail-content">
+                @CollapsedSidebar
+            </div>
+        }
         else if (!string.IsNullOrWhiteSpace(SidebarTitle))
         {
             <div class="app-sidebar-rail-title">@SidebarTitle</div>
@@ -51,6 +57,7 @@
 @code {
     [Parameter] public RenderFragment? Sidebar { get; set; }
     [Parameter] public RenderFragment? Content { get; set; }
+    [Parameter] public RenderFragment? CollapsedSidebar { get; set; }
 
     /// <summary>Enables the collapsible rail behavior. Off by default.</summary>
     [Parameter] public bool Collapsible { get; set; }

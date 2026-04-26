@@ -62,16 +62,16 @@ global spacing tokens declared in `BlazorWebApp/wwwroot/site.css` (`:root`).
 
 ### Spacing tokens (single source of truth)
 
-| Token | Purpose |
-|---|---|
-| `--app-gutter-outer` | Gap between the page and the window / navbar edges |
-| `--app-gutter-inner` | Gap between shell elements (tabs <-> panels, sidebar <-> content, topbar <-> content) |
-| `--app-sidebar-width` | Sidebar width as a percentage of the shell |
-| `--app-sidebar-min` / `--app-sidebar-max` | Clamp for the sidebar width |
-| `--app-sidebar-rail-width` | Width of a collapsed sidebar rail (always keeps an expand affordance visible) |
-| `--app-shell-max-width` | Page max-width clamp; prevents ultra-wide stretching |
-| `--app-surface-radius` | Shared corner radius for sidebar / topbar / content surfaces |
-| `--app-surface-padding` | Internal padding of sidebar / topbar / content surfaces; children render flush inside this |
+| Token                                     | Purpose                                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `--app-gutter-outer`                      | Gap between the page and the window / navbar edges                                         |
+| `--app-gutter-inner`                      | Gap between shell elements (tabs <-> panels, sidebar <-> content, topbar <-> content)      |
+| `--app-sidebar-width`                     | Sidebar width as a percentage of the shell                                                 |
+| `--app-sidebar-min` / `--app-sidebar-max` | Clamp for the sidebar width                                                                |
+| `--app-sidebar-rail-width`                | Width of a collapsed sidebar rail (always keeps an expand affordance visible)              |
+| `--app-shell-max-width`                   | Page max-width clamp; prevents ultra-wide stretching                                       |
+| `--app-surface-radius`                    | Shared corner radius for sidebar / topbar / content surfaces                               |
+| `--app-surface-padding`                   | Internal padding of sidebar / topbar / content surfaces; children render flush inside this |
 
 **Never hard-code spacing on a tabbed page** (`px-5`, `pa-4`, etc. on the shell or top-level
 panel paper). If a gap needs tuning, tune the token.
@@ -126,17 +126,19 @@ explicit visual emphasis, not structural padding.
 Exactly three layout variants are allowed inside a tab panel. Any new variant must be
 discussed and documented here.
 
-| Variant | When to use | Structure |
-|---|---|---|
-| **Two-column** | Settings / search / browse tree on the left, main content on the right. Default for data-heavy pages. | `[Sidebar] [Content]` horizontal split, gap = `--app-gutter-inner` |
-| **Topbar** | Small, infrequently-changed filter/search cluster above a single large content surface (e.g. gallery). | `[Topbar card]` stacked above `[Content card]`, gap = `--app-gutter-inner` |
-| **Content-only** | Self-contained page (e.g. Scheduler Runs). | `[Content]` filling the shell, gutters still driven by tokens |
+| Variant          | When to use                                                                                            | Structure                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| **Two-column**   | Settings / search / browse tree on the left, main content on the right. Default for data-heavy pages.  | `[Sidebar] [Content]` horizontal split, gap = `--app-gutter-inner`         |
+| **Topbar**       | Small, infrequently-changed filter/search cluster above a single large content surface (e.g. gallery). | `[Topbar card]` stacked above `[Content card]`, gap = `--app-gutter-inner` |
+| **Content-only** | Self-contained page (e.g. Scheduler Runs).                                                             | `[Content]` filling the shell, gutters still driven by tokens              |
 
 ### Collapsible sidebar (Two-column only)
 
 - Reserved for pages where the main content benefits from added width once the sidebar
-  is "configured once" (galleries, grids). Current scope: **Resources**, **CivitAI**.
-- Do **not** make Prompts sidebar collapsible - it is used too frequently.
+  is "configured once" (galleries, grids). Current scope: **Resources**, **CivitAI**,
+  and the **Prompts > LLM Tools** nav rail.
+- Do **not** make the main Prompts preset-editing sidebar collapsible. The LLM Tools tab is
+  the exception because its rail keeps view navigation available while hiding model settings.
 - Collapses to a **rail** (`--app-sidebar-rail-width`), never to `0`, so users always
   have a visible expand affordance (chevron).
 - Collapsed state is persisted per page via `IStateService` (parity with `ActiveTabIndex`).
@@ -158,12 +160,12 @@ discussed and documented here.
 
 Located in `BlazorWebApp/Components/Layouts/`.
 
-| Component | Slots | When to use |
-|---|---|---|
-| `TabbedPageShell` | `ChildContent` (MudTabPanels) | Any page with 2+ top-level tabs. Wraps `MudTabs` with the standard elevation / gutters / shell clamp. Forward `@bind-ActivePanelIndex` or the `ActivePanelIndex` + `ActivePanelIndexChanged` pair for route-driven tabs. |
-| `TwoColumnLayout` | `Sidebar`, `Content` | Page has a persistent filter/nav column beside the main content. Supports `Collapsible="true"` + `@bind-Collapsed` to reduce the sidebar to a rail. |
-| `TopbarLayout` | `Topbar`, `Content` | Page has a full-width toolbar (filters / selectors / search) above results, no left column needed. |
-| `ContentOnlyLayout` | `ChildContent` | Page is a single column with no sidebar/topbar. Exists so every tab still renders inside a standardized surface. |
+| Component           | Slots                                    | When to use                                                                                                                                                                                                              |
+| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `TabbedPageShell`   | `ChildContent` (MudTabPanels)            | Any page with 2+ top-level tabs. Wraps `MudTabs` with the standard elevation / gutters / shell clamp. Forward `@bind-ActivePanelIndex` or the `ActivePanelIndex` + `ActivePanelIndexChanged` pair for route-driven tabs. |
+| `TwoColumnLayout`   | `Sidebar`, `CollapsedSidebar`, `Content` | Page has a persistent filter/nav column beside the main content. Supports `Collapsible="true"` + `@bind-Collapsed` to reduce the sidebar to a rail, with optional custom rail content such as icon-only nav.             |
+| `TopbarLayout`      | `Topbar`, `Content`                      | Page has a full-width toolbar (filters / selectors / search) above results, no left column needed.                                                                                                                       |
+| `ContentOnlyLayout` | `ChildContent`                           | Page is a single column with no sidebar/topbar. Exists so every tab still renders inside a standardized surface.                                                                                                         |
 
 Every slot in these components is a `MudPaper` at `LayoutDefaults.SurfaceElevation` with `--app-surface-radius` and `--app-surface-padding`. Child content is expected to render **flush** (no root `MudPaper` / `pa-*`) - see the anti-patterns above.
 
@@ -172,11 +174,11 @@ Every slot in these components is a `MudPaper` at `LayoutDefaults.SurfaceElevati
 When the content column renders a long card grid or table and the pagination / header should stay visible, wrap the scrollable region in a container with a viewport-relative max-height:
 
 ```css
-.<page>-scroll-container {
-    max-height: calc(100vh - var(--<page>-scroll-offset, 280px));
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 4px;
+.<page > -scroll-container {
+  max-height: calc(100vh - var(--<page>-scroll-offset, 280px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
 }
 ```
 

@@ -8,38 +8,33 @@
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
 
-<TwoColumnLayout>
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="_isNavCollapsed" SidebarTitle="LLM">
     <Sidebar>
-        <div class="d-flex flex-column" style="height: calc(100vh - 200px); gap: 8px;">
-            <LLMNavMenu ActiveViewId="@_activeViewId"
-                        IsCollapsed="@_isNavCollapsed"
-                        OnViewSelected="HandleViewSelected"
-                        OnCollapsedChanged="HandleCollapsedChanged" />
-            <MudDivider />
+        <div class="d-flex flex-column" style="height: calc(100vh - 200px); gap: 4px;">
+            <LLMNavMenu ActiveViewId="@_activeViewId" OnViewSelected="HandleViewSelected" />
+            <MudDivider Style="margin: 2px 0;" />
             <div style="flex: 1; min-height: 0; overflow-y: auto;">
                 <LLMSettingsPanel @bind-SelectedModel="_selectedModel" />
             </div>
         </div>
     </Sidebar>
+    <CollapsedSidebar>
+        <LLMNavMenu ActiveViewId="@_activeViewId" IsCollapsed="true" OnViewSelected="HandleViewSelected" />
+    </CollapsedSidebar>
     <Content>
         <div class="llm-main-panel" style="height: calc(100vh - 200px); overflow-y: auto;">
             @switch (_activeViewId)
             {
                 case "process":
-                    <ProcessView SelectedModel="@_selectedModel"
-                                 Templates="@_templates"
-                                 TemplatesVersion="@_templatesVersion"
-                                 PendingRestore="@_pendingRestore"
-                                 RestoreVersion="@_restoreVersion"
-                                 OnHistoryAdded="HandleHistoryAdded"
+                    <ProcessView SelectedModel="@_selectedModel" Templates="@_templates" TemplatesVersion="@_templatesVersion"
+                                 PendingRestore="@_pendingRestore" RestoreVersion="@_restoreVersion" OnHistoryAdded="HandleHistoryAdded"
                                  OnHistoryMutated="HandleHistoryMutated" />
                     break;
                 case "system-prompts":
                     <SystemPromptsView OnTemplatesChanged="HandleSystemPromptTemplatesChanged" />
                     break;
                 case "history":
-                    <HistoryView RefreshVersion="@_historyVersion"
-                                 OnRestore="HandleHistoryRestore" />
+                    <HistoryView RefreshVersion="@_historyVersion" OnRestore="HandleHistoryRestore" />
                     break;
             }
         </div>
@@ -126,12 +121,13 @@
         StateHasChanged();
     }
 
-    private async Task HandleCollapsedChanged(bool collapsed)
+    protected override async Task OnParametersSetAsync()
     {
-        _isNavCollapsed = collapsed;
-        State.State.Prompts.LLM.IsNavCollapsed = collapsed;
-        await State.SaveState();
-        StateHasChanged();
+        if (State.State.Prompts.LLM.IsNavCollapsed != _isNavCollapsed)
+        {
+            State.State.Prompts.LLM.IsNavCollapsed = _isNavCollapsed;
+            await State.SaveState();
+        }
     }
 
     private async Task HandleSystemPromptTemplatesChanged()

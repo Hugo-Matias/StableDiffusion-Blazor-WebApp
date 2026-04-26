@@ -1,23 +1,14 @@
 @* Sidebar navigation for LLM Tools views. Supports expanded (icon + label) and collapsed (icon-only) modes. *@
 
-<div class="llm-nav-menu" style="@($"width: {(IsCollapsed ? "56px" : "100%")}; transition: width 0.2s; overflow: hidden; flex-shrink: 0;")">
-    <div class="d-flex align-center" style="@($"justify-content: {(IsCollapsed ? "center" : "flex-end")}; padding: 4px;")">
-        <MudTooltip Text="@(IsCollapsed ? "Expand" : "Collapse")" Placement="Placement.Right">
-            <MudIconButton Icon="@(IsCollapsed ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ChevronLeft)"
-                           Size="Size.Small"
-                           OnClick="ToggleCollapsed" />
-        </MudTooltip>
-    </div>
-
-    <MudNavMenu Dense Rounded>
+<div class="llm-nav-menu"
+     style="@($"width: {(IsCollapsed ? "56px" : "100%")}; transition: width 0.2s; overflow: hidden; flex-shrink: 0;")">
+    <MudNavMenu Rounded>
         @foreach (var item in Items)
         {
             @if (IsCollapsed)
             {
                 <MudTooltip Text="@item.Label" Placement="Placement.Right">
-                    <MudNavLink Icon="@item.Icon"
-                                Match="NavLinkMatch.All"
-                                OnClick="@(() => HandleSelect(item.Id))"
+                    <MudNavLink Icon="@item.Icon" Match="NavLinkMatch.All" OnClick="@(() => HandleSelect(item.Id))"
                                 Class="@(item.Id == ActiveViewId ? "mud-nav-link-active mud-nav-link-active-filled" : string.Empty)"
                                 Style="justify-content: center;">
                         @* Icon-only: no label content *@
@@ -26,9 +17,7 @@
             }
             else
             {
-                <MudNavLink Icon="@item.Icon"
-                            Match="NavLinkMatch.All"
-                            OnClick="@(() => HandleSelect(item.Id))"
+                <MudNavLink Icon="@item.Icon" Match="NavLinkMatch.All" OnClick="@(() => HandleSelect(item.Id))"
                             Class="@(item.Id == ActiveViewId ? "mud-nav-link-active mud-nav-link-active-filled" : string.Empty)">
                     @item.Label
                 </MudNavLink>
@@ -41,7 +30,6 @@
     [Parameter] public string ActiveViewId { get; set; } = "process";
     [Parameter] public bool IsCollapsed { get; set; }
     [Parameter] public EventCallback<string> OnViewSelected { get; set; }
-    [Parameter] public EventCallback<bool> OnCollapsedChanged { get; set; }
 
     public record NavItem(string Id, string Label, string Icon);
 
@@ -57,11 +45,5 @@
         if (id == ActiveViewId) return;
         if (OnViewSelected.HasDelegate)
             await OnViewSelected.InvokeAsync(id);
-    }
-
-    private async Task ToggleCollapsed()
-    {
-        if (OnCollapsedChanged.HasDelegate)
-            await OnCollapsedChanged.InvokeAsync(!IsCollapsed);
     }
 }

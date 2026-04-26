@@ -8,68 +8,81 @@
    this padding and should NOT add their own pa-* classes or elevations. */
 
 .app-two-column {
-    display: grid;
-    grid-template-columns: clamp(var(--app-sidebar-min), var(--app-sidebar-width), var(--app-sidebar-max)) 1fr;
-    gap: var(--app-gutter-inner);
-    width: 100%;
-    align-items: stretch;
-    transition: grid-template-columns 0.2s ease;
+  display: grid;
+  grid-template-columns: clamp(
+      var(--app-sidebar-min),
+      var(--app-sidebar-width),
+      var(--app-sidebar-max)
+    ) 1fr;
+  gap: var(--app-gutter-inner);
+  width: 100%;
+  align-items: stretch;
+  transition: grid-template-columns 0.2s ease;
 }
 
 .app-two-column.collapsed {
-    grid-template-columns: var(--app-sidebar-rail-width) 1fr;
+  grid-template-columns: var(--app-sidebar-rail-width) 1fr;
 }
 
 /* MudPaper surfaces - scoped rules via ::deep because MudBlazor components
    do not always forward the b-* scope attribute to their rendered root. */
 .app-two-column ::deep .app-sidebar-surface,
 .app-two-column ::deep .app-content-surface {
-    border-radius: var(--app-surface-radius) !important;
-    padding: var(--app-surface-padding);
-    min-height: 0;
-    min-width: 0; /* prevent grid children from overflowing their column */
+  border-radius: var(--app-surface-radius) !important;
+  padding: var(--app-surface-padding);
+  min-height: 0;
+  min-width: 0; /* prevent grid children from overflowing their column */
 }
 
 .app-two-column ::deep .app-sidebar-surface {
-    position: relative;
+  position: relative;
 }
 
 /* Rail mode: collapse internal padding so the toggle centers in the narrow
    column and nothing else shows. */
 .app-two-column.collapsed ::deep .app-sidebar-surface {
-    padding: 4px 0;
-    overflow: hidden;
+  padding: 4px 0;
+  overflow: hidden;
 }
 
 /* Toggle button sits at the top-right corner when expanded, centered when collapsed. */
 .app-two-column ::deep .app-sidebar-toggle {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    z-index: 2;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
 }
 
 .app-two-column.collapsed ::deep .app-sidebar-toggle {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
 }
 
 .app-two-column ::deep .app-sidebar-body {
-    height: 100%;
+  height: 100%;
+}
+
+.app-two-column ::deep .app-sidebar-rail-content {
+  margin-top: 40px;
+  height: calc(100% - 40px);
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Vertical label shown in the rail when collapsed. */
 .app-two-column ::deep .app-sidebar-rail-title {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    text-align: center;
-    margin: 40px auto 0;
-    padding: 4px 0;
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--mud-palette-text-secondary);
-    user-select: none;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  margin: 40px auto 0;
+  padding: 4px 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  user-select: none;
 }
