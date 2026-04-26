@@ -1,0 +1,285 @@
+@* Random Inspiration: Inspire Me (LLM-driven) and Roulette (wildcard spin) *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@inject OllamaService OllamaService
+@inject IDatabaseService DB
+@inject IStateService State
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject IWildcardService WildcardService
+
+<MudStack Spacing="4">
+    @* Header *@
+    <MudText Typo="Typo.h5">Random Inspiration</MudText>
+
+    @* Mode Toggle *@
+    <MudToggleGroup @bind-Selected="_mode" T="string" Class="mb-2">
+        <Item Value="inspire" Label="Inspire Me" />
+        <Item Value="roulette" Label="Roulette" />
+    </MudToggleGroup>
+
+    @if (_mode == "inspire")
+    {
+        @* Inspire Me Panel *@
+        <MudCard Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudSelect @bind-Value="_genre" Label="Genre" Searchable="true" Clearable="true" Strict="false">
+                    <MudSelectItem Text="Fantasy" Value="@_genres[0]" />
+                    <MudSelectItem Text="Sci-Fi" Value="@_genres[1]" />
+                    <MudSelectItem Text="Horror" Value="@_genres[2]" />
+                    <MudSelectItem Text="Slice of Life" Value="@_genres[3]" />
+                    <MudSelectItem Text="Cyberpunk" Value="@_genres[4]" />
+                    <MudSelectItem Text="Historical" Value="@_genres[5]" />
+                </MudSelect>
+
+                <MudSelect @bind-Value="_mood" Label="Mood" Searchable="true" Clearable="true" Strict="false">
+                    <MudSelectItem Text="Serene" Value="@_moods[0]" />
+                    <MudSelectItem Text="Tense" Value="@_moods[1]" />
+                    <MudSelectItem Text="Melancholic" Value="@_moods[2]" />
+                    <MudSelectItem Text="Playful" Value="@_moods[3]" />
+                    <MudSelectItem Text="Ominous" Value="@_moods[4]" />
+                    <MudSelectItem Text="Heroic" Value="@_moods[5]" />
+                </MudSelect>
+
+                <MudToggleGroup @bind-Selected="_complexity" T="string" Label="Complexity">
+                    <Item Value="Simple" Label="Simple" />
+                    <Item Value="Standard" Label="Standard" />
+                    <Item Value="Rich" Label="Rich" />
+                </MudToggleGroup>
+
+                <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                           Disabled="_isWorking || string.IsNullOrWhiteSpace(SelectedModel)" OnClick="InspireAsync" Class="mt-2">
+                    @if (_isWorking)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Inspire Me
+                </MudButton>
+            </MudStack>
+        </MudCard>
+    }
+    else
+    {
+        @* Roulette Panel *@
+        <MudCard Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                @* Slot Boxes *@
+                <div class="d-flex gap-2 flex-wrap justify-center">
+                    @foreach (var slot in _slotNames)
+                    {
+                        <MudChip Set="true" Text="@_slotValues[slot]" Color="Color.Secondary" Class="min-width-chip" />
+                    }
+                </div>
+
+                @* Weighted Toggle *@
+                <MudSwitch @bind-Value="_weighted" Label="Weighted random" />
+
+                @* Spin Button *@
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_isSpinning" OnClick="SpinAsync"
+                           Class="mt-2">
+                    @if (_isSpinning)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Spin
+                </MudButton>
+            </MudStack>
+        </MudCard>
+    }
+
+    @* Result Section *@
+    @if (!string.IsNullOrEmpty(_result))
+    {
+        <MudCard Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Result</MudText>
+                <MudTextField Value="_result" ReadOnly="true" Lines="4" Variant="Variant.Outlined" />
+
+                <div class="d-flex gap-2 mt-2">
+                    <MudButton OnClick="CopyAsync" StartIcon="@Icons.Material.Filled.ContentCopy">Copy</MudButton>
+                    <MudButton OnClick="SaveAsync" StartIcon="@Icons.Material.Filled.Bookmark">Save as Prompt</MudButton>
+                    @if (OnSendToProcess.HasDelegate)
+                    {
+                        <MudButton OnClick="SendToProcessAsync" StartIcon="@Icons.Material.Filled.ForwardToInbox">Send to
+                            Process</MudButton>
+                        }
+                    </div>
+                </MudStack>
+            </MudCard>
+        }
+    </MudStack>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSendToProcess { get; set; }
+
+    private string _mode = "inspire";
+    private bool _isWorking;
+    private bool _isSpinning;
+    private string _result = string.Empty;
+
+    // Inspire Me state
+    private string _genre = string.Empty;
+    private string _mood = string.Empty;
+    private string _complexity = "Standard";
+
+    // Roulette state
+    private bool _weighted = true;
+    private Dictionary<string, string> _slotValues = new();
+    private static readonly string[] _slotNames = { "subject", "style", "lighting", "mood", "location" };
+
+    private static readonly Dictionary<string, string[]> Fallbacks = new()
+    {
+        ["subject"] = new[] { "lone warrior", "young mage", "cybernetic wanderer", "celestial dancer" },
+        ["style"] = new[] { "oil painting", "cyberpunk anime", "impressionist", "photorealistic" },
+        ["lighting"] = new[] { "golden hour", "neon glow", "overcast", "candlelight" },
+        ["mood"] = new[] { "melancholic", "triumphant", "uneasy", "serene" },
+        ["location"] = new[] { "abandoned station", "mountain peak", "deep forest", "floating city" },
+    };
+
+    private static readonly string[] _genres = { "Fantasy", "Sci-Fi", "Horror", "Slice of Life", "Cyberpunk", "Historical" };
+    private static readonly string[] _moods = { "Serene", "Tense", "Melancholic", "Playful", "Ominous", "Heroic" };
+
+    protected override void OnInitialized()
+    {
+        var insp = State.State.Prompts.LLM.Inspiration;
+        _mode = insp.Mode;
+        _genre = insp.Genre;
+        _mood = insp.Mood;
+        _complexity = insp.Complexity;
+        _weighted = insp.WeightedRoulette;
+
+        // Initialize slot values
+        foreach (var slot in _slotNames)
+            _slotValues[slot] = PickFromFallback(slot);
+    }
+
+    private string PickFromFallback(string slot) => Fallbacks[slot][Random.Shared.Next(Fallbacks[slot].Length)];
+
+    private async Task SpinAsync()
+    {
+        _isSpinning = true;
+        _result = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            for (int cycle = 0; cycle < 8; cycle++)
+            {
+                foreach (var s in _slotNames)
+                    _slotValues[s] = await PickAsync($"roulette/{s}", _weighted) ?? PickFromFallback(s);
+                StateHasChanged();
+                await Task.Delay(50);
+            }
+            _result = string.Join(", ", _slotValues.Values.Where(v => !string.IsNullOrWhiteSpace(v)));
+        }
+        finally { _isSpinning = false; }
+    }
+
+    private async Task<string?> PickAsync(string collection, bool weighted)
+    {
+        try
+        {
+            return weighted
+                ? await WildcardService.GetRandomEntryWeighted(collection)
+                : await WildcardService.GetRandomEntry(collection);
+        }
+        catch { return null; }
+    }
+
+    private async Task InspireAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedModel))
+        {
+            Snackbar.Add("Select a model first.", Severity.Warning);
+            return;
+        }
+
+        _isWorking = true;
+        _result = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var messages = await BuildMessagesAsync();
+            if (messages == null || messages.Count == 0)
+            {
+                Snackbar.Add("Could not load Inspiration template.", Severity.Error);
+                return;
+            }
+
+            var options = new OllamaOptions { Temperature = 1.1f, TopP = 0.95f };
+            var response = await OllamaService.SendChatMessage(SelectedModel, messages, options, null, false);
+
+            if (response?.Message?.Content != null)
+            {
+                _result = response.Message.Content.Trim();
+            }
+            else
+            {
+                Snackbar.Add("Empty response from LLM.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Inspiration failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isWorking = false;
+        }
+    }
+
+    private async Task<List<OllamaChatMessage>?> BuildMessagesAsync()
+    {
+        try
+        {
+            var templates = await DB.GetSystemPromptTemplates();
+            var tpl = templates.FirstOrDefault(t => t.Name == "Inspiration");
+            if (tpl == null) return null;
+
+            return tpl.Messages.Select(m => new OllamaChatMessage
+            {
+                Role = m.Role,
+                Content = m.Content
+                    .Replace("{genre}", string.IsNullOrWhiteSpace(_genre) ? "Any" : _genre)
+                    .Replace("{mood}", string.IsNullOrWhiteSpace(_mood) ? "Any" : _mood)
+                    .Replace("{complexity}", _complexity)
+            }).ToList();
+        }
+        catch { return null; }
+    }
+
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _result);
+            Snackbar.Add("Copied to clipboard.", Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy.", Severity.Error);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_result)) return;
+        try
+        {
+            await DB.CreatePrompt(new Prompt { Positive = _result });
+            Snackbar.Add("Prompt saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving prompt: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SendToProcessAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_result)) return;
+        await OnSendToProcess.InvokeAsync(_result);
+    }
+}

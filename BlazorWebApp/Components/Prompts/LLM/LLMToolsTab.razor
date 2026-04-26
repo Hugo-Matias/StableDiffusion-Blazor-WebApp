@@ -42,6 +42,9 @@
                 case "mixer":
                     <MixerView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
                     break;
+                case "inspiration":
+                    <InspirationView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
+                    break;
             }
         </div>
     </Content>

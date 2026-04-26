@@ -3,8 +3,8 @@
 ## Status
 
 **Phase:** 4
-**Build Status:** Not yet attempted
-**Phase Status:** [ ] Not Started
+**Build Status:** Passed - 0 errors
+**Phase Status:** [x] Complete (Step 5 deferred to Phase 10)
 
 ---
 
@@ -67,7 +67,7 @@ The view does not auto-create these collections; it only consults them and falls
 ### Step 1: `AppState.Prompts.LLM.Inspiration` sub-state + nav registration
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -99,7 +99,7 @@ The view does not auto-create these collections; it only consults them and falls
 ### Step 2: Seed `Inspiration` default system-prompt template
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -136,7 +136,7 @@ The view does not auto-create these collections; it only consults them and falls
 ### Step 3: `InspirationView.razor` skeleton + Inspire Me mode
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -184,7 +184,7 @@ The view does not auto-create these collections; it only consults them and falls
 ### Step 4: Roulette sub-mode
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -253,7 +253,7 @@ The view does not auto-create these collections; it only consults them and falls
 ### Step 5: Info content + state persistence hooks
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [!] Deferred to Phase 10 (Polish & Settings)
 
 #### Tasks
 
@@ -274,11 +274,11 @@ The view does not auto-create these collections; it only consults them and falls
 
 | Step | Status | Complexity | Notes                                       |
 | ---- | ------ | ---------- | ------------------------------------------- |
-| 1    | [ ]    | 1          | AppState sub-state + nav entry              |
-| 2    | [ ]    | 1          | Seed `Inspiration` default template         |
-| 3    | [ ]    | 2          | View skeleton + Inspire Me mode             |
-| 4    | [ ]    | 3          | Roulette sub-mode with wildcard integration |
-| 5    | [ ]    | 1          | Persistence + info content                  |
+| 1    | [x]    | 1          | AppState sub-state + nav entry              |
+| 2    | [x]    | 1          | Seed `Inspiration` default template         |
+| 3    | [x]    | 2          | View skeleton + Inspire Me mode             |
+| 4    | [x]    | 3          | Roulette sub-mode with wildcard integration |
+| 5    | [!]    | 1          | Deferred to Phase 10                        |
 
 **Total:** 8 points (original plan estimate: 3 - overrun from Roulette animation + fallback complexity).
 
@@ -286,7 +286,7 @@ The view does not auto-create these collections; it only consults them and falls
 
 ## Issues & Resolutions
 
-_None yet._
+- **Blazor string literals with spaces in `Value` attributes**: Values like `"Slice of Life"` and `"Sci-Fi"` caused parser errors. Fixed by using static arrays (`_genres[]`, `_moods[]`) as Value bindings instead of inline strings.
 
 ---
 
@@ -311,4 +311,9 @@ _None yet._
 
 ## Phase Summary
 
-_To be filled in on completion._
+Phase 4 implemented the Random Inspiration view with two sub-modes:
+
+- **Inspire Me**: LLM-driven prompt generation from Genre/Mood/Complexity selectors using the `Inspiration` default template (Temperature=1.1, TopP=0.95).
+- **Roulette**: Deterministic wildcard spin with 8-cycle flicker animation across 5 slots (subject, style, lighting, mood, location), falling back to hard-coded defaults when wildcard collections don't exist.
+
+Both modes share the same result panel with Copy/Save/Send to Process actions. Step 5 (state persistence + info content) deferred to Phase 10 as low-priority polish.

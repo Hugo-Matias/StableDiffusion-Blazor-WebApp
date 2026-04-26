@@ -169,6 +169,24 @@ namespace BlazorWebApp.Services
                         new() { Role = "user", Content =
                             "Prompt A: {promptA}\nPrompt B: {promptB}\nBlend ratio (0-100, higher = more B): {ratio}\n\nReturn the blended prompt only." }
                     }
+                },
+                // Template placeholders: {genre}, {mood}, {complexity}
+                new SystemPromptTemplate
+                {
+                    Name = "Inspiration",
+                    Description = "Generates novel, creative prompts from loose genre/mood/complexity constraints.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content =
+                            "You are a creative prompt generator for image-generation models. Given loose constraints, produce ONE " +
+                            "novel, evocative prompt. Prioritize unusual combinations and concrete visual detail over abstract adjectives. " +
+                            "Complexity guide: Simple = one clear subject + 2-3 modifiers; Standard = subject + setting + mood + style; " +
+                            "Rich = dense layered scene with atmosphere, lighting, and composition cues. " +
+                            "Return only the prompt - no commentary, no labels." },
+                        new() { Role = "user", Content =
+                            "Genre: {genre}\nMood: {mood}\nComplexity: {complexity}\n\nReturn the prompt only." }
+                    }
                 }
             };
         }

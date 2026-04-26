@@ -318,6 +318,16 @@ namespace BlazorWebApp.Models
         public bool IsNavCollapsed { get; set; } = false;
         public AppStatePromptsLLMTagBuilder TagBuilder { get; set; } = new();
         public AppStatePromptsLLMMixer Mixer { get; set; } = new();
+        public AppStatePromptsLLMInspiration Inspiration { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLMInspiration
+    {
+        public string Mode { get; set; } = "inspire"; // "inspire" | "roulette"
+        public string Genre { get; set; } = string.Empty;
+        public string Mood { get; set; } = string.Empty;
+        public string Complexity { get; set; } = "Standard"; // "Simple" | "Standard" | "Rich"
+        public bool WeightedRoulette { get; set; } = true;
     }
 
     public class AppStatePromptsLLMMixer
