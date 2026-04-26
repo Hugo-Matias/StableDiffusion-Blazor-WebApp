@@ -321,6 +321,16 @@ namespace BlazorWebApp.Models
         public AppStatePromptsLLMMixer Mixer { get; set; } = new();
         public AppStatePromptsLLMInspiration Inspiration { get; set; } = new();
         public AppStatePromptsLLMSceneBuilder SceneBuilder { get; set; } = new();
+        public AppStatePromptsLLMWorkshop Workshop { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLMWorkshop
+    {
+        public int? ActiveSessionId { get; set; }
+        public int AncestorDepth { get; set; } = 3;
+        public int SpawnCount { get; set; } = 5;
+        public bool AutoRender { get; set; } = true;
+        public bool RightPanelCollapsed { get; set; } = false;
     }
 
     public class AppStatePromptsLLMSceneBuilder

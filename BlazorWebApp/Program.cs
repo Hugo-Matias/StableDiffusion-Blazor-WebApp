@@ -155,6 +155,9 @@ builder.Services.AddSingleton<IArtistBrowserService, ArtistBrowserService>();
 // MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 
+// Workshop service – prompt workshop session/node tree orchestration
+builder.Services.AddSingleton<IWorkshopService, WorkshopService>();
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 

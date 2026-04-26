@@ -1,0 +1,85 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <InfoMessage>Edit prompt through conversation with the LLM.</InfoMessage>
+
+            <MudTextField @bind-Value="_instruction" Label="Instruction" Lines="2" AutoGrow="true" MaxLines="6"
+                          Immediate="true" Variant="Variant.Text" HelperText="e.g., 'Make it more cyberpunk'" />
+            <div class="d-flex flex-column gap-2">
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.caption" Class="text-disabled flex-shrink-0">Depth:</MudText>
+                    <MudSlider @bind-Value="_ancestorDepth" Min="1" Max="10" TickMarks="true" ShowTooltip="true"
+                               Style="flex: 1;" />
+                    <MudText Typo="Typo.caption" Class="text-disabled">@_ancestorDepth</MudText>
+                </div>
+                <InfoMessage NoIcon="true">How many ancestor nodes to include in the chat context. Higher values give
+                    the LLM more history but use more tokens.</InfoMessage>
+                </div>
+
+                @if (_models.Count > 0)
+                {
+                    <MudSelect @bind-Value="_model" Label="Model">
+                        @foreach (var m in _models)
+                        {
+                            <MudSelectItem Value="@m.Name">@m.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton OnClick="Confirm" Disabled="@(_isSubmitting || string.IsNullOrWhiteSpace(_instruction))">
+                @if (_isSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                }
+                Send
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter] public int AncestorDepth { get; set; } = 3;
+    [Parameter] public List<OllamaModel> Models { get; set; } = new();
+
+    private string _instruction = string.Empty;
+    private int _ancestorDepth = 3;
+    private string _model = string.Empty;
+    private List<OllamaModel> _models = new();
+    private bool _isSubmitting;
+
+    protected override void OnParametersSet()
+    {
+        _ancestorDepth = AncestorDepth;
+        _models = Models;
+        if (_models.Count > 0)
+            _model = _models[0].Name;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Confirm()
+    {
+        _isSubmitting = true;
+        StateHasChanged();
+        await Task.Yield();
+        Dialog.Close(DialogResult.Ok(new WorkshopChatResult
+        {
+            Instruction = _instruction.Trim(),
+            AncestorDepth = _ancestorDepth,
+            Model = _model,
+        }));
+    }
+
+    public class WorkshopChatResult
+    {
+        public string Instruction { get; set; } = string.Empty;
+        public int AncestorDepth { get; set; } = 3;
+        public string Model { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,71 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.caption" Class="text-disabled">Spawn prompt variations from this node.</MudText>
+
+            <MudNumericField @bind-Value="_count" Label="Variations" Min="1" Max="10" Variant="Variant.Text" />
+
+            @if (_models.Count > 0)
+            {
+                <MudSelect @bind-Value="_model" Label="Model">
+                    @foreach (var m in _models)
+                    {
+                        <MudSelectItem Value="@m.Name">@m.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Confirm" Disabled="@_isSubmitting">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Evolve
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter] public int Count { get; set; } = 3;
+    [Parameter] public List<OllamaModel> Models { get; set; } = new();
+
+    private int _count = 3;
+    private string _model = string.Empty;
+    private List<OllamaModel> _models = new();
+    private bool _isSubmitting;
+
+    protected override void OnParametersSet()
+    {
+        _count = Count;
+        _models = Models;
+        if (_models.Count > 0)
+            _model = _models[0].Name;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Confirm()
+    {
+        _isSubmitting = true;
+        StateHasChanged();
+        await Task.Yield();
+        Dialog.Close(DialogResult.Ok(new WorkshopEvolveResult
+        {
+            Count = _count,
+            Model = _model,
+        }));
+    }
+
+    public class WorkshopEvolveResult
+    {
+        public int Count { get; set; } = 3;
+        public string Model { get; set; } = string.Empty;
+    }
+}

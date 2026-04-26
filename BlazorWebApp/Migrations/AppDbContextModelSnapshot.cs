@@ -240,6 +240,76 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("Prompts");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.PromptWorkshopNode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageIdsJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GenerationNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Instruction")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelUsed")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PromptText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("PromptWorkshopNodes");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.PromptWorkshopSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CurrentNodeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PromptWorkshopSessions");
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Resource", b =>
                 {
                     b.Property<int>("Id")
@@ -786,6 +856,24 @@ namespace BlazorWebApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Collection");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.PromptWorkshopNode", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.PromptWorkshopNode", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Parent");
+
+                    b.HasOne("BlazorWebApp.Data.Entities.PromptWorkshopSession", "Session")
+                        .WithMany("Nodes")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
                 });
 
             modelBuilder.Entity("ImageSelection", b =>

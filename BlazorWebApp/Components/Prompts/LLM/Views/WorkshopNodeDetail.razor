@@ -1,0 +1,73 @@
+@using BlazorWebApp.Data.Entities
+
+<div class="pa-3">
+    <MudStack Spacing="2">
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@GetIconFor(Node.Mode)" Size="Size.Small" />
+            <MudText Typo="Typo.subtitle2" Class="text-capitalize">@Node.Mode</MudText>
+            @if (!string.IsNullOrEmpty(Node.ModelUsed))
+            {
+                <MudBadge Color="Color.Info" Content="@Node.ModelUsed" Size="Size.Small" />
+            }
+        </div>
+
+        <MudText Typo="Typo.caption" Class="text-disabled">
+            Gen @Node.GenerationNumber . @Node.CreatedAt.ToString("MMM d, HH:mm")
+        </MudText>
+
+        @if (!string.IsNullOrEmpty(Node.Instruction))
+        {
+            <MudCard Elevation="0" Class="pa-2" Style="@_instructionBg">
+                <MudText Typo="Typo.caption">Instruction:</MudText>
+                <MudText Typo="Typo.body2">@Node.Instruction</MudText>
+            </MudCard>
+        }
+
+        <MudTextField Value="@Node.PromptText" Label="Prompt" Lines="3" AutoGrow="true" MaxLines="12" ReadOnly="true"
+                      Variant="Variant.Outlined" />
+
+        <div class="d-flex gap-2 flex-wrap">
+            <MudButton Size="Size.Small" OnClick="CopyPromptAsync" StartIcon="@Icons.Material.Filled.ContentCopy">Copy
+            </MudButton>
+        </div>
+
+        <MudDivider />
+        <MudText Typo="Typo.caption" Class="text-disabled mt-2">Actions:</MudText>
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" FullWidth="true" OnClick="@(() => OnChatEdit())"
+                   StartIcon="@Icons.Material.Filled.Chat">
+            Chat Edit
+        </MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" FullWidth="true" OnClick="@(() => OnEvolve())"
+                   StartIcon="@Icons.Material.Filled.AutoAwesome">
+            Spawn Variations
+        </MudButton>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public PromptWorkshopNode Node { get; set; } = null!;
+    [Parameter] public EventCallback OnChatEditClick { get; set; }
+    [Parameter] public EventCallback OnEvolveClick { get; set; }
+    [Inject] private ISnackbar? Snackbar { get; set; }
+    [Inject] private IJSRuntime? JSRuntime { get; set; }
+
+    private const string _instructionBg = "background: var(--mud-palette-surface-gravel);";
+
+    private async Task CopyPromptAsync()
+    {
+        if (JSRuntime == null) return;
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Node.PromptText);
+        Snackbar?.Add("Copied.", Severity.Info);
+    }
+
+    private void OnChatEdit() => OnChatEditClick.InvokeAsync();
+    private void OnEvolve() => OnEvolveClick.InvokeAsync();
+
+    private static string GetIconFor(string mode) => mode.ToLower() switch
+    {
+        "root" => Icons.Material.Filled.AutoAwesome,
+        "chat" => Icons.Material.Filled.Chat,
+        "evolve" => Icons.Material.Filled.Science,
+        _ => Icons.Material.Filled.HelpOutline,
+    };
+}

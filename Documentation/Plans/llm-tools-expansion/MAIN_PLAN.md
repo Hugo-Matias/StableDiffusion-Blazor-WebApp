@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 3 next (Phase 2 complete — see `PHASE_2.md`)
+**Current Phase:** Phase 9 next (Phase 8 complete — see `PHASE_8.md`)
 **Total Complexity:** ~77 points across 11 phases
 **Related Plans:** Builds on features delivered in `prompt-page-enhancement` Phases 1-5. Supersedes the never-started Phase 5.5 (LLM Creative Tools) and Phase 6 (VL Models) of that plan.
 
@@ -273,12 +273,20 @@ This keeps the LLM context small, guarantees every output tag exists in the voca
 ### Phase 7: Prompt Remixer
 
 **Objective:** Multi-select from saved styles; shuffle / combine / LLM-mix.
+
+**NOTE (2026-04-26):** This feature should be integrated into the existing **Prompt Mixer** tool (Phase 3) rather than a standalone view. The integration should follow the same Single/Batch logic pattern used by the Process view — i.e., the user can either:
+
+- **Single mode**: Pick one saved prompt and remix it with LLM guidance.
+- **Batch mode**: Multi-select several saved prompts and combine/shuffle/LLM-mix them together.
+
+This keeps the Mixer as the single entry point for all prompt-blending operations and avoids feature fragmentation across tools. Revisit Phase 3 (MixerView) when implementing this integration.
+
 **Complexity:** 3 points
-**Status:** [ ] Not Started
+**Status:** [ ] Not Started — deferred for integration into Phase 3 (Prompt Mixer)
 
 #### Steps
 
-1. `RemixerView.razor`: multi-select grid of saved prompts.
+1. Extend `MixerView.razor` with prompt multi-select grid (replacing or augmenting the two-input fields).
 2. Method selector: Shuffle elements / Combine parts / LLM intelligent mix.
 3. Shuffle and Combine are deterministic; LLM-mix uses a dedicated system prompt.
 
@@ -296,8 +304,8 @@ This keeps the LLM context small, guarantees every output tag exists in the voca
 - **Chat mode**: multi-turn textual refinement ("add rain", "remove the smile").
 - **Evolution mode**: LLM spawns N variations; each renders an image via the current workflow; user picks the winner which becomes the next parent.
 
-**Complexity:** 13 points
-**Status:** [ ] Not Started
+**Complexity:** 24 points
+**Status:** [x] Complete - see `PHASE_8.md`
 
 #### Design Decisions
 

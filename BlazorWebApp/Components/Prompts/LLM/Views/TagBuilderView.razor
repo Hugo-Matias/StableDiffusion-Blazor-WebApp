@@ -66,47 +66,51 @@
     @* Build Button *@
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleBuild"
                Disabled="_isBuilding || string.IsNullOrWhiteSpace(_userInput)" StartIcon="@Icons.Material.Filled.Build">
-        @_isBuilding ? "Building..." : "Build Prompt"
+        @(_isBuilding ? "Building..." : "Build Prompt")
     </MudButton>
 
     @* Resolution Preview (shown after build) *@
     @if (_result != null && _result.ResolvedConcepts.Any())
     {
         <MudCard Elevation="2" Class="pa-4">
-            <MudExpandPanel>
-                <MudExpandPanelHeader>
-                    <MudText Typo="Typo.subtitle1">Resolution Preview</MudText>
-                    <MudText Typo="Typo.caption" Class="ml-auto">
-                        @_result.ResolvedConcepts.Count concepts resolved
-                    </MudText>
-                </MudExpandPanelHeader>
-                <MudStack Spacing="2">
-                    @foreach (var rc in _result.ResolvedConcepts)
-                    {
-                        <MudPaper Elevation="1" Class="pa-3">
-                            <div class="d-flex flex-column gap-1">
-                                <div class="d-flex align-center gap-2">
-                                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@rc.Concept.Text</MudText>
-                                    @if (rc.Concept.Category.HasValue)
-                                    {
-                                        <MudChip Size="Size.Small" Color="Color.Info">
-                                            @rc.Concept.Category.Value
-                                        </MudChip>
-                                    }
+            <MudExpansionPanel>
+                <TitleContent>
+                    <div class="d-flex align-center">
+                        <MudText Typo="Typo.subtitle1">Resolution Preview</MudText>
+                        <MudText Typo="Typo.caption" Class="ml-auto">
+                            @_result.ResolvedConcepts.Count concepts resolved
+                        </MudText>
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudStack Spacing="2">
+                        @foreach (var rc in _result.ResolvedConcepts)
+                        {
+                            <MudPaper Elevation="1" Class="pa-3">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@rc.Concept.Text</MudText>
+                                        @if (rc.Concept.Category.HasValue)
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Info">
+                                                @rc.Concept.Category.Value
+                                            </MudChip>
+                                        }
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var tag in rc.Candidates)
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Default" Class="tag-chip">
+                                                @tag.Name (@tag.FuzzyScore)
+                                            </MudChip>
+                                        }
+                                    </div>
                                 </div>
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var tag in rc.Candidates)
-                                    {
-                                        <MudChip Size="Size.Small" Color="Color.Default" Class="tag-chip">
-                                            @tag.Name (@tag.FuzzyScore)
-                                        </MudChip>
-                                    }
-                                </div>
-                            </div>
-                        </MudPaper>
-                    }
-                </MudStack>
-            </MudExpandPanel>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                </ChildContent>
+            </MudExpansionPanel>
         </MudCard>
     }
 

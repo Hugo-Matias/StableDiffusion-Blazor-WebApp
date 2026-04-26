@@ -1,0 +1,284 @@
+@* Workshop: Tree-based iterative prompt refinement *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@inject IWorkshopService WorkshopService
+@inject OllamaService OllamaService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudPaper Elevation="0" Class="d-flex" Style="height: calc(100vh - 200px); overflow: hidden;">
+    @* Left: Session Sidebar *@
+    <MudPaper Elevation="1" Class="d-flex flex-column" Style="width: 220px; min-width: 220px; overflow-y: auto;">
+        <div class="pa-3 d-flex justify-space-between align-center">
+            <MudText Typo="Typo.subtitle2" Class="text-truncate">Sessions</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="ShowNewSessionDialog" />
+        </div>
+        <MudStack Spacing="0" Class="pa-1">
+            @foreach (var session in _sessions)
+            {
+                var isActive = session.Id == _activeSessionId;
+                <MudButton Variant="Variant.Text" Color="@(isActive? Color.Primary: Color.Default)"
+                           Class="justify-start pa-2" Style="min-height: auto;" OnClick="@(() => SelectSessionAsync(session))">
+                    <div class="d-flex align-center w-100">
+                        <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+                            <MudText Typo="Typo.body2" Class="text-truncate">@session.Name</MudText>
+                            <MudText Typo="Typo.caption" Class="@(isActive ? "text-primary" : "text-disabled")">
+                                @session.Nodes.Count node(s) . @session.UpdatedAt.ToString("MMM d")
+                            </MudText>
+                        </div>
+                        @if (isActive)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="(async () => await DeleteSessionAsync(session))!" />
+                        }
+                    </div>
+                </MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+
+    @* Center: Node List *@
+    <MudPaper Elevation="1" Class="d-flex flex-column flex-grow-1 ma-1" Style="overflow-y: auto;">
+        @if (_activeSessionId == 0)
+        {
+            <div class="d-flex align-center justify-center flex-grow-1 pa-4">
+                <InfoMessage>Select a session from the list or click + to create a new one.</InfoMessage>
+            </div>
+        }
+        else
+        {
+            <div class="pa-3 d-flex justify-space-between align-center">
+                <MudText Typo="Typo.subtitle2">@_activeSession?.Name</MudText>
+                <MudText Typo="Typo.caption" Class="text-disabled">
+                    @_allNodes.Count node(s) total
+                </MudText>
+            </div>
+            @foreach (var node in _allNodes)
+            {
+                var isCurrent = node.Id == (_activeSession?.CurrentNodeId);
+                <WorkshopNodeRow Node="@node" IsCurrent="@isCurrent" OnSelect="SetCurrentAsync" />
+            }
+        }
+    </MudPaper>
+
+    @* Right: Current Node Panel *@
+    <MudPaper Elevation="1" Class="d-flex flex-column" Style="width: 340px; min-width: 340px; overflow-y: auto;">
+        @if (_currentNode == null)
+        {
+            <div class="d-flex align-center justify-center flex-grow-1 pa-4">
+                <InfoMessage>Select a node from the list to view its details.</InfoMessage>
+            </div>
+        }
+        else
+        {
+            <WorkshopNodeDetail Node="@_currentNode" OnChatEditClick="ShowChatDialog" OnEvolveClick="ShowEvolveDialog" />
+        }
+    </MudPaper>
+</MudPaper>
+
+@code {
+    private PromptWorkshopSession? _activeSession;
+    private int _activeSessionId;
+    private List<PromptWorkshopSession> _sessions = new();
+    private List<PromptWorkshopNode> _allNodes = new();
+    private PromptWorkshopNode? _currentNode;
+    private bool _isCreating;
+    private bool _isProcessing;
+
+    // Dialog state
+    private string _newSessionName = string.Empty;
+    private string _newSessionPrompt = string.Empty;
+    private string _chatInstruction = string.Empty;
+    private string _chatModel = string.Empty;
+    private int _evolveCount = 5;
+    private string _evolveModel = string.Empty;
+
+    // Available models from OllamaService
+    private List<OllamaModel> _availableModels = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshSessionsAsync();
+        var models = await OllamaService.GetModels();
+        _availableModels = models;
+        if (models.Count > 0)
+        {
+            _chatModel = models[0].Name;
+            _evolveModel = models[0].Name;
+        }
+    }
+
+    private async Task RefreshSessionsAsync()
+    {
+        _sessions = await WorkshopService.ListSessionsAsync();
+        if (_activeSessionId > 0 && _sessions.Any(s => s.Id == _activeSessionId))
+            await LoadSessionAsync(_activeSessionId);
+    }
+
+    private async Task LoadSessionAsync(int sessionId)
+    {
+        var session = await WorkshopService.LoadSessionAsync(sessionId);
+        if (session == null) return;
+
+        _activeSession = session;
+        _activeSessionId = session.Id;
+        _allNodes = session.Nodes.OrderBy(n => n.CreatedAt).ToList();
+
+        if (session.CurrentNodeId.HasValue && session.Nodes.Any(n => n.Id == session.CurrentNodeId.Value))
+            _currentNode = session.Nodes.First(n => n.Id == session.CurrentNodeId.Value);
+        else if (_allNodes.Count > 0)
+            _currentNode = _allNodes.Last();
+    }
+
+    private async Task SelectSessionAsync(PromptWorkshopSession session)
+    {
+        await LoadSessionAsync(session.Id);
+        StateHasChanged();
+    }
+
+    private async Task ShowNewSessionDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(WorkshopSessionDialog.Models), _availableModels },
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<WorkshopSessionDialog>("New Session", parameters, options);
+        var result = await dialog.Result;
+        if (result?.Canceled == true) return;
+
+        var data = result?.Data as WorkshopSessionDialog.WorkshopSessionResult;
+        if (data == null) return;
+
+        try
+        {
+            var session = await WorkshopService.CreateSessionAsync(data.Name, data.Prompt);
+            await RefreshSessionsAsync();
+            await SelectSessionAsync(session);
+            Snackbar.Add($"Session '{session.Name}' created.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteSessionAsync(PromptWorkshopSession session)
+    {
+        try
+        {
+            await WorkshopService.DeleteSessionAsync(session.Id);
+            if (_activeSessionId == session.Id)
+            {
+                _activeSession = null;
+                _activeSessionId = 0;
+                _allNodes = new();
+                _currentNode = null;
+            }
+            await RefreshSessionsAsync();
+            Snackbar.Add($"Session '{session.Name}' deleted.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SetCurrentAsync(PromptWorkshopNode node)
+    {
+        if (_activeSession == null) return;
+        await WorkshopService.SetCurrentNodeAsync(_activeSession.Id, node.Id);
+        await LoadSessionAsync(_activeSession.Id);
+        StateHasChanged();
+    }
+
+    private async Task ShowChatDialog()
+    {
+        if (_currentNode == null || _activeSession == null) return;
+
+        var parameters = new DialogParameters
+        {
+            { nameof(WorkshopChatDialog.Models), _availableModels },
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<WorkshopChatDialog>("Chat Edit", parameters, options);
+        var result = await dialog.Result;
+        if (result?.Canceled == true) return;
+
+        var data = result?.Data as WorkshopChatDialog.WorkshopChatResult;
+        if (data == null || string.IsNullOrWhiteSpace(data.Instruction)) return;
+
+        _isProcessing = true;
+        StateHasChanged();
+        try
+        {
+            var child = await WorkshopService.AddChatChildAsync(
+                _activeSession.Id, _currentNode.Id, data.Instruction, data.Model, data.AncestorDepth);
+            await LoadSessionAsync(_activeSession.Id);
+            await SetCurrentAsync(child);
+            Snackbar.Add("Chat edit applied.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task ShowEvolveDialog()
+    {
+        if (_currentNode == null || _activeSession == null) return;
+
+        var parameters = new DialogParameters
+        {
+            { nameof(WorkshopEvolveDialog.Models), _availableModels },
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<WorkshopEvolveDialog>("Evolve", parameters, options);
+        var result = await dialog.Result;
+        if (result?.Canceled == true) return;
+
+        var data = result?.Data as WorkshopEvolveDialog.WorkshopEvolveResult;
+        if (data == null) return;
+
+        _isProcessing = true;
+        StateHasChanged();
+        try
+        {
+            var children = await WorkshopService.SpawnVariationsAsync(
+                _activeSession.Id, _currentNode.Id, data.Count, data.Model);
+            await LoadSessionAsync(_activeSession.Id);
+            Snackbar.Add($"{children.Count} variation(s) spawned.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task CopyPromptAsync()
+    {
+        if (_currentNode == null) return;
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _currentNode.PromptText);
+        Snackbar.Add("Copied.", Severity.Info);
+    }
+
+    private static string GetIconFor(string mode) => mode.ToLower() switch
+    {
+        "root" => Icons.Material.Filled.AutoAwesome,
+        "chat" => Icons.Material.Filled.Chat,
+        "evolve" => Icons.Material.Filled.Science,
+        _ => Icons.Material.Filled.HelpOutline,
+    };
+
+    private static string Truncate(string text, int maxLength) =>
+        text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+}

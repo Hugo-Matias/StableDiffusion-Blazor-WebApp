@@ -187,6 +187,36 @@ namespace BlazorWebApp.Services
                         new() { Role = "user", Content =
                             "Genre: {genre}\nMood: {mood}\nComplexity: {complexity}\n\nReturn the prompt only." }
                     }
+                },
+                // Template placeholders: none (chat history is built by WorkshopService)
+                new SystemPromptTemplate
+                {
+                    Name = "Workshop.ChatEdit",
+                    Description = "Workshop chat mode - applies a short instruction to the current prompt while preserving style.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content =
+                            "You are a prompt-editing assistant inside a creative workshop. The conversation history is alternating " +
+                            "user instructions and assistant-produced prompts. Apply the latest user instruction to the most recent " +
+                            "assistant prompt while preserving every unrelated concept. Return only the updated prompt - no commentary." }
+                    }
+                },
+                // Template placeholders: {base_prompt}, {count}
+                new SystemPromptTemplate
+                {
+                    Name = "Workshop.EvolveVariations",
+                    Description = "Workshop evolve mode - produces N numbered variation prompts from a base prompt.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content =
+                            "You generate creative variations of an image-model prompt. Each variation must differ from the base in at " +
+                            "least one meaningful way (subject, setting, style, lighting, or composition) while remaining coherent. " +
+                            "Return exactly {count} variations as a numbered list. No preamble. No extra commentary." },
+                        new() { Role = "user", Content =
+                            "Base prompt: {base_prompt}\n\nReturn {count} numbered variations, one per line." }
+                    }
                 }
             };
         }

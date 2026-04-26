@@ -180,6 +180,19 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<SavedDanbooruMedia>()
                 .Property(m => m.TagsBundle)
                 .HasConversion(new Converters.DanbooruTagBundleConverter());
+
+            // Workshop entities - relationships
+            modelBuilder.Entity<PromptWorkshopNode>()
+                .HasOne(n => n.Session)
+                .WithMany(s => s.Nodes)
+                .HasForeignKey(n => n.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PromptWorkshopNode>()
+                .HasOne(n => n.Parent)
+                .WithMany(p => p.Children)
+                .HasForeignKey(n => n.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         public DbSet<Image> Images { get; set; }
@@ -202,5 +215,7 @@ namespace BlazorWebApp.Data
         public DbSet<WorkflowState> WorkflowStates { get; set; }
         public DbSet<JobEntity> Jobs { get; set; }
         public DbSet<SchedulerDraft> SchedulerDrafts { get; set; }
+        public DbSet<PromptWorkshopSession> PromptWorkshopSessions { get; set; }
+        public DbSet<PromptWorkshopNode> PromptWorkshopNodes { get; set; }
     }
 }

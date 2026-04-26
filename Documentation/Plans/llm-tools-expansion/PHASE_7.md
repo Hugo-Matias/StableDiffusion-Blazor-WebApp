@@ -4,7 +4,7 @@
 
 **Phase:** 7
 **Build Status:** Not yet attempted
-**Phase Status:** [ ] Not Started
+**Phase Status:** [ ] Not Started — deferred for integration into Phase 3 (Prompt Mixer)
 
 ---
 
@@ -17,6 +17,13 @@ Multi-select from the existing saved `Prompt` library and combine the selected e
 3. **LLM Intelligent Mix** - send all selected prompts to the LLM under the `PromptRemixer` system prompt and receive a single coherent hybrid.
 
 The output panel reuses the familiar Copy / Save / Send-to-Process actions.
+
+**NOTE (2026-04-26):** This feature will be integrated into the existing **Prompt Mixer** tool (Phase 3) rather than implemented as a standalone `RemixerView`. The integration follows the same Single/Batch logic pattern used by the Process view:
+
+- **Single mode**: Pick one saved prompt and remix it with LLM guidance.
+- **Batch mode**: Multi-select several saved prompts and combine/shuffle/LLM-mix them together.
+
+This keeps the Mixer as the single entry point for all prompt-blending operations and avoids feature fragmentation across tools. When implementing, extend `MixerView.razor` directly rather than creating a new view component.
 
 ---
 
