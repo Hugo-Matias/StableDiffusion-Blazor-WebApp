@@ -317,6 +317,14 @@ namespace BlazorWebApp.Models
         public string ActiveViewId { get; set; } = "process";
         public bool IsNavCollapsed { get; set; } = false;
         public AppStatePromptsLLMTagBuilder TagBuilder { get; set; } = new();
+        public AppStatePromptsLLMMixer Mixer { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLMMixer
+    {
+        public string PromptA { get; set; } = string.Empty;
+        public string PromptB { get; set; } = string.Empty;
+        public int Ratio { get; set; } = 50; // 0 = all A, 100 = all B
     }
 
     public class AppStatePromptsLLMTagBuilder

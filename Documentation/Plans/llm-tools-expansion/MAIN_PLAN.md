@@ -193,7 +193,7 @@ This keeps the LLM context small, guarantees every output tag exists in the voca
 
 **Objective:** Blend two prompts into a cohesive hybrid using an LLM.
 **Complexity:** 3 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete - see `PHASE_3.md`
 
 #### Steps
 
@@ -460,7 +460,7 @@ Recorded here for future planning. When picked up, use this plan as reference co
 | --- | ----------------------------- | ----------- | ---------------------------------- | ------ |
 | 1   | Sidebar Nav Refactor          | 8           | -                                  | [x]    |
 | 2   | Danbooru Tag Builder          | 13 (act:23) | 1                                  | [x]    |
-| 3   | Prompt Mixer                  | 3           | 1                                  | [ ]    |
+| 3   | Prompt Mixer                  | 3           | 1                                  | [x]    |
 | 4   | Random Inspiration + Roulette | 3           | 1                                  | [ ]    |
 | 5   | Scene Builder                 | 5           | 1, (optional 2)                    | [ ]    |
 | 6   | Template Engine               | 5           | 1                                  | [ ]    |

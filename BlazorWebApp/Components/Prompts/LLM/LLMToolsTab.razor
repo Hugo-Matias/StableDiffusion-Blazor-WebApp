@@ -39,6 +39,9 @@
                 case "tag-builder":
                     <TagBuilderView SelectedModel="@_selectedModel" />
                     break;
+                case "mixer":
+                    <MixerView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
+                    break;
             }
         </div>
     </Content>
@@ -153,6 +156,13 @@
     {
         _pendingRestore = entry;
         _restoreVersion++;
+        await HandleViewSelected("process");
+    }
+
+    private async Task HandleSendToProcess(string prompt)
+    {
+        State.State.Generation.LLM.Prompt = prompt;
+        await State.SaveState();
         await HandleViewSelected("process");
     }
 

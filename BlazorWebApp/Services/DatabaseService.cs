@@ -382,7 +382,7 @@ namespace BlazorWebApp.Services
             if (state.IsModeImg2Img) modes.Add(2);
             if (state.IsModeUpscale) modes.Add(3);
             if (state.IsModeImg2Vid) modes.Add(4);
-            
+
             // Only filter by mode if at least one mode is selected, otherwise show all
             if (modes.Count > 0)
                 query = query.Where(i => modes.Contains(i.ModeId));
@@ -683,9 +683,9 @@ namespace BlazorWebApp.Services
         public async Task<List<Prompt>> GetPromptsByTags(List<string> tags)
         {
             using var context = await _factory.CreateDbContextAsync();
-            if (tags == null || !tags.Any()) 
+            if (tags == null || !tags.Any())
                 return await context.Prompts.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
-            
+
             var query = context.Prompts.AsQueryable();
             foreach (var tag in tags)
             {
@@ -731,7 +731,7 @@ namespace BlazorWebApp.Services
                 .Where(p => p.Tags != null && p.Tags.Any())
                 .Select(p => p.Tags!)
                 .ToListAsync();
-            
+
             return allPrompts
                 .SelectMany(tags => tags)
                 .Distinct()
@@ -756,16 +756,16 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             if (string.IsNullOrWhiteSpace(query))
                 return await context.Prompts.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
-            
+
             // Load all prompts into memory first to avoid EF Core translation issues with complex LINQ
             var allPrompts = await context.Prompts.ToListAsync();
-            
+
             // Split query into keywords
             var keywords = query.ToLower().Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-            
+
             // Filter in memory where we can use complex LINQ operations
             var results = allPrompts
-                .Where(p => keywords.Any(k => 
+                .Where(p => keywords.Any(k =>
                     (p.Title != null && p.Title.ToLower().Contains(k)) ||
                     (p.Positive != null && p.Positive.ToLower().Contains(k)) ||
                     (p.Negative != null && p.Negative.ToLower().Contains(k)) ||
@@ -774,7 +774,7 @@ namespace BlazorWebApp.Services
                 .OrderByDescending(p => p.IsFavorite)
                 .ThenBy(p => p.Title)
                 .ToList();
-            
+
             return results;
         }
 
@@ -790,7 +790,7 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             var entity = await context.Prompts.FirstOrDefaultAsync(p => p.Id == prompt.Id);
             if (entity == null) return;
-            
+
             entity.Title = prompt.Title;
             entity.Positive = prompt.Positive;
             entity.Negative = prompt.Negative;
@@ -1056,11 +1056,11 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             var stateVersion = int.Parse(_configuration["StateVersion"]);
-            
+
             var state = await context.States
                 .Where(s => s.Version == stateVersion)
                 .FirstOrDefaultAsync(s => s.Id == id);
-            
+
             // Fallback: If ID 1 requested (AutoSave) and not found, get latest AutoSave for current version
             if (state == null && id == 1)
             {
@@ -1069,7 +1069,7 @@ namespace BlazorWebApp.Services
                     .OrderByDescending(s => s.CreationDate)
                     .FirstOrDefaultAsync();
             }
-            
+
             return state;
         }
 
@@ -1176,10 +1176,10 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             var query = context.WildcardCollections.Include(c => c.Entries).AsQueryable();
-            
+
             if (!string.IsNullOrWhiteSpace(category))
                 query = query.Where(c => c.Category == category);
-            
+
             return await query
                 .OrderBy(c => c.Name)
                 .ToListAsync();
@@ -1216,7 +1216,7 @@ namespace BlazorWebApp.Services
             existing.Description = collection.Description;
             existing.Category = collection.Category;
             existing.UpdatedAt = DateTime.Now;
-            
+
             await context.SaveChangesAsync();
             return existing;
         }
@@ -1259,7 +1259,7 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             var entity = await context.WildcardEntries.AddAsync(entry);
             await context.SaveChangesAsync();
-            
+
             // Update collection timestamp
             var collection = await context.WildcardCollections.FindAsync(entry.CollectionId);
             if (collection != null)
@@ -1267,7 +1267,7 @@ namespace BlazorWebApp.Services
                 collection.UpdatedAt = DateTime.Now;
                 await context.SaveChangesAsync();
             }
-            
+
             return entity.Entity;
         }
 
@@ -1280,9 +1280,9 @@ namespace BlazorWebApp.Services
             existing.Value = entry.Value;
             existing.Weight = entry.Weight;
             existing.SortOrder = entry.SortOrder;
-            
+
             await context.SaveChangesAsync();
-            
+
             // Update collection timestamp
             var collection = await context.WildcardCollections.FindAsync(existing.CollectionId);
             if (collection != null)
@@ -1290,7 +1290,7 @@ namespace BlazorWebApp.Services
                 collection.UpdatedAt = DateTime.Now;
                 await context.SaveChangesAsync();
             }
-            
+
             return existing;
         }
 
@@ -1303,7 +1303,7 @@ namespace BlazorWebApp.Services
                 var collectionId = entry.CollectionId;
                 context.WildcardEntries.Remove(entry);
                 await context.SaveChangesAsync();
-                
+
                 // Update collection timestamp
                 var collection = await context.WildcardCollections.FindAsync(collectionId);
                 if (collection != null)
@@ -1321,28 +1321,30 @@ namespace BlazorWebApp.Services
         private async void SeedDefaultSystemPromptTemplates()
         {
             using var context = await _factory.CreateDbContextAsync();
-            
-            // Check if default templates already exist
-            var existingDefaults = await context.SystemPromptTemplates
-                .Where(t => t.IsDefault)
-                .CountAsync();
-            
-            if (existingDefaults > 0)
-                return; // Default templates already seeded
-            
+
             // Get default templates from OllamaService
             var defaultTemplates = _ollamaService.GetDefaultTemplates();
-            
-            foreach (var template in defaultTemplates)
+
+            // Per-name check: only seed templates that don't exist yet (by Name)
+            var existingNames = await context.SystemPromptTemplates
+                .Where(t => t.IsDefault)
+                .Select(t => t.Name)
+                .ToListAsync();
+            var toAdd = defaultTemplates.Where(t => !existingNames.Contains(t.Name)).ToList();
+
+            if (toAdd.Count == 0)
+                return; // All defaults already seeded
+
+            foreach (var template in toAdd)
             {
                 template.CreatedAt = DateTime.UtcNow;
                 template.UpdatedAt = DateTime.UtcNow;
             }
-            
-            await context.SystemPromptTemplates.AddRangeAsync(defaultTemplates);
+
+            await context.SystemPromptTemplates.AddRangeAsync(toAdd);
             await context.SaveChangesAsync();
-            
-            _logger.LogInformation("Seeded {Count} default system prompt templates from OllamaService", defaultTemplates.Count);
+
+            _logger.LogInformation("Seeded {Count} new default system prompt templates from OllamaService", toAdd.Count);
         }
 
         public async Task<List<SystemPromptTemplate>> GetSystemPromptTemplates()
@@ -1382,7 +1384,7 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             var template = await context.SystemPromptTemplates.FindAsync(id);
             if (template == null || template.IsDefault) return false;
-            
+
             context.SystemPromptTemplates.Remove(template);
             return await context.SaveChangesAsync() > 0;
         }

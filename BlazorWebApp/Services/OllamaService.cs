@@ -152,6 +152,23 @@ namespace BlazorWebApp.Services
                     Description = "Expand negative prompts with quality issues to avoid",
                     Messages = GetNegativePromptInstructions("{prompt}"),
                     IsDefault = true
+                },
+                // Template placeholders: {promptA}, {promptB}, {ratio} (0-100, higher = more B)
+                new SystemPromptTemplate
+                {
+                    Name = "PromptMixer",
+                    Description = "Blends two prompts into a single coherent hybrid using a blend ratio.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content =
+                            "You are a prompt-blending assistant. You will receive two prompts (A and B) and a blend ratio from 0 to 100 " +
+                            "(0 = keep only A, 100 = keep only B, 50 = equal blend). Produce a SINGLE new prompt that coherently combines " +
+                            "the visual concepts of both inputs weighted by the ratio. Preserve subject fidelity when the ratio favors that side. " +
+                            "Return only the final prompt - no commentary, no labels, no markdown." },
+                        new() { Role = "user", Content =
+                            "Prompt A: {promptA}\nPrompt B: {promptB}\nBlend ratio (0-100, higher = more B): {ratio}\n\nReturn the blended prompt only." }
+                    }
                 }
             };
         }
