@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 2 in progress (see `PHASE_2.md`)
+**Current Phase:** Phase 3 next (Phase 2 complete — see `PHASE_2.md`)
 **Total Complexity:** ~77 points across 11 phases
 **Related Plans:** Builds on features delivered in `prompt-page-enhancement` Phases 1-5. Supersedes the never-started Phase 5.5 (LLM Creative Tools) and Phase 6 (VL Models) of that plan.
 
@@ -146,8 +146,8 @@ Design decisions:
 ### Phase 2: Danbooru Tag Builder
 
 **Objective:** Generate coherent prompts in the Danbooru tag vocabulary from natural-language input, using the existing CSV-backed tag catalog.
-**Complexity:** 13 points
-**Status:** [ ] Not Started
+**Complexity:** 13 points (actual: 23)
+**Status:** [x] Complete — see `PHASE_2.md`
 
 #### Approach (Option B - Two-Pass Retrieval)
 
@@ -456,19 +456,19 @@ Recorded here for future planning. When picked up, use this plan as reference co
 
 ## Phase Summary Table
 
-| #   | Phase                         | Complexity | Depends On                         | Status |
-| --- | ----------------------------- | ---------- | ---------------------------------- | ------ |
-| 1   | Sidebar Nav Refactor          | 8          | -                                  | [x]    |
-| 2   | Danbooru Tag Builder          | 13         | 1                                  | [ ]    |
-| 3   | Prompt Mixer                  | 3          | 1                                  | [ ]    |
-| 4   | Random Inspiration + Roulette | 3          | 1                                  | [ ]    |
-| 5   | Scene Builder                 | 5          | 1, (optional 2)                    | [ ]    |
-| 6   | Template Engine               | 5          | 1                                  | [ ]    |
-| 7   | Prompt Remixer                | 3          | 1                                  | [ ]    |
-| 8   | Workshop                      | 13         | 1, (send-to-Workshop hooks in 2-7) | [ ]    |
-| 9   | Gap Analyzer                  | 8          | 1, 2                               | [ ]    |
-| 10  | Polish & Settings             | 3          | 1-9                                | [ ]    |
-| 11  | Image -> Prompt (VL)          | 13         | 1, 2                               | [ ]    |
+| #   | Phase                         | Complexity  | Depends On                         | Status |
+| --- | ----------------------------- | ----------- | ---------------------------------- | ------ |
+| 1   | Sidebar Nav Refactor          | 8           | -                                  | [x]    |
+| 2   | Danbooru Tag Builder          | 13 (act:23) | 1                                  | [x]    |
+| 3   | Prompt Mixer                  | 3           | 1                                  | [ ]    |
+| 4   | Random Inspiration + Roulette | 3           | 1                                  | [ ]    |
+| 5   | Scene Builder                 | 5           | 1, (optional 2)                    | [ ]    |
+| 6   | Template Engine               | 5           | 1                                  | [ ]    |
+| 7   | Prompt Remixer                | 3           | 1                                  | [ ]    |
+| 8   | Workshop                      | 13          | 1, (send-to-Workshop hooks in 2-7) | [ ]    |
+| 9   | Gap Analyzer                  | 8           | 1, 2                               | [ ]    |
+| 10  | Polish & Settings             | 3           | 1-9                                | [ ]    |
+| 11  | Image -> Prompt (VL)          | 13          | 1, 2                               | [ ]    |
 
 **Total:** ~77 complexity points.
 

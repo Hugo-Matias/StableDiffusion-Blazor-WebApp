@@ -137,6 +137,9 @@ builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddSingleton<OllamaService>();
 
+// Tag prompt builder service (two-pass Danbooru tag resolution)
+builder.Services.AddScoped<TagPromptService>();
+
 // Wildcard service for prompt wildcard management
 builder.Services.AddSingleton<IWildcardService, WildcardService>();
 

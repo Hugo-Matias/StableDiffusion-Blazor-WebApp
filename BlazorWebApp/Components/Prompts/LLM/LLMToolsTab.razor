@@ -36,6 +36,9 @@
                 case "history":
                     <HistoryView RefreshVersion="@_historyVersion" OnRestore="HandleHistoryRestore" />
                     break;
+                case "tag-builder":
+                    <TagBuilderView SelectedModel="@_selectedModel" />
+                    break;
             }
         </div>
     </Content>

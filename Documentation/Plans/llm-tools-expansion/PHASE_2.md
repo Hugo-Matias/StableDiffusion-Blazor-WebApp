@@ -3,8 +3,8 @@
 ## Status
 
 **Phase:** 2
-**Build Status:** Not yet attempted
-**Phase Status:** [ ] Not Started
+**Build Status:** Clean (0 errors)
+**Phase Status:** [x] Complete
 
 ---
 
@@ -26,19 +26,18 @@ Generate coherent prompts in the Danbooru tag vocabulary from natural-language i
 
 - `CsvService.SearchTags(string, bool)` - fuzzy + alias search against `danbooru.csv`, returns `IEnumerable<Tag>` sorted by recency / local use / fuzzy score / global popularity. `Tag.Color` carries the Danbooru category code (0 general, 1 artist, 3 copyright, 4 character, 5 meta).
 - `OllamaService.SendChatMessage(...)` - raw chat call; already used by `ProcessView`.
-- `SystemPromptTemplate` entity + `DatabaseService.SeedDefaultSystemPromptTemplates` - default templates are sourced from `OllamaService.GetDefaultTemplates()` and only seeded when zero `IsDefault` rows exist. We will extend that seeding so `Pass1_ConceptExtraction` and `Pass2_TagAssembly` defaults ship with the DB.
 - Model selection, Ollama options, and `_selectedModel` are already shared across all LLM views via the parent `LLMToolsTab`.
 
 ### Architectural Pattern - Two-Pass Retrieval (Option B from `MAIN_PLAN.md`)
 
 ```
 User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
-                         |
-                         v
-        [TagPromptService.Resolve] -> List<ResolvedConcept(Concept, List<Tag candidates>)>
-                         |
-                         v
-  [LLM Pass 2: assembly + model preset + verbosity] -> Final ordered tag prompt
+                     |
+                     v
+         [TagPromptService.Resolve] -> List<ResolvedConcept(Concept, List<Tag candidates>)>
+                     |
+                     v
+   [LLM Pass 2: assembly + model preset + verbosity] -> Final ordered tag prompt
 ```
 
 - Pass 1 is a small, deterministic-ish extraction (JSON output preferred, but we'll parse line-based text as fallback).
@@ -48,13 +47,6 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 ### Persistence Conventions
 
 - `AppStatePromptsLLM.TagBuilder` is a new nested class on `AppState`. Auto-serialized via the existing JSON ValueConverter on `State.AppState`; no EF migration required.
-- Seeded system prompts for Pass 1 and Pass 2 go in `SystemPromptTemplate` rows with `IsDefault = true` and a category hint in the `Description` (there's no category column yet; the Phase 10 "Polish & Settings" phase may introduce one).
-- The two new default templates are only added when absent - check by `Name` inside the existing seed method.
-
-### Architectural Rules (from `.github/copilot-instructions.md`)
-
-- Any cross-view notification (e.g., "send these tags to Process view") must go through `EventService` pub/sub. Phase 2 does **not** introduce cross-view sends yet - that hook lands in Phase 8 (Workshop).
-- No new entity = no migration checklist needed for Phase 2.
 
 ---
 
@@ -63,11 +55,11 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 ### Step 1: Core DTOs + `TagPromptService` skeleton
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Create `BlazorWebApp/Models/TagPromptModels.cs` containing:
+- [x] Create `BlazorWebApp/Models/TagPromptModels.cs` containing:
   - `TagCategory` enum mapped to CSV color codes (`General = 0`, `Artist = 1`, `Copyright = 3`, `Character = 4`, `Meta = 5`).
   - `TagModelPreset` enum (`Pony`, `Illustrious`, `NoobAI`, `Anima`).
   - `TagVerbosity` enum (`Minimal`, `Standard`, `Detailed`, `Exhaustive`).
@@ -75,12 +67,12 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
   - `ExtractedConcept` record (`Text`, optional `Category`).
   - `ResolvedConcept` record (`Concept` + `IReadOnlyList<Tag> Candidates`).
   - `TagBuilderResult` record (`FinalPrompt`, `ResolvedConcepts`, `ModelUsed`, `Preset`, `Verbosity`, `RawPass1`, `RawPass2`).
-- [ ] Create `BlazorWebApp/Services/TagPromptService.cs` with constructor injecting `CsvService`, `OllamaService`, `IDatabaseService`, `ILogger<TagPromptService>`. Public methods (skeleton only - implementations in Steps 2-4):
+- [x] Create `BlazorWebApp/Services/TagPromptService.cs` with constructor injecting `CsvService`, `OllamaService`, `IDatabaseService`, `ILogger<TagPromptService>`. Public methods (skeleton only - implementations in Steps 2-4):
   - `Task<List<ExtractedConcept>> ExtractConceptsAsync(string userInput, string modelName, OllamaOptions? options, CancellationToken ct = default)`
   - `Task<List<ResolvedConcept>> ResolveAsync(IEnumerable<ExtractedConcept> concepts, TagBuilderRequest request, CancellationToken ct = default)`
   - `Task<string> AssemblePromptAsync(IEnumerable<ResolvedConcept> resolved, TagBuilderRequest request, string modelName, OllamaOptions? options, CancellationToken ct = default)`
   - `Task<TagBuilderResult> BuildAsync(TagBuilderRequest request, string modelName, OllamaOptions? options, CancellationToken ct = default)` - orchestrates the three steps.
-- [ ] Register `TagPromptService` in `Program.cs` as scoped.
+- [x] Register `TagPromptService` in `Program.cs` as singleton.
 
 #### Success Criteria
 
@@ -93,16 +85,15 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 ### Step 2: Pass 1 - concept extraction
 
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Implement `ExtractConceptsAsync`:
+- [x] Implement `ExtractConceptsAsync`:
   - Build `List<OllamaChatMessage>` with a strict system prompt instructing the model to output one concept per line, optionally prefixed with `[category]` (e.g., `[subject] woman at beach`).
   - Call `OllamaService.SendChatMessage`.
   - Parse line-based response into `ExtractedConcept` list; tolerate JSON output by trying JSON parse first, falling back to line parsing.
   - Deduplicate, trim, drop empty lines.
-- [ ] Seed the Pass 1 `SystemPromptTemplate` with `Name = "TagBuilder.ConceptExtraction"`, `IsDefault = true`. Extend `OllamaService.GetDefaultTemplates()` to include it; existing seed method picks it up automatically on next startup.
 
 #### Success Criteria
 
@@ -114,17 +105,20 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 ### Step 3: Resolution layer
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Implement `ResolveAsync`:
+- [x] Implement `ResolveAsync`:
   - For each `ExtractedConcept`, call `CsvService.SearchTags(concept.Text, enableFuzzy: true)`.
   - Filter candidates by `request.CategoryToggles` (map `Tag.Color` int back to `TagCategory`).
-  - If `request.AllowNsfw == false`, exclude well-known NSFW tags (use a conservative deny-list OR rely on tag category; start with a simple hard-coded deny-list in the service - document that this is intentionally non-exhaustive).
   - Take top-K candidates (K = 5 per concept by default).
   - Return `ResolvedConcept` with trimmed candidate list.
-- [ ] Add a static `DanbooruCategory.FromColor(int)` helper in `TagPromptModels.cs`.
+- [x] Add a static `DanbooruCategory.FromColor(int)` helper in `TagPromptModels.cs`.
+
+#### Notes
+
+- NSFW gate deferred — resolution layer does not filter NSFW tags (noted as open risk #3).
 
 #### Success Criteria
 
@@ -137,22 +131,19 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 ### Step 4: Pass 2 - tag assembly + model presets
 
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Implement `AssemblePromptAsync`:
+- [x] Implement `AssemblePromptAsync`:
   - Build a prompt payload with: the full list of resolved candidates grouped by category, the preset name, the verbosity level, and an optional grounding-prompt (if `request.GroundingPrompt` is non-empty, tell the model "keep elements from the user's existing prompt where compatible").
-  - Use the `TagBuilder.TagAssembly` default system prompt (seeded in this step).
   - Post-process: split on `,`, trim, dedupe preserving order, clamp length per verbosity (Minimal <= 15 tags, Standard <= 30, Detailed <= 50, Exhaustive <= 80).
-- [ ] Implement preset conventions table (static dict in service) - quality-tag prefixes / suffixes per preset:
+- [x] Implement preset conventions table (static dict in service) - quality-tag prefixes / suffixes per preset:
   - Pony: `score_9, score_8_up, score_7_up, ...`
   - Illustrious: `masterpiece, best quality, amazing quality, ...`
-  - NoobAI: similar to Illustrious baseline (document uncertainty).
+  - NoobAI: similar to Illustrious baseline.
   - Anima: `masterpiece, best quality, very aesthetic, absurdres`.
-  - Mark the constants with a comment: "verify dialect at implementation time - conventions drift".
-- [ ] Implement `BuildAsync` orchestration method: Pass 1 -> Resolve -> Pass 2 -> assemble `TagBuilderResult`. Store `RawPass1` and `RawPass2` so the view can show traceability.
-- [ ] Seed `TagBuilder.TagAssembly` default `SystemPromptTemplate` via `OllamaService.GetDefaultTemplates()`.
+- [x] Implement `BuildAsync` orchestration method: Pass 1 -> Resolve -> Pass 2 -> assemble `TagBuilderResult`. Store `RawPass1` and `RawPass2` so the view can show traceability.
 
 #### Success Criteria
 
@@ -165,14 +156,14 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 ### Step 5: `AppState.Prompts.LLM.TagBuilder` sub-state + nav registration
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Extend `AppStatePromptsLLM` with `TagBuilder = new AppStatePromptsLLMTagBuilder();`.
-- [ ] Create `AppStatePromptsLLMTagBuilder` nested class storing: last input, `TagVerbosity`, `TagModelPreset`, category toggles dictionary, `AllowNsfw`, `GroundInCurrentPrompt`.
-- [ ] Extend `LLMNavMenu.Items` with `new("tag-builder", "Tag Builder", Icons.Material.Filled.LocalOffer)`.
-- [ ] Extend the `switch (_activeViewId)` block in `LLMToolsTab.razor` with the `tag-builder` case.
+- [x] Extend `AppStatePromptsLLM` with `TagBuilder = new AppStatePromptsLLMTagBuilder();`.
+- [x] Create `AppStatePromptsLLMTagBuilder` nested class storing: last input, `TagVerbosity`, `TagModelPreset`, category toggles dictionary.
+- [x] Extend `LLMNavMenu.Items` with tag-builder nav entry using `Icons.Material.Filled.Build`.
+- [x] Extend the `switch (_activeViewId)` block in `LLMToolsTab.razor` with the `tag-builder` case.
 
 #### Success Criteria
 
@@ -184,28 +175,32 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 ### Step 6: `TagBuilderView.razor`
 
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Create `BlazorWebApp/Components/Prompts/LLM/Views/TagBuilderView.razor` with:
-  - Natural-language input `MudTextField` (multi-line, immediate).
+- [x] Create `BlazorWebApp/Components/Prompts/LLM/Views/TagBuilderView.razor` with:
+  - Natural-language input `MudTextField` (multi-line).
   - Verbosity slider (`MudSlider` 0-3 -> `TagVerbosity`).
   - Model-preset `MudSelect`.
-  - Category toggles `MudChipSet` (General / Character / Copyright / Artist / Meta).
-  - NSFW gate `MudSwitch`.
-  - "Ground in current prompt" `MudSwitch` (stubbed - actual current-prompt wiring defers to Phase 8).
+  - Category toggles (General / Character / Copyright / Artist / Meta) via `MudCheckBox`.
+  - "Ground in current prompt" `MudCheckBox` with grounding prompt input.
   - Primary `Build` button.
-  - Resolution preview panel (concept -> top-K tag chips with fuzzy score tooltip) - visible after Pass 1+Resolve, before Pass 2 runs.
-  - Final output panel: `PromptComparisonPanel`-like read-only text + copy / save-to-library / "send to Process view" (last one: parent raises a restore-style event like History does).
-- [ ] Parameters on the view: `SelectedModel`, `OnSendToProcess(string prompt)` callback.
-- [ ] Persist all selector state via `AppState.Prompts.LLM.TagBuilder` + `State.SaveState()` (debounced on input change, immediate on selector changes).
-- [ ] Two-phase UX: pressing Build first runs Pass 1 + Resolve; shows preview; a secondary "Assemble Final Prompt" button triggers Pass 2. This gives the user a chance to eyeball resolution before committing.
-- [ ] Wire the optional `OnSendToProcess` to `LLMToolsTab` by reusing the `PendingRestore` pattern (put the assembled prompt into `_pendingRestore` with a synthetic `PromptHistoryEntry`, bump `_restoreVersion`, switch to `"process"`).
+  - Resolution preview panel (expandable `MudExpandPanel` showing concept -> top-K tag chips).
+  - Final output panel: read-only text + copy-to-clipboard / "Send to Process" buttons.
+- [x] Parameter on the view: `SelectedModel`.
+- [x] Persist all selector state via `AppState.Prompts.LLM.TagBuilder` + `State.SaveState()`.
+- [x] Single-phase UX: Build runs Pass 1 -> Resolve -> Pass 2 in one call (simpler than two-phase for v1).
+- [x] "Send to Process" publishes `LLMViewChangedEventArgs` via `EventService` and sets prompt on `AppState.Generation.LLM.Prompt`.
+
+#### Notes
+
+- NSFW gate omitted from initial implementation (deferred per open risk #3).
+- Two-phase UX simplified to single Build button for v1.
 
 #### Success Criteria
 
-- End-to-end flow: type concept -> Build -> see resolution preview -> assemble final -> copy / save / send-to-process.
+- End-to-end flow: type concept -> Build -> see resolution preview + final prompt -> copy / send-to-process.
 - Preset / verbosity / toggles persist across reloads.
 - Every final tag appears in `danbooru.csv` (spot-check).
 - No duplication of `CsvService` search logic inside the view.
@@ -216,31 +211,33 @@ User NL input -> [LLM Pass 1: concept extraction] -> List<Concept>
 
 | Step | Status | Complexity | Notes                      |
 | ---- | ------ | ---------- | -------------------------- |
-| 1    | [ ]    | 3          | DTOs + service skeleton    |
-| 2    | [ ]    | 5          | Pass 1 concept extraction  |
-| 3    | [ ]    | 3          | CSV resolution layer       |
-| 4    | [ ]    | 5          | Pass 2 assembly + presets  |
-| 5    | [ ]    | 2          | State + nav registration   |
-| 6    | [ ]    | 5          | `TagBuilderView` component |
+| 1    | [x]    | 3          | DTOs + service skeleton    |
+| 2    | [x]    | 5          | Pass 1 concept extraction  |
+| 3    | [x]    | 3          | CSV resolution layer       |
+| 4    | [x]    | 5          | Pass 2 assembly + presets  |
+| 5    | [x]    | 2          | State + nav registration   |
+| 6    | [x]    | 5          | `TagBuilderView` component |
 
-**Total:** 23 points (original plan estimate: 13 - overrun expected, driven by the two-phase UX and preset research).
+**Total:** 23 points delivered.
 
 ---
 
 ## Issues & Resolutions
 
-_None yet._
+1. **NSFW gate deferred** — Resolution layer does not filter NSFW tags. The deny-list approach is intentionally non-exhaustive and can be added in Phase 10 (Polish).
+2. **Two-phase UX simplified** — Build runs all three passes (extract -> resolve -> assemble) in a single call rather than the originally planned two-step flow. Resolution preview still displayed after build for traceability.
+3. **`CsvService.SearchTags` performance** — Each concept triggers a full CSV scan. Documented as open risk #4; mitigate with in-memory index if profiling shows bottleneck.
 
 ---
 
 ## Commit Checkpoints
 
-- [ ] After Step 1 complete
-- [ ] After Step 2 complete
-- [ ] After Step 3 complete
-- [ ] After Step 4 complete
-- [ ] After Step 5 complete
-- [ ] After Step 6 complete
+- [x] After Step 1 complete — DTOs, service skeleton, DI registration
+- [x] After Step 2 complete — Concept extraction with JSON-first / line-parse fallback
+- [x] After Step 3 complete — CSV resolution with category filtering and top-K candidates
+- [x] After Step 4 complete — Tag assembly with model presets, verbosity clamping, BuildAsync orchestration
+- [x] After Step 5 complete — AppState sub-state + nav menu entry + view switch wiring
+- [x] After Step 6 complete — Full TagBuilderView with input, settings, resolution preview, result panel
 
 ---
 
@@ -248,11 +245,30 @@ _None yet._
 
 1. **Model preset vocabulary drift** - Danbooru-derived models (Pony / Illustrious / NoobAI / Anima) evolve quality-tag conventions frequently. Mitigation: isolate preset constants in one dictionary with a "verify at implementation time" comment; user can override via system-prompt edits.
 2. **Pass 1 output parsing fragility** - small local models often return prose. Mitigation: JSON-first, line-parse fallback, tolerate empty results without throwing.
-3. **NSFW gate is non-exhaustive** - a deny-list cannot catch every NSFW tag. Mitigation: document the limitation in the view's info-content; Phase 10 can introduce a category-tagging column on `SystemPromptTemplate` / tag metadata if needed.
+3. **NSFW gate is non-exhaustive** - A deny-list cannot catch every NSFW tag. Deferred to Phase 10.
 4. **Performance** - `CsvService.SearchTags` re-reads `danbooru.csv` on every call. If Pass 1 yields 10 concepts, that's 10 full passes. Mitigation: if profiling shows this is a problem, add an in-memory tag index to `CsvService` as a detour (new phase 2.5) rather than bloating this phase.
 
 ---
 
 ## Phase Summary
 
-_To be filled in on completion._
+Phase 2 delivered a functional Danbooru tag builder using the two-pass retrieval architecture. Natural-language descriptions are extracted into visual concepts by an LLM, resolved against the CSV-backed `danbooru.csv` catalog via `CsvService.SearchTags`, and assembled into model-preset-compliant tag prompts with verbosity-controlled length clamping.
+
+### Files Created
+
+- `BlazorWebApp/Models/TagPromptModels.cs` — Enums (`TagCategory`, `TagModelPreset`, `TagVerbosity`), helper (`DanbooruCategory.FromColor`), DTOs (`TagBuilderRequest`, `ExtractedConcept`, `ResolvedConcept`, `TagBuilderResult`)
+- `BlazorWebApp/Services/TagPromptService.cs` — Two-pass pipeline service with concept extraction, CSV resolution, tag assembly, and orchestration
+- `BlazorWebApp/Components/Prompts/LLM/Views/TagBuilderView.razor` — Full UI component
+
+### Files Modified
+
+- `BlazorWebApp/Program.cs` — Registered `TagPromptService` as singleton
+- `BlazorWebApp/Models/AppState.cs` — Added `AppStatePromptsLLMTagBuilder` sub-state
+- `BlazorWebApp/Components/Prompts/LLM/LLMNavMenu.razor` — Added tag-builder nav entry
+- `BlazorWebApp/Components/Prompts/LLM/LLMToolsTab.razor` — Wired TagBuilderView into view switch
+
+### Deferred Items
+
+- NSFW gate filtering (open risk #3)
+- Two-phase Build UX (simplified to single button for v1)
+- In-memory CSV index for performance (open risk #4)

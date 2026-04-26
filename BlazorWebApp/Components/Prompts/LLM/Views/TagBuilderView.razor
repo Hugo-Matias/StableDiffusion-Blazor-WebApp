@@ -1,0 +1,280 @@
+@* Tag Builder: Natural language -> Danbooru tag prompt via two-pass retrieval *@
+@using BlazorWebApp.Events
+@inject TagPromptService TagService
+@inject IStateService State
+@inject ISnackbar Snackbar
+@inject IEventService Events
+@inject IJSRuntime JSRuntime
+
+<MudStack Spacing="4">
+    @* Header *@
+    <MudText Typo="Typo.h5">Tag Builder</MudText>
+
+    @* Input Section *@
+    <MudCard Elevation="2" Class="pa-4">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_userInput" Label="Natural Language Description" Lines="3"
+                          Variant="Variant.Outlined"
+                          HelperText="Describe what you want in plain language (e.g. 'woman at the beach, sunset lighting')" />
+
+            <MudCheckBox @bind-Value="_useGrounding" Label="Ground in current prompt"
+                         HelperText="Include the current generation prompt as context for compatible tag assembly" />
+
+            @if (_useGrounding)
+            {
+                <MudTextField @bind-Value="_groundingPrompt" Label="Current Prompt (for grounding)" Lines="2"
+                              Variant="Variant.Text" />
+            }
+        </MudStack>
+    </MudCard>
+
+    @* Settings Section *@
+    <MudCard Elevation="2" Class="pa-4">
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.subtitle1">Settings</MudText>
+
+            @* Verbosity Slider *@
+            <div class="d-flex align-center gap-4">
+                <span style="min-width: 90px;">Verbosity:</span>
+                <MudSlider @bind-Value="_verbosityIndex" Min="0" Max="3" Step="1" TickMarks="true"
+                           Class="flex-grow-1" />
+                <MudChip Color="Color.Primary" Size="Size.Small" Class="ml-2">
+                    @_verbosityLabels[_verbosityIndex]
+                </MudChip>
+            </div>
+
+            @* Model Preset Dropdown *@
+            <MudSelect @bind-Value="_preset" Label="Model Preset" Variant="Variant.Text" Dense>
+                @foreach (var preset in _presetOptions)
+                {
+                    <MudSelectItem Value="@preset.Value">@preset.Label</MudSelectItem>
+                }
+            </MudSelect>
+
+            @* Category Toggles *@
+            <MudText Typo="Typo.subtitle2" Class="mt-2">Tag Categories</MudText>
+            <div class="d-flex flex-wrap gap-4">
+                @foreach (var category in _categoryOptions)
+                {
+                    <MudCheckBox @bind-Value="_categoryToggles[category.Key]" Label="@category.Value"
+                                 Color="Color.Secondary" Size="Size.Small" />
+                }
+            </div>
+        </MudStack>
+    </MudCard>
+
+    @* Build Button *@
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleBuild"
+               Disabled="_isBuilding || string.IsNullOrWhiteSpace(_userInput)" StartIcon="@Icons.Material.Filled.Build">
+        @_isBuilding ? "Building..." : "Build Prompt"
+    </MudButton>
+
+    @* Resolution Preview (shown after build) *@
+    @if (_result != null && _result.ResolvedConcepts.Any())
+    {
+        <MudCard Elevation="2" Class="pa-4">
+            <MudExpandPanel>
+                <MudExpandPanelHeader>
+                    <MudText Typo="Typo.subtitle1">Resolution Preview</MudText>
+                    <MudText Typo="Typo.caption" Class="ml-auto">
+                        @_result.ResolvedConcepts.Count concepts resolved
+                    </MudText>
+                </MudExpandPanelHeader>
+                <MudStack Spacing="2">
+                    @foreach (var rc in _result.ResolvedConcepts)
+                    {
+                        <MudPaper Elevation="1" Class="pa-3">
+                            <div class="d-flex flex-column gap-1">
+                                <div class="d-flex align-center gap-2">
+                                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@rc.Concept.Text</MudText>
+                                    @if (rc.Concept.Category.HasValue)
+                                    {
+                                        <MudChip Size="Size.Small" Color="Color.Info">
+                                            @rc.Concept.Category.Value
+                                        </MudChip>
+                                    }
+                                </div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var tag in rc.Candidates)
+                                    {
+                                        <MudChip Size="Size.Small" Color="Color.Default" Class="tag-chip">
+                                            @tag.Name (@tag.FuzzyScore)
+                                        </MudChip>
+                                    }
+                                </div>
+                            </div>
+                        </MudPaper>
+                    }
+                </MudStack>
+            </MudExpandPanel>
+        </MudCard>
+    }
+
+    @* Result Section *@
+    @if (_result != null)
+    {
+        <MudCard Elevation="2" Class="pa-4">
+            <MudStack Spacing="2">
+                <div class="d-flex justify-space-between align-center">
+                    <MudText Typo="Typo.subtitle1">Generated Prompt</MudText>
+                    <div class="d-flex gap-2">
+                        <MudChip Size="Size.Small" Color="Color.Primary">@_result.Preset</MudChip>
+                        <MudChip Size="Size.Small" Color="Color.Secondary">@_result.Verbosity</MudChip>
+                    </div>
+                </div>
+
+                <MudTextField @bind-Value="_finalPromptText" Lines="4" Variant="Variant.Outlined" ReadOnly="true" />
+
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Outlined" OnClick="HandleCopyToClipboard"
+                               StartIcon="@Icons.Material.Filled.ContentCopy">
+                        Copy to Clipboard
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="HandleSendToProcess"
+                               StartIcon="@Icons.Material.Filled.AutoAwesome">
+                        Send to Process
+                    </MudButton>
+                </div>
+            </MudStack>
+        </MudCard>
+    }
+
+    @* Empty State *@
+    @if (_result == null && !_isBuilding)
+    {
+        <MudCard Elevation="0" Class="pa-6 text-center grey lighten-4">
+            <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.subtitle1">No prompt built yet</MudText>
+            <MudText Class="mt-2">Enter a description above and click "Build Prompt" to generate Danbooru tags.</MudText>
+        </MudCard>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+
+    private string _userInput = string.Empty;
+    private bool _useGrounding = false;
+    private string _groundingPrompt = string.Empty;
+    private int _verbosityIndex = 1; // Standard
+    private TagModelPreset _preset = TagModelPreset.Pony;
+    private Dictionary<TagCategory, bool> _categoryToggles = new()
+    {
+        [TagCategory.General] = true,
+        [TagCategory.Artist] = false,
+        [TagCategory.Copyright] = true,
+        [TagCategory.Character] = true,
+        [TagCategory.Meta] = true
+    };
+
+    private bool _isBuilding;
+    private TagBuilderResult? _result;
+    private string _finalPromptText = string.Empty;
+
+    private static readonly string[] _verbosityLabels = { "Minimal", "Standard", "Detailed", "Exhaustive" };
+
+    private static readonly (TagModelPreset Value, string Label)[] _presetOptions =
+    {
+        (TagModelPreset.Pony, "Pony Diffusion"),
+        (TagModelPreset.Illustrious, "Illustrious"),
+        (TagModelPreset.NoobAI, "NoobAI"),
+        (TagModelPreset.Anima, "Anima")
+    };
+
+    private static readonly Dictionary<TagCategory, string> _categoryOptions = new()
+    {
+        [TagCategory.General] = "General",
+        [TagCategory.Artist] = "Artist",
+        [TagCategory.Copyright] = "Copyright",
+        [TagCategory.Character] = "Character",
+        [TagCategory.Meta] = "Meta"
+    };
+
+    private async Task HandleBuild()
+    {
+        if (string.IsNullOrWhiteSpace(_userInput))
+        {
+            Snackbar.Add("Enter a description first.", Severity.Warning);
+            return;
+        }
+
+        _isBuilding = true;
+        State.State.Prompts.LLM.TagBuilder.Verbosity = (TagVerbosity)_verbosityIndex;
+        State.State.Prompts.LLM.TagBuilder.Preset = _preset;
+        await State.SaveState();
+
+        try
+        {
+            var request = new TagBuilderRequest(
+                UserInput: _userInput.Trim(),
+                Verbosity: (TagVerbosity)_verbosityIndex,
+                Preset: _preset,
+                CategoryToggles: _categoryToggles,
+                GroundingPrompt: _useGrounding ? _groundingPrompt : null);
+
+            var modelName = SelectedModel;
+
+            if (string.IsNullOrWhiteSpace(modelName))
+            {
+                Snackbar.Add("Select an LLM model in the settings panel first.", Severity.Warning);
+                return;
+            }
+
+            var options = State.State.Generation.LLM.Options.ToOllamaOptions();
+            _result = await TagService.BuildAsync(request, modelName, options);
+            _finalPromptText = _result.FinalPrompt;
+
+            if (string.IsNullOrWhiteSpace(_result.FinalPrompt))
+            {
+                Snackbar.Add("Failed to generate prompt. Try a different description.", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add($"Built prompt with {_result.ResolvedConcepts.Count} concepts resolved.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Build failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isBuilding = false;
+        }
+    }
+
+    private async Task HandleCopyToClipboard()
+    {
+        if (!string.IsNullOrWhiteSpace(_finalPromptText))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _finalPromptText);
+            Snackbar.Add("Copied to clipboard.", Severity.Success);
+        }
+    }
+
+    private async Task HandleSendToProcess()
+    {
+        if (!string.IsNullOrWhiteSpace(_finalPromptText))
+        {
+            // Switch to Process view and set the prompt
+            State.State.Prompts.LLM.ActiveViewId = "process";
+            State.State.Generation.LLM.Prompt = _finalPromptText;
+            await State.SaveState();
+
+            Snackbar.Add("Sent to Process view.", Severity.Info);
+            Events.Publish(new LLMViewChangedEventArgs { ViewId = "process" });
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Load persisted settings
+        var tagBuilder = State.State.Prompts.LLM.TagBuilder;
+        _verbosityIndex = (int)tagBuilder.Verbosity;
+        _preset = tagBuilder.Preset;
+        foreach (var kvp in tagBuilder.CategoryToggles)
+        {
+            _categoryToggles[kvp.Key] = kvp.Value;
+        }
+    }
+}

@@ -316,6 +316,21 @@ namespace BlazorWebApp.Models
     {
         public string ActiveViewId { get; set; } = "process";
         public bool IsNavCollapsed { get; set; } = false;
+        public AppStatePromptsLLMTagBuilder TagBuilder { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLMTagBuilder
+    {
+        public TagVerbosity Verbosity { get; set; } = TagVerbosity.Standard;
+        public TagModelPreset Preset { get; set; } = TagModelPreset.Pony;
+        public Dictionary<TagCategory, bool> CategoryToggles { get; set; } = new()
+        {
+            [TagCategory.General] = true,
+            [TagCategory.Artist] = false,
+            [TagCategory.Copyright] = true,
+            [TagCategory.Character] = true,
+            [TagCategory.Meta] = true
+        };
     }
 
     public class AppStatePromptsWildcards
