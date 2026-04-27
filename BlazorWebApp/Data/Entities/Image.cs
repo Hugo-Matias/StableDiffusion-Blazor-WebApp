@@ -25,6 +25,12 @@ namespace BlazorWebApp.Data.Entities
         public Resource? Model { get; set; }
         public int? ResourceId { get; set; }
 
+        /// <summary>
+        /// Excludes the image from gallery / browser views when true. Used by Workshop previews
+        /// and other internal-only generations. By-id lookups and direct references still work.
+        /// </summary>
+        public bool IsHidden { get; set; }
+
 
         public Image() { }
         public Image(ResourceImage resourceImage)

@@ -331,6 +331,34 @@ namespace BlazorWebApp.Models
         public int SpawnCount { get; set; } = 5;
         public bool AutoRender { get; set; } = true;
         public bool RightPanelCollapsed { get; set; } = false;
+
+        // Phase 8.6 Step 5 - session sidebar can collapse to a 56px icon rail.
+        // Defaults to collapsed so the chat thread gets max horizontal space.
+        public bool SessionRailCollapsed { get; set; } = true;
+
+        // Preview-generation persistence (Phase 8.5)
+        public Guid? LastWorkflowId { get; set; }
+        public long LastSeed { get; set; } = 42;
+        public BlazorWebApp.Services.PreviewOrientation Orientation { get; set; } = BlazorWebApp.Services.PreviewOrientation.Portrait;
+
+        // Phase 8.6 Step 6 - preview behaviour controls.
+        // UseEnhancements: when false (default), preview snapshots deactivate enhancement fragments
+        //   (Detailer, Upscale, Refiner, SeedVR2, SeedVarianceEnhancer) for faster, leaner previews.
+        // AutoQueuePreviews: when true (default), creating a chat child or spawning variations
+        //   fires off preview generation immediately; ComfyUI serializes the queue server-side.
+        public bool UseEnhancements { get; set; } = false;
+        public bool AutoQueuePreviews { get; set; } = true;
+
+        // Evolve controls persistence (Phase 8.6 Step 4). CustomDirection + Preserve are NOT persisted.
+        public EvolveIntensity Intensity { get; set; } = EvolveIntensity.Moderate;
+        public List<string> Targets { get; set; } = new();
+        public EvolveLength Length { get; set; } = EvolveLength.Match;
+        public float Temperature { get; set; } = 0.9f;
+
+        // Chat-edit verbosity (Phase 8.6 Step 4 follow-up). Controls how much the
+        // LLM elaborates when applying a chat instruction to the prompt.
+        public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+        public float ChatTemperature { get; set; } = 0.7f;
     }
 
     public class AppStatePromptsLLMSceneBuilder

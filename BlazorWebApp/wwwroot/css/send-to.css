@@ -1,0 +1,70 @@
+/* Shared "Send to" action row (extracted from AssetInfoPanel.razor.css in Phase 8.6 Step 2).
+   Kept globally scoped so consumers like WorkshopChatBubble / WorkshopNodeDetail can render
+   the same visual treatment without duplicating the rules. */
+
+.send-to-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.send-to-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.send-to-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.send-to-btn {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.send-to-btn:hover {
+  background: var(--mud-palette-primary);
+  color: var(--mud-palette-primary-text);
+  border-color: var(--mud-palette-primary);
+}
+
+/* Mode-specific button colors */
+.send-to-btn.mode-txt2img:hover {
+  background: var(--mud-palette-info);
+  border-color: var(--mud-palette-info);
+}
+
+.send-to-btn.mode-img2img:hover {
+  background: var(--mud-palette-warning);
+  border-color: var(--mud-palette-warning);
+}
+
+.send-to-btn.mode-img2vid:hover {
+  background: var(--mud-palette-primary);
+  border-color: var(--mud-palette-primary);
+}
+
+.send-to-btn.mode-extras:hover {
+  background: var(--mud-palette-secondary);
+  border-color: var(--mud-palette-secondary);
+}
+
+.send-to-btn .mud-icon-root {
+  font-size: 0.85rem;
+}

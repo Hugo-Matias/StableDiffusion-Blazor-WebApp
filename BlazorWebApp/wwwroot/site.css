@@ -32,7 +32,7 @@
 	--app-sidebar-rail-width: 40px;
 
 	/* Overall page max-width clamp; prevents ultra-wide layouts from stretching. */
-	--app-shell-max-width: 1600px;
+	--app-shell-max-width: 1900px;
 
 	/* Shared corner radius for sidebar / topbar / content surfaces. */
 	--app-surface-radius: 4px;

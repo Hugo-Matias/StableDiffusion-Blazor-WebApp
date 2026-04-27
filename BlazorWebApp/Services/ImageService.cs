@@ -69,15 +69,15 @@ namespace BlazorWebApp.Services
         #endregion
 
         public ImageService(
-            IIOService io, 
-            IBackendService backend, 
-            MagickService magick, 
-            IDatabaseService db, 
-            IProgressService progress, 
-            IRouterService router, 
-            ILogger<ImageService> logger, 
-            IStateService state, 
-            ISessionService session, 
+            IIOService io,
+            IBackendService backend,
+            MagickService magick,
+            IDatabaseService db,
+            IProgressService progress,
+            IRouterService router,
+            ILogger<ImageService> logger,
+            IStateService state,
+            ISessionService session,
             IModelService models,
             IWildcardService wildcardService,
             IEventService events)
@@ -199,6 +199,105 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
+        /// Generates a single image flagged as <see cref="Image.IsHidden"/> = true. Skips
+        /// the Results-tab accumulator and the <see cref="Events.ImagesGeneratedEventArgs"/>
+        /// publication so callers (e.g. Workshop previews) stay isolated from the gallery.
+        /// </summary>
+        public async Task<Image?> GenerateHiddenImageAsync(GenerationParameters parameters, Workflow workflow)
+        {
+            if (workflow == null)
+            {
+                _logger.LogError("Cannot generate hidden image: workflow is null");
+                return null;
+            }
+
+            try
+            {
+                var prepared = await PrepareGenerationParametersAsync(parameters);
+
+                _currentModel = parameters.Assets.GetValueOrDefault("Model", "")
+                    ?? _models.GetCurrentModel(workflow.Mode);
+
+                var generated = await _router.PostGenerationAsync(prepared, workflow);
+                if (generated?.Images == null || generated.Images.Count == 0)
+                {
+                    _logger.LogWarning("Hidden generation returned no images for workflow {WorkflowTitle}", workflow.Title);
+                    return null;
+                }
+
+                var outdir = workflow.Mode == ModeType.Img2Img
+                    ? Outdir.Img2ImgSamples
+                    : Outdir.Txt2ImgSamples;
+
+                return await SaveSingleHiddenImage(outdir, generated, prepared, workflow);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during hidden image generation for workflow: {WorkflowTitle}", workflow.Title);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Persists exactly one image from a <see cref="GeneratedImages"/> response with
+        /// <see cref="Image.IsHidden"/> = true. Mirrors <see cref="SaveImagesFromGenerationParams"/>
+        /// without touching the shared <see cref="Images"/> accumulator.
+        /// </summary>
+        private async Task<Image?> SaveSingleHiddenImage(Outdir outdirSamples, GeneratedImages generated, GenerationParameters parameters, Workflow workflow)
+        {
+            DirectoryInfo saveDir = _io.CreateDirectory(GetCurrentSaveFolder(outdirSamples));
+            var fileIndex = _io.GetFileIndex(saveDir.FullName, outdirSamples);
+            var mode = Parser.ModeTypeFromOutdir(outdirSamples);
+
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler)
+                ?? parameters.GetFragment(Fragments.SamplerAdvanced);
+            var promptsFragment = parameters.GetFragment(Fragments.Prompts);
+            var latentFragment = parameters.GetFragment(Fragments.Latent);
+
+            var seed = samplerFragment?.GetValueOrDefault(Params.Seed, _state.State.Generation.Seed) ?? _state.State.Generation.Seed;
+            var steps = samplerFragment?.GetValueOrDefault(Params.Steps, 20) ?? 20;
+            var cfg = samplerFragment?.GetValueOrDefault(Params.Cfg, 7.0) ?? 7.0;
+            var samplerName = samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler";
+            var scheduler = samplerFragment?.GetValue<string>(Params.Scheduler) ?? "normal";
+            var denoise = samplerFragment?.GetValueOrDefault(Params.Denoise, 1.0) ?? 1.0;
+
+            var prompt = promptsFragment?.GetValue<string>(Params.Positive) ?? "";
+            var negativePrompt = promptsFragment?.GetValue<string>(Params.Negative) ?? "";
+
+            var width = latentFragment?.GetValueOrDefault(Params.Width, 1024) ?? 1024;
+            var height = latentFragment?.GetValueOrDefault(Params.Height, 1024) ?? 1024;
+
+            fileIndex++;
+            var extension = _backend.OutputPaths.SamplesFormat.ToLowerInvariant();
+            var fullpath = GetImagePathFromParams(saveDir.FullName, fileIndex, seed, steps, cfg, samplerName);
+            var imagePath = $"{fullpath}.{extension}";
+
+            await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(generated.Images[0]));
+
+            var image = new Image
+            {
+                Path = imagePath,
+                ProjectId = _state.State.Gallery.ProjectId,
+                Width = width,
+                Height = height,
+                Prompt = prompt,
+                NegativePrompt = negativePrompt,
+                SamplerId = await _db.GetSamplerIdByName(samplerName),
+                Scheduler = scheduler,
+                Steps = steps,
+                Seed = seed,
+                CfgScale = (float)cfg,
+                DenoisingStrength = denoise,
+                Model = await _db.GetResourceByFilename(_currentModel),
+                ModeId = await _db.GetMode(mode),
+                DateCreated = DateTime.Now,
+                IsHidden = true,
+            };
+
+            return await _db.AddImage(image);
+        }
+
+        /// <summary>
         /// Prepares a generation-ready clone of the parameters.
         /// Wildcards, styles, LoRA strings, and random seeds are applied to the clone only.
         /// The live parameters (and therefore UI) are never touched.
@@ -292,17 +391,17 @@ namespace BlazorWebApp.Services
                 ?? parameters.GetFragment(Fragments.SamplerAdvanced);
             var promptsFragment = parameters.GetFragment(Fragments.Prompts);
             var latentFragment = parameters.GetFragment(Fragments.Latent);
-            
+
             var seed = samplerFragment?.GetValueOrDefault(Params.Seed, _state.State.Generation.Seed) ?? _state.State.Generation.Seed;
             var steps = samplerFragment?.GetValueOrDefault(Params.Steps, 20) ?? 20;
             var cfg = samplerFragment?.GetValueOrDefault(Params.Cfg, 7.0) ?? 7.0;
             var samplerName = samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler";
             var scheduler = samplerFragment?.GetValue<string>(Params.Scheduler) ?? "normal";
             var denoise = samplerFragment?.GetValueOrDefault(Params.Denoise, 1.0) ?? 1.0;
-            
+
             var prompt = promptsFragment?.GetValue<string>(Params.Positive) ?? info?["prompt"] ?? "";
             var negativePrompt = promptsFragment?.GetValue<string>(Params.Negative) ?? info?["negative"] ?? "";
-            
+
             var width = latentFragment?.GetValueOrDefault(Params.Width, 1024) ?? 1024;
             var height = latentFragment?.GetValueOrDefault(Params.Height, 1024) ?? 1024;
 
@@ -348,9 +447,9 @@ namespace BlazorWebApp.Services
         private string GetImagePathFromParams(string saveDir, int fileIndex, long seed, int steps, double cfg, string sampler)
         {
             var pattern = _backend.OutputPaths.FilenamePattern ?? "";
-            
+
             var filename = fileIndex.ToString().PadLeft(5, '0');
-            
+
             if (!string.IsNullOrWhiteSpace(pattern))
             {
                 filename += "-" + pattern
@@ -359,7 +458,7 @@ namespace BlazorWebApp.Services
                     .Replace("[cfg]", cfg.ToString())
                     .Replace("[sampler]", sampler);
             }
-            
+
             return Path.Combine(saveDir, filename);
         }
 
@@ -437,12 +536,12 @@ namespace BlazorWebApp.Services
             var saveDir = _io.CreateDirectory(GetVideoSaveFolder());
             var fileIndex = GetVideoFileIndex(saveDir.FullName);
 
-            var samplerFragment = parameters.Fragments.Values.FirstOrDefault(f => 
+            var samplerFragment = parameters.Fragments.Values.FirstOrDefault(f =>
                 f.FragmentFile.Contains("sampler", StringComparison.OrdinalIgnoreCase));
-            var promptsFragment = parameters.Fragments.Values.FirstOrDefault(f => 
+            var promptsFragment = parameters.Fragments.Values.FirstOrDefault(f =>
                 f.FragmentFile.Contains("prompt", StringComparison.OrdinalIgnoreCase));
-            var videoFragment = parameters.Fragments.Values.FirstOrDefault(f => 
-                f.FragmentFile.Contains("video", StringComparison.OrdinalIgnoreCase) || 
+            var videoFragment = parameters.Fragments.Values.FirstOrDefault(f =>
+                f.FragmentFile.Contains("video", StringComparison.OrdinalIgnoreCase) ||
                 f.FragmentFile.Contains("wan", StringComparison.OrdinalIgnoreCase));
 
             foreach (var video in videos.Videos)
@@ -473,22 +572,22 @@ namespace BlazorWebApp.Services
                 video.Steps = samplerFragment?.GetValueOrDefault(Params.Steps, 20) ?? 20;
                 video.CfgScale = (float)(samplerFragment?.GetValueOrDefault(Params.Cfg, 1.0) ?? 1.0);
                 video.Sampler = samplerFragment?.GetValue<string>(Params.SamplerName) ?? "euler";
-                video.Model = parameters.Assets.GetValueOrDefault(Assets.Model) ?? 
+                video.Model = parameters.Assets.GetValueOrDefault(Assets.Model) ??
                               parameters.Assets.GetValueOrDefault(Assets.HighModel) ?? "";
-                
-                var latentFragment = parameters.Fragments.Values.FirstOrDefault(f => 
+
+                var latentFragment = parameters.Fragments.Values.FirstOrDefault(f =>
                     f.FragmentFile.Contains("latent", StringComparison.OrdinalIgnoreCase));
-                video.Width = latentFragment?.GetValueOrDefault(Params.Width, 768) ?? 
+                video.Width = latentFragment?.GetValueOrDefault(Params.Width, 768) ??
                               videoFragment?.GetValueOrDefault(Params.Width, 768) ?? 768;
-                video.Height = latentFragment?.GetValueOrDefault(Params.Height, 768) ?? 
+                video.Height = latentFragment?.GetValueOrDefault(Params.Height, 768) ??
                                videoFragment?.GetValueOrDefault(Params.Height, 768) ?? 768;
-                
+
                 video.FrameCount = videoFragment?.GetValueOrDefault(Params.VideoLength, 81) ?? 81;
                 video.FrameRate = videoFragment?.GetValueOrDefault(Params.FrameRate, 16) ?? 16;
                 video.Duration = video.FrameRate > 0 ? (double)video.FrameCount / video.FrameRate : 0;
 
                 // Persist to database using Image entity
-                await AddVideoToDbFromParams(video, video.Steps, video.CfgScale, video.Sampler, 
+                await AddVideoToDbFromParams(video, video.Steps, video.CfgScale, video.Sampler,
                     samplerFragment?.GetValue<string>(Params.Scheduler) ?? "simple", parameters);
             }
         }
@@ -499,7 +598,7 @@ namespace BlazorWebApp.Services
         private async Task<Image> AddVideoToDbFromParams(GeneratedVideo video, int steps, double cfg, string samplerName, string scheduler, GenerationParameters parameters)
         {
             var samplerId = await _db.GetSamplerIdByName(samplerName);
-            
+
             var image = new Image
             {
                 Path = video.FilePath,
@@ -522,7 +621,7 @@ namespace BlazorWebApp.Services
 
             await _db.AddImage(image);
             video.Id = image.Id;
-            
+
             return image;
         }
 
@@ -590,10 +689,10 @@ namespace BlazorWebApp.Services
         public string GetCurrentSaveFolder(Outdir? outdir)
         {
             if (outdir == null) return string.Empty;
-            
+
             var basePath = _backend.GetOutputPath(outdir.Value);
             if (string.IsNullOrEmpty(basePath)) return string.Empty;
-            
+
             if (outdir == Outdir.Extras) return basePath;
 
             var dirPattern = _backend.OutputPaths.DirectoryPattern;
@@ -647,7 +746,7 @@ namespace BlazorWebApp.Services
             return false;
         }
 
-        private void NotifyStateChanged(bool success = true, int count = 0) 
+        private void NotifyStateChanged(bool success = true, int count = 0)
             => _events.Publish(new ImagesGeneratedEventArgs(success, count));
 
         /// <summary>

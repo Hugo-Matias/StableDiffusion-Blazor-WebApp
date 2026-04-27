@@ -43,6 +43,23 @@ mirror what `PromptsForm`, `LoraForm` and the Generate-page toolbars already do.
 - Body: per-subtype form separated by `MudDivider`.
 - Footer: Cancel (left), primary action (right, `Variant.Filled`, `Color.Primary`).
 
+### Simple action buttons (`.send-to-btn`)
+
+The shared `.send-to-btn` style in [send-to.css](../../BlazorWebApp/wwwroot/css/send-to.css) is the canonical look for **simple, non-primary action buttons** that sit in flat rows (e.g. "Send to ...", "Chat Edit", "Spawn Variations", "Copy", per-item utility actions). Prefer it over `MudButton Variant="Variant.Outlined"` for these cases. Use `MudButton Variant="Variant.Filled"` only for the single primary action of a panel/dialog.
+
+Conventions:
+
+- Markup: a plain `<button class="send-to-btn ...">` carrying `MudIcon` + `<span>` label, OR an icon-only `MudIconButton Size="Size.Small" Variant="Variant.Text"` when the label would be redundant. Both shapes coexist in one row.
+- Container: wrap a related cluster in `<div class="send-to-section">` (optional `<span class="send-to-label">` heading) and `<div class="send-to-buttons">` for the row itself. The buttons grow with `flex: 1 1 calc(50% - 4px)` and reflow on narrow widths.
+- Mode tinting: use `PromptSendToService.GetWorkflowModeClass(mode)` to apply `mode-txt2img` / `mode-img2img` / `mode-img2vid` / `mode-extras` for the colored hover state. For non-workflow buttons, omit the mode class (defaults to primary hover).
+- Stylesheet: rules live in [send-to.css](../../BlazorWebApp/wwwroot/css/send-to.css) and are linked globally from `_Layout.cshtml`. Do not redefine the selectors in component-scoped CSS.
+
+When this style is the wrong choice:
+
+- Form-submission primary actions (use `MudButton Variant="Variant.Filled" Color="Color.Primary"`).
+- Destructive actions that need explicit visual weight (use `MudButton Color="Color.Error"`).
+- Toolbar / topbar buttons that should be flat icon-only (use `MudIconButton Variant="Variant.Text"` directly without a `.send-to-section` wrapper).
+
 ---
 
 ## Anti-patterns
@@ -51,6 +68,8 @@ mirror what `PromptsForm`, `LoraForm` and the Generate-page toolbars already do.
 - Free-text fields for paths that can be discovered (LoRAs, checkpoints, VAEs, CLIPs).
 - Two independent selectors that should be cascading (e.g., Folder and Project wired separately).
 - `Variant.Outlined` on large grids of fields (creates visual noise vs Generate page baseline).
+- `MudButton Variant="Variant.Outlined"` for simple non-primary actions in a flat row - use `.send-to-btn` instead so spacing, hover and mode tinting stay consistent.
+- Re-declaring `.send-to-*` rules inside a `*.razor.css` - the shared stylesheet is the single source.
 
 ---
 

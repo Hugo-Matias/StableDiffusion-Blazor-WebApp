@@ -2,8 +2,8 @@
 
 ## Status
 
-**Current Phase:** Phase 9 next (Phase 8 complete — see `PHASE_8.md`)
-**Total Complexity:** ~77 points across 11 phases
+**Current Phase:** Phase 8.6 complete (Workshop UX Overhaul - all 6 steps shipped)
+**Total Complexity:** ~100 points across 12 phases (Phase 8.6 adds 23)
 **Related Plans:** Builds on features delivered in `prompt-page-enhancement` Phases 1-5. Supersedes the never-started Phase 5.5 (LLM Creative Tools) and Phase 6 (VL Models) of that plan.
 
 ---

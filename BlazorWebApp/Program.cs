@@ -124,6 +124,9 @@ builder.Services.AddScoped<IGenerationParameterService, GenerationParameterServi
 // Image "Send To" service - context-aware routing of images/parameters to available workflows
 builder.Services.AddScoped<IImageSendToService, ImageSendToService>();
 
+// Prompt "Send To" service - apply Workshop prompts to a target workflow
+builder.Services.AddScoped<IPromptSendToService, PromptSendToService>();
+
 builder.Services.AddSingleton<DynamicPromptsService>();
 
 // Cache service - interface-only for testability

@@ -54,6 +54,17 @@ namespace BlazorWebApp.Services
         /// <returns>Generated video result.</returns>
         Task<GeneratedVideos> GenerateVideoAsync(GenerationParameters parameters, Workflow workflow);
 
+        /// <summary>
+        /// Generates a single image and saves it flagged as <see cref="Image.IsHidden"/> = true.
+        /// Bypasses the Results tab accumulator and does not publish
+        /// <see cref="Events.ImagesGeneratedEventArgs"/>. Used by Workshop preview generation
+        /// and other internal-only flows that should not surface in the gallery.
+        /// </summary>
+        /// <param name="parameters">Pre-cloned generation parameters (caller is responsible for any per-call overrides).</param>
+        /// <param name="workflow">The workflow to use for generation.</param>
+        /// <returns>The persisted hidden <see cref="Image"/> entity, or null on failure.</returns>
+        Task<Image?> GenerateHiddenImageAsync(GenerationParameters parameters, Workflow workflow);
+
         #endregion
 
         #region Utility Methods

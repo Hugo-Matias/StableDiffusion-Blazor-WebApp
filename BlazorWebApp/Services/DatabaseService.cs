@@ -27,7 +27,9 @@ namespace BlazorWebApp.Services
             _io = io;
             PageSize = 5;
 
-            InitializeDatabase();
+            // Block synchronously so any migration failure surfaces immediately
+            // instead of being swallowed by an unobserved Task.
+            InitializeDatabase().GetAwaiter().GetResult();
             PopulateModes();
             PopulateSamplers();
             SeedDefaultSystemPromptTemplates();
@@ -37,7 +39,10 @@ namespace BlazorWebApp.Services
         public async Task InitializeDatabase()
         {
             using var context = await _factory.CreateDbContextAsync();
-            await context.Database.EnsureCreatedAsync();
+            // MigrateAsync on a fresh DB creates the schema from migrations AND populates
+            // __EFMigrationsHistory. Calling EnsureCreatedAsync first would short-circuit
+            // that on dev machines and silently skip later migrations (see
+            // Documentation/Architecture/03-PERSISTENCE-AND-MIGRATIONS.md, runtime checklist).
             await context.Database.MigrateAsync();
         }
 
@@ -96,10 +101,10 @@ namespace BlazorWebApp.Services
         public async Task<List<Project>?> GetLastUsedProjects(int amount, int[] ignoreIds)
         {
             using var context = await _factory.CreateDbContextAsync();
-            var usedProjects = await context.Images.Select(i => i.ProjectId).Distinct().ToListAsync();
+            var usedProjects = await context.Images.Where(i => !i.IsHidden).Select(i => i.ProjectId).Distinct().ToListAsync();
             if (usedProjects.Count < amount) return null;
             var ids = new List<int>();
-            foreach (var id in context.Images.OrderByDescending(i => i.Id).Select(i => i.ProjectId))
+            foreach (var id in context.Images.Where(i => !i.IsHidden).OrderByDescending(i => i.Id).Select(i => i.ProjectId))
             {
                 if (!ids.Contains(id) && !ignoreIds.Contains(id)) ids.Add(id);
                 if (ids.Count >= amount) break;
@@ -304,8 +309,9 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var pageCount = Math.Ceiling(context.Images.Count() / (float)PageSize);
+            var pageCount = Math.Ceiling(context.Images.Count(i => !i.IsHidden) / (float)PageSize);
             var images = await context.Images
+                .Where(i => !i.IsHidden)
                 .Include(i => i.Model)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
@@ -324,10 +330,10 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)PageSize);
+            var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId && !i.IsHidden) / (float)PageSize);
             var images = await context.Images
                 .Include(i => i.Model)
-                .Where(i => i.ProjectId == projectId)
+                .Where(i => i.ProjectId == projectId && !i.IsHidden)
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
@@ -346,10 +352,10 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var pageCount = Math.Ceiling(context.Images.Count(i => imageIds.Contains(i.Id)) / (float)PageSize);
+            var pageCount = Math.Ceiling(context.Images.Count(i => imageIds.Contains(i.Id) && !i.IsHidden) / (float)PageSize);
             var images = await context.Images
                 .Include(i => i.Model)
-                .Where(i => imageIds.Contains(i.Id))
+                .Where(i => imageIds.Contains(i.Id) && !i.IsHidden)
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
@@ -369,7 +375,7 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
 
-            var query = context.Images.Where(i => i.ProjectId == projectId);
+            var query = context.Images.Where(i => i.ProjectId == projectId && !i.IsHidden);
             if (!string.IsNullOrWhiteSpace(state.Prompt))
                 query = query.Where(i => i.Prompt.ToLower().Contains(state.Prompt.ToLower()));
             if (!string.IsNullOrWhiteSpace(state.NegativePrompt))
@@ -465,7 +471,7 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var images = await context.Images.Include(i => i.Model).OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
+            var images = await context.Images.Where(i => !i.IsHidden).Include(i => i.Model).OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
             return new ImagesDto
             {
                 Images = images,
@@ -480,7 +486,7 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            return await context.Images.Include(i => i.Model).Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
+            return await context.Images.Include(i => i.Model).Where(i => i.ProjectId == projectId && i.Favorite && !i.IsHidden).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
         }
 
         public async Task<List<Image>> GetRecentImagesWithPrompts(int limit = 10000)

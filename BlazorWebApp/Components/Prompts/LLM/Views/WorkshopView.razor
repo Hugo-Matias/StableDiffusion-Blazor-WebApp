@@ -6,64 +6,124 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
+@inject IStateService State
 
 <MudPaper Elevation="0" Class="d-flex" Style="height: calc(100vh - 200px); overflow: hidden;">
-    @* Left: Session Sidebar *@
-    <MudPaper Elevation="1" Class="d-flex flex-column" Style="width: 220px; min-width: 220px; overflow-y: auto;">
-        <div class="pa-3 d-flex justify-space-between align-center">
-            <MudText Typo="Typo.subtitle2" Class="text-truncate">Sessions</MudText>
-            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="ShowNewSessionDialog" />
-        </div>
-        <MudStack Spacing="0" Class="pa-1">
-            @foreach (var session in _sessions)
+    @* Left: Session Sidebar (Phase 8.6 Step 5 - collapsible rail) *@
+    <MudPaper Elevation="1"
+              Class="@($"d-flex flex-column workshop-session-sidebar{(_sessionRailCollapsed ? " collapsed" : "")}")">
+        <div class="workshop-session-sidebar-header">
+            @if (!_sessionRailCollapsed)
             {
-                var isActive = session.Id == _activeSessionId;
-                <MudButton Variant="Variant.Text" Color="@(isActive? Color.Primary: Color.Default)"
-                           Class="justify-start pa-2" Style="min-height: auto;" OnClick="@(() => SelectSessionAsync(session))">
-                    <div class="d-flex align-center w-100">
-                        <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-                            <MudText Typo="Typo.body2" Class="text-truncate">@session.Name</MudText>
-                            <MudText Typo="Typo.caption" Class="@(isActive ? "text-primary" : "text-disabled")">
-                                @session.Nodes.Count node(s) . @session.UpdatedAt.ToString("MMM d")
-                            </MudText>
-                        </div>
-                        @if (isActive)
-                        {
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                           OnClick="(async () => await DeleteSessionAsync(session))!" />
-                        }
-                    </div>
-                </MudButton>
+                <MudText Typo="Typo.subtitle2" Class="workshop-session-sidebar-title text-truncate">Sessions</MudText>
+                <div class="d-flex align-center">
+                    <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small"
+                                   Title="Create new session" OnClick="DeselectSessionAsync" />
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" Title="Collapse session rail"
+                                   OnClick="ToggleSessionRailAsync" />
+                </div>
             }
-        </MudStack>
+            else
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Title="Expand session rail"
+                               OnClick="ToggleSessionRailAsync" />
+                <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small"
+                               Title="Create new session" OnClick="DeselectSessionAsync" />
+            }
+        </div>
+        @if (_sessionRailCollapsed)
+        {
+            @* Collapsed rail: one icon button per session, tooltip carries name + node count. *@
+            <MudStack Spacing="0" Class="pa-1">
+                @foreach (var session in _sessions)
+                {
+                    var isActive = session.Id == _activeSessionId;
+                    var tooltipText = $"{session.Name} - {session.Nodes.Count} node(s) - {session.UpdatedAt:MMM d}";
+                    <div class="@($"workshop-session-rail-item{(isActive ? " active" : "")}")">
+                        <MudTooltip Text="@tooltipText" Placement="Placement.Right">
+                            <MudIconButton Icon="@Icons.Material.Filled.Forum"
+                                           Color="@(isActive ? Color.Primary : Color.Default)" Size="Size.Medium"
+                                           OnClick="@(() => SelectSessionAsync(session))" />
+                        </MudTooltip>
+                    </div>
+                }
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="0" Class="pa-1">
+                @foreach (var session in _sessions)
+                {
+                    var isActive = session.Id == _activeSessionId;
+                    <MudButton Variant="Variant.Text" Color="@(isActive? Color.Primary: Color.Default)"
+                               Class="justify-start pa-2" Style="min-height: auto;" OnClick="@(() => SelectSessionAsync(session))">
+                        <div class="d-flex align-center w-100">
+                            <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@session.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="text-disabled">
+                                    @session.Nodes.Count node(s) . @session.UpdatedAt.ToString("MMM d")
+                                </MudText>
+                            </div>
+                            @if (isActive)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               OnClick="(async () => await DeleteSessionAsync(session))!" />
+                            }
+                        </div>
+                    </MudButton>
+                }
+            </MudStack>
+        }
     </MudPaper>
 
-    @* Center: Node List *@
-    <MudPaper Elevation="1" Class="d-flex flex-column flex-grow-1 ma-1" Style="overflow-y: auto;">
+    @* Center: Chat-thread Timeline *@
+    <MudPaper Elevation="1" Class="d-flex flex-column flex-grow-1 ma-1" Style="overflow: hidden;">
         @if (_activeSessionId == 0)
         {
-            <div class="d-flex align-center justify-center flex-grow-1 pa-4">
-                <InfoMessage>Select a session from the list or click + to create a new one.</InfoMessage>
+            @* Empty state: no session selected -> composer drives first-send flow. *@
+            <div class="workshop-empty-state">
+                <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Class="workshop-empty-state-icon" />
+                <MudText Typo="Typo.body2">Type your initial prompt to start a new session.</MudText>
             </div>
+            <WorkshopComposer @ref="_composer" Disabled="@_isProcessing"
+                              Placeholder="Type your initial prompt - Enter to start a new session" OnSend="OnComposerFirstSendAsync"
+                              OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
         }
         else
         {
             <div class="pa-3 d-flex justify-space-between align-center">
                 <MudText Typo="Typo.subtitle2">@_activeSession?.Name</MudText>
-                <MudText Typo="Typo.caption" Class="text-disabled">
-                    @_allNodes.Count node(s) total
-                </MudText>
+                <div class="d-flex align-center gap-2">
+                    <MudSwitch T="bool" Value="State.State.Prompts.LLM.Workshop.AutoQueuePreviews"
+                               ValueChanged="OnAutoQueueChanged"
+                               Label="Auto-queue" Color="Color.Primary" Size="Size.Small" />
+                    <MudText Typo="Typo.caption" Class="text-disabled">
+                        @_allNodes.Count node(s) total
+                    </MudText>
+                </div>
             </div>
-            @foreach (var node in _allNodes)
-            {
-                var isCurrent = node.Id == (_activeSession?.CurrentNodeId);
-                <WorkshopNodeRow Node="@node" IsCurrent="@isCurrent" OnSelect="SetCurrentAsync" />
-            }
+            <div class="workshop-thread" @ref="_threadElement">
+                @foreach (var item in _timeline)
+                {
+                    if (item.Kind == TimelineItemKind.Bubble && item.Node is not null)
+                    {
+                        <WorkshopChatBubble Node="@item.Node" IsCurrent="@(item.Node.Id == _activeSession?.CurrentNodeId)"
+                                            ChatSiblings="@item.ChatSiblings" OnSelect="SetCurrentAsync" />
+                    }
+                    else if (item.Kind == TimelineItemKind.Carousel && item.Siblings is not null)
+                    {
+                        <WorkshopVariationCarousel Siblings="@item.Siblings" ActiveSiblingId="@item.ActiveSiblingId"
+                                                   OnSelect="SetCurrentAsync" />
+                    }
+                }
+            </div>
+            <WorkshopComposer @ref="_composer" Disabled="@(_isProcessing || _currentNode == null)"
+                              OnSend="OnComposerSendAsync" OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
         }
     </MudPaper>
 
     @* Right: Current Node Panel *@
-    <MudPaper Elevation="1" Class="d-flex flex-column" Style="width: 340px; min-width: 340px; overflow-y: auto;">
+    <MudPaper Elevation="1" Class="d-flex flex-column" Style="width: 600px; min-width: 400px; overflow-y: auto;">
         @if (_currentNode == null)
         {
             <div class="d-flex align-center justify-center flex-grow-1 pa-4">
@@ -72,7 +132,7 @@
         }
         else
         {
-            <WorkshopNodeDetail Node="@_currentNode" OnChatEditClick="ShowChatDialog" OnEvolveClick="ShowEvolveDialog" />
+            <WorkshopNodeDetail Node="@_currentNode" />
         }
     </MudPaper>
 </MudPaper>
@@ -82,20 +142,41 @@
     private int _activeSessionId;
     private List<PromptWorkshopSession> _sessions = new();
     private List<PromptWorkshopNode> _allNodes = new();
+    private List<TimelineItem> _timeline = new();
     private PromptWorkshopNode? _currentNode;
     private bool _isCreating;
     private bool _isProcessing;
 
-    // Dialog state
-    private string _newSessionName = string.Empty;
-    private string _newSessionPrompt = string.Empty;
-    private string _chatInstruction = string.Empty;
+    private ElementReference _threadElement;
+    private int? _lastScrolledNodeId;
+    private bool _shouldScrollToBottom;
+    private WorkshopComposer? _composer;
+
+    // Composer overrides (mutated by the slim chat-options dialog)
+    private int _ancestorDepthOverride = 3;
     private string _chatModel = string.Empty;
-    private int _evolveCount = 5;
     private string _evolveModel = string.Empty;
+    private ChatVerbosity _chatVerbosity = ChatVerbosity.Match;
+    private float _chatTemperature = 0.7f;
+
+    // Phase 8.6 Step 5 - session sidebar collapse state, persisted via AppState.
+    private bool _sessionRailCollapsed = true;
 
     // Available models from OllamaService
     private List<OllamaModel> _availableModels = new();
+
+    private enum TimelineItemKind { Bubble, Carousel }
+
+    private sealed class TimelineItem
+    {
+        public TimelineItemKind Kind { get; init; }
+        public PromptWorkshopNode? Node { get; init; }
+        // For Bubble: optional list of chat siblings (incl. self) when the parent has 2+ chat children.
+        public IReadOnlyList<PromptWorkshopNode>? ChatSiblings { get; init; }
+        // For Carousel: list of evolve siblings under a parent.
+        public IReadOnlyList<PromptWorkshopNode>? Siblings { get; init; }
+        public int? ActiveSiblingId { get; init; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,6 +187,31 @@
         {
             _chatModel = models[0].Name;
             _evolveModel = models[0].Name;
+        }
+        _ancestorDepthOverride = State.State.Prompts.LLM.Workshop.AncestorDepth;
+        _chatVerbosity = State.State.Prompts.LLM.Workshop.Verbosity;
+        _chatTemperature = State.State.Prompts.LLM.Workshop.ChatTemperature;
+        _sessionRailCollapsed = State.State.Prompts.LLM.Workshop.SessionRailCollapsed;
+
+        // Land on the session pinned in AppState (e.g. from "Send to Workshop" in another tab)
+        var pinnedId = State.State.Prompts.LLM.Workshop.ActiveSessionId;
+        if (pinnedId.HasValue && pinnedId.Value > 0 && _sessions.Any(s => s.Id == pinnedId.Value))
+        {
+            await LoadSessionAsync(pinnedId.Value);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldScrollToBottom && _currentNode != null)
+        {
+            _shouldScrollToBottom = false;
+            _lastScrolledNodeId = _currentNode.Id;
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("workshopChat.scrollToBottom", _threadElement, !firstRender);
+            }
+            catch { /* JS interop may fail during prerender */ }
         }
     }
 
@@ -129,39 +235,158 @@
             _currentNode = session.Nodes.First(n => n.Id == session.CurrentNodeId.Value);
         else if (_allNodes.Count > 0)
             _currentNode = _allNodes.Last();
+
+        _timeline = BuildTimeline(_allNodes, _currentNode?.Id);
+
+        if (_currentNode != null && _lastScrolledNodeId != _currentNode.Id)
+            _shouldScrollToBottom = true;
     }
+
+    /// <summary>
+    /// Build a strict active-path timeline:
+    /// - Only the active path renders as bubbles - off-path siblings never interleave.
+    /// - A parent with 2+ evolve children emits a carousel switcher.
+    /// - A parent with 2+ chat (non-evolve) children renders only the active-path child;
+    /// that bubble carries a ChatSiblings list so it can show a prev/next switcher chip.
+    /// </summary>
+    private static List<TimelineItem> BuildTimeline(List<PromptWorkshopNode> nodes, int? currentNodeId)
+    {
+        var items = new List<TimelineItem>();
+        if (nodes.Count == 0) return items;
+
+        var byId = nodes.ToDictionary(n => n.Id);
+        var byParent = nodes
+            .GroupBy(n => n.ParentId ?? 0)
+            .ToDictionary(g => g.Key, g => g.OrderBy(n => n.CreatedAt).ToList());
+
+        // Active path = ids walking from current up to root.
+        var activePath = new HashSet<int>();
+        if (currentNodeId.HasValue && byId.ContainsKey(currentNodeId.Value))
+        {
+            var cursor = byId[currentNodeId.Value];
+            while (cursor != null)
+            {
+                activePath.Add(cursor.Id);
+                if (cursor.ParentId is int pid && byId.TryGetValue(pid, out var parent))
+                    cursor = parent;
+                else
+                    cursor = null;
+            }
+        }
+
+        if (!byParent.TryGetValue(0, out var roots) || roots.Count == 0)
+            return items;
+
+        // Take the first root that's on the active path, or the only root.
+        var activeRoot = roots.FirstOrDefault(r => activePath.Contains(r.Id)) ?? roots[0];
+        Walk(activeRoot, items, byParent, activePath);
+        return items;
+    }
+
+    private static void Walk(
+        PromptWorkshopNode node,
+        List<TimelineItem> items,
+        Dictionary<int, List<PromptWorkshopNode>> byParent,
+        HashSet<int> activePath,
+        IReadOnlyList<PromptWorkshopNode>? chatSiblings = null)
+    {
+        items.Add(new TimelineItem
+        {
+            Kind = TimelineItemKind.Bubble,
+            Node = node,
+            ChatSiblings = chatSiblings,
+        });
+
+        if (!byParent.TryGetValue(node.Id, out var children) || children.Count == 0)
+            return;
+
+        var evolveChildren = children
+            .Where(c => string.Equals(c.Mode, "evolve", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var otherChildren = children
+            .Where(c => !string.Equals(c.Mode, "evolve", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.CreatedAt)
+            .ToList();
+
+        // 1) Variations: split into batches by spawn cycle, then render each as its
+        //    own carousel. A batch boundary is detected from the Instruction suffix
+        //    "(i/N)" written by WorkshopService.SpawnVariationsAsync - whenever i==1
+        //    we start a new batch. Nodes without that marker (legacy) all collapse
+        //    into a single batch, preserving prior behavior.
+        if (evolveChildren.Count > 0)
+        {
+            var ordered = evolveChildren.OrderBy(c => c.CreatedAt).ToList();
+            var batches = SplitEvolveBatches(ordered);
+            var activeEvolve = ordered.FirstOrDefault(c => activePath.Contains(c.Id));
+
+            foreach (var batch in batches)
+            {
+                if (batch.Count >= 2)
+                {
+                    var activeInBatch = batch.FirstOrDefault(c => activePath.Contains(c.Id));
+                    items.Add(new TimelineItem
+                    {
+                        Kind = TimelineItemKind.Carousel,
+                        Siblings = batch,
+                        ActiveSiblingId = activeInBatch?.Id,
+                    });
+                    if (activeInBatch != null)
+                        Walk(activeInBatch, items, byParent, activePath);
+                }
+                else if (batch.Count == 1 && activePath.Contains(batch[0].Id))
+                {
+                    // Lone evolve child only continues the thread when the user is on that branch.
+                    Walk(batch[0], items, byParent, activePath);
+                }
+            }
+        }
+
+        // 2) Chat continuation: pick the active-path child, or fall back to the latest.
+        // The bubble carries the full sibling list when there's >1 alternative.
+        if (otherChildren.Count > 0)
+        {
+            var nextChat = otherChildren.FirstOrDefault(c => activePath.Contains(c.Id))
+                ?? otherChildren[^1];
+            var siblingsForChip = otherChildren.Count > 1 ? otherChildren : null;
+            Walk(nextChat, items, byParent, activePath, siblingsForChip);
+        }
+    }
+
+    /// <summary>
+    /// Splits chronologically-ordered evolve siblings into separate spawn batches.
+    /// A batch boundary is the appearance of "(1/N)" at the end of <see cref="PromptWorkshopNode.Instruction"/>,
+    /// which is the first child of each <c>SpawnVariationsAsync</c> call. Legacy nodes
+    /// without the marker fall through into the current batch (so old sessions keep
+    /// rendering as a single carousel).
+    /// </summary>
+    private static List<List<PromptWorkshopNode>> SplitEvolveBatches(List<PromptWorkshopNode> ordered)
+    {
+        var batches = new List<List<PromptWorkshopNode>>();
+        List<PromptWorkshopNode>? current = null;
+        foreach (var n in ordered)
+        {
+            if (current == null || IsBatchStart(n.Instruction))
+            {
+                current = new List<PromptWorkshopNode>();
+                batches.Add(current);
+            }
+            current.Add(n);
+        }
+        return batches;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex BatchStartRegex =
+        new(@"\(\s*1\s*/\s*\d+\s*\)\s*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static bool IsBatchStart(string? instruction)
+        => !string.IsNullOrEmpty(instruction) && BatchStartRegex.IsMatch(instruction);
 
     private async Task SelectSessionAsync(PromptWorkshopSession session)
     {
         await LoadSessionAsync(session.Id);
+        State.State.Prompts.LLM.Workshop.ActiveSessionId = session.Id;
+        await State.SaveState();
         StateHasChanged();
-    }
-
-    private async Task ShowNewSessionDialog()
-    {
-        var parameters = new DialogParameters
-        {
-            { nameof(WorkshopSessionDialog.Models), _availableModels },
-        };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<WorkshopSessionDialog>("New Session", parameters, options);
-        var result = await dialog.Result;
-        if (result?.Canceled == true) return;
-
-        var data = result?.Data as WorkshopSessionDialog.WorkshopSessionResult;
-        if (data == null) return;
-
-        try
-        {
-            var session = await WorkshopService.CreateSessionAsync(data.Name, data.Prompt);
-            await RefreshSessionsAsync();
-            await SelectSessionAsync(session);
-            Snackbar.Add($"Session '{session.Name}' created.", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
-        }
     }
 
     private async Task DeleteSessionAsync(PromptWorkshopSession session)
@@ -193,31 +418,82 @@
         StateHasChanged();
     }
 
-    private async Task ShowChatDialog()
+    /// <summary>
+    /// Composer Send in normal state: append a chat-edited child of the active node.
+    /// </summary>
+    private async Task OnComposerSendAsync(string text)
     {
         if (_currentNode == null || _activeSession == null) return;
+        if (string.IsNullOrWhiteSpace(text)) return;
 
+        var modelName = !string.IsNullOrWhiteSpace(_chatModel)
+            ? _chatModel
+            : (_availableModels.FirstOrDefault()?.Name ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(modelName))
+        {
+            Snackbar.Add("No Ollama model available.", Severity.Warning);
+            return;
+        }
+
+        _isProcessing = true;
+        _composer?.Clear();
+        StateHasChanged();
+        try
+        {
+            var child = await WorkshopService.AddChatChildAsync(
+                _activeSession.Id, _currentNode.Id, text, modelName, _ancestorDepthOverride,
+                _chatVerbosity, _chatTemperature);
+            await LoadSessionAsync(_activeSession.Id);
+            await SetCurrentAsync(child);
+            QueuePreviewIfEnabled(child.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed: {ex.Message}", Severity.Error);
+            // Restore the composer text so the user doesn't lose their typing.
+            _composer?.SetText(text);
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    /// <summary>
+    /// Composer Send in empty state: open the New Session dialog pre-filled with the typed prompt;
+    /// on confirm, the typed prompt becomes the session root (not a chat child).
+    /// </summary>
+    private async Task OnComposerFirstSendAsync(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        var defaultName = text.Length > 40 ? text.Substring(0, 40).TrimEnd() : text;
         var parameters = new DialogParameters
         {
-            { nameof(WorkshopChatDialog.Models), _availableModels },
+            { nameof(WorkshopSessionDialog.Name), defaultName },
+            { nameof(WorkshopSessionDialog.Prompt), text },
+            { nameof(WorkshopSessionDialog.Models), _availableModels },
         };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<WorkshopChatDialog>("Chat Edit", parameters, options);
+        var dialog = await DialogService.ShowAsync<WorkshopSessionDialog>("New Session", parameters, options);
         var result = await dialog.Result;
         if (result?.Canceled == true) return;
 
-        var data = result?.Data as WorkshopChatDialog.WorkshopChatResult;
-        if (data == null || string.IsNullOrWhiteSpace(data.Instruction)) return;
+        var data = result?.Data as WorkshopSessionDialog.WorkshopSessionResult;
+        if (data == null) return;
 
         _isProcessing = true;
         StateHasChanged();
         try
         {
-            var child = await WorkshopService.AddChatChildAsync(
-                _activeSession.Id, _currentNode.Id, data.Instruction, data.Model, data.AncestorDepth);
-            await LoadSessionAsync(_activeSession.Id);
-            await SetCurrentAsync(child);
-            Snackbar.Add("Chat edit applied.", Severity.Success);
+            var session = await WorkshopService.CreateSessionAsync(data.Name, data.Prompt);
+            await RefreshSessionsAsync();
+            await SelectSessionAsync(session);
+            _composer?.Clear();
+            // Auto-queue a preview for the new root if enabled.
+            var root = session.Nodes?.FirstOrDefault(n => n.ParentId == null);
+            if (root != null) QueuePreviewIfEnabled(root.Id);
+            Snackbar.Add($"Session '{session.Name}' created.", Severity.Success);
         }
         catch (Exception ex)
         {
@@ -229,29 +505,148 @@
         }
     }
 
-    private async Task ShowEvolveDialog()
+    /// <summary>
+    /// Composer gear button: open the slim chat options dialog (depth + model overrides).
+    /// </summary>
+    private async Task ShowChatOptionsDialog()
     {
-        if (_currentNode == null || _activeSession == null) return;
-
         var parameters = new DialogParameters
         {
-            { nameof(WorkshopEvolveDialog.Models), _availableModels },
+            { nameof(WorkshopChatDialog.AncestorDepth), _ancestorDepthOverride },
+            { nameof(WorkshopChatDialog.Model), _chatModel },
+            { nameof(WorkshopChatDialog.Verbosity), _chatVerbosity },
+            { nameof(WorkshopChatDialog.Temperature), _chatTemperature },
+            { nameof(WorkshopChatDialog.Models), _availableModels },
         };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<WorkshopEvolveDialog>("Evolve", parameters, options);
+        var dialog = await DialogService.ShowAsync<WorkshopChatDialog>("Chat Options", parameters, options);
         var result = await dialog.Result;
         if (result?.Canceled == true) return;
 
-        var data = result?.Data as WorkshopEvolveDialog.WorkshopEvolveResult;
+        var data = result?.Data as WorkshopChatDialog.WorkshopChatResult;
         if (data == null) return;
+
+        _ancestorDepthOverride = data.AncestorDepth;
+        _chatModel = data.Model;
+        _chatVerbosity = data.Verbosity;
+        _chatTemperature = data.Temperature;
+        State.State.Prompts.LLM.Workshop.AncestorDepth = data.AncestorDepth;
+        State.State.Prompts.LLM.Workshop.Verbosity = data.Verbosity;
+        State.State.Prompts.LLM.Workshop.ChatTemperature = data.Temperature;
+        await State.SaveState();
+    }
+
+    /// <summary>Drop the active session selection so the composer empty-state
+    /// flow takes over (typing + Enter creates a new session).</summary>
+    private async Task DeselectSessionAsync()
+    {
+        _activeSession = null;
+        _activeSessionId = 0;
+        _allNodes = new();
+        _timeline = new();
+        _currentNode = null;
+        State.State.Prompts.LLM.Workshop.ActiveSessionId = null;
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    /// <summary>Phase 8.6 Step 5 - toggle the session sidebar between full
+    /// (220px) and rail (56px) modes; persist via AppState.</summary>
+    private async Task ToggleSessionRailAsync()
+    {
+        _sessionRailCollapsed = !_sessionRailCollapsed;
+        State.State.Prompts.LLM.Workshop.SessionRailCollapsed = _sessionRailCollapsed;
+        await State.SaveState();
+    }
+
+    /// <summary>Phase 8.6 Step 6 - toggle the auto-queue switch on the thread header.</summary>
+    private async Task OnAutoQueueChanged(bool value)
+    {
+        State.State.Prompts.LLM.Workshop.AutoQueuePreviews = value;
+        await State.SaveState();
+    }
+
+    /// <summary>
+    /// Phase 8.6 Step 6 - fire-and-forget preview generation for a freshly created
+    /// node (chat child, evolve sibling, or new-session root). Honors the
+    /// AutoQueuePreviews toggle and the configured workflow / orientation / seed /
+    /// useEnhancements snapshot at call time. ComfyUI serializes the queue server-side.
+    /// </summary>
+    private void QueuePreviewIfEnabled(int nodeId)
+    {
+        var workshop = State.State.Prompts.LLM.Workshop;
+        if (!workshop.AutoQueuePreviews) return;
+        if (workshop.LastWorkflowId is not Guid workflowId) return;
+
+        var orientation = workshop.Orientation;
+        var seed = workshop.LastSeed;
+        var useEnhancements = workshop.UseEnhancements;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await WorkshopService.GeneratePreviewAsync(nodeId, workflowId, orientation, seed, useEnhancements);
+            }
+            catch
+            {
+                // Failures already publish a Failed status event; nothing else to do here.
+            }
+        });
+    }
+
+    private async Task ShowEvolveDialog()
+    {
+        if (_currentNode == null || _activeSession == null)
+        {
+            Snackbar.Add("Select a node first.", Severity.Warning);
+            return;
+        }
+
+        // Seed the dialog from persisted state + current model selection.
+        var workshop = State.State.Prompts.LLM.Workshop;
+        var initial = new EvolveControls
+        {
+            Count = workshop.SpawnCount,
+            Model = !string.IsNullOrWhiteSpace(_evolveModel)
+                ? _evolveModel
+                : (_availableModels.FirstOrDefault()?.Name ?? string.Empty),
+            Intensity = workshop.Intensity,
+            Targets = workshop.Targets.ToList(),
+            Length = workshop.Length,
+            Temperature = workshop.Temperature,
+        };
+
+        var parameters = new DialogParameters
+        {
+            { nameof(WorkshopEvolveDialog.Initial), initial },
+            { nameof(WorkshopEvolveDialog.Models), _availableModels },
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<WorkshopEvolveDialog>("Spawn Variations", parameters, options);
+        var result = await dialog.Result;
+        if (result?.Canceled == true) return;
+
+        var controls = result?.Data as EvolveControls;
+        if (controls == null) return;
+
+        // Persist structured choices (CustomDirection + Preserve are per-call escape hatches).
+        workshop.SpawnCount = controls.Count;
+        workshop.Intensity = controls.Intensity;
+        workshop.Targets = controls.Targets.ToList();
+        workshop.Length = controls.Length;
+        workshop.Temperature = controls.Temperature;
+        await State.SaveState();
+        _evolveModel = controls.Model;
 
         _isProcessing = true;
         StateHasChanged();
         try
         {
             var children = await WorkshopService.SpawnVariationsAsync(
-                _activeSession.Id, _currentNode.Id, data.Count, data.Model);
+                _activeSession.Id, _currentNode.Id, controls);
             await LoadSessionAsync(_activeSession.Id);
+            foreach (var c in children) QueuePreviewIfEnabled(c.Id);
             Snackbar.Add($"{children.Count} variation(s) spawned.", Severity.Success);
         }
         catch (Exception ex)

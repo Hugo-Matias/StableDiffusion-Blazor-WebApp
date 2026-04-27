@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json;
 
 namespace BlazorWebApp.Data.Entities
 {
@@ -25,22 +23,17 @@ namespace BlazorWebApp.Data.Entities
 
         public string? ModelUsed { get; set; }
 
-        /// <summary>JSON array of Image entity IDs. May be stale (images may have been deleted).</summary>
-        public string? ImageIdsJson { get; set; }
+        /// <summary>
+        /// Single preview image id for this node. Null when no preview has been generated.
+        /// The referenced <see cref="Image"/> row carries <c>IsHidden = true</c> so it stays
+        /// out of the gallery views.
+        /// </summary>
+        public int? PreviewImageId { get; set; }
 
         public DateTime CreatedAt { get; set; }
 
         public PromptWorkshopSession Session { get; set; } = null!;
         public PromptWorkshopNode? Parent { get; set; }
         public ICollection<PromptWorkshopNode> Children { get; set; } = new List<PromptWorkshopNode>();
-
-        [NotMapped]
-        public List<int> ImageIds
-        {
-            get => string.IsNullOrWhiteSpace(ImageIdsJson)
-                ? new()
-                : JsonSerializer.Deserialize<List<int>>(ImageIdsJson) ?? new();
-            set => ImageIdsJson = JsonSerializer.Serialize(value);
-        }
     }
 }

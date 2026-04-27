@@ -53,7 +53,12 @@ namespace BlazorWebApp.Data.Dtos.Ollama
         public int? NumCtx { get; set; }
 
         [JsonPropertyName("num_predict")]
-        public int NumPredict { get; set; } = 500;
+        /// <summary>
+        /// Maximum tokens to generate. -1 = unlimited (model stops at EOS); -2 = fill context.
+        /// Defaults to -1 so the model is never cut off mid-response regardless of variation count or verbosity level.
+        /// Override per-call via OllamaOptions if you need a hard cap.
+        /// </summary>
+        public int NumPredict { get; set; } = -1;
 
         [JsonPropertyName("stop")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

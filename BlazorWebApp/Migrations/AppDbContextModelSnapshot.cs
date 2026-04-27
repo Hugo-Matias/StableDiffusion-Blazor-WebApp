@@ -59,6 +59,9 @@ namespace BlazorWebApp.Migrations
                     b.Property<int>("Height")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("ModeId")
                         .HasColumnType("INTEGER");
 
@@ -249,9 +252,6 @@ namespace BlazorWebApp.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ImageIdsJson")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("GenerationNumber")
                         .HasColumnType("INTEGER");
 
@@ -267,6 +267,9 @@ namespace BlazorWebApp.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("ParentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PreviewImageId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("PromptText")

@@ -6,15 +6,15 @@ This document captures the conventions and pitfalls for working with the SQLite-
 
 ## Stack summary
 
-| Piece              | Value                                                                                          |
-| ------------------ | ---------------------------------------------------------------------------------------------- |
-| ORM                | Entity Framework Core 6 (see `ProductVersion = 6.0.11` in `AppDbContextModelSnapshot.cs`)      |
-| Provider           | SQLite (`Microsoft.EntityFrameworkCore.Sqlite`)                                                |
-| Context            | `BlazorWebApp/Data/AppDbContext.cs`                                                            |
-| Factory            | `IDbContextFactory<AppDbContext>` (registered in `Program.cs`)                                 |
-| Startup bootstrap  | `DatabaseService.InitializeDatabase()` -> `EnsureCreatedAsync()` then `MigrateAsync()`         |
-| Migrations folder  | `BlazorWebApp/Migrations/`                                                                     |
-| Snapshot file      | `BlazorWebApp/Migrations/AppDbContextModelSnapshot.cs`                                         |
+| Piece             | Value                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| ORM               | Entity Framework Core 6 (see `ProductVersion = 6.0.11` in `AppDbContextModelSnapshot.cs`)      |
+| Provider          | SQLite (`Microsoft.EntityFrameworkCore.Sqlite`)                                                |
+| Context           | `BlazorWebApp/Data/AppDbContext.cs`                                                            |
+| Factory           | `IDbContextFactory<AppDbContext>` (registered in `Program.cs`)                                 |
+| Startup bootstrap | `DatabaseService.InitializeDatabase()` -> `MigrateAsync()` (creates schema and tracks history) |
+| Migrations folder | `BlazorWebApp/Migrations/`                                                                     |
+| Snapshot file     | `BlazorWebApp/Migrations/AppDbContextModelSnapshot.cs`                                         |
 
 All repositories follow the pattern: create a fresh scoped `AppDbContext` via the factory per operation, swallow exceptions on read paths (log + return null/empty), surface exceptions on write paths.
 
@@ -32,12 +32,12 @@ Aggregate roots that are either polymorphic or rapidly evolving are persisted as
 
 ### Examples in the codebase
 
-| Entity               | Column                                   | Converter / Options                                    |
-| -------------------- | ---------------------------------------- | ------------------------------------------------------ |
-| `JobEntity`          | `Body` (the whole `Job` graph)           | `SchedulerJsonOptions.Compact`                         |
-| `SchedulerDraft`     | `Body` (the draft `Job`)                 | `SchedulerJsonOptions.Compact`                         |
-| `State`              | `AppState`, `GenerationParameters`       | App-level `JsonSerializerOptions` + `GenerationParametersJsonConverter` |
-| `WorkflowState`      | `Parameters` (`GenerationParameters`)    | `GenerationParametersJsonConverter`                    |
+| Entity           | Column                                | Converter / Options                                                     |
+| ---------------- | ------------------------------------- | ----------------------------------------------------------------------- |
+| `JobEntity`      | `Body` (the whole `Job` graph)        | `SchedulerJsonOptions.Compact`                                          |
+| `SchedulerDraft` | `Body` (the draft `Job`)              | `SchedulerJsonOptions.Compact`                                          |
+| `State`          | `AppState`, `GenerationParameters`    | App-level `JsonSerializerOptions` + `GenerationParametersJsonConverter` |
+| `WorkflowState`  | `Parameters` (`GenerationParameters`) | `GenerationParametersJsonConverter`                                     |
 
 ### How to add a new JSON-backed entity
 
@@ -129,14 +129,14 @@ Why both:
 
 ### 3. SQL column types (SQLite conventions used in this repo)
 
-| .NET type       | SQLite column type |
-| --------------- | ------------------ |
-| `int`, `long`   | `INTEGER`          |
-| `bool`          | `INTEGER`          |
-| `string`        | `TEXT`             |
-| `Guid`, `Guid?` | `TEXT`             |
-| `DateTime?`     | `TEXT`             |
-| `float`, `double` | `REAL`           |
+| .NET type         | SQLite column type |
+| ----------------- | ------------------ |
+| `int`, `long`     | `INTEGER`          |
+| `bool`            | `INTEGER`          |
+| `string`          | `TEXT`             |
+| `Guid`, `Guid?`   | `TEXT`             |
+| `DateTime?`       | `TEXT`             |
+| `float`, `double` | `REAL`             |
 
 Serialized JSON columns are always `TEXT`.
 

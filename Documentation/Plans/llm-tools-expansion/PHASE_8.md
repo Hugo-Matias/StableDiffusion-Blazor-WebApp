@@ -4,7 +4,9 @@
 
 **Phase:** 8
 **Build Status:** Passed (0 errors)
-**Phase Status:** [x] Complete
+**Phase Status:** [~] Text features complete; image-side moved to PHASE_8.5
+
+> **Correction (2026-04-27):** Step 7 ("Evolve mode + image generation loop") was marked complete but the image-generation pipeline was never wired. The new direction (per-node manual previews instead of multi-image evolve) is captured in [PHASE_8.5.md](PHASE_8.5.md). Step 7 status downgraded to `[~]` below.
 
 ---
 
@@ -382,7 +384,7 @@ var result = await _router.PostGenerationAsync(parameters, workflow);
 ### Step 7: Evolve mode + image generation loop
 
 **Complexity:** 5
-**Status:** [x] Complete
+**Status:** [~] Text-spawn implemented; image generation deferred to PHASE_8.5 (single per-node previews replace the parallel batch design).
 
 #### Tasks
 
@@ -480,17 +482,17 @@ var result = await _router.PostGenerationAsync(parameters, workflow);
 
 ## Progress Tracking
 
-| Step | Status | Complexity | Notes                              |
-| ---- | ------ | ---------- | ---------------------------------- |
-| 1    | [x]    | 1          | Entities                           |
-| 2    | [x]    | 3          | Migration + snapshot               |
-| 3    | [x]    | 3          | `WorkshopService`                  |
-| 4    | [x]    | 1          | Seed templates                     |
-| 5    | [x]    | 5          | View layout + tree + session CRUD  |
-| 6    | [x]    | 3          | Chat mode                          |
-| 7    | [x]    | 5          | Evolve mode + image loop           |
-| 8    | [x]    | 2          | Upstream "Send to Workshop" wiring |
-| 9    | [x]    | 1          | AppState + nav + info              |
+| Step | Status | Complexity | Notes                                             |
+| ---- | ------ | ---------- | ------------------------------------------------- |
+| 1    | [x]    | 1          | Entities                                          |
+| 2    | [x]    | 3          | Migration + snapshot                              |
+| 3    | [x]    | 3          | `WorkshopService`                                 |
+| 4    | [x]    | 1          | Seed templates                                    |
+| 5    | [x]    | 5          | View layout + tree + session CRUD                 |
+| 6    | [x]    | 3          | Chat mode                                         |
+| 7    | [~]    | 5          | Text-spawn only; image loop deferred to PHASE_8.5 |
+| 8    | [x]    | 2          | Upstream "Send to Workshop" wiring                |
+| 9    | [x]    | 1          | AppState + nav + info                             |
 
 **Total:** 24 points (original plan estimate: 13 - overrun expected because evolve-mode wiring through `IRouterService` + image lifecycle adds real complexity).
 
