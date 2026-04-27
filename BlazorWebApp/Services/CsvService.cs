@@ -13,8 +13,15 @@ namespace BlazorWebApp.Services
         private readonly ICacheService _cacheService;
         private readonly Schema _schema;
         private readonly CsvDataReaderOptions _options;
-        private readonly string _path;
-        private readonly string _fileName;
+        // Resolved lazily so the singleton survives a backend that wasn't ready at construction time.
+        private string _path;
+        private string _fileName;
+
+        // Lazy in-memory cache of parsed CSV tags. Loaded on first access; reused for all subsequent searches.
+        // Holds tags in their CSV form (underscored name + raw aliases) so consumers can decide on display formatting.
+        private List<Tag>? _cachedRawTags;
+        private HashSet<string>? _cachedRawNames; // exact-match lookup (underscored, lower-cased)
+        private readonly object _cacheLock = new();
 
         public CsvService(IBackendService backend, IConfiguration configuration, ICacheService cacheService)
         {
@@ -24,13 +31,9 @@ namespace BlazorWebApp.Services
             _schema = Schema.Parse("Name,Color,Uses,Aliases");
             _options = new CsvDataReaderOptions() { Schema = new CsvSchema(_schema), HasHeaders = false };
 
-            // ComfyUI only - WebUI removed
-            if (_backend.IsBackendAvailable)
-            {
-                _path = ResolveCsvPath();
-            }
-            else { _path = ""; }
-
+            // ComfyUI only - WebUI removed. Path is resolved lazily; if the backend isn't
+            // ready when the singleton is constructed, the cache will resolve it on first access.
+            _path = _backend.IsBackendAvailable ? ResolveCsvPath() : string.Empty;
             _fileName = !string.IsNullOrWhiteSpace(_path) ? Path.GetFileNameWithoutExtension(_path) : string.Empty;
         }
 
@@ -44,25 +47,16 @@ namespace BlazorWebApp.Services
 
         public async Task<IEnumerable<Tag>> SearchTags(string searchText, bool enableFuzzy = true)
         {
-            if (string.IsNullOrWhiteSpace(_path) || !File.Exists(_path))
+            var rawTags = LoadRawTagsCached();
+            if (rawTags.Count == 0)
                 return Enumerable.Empty<Tag>();
 
-            using var reader = CsvDataReader.Create(_path, _options);
             searchText = searchText.Replace(" ", "_");
 
             var recentTags = _cacheService.GetRecentTags(10);
-            var tags = reader.GetRecords<CsvTag>().Select(csvTag => new Tag
-            {
-                Name = csvTag.Name,
-                Color = csvTag.Color,
-                Uses = csvTag.Uses,
-                Aliases = csvTag.Aliases,
-                Source = _fileName
-            }).ToList();
-
             List<Tag> result = new();
 
-            foreach (var tag in tags)
+            foreach (var tag in rawTags)
             {
                 var parsed = Parser.ParseCsvTag(tag);
                 parsed.Source = _fileName;
@@ -127,29 +121,72 @@ namespace BlazorWebApp.Services
 
         public Tag? GetTag(string name)
         {
-            if (string.IsNullOrWhiteSpace(_path) || !File.Exists(_path))
-                return null;
-
-            using var reader = CsvDataReader.Create(_path, _options);
+            var rawTags = LoadRawTagsCached();
+            if (rawTags.Count == 0) return null;
             name = name.Replace(" ", "_");
-            return reader.GetRecords<CsvTag>().Select(csvTag => new Tag
-            {
-                Name = csvTag.Name,
-                Color = csvTag.Color,
-                Uses = csvTag.Uses,
-                Aliases = csvTag.Aliases,
-                Source = _fileName
-            }).FirstOrDefault(t => t.Name.Equals(name));
+            return rawTags.FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         }
 
         public bool CheckTagExists(string name)
         {
-            if (string.IsNullOrWhiteSpace(_path) || !File.Exists(_path))
-                return false;
+            var names = LoadRawNamesCached();
+            if (names.Count == 0) return false;
+            return names.Contains(name.Replace(" ", "_").ToLowerInvariant());
+        }
 
-            using var reader = CsvDataReader.Create(_path, _options);
-            name = name.Replace(" ", "_");
-            return reader.GetRecords<CsvTag>().Any(t => t.Name == name);
+        /// <summary>
+        /// Fast existence check using the cached name set. Identical to <see cref="CheckTagExists"/>
+        /// but named to make cache use explicit at the call site.
+        /// </summary>
+        public bool CheckTagExistsCached(string name) => CheckTagExists(name);
+
+        /// <summary>
+        /// Returns the cached list of raw CSV tags (underscored names + raw aliases). Loads on first call.
+        /// </summary>
+        public IReadOnlyList<Tag> GetAllTagsCached() => LoadRawTagsCached();
+
+        private List<Tag> LoadRawTagsCached()
+        {
+            if (_cachedRawTags != null) return _cachedRawTags;
+            lock (_cacheLock)
+            {
+                if (_cachedRawTags != null) return _cachedRawTags;
+
+                // Late path resolution: if the backend wasn't ready at construction we still
+                // try to resolve here so the cache fills as soon as the configuration is usable.
+                if (string.IsNullOrWhiteSpace(_path))
+                {
+                    _path = ResolveCsvPath();
+                    if (!string.IsNullOrWhiteSpace(_path))
+                        _fileName = Path.GetFileNameWithoutExtension(_path);
+                }
+
+                if (string.IsNullOrWhiteSpace(_path) || !File.Exists(_path))
+                {
+                    _cachedRawTags = new List<Tag>();
+                    _cachedRawNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    return _cachedRawTags;
+                }
+
+                using var reader = CsvDataReader.Create(_path, _options);
+                _cachedRawTags = reader.GetRecords<CsvTag>().Select(csvTag => new Tag
+                {
+                    Name = csvTag.Name,
+                    Color = csvTag.Color,
+                    Uses = csvTag.Uses,
+                    Aliases = csvTag.Aliases,
+                    Source = _fileName
+                }).ToList();
+                _cachedRawNames = new HashSet<string>(_cachedRawTags.Select(t => t.Name.ToLowerInvariant()), StringComparer.OrdinalIgnoreCase);
+                return _cachedRawTags;
+            }
+        }
+
+        private HashSet<string> LoadRawNamesCached()
+        {
+            if (_cachedRawNames != null) return _cachedRawNames;
+            LoadRawTagsCached();
+            return _cachedRawNames!;
         }
     }
 }

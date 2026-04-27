@@ -38,6 +38,17 @@ namespace BlazorWebApp.Models
     }
 
     /// <summary>
+    /// Pipeline mode for tag prompt generation.
+    /// </summary>
+    public enum TagBuilderMode
+    {
+        /// <summary>Two LLM calls: extract concepts, then assemble from CSV-resolved candidates. Highest fidelity.</summary>
+        TwoPass,
+        /// <summary>Single LLM call: model emits Danbooru tags directly; results are verified against the CSV. Faster, requires capable model.</summary>
+        Hybrid
+    }
+
+    /// <summary>
     /// Helper to convert between CSV color codes and TagCategory.
     /// </summary>
     public static class DanbooruCategory
@@ -68,14 +79,23 @@ namespace BlazorWebApp.Models
         TagVerbosity Verbosity,
         TagModelPreset Preset,
         Dictionary<TagCategory, bool> CategoryToggles,
-        string? GroundingPrompt);
+        string? GroundingPrompt,
+        TagBuilderMode Mode = TagBuilderMode.TwoPass,
+        bool KeepUnverifiedAugmentations = false);
 
     /// <summary>
     /// Single visual concept extracted from user input (Pass 1 output).
+    /// <para>
+    /// <see cref="Category"/> is set when the LLM tags the concept with a Danbooru category prefix
+    /// (subject -> General, character, artist, copyright). For non-Danbooru taxonomy hints
+    /// (setting, lighting, mood, style, ...), <see cref="Hint"/> stores the raw label so the resolver
+    /// can bias scoring without filtering candidates out.
+    /// </para>
     /// </summary>
     public record ExtractedConcept(
         string Text,
-        TagCategory? Category);
+        TagCategory? Category,
+        string? Hint = null);
 
     /// <summary>
     /// Concept with resolved Danbooru tag candidates.
@@ -94,5 +114,7 @@ namespace BlazorWebApp.Models
         TagModelPreset Preset,
         TagVerbosity Verbosity,
         string? RawPass1,
-        string? RawPass2);
+        string? RawPass2,
+        TagBuilderMode Mode = TagBuilderMode.TwoPass,
+        IReadOnlyList<string>? DroppedAugmentations = null);
 }

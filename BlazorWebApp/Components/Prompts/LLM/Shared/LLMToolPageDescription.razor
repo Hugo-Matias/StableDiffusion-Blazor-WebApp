@@ -1,0 +1,27 @@
+@*
+    Reusable header banner for LLM tool views. Provides a consistent, distinctive
+    introduction strip without resorting to MudAlert (which is reserved for
+    transient feedback). Designed to be applied across every LLM tool page.
+*@
+
+<div class="llm-tool-description @CssClass">
+    <div class="llm-tool-description__icon">
+        <MudIcon Icon="@Icon" Size="Size.Medium" />
+    </div>
+    <div class="llm-tool-description__body">
+        <div class="llm-tool-description__title">@Title</div>
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <div class="llm-tool-description__text">@Description</div>
+        }
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.AutoAwesome;
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -391,6 +391,8 @@ namespace BlazorWebApp.Models
     {
         public TagVerbosity Verbosity { get; set; } = TagVerbosity.Standard;
         public TagModelPreset Preset { get; set; } = TagModelPreset.Pony;
+        public TagBuilderMode Mode { get; set; } = TagBuilderMode.TwoPass;
+        public bool KeepUnverifiedAugmentations { get; set; } = false;
         public Dictionary<TagCategory, bool> CategoryToggles { get; set; } = new()
         {
             [TagCategory.General] = true,

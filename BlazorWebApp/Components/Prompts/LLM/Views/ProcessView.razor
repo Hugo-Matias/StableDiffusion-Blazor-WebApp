@@ -304,6 +304,14 @@
             </MudStack>
         }
     }
+
+    @* Embedded history: snapshots originate here, so the list lives next to the editor. *@
+    <MudDivider Class="my-2" />
+    <MudExpansionPanels MultiExpansion="false" Dense>
+        <MudExpansionPanel Text="History" IsInitiallyExpanded="false">
+            <HistoryView RefreshVersion="@_localHistoryVersion" OnRestore="HandleEmbeddedHistoryRestore" />
+        </MudExpansionPanel>
+    </MudExpansionPanels>
 </MudStack>
 
 @code {
@@ -337,6 +345,8 @@
     private List<PromptHistoryEntry> _history = new();
     private Stack<PromptHistoryEntry> _redoStack = new();
     private const int MaxHistorySize = 20;
+    // Bumped whenever the embedded HistoryView should reload from LocalStorage.
+    private int _localHistoryVersion;
 
     private int _lastRestoreVersion = -1;
 
@@ -365,6 +375,17 @@
         }
 
         await Task.CompletedTask;
+    }
+
+    /// <summary>Restore from the embedded HistoryView - same effect as the legacy parent-routed flow.</summary>
+    private void HandleEmbeddedHistoryRestore(PromptHistoryEntry entry)
+    {
+        if (entry == null) return;
+        _inputPrompt = entry.OriginalPrompt;
+        _resultPrompt = entry.ResultPrompt;
+        _processMode = ProcessMode.Single;
+        Snackbar.Add($"Restored {entry.Operation} from history", Severity.Info);
+        StateHasChanged();
     }
 
     private void SyncTemplates()
@@ -648,6 +669,7 @@
                 var latestEntry = _history[0];
                 latestEntry.IsSavedToDb = true;
                 await SaveHistoryToStorage();
+                _localHistoryVersion++;
                 if (OnHistoryMutated.HasDelegate)
                     await OnHistoryMutated.InvokeAsync();
             }
@@ -712,6 +734,7 @@
         }
 
         await SaveHistoryToStorage();
+        _localHistoryVersion++;
         StateHasChanged();
     }
 

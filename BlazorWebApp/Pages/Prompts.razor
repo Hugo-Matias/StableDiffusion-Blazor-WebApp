@@ -2,14 +2,14 @@
 @inject IStateService State
 
 <TabbedPageShell @bind-ActivePanelIndex="State.State.Prompts.ActiveTabIndex">
+    <MudTabPanel Text="LLM Tools">
+        <LLMToolsTab />
+    </MudTabPanel>
     <MudTabPanel Text="Presets">
         <PromptsPanel />
     </MudTabPanel>
     <MudTabPanel Text="Wildcards">
         <WildcardsTab />
-    </MudTabPanel>
-    <MudTabPanel Text="LLM Tools">
-        <LLMToolsTab />
     </MudTabPanel>
 </TabbedPageShell>
 

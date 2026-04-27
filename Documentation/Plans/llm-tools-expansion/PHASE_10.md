@@ -18,6 +18,7 @@ Consolidate cross-view settings, tighten UX, and handle recurring quality-of-lif
 4. Empty-state polish across all views (no selected session, no prompts in library, no wildcards, etc.).
 5. (Stretch) Seed default Roulette wildcard collections if missing.
 6. (Stretch) Upgrade `MudTreeView` Workshop tree to SVG with parent→child edges.
+7. Roll out the `LLMToolPageDescription` header banner + Workshop-style send-to action bar across every LLM tool view.
 
 ---
 
@@ -175,9 +176,8 @@ Consolidate cross-view settings, tighten UX, and handle recurring quality-of-lif
 
 ---
 
-### Step 6: Workshop SVG tree upgrade (stretch)
+### Step 6: Workshop SVG tree upgrade (stretch)**Complexity:** 5
 
-**Complexity:** 5
 **Status:** [ ] Not Started
 
 #### Tasks
@@ -195,6 +195,27 @@ Consolidate cross-view settings, tighten UX, and handle recurring quality-of-lif
 
 ---
 
+### Step 7: LLMToolPageDescription + Workshop send-to bar rollout
+
+**Complexity:** 2
+**Status:** [ ] Not Started
+
+#### Tasks
+
+- [ ] Add a `<LLMToolPageDescription Title=... Icon=... Description=... />` header to every LLM tool view: ProcessView, SystemPromptsView, HistoryView, MixerView, InspirationView, SceneBuilderView, TemplateBuilderView, RemixerView, WorkshopView, GapAnalyzerView, SettingsView. Use the component at `BlazorWebApp/Components/Prompts/LLM/Shared/LLMToolPageDescription.razor` (originally introduced for Tag Builder).
+- [ ] Replace ad-hoc `Send to Process` / `Copy` buttons in every result view with the Workshop-style send-to action bar (`send-to-section` + `send-to-btn`). Wire a `Copy` icon button, `Send to Process`, `Send to Workshop` (creates a new session via `LLMToolsTab.HandleSendToWorkshop`), and per-workflow buttons sourced from `IPromptSendToService.GetParameterWorkflows()`.
+- [ ] Add `OnSendToWorkshop` `EventCallback<string>` parameters to MixerView / InspirationView / SceneBuilderView / TemplateBuilderView / RemixerView / GapAnalyzerView and wire them in `LLMToolsTab.razor`.
+- [ ] Consider extracting an `LLMSendToBar.razor` shared component (prompt + EventCallbacks) so the markup stops being duplicated.
+- [ ] Audit each header description for tone and length: 1-2 sentences, action oriented.
+
+#### Success Criteria
+
+- Every LLM tool view opens with a distinctive description banner (not `MudAlert`).
+- Every result panel exposes the same Copy / Send-to-Process / Send-to-Workshop / per-Workflow set of actions.
+- No regression in existing send-to wiring.
+
+---
+
 ## Progress Tracking
 
 | Step | Status | Complexity | Notes                                       |
@@ -205,8 +226,9 @@ Consolidate cross-view settings, tighten UX, and handle recurring quality-of-lif
 | 4    | [ ]    | 2          | Empty-state polish                          |
 | 5    | [ ]    | 2          | Seed default Roulette collections (stretch) |
 | 6    | [ ]    | 5          | SVG tree (stretch)                          |
+| 7    | [ ]    | 2          | LLMToolPageDescription + send-to rollout    |
 
-**Total:** 15 points if both stretch items shipped; 8 points for required scope (matches original plan estimate of 3-8 depending on what lands).
+**Total:** 17 points if both stretch items shipped; 10 points for required scope.
 
 ---
 

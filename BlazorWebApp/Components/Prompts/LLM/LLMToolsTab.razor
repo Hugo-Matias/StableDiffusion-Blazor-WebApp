@@ -34,11 +34,9 @@
                 case "system-prompts":
                     <SystemPromptsView OnTemplatesChanged="HandleSystemPromptTemplatesChanged" />
                     break;
-                case "history":
-                    <HistoryView RefreshVersion="@_historyVersion" OnRestore="HandleHistoryRestore" />
-                    break;
                 case "tag-builder":
-                    <TagBuilderView SelectedModel="@_selectedModel" />
+                    <TagBuilderView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess"
+                                    OnSendToWorkshop="HandleSendToWorkshop" />
                     break;
                 case "mixer":
                     <MixerView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
@@ -103,6 +101,8 @@
 
         var llm = State.State.Prompts.LLM;
         _activeViewId = string.IsNullOrWhiteSpace(llm.ActiveViewId) ? "process" : llm.ActiveViewId;
+        // History was merged into Process; redirect any stale persisted state.
+        if (_activeViewId == "history") _activeViewId = "process";
         _isNavCollapsed = llm.IsNavCollapsed;
         _selectedModel = llm.SelectedModel;
 

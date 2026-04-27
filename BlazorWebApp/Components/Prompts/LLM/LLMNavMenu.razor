@@ -35,14 +35,13 @@
 
     private static readonly List<NavItem> Items = new()
     {
+        new("workshop", "Workshop", Icons.Material.Filled.Forum),
         new("process", "Process", Icons.Material.Filled.AutoAwesome),
-        new("system-prompts", "System Prompts", Icons.Material.Filled.Psychology),
-        new("history", "History", Icons.Material.Filled.History),
-        new("tag-builder", "Tag Builder", Icons.Material.Filled.Build),
-        new("mixer", "Mixer", Icons.Material.Filled.Shuffle),
+        new("tag-builder", "Tag Builder", Icons.Material.Filled.LocalOffer),
         new("inspiration", "Inspiration", Icons.Material.Filled.Casino),
         new("scene-builder", "Scene Builder", Icons.Material.Filled.Landscape),
-        new("workshop", "Workshop", Icons.Material.Filled.Build),
+        new("mixer", "Mixer", Icons.Material.Filled.Shuffle),
+        new("system-prompts", "System Prompts", Icons.Material.Filled.Psychology),
     };
 
     private async Task HandleSelect(string id)
