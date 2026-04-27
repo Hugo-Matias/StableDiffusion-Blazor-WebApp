@@ -322,6 +322,7 @@ namespace BlazorWebApp.Models
         public AppStatePromptsLLMInspiration Inspiration { get; set; } = new();
         public AppStatePromptsLLMSceneBuilder SceneBuilder { get; set; } = new();
         public AppStatePromptsLLMWorkshop Workshop { get; set; } = new();
+        public AppStatePromptsLLMWildcardForge WildcardForge { get; set; } = new();
     }
 
     public class AppStatePromptsLLMWorkshop
@@ -410,6 +411,46 @@ namespace BlazorWebApp.Models
         public string Template { get; set; } = string.Empty;
         public int ActivePromptTabIndex { get; set; } = 0;
         public int ActiveActionTabIndex { get; set; } = 0;
+    }
+
+    /// <summary>
+    /// Phase 10 - Wildcard Forge state. Holds last-used inputs for the AI authoring view
+    /// and the unsaved draft. No EF entity; serialized into the existing State JSON column.
+    /// </summary>
+    public class AppStatePromptsLLMWildcardForge
+    {
+        public string Mode { get; set; } = "simple"; // "simple" | "advanced"
+        public string Operation { get; set; } = "Generate"; // Generate | Expand | Refine | Convert | Describe
+        public string LastTheme { get; set; } = string.Empty;
+        public int Count { get; set; } = 20;
+        public string Verbosity { get; set; } = "balanced"; // minimal | balanced | detailed | verbose
+        public string? CategoryId { get; set; }
+        public string? Subcategory { get; set; }
+        public string Scope { get; set; } = "focused"; // focused | moderate | broad
+        public bool DiversityMode { get; set; } = false;
+        public List<string> SeedExamples { get; set; } = new();
+        public int? TargetCollectionId { get; set; }
+        public ForgeDraftDto? CurrentDraft { get; set; }
+    }
+
+    public class ForgeDraftDto
+    {
+        public string Operation { get; set; } = "Generate";
+        public int? TargetCollectionId { get; set; }
+        public string? TargetCollectionName { get; set; }
+        public string? SuggestedName { get; set; }
+        public string? SuggestedCategory { get; set; }
+        public string? SuggestedDescription { get; set; }
+        public List<ForgeDraftEntryDto> Entries { get; set; } = new();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ForgeDraftEntryDto
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Status { get; set; } = "New"; // New | Kept | Modified | Rejected
+        public string? OriginalValue { get; set; }
+        public bool Accepted { get; set; } = true;
     }
 
     public class AppStateScripts

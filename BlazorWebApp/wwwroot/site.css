@@ -428,3 +428,51 @@ body:has(.image-editor-overlay) .mud-menu-popover {
         background-color: rgba(var(--mud-palette-error-rgb), 0.25);
     }
 }
+
+/* ===========================================
+   MudToggleGroup global styling
+   -------------------------------------------
+   Softer pill look used app-wide. The default
+   MudBlazor selected state is a flat solid
+   primary fill which reads heavy next to
+   outlined controls. We swap it for a
+   translucent tinted state with a primary
+   border + primary text. Unselected items
+   use a subtle border and gain a hover lift.
+   To opt out on a specific instance, add the
+   class `mud-toggle-group-default` on the
+   MudToggleGroup.
+   =========================================== */
+.mud-toggle-group:not(.mud-toggle-group-default) {
+    background: transparent !important;
+    gap: 4px;
+    padding: 2px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item {
+    background: transparent !important;
+    color: var(--mud-palette-text-primary) !important;
+    border: 1px solid transparent !important;
+    border-radius: 6px !important;
+    font-weight: 500;
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item:hover:not(.mud-toggle-item-selected):not(.mud-disabled) {
+    background: rgba(var(--mud-palette-primary-rgb), 0.08) !important;
+    color: var(--mud-palette-primary) !important;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item-selected {
+    background: rgba(var(--mud-palette-primary-rgb), 0.16) !important;
+    color: var(--mud-palette-primary) !important;
+    border-color: rgba(var(--mud-palette-primary-rgb), 0.45) !important;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item-selected .mud-icon-root,
+.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item-selected .mud-typography {
+    color: var(--mud-palette-primary) !important;
+    fill: var(--mud-palette-primary) !important;
+}

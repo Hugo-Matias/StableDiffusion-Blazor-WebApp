@@ -2,8 +2,8 @@
 
 ## Status
 
-**Current Phase:** Phase 8.6 complete (Workshop UX Overhaul - all 6 steps shipped)
-**Total Complexity:** ~100 points across 12 phases (Phase 8.6 adds 23)
+**Current Phase:** Phase 8.6 complete (Workshop UX Overhaul - all 6 steps shipped); Phase 10 (Wildcard Forge) in progress
+**Total Complexity:** ~136 points across 13 phases (Phase 8.6 adds 23, Phase 10 adds 36 - renumbered)
 **Related Plans:** Builds on features delivered in `prompt-page-enhancement` Phases 1-5. Supersedes the never-started Phase 5.5 (LLM Creative Tools) and Phase 6 (VL Models) of that plan.
 
 ---
@@ -72,7 +72,8 @@ Replace the inner `MudTabs` inside `LLMMainPanel` with a collapsible navigation 
 |  [Icon] Remixer           (Phase 7)    |          |
 |  [Icon] Workshop          (Phase 8)    |          |
 |  [Icon] Gap Analyzer      (Phase 9)    |          |
-|  [Icon] Image -> Prompt   (Phase 11)   |          |
+|  [Icon] Wildcard Forge    (Phase 10)   |          |
+|  [Icon] Image -> Prompt   (Phase 12)   |          |
 |                                        |          |
 |  ---------------------------           |          |
 |  Model: [select]                       |          |
@@ -418,7 +419,7 @@ public class PromptWorkshopNode
 
 ---
 
-### Phase 11: Image -> Prompt (VL Models) - Nice-to-Have
+### Phase 12: Image -> Prompt (VL Models) - Nice-to-Have
 
 **Objective:** Upload an image; Ollama multimodal model produces a prompt.
 **Complexity:** 13 points
@@ -475,10 +476,11 @@ Recorded here for future planning. When picked up, use this plan as reference co
 | 7   | Prompt Remixer                | 3           | 1                                  | [ ]    |
 | 8   | Workshop                      | 13          | 1, (send-to-Workshop hooks in 2-7) | [ ]    |
 | 9   | Gap Analyzer                  | 8           | 1, 2                               | [ ]    |
-| 10  | Polish & Settings             | 3           | 1-9                                | [ ]    |
-| 11  | Image -> Prompt (VL)          | 13          | 1, 2                               | [ ]    |
+| 10  | Wildcard Forge                | 36          | 1, 2                               | [~]    |
+| 11  | Polish & Settings             | 3           | 1-10                               | [ ]    |
+| 12  | Image -> Prompt (VL)          | 13          | 1, 2                               | [ ]    |
 
-**Total:** ~77 complexity points.
+**Total:** ~113 complexity points.
 
 ---
 

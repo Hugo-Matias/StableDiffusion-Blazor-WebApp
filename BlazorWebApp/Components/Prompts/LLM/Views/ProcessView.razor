@@ -11,15 +11,13 @@
         @* Mode Toggle - Vertical *@
         <MudButtonGroup VerticalAlign="true" Color="Color.Primary" Style="min-width: 72px;">
             <MudButton OnClick="@(() => SetMode(ProcessMode.Single))"
-                       Variant="@(_processMode == ProcessMode.Single ? Variant.Filled : Variant.Outlined)"
-                       Size="Size.Small"
+                       Variant="@(_processMode == ProcessMode.Single ? Variant.Filled : Variant.Outlined)" Size="Size.Small"
                        Disabled="_isProcessing">
                 <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-1" />
                 Single
             </MudButton>
             <MudButton OnClick="@(() => SetMode(ProcessMode.Batch))"
-                       Variant="@(_processMode == ProcessMode.Batch ? Variant.Filled : Variant.Outlined)"
-                       Size="Size.Small"
+                       Variant="@(_processMode == ProcessMode.Batch ? Variant.Filled : Variant.Outlined)" Size="Size.Small"
                        Disabled="_isProcessing">
                 <MudIcon Icon="@Icons.Material.Filled.BatchPrediction" Size="Size.Small" Class="mr-1" />
                 Batch
@@ -29,15 +27,8 @@
         <MudDivider Vertical FlexItem Style="height: 56px;" />
 
         @* Template Selector *@
-        <MudSelect Value="_selectedTemplateId"
-                   ValueChanged="OnTemplateChanged"
-                   Label="Template"
-                   Variant="Variant.Text"
-                   Dense
-                   AnchorOrigin="Origin.BottomLeft"
-                   Style="min-width: 250px;"
-                   Disabled="_isProcessing"
-                   T="int">
+        <MudSelect Value="_selectedTemplateId" ValueChanged="OnTemplateChanged" Label="Template" Variant="Variant.Text"
+                   Dense AnchorOrigin="Origin.BottomLeft" Style="min-width: 250px;" Disabled="_isProcessing" T="int">
             @if (_templates != null)
             {
                 foreach (var template in _templates)
@@ -56,11 +47,8 @@
         </MudSelect>
 
         @* Process Button - Match height with Select fields *@
-        <MudButton Variant="Variant.Filled"
-                   Color="@GetTemplateColor()"
-                   OnClick="HandleProcessClick"
-                   Disabled="@GetProcessButtonDisabled()"
-                   StartIcon="@Icons.Material.Filled.PlayArrow"
+        <MudButton Variant="Variant.Filled" Color="@GetTemplateColor()" OnClick="HandleProcessClick"
+                   Disabled="@GetProcessButtonDisabled()" StartIcon="@Icons.Material.Filled.PlayArrow"
                    Style="height: 56px; padding: 0 16px;">
             @if (_isProcessing)
             {
@@ -95,16 +83,12 @@
         {
             @* History Controls - Single Mode Only *@
             <MudTooltip Text="Undo">
-                <MudIconButton Icon="@Icons.Material.Filled.Undo"
-                              Size="Size.Small"
-                              OnClick="Undo"
-                              Disabled="_isProcessing || _history.Count == 0" />
+                <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small" OnClick="Undo"
+                               Disabled="_isProcessing || _history.Count == 0" />
             </MudTooltip>
             <MudTooltip Text="Redo">
-                <MudIconButton Icon="@Icons.Material.Filled.Redo"
-                              Size="Size.Small"
-                              OnClick="Redo"
-                              Disabled="_isProcessing || _redoStack.Count == 0" />
+                <MudIconButton Icon="@Icons.Material.Filled.Redo" Size="Size.Small" OnClick="Redo"
+                               Disabled="_isProcessing || _redoStack.Count == 0" />
             </MudTooltip>
         }
         else if (!_isProcessing && _selectedPrompts.Any())
@@ -119,13 +103,8 @@
     @if (_processMode == ProcessMode.Single)
     {
         @* Single Prompt Mode *@
-        <MudTextField @bind-Value="_inputPrompt"
-                      Label="Input Prompt"
-                      Variant="Variant.Text"
-                      Lines="4"
-                      Placeholder="Enter your prompt here..."
-                      Disabled="_isProcessing"
-                      Immediate />
+        <MudTextField @bind-Value="_inputPrompt" Label="Input Prompt" Variant="Variant.Text" Lines="4"
+                      Placeholder="Enter your prompt here..." Disabled="_isProcessing" Immediate />
 
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
@@ -137,13 +116,9 @@
         @* Comparison Panel *@
         @if (!string.IsNullOrEmpty(_resultPrompt))
         {
-            <PromptComparisonPanel OriginalPrompt="@_inputPrompt"
-                                   ResultPrompt="@_resultPrompt"
-                                   OperationType="@(_selectedTemplate?.Name ?? "Enhanced")"
-                                   OnApply="HandleApplyResult"
-                                   OnRegenerate="HandleRegenerateResult"
-                                   OnClear="HandleClearResult"
-                                   OnSaveToLibrary="HandleSaveToLibrary" />
+            <PromptComparisonPanel OriginalPrompt="@_inputPrompt" ResultPrompt="@_resultPrompt"
+                                   OperationType="@(_selectedTemplate?.Name ?? "Enhanced")" OnApply="HandleApplyResult"
+                                   OnRegenerate="HandleRegenerateResult" OnClear="HandleClearResult" OnSaveToLibrary="HandleSaveToLibrary" />
         }
     }
     else
@@ -170,10 +145,7 @@
                                      @onclick="@(() => TogglePromptSelection(prompt))">
                                 <MudCardContent Class="pa-3">
                                     <div class="d-flex align-center gap-2 mb-2">
-                                        <MudCheckBox Checked="@isSelected"
-                                                     Color="Color.Primary"
-                                                     Dense
-                                                     ReadOnly />
+                                        <MudCheckBox Checked="@isSelected" Color="Color.Primary" Dense ReadOnly />
                                         <MudText Typo="Typo.subtitle2" Style="flex: 1;">@prompt.Title</MudText>
                                         @if (!string.IsNullOrEmpty(prompt.Category))
                                         {
@@ -182,7 +154,8 @@
                                             </MudChip>
                                         }
                                     </div>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                             Style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                                         @(prompt.Positive ?? "No content")
                                     </MudText>
                                 </MudCardContent>
@@ -200,11 +173,8 @@
                     <MudText Typo="Typo.subtitle2">
                         Results (@_batchResults.Count)
                     </MudText>
-                    <MudButton Variant="Variant.Text"
-                               Size="Size.Small"
-                               OnClick="ClearResults"
-                               StartIcon="@Icons.Material.Filled.Clear"
-                               Color="Color.Default">
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="ClearResults"
+                               StartIcon="@Icons.Material.Filled.Clear" Color="Color.Default">
                         Clear All
                     </MudButton>
                 </div>
@@ -218,36 +188,25 @@
                                     <div class="d-flex align-center gap-2 mb-2">
                                         @if (result.IsSuccess)
                                         {
-                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
-                                                     Color="Color.Success"
-                                                     Size="Size.Small" />
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
                                         }
                                         else
                                         {
-                                            <MudIcon Icon="@Icons.Material.Filled.Error"
-                                                     Color="Color.Error"
-                                                     Size="Size.Small" />
+                                            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small" />
                                         }
                                         <MudText Typo="Typo.subtitle2" Style="flex: 1;">
                                             @result.PromptTitle
                                         </MudText>
-                                        <MudChip Size="Size.Small"
-                                                 Variant="Variant.Text"
+                                        <MudChip Size="Size.Small" Variant="Variant.Text"
                                                  Color="@(result.Operation == "Enhanced" ? Color.Primary : Color.Secondary)">
                                             @result.Operation
                                         </MudChip>
                                         @if (result.IsSuccess)
                                         {
-                                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                                          Size="Size.Small"
-                                                          Color="Color.Info"
-                                                          OnClick="@(() => CopyResult(result.ResultText))"
-                                                          Title="Copy" />
-                                            <MudIconButton Icon="@Icons.Material.Filled.Save"
-                                                          Size="Size.Small"
-                                                          Color="Color.Success"
-                                                          OnClick="@(() => SaveResult(result))"
-                                                          Title="Save to Library" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Info"
+                                                           OnClick="@(() => CopyResult(result.ResultText))" Title="Copy" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Save" Size="Size.Small" Color="Color.Success"
+                                                           OnClick="@(() => SaveResult(result))" Title="Save to Library" />
                                         }
                                     </div>
 
@@ -261,7 +220,8 @@
                                                             Original:
                                                         </MudText>
                                                         <MudPaper Class="pa-2" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
-                                                            <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 150px; overflow-y: auto;">
+                                                            <MudText Typo="Typo.body2"
+                                                                     Style="white-space: pre-wrap; max-height: 150px; overflow-y: auto;">
                                                                 @result.OriginalText
                                                             </MudText>
                                                         </MudPaper>
@@ -271,7 +231,8 @@
                                                             Result:
                                                         </MudText>
                                                         <MudPaper Class="pa-2" Elevation="0" Style="background-color: rgba(0,0,0,0.02);">
-                                                            <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 150px; overflow-y: auto;">
+                                                            <MudText Typo="Typo.body2"
+                                                                     Style="white-space: pre-wrap; max-height: 150px; overflow-y: auto;">
                                                                 @result.ResultText
                                                             </MudText>
                                                         </MudPaper>

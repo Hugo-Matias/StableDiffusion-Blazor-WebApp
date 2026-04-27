@@ -1,262 +1,340 @@
-# Phase 10 - Polish & Settings
+# Phase 10 - Wildcard Forge (LLM x Wildcards Integration)
 
 ## Status
 
 **Phase:** 10
-**Build Status:** Not yet attempted
-**Phase Status:** [ ] Not Started
+**Build Status:** Clean (steps 1-9 implemented; smoke test pending user run)
+**Phase Status:** [~] Awaiting user smoke test
 
 ---
 
 ## Objective
 
-Consolidate cross-view settings, tighten UX, and handle recurring quality-of-life items that were explicitly deferred out of earlier phases. Specifically:
+Add a new LLM-Tools view, **Wildcard Forge**, where users generate, expand, refine, convert, and describe wildcard collections via prompt-driven LLM calls. Output flows through the existing `WildcardCollection` / `WildcardEntry` pipeline so collections show up everywhere wildcards already work (`[[name]]` parsing, Inspiration roulette, etc.).
 
-1. A dedicated "Settings" view for the LLM Tools tab that centralizes options previously spread across views (default starting view, Workshop ancestor depth / spawn count, Tag Builder preset defaults, Roulette weighted default, GapAnalyzer model override, NSFW gate default, etc.).
-2. Keyboard shortcuts (Alt+1..9) to switch LLM nav views.
-3. Per-view `InfoContent` audit - fill gaps, add screenshots / keyboard hints.
-4. Empty-state polish across all views (no selected session, no prompts in library, no wildcards, etc.).
-5. (Stretch) Seed default Roulette wildcard collections if missing.
-6. (Stretch) Upgrade `MudTreeView` Workshop tree to SVG with parent→child edges.
-7. Roll out the `LLMToolPageDescription` header banner + Workshop-style send-to action bar across every LLM tool view.
+The Forge is intentionally NOT a replacement for the Wildcards tab. Manual editing (per-entry add/edit/delete, weight tuning, import/export) stays in `WildcardsTab`. The Forge is the AI-assisted authoring surface where prompting is the primary interaction.
 
 ---
 
-## Context
+## Background
 
-### Dependencies on prior phases
+The repository already contains a high-quality knowledge base under `Documentation/Wildcards/`:
 
-- **All of Phases 1-9** complete. This phase touches every view.
+- `WILDCARD_GENERATION_GUIDE.md` - quality rules, verbosity levels, do's and don'ts
+- `WILDCARD_CREATION_WIZARD.md` - 5-phase questionnaire designed for LLM-guided creation
+- `LLM_PROMPTS.json` - 5 tested prompt templates (basic_generation, themed_expansion, quality_enhancement, category_focused, diversity_focused)
+- `THEME_CATALOG.json` - 10 themed categories with subcategories, keywords, verbosity examples, sample collections, best practices, avoid lists
+- `WILDCARD_TEMPLATE.json` - JSON structure reference for imports
 
-### Existing infrastructure to reuse
+The Forge integrates this knowledge base as a runtime knowledge layer. The wizard markdown is treated as design reference (not LLM payload). The two JSON files are loaded into typed POCOs at startup and used by a `PromptComposer` to build slim, targeted system prompts per operation.
 
-- `IInfoService.SetInfo(InfoContent)` with `Shortcuts` and `Tips` collections.
-- `AppStatePromptsLLM` - add a `Settings` nested object for all the cross-view defaults.
-- `LLMNavMenu` - settings appears as a gear icon at the bottom (not in the main view list).
+---
 
-### Design decisions locked for this phase
+## Token Budget Strategy
 
-- Settings live in an `AppStatePromptsLLMSettings` nested class, persisted with the rest of the LLM state.
-- Shortcuts are bound via a root-level `@onkeydown` on the `LLMToolsTab` container; `preventDefault` on matches.
-- Empty states use `MudAlert` with a friendly hint and a primary CTA (e.g., "Create a wildcard collection").
+Target: 8k context window (limit reported by user's local model).
+
+| Bucket                                   | Reserve    |
+| ---------------------------------------- | ---------- |
+| Output (e.g. 25 verbose entries as JSON) | ~2,000     |
+| Safety margin / response variance        | ~500       |
+| System-prompt scaffolding                | ~500       |
+| **Available for context per call**       | **~5,000** |
+
+Within the 5k context budget the composer slots:
+
+- 1 distilled `CategoryCard` (~250-400 tokens) - only the user's chosen category, never all 10.
+- Verbosity rubric slice (~150 tokens) - the four levels with examples drawn from that category.
+- Wizard answer summary as a compact key/value block (~150 tokens).
+- User free-text instruction (~100-500 tokens).
+- Existing entries for Expand/Refine (~300-800 tokens for 25-50 entries).
+
+Hard caps:
+
+- Refine processes max 25 entries per call. Larger collections auto-chunk into multiple sequential calls; UI shows progress.
+- Expand respects the same chunking on the "do not repeat" reference set, summarized between chunks.
+
+If the catalog card for a single category exceeds the soft target the composer emits a "compact card" variant that drops `verbosity_examples` (verbosity is served separately) and trims `keywords` and `sample_collections`.
+
+---
+
+## Design Decisions
+
+### Operations (v1 ships all five)
+
+| Op       | Backed by template                                                                                               | Notes                                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Generate | `basic_generation` (or `category_focused` when subcategory chosen, `diversity_focused` when diversity toggle on) | Simple or Advanced (wizard) input modes.                                                                  |
+| Expand   | `themed_expansion`                                                                                               | Requires existing collection; auto-chunks if reference set > 25 entries.                                  |
+| Refine   | `quality_enhancement`                                                                                            | Side-by-side diff (old -> new) per entry; bulk Accept All.                                                |
+| Convert  | `TagPromptService` (Phase 2)                                                                                     | Output replaces or augments depending on user choice.                                                     |
+| Describe | small custom prompt (~150 tokens in / ~80 out)                                                                   | Utility op; infers theme + suggested name + category for an unnamed draft and auto-fills the Save dialog. |
+
+### Wildcard Forge Wizard (Advanced mode)
+
+Adapts `WILDCARD_CREATION_WIZARD.md` to a 4-step inline form (collapsed accordion, not modal). The doc's Phase 4 (QA) and Phase 5 (Export) collapse into the post-generation **Review** UI shared by all operations.
+
+| Step                   | Inputs                                                                                                   | LLM cost          |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- | ----------------- |
+| 1. Theme & Category    | free-text purpose, category dropdown (10 categories), subcategory dropdown (auto-populated from catalog) | 0 (deterministic) |
+| 2. Scope & Count       | focused/moderate/broad pills, count slider (5-50), diversity toggle                                      | 0                 |
+| 3. Verbosity & Style   | 4 verbosity radio cards with live examples pulled from the chosen category's `verbosity_examples`        | 0                 |
+| 4. Examples (optional) | 0-5 user-provided seed entries                                                                           | 0                 |
+| **Submit**             | composer assembles slim prompt -> single LLM call                                                        | 1                 |
+
+Each wizard step gets an opt-in `[Suggest with AI]` button that sends only the running summary (~300 tokens in, ~50 out) and fills the field. Strictly opt-in.
+
+Simple mode is one text box + count + Run. A deterministic preprocessor classifies the description into category + verbosity using keyword matching against `THEME_CATALOG.keywords` (no LLM call). When confidence is low it surfaces a one-line clarifier with the top two suggested category buttons; otherwise it falls back to a "general" permissive system prompt.
+
+### State and Persistence
+
+`AppState.Prompts.LLM.WildcardForge` (new sub-state) holds:
+
+- Mode (`simple` | `advanced`)
+- Last theme, count, verbosity, selected category and subcategory
+- Diversity toggle, scope choice
+- 0-5 seed examples
+- The current unsaved `ForgeDraft` (entries, status flags, target collection if Expand/Refine, op type)
+
+LocalStorage is **not** used. AppState already JSON-persists via the `State` entity; the draft survives tab navigation and reloads. Heavy mutation pressure during streaming is mitigated by buffering in component state and committing to AppState only on stream-end or explicit user actions (accept/reject).
+
+### Knowledge Layer
+
+- `WildcardForgeKnowledge` (singleton, loaded at startup) parses `THEME_CATALOG.json` and `LLM_PROMPTS.json` into typed POCOs (`CategoryCard`, `LlmTemplate`, `VerbosityLevelInfo`).
+- No hot-reload. Files are stable at runtime.
+- Catalog card lookup: by category id or name (case-insensitive). Subcategory list comes from the loaded card.
+- Verbosity rubric lookup: per category, the composer slices `verbosity_examples` to the user's chosen level plus one neighbor for contrast.
+
+### `PromptComposer`
+
+Single class responsible for turning `(operation, ForgeRequest, CategoryCard?, draft state)` into `List<OllamaChatMessage>`. Substitutes `{variables}` from the loaded template. Hard-budgets each section by token estimate (chars/4 heuristic) and trims gracefully if the estimate exceeds the per-call ceiling.
+
+### Save Flow
+
+Three save paths:
+
+- **New collection**: prompts for name + category + description (Describe op autofills these). Calls `IDatabaseService.CreateWildcardCollection` then `CreateWildcardEntry` per accepted draft entry.
+- **Append**: existing collection. Adds accepted entries; preserves existing.
+- **Replace**: existing collection. Wipes existing entries and replaces with accepted draft. Confirmation dialog required.
+
+All entries default to `Weight = 1.0` regardless of LLM output - confirmed UX choice. `SortOrder` is the position in the accepted draft.
+
+### Send-to-Workshop
+
+Each draft entry gets a small "Send to Workshop" affordance that composes a sample prompt using the entry plus a generic context (`"a portrait of {entry}, photorealistic"`) and routes through the existing Workshop entry-point pattern (Phase 8 send-to plumbing).
+
+---
+
+## Data Model
+
+No new EF entities. No new migration. AppState additions only.
+
+```csharp
+public class AppStatePromptsLLMWildcardForge
+{
+    public string Mode { get; set; } = "simple"; // "simple" | "advanced"
+    public string LastTheme { get; set; } = string.Empty;
+    public int Count { get; set; } = 20;
+    public string Verbosity { get; set; } = "balanced"; // minimal | balanced | detailed | verbose
+    public string? CategoryId { get; set; }
+    public string? Subcategory { get; set; }
+    public string Scope { get; set; } = "focused"; // focused | moderate | broad
+    public bool DiversityMode { get; set; } = false;
+    public List<string> SeedExamples { get; set; } = new();
+    public ForgeDraftDto? CurrentDraft { get; set; }
+}
+
+public class ForgeDraftDto
+{
+    public string Operation { get; set; } = "Generate";
+    public int? TargetCollectionId { get; set; }
+    public string? TargetCollectionName { get; set; }
+    public string? SuggestedName { get; set; }
+    public string? SuggestedCategory { get; set; }
+    public string? SuggestedDescription { get; set; }
+    public List<ForgeDraftEntryDto> Entries { get; set; } = new();
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class ForgeDraftEntryDto
+{
+    public string Value { get; set; } = string.Empty;
+    public string Status { get; set; } = "New"; // New | Kept | Modified | Rejected
+    public string? OriginalValue { get; set; }
+    public bool Accepted { get; set; } = true;
+}
+```
+
+---
+
+## Files Affected
+
+New:
+
+- `BlazorWebApp/Components/Prompts/LLM/Views/WildcardForgeView.razor` (+ `.razor.css`)
+- `BlazorWebApp/Components/Prompts/LLM/Views/Forge/ForgeSimpleInput.razor`
+- `BlazorWebApp/Components/Prompts/LLM/Views/Forge/ForgeAdvancedWizard.razor`
+- `BlazorWebApp/Components/Prompts/LLM/Views/Forge/ForgeReviewPanel.razor`
+- `BlazorWebApp/Components/Prompts/LLM/Views/Forge/ForgeSaveDialog.razor`
+- `BlazorWebApp/Services/WildcardForge/IWildcardForgeService.cs`
+- `BlazorWebApp/Services/WildcardForge/WildcardForgeService.cs`
+- `BlazorWebApp/Services/WildcardForge/WildcardForgeKnowledge.cs`
+- `BlazorWebApp/Services/WildcardForge/PromptComposer.cs`
+- `BlazorWebApp/Services/WildcardForge/Models/CategoryCard.cs`
+- `BlazorWebApp/Services/WildcardForge/Models/LlmTemplate.cs`
+- `BlazorWebApp/Services/WildcardForge/Models/VerbosityLevelInfo.cs`
+- `BlazorWebApp/Services/WildcardForge/Models/ForgeRequest.cs`
+- `BlazorWebApp/Services/WildcardForge/Models/ForgeOperation.cs`
+
+Extend:
+
+- `BlazorWebApp/Models/AppState.cs` (+ `WildcardForge` sub-state and DTOs)
+- `BlazorWebApp/Components/Prompts/LLM/LLMNavMenu.razor` (+ `wildcard-forge` nav item)
+- `BlazorWebApp/Components/Prompts/LLM/LLMToolsTab.razor` (+ switch case)
+- `BlazorWebApp/Program.cs` (DI registrations)
+
+No changes:
+
+- `WildcardService` / `IWildcardService` (write APIs already on `IDatabaseService`).
+- `OllamaService` (existing chat interface is sufficient).
+- EF migrations / `AppDbContext`.
 
 ---
 
 ## Execution Checklist
 
-### Step 1: `AppStatePromptsLLMSettings` + view skeleton
+### Step 1: AppState sub-state + DTOs
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
-#### Tasks
+- [ ] Add `AppStatePromptsLLMWildcardForge`, `ForgeDraftDto`, `ForgeDraftEntryDto` to `AppState.cs`.
+- [ ] Reference from `AppStatePromptsLLM.WildcardForge`.
+- [ ] Build clean.
 
-- [ ] In `AppState.cs`:
-  ```csharp
-  public class AppStatePromptsLLMSettings
-  {
-      public string DefaultViewId { get; set; } = "process";
-      public int WorkshopAncestorDepth { get; set; } = 3;
-      public int WorkshopSpawnCount { get; set; } = 5;
-      public bool WorkshopAutoRender { get; set; } = true;
-      public TagModelPreset TagBuilderDefaultPreset { get; set; } = TagModelPreset.Illustrious;
-      public TagVerbosity TagBuilderDefaultVerbosity { get; set; } = TagVerbosity.Standard;
-      public bool DefaultAllowNsfw { get; set; } = false;
-      public bool RouletteDefaultWeighted { get; set; } = true;
-      public string? GapAnalyzerModelOverride { get; set; } // null = use shared _selectedModel
-      public bool TagNamespacingEnabled { get; set; } = true; // formalizes "style:", "env:", etc. library tags
-  }
-  ```
-- [ ] `public AppStatePromptsLLMSettings Settings { get; set; } = new();` on `AppStatePromptsLLM`.
-- [ ] Update each view's initialization to honor the relevant setting as the default when its own sub-state is fresh.
-- [ ] Create `BlazorWebApp/Components/Prompts/LLM/Views/SettingsView.razor` with vertically grouped sections:
-  - "General": default starting view, tag namespacing toggle.
-  - "Tag Builder": preset, verbosity, NSFW gate.
-  - "Workshop": ancestor depth, spawn count, auto-render.
-  - "Inspiration / Roulette": weighted default, "Seed default collections" button (stretch step).
-  - "Gap Analyzer": model override (dropdown of `OllamaService.GetModels()`).
-- [ ] Gear icon button at the bottom of `LLMNavMenu` opens the Settings view. Not part of the nav `Items` list - treated specially.
+### Step 2: Knowledge layer
 
-#### Success Criteria
+**Complexity:** 5
+**Status:** [x] Complete
 
-- All settings persist.
-- View renders all groups.
-- Changing a default propagates to the respective sub-view on next open.
+- [ ] Create `Models/CategoryCard.cs`, `LlmTemplate.cs`, `VerbosityLevelInfo.cs`.
+- [ ] `WildcardForgeKnowledge` singleton: load `Documentation/Wildcards/THEME_CATALOG.json` and `LLM_PROMPTS.json` once on construction. Throw a clear error if files missing.
+- [ ] Public surface: `IReadOnlyList<CategoryCard> Categories`, `CategoryCard? FindCategory(string idOrName)`, `LlmTemplate GetTemplate(ForgeOperation op)`.
+- [ ] Register in `Program.cs` as singleton.
 
----
+### Step 3: PromptComposer
 
-### Step 2: Keyboard shortcuts
+**Complexity:** 5
+**Status:** [x] Complete
 
-**Complexity:** 2
-**Status:** [ ] Not Started
+- [ ] `ForgeRequest` DTO captures op + theme + count + verbosity + category + subcategory + diversity + seeds + (optional) existing entries + (optional) target collection.
+- [ ] `PromptComposer.Compose(ForgeRequest) -> List<OllamaChatMessage>`.
+- [ ] Implements per-op slot filling for the 5 templates loaded from `LLM_PROMPTS.json`.
+- [ ] Char/4 token heuristic with graceful trim of `verbosity_examples` and `sample_collections` if oversized.
+- [ ] Unit tests deferred (smoke-test by view interaction in Step 7).
 
-#### Tasks
+### Step 4: WildcardForgeService
 
-- [ ] In `LLMToolsTab.razor`, attach `@onkeydown="HandleKeyDown"` on a focused root `div` (or use a global JS handler injected via `IJSRuntime`).
-- [ ] Handler:
-  ```csharp
-  void HandleKeyDown(KeyboardEventArgs e)
-  {
-      if (!e.AltKey) return;
-      var index = e.Key switch {
-          "1" => 0, "2" => 1, "3" => 2, "4" => 3, "5" => 4,
-          "6" => 5, "7" => 6, "8" => 7, "9" => 8,
-          _ => -1
-      };
-      if (index < 0 || index >= _navItems.Count) return;
-      _ = HandleViewSelected(_navItems[index].Id);
-  }
-  ```
-- [ ] Ensure focus stays on the tab container so shortcuts fire. If focus leaves (e.g., into a `MudTextField`), Alt+N still works inside a text field because Alt-modified keys don't generate characters in most layouts; verify behavior.
-- [ ] Register shortcuts in each view's `InfoContent.Shortcuts` collection.
+**Complexity:** 5
+**Status:** [x] Complete (Convert uses inline LLM prompt; TagPromptService bridge deferred to follow-up)
 
-#### Success Criteria
+- [ ] Orchestrates: Compose -> `OllamaService.SendChatMessage` -> JSON parse -> dedup against target / self -> emit `ForgeDraft`.
+- [ ] Tolerant JSON parser: handles model output wrapped in markdown code fences, strips leading/trailing prose, falls back to line-by-line extraction if JSON invalid.
+- [ ] Dedup helper: lowercase + trim + collapse whitespace + strip surrounding quotes.
+- [ ] Wraps existing entries in fenced delimiters (`<<entry>>...<</entry>>`) inside Refine/Expand prompts to mitigate prompt injection.
+- [ ] Convert op delegates to `TagPromptService` and adapts the result.
+- [ ] Describe op uses a tiny inline prompt (no template).
 
-- `Alt+1` switches to Process from anywhere in the LLM tab.
-- `Alt+9` switches to the 9th nav entry (if it exists).
-- Shortcut list visible in the info panel.
+### Step 5: View - Simple mode
 
----
+**Complexity:** 3
+**Status:** [x] Complete
 
-### Step 3: InfoContent audit
+- [ ] `WildcardForgeView.razor` shell with op pills (Generate active by default).
+- [ ] `ForgeSimpleInput`: theme textarea + count slider + Run.
+- [ ] Deterministic classifier (keyword match against `Categories.SelectMany(c => c.Keywords)`) -> picks category.
+- [ ] On low confidence (no match >= 1 keyword) surface a clarifier chip row with the top 2 candidates.
+- [ ] Wires to `WildcardForgeService.GenerateAsync`.
 
-**Complexity:** 2
-**Status:** [ ] Not Started
+### Step 6: View - Advanced wizard
 
-#### Tasks
+**Complexity:** 5
+**Status:** [x] Complete (Suggest-with-AI per-step deferred to follow-up)
 
-- [ ] For every view (Process, SystemPrompts, History, TagBuilder, Mixer, Inspiration, SceneBuilder, TemplateBuilder, Remixer, Workshop, GapAnalyzer, Settings): populate `InfoContent.Title`, `Overview` (1-2 sentences), `Shortcuts` (at minimum the `Alt+N` switch to that view), `Tips` (3-5 bullets), and optionally `Sections` (for longer views like Workshop).
-- [ ] Consistency pass: every view's Overview explains the primary action; tips emphasize the gotchas documented in each phase's Open Risks.
+- [ ] `ForgeAdvancedWizard` 4-step accordion.
+- [ ] Step 1: free-text purpose + category dropdown + subcategory dropdown.
+- [ ] Step 2: scope pills, count slider, diversity toggle.
+- [ ] Step 3: 4 verbosity radio cards with live category examples.
+- [ ] Step 4: 0-5 seed example entries (chip-style add).
+- [ ] Each step: optional `[Suggest with AI]` mini-call that fills the field.
+- [ ] Final Submit assembles `ForgeRequest` -> `WildcardForgeService`.
 
-#### Success Criteria
+### Step 7: View - Review panel
 
-- No view has a generic or empty info panel.
-- Navigating through all views never shows stale info from a previous view.
+**Complexity:** 5
+**Status:** [x] Complete (inlined in WildcardForgeView rather than a separate ForgeReviewPanel component)
 
----
+- [ ] `ForgeReviewPanel` shows draft entries with Accept toggle, edit-in-place, trash.
+- [ ] Refine: side-by-side diff column (Original | Refined).
+- [ ] Filters: hide rejected, hide duplicates of target.
+- [ ] Bulk actions: Accept All, Reject All, Re-run.
+- [ ] Send-to-Workshop per entry.
 
-### Step 4: Empty-state polish
+### Step 8: View - Save flow
 
-**Complexity:** 2
-**Status:** [ ] Not Started
+**Complexity:** 3
+**Status:** [x] Complete
 
-#### Tasks
+- [ ] `ForgeSaveDialog`: New / Append / Replace radio.
+- [ ] New: name + category + description (auto-filled by Describe op when available, or by clicking `[Suggest]`).
+- [ ] Append/Replace: target collection picker (uses existing `GetAllWildcardCollections`).
+- [ ] Replace path requires confirmation (`MudMessageBox`).
+- [ ] Persists via `IDatabaseService.CreateWildcardCollection` + `CreateWildcardEntry` (Weight=1.0, SortOrder=index).
 
-- [ ] **History**: "No history yet - run Process once to populate."
-- [ ] **Tag Builder**: show candidate count 0 as "No tags matched - try broader concepts or disable category filters."
-- [ ] **Remixer**: "No saved prompts in library - save one from any LLM view first." with a CTA that switches to Process.
-- [ ] **TemplateBuilder**: "No templates yet - click + to create one." with inline example: `A [subject] at [[roulette/location]] during [time]`.
-- [ ] **Workshop**: "No sessions. Run any LLM view and click 'Send to Workshop' to seed one."
-- [ ] **Inspiration Roulette**: when wildcard collections are missing, show an info banner "Using built-in fallbacks - set up Roulette collections in Settings → Seed default collections for richer variety."
-- [ ] **GapAnalyzer**: no empty state (input is always editable). Show a hint when analysis returns no suggestions.
+### Step 9: Wire nav + LLMToolsTab
 
-#### Success Criteria
+**Complexity:** 1
+**Status:** [x] Complete
 
-- No raw empty lists or silent blanks.
-- Every CTA navigates to a useful destination.
+- [ ] Add `("wildcard-forge", "Wildcard Forge", Icons.Material.Filled.AutoAwesomeMosaic)` to `LLMNavMenu.Items` between Tag Builder and Inspiration.
+- [ ] Add switch case in `LLMToolsTab.razor` rendering `<WildcardForgeView SelectedModel="@_selectedModel" />`.
 
----
-
-### Step 5: Seed default Roulette wildcard collections (stretch)
+### Step 10: Smoke test + build
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [~] Build clean; manual smoke test pending
 
-#### Tasks
-
-- [ ] In `SettingsView`, add a "Seed default Roulette collections" button. Calls a new `WildcardService.SeedDefaultRouletteCollectionsAsync()` method that creates `roulette/subject`, `roulette/style`, `roulette/lighting`, `roulette/mood`, `roulette/location` from a curated hard-coded list of 15-25 entries each (source the same lists embedded in `InspirationView`'s fallback map + expand).
-- [ ] Idempotent: skip collections that already exist.
-- [ ] Snackbar confirms how many collections + entries were created.
-
-#### Success Criteria
-
-- Clicking the button once seeds all five collections.
-- Subsequent clicks are no-ops.
-- Roulette spins now pull from the seeded collections.
+- [ ] Build clean.
+- [ ] Manual smoke flow: Simple Generate ("dramatic lighting", count 15) -> draft renders -> save as new -> appears in `WildcardsTab`.
+- [ ] Verify draft persists across tab nav (AppState).
 
 ---
 
-### Step 6: Workshop SVG tree upgrade (stretch)**Complexity:** 5
+## Success Criteria
 
-**Status:** [ ] Not Started
-
-#### Tasks
-
-- [ ] Research lightweight Blazor SVG tree libraries or implement a minimal custom renderer that lays out nodes top-down with edges drawn between parent and child.
-- [ ] Replace `MudTreeView` in `WorkshopView`. Keep the same click-to-activate behavior.
-- [ ] Preserve icon semantics (root / chat / evolve).
-- [ ] Ensure large trees (50+ nodes) remain usable - add zoom/pan if needed.
-
-#### Success Criteria
-
-- Tree visually communicates parent→child relationships at a glance.
-- No regression in click / select behavior.
-- Trees with 50+ nodes remain responsive.
-
----
-
-### Step 7: LLMToolPageDescription + Workshop send-to bar rollout
-
-**Complexity:** 2
-**Status:** [ ] Not Started
-
-#### Tasks
-
-- [ ] Add a `<LLMToolPageDescription Title=... Icon=... Description=... />` header to every LLM tool view: ProcessView, SystemPromptsView, HistoryView, MixerView, InspirationView, SceneBuilderView, TemplateBuilderView, RemixerView, WorkshopView, GapAnalyzerView, SettingsView. Use the component at `BlazorWebApp/Components/Prompts/LLM/Shared/LLMToolPageDescription.razor` (originally introduced for Tag Builder).
-- [ ] Replace ad-hoc `Send to Process` / `Copy` buttons in every result view with the Workshop-style send-to action bar (`send-to-section` + `send-to-btn`). Wire a `Copy` icon button, `Send to Process`, `Send to Workshop` (creates a new session via `LLMToolsTab.HandleSendToWorkshop`), and per-workflow buttons sourced from `IPromptSendToService.GetParameterWorkflows()`.
-- [ ] Add `OnSendToWorkshop` `EventCallback<string>` parameters to MixerView / InspirationView / SceneBuilderView / TemplateBuilderView / RemixerView / GapAnalyzerView and wire them in `LLMToolsTab.razor`.
-- [ ] Consider extracting an `LLMSendToBar.razor` shared component (prompt + EventCallbacks) so the markup stops being duplicated.
-- [ ] Audit each header description for tone and length: 1-2 sentences, action oriented.
-
-#### Success Criteria
-
-- Every LLM tool view opens with a distinctive description banner (not `MudAlert`).
-- Every result panel exposes the same Copy / Send-to-Process / Send-to-Workshop / per-Workflow set of actions.
-- No regression in existing send-to wiring.
-
----
-
-## Progress Tracking
-
-| Step | Status | Complexity | Notes                                       |
-| ---- | ------ | ---------- | ------------------------------------------- |
-| 1    | [ ]    | 2          | Settings sub-state + view                   |
-| 2    | [ ]    | 2          | Keyboard shortcuts                          |
-| 3    | [ ]    | 2          | InfoContent audit                           |
-| 4    | [ ]    | 2          | Empty-state polish                          |
-| 5    | [ ]    | 2          | Seed default Roulette collections (stretch) |
-| 6    | [ ]    | 5          | SVG tree (stretch)                          |
-| 7    | [ ]    | 2          | LLMToolPageDescription + send-to rollout    |
-
-**Total:** 17 points if both stretch items shipped; 10 points for required scope.
-
----
-
-## Issues & Resolutions
-
-_None yet._
-
----
-
-## Commit Checkpoints
-
-- [ ] After Step 1
-- [ ] After Step 2
-- [ ] After Step 3
-- [ ] After Step 4
-- [ ] After Step 5 (if pursued)
-- [ ] After Step 6 (if pursued)
+- All five operations function end-to-end against the local Ollama model.
+- Generated entries land in `WildcardCollection` and are usable via `[[name]]` parsing without a restart.
+- Token usage stays under 8k for Generate count<=30 and Refine chunked at 25.
+- Advanced wizard works without any LLM call until Submit (zero-cost path preserved).
+- AppState round-trips the draft across page reloads.
 
 ---
 
 ## Open Risks
 
-1. **Alt+N doesn't fire inside `MudTextField`.** Browser behavior varies. Mitigation: consider `Ctrl+Alt+N` or a JS interop keydown hook on `document`.
-2. **Setting drift with view-local state.** If a user toggles a Tag Builder preset in the main view, the Settings view shows the "default", not the current view state. Document clearly: Settings = defaults for new inputs, not live override.
-3. **SVG tree lib choice.** No established Blazor SVG tree library surveyed yet. Mitigation: defer to a stretch item; if no good fit, keep `MudTreeView` and polish its visual density.
+1. **Tolerant JSON parsing.** Local 8k models occasionally emit malformed JSON. The line-by-line fallback should still produce usable entries; flagged with a "parsed leniently" notice.
+2. **Streaming vs single-shot.** v1 is single-shot (spinner during call). Streaming with progressive entry emission is a follow-up if the wait UX is poor on slow models.
+3. **Catalog drift.** If users edit `THEME_CATALOG.json` while the app is running, changes are not picked up until restart (per direction).
+4. **Suggest-with-AI cost.** Four optional mini-calls per wizard pass. Documented in the view InfoContent so users with very small models know to skip them.
+5. **Diversity toggle semantics.** Currently a single boolean -> swaps template. Future: expose the percentage knobs from `diversity_focused`.
 
 ---
 
-## Phase Summary
+## Resolved Assumptions
 
-_To be filled in on completion._
+- Renumbering: this is the new Phase 10. Old Phase 10 (Polish) -> Phase 11. Old Phase 11 (VL) -> Phase 12.
+- Weights: always `1.0` from generation; users tune later in `WildcardsTab`.
+- Side-nav label: "Wildcard Forge".
+- Hot-reload of knowledge files: not in v1.
+- Per-step Suggest-with-AI: in v1.
+- Persistence: AppState only (no DB-backed draft entity).

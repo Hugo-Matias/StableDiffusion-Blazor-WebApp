@@ -38,6 +38,10 @@
                     <TagBuilderView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess"
                                     OnSendToWorkshop="HandleSendToWorkshop" />
                     break;
+                case "wildcard-forge":
+                    <WildcardForgeView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess"
+                                       OnSendToWorkshop="HandleSendToWorkshop" />
+                    break;
                 case "mixer":
                     <MixerView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
                     break;

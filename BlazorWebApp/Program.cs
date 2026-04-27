@@ -146,6 +146,11 @@ builder.Services.AddScoped<TagPromptService>();
 // Wildcard service for prompt wildcard management
 builder.Services.AddSingleton<IWildcardService, WildcardService>();
 
+// Phase 10 - Wildcard Forge (LLM x Wildcards) services
+builder.Services.AddSingleton<BlazorWebApp.Services.WildcardForge.WildcardForgeKnowledge>();
+builder.Services.AddScoped<BlazorWebApp.Services.WildcardForge.PromptComposer>();
+builder.Services.AddScoped<BlazorWebApp.Services.WildcardForge.IWildcardForgeService, BlazorWebApp.Services.WildcardForge.WildcardForgeService>();
+
 // Info service for contextual help/shortcuts across the app
 builder.Services.AddSingleton<IInfoService, InfoService>();
 
