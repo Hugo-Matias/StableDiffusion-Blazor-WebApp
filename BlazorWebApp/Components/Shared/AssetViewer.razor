@@ -14,12 +14,8 @@
 
 @if (IsVisible)
 {
-    <div class="asset-viewer-overlay" 
-         @onkeydown="HandleKeyDown" 
-         @onwheel="HandleWheel"
-         @onwheel:preventDefault="_isPanMode"
-         tabindex="0" 
-         @ref="_overlayRef">
+    <div class="asset-viewer-overlay" @onkeydown="HandleKeyDown" @onwheel="HandleWheel" @onwheel:preventDefault="_isPanMode"
+         tabindex="0" @ref="_overlayRef">
         <div class="asset-viewer-container">
             
             <!-- Close Button -->
@@ -29,33 +25,22 @@
 
             <!-- Main Display -->
             <div class="asset-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
-                 @onclick="HandleStageClick"
-                 @onmousedown="HandleMouseDown"
-                 @onmousemove="HandleMouseMove"
-                 @onmouseup="HandleMouseUp"
-                 @onmouseleave="HandleMouseUp">
+                 @onclick="HandleStageClick" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove"
+                 @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
                 @if (CurrentAsset != null && !_isLoadingPage)
                 {
                     @if (IsCurrentVideo)
                     {
-                        <video @key="CurrentAsset.Path" 
-                               class="viewer-media" 
-                               controls 
-                               loop 
-                               muted 
-                               autoplay
+                        <video @key="CurrentAsset.Path" class="viewer-media" controls loop muted autoplay
                                @onclick:stopPropagation="true">
                             <source src="@GetAssetUrl(CurrentAsset)" />
                         </video>
                     }
                     else
                     {
-                        <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")" 
-                             src="@GetAssetUrl(CurrentAsset)" 
-                             alt="Asset @(_currentIndex + 1)"
-                             style="@GetImageTransformStyle()"
-                             draggable="false"
-                             @onclick:stopPropagation="true" />
+                        <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
+                             src="@GetAssetUrl(CurrentAsset)" alt="Asset @(_currentIndex + 1)" style="@GetImageTransformStyle()"
+                             draggable="false" @onclick:stopPropagation="true" />
                     }
                 }
                 @if (_isLoadingPage)
@@ -72,36 +57,36 @@
             {
                 <div class="control-bar" @onclick:stopPropagation="true">
                     <!-- Left: Favorite & Rating -->
-                    @if (CurrentAsset?.Id > 0)
+                    @if (CurrentAsset?.Id > 0 && (ShowFavorite || ShowScore))
                     {
                         <div class="control-section">
-                            <button class="viewer-btn @(CurrentAsset.Favorite ? "active-fav" : "")" 
-                                    @onclick="ToggleFavorite" 
-                                    title="Favorite (F)">
-                                <MudIcon Icon="@(CurrentAsset.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
-                            </button>
-                            @if (TotalCount > 1)
+                            @if (ShowFavorite)
                             {
-                                <button class="viewer-btn fav-all-btn" @onclick="FavoriteAllOnPage" title="Favorite All on Page">
-                                    <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                                <button class="viewer-btn @(CurrentAsset.Favorite ? "active-fav" : "")" @onclick="ToggleFavorite"
+                                        title="Favorite (F)">
+                                    <MudIcon
+                                    Icon="@(CurrentAsset.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
                                 </button>
+                                @if (TotalCount > 1)
+                                {
+                                    <button class="viewer-btn fav-all-btn" @onclick="FavoriteAllOnPage" title="Favorite All on Page">
+                                        <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                                    </button>
+                                }
                             }
-                            <div class="rating-container">
-                                <MudRating SelectedValue="CurrentAsset.Score" 
-                                           SelectedValueChanged="SetScore" 
-                                           MaxValue="3" 
-                                           Size="Size.Medium"
-                                           FullIcon="fa-solid fa-star"
-                                           EmptyIcon="fa-regular fa-star" />
-                            </div>
+                            @if (ShowScore)
+                            {
+                                <div class="rating-container">
+                                    <MudRating SelectedValue="CurrentAsset.Score" SelectedValueChanged="SetScore" MaxValue="3"
+                                               Size="Size.Medium" FullIcon="fa-solid fa-star" EmptyIcon="fa-regular fa-star" />
+                                </div>
+                            }
                         </div>
                     }
 
                     <!-- Center: Navigation -->
                     <div class="control-section nav-section">
-                        <button class="viewer-btn nav-btn" 
-                                @onclick="Previous" 
-                                title="Previous (←)">
+                        <button class="viewer-btn nav-btn" @onclick="Previous" title="Previous (←)">
                             <MudIcon Icon="fa-solid fa-chevron-left" />
                         </button>
                         
@@ -121,9 +106,7 @@
                             }
                         </div>
                         
-                        <button class="viewer-btn nav-btn" 
-                                @onclick="Next" 
-                                title="Next (→)">
+                        <button class="viewer-btn nav-btn" @onclick="Next" title="Next (→)">
                             <MudIcon Icon="fa-solid fa-chevron-right" />
                         </button>
                     </div>
@@ -138,14 +121,8 @@
                                 </button>
                             </MudTooltip>
                             <div class="slideshow-controls">
-                                <input type="number" 
-                                       class="slideshow-input" 
-                                       @bind="_autoPlayInterval" 
-                                       @bind:event="onchange"
-                                       min="1" 
-                                       max="60" 
-                                       step="0.5"
-                                       title="Slideshow interval (seconds)" />
+                                <input type="number" class="slideshow-input" @bind="_autoPlayInterval" @bind:event="onchange"
+                                       min="1" max="60" step="0.5" title="Slideshow interval (seconds)" />
                                 <span class="slideshow-unit">s</span>
                             </div>
                         }
@@ -153,7 +130,8 @@
                         @if (!IsCurrentVideo)
                         {
                             <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
-                                <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode" title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
+                                <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode"
+                                        title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
                                     <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
                                 </button>
                             </MudTooltip>
@@ -171,11 +149,21 @@
                             <MudIcon Icon="fa-solid fa-circle-info" />
                         </button>
                         
-                        @if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path))
+                        @if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path) && ShowOpenInExplorer)
                         {
                             <button class="viewer-btn" @onclick="OpenInExplorer" title="Open in Explorer">
                                 <MudIcon Icon="fa-solid fa-folder-open" />
                             </button>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(ExternalSourceUrl))
+                        {
+                            <MudTooltip Text="Open source in new tab" Delay="300">
+                                <a class="viewer-btn" href="@ExternalSourceUrl" target="_blank" rel="noopener noreferrer"
+                                       title="Open source">
+                                    <MudIcon Icon="fa-solid fa-up-right-from-square" />
+                                </a>
+                            </MudTooltip>
                         }
                     </div>
                 </div>
@@ -199,11 +187,8 @@
 
             <!-- Info Panel -->
             <div class="info-panel @(_showInfo ? "open" : "")">
-                <AssetInfoPanel Asset="CurrentAsset"
-                                IsVideo="IsCurrentVideo"
-                                ShowKeyboardShortcuts="true"
-                                SelectedParams="_selectedParams"
-                                SelectedParamsChanged="HandleSelectedParamsChanged"
+                <AssetInfoPanel Asset="CurrentAsset" IsVideo="IsCurrentVideo" ShowKeyboardShortcuts="true"
+                                SelectedParams="_selectedParams" SelectedParamsChanged="HandleSelectedParamsChanged"
                                 OnClose="ToggleInfo" />
             </div>
         </div>
@@ -223,6 +208,15 @@
     [Parameter] public int PageCount { get; set; } = 1;
     [Parameter] public int TotalCount { get; set; } = 0;
     [Parameter] public EventCallback<int> OnPageChange { get; set; }
+
+    // Optional control-bar visibility flags. Defaults preserve existing behaviour for
+    // local-asset consumers (Gallery, Danbooru, Img2Vid, generation tabs). Remote-asset
+    // consumers (e.g., CivitAI) set these to false and may supply ExternalSourceUrl to
+    // surface a "Open source" affordance.
+    [Parameter] public bool ShowFavorite { get; set; } = true;
+    [Parameter] public bool ShowScore { get; set; } = true;
+    [Parameter] public bool ShowOpenInExplorer { get; set; } = true;
+    [Parameter] public string? ExternalSourceUrl { get; set; }
 
     private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
 
@@ -253,8 +247,8 @@
     private const double MaxZoom = 5.0;
     private const double ZoomStep = 0.15;
 
-    private ImageEntity? CurrentAsset => _currentIndex >= 0 && _currentIndex < Assets.Count 
-        ? Assets[_currentIndex] 
+    private ImageEntity? CurrentAsset => _currentIndex >= 0 && _currentIndex < Assets.Count
+        ? Assets[_currentIndex]
         : null;
 
     private bool IsCurrentVideo => CurrentAsset?.Path != null && IsVideoFile(CurrentAsset.Path);
@@ -541,8 +535,22 @@
             case "f": case "F": await ToggleFavorite(); break;
             case "z": case "Z": TogglePanMode(); break;
             case "r": case "R": ResetZoom(); break;
-            case "+": case "=": if (_isPanMode && !IsCurrentVideo) { _zoom = Math.Min(_zoom + ZoomStep, MaxZoom); ShowZoomIndicator(); } break;
-            case "-": case "_": if (_isPanMode && !IsCurrentVideo) { _zoom = Math.Max(_zoom - ZoomStep, MinZoom); ShowZoomIndicator(); } break;
+            case "+":
+            case "=":
+                if (_isPanMode && !IsCurrentVideo)
+                {
+                    _zoom = Math.Min(_zoom + ZoomStep, MaxZoom);
+                    ShowZoomIndicator();
+                }
+                break;
+            case "-":
+            case "_":
+                if (_isPanMode && !IsCurrentVideo)
+                {
+                    _zoom = Math.Max(_zoom - ZoomStep, MinZoom);
+                    ShowZoomIndicator();
+                }
+                break;
         }
     }
 

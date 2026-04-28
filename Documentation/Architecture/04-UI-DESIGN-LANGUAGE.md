@@ -43,6 +43,44 @@ mirror what `PromptsForm`, `LoraForm` and the Generate-page toolbars already do.
 - Body: per-subtype form separated by `MudDivider`.
 - Footer: Cancel (left), primary action (right, `Variant.Filled`, `Color.Primary`).
 
+### App-wide media modal (`AssetViewer`)
+
+`BlazorWebApp/Components/Shared/AssetViewer.razor` is the **canonical full-screen media modal** for the app. Use it everywhere the user needs to inspect a single image / video and optionally page through a list (Gallery, Danbooru, Img2Vid, CivitAI, etc.). Do not introduce parallel viewers - extend `AssetViewer` with opt-out parameters instead.
+
+Opt-out parameters (all default to enabled to preserve legacy behavior):
+
+- `ShowFavorite` - hide the heart toggle for surfaces without a local favorites store (e.g. CivitAI).
+- `ShowScore` - hide the inline rating control.
+- `ShowOpenInExplorer` - hide the local-explorer button for non-local assets.
+- `ExternalSourceUrl` - when set, renders an "Open on source" anchor (used by CivitAI to deep-link `civitai.com/images/{id}`).
+
+Hosting pattern: a parent panel keeps a single `AssetViewer` instance, projects its DTO list once (e.g. via `CivitaiAssetAdapter.Project`), and passes `StartIndex` / `Assets`. Cards inside the panel raise an `OnView` `EventCallback<T>` rather than instantiating their own viewer.
+
+### Modal layout: `--app-dialog-*` tokens
+
+Modal dialogs that act as content surfaces (not the small confirm / form dialogs) consume the shared dialog tokens declared in `BlazorWebApp/wwwroot/site.css`:
+
+- `--app-dialog-max-width` - clamps the dialog width on large displays.
+- `--app-dialog-padding` - applied to the body container; children render flush inside it.
+- `--app-dialog-radius` - corner radius.
+
+Strip the default `MudDialog` title padding / border via `::deep .mud-dialog-title` when the header band is meant to fill the dialog edge-to-edge (see `CivitaiModelInfoDialog.razor.css`).
+
+### Long-content overflow patterns
+
+These two patterns are the agreed-upon answers for content that would otherwise blow up the dialog height:
+
+- **Description / long prose** - render inside a collapsed `MudExpansionPanels MultiExpansion="false" Elevation="0"` panel; the panel body sets `max-height: 40vh; overflow-y: auto;` so the dialog itself never scrolls vertically.
+- **Tag rail / chip overflow** - clamp the rail to two rows (`max-height: 64px; overflow: hidden;` on the `--clamped` modifier) and provide a "Show more / Show less" toggle that swaps to a `--expanded` modifier removing the clamp. Reference: `CivitaiModelSpecCard.razor`.
+
+### Version selector pattern
+
+When a surface offers more than one variant of the same logical resource (e.g., model versions), use a **pill bar / select hybrid**:
+
+- Pills (`MudButton Variant="Variant.Filled"` for active, `Variant.Outlined` for inactive, primary color) when `Versions.Count <= 5`.
+- `MudSelect Variant="Text"` fallback above that threshold.
+- Per-version status icon driven by a single helper that returns a MudBlazor `Color` (Default / Success / Warning / Info / Error) plus a tooltip string. Reference: `CivitaiVersionSelector.razor` + `CivitaiVersionStatusHelper.cs`.
+
 ### Simple action buttons (`.send-to-btn`)
 
 The shared `.send-to-btn` style in [send-to.css](../../BlazorWebApp/wwwroot/css/send-to.css) is the canonical look for **simple, non-primary action buttons** that sit in flat rows (e.g. "Send to ...", "Chat Edit", "Spawn Variations", "Copy", per-item utility actions). Prefer it over `MudButton Variant="Variant.Outlined"` for these cases. Use `MudButton Variant="Variant.Filled"` only for the single primary action of a panel/dialog.
@@ -91,6 +129,9 @@ global spacing tokens declared in `BlazorWebApp/wwwroot/site.css` (`:root`).
 | `--app-shell-max-width`                   | Page max-width clamp; prevents ultra-wide stretching                                       |
 | `--app-surface-radius`                    | Shared corner radius for sidebar / topbar / content surfaces                               |
 | `--app-surface-padding`                   | Internal padding of sidebar / topbar / content surfaces; children render flush inside this |
+| `--app-dialog-max-width`                  | Max width clamp for app-wide modal dialogs (e.g., `AssetViewer`, CivitAI model dialog)     |
+| `--app-dialog-padding`                    | Internal padding of app-wide modal dialogs; children render flush inside this              |
+| `--app-dialog-radius`                     | Corner radius for app-wide modal dialogs                                                   |
 
 **Never hard-code spacing on a tabbed page** (`px-5`, `pa-4`, etc. on the shell or top-level
 panel paper). If a gap needs tuning, tune the token.

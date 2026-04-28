@@ -70,5 +70,25 @@ namespace BlazorWebApp.Services
         /// <param name="resource">The local resource</param>
         /// <param name="file">The specific file to toggle</param>
         Task ToggleResource(LocalResource resource, LocalResourceFile file);
+
+        /// <summary>
+        /// Scans resource directories for untracked files (files not in the database).
+        /// Checks both active resource directories and _storage directories.
+        /// </summary>
+        /// <returns>List of untracked resource files detected on disk</returns>
+        Task<List<ImportResourceModel>> GetUntrackedResources();
+
+        /// <summary>
+        /// Imports a batch of resource files into the database with shared metadata.
+        /// Creates resource entities, copies cover images if provided per file, and publishes resource change events.
+        /// </summary>
+        /// <param name="filesToImport">List of files to import (each may have individual CoverImagePath set)</param>
+        /// <param name="sharedTitle">Shared title to apply (or use filename if null/empty)</param>
+        /// <param name="sharedSubType">Shared subtype to apply (optional)</param>
+        /// <param name="sharedBaseModel">Shared base model to apply (optional)</param>
+        /// <param name="sharedTriggerWords">Shared trigger words to apply (optional)</param>
+        /// <returns>Number of resources successfully imported</returns>
+        Task<int> ImportResources(List<ImportResourceModel> filesToImport, string? sharedTitle = null, string? sharedSubType = null,
+                                 string? sharedBaseModel = null, List<string>? sharedTriggerWords = null);
     }
 }

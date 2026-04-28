@@ -1,0 +1,60 @@
+.civitai-model-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.civitai-model-hero__media {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--app-dialog-radius);
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+}
+
+.civitai-model-hero__media:hover .civitai-model-hero__overlay {
+  opacity: 1;
+}
+
+.civitai-model-hero__image,
+.civitai-model-hero__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.civitai-model-hero__overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border-radius: 50%;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 120ms ease-in-out;
+}
+
+.civitai-model-hero__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border: 1px dashed var(--mud-palette-divider);
+  border-radius: var(--app-dialog-radius);
+  color: var(--mud-palette-text-secondary);
+}

@@ -1,0 +1,40 @@
+.civitai-preview-strip {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.civitai-preview-strip__thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 4px;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  background: var(--mud-palette-surface);
+  transition:
+    border-color 120ms ease-in-out,
+    transform 120ms ease-in-out;
+}
+
+.civitai-preview-strip__thumb:hover {
+  transform: scale(1.04);
+}
+
+.civitai-preview-strip__thumb--active {
+  border-color: var(--mud-palette-primary);
+  box-shadow: 0 0 0 2px var(--mud-palette-primary);
+}
+
+.civitai-preview-strip__thumb img,
+.civitai-preview-strip__thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

@@ -1,11 +1,10 @@
-﻿@inject IDialogService DialogService
-@inject CivitaiService Civitai
+﻿@inject CivitaiService Civitai
 <div>
     <MudButton OnClick=ShowImage Class="image-btn">
         @if (IsVideo())
         {
             <video style="width:100%; object-fit:cover;" loop muted playsinline preload="metadata"
-                               onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0;">
+                   onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0;">
                 <source src="@Image.Url" />
             </video>
         }
@@ -13,13 +12,18 @@
         {
             <MudImage Src="@Image.Url" ObjectFit="ObjectFit.Cover" Elevation="4" Fluid />
         }
-     </MudButton>
- </div>
+    </MudButton>
+</div>
 
 @code {
     [Parameter] public CivitaiImageDto Image { get; set; }
     [Parameter] public EventCallback OnSaveImage { get; set; }
     [Parameter] public int ModelVersionId { get; set; }
+    /// <summary>
+    /// Raised when the user clicks the card to view the image in the panel-owned AssetViewer.
+    /// The host panel is responsible for locating the (possibly mutated) DTO in its collection.
+    /// </summary>
+    [Parameter] public EventCallback<CivitaiImageDto> OnView { get; set; }
 
     private bool IsVideo()
     {
@@ -42,23 +46,15 @@
             var newImage = await Civitai.GetImageByModelVersionId(ModelVersionId, Image);
             if (newImage == null)
                 newImage = new()
-                    {
-                        Id = Image.Id,
-                        Url = Image.Url
-                    };
+                {
+                    Id = Image.Id,
+                    Url = Image.Url
+                };
             Image = newImage;
         }
-        var options = new DialogOptions() { NoHeader = true };
-        var param = new DialogParameters();
-        param.Add("Image", Image);
-        var dialog = await DialogService.ShowAsync<CivitaiImageDialog>("Image", param, options);
-        var result = await dialog.Result;
-        if (!result.Canceled)
+        if (OnView.HasDelegate)
         {
-            if (result.Data == "Save")
-            {
-                await OnSaveImage.InvokeAsync();
-            }
+            await OnView.InvokeAsync(Image);
         }
     }
 }

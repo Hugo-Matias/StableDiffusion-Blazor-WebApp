@@ -1,19 +1,63 @@
-﻿::deep .resource-dialog {
-	min-width: 80vw;
-	background-position: center;
-	background-repeat: no-repeat;
-	background-size: cover;
-	filter: blur(10px) opacity(0.5);
-	-webkit-filter: blur(10px) opacity(0.5);
+/* Phase 3 - tokenised model dialog shell.
+   Children are rendered flush; padding comes from --app-dialog-padding only. */
+
+::deep .civitai-model-dialog .mud-dialog {
+  max-width: var(--app-dialog-max-width);
+  width: 100%;
+  border-radius: var(--app-dialog-radius);
 }
 
-::deep .description {
-	max-height: 73vh;
-	overflow: scroll;
+/* TitleContent renders the new CivitaiModelHeader band; remove default title padding so
+   the band fills the dialog width and owns its own internal padding/border. */
+::deep .civitai-model-dialog .mud-dialog-title {
+  padding: 0;
+  border-bottom: none;
 }
 
-::deep .meta-label {
-	opacity: 0.4;
-	font-size: 0.7rem;
+::deep .civitai-model-dialog .mud-dialog-content {
+  padding: 0;
 }
 
+.civitai-model-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: var(--app-dialog-padding);
+}
+
+.civitai-model-dialog__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.civitai-model-dialog__hero {
+  min-width: 0;
+}
+
+.civitai-model-dialog__spec {
+  min-width: 0;
+}
+
+.civitai-model-dialog__description ::deep .mud-expand-panel {
+  background-color: transparent;
+}
+
+.civitai-model-dialog__description-body {
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 4px 4px 12px 4px;
+  line-height: 1.5;
+}
+
+.civitai-model-dialog__description-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 960px) {
+  .civitai-model-dialog__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

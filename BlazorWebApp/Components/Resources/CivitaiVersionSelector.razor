@@ -1,0 +1,76 @@
+@inject IDatabaseService DB
+@using BlazorWebApp.Data.Dtos
+
+@if (Versions != null && Versions.Count > 0)
+{
+    <div class="civitai-version-selector">
+        @if (Versions.Count <= VersionPillThreshold)
+        {
+            <div class="civitai-version-selector__pills">
+                @foreach (var version in Versions)
+                {
+                    var isActive = ReferenceEquals(version, ActiveVersion);
+                    var status = ResolveStatus(version);
+                    var color = CivitaiVersionStatusHelper.ToColor(status);
+                    var tooltip = CivitaiVersionStatusHelper.ToTooltip(status);
+                    <MudTooltip Text="@tooltip">
+                        <MudButton
+                            Class="@($"civitai-version-selector__pill{(isActive ? " civitai-version-selector__pill--active" : string.Empty)}")"
+                            Variant="@(isActive ? Variant.Filled : Variant.Outlined)"
+                            Color="@(isActive ? Color.Primary : Color.Default)" Size="Size.Small" StartIcon="fa-solid fa-server"
+                            IconColor="@color" OnClick="@(() => SelectVersion(version))">
+                            @version.Name
+                        </MudButton>
+                    </MudTooltip>
+                }
+            </div>
+        }
+        else
+        {
+            <MudSelect T="CivitaiModelVersionDto" Class="civitai-version-selector__select" Label="Version"
+                       Variant="Variant.Text" Value="ActiveVersion" ValueChanged="SelectVersion" Dense
+                       ToStringFunc="@(v => v?.Name ?? string.Empty)">
+                @foreach (var version in Versions)
+                {
+                    var status = ResolveStatus(version);
+                    var color = CivitaiVersionStatusHelper.ToColor(status);
+                    <MudSelectItem Value="version">
+                        <span class="civitai-version-selector__select-item">
+                            <MudIcon Icon="fa-solid fa-server" Size="Size.Small" Color="@color" />
+                            @version.Name
+                        </span>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<CivitaiModelVersionDto> Versions { get; set; } = default!;
+    [Parameter] public CivitaiModelVersionDto? ActiveVersion { get; set; }
+    [Parameter] public EventCallback<CivitaiModelVersionDto> ActiveVersionChanged { get; set; }
+
+    private const int VersionPillThreshold = 5;
+
+    private readonly Dictionary<int, CivitaiVersionStatusHelper.VersionStatus> _statusCache = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Versions == null) return;
+        foreach (var version in Versions)
+        {
+            if (_statusCache.ContainsKey(version.Id)) continue;
+            _statusCache[version.Id] = await CivitaiVersionStatusHelper.ResolveAsync(DB, version);
+        }
+    }
+
+    private CivitaiVersionStatusHelper.VersionStatus ResolveStatus(CivitaiModelVersionDto version)
+        => _statusCache.TryGetValue(version.Id, out var status) ? status : CivitaiVersionStatusHelper.VersionStatus.Unknown;
+
+    private async Task SelectVersion(CivitaiModelVersionDto? version)
+    {
+        if (version == null || ReferenceEquals(version, ActiveVersion)) return;
+        await ActiveVersionChanged.InvokeAsync(version);
+    }
+}

@@ -258,7 +258,7 @@ namespace BlazorWebApp.Services
                                     _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
                                     data.Id = imageId;
                                 }
-                                version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url, BrowsingLevel = data.NsfwLevel });
+                                version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url, BrowsingLevel = data.NsfwLevel, Width = data.Width, Height = data.Height, Hash = data.Hash });
                             }
                         }
                     }
@@ -335,7 +335,7 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Get/Create Directory
-                var path = Path.Combine(_configuration["ResourcesPath"], "_storage", resourceType);
+                var path = Path.Combine(_configuration["ResourcesPath"], resourceType);
                 if (subtype != null && !subtype.Equals("none", StringComparison.InvariantCultureIgnoreCase)) path = Path.Combine(path, subtype);
                 Directory.CreateDirectory(path);
                 #endregion
@@ -380,6 +380,7 @@ namespace BlazorWebApp.Services
                 if (!_ignoreModelTypes.Contains((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)) && !_ignoreFileType.Contains(file.Type.ToLower()))
                 {
                     var entity = new Resource(model, version, file);
+                    entity.IsEnabled = true;
                     if (typeOverride != null) entity.Type = new() { Name = resourceType };
                     if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
                     var isAdded = await _db.CreateResource(entity);
@@ -409,7 +410,7 @@ namespace BlazorWebApp.Services
                 var progress = (index * 100) / resources.Count;
                 onProgress?.Invoke(progress);
                 _events.Publish(new ProgressChangedEventArgs(progress));
-                
+
                 var resource = await GetModelVersion((int)entity.CivitaiModelVersionId);
                 if (resource != null)
                 {

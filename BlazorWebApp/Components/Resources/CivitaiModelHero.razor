@@ -1,0 +1,102 @@
+@using BlazorWebApp.Data.Dtos
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject CivitaiService Civitai
+
+<div class="civitai-model-hero">
+    @if (Version?.Images == null || Version.Images.Count == 0)
+    {
+        <div class="civitai-model-hero__placeholder">
+            <MudIcon Icon="fa-regular fa-image" Size="Size.Large" />
+            <MudText Typo="Typo.body2">No preview available</MudText>
+        </div>
+    }
+    else
+    {
+        var active = Version.Images[_heroIndex];
+        var isVideo = CivitaiAssetAdapter.IsVideoUrl(active.Url);
+        <button type="button" class="civitai-model-hero__media" @onclick="@(() => OpenViewerAt(_heroIndex))">
+            @if (isVideo)
+            {
+                <video class="civitai-model-hero__video" src="@active.Url" autoplay loop muted playsinline></video>
+            }
+            else
+            {
+                <img class="civitai-model-hero__image" src="@active.Url" alt="@($"{Version.Name} preview")" loading="lazy" />
+            }
+            <span class="civitai-model-hero__overlay">
+                <MudIcon Icon="fa-solid fa-expand" Size="Size.Small" />
+            </span>
+        </button>
+
+        @if (Version.Images.Count > 1)
+        {
+            <CivitaiPreviewStrip Images="Version.Images" ActiveIndex="_heroIndex" OnSelect="HandleStripSelect" />
+        }
+    }
+</div>
+
+<AssetViewer @bind-IsVisible="_showViewer" Assets="_viewerAssets" StartIndex="_viewerStartIndex" ShowFavorite="false"
+             ShowScore="false" ShowOpenInExplorer="false" ExternalSourceUrl="@_viewerExternalUrl"
+             OnAssetChanged="HandleViewerAssetChanged" />
+
+@code {
+    [Parameter, EditorRequired] public CivitaiModelVersionDto Version { get; set; } = default!;
+
+    private int _heroIndex;
+    private CivitaiModelVersionDto? _trackedVersion;
+
+    private bool _showViewer;
+    private int _viewerStartIndex;
+    private List<ImageEntity> _viewerAssets = new();
+    private string? _viewerExternalUrl;
+
+    protected override void OnParametersSet()
+    {
+        // Reset hero index when the active version reference changes (Phase 4 wires version switching).
+        if (!ReferenceEquals(_trackedVersion, Version))
+        {
+            _trackedVersion = Version;
+            _heroIndex = 0;
+        }
+        if (Version?.Images != null && _heroIndex >= Version.Images.Count) _heroIndex = 0;
+    }
+
+    private void HandleStripSelect(int index)
+    {
+        if (Version?.Images == null) return;
+        if (index < 0 || index >= Version.Images.Count) return;
+        _heroIndex = index;
+    }
+
+    private async Task OpenViewerAt(int index)
+    {
+        if (Version?.Images == null || Version.Images.Count == 0) return;
+        if (index < 0 || index >= Version.Images.Count) return;
+
+        // Lazily fetch full image metadata (prompt, seed, etc.) if not yet loaded.
+        // The model API only returns stubs; the images API returns the complete object.
+        var dto = Version.Images[index];
+        if (dto.Id > 0 && dto.Meta == null)
+        {
+            var enriched = await Civitai.GetImageById(dto.Id);
+            if (enriched != null) Version.Images[index] = enriched;
+        }
+
+        _viewerAssets = CivitaiAssetAdapter.Project(Version.Images);
+        _viewerStartIndex = index;
+        _viewerExternalUrl = BuildExternalUrl(Version.Images[index]);
+        _showViewer = true;
+    }
+
+    private void HandleViewerAssetChanged(ImageEntity asset)
+    {
+        if (asset == null || Version?.Images == null) return;
+        var index = _viewerAssets.IndexOf(asset);
+        if (index < 0 || index >= Version.Images.Count) return;
+        _viewerExternalUrl = BuildExternalUrl(Version.Images[index]);
+        _heroIndex = index;
+    }
+
+    private static string? BuildExternalUrl(CivitaiImageDto dto)
+        => dto?.Id > 0 ? $"https://civitai.com/images/{dto.Id}" : null;
+}

@@ -1,0 +1,30 @@
+.civitai-version-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.civitai-version-selector__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.civitai-version-selector__pill {
+  text-transform: none !important;
+}
+
+.civitai-version-selector__pill--active {
+  /* Filled variant already supplies the active emphasis; reserved for future tweaks. */
+}
+
+.civitai-version-selector__select {
+  width: 100%;
+}
+
+.civitai-version-selector__select-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

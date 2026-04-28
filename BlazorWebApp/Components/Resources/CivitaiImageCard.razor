@@ -1,7 +1,6 @@
 @inject IDatabaseService DB
 @inject IIOService IO
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IJSRuntime JS
 
 <div class="@GetCardClasses()" @onmouseenter="OnMouseEnter" @onmouseleave="OnMouseLeave">
@@ -15,11 +14,7 @@
         }
         else
         {
-            <img src="@Image.Url" 
-                 alt="Civitai image" 
-                 class="card-image" 
-                 loading="lazy"
-                 @onerror="HandleImageError" />
+            <img src="@Image.Url" alt="Civitai image" class="card-image" loading="lazy" @onerror="HandleImageError" />
         }
         
         @* Fallback for failed images *@
@@ -64,7 +59,7 @@
                     </button>
                     @if (Image.Meta != null)
                     {
-                        <button class="action-btn primary" @onclick="ShowImageInfoDialog" title="View Info">
+                        <button class="action-btn primary" @onclick="RaiseView" title="View Info">
                             <i class="fa-solid fa-info"></i>
                         </button>
                     }
@@ -119,6 +114,11 @@
 @code {
     [Parameter] public CivitaiImageDto Image { get; set; }
     [Parameter] public EventCallback OnSaveImage { get; set; }
+    /// <summary>
+    /// Raised when the user requests to view this image in the panel-owned AssetViewer.
+    /// Carries the DTO so the host can locate it within its image collection.
+    /// </summary>
+    [Parameter] public EventCallback<CivitaiImageDto> OnView { get; set; }
 
     private bool _isHovered;
     private bool _imageError;
@@ -180,7 +180,6 @@
         // if (img2img) M.CanvasImageData = data;
         // else M.UpscaleImageData = data;
     }
-
     private string GetSamplerBadgeStyle()
     {
         var color = GetSamplerColor();
@@ -211,11 +210,11 @@
         return sampler.Length > 6 ? sampler[..3] : sampler[..Math.Min(4, sampler.Length)];
     }
 
-    private void ShowImageInfoDialog()
+    private async Task RaiseView()
     {
-        var param = new DialogParameters();
-        param.Add("Image", Image);
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        DialogService.Show<CivitaiImageDialog>("Image Info", param, options);
+        if (OnView.HasDelegate)
+        {
+            await OnView.InvokeAsync(Image);
+        }
     }
 }

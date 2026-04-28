@@ -1,0 +1,40 @@
+@using BlazorWebApp.Data.Dtos
+
+@if (Images != null && Images.Count > 0)
+{
+    <div class="civitai-preview-strip">
+        @for (var i = 0; i < Images.Count; i++)
+        {
+            var capturedIndex = i;
+            var img = Images[i];
+            var isVideo = CivitaiAssetAdapter.IsVideoUrl(img.Url);
+            var isActive = capturedIndex == ActiveIndex;
+            <button type="button"
+                    class="@($"civitai-preview-strip__thumb{(isActive ? " civitai-preview-strip__thumb--active" : string.Empty)}")"
+                    title="@($"Image {capturedIndex + 1} of {Images.Count}")" @onclick="@(() => RaiseSelect(capturedIndex))">
+                @if (isVideo)
+                {
+                    <video src="@img.Url" muted playsinline></video>
+                }
+                else
+                {
+                    <img src="@img.Url" alt="" loading="lazy" />
+                }
+            </button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<CivitaiImageDto> Images { get; set; } = default!;
+    [Parameter] public int ActiveIndex { get; set; }
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    private async Task RaiseSelect(int index)
+    {
+        if (OnSelect.HasDelegate)
+        {
+            await OnSelect.InvokeAsync(index);
+        }
+    }
+}

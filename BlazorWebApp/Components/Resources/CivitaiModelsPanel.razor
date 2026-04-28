@@ -7,9 +7,7 @@
 @inject IEventService Events
 @implements IDisposable
 
-<TwoColumnLayout Collapsible="true"
-                 @bind-Collapsed="State.State.Civitai.SidebarCollapsed"
-                 SidebarTitle="Filters">
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.Civitai.SidebarCollapsed" SidebarTitle="Filters">
     <Sidebar>
         <EditForm Model="Request" OnSubmit="Search">
             <MudStack Spacing="2">
@@ -93,25 +91,22 @@
                 <MudTextField @bind-Value="Request.Hash" Label="Hash" Adornment="Adornment.Start"
                               AdornmentIcon="fa-solid fa-hashtag" Clearable />
 
-                <MudSlider @bind-Value="Request.Limit"
-                           Min="Settings.Settings.Resources.Civitai.Limit.Min"
+                <MudSlider @bind-Value="Request.Limit" Min="Settings.Settings.Resources.Civitai.Limit.Min"
                            Max="Settings.Settings.Resources.Civitai.Limit.Max"
                            Step="Settings.Settings.Resources.Civitai.Limit.Step">
                     <small>Quantity:</small> @Request.Limit
                 </MudSlider>
                 <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
                     <MudTooltip Text="@($"Card size: {State.State.Civitai.CardSize}")">
-                        <MudIconButton Icon="@GetCardSizeIcon()"
-                                       Color="Color.Primary"
-                                       OnClick="CycleCardSize"
+                        <MudIconButton Icon="@GetCardSizeIcon()" Color="Color.Primary" OnClick="CycleCardSize"
                                        Size="Size.Medium" />
                     </MudTooltip>
                 </MudStack>
 
                 <MudDivider Class="my-1" />
 
-                <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true"
-                           Class="mt-3">Search</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true" Class="mt-3">Search
+                </MudButton>
             </MudStack>
         </EditForm>
     </Sidebar>
@@ -125,8 +120,8 @@
             @if (_models.Metadata.TotalPages > 1)
             {
                 <div class="d-flex flex-column align-center pb-2">
-                    <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2" MiddleCount="5"
-                                   Count="_models.Metadata.TotalPages" />
+                    <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2"
+                                   MiddleCount="5" Count="_models.Metadata.TotalPages" />
                 </div>
             }
 
@@ -134,25 +129,14 @@
                 <MudGrid Spacing="1" Justify="Justify.Center">
                     @foreach (var model in _models.Models)
                     {
-                        <CivitaiResourceCard
-                            Title="@model.Name"
-                            ImageSrc="@GetModelImage(model)"
-                            Type="@model.Type"
-                            Width="@CardWidth"
-                            HoverColor="@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)))"
-                            OnLoad="@(async () => await ShowInfo(model))"
-                            Opacity="CheckModelExists(model).Result"
-                            Filter="@CheckVersionImagesExist(model).Result"
-                            CreatorUsername="@model.Creator?.Username"
-                            CreatorImage="@model.Creator?.Image"
-                            IsNsfw="@model.Nsfw"
-                            IsEarlyAccess="@(model.ModelVersions?.Count > 0 && model.ModelVersions[0].Images?.Count > 0 && model.ModelVersions[0].Images[0].Availability == "EarlyAccess")"
-                            DownloadCount="0"
-                            FavoriteCount="0"
-                            CommentCount="0"
-                            Rating="0"
-                            RatingCount="0"
-                            ShowStats="false" />
+                        <CivitaiResourceCard Title="@model.Name" ImageSrc="@GetModelImage(model)" Type="@model.Type"
+                                             Width="@CardWidth"
+                                             HoverColor="@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)))"
+                                             OnLoad="@(async () => await ShowInfo(model))" Opacity="CheckModelExists(model).Result"
+                                             Filter="@CheckVersionImagesExist(model).Result" CreatorUsername="@model.Creator?.Username"
+                                             CreatorImage="@model.Creator?.Image" IsNsfw="@model.Nsfw"
+                                             IsEarlyAccess="@(model.ModelVersions?.Count > 0 && model.ModelVersions[0].Images?.Count > 0 && model.ModelVersions[0].Images[0].Availability == "EarlyAccess")"
+                                             DownloadCount="0" FavoriteCount="0" CommentCount="0" Rating="0" RatingCount="0" ShowStats="false" />
                     }
                 </MudGrid>
             </div>
@@ -160,8 +144,8 @@
             @if (_models.Metadata.TotalPages > 1)
             {
                 <div class="d-flex flex-column align-center pt-2">
-                    <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2" MiddleCount="5"
-                                   Count="_models.Metadata.TotalPages" />
+                    <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2"
+                                   MiddleCount="5" Count="_models.Metadata.TotalPages" />
                 </div>
             }
 
@@ -243,7 +227,13 @@
 
     private async Task ShowInfo(CivitaiModelsModelDto modelsModel)
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.ExtraLarge,
+            FullWidth = true,
+            ClassBackground = "civitai-model-dialog-backdrop",
+        };
         var dialogParam = new DialogParameters();
         var model = await Api.GetModel(modelsModel.Id);
         dialogParam.Add("Model", model);
@@ -306,17 +296,17 @@
 
         if (selected.Contains("All") && !previouslyHadAll)
         {
-            // User just clicked "All" — clear everything else
+            // User just clicked "All" ï¿½ clear everything else
             _selectedBaseModels = new List<string> { "All" };
         }
         else if (selected.Contains("All") && selected.Count > 1)
         {
-            // User picked a specific model while "All" was selected — remove "All"
+            // User picked a specific model while "All" was selected ï¿½ remove "All"
             _selectedBaseModels = selected.Where(s => s != "All").ToList();
         }
         else if (!selected.Any())
         {
-            // Nothing selected — default to "All"
+            // Nothing selected ï¿½ default to "All"
             _selectedBaseModels = new List<string> { "All" };
         }
         else

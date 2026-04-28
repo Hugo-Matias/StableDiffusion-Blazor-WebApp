@@ -1,0 +1,93 @@
+@using BlazorWebApp.Data.Dtos
+
+<div class="civitai-model-header">
+    <div class="civitai-model-header__lead">
+        <MudChip Class="civitai-model-header__type-chip" Style="@TypeChipStyle" Size="Size.Small" Label>
+            @Model.Type
+        </MudChip>
+        <MudText Class="civitai-model-header__name" Typo="Typo.h5">@Model.Name</MudText>
+        @if (Model.Nsfw)
+        {
+            <MudTooltip Text="NSFW content">
+                <MudIcon Class="civitai-model-header__nsfw" Icon="fa-solid fa-circle-dot" Color="Color.Error"
+                         Size="Size.Small" />
+            </MudTooltip>
+        }
+        <MudLink Class="civitai-model-header__id" Href="@($"https://civitai.com/models/{Model.Id}")" Target="_blank"
+                 Rel="noopener noreferrer" Color="Color.Info" Typo="Typo.caption">
+            ID: @Model.Id
+        </MudLink>
+    </div>
+
+    <div class="civitai-model-header__meta">
+        <div class="civitai-model-header__creator">
+            @if (Model.Creator != null)
+            {
+                <MudAvatar Size="Size.Small">
+                    @if (!string.IsNullOrEmpty(Model.Creator.Image))
+                    {
+                        <MudImage Src="@Model.Creator.Image" Alt="@Model.Creator.Username" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="fa-solid fa-user" Size="Size.Small" />
+                    }
+                </MudAvatar>
+                <MudText Typo="Typo.body2">@Model.Creator.Username</MudText>
+            }
+        </div>
+
+        @if (Model.PersonOfInterest)
+        {
+            <MudTooltip Text="Person of Interest">
+                <MudChip Icon="fa-solid fa-user" Color="Color.Tertiary" Size="Size.Small" Label>POI</MudChip>
+            </MudTooltip>
+        }
+
+        @if (Model.Stats != null)
+        {
+            <div class="civitai-model-header__stats">
+                <MudTooltip Text="Downloads">
+                    <span class="civitai-model-header__stat">
+                        <MudIcon Icon="fa-solid fa-download" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">@Parser.CollapseInteger(Model.Stats.DownloadCount)</MudText>
+                    </span>
+                </MudTooltip>
+                <MudTooltip Text="Favorites">
+                    <span class="civitai-model-header__stat">
+                        <MudIcon Icon="fa-solid fa-heart" Size="Size.Small" Color="Color.Error" />
+                        <MudText Typo="Typo.body2">@Parser.CollapseInteger(Model.Stats.FavoriteCount)</MudText>
+                    </span>
+                </MudTooltip>
+                <MudTooltip Text="@($"{Model.Stats.Rating:0.00} ({Parser.CollapseInteger(Model.Stats.RatingCount)})")">
+                    <span class="civitai-model-header__stat">
+                        <MudRating SelectedValue="@((int)Math.Round(Model.Stats.Rating))" Size="Size.Small" ReadOnly />
+                        <MudText Typo="Typo.caption" Color="Color.Warning">
+                            (@Parser.CollapseInteger(Model.Stats.RatingCount))</MudText>
+                        </span>
+                    </MudTooltip>
+                </div>
+            }
+        </div>
+
+        <MudTooltip Text="Close">
+            <MudIconButton Class="civitai-model-header__close" Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                           OnClick="OnClose" />
+        </MudTooltip>
+    </div>
+
+@code {
+    [Parameter, EditorRequired] public CivitaiModelDto Model { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string TypeChipStyle
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Model?.Type)) return string.Empty;
+            if (!Enum.TryParse<CivitaiModelType>(Model.Type, out var parsed)) return string.Empty;
+            var token = Parser.ParseCivitaiResourceColorAsString(parsed);
+            return $"background-color: var(--{token}); color: var(--mud-palette-white); font-weight: 500;";
+        }
+    }
+}

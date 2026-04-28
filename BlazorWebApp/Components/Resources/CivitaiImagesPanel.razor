@@ -1,9 +1,8 @@
-﻿@inject IStateService State
+﻿@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject IStateService State
 @inject CivitaiService Api
 
-<TwoColumnLayout Collapsible="true"
-                 @bind-Collapsed="State.State.Civitai.SidebarCollapsed"
-                 SidebarTitle="Filters">
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.Civitai.SidebarCollapsed" SidebarTitle="Filters">
     <Sidebar>
         <EditForm Model="Request" OnSubmit="Search">
             <MudStack Spacing="2">
@@ -12,7 +11,7 @@
 
                 <MudDivider Class="my-1" />
 
-               <MudSelect @bind-Value="Request.Sort" Label="Sort" AnchorOrigin="Origin.BottomLeft"
+                <MudSelect @bind-Value="Request.Sort" Label="Sort" AnchorOrigin="Origin.BottomLeft"
                            TransformOrigin="Origin.TopLeft" MaxHeight="400">
                     @foreach (CivitaiImageSort? sort in Enum.GetValues(typeof(CivitaiImageSort)))
                     {
@@ -36,7 +35,8 @@
                 <MudDivider Class="my-1" />
                 <MudNumericField @bind-Value="Request.PostId" Label="Post ID" Variant="Variant.Text" Min="0" />
                 <MudNumericField @bind-Value="Request.ModelId" Label="Model ID" Variant="Variant.Text" Min="0" />
-                <MudNumericField @bind-Value="Request.ModelVersionId" Label="Model Version ID" Variant="Variant.Text" Min="0" />
+                <MudNumericField @bind-Value="Request.ModelVersionId" Label="Model Version ID" Variant="Variant.Text"
+                                 Min="0" />
 
                 <MudDivider Class="my-1" />
                 
@@ -47,17 +47,15 @@
                 </MudSlider>
                 <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
                     <MudTooltip Text="@($"Card size: {State.State.Civitai.CardSize}")">
-                        <MudIconButton Icon="@GetCardSizeIcon()"
-                                       Color="Color.Primary"
-                                       OnClick="CycleCardSize"
+                        <MudIconButton Icon="@GetCardSizeIcon()" Color="Color.Primary" OnClick="CycleCardSize"
                                        Size="Size.Medium" />
                     </MudTooltip>
                 </MudStack>
 
                 <MudDivider Class="my-1" />
                 
-                <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true"
-                           Class="mt-3">Search</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true" Class="mt-3">Search
+                </MudButton>
 
             </MudStack>
         </EditForm>
@@ -73,7 +71,7 @@
                 <MudGrid Class="images-container">
                     @foreach (var img in _images.Images)
                     {
-                        <CivitaiImageCard Image="img" OnSaveImage="SaveImage" />
+                        <CivitaiImageCard Image="img" OnSaveImage="SaveImage" OnView="OpenViewer" />
                     }
                 </MudGrid>
             </div>
@@ -81,10 +79,48 @@
     </Content>
 </TwoColumnLayout>
 
+<AssetViewer @bind-IsVisible="_showViewer" Assets="_viewerAssets" StartIndex="_viewerStartIndex" ShowFavorite="false"
+             ShowScore="false" ShowOpenInExplorer="false" ExternalSourceUrl="@_viewerExternalUrl"
+             OnAssetChanged="HandleViewerAssetChanged" />
+
 @code {
     public CivitaiImagesRequest Request { get; set; }
     private bool _isSearching;
     private CivitaiImagesDto _images;
+
+    // AssetViewer host state. The panel owns a single AssetViewer instance and projects
+    // the current DTO list to transient ImageEntity objects via CivitaiAssetAdapter.
+    private bool _showViewer;
+    private int _viewerStartIndex;
+    private List<ImageEntity> _viewerAssets = new();
+    private string? _viewerExternalUrl;
+
+    private async Task OpenViewer(CivitaiImageDto dto)
+    {
+        if (_images?.Images == null || dto == null) return;
+        var list = _images.Images;
+        var index = list.IndexOf(dto);
+        if (index < 0) return;
+        _viewerAssets = CivitaiAssetAdapter.Project(list);
+        _viewerStartIndex = index;
+        _viewerExternalUrl = BuildExternalUrl(dto);
+        _showViewer = true;
+        await Task.CompletedTask;
+    }
+
+    private void HandleViewerAssetChanged(ImageEntity asset)
+    {
+        // Keep the "Open source" link in sync with the active asset as the user navigates.
+        if (asset == null || _images?.Images == null) return;
+        var index = _viewerAssets.IndexOf(asset);
+        if (index < 0 || index >= _images.Images.Count) return;
+        _viewerExternalUrl = BuildExternalUrl(_images.Images[index]);
+    }
+
+    private static string? BuildExternalUrl(CivitaiImageDto dto)
+    {
+        return dto?.Id > 0 ? $"https://civitai.com/images/{dto.Id}" : null;
+    }
 
     protected override void OnInitialized()
     {

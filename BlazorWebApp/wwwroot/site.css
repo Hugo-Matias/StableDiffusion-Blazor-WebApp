@@ -40,6 +40,17 @@
   /* Internal padding for sidebar / topbar / content surfaces. Children render
 	   flush against this padding (they should NOT add their own pa-* classes). */
   --app-surface-padding: 16px;
+
+  /* Dialog tokens.
+	   Used by app-wide modals (e.g., AssetViewer, CivitAI model dialog) to
+	   replace hard-coded inline sizing (90vw, 85vh, pa-5). Apply via a
+	   wrapper class on the MudDialog content rather than overriding theme
+	   variables, so MudBlazor defaults remain intact for non-app dialogs.
+	   See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md
+	   (App-wide media modal) for usage rules. */
+  --app-dialog-max-width: 1400px;
+  --app-dialog-padding: 16px;
+  --app-dialog-radius: 6px;
 }
 
 /*Bootstrap Overrides*/

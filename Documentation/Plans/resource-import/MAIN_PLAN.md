@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Planning
+**Current Phase:** Phase 2 - Import Tab UI
 
 ---
 
@@ -95,16 +95,16 @@ Add an "Import" tab to the Resources page that:
 
 **Objective:** Create the service layer that scans known resource directories, identifies untracked files, and provides import functionality.
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Steps
 
-- [ ] Step 1 - Create `ImportResourceModel` and detection logic in `ResourcesService` [3 pts]
+- [x] Step 1 - Create `ImportResourceModel` and detection logic in `ResourcesService` [3 pts]
   - Add model class with: `FileInfo`, detected `ResourceType`, detected `IsEnabled` (based on path), `SizeKb`
   - Add method to scan enabled + `_storage` directories for resource files not in the database (match by filename via `CheckResourceExistsByFilename`)
   - Return list of untracked files with detected type, path, size, and active/inactive state
-- [ ] Step 2 - Add import method to `ResourcesService` (single + batch) [5 pts]
-  - Accept shared defaults: Title, Type, SubType, BaseModel, TriggerWords, cover image ID
+- [x] Step 2 - Add import method to `ResourcesService` (single + batch) [5 pts]
+  - Accept shared defaults: Title, Type, SubType, BaseModel, TriggerWords, cover image path
   - Create `Resource` entity per file; `IsEnabled` derived from file's current path
   - Title defaults to filename without extension if not provided
   - Copy cover image to `ResourcePreviewsPath/{TypeName}/{FilenameWithoutExt}.png`
@@ -113,10 +113,10 @@ Add an "Import" tab to the Resources page that:
 
 #### Success Criteria
 
-- Untracked files are correctly identified across enabled + `_storage` directories for all resource types
-- Import creates valid `Resource` entities in the database
-- `IsEnabled` flag matches the file's actual location (main path = true, `_storage` = false)
-- Cover images are copied to the preview folder
+- ✓ Untracked files are correctly identified across enabled + `_storage` directories for all resource types
+- ✓ Import creates valid `Resource` entities in the database
+- ✓ `IsEnabled` flag matches the file's actual location (main path = true, `_storage` = false)
+- ✓ Cover images are copied to the preview folder
 
 ---
 
@@ -193,9 +193,10 @@ Add an "Import" tab to the Resources page that:
 
 ## Changelog
 
-| Phase    | Changes              |
-| -------- | -------------------- |
-| Planning | Initial plan created |
+| Phase    | Changes                                                          |
+| -------- | ---------------------------------------------------------------- |
+| Planning | Initial plan created                                             |
+| Phase 1  | Service layer complete - scanning and import methods implemented |
 
 ---
 

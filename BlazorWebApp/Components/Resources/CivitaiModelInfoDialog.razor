@@ -1,81 +1,95 @@
 @inject IStateService State
 @inject IDatabaseService DB
+@using BlazorWebApp.Data.Dtos
 
-<div>
-    <MudDialog Style="min-width: 90vw; min-height: 90vh;" Class="pa-5">
-        <TitleContent>
-            <MudText Style="display: flex; justify-content: space-between;" Typo="Typo.h4">
-                <MudStack>
-                    <MudStack Class="align-items-center" Row>
-                        @Model.Name
-                        <MudLink Href=@(@"https://civitai.com/models/" + Model.Id) Target="_blank" Color=Color.Info Style="opacity: 0.4;" Typo="Typo.subtitle1">ID: @Model.Id</MudLink>
-                    </MudStack>
-                </MudStack>
-                @if (Model.Nsfw)
-                {
-                    <MudIcon Class="me-4" Color="Color.Error" Icon="fa-solid fa-circle-dot" />
-                }
-            </MudText>
-            <MudStack Class="mt-2 align-items-center" Row>
-                <MudText Color="Color.Info">
-                    <MudIcon Size=Size.Small Icon="fa-solid fa-download" />
-                    @(Parser.CollapseInteger(Model.Stats.DownloadCount))
-                </MudText>
-                <MudText Color="Color.Error">
-                    <MudIcon Size=Size.Small Icon="fa-solid fa-heart" />
-                    @(Parser.CollapseInteger(Model.Stats.FavoriteCount))
-                </MudText>
-                <MudRating Class="me-n2" SelectedValue="@((int)Math.Round(Model.Stats.Rating))" ReadOnly />
-                <MudText Color="Color.Warning">(@(Parser.CollapseInteger(Model.Stats.RatingCount)))</MudText>
-            </MudStack>
-        </TitleContent>
-        <DialogContent>
-            <MudGrid>
-                <MudItem xs="2">
-                    <MudStack Class="justify-content-center">
-                        <MudStack Class="align-items-center justify-content-center" Row>
-                            <MudAvatar>
-                                <MudImage Style="max-width: 3rem; max-height: 3rem;" Src="@Model.Creator.Image" />
-                            </MudAvatar>
-                            <MudText Typo="Typo.button">@Model.Creator.Username</MudText>
-                        </MudStack>
-                        <MudChip Style=@($"background-color: var(--{Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), Model.Type))}); font-weight: 500; color: var(--mud-palette-white);") Label>@Model.Type</MudChip>
-                        @if (Model.PersonOfInterest)
+<MudDialog Class="civitai-model-dialog">
+    <TitleContent>
+        <CivitaiModelHeader Model="Model" OnClose="Close" />
+    </TitleContent>
+    <DialogContent>
+        <div class="civitai-model-dialog__body">
+            @if (Model.ModelVersions != null && Model.ModelVersions.Count > 1)
+            {
+                <CivitaiVersionSelector Versions="Model.ModelVersions"
+                                        ActiveVersion="_activeVersion"
+                                        ActiveVersionChanged="HandleVersionChanged" />
+            }
+
+            @if (_activeVersion != null)
+            {
+                <div class="civitai-model-dialog__layout">
+                    <div class="civitai-model-dialog__hero">
+                        <CivitaiModelHero Version="_activeVersion" />
+                    </div>
+                    <div class="civitai-model-dialog__spec">
+                        <CivitaiModelSpecCard Model="Model"
+                                              Version="_activeVersion"
+                                              Tags="Model.Tags" />
+                    </div>
+                </div>
+            }
+
+            <MudExpansionPanels Class="civitai-model-dialog__description"
+                                MultiExpansion="false"
+                                Elevation="0">
+                <MudExpansionPanel Text="Description" Dense>
+                    <div class="civitai-model-dialog__description-body">
+                        @if (!string.IsNullOrWhiteSpace(Model.Description))
                         {
-                            <MudChip Icon="fa-solid fa-user" Color="Color.Tertiary" Label>Person of Interest</MudChip>
+                            @((MarkupString)Model.Description)
                         }
-                        <MudChipSet Filter=false>
-                            @foreach (var tag in Model.Tags)
-                            {
-                                <MudChip>@tag</MudChip>
-                            }
-                        </MudChipSet>
-                    </MudStack>
-                </MudItem>
-                <MudItem xs="10">
-                    <MudTabs PanelClass="py-4">
-                        <MudTabPanel Text="Files">
-                            <CivitaiModelVersionInfoPanel Model=Model />
-                        </MudTabPanel>
-                        <MudTabPanel Text="Description">
-                            <MudContainer Class="description">
-                                @((MarkupString)Model.Description)
-                            </MudContainer>
-                        </MudTabPanel>
-                    </MudTabs>
-                </MudItem>
-            </MudGrid>
-        </DialogContent>
-    </MudDialog>
-</div>
+                        else
+                        {
+                            <MudText Typo="Typo.body2">No description provided.</MudText>
+                        }
+                    </div>
+                </MudExpansionPanel>
+                @if (_activeVersion != null && !string.IsNullOrWhiteSpace(_activeVersion.Description))
+                {
+                    <MudExpansionPanel Text="@($"Version notes - {_activeVersion.Name}")" Dense>
+                        <div class="civitai-model-dialog__description-body">
+                            @((MarkupString)_activeVersion.Description)
+                        </div>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        </div>
+    </DialogContent>
+</MudDialog>
 
 @code {
-    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-    [Parameter] public CivitaiModelDto Model { get; set; }
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter, EditorRequired] public CivitaiModelDto Model { get; set; } = default!;
 
-    protected async override Task OnInitializedAsync()
+    private CivitaiModelVersionDto? _activeVersion;
+
+    protected override void OnParametersSet()
     {
-        var entity = await DB.GetResourceByCivitaiModelId(Model.Id);
-        if (entity != null) State.State.Civitai.ResourceSubtype = entity.SubType != null ? entity.SubType.Name : "";
+        // Phase 4: default to the first / primary version on first load; the user can
+        // switch via CivitaiVersionSelector. ActiveVersion changes propagate via
+        // HandleVersionChanged, which keeps the same Model reference but swaps the
+        // sub-aggregate. ModelVersions list is otherwise immutable for the dialog's lifetime.
+        if (_activeVersion == null && Model?.ModelVersions != null && Model.ModelVersions.Count > 0)
+        {
+            _activeVersion = Model.ModelVersions[0];
+        }
     }
+
+    private void HandleVersionChanged(CivitaiModelVersionDto version)
+    {
+        if (version == null) return;
+        _activeVersion = version;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Model == null) return;
+        var entity = await DB.GetResourceByCivitaiModelId(Model.Id);
+        if (entity != null)
+        {
+            State.State.Civitai.ResourceSubtype = entity.SubType != null ? entity.SubType.Name : string.Empty;
+        }
+    }
+
+    private void Close() => MudDialog.Close();
 }
