@@ -1,7 +1,7 @@
 ﻿.brand {
-	font-family: 'Helvetica';
-	font-size: 1rem;
-	font-weight: 300;
+  font-family: "Helvetica";
+  font-size: 1rem;
+  font-weight: 300;
 }
 
 /* ===========================================
@@ -19,38 +19,38 @@
    (Layout section) for usage rules.
    =========================================== */
 :root {
-	/* Outer gutter: page <-> window/navbar edges. */
-	--app-gutter-outer: 12px;
-	/* Inner gutter: between shell elements (tabs<->panels, sidebar<->content, topbar<->content). */
-	--app-gutter-inner: 8px;
+  /* Outer gutter: page <-> window/navbar edges. */
+  --app-gutter-outer: 12px;
+  /* Inner gutter: between shell elements (tabs<->panels, sidebar<->content, topbar<->content). */
+  --app-gutter-inner: 8px;
 
-	/* Sidebar proportional width, clamped to a sensible range. */
-	--app-sidebar-width: 22%;
-	--app-sidebar-min: 240px;
-	--app-sidebar-max: 340px;
-	/* Rail width when a collapsible sidebar is collapsed. */
-	--app-sidebar-rail-width: 40px;
+  /* Sidebar proportional width, clamped to a sensible range. */
+  --app-sidebar-width: 22%;
+  --app-sidebar-min: 240px;
+  --app-sidebar-max: 340px;
+  /* Rail width when a collapsible sidebar is collapsed. */
+  --app-sidebar-rail-width: 40px;
 
-	/* Overall page max-width clamp; prevents ultra-wide layouts from stretching. */
-	--app-shell-max-width: 1900px;
+  /* Overall page max-width clamp; prevents ultra-wide layouts from stretching. */
+  --app-shell-max-width: 1900px;
 
-	/* Shared corner radius for sidebar / topbar / content surfaces. */
-	--app-surface-radius: 4px;
+  /* Shared corner radius for sidebar / topbar / content surfaces. */
+  --app-surface-radius: 4px;
 
-	/* Internal padding for sidebar / topbar / content surfaces. Children render
+  /* Internal padding for sidebar / topbar / content surfaces. Children render
 	   flush against this padding (they should NOT add their own pa-* classes). */
-	--app-surface-padding: 16px;
+  --app-surface-padding: 16px;
 }
 
 /*Bootstrap Overrides*/
 a:hover {
-	color: inherit !important;
+  color: inherit !important;
 }
 
 .generation-info-text {
-	margin-top: 1rem;
-	white-space: pre-line;
-	opacity: 0.4;
+  margin-top: 1rem;
+  white-space: pre-line;
+  opacity: 0.4;
 }
 
 /* 
@@ -60,18 +60,18 @@ a:hover {
  * so popovers need to be above both.
  */
 .mud-popover-provider {
-	z-index: 1500 !important;
+  z-index: 1500 !important;
 }
 
 .mud-popover {
-	z-index: 1500 !important;
+  z-index: 1500 !important;
 }
 
 /*
  * Image Editor Modal - Lock body scroll when editor is open
  */
 body:has(.image-editor-overlay) {
-	overflow: hidden !important;
+  overflow: hidden !important;
 }
 
 /*
@@ -82,19 +82,19 @@ body:has(.image-editor-overlay) {
 .image-editor-overlay ~ .mud-popover-provider,
 .image-editor-overlay + .mud-popover-provider,
 body:has(.image-editor-overlay) .mud-popover-provider {
-	z-index: 10001 !important;
+  z-index: 10001 !important;
 }
 
 body:has(.image-editor-overlay) .mud-popover {
-	z-index: 10002 !important;
+  z-index: 10002 !important;
 }
 
 body:has(.image-editor-overlay) .mud-tooltip {
-	z-index: 10003 !important;
+  z-index: 10003 !important;
 }
 
 body:has(.image-editor-overlay) .mud-menu-popover {
-	z-index: 10002 !important;
+  z-index: 10002 !important;
 }
 
 /*
@@ -103,21 +103,21 @@ body:has(.image-editor-overlay) .mud-menu-popover {
  * Added as global styles because scoped CSS doesn't always apply to MudBlazor child components.
  */
 .layer-item.active {
-    background: rgba(var(--mud-palette-primary-rgb), 0.2) !important;
-    border-left: 3px solid var(--mud-palette-primary) !important;
+  background: rgba(var(--mud-palette-primary-rgb), 0.2) !important;
+  border-left: 3px solid var(--mud-palette-primary) !important;
 }
 
 .layer-item.active .layer-icon,
 .layer-item.active .layer-icon .mud-icon-root,
 .layer-item.active .layer-icon svg {
-    color: var(--mud-palette-primary) !important;
-    fill: var(--mud-palette-primary) !important;
+  color: var(--mud-palette-primary) !important;
+  fill: var(--mud-palette-primary) !important;
 }
 
 .layer-item.active .layer-name,
 .layer-item.active .layer-name span {
-    color: var(--mud-palette-primary) !important;
-    font-weight: 600 !important;
+  color: var(--mud-palette-primary) !important;
+  font-weight: 600 !important;
 }
 
 /* ===========================================
@@ -129,88 +129,88 @@ body:has(.image-editor-overlay) .mud-menu-popover {
 
 /* Action Menu Container */
 .action-menu {
-    padding: 6px 0;
-    min-width: 180px;
+  padding: 6px 0;
+  min-width: 180px;
 }
 
 .menu-section {
-    padding: 4px 0;
+  padding: 4px 0;
 }
 
 .menu-section-title {
-    padding: 6px 16px 4px;
-    font-size: 0.65rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: rgba(255, 255, 255, 0.4);
+  padding: 6px 16px 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .menu-divider {
-    height: 1px;
-    background: rgba(255, 255, 255, 0.08);
-    margin: 4px 12px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 12px;
 }
 
 /* Menu Items */
 .action-menu .mud-menu-item {
-    padding: 0 !important;
-    min-height: unset !important;
+  padding: 0 !important;
+  min-height: unset !important;
 }
 
 .menu-item-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.85);
-    transition: all 0.15s ease;
-    width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 0.15s ease;
+  width: 100%;
 }
 
 .action-menu .mud-menu-item:hover .menu-item-content {
-    background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .menu-item.danger .menu-item-content {
-    color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .action-menu .mud-list-item.menu-item.danger:hover .menu-item-content {
-    background: rgba(244, 67, 54, 0.15);
-    color: var(--mud-palette-error);
+  background: rgba(244, 67, 54, 0.15);
+  color: var(--mud-palette-error);
 }
 
 /* Menu Icons */
 .menu-icon {
-    font-size: 0.9rem;
-    width: 18px;
-    text-align: center;
+  font-size: 0.9rem;
+  width: 18px;
+  text-align: center;
 }
 
 .menu-icon.primary {
-    color: var(--mud-palette-primary);
+  color: var(--mud-palette-primary);
 }
 
 .menu-icon.secondary {
-    color: var(--mud-palette-secondary);
+  color: var(--mud-palette-secondary);
 }
 
 .menu-icon.tertiary {
-    color: var(--mud-palette-tertiary);
+  color: var(--mud-palette-tertiary);
 }
 
 .menu-icon.warning {
-    color: var(--mud-palette-warning);
+  color: var(--mud-palette-warning);
 }
 
 .menu-icon.info {
-    color: var(--mud-palette-info);
+  color: var(--mud-palette-info);
 }
 
 .menu-icon.error {
-    color: var(--mud-palette-error);
+  color: var(--mud-palette-error);
 }
 
 /* ===========================================
@@ -220,28 +220,36 @@ body:has(.image-editor-overlay) .mud-menu-popover {
    =========================================== */
 
 /* Remove vertical divider lines between buttons in text variant */
-.mud-button-group-text .mud-button-group-root .mud-button-root:not(:first-child),
+.mud-button-group-text
+  .mud-button-group-root
+  .mud-button-root:not(:first-child),
 .mud-button-group-text > .mud-button-root:not(:first-child),
-.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(.mud-button-group-rtl) .mud-button-root:not(:first-child) {
-    border-left: 0 !important;
+.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(
+    .mud-button-group-rtl
+  )
+  .mud-button-root:not(:first-child) {
+  border-left: 0 !important;
 }
 
 /* Also remove any border-right from non-last children */
 .mud-button-group-text .mud-button-group-root .mud-button-root:not(:last-child),
 .mud-button-group-text > .mud-button-root:not(:last-child),
-.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(.mud-button-group-rtl) .mud-button-root:not(:last-child) {
-    border-right: 0 !important;
+.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(
+    .mud-button-group-rtl
+  )
+  .mud-button-root:not(:last-child) {
+  border-right: 0 !important;
 }
 
 /* Increase gap between buttons in button groups */
 .mud-button-group-root {
-    gap: 4px !important;
+  gap: 4px !important;
 }
 
 /* Ensure buttons in text variant have some horizontal spacing */
 .mud-button-group-text .mud-button-root {
-    margin-left: 2px !important;
-    margin-right: 2px !important;
+  margin-left: 2px !important;
+  margin-right: 2px !important;
 }
 
 /* ===========================================
@@ -250,70 +258,70 @@ body:has(.image-editor-overlay) .mud-menu-popover {
    =========================================== */
 
 .token-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-    padding: 12px;
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 8px;
-    max-height: 300px;
-    overflow-y: auto;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.95rem;
-    line-height: 1.8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.95rem;
+  line-height: 1.8;
 }
 
 .token-item {
-    padding: 2px 4px;
-    margin: 0;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    white-space: pre;
-    display: inline-block;
+  padding: 2px 4px;
+  margin: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  white-space: pre;
+  display: inline-block;
 }
 
 /* Color-coded backgrounds with good contrast */
 .token-item[data-color="primary"] {
-    background-color: rgba(var(--mud-palette-primary-rgb), 0.15);
-    color: var(--mud-palette-primary-text);
+  background-color: rgba(var(--mud-palette-primary-rgb), 0.15);
+  color: var(--mud-palette-primary-text);
 }
 
 .token-item[data-color="secondary"] {
-    background-color: rgba(var(--mud-palette-secondary-rgb), 0.15);
-    color: var(--mud-palette-secondary-text);
+  background-color: rgba(var(--mud-palette-secondary-rgb), 0.15);
+  color: var(--mud-palette-secondary-text);
 }
 
 .token-item[data-color="tertiary"] {
-    background-color: rgba(var(--mud-palette-tertiary-rgb), 0.15);
-    color: var(--mud-palette-tertiary-text);
+  background-color: rgba(var(--mud-palette-tertiary-rgb), 0.15);
+  color: var(--mud-palette-tertiary-text);
 }
 
 .token-item[data-color="success"] {
-    background-color: rgba(var(--mud-palette-success-rgb), 0.15);
-    color: var(--mud-palette-success-text);
+  background-color: rgba(var(--mud-palette-success-rgb), 0.15);
+  color: var(--mud-palette-success-text);
 }
 
 .token-item[data-color="info"] {
-    background-color: rgba(var(--mud-palette-info-rgb), 0.15);
-    color: var(--mud-palette-info-text);
+  background-color: rgba(var(--mud-palette-info-rgb), 0.15);
+  color: var(--mud-palette-info-text);
 }
 
 .token-item[data-color="warning"] {
-    background-color: rgba(var(--mud-palette-warning-rgb), 0.15);
-    color: var(--mud-palette-warning-text);
+  background-color: rgba(var(--mud-palette-warning-rgb), 0.15);
+  color: var(--mud-palette-warning-text);
 }
 
 .token-item[data-color="error"] {
-    background-color: rgba(var(--mud-palette-error-rgb), 0.15);
-    color: var(--mud-palette-error-text);
+  background-color: rgba(var(--mud-palette-error-rgb), 0.15);
+  color: var(--mud-palette-error-text);
 }
 
 .token-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    z-index: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1;
 }
 
 /* Add a subtle border on hover to show token boundaries */
@@ -333,20 +341,20 @@ body:has(.image-editor-overlay) .mud-menu-popover {
    ================================================================== */
 
 .feature-section-flush.mud-paper {
-    background-color: transparent !important;
-    background-image: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    border-bottom: 1px solid var(--mud-palette-divider) !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--mud-palette-divider) !important;
 }
 
 .feature-section-flush .feature-section-header {
-    border-radius: 4px;
-    transition: background-color 0.15s ease;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
 }
 
 .feature-section-flush .feature-section-header:hover {
-    background-color: var(--mud-palette-action-default-hover);
+  background-color: var(--mud-palette-action-default-hover);
 }
 
 /* LoRAs expansion panels - same flush treatment. Targets both the
@@ -356,77 +364,77 @@ body:has(.image-editor-overlay) .mud-menu-popover {
 .loras-panels-flush .mud-expand-panel .mud-expand-panel-header,
 .loras-panels-flush .mud-expand-panel .mud-expand-panel-content,
 .loras-panels-flush .mud-expand-panel .mud-collapse-container {
-    background-color: transparent !important;
-    background-image: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 .loras-panels-flush .mud-expand-panel {
-    box-shadow: none !important;
-    border: 0 !important;
-    border-bottom: 1px solid var(--mud-palette-divider) !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--mud-palette-divider) !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
 }
 
 .loras-panels-flush .mud-expand-panel + .mud-expand-panel {
-    margin-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 .loras-panels-flush .mud-expand-panel .mud-expand-panel-header {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .loras-panels-flush .mud-expand-panel .mud-expand-panel-content {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 .token-item:hover::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    border: 2px solid currentColor;
-    border-radius: 4px;
-    opacity: 0.3;
-    pointer-events: none;
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 /* Dark mode specific adjustments */
 @media (prefers-color-scheme: dark) {
-    .token-preview {
-        background-color: rgba(255, 255, 255, 0.03);
-    }
-    
-    .token-item[data-color="primary"] {
-        background-color: rgba(var(--mud-palette-primary-rgb), 0.25);
-    }
-    
-    .token-item[data-color="secondary"] {
-        background-color: rgba(var(--mud-palette-secondary-rgb), 0.25);
-    }
-    
-    .token-item[data-color="tertiary"] {
-        background-color: rgba(var(--mud-palette-tertiary-rgb), 0.25);
-    }
-    
-    .token-item[data-color="success"] {
-        background-color: rgba(var(--mud-palette-success-rgb), 0.25);
-    }
-    
-    .token-item[data-color="info"] {
-        background-color: rgba(var(--mud-palette-info-rgb), 0.25);
-    }
-    
-    .token-item[data-color="warning"] {
-        background-color: rgba(var(--mud-palette-warning-rgb), 0.25);
-    }
-    
-    .token-item[data-color="error"] {
-        background-color: rgba(var(--mud-palette-error-rgb), 0.25);
-    }
+  .token-preview {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .token-item[data-color="primary"] {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.25);
+  }
+
+  .token-item[data-color="secondary"] {
+    background-color: rgba(var(--mud-palette-secondary-rgb), 0.25);
+  }
+
+  .token-item[data-color="tertiary"] {
+    background-color: rgba(var(--mud-palette-tertiary-rgb), 0.25);
+  }
+
+  .token-item[data-color="success"] {
+    background-color: rgba(var(--mud-palette-success-rgb), 0.25);
+  }
+
+  .token-item[data-color="info"] {
+    background-color: rgba(var(--mud-palette-info-rgb), 0.25);
+  }
+
+  .token-item[data-color="warning"] {
+    background-color: rgba(var(--mud-palette-warning-rgb), 0.25);
+  }
+
+  .token-item[data-color="error"] {
+    background-color: rgba(var(--mud-palette-error-rgb), 0.25);
+  }
 }
 
 /* ===========================================
@@ -444,35 +452,43 @@ body:has(.image-editor-overlay) .mud-menu-popover {
    MudToggleGroup.
    =========================================== */
 .mud-toggle-group:not(.mud-toggle-group-default) {
-    background: transparent !important;
-    gap: 4px;
-    padding: 2px;
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 8px;
+  background: transparent !important;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: 8px;
 }
 
 .mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item {
-    background: transparent !important;
-    color: var(--mud-palette-text-primary) !important;
-    border: 1px solid transparent !important;
-    border-radius: 6px !important;
-    font-weight: 500;
-    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  background: transparent !important;
+  color: var(--mud-palette-text-primary) !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  font-weight: 500;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
-.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item:hover:not(.mud-toggle-item-selected):not(.mud-disabled) {
-    background: rgba(var(--mud-palette-primary-rgb), 0.08) !important;
-    color: var(--mud-palette-primary) !important;
+.mud-toggle-group:not(.mud-toggle-group-default)
+  .mud-toggle-item:hover:not(.mud-toggle-item-selected):not(.mud-disabled) {
+  background: rgba(var(--mud-palette-primary-rgb), 0.08) !important;
+  color: var(--mud-palette-primary) !important;
 }
 
 .mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item-selected {
-    background: rgba(var(--mud-palette-primary-rgb), 0.16) !important;
-    color: var(--mud-palette-primary) !important;
-    border-color: rgba(var(--mud-palette-primary-rgb), 0.45) !important;
+  background: rgba(var(--mud-palette-primary-rgb), 0.16) !important;
+  color: var(--mud-palette-primary) !important;
+  border-color: rgba(var(--mud-palette-primary-rgb), 0.45) !important;
 }
 
-.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item-selected .mud-icon-root,
-.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item-selected .mud-typography {
-    color: var(--mud-palette-primary) !important;
-    fill: var(--mud-palette-primary) !important;
+.mud-toggle-group:not(.mud-toggle-group-default)
+  .mud-toggle-item-selected
+  .mud-icon-root,
+.mud-toggle-group:not(.mud-toggle-group-default)
+  .mud-toggle-item-selected
+  .mud-typography {
+  color: var(--mud-palette-primary) !important;
+  fill: var(--mud-palette-primary) !important;
 }

@@ -11,7 +11,7 @@ namespace BlazorWebApp.Services.WildcardForge
 {
     /// <summary>
     /// Phase 10 - Wildcard Forge knowledge layer.
-    /// Loads <c>Documentation/Wildcards/THEME_CATALOG.json</c> and <c>LLM_PROMPTS.json</c> once at
+    /// Loads <c>Data/theme_catalog.json</c> and <c>Data/llm_prompts.json</c> once at
     /// startup and exposes typed POCOs to <see cref="PromptComposer"/> and the view layer.
     /// No hot-reload; files are stable while the app runs.
     /// </summary>
@@ -37,9 +37,9 @@ namespace BlazorWebApp.Services.WildcardForge
                 new() { Key = "verbose",  Label = "Verbose",  WordRange = "12+ words",   BestFor = "Cinematic scenes, maximum detail" }
             };
 
-            var docsRoot = ResolveDocsRoot(env);
-            LoadCategories(Path.Combine(docsRoot, "THEME_CATALOG.json"));
-            LoadTemplates(Path.Combine(docsRoot, "LLM_PROMPTS.json"));
+            var dataRoot = ResolveDataRoot(env);
+            LoadCategories(Path.Combine(dataRoot, "theme_catalog.json"));
+            LoadTemplates(Path.Combine(dataRoot, "llm_prompts.json"));
 
             _logger.LogInformation("WildcardForgeKnowledge loaded {CategoryCount} categories and {TemplateCount} templates",
                 _categories.Count, _templates.Count);
@@ -94,28 +94,24 @@ namespace BlazorWebApp.Services.WildcardForge
         public LlmTemplate? GetTemplateByKey(string key)
             => _templates.TryGetValue(key, out var t) ? t : null;
 
-        private static string ResolveDocsRoot(IHostEnvironment env)
+        private static string ResolveDataRoot(IHostEnvironment env)
         {
-            // ContentRoot is BlazorWebApp/. Documentation/ sits one level up.
-            var candidate = Path.GetFullPath(Path.Combine(env.ContentRootPath, "..", "Documentation", "Wildcards"));
-            if (Directory.Exists(candidate)) return candidate;
-
-            // Fallback for tests / repacked layouts.
-            var sibling = Path.GetFullPath(Path.Combine(env.ContentRootPath, "Documentation", "Wildcards"));
-            if (Directory.Exists(sibling)) return sibling;
+            // ContentRoot is BlazorWebApp/. Data/ is a subfolder.
+            var dataFolder = Path.GetFullPath(Path.Combine(env.ContentRootPath, "Data"));
+            if (Directory.Exists(dataFolder)) return dataFolder;
 
             throw new DirectoryNotFoundException(
-                $"WildcardForgeKnowledge: cannot locate Documentation/Wildcards. Tried: {candidate} and {sibling}");
+                $"WildcardForgeKnowledge: cannot locate Data folder. Tried: {dataFolder}");
         }
 
         private void LoadCategories(string path)
         {
             if (!File.Exists(path))
-                throw new FileNotFoundException($"WildcardForgeKnowledge: missing THEME_CATALOG.json at {path}", path);
+                throw new FileNotFoundException($"WildcardForgeKnowledge: missing theme_catalog.json at {path}", path);
 
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             if (!doc.RootElement.TryGetProperty("theme_categories", out var arr) || arr.ValueKind != JsonValueKind.Array)
-                throw new InvalidDataException("THEME_CATALOG.json is missing 'theme_categories' array");
+                throw new InvalidDataException("theme_catalog.json is missing 'theme_categories' array");
 
             foreach (var el in arr.EnumerateArray())
             {
@@ -163,11 +159,11 @@ namespace BlazorWebApp.Services.WildcardForge
         private void LoadTemplates(string path)
         {
             if (!File.Exists(path))
-                throw new FileNotFoundException($"WildcardForgeKnowledge: missing LLM_PROMPTS.json at {path}", path);
+                throw new FileNotFoundException($"WildcardForgeKnowledge: missing llm_prompts.json at {path}", path);
 
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
             if (!doc.RootElement.TryGetProperty("prompt_templates", out var obj) || obj.ValueKind != JsonValueKind.Object)
-                throw new InvalidDataException("LLM_PROMPTS.json is missing 'prompt_templates' object");
+                throw new InvalidDataException("llm_prompts.json is missing 'prompt_templates' object");
 
             foreach (var prop in obj.EnumerateObject())
             {

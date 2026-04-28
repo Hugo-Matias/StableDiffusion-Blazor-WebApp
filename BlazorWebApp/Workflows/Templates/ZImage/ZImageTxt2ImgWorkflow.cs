@@ -197,6 +197,11 @@ public class ZImageTxt2ImgWorkflow : IWorkflowBuilder
                 var scopeTitle = i == 0 ? "Detailer " : $"Detailer {i + 1} ";
                 var kp = i == 0 ? string.Empty : $"pass_{i}_";
 
+                // Check if this pass is enabled
+                var passEnabledKey = i == 0 ? "detailer_enabled" : $"pass_{i}_detailer_enabled";
+                if (!detailerFragment.GetBool(passEnabledKey, true))
+                    continue;
+
                 _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWithPromptsFragment.Parameters
                 {
                     UnetName = detailerFragment.GetString($"{kp}detailer_checkpoint")

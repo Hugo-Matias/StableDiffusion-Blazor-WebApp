@@ -27,8 +27,8 @@
             {
                 <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Title="Expand session rail"
                                OnClick="ToggleSessionRailAsync" />
-                <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small"
-                               Title="Create new session" OnClick="DeselectSessionAsync" />
+                <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small" Title="Create new session"
+                               OnClick="DeselectSessionAsync" />
             }
         </div>
         @if (_sessionRailCollapsed)
@@ -95,8 +95,7 @@
                 <MudText Typo="Typo.subtitle2">@_activeSession?.Name</MudText>
                 <div class="d-flex align-center gap-2">
                     <MudSwitch T="bool" Value="State.State.Prompts.LLM.Workshop.AutoQueuePreviews"
-                               ValueChanged="OnAutoQueueChanged"
-                               Label="Auto-queue" Color="Color.Primary" Size="Size.Small" />
+                               ValueChanged="OnAutoQueueChanged" Label="Auto-queue" Color="Color.Primary" Size="Size.Small" />
                     <MudText Typo="Typo.caption" Class="text-disabled">
                         @_allNodes.Count node(s) total
                     </MudText>
@@ -309,10 +308,10 @@
             .ToList();
 
         // 1) Variations: split into batches by spawn cycle, then render each as its
-        //    own carousel. A batch boundary is detected from the Instruction suffix
-        //    "(i/N)" written by WorkshopService.SpawnVariationsAsync - whenever i==1
-        //    we start a new batch. Nodes without that marker (legacy) all collapse
-        //    into a single batch, preserving prior behavior.
+        // own carousel. A batch boundary is detected from the Instruction suffix
+        // "(i/N)" written by WorkshopService.SpawnVariationsAsync - whenever i==1
+        // we start a new batch. Nodes without that marker (legacy) all collapse
+        // into a single batch, preserving prior behavior.
         if (evolveChildren.Count > 0)
         {
             var ordered = evolveChildren.OrderBy(c => c.CreatedAt).ToList();

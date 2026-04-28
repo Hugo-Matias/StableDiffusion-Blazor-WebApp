@@ -1,0 +1,292 @@
+{
+  "_comment": "LLM Prompt Templates for Wildcard Generation v1.0",
+  "_instructions": [
+    "These are tested prompt templates for generating wildcard collections using LLMs.",
+    "Replace {variables} with your specific values.",
+    "Adjust temperature and other parameters based on your LLM.",
+    "Test and refine prompts for your specific use case."
+  ],
+
+  "prompt_templates": {
+    "basic_generation": {
+      "name": "Basic Collection Generation",
+      "description": "Generate a new wildcard collection from scratch",
+      "use_case": "Creating a new collection with specific theme and verbosity",
+      
+      "system_prompt": "You are a creative assistant helping generate wildcard collections for AI image generation prompts. You create varied, visual, and practical entries that work well in prompts.\n\nGenerate a collection of {count} entries following these guidelines:\n\nTheme: {theme}\nCategory: {category}\nVerbosity: {verbosity_level}\nKeywords: {keywords}\n\nRules:\n1. Each entry should be a complete, usable phrase\n2. Maintain consistent verbosity level throughout\n3. Ensure variety and creativity\n4. Avoid repetition and redundancy\n5. Focus on visual, concrete descriptions (avoid abstract concepts)\n6. Each entry should work standalone in a prompt\n7. Use specific, precise language\n8. Include both common and unique variations\n\nOutput Format: JSON array of entry objects with \"value\", \"weight\", and \"sortOrder\" properties.",
+      
+      "user_prompt": "Generate {count} wildcard entries for \"{collection_name}\" with theme \"{theme}\".\n\nVerbosity level: {verbosity_level}\nCategory: {category}\nFocus on: {keywords_list}\n\nExample entry format:\n{\n  \"value\": \"example descriptive text here\",\n  \"weight\": 1.0,\n  \"sortOrder\": 0\n}\n\nProvide the complete JSON array.",
+      
+      "parameters": {
+        "count": "10-30 (recommended)",
+        "theme": "Broad theme description (e.g., 'Fantasy character clothing')",
+        "category": "Category name from THEME_CATALOG.json",
+        "verbosity_level": "minimal | balanced | detailed | verbose",
+        "collection_name": "kebab-case name (e.g., 'fantasy-armor')",
+        "keywords": "Comma-separated focus keywords",
+        "keywords_list": "Keywords as readable list"
+      },
+      
+      "example": {
+        "filled_prompt": "Generate 15 wildcard entries for \"facial-expressions\" with theme \"Human facial expressions and emotions\".\n\nVerbosity level: balanced\nCategory: Character Features\nFocus on: emotions, expressions, subtle, obvious, variety\n\nExample entry format:\n{\n  \"value\": \"gentle warm smile\",\n  \"weight\": 1.0,\n  \"sortOrder\": 0\n}\n\nProvide the complete JSON array.",
+        
+        "expected_output_sample": "[\n  {\"value\": \"gentle warm smile\", \"weight\": 1.0, \"sortOrder\": 0},\n  {\"value\": \"contemplative thoughtful gaze\", \"weight\": 1.0, \"sortOrder\": 1},\n  {\"value\": \"excited joyful expression\", \"weight\": 1.0, \"sortOrder\": 2}\n]"
+      },
+      
+      "recommended_settings": {
+        "temperature": 0.7,
+        "max_tokens": 2000,
+        "top_p": 0.9
+      }
+    },
+
+    "themed_expansion": {
+      "name": "Themed Collection Expansion",
+      "description": "Expand an existing collection with new themed variations",
+      "use_case": "Adding entries to existing collection while exploring new directions",
+      
+      "system_prompt": "You are expanding an existing wildcard collection with themed variations. Generate {count} new entries that complement the existing collection while exploring the theme more deeply.\n\nExisting Collection: {collection_name}\nCurrent Entries Sample: {existing_entries_sample}\nTheme Extension: {new_theme_direction}\nVerbosity: {verbosity_level}\n\nRules:\n1. Complement existing entries without duplicating\n2. Explore unexplored aspects of the theme\n3. Maintain consistent style and verbosity with existing entries\n4. Add creative variations\n5. Consider edge cases and unique options\n6. Ensure new entries work well with existing ones\n7. Focus on visual, concrete descriptions\n\nOutput Format: JSON array of entry objects with \"value\", \"weight\", and \"sortOrder\" properties. Start sortOrder from {start_index}.",
+      
+      "user_prompt": "Add {count} new entries to \"{collection_name}\" collection exploring: {theme_direction}.\n\nCurrent collection focuses on: {current_focus}\nNew entries should explore: {new_focus}\n\nExisting entries (for reference):\n{existing_entries_formatted}\n\nMaintain the same verbosity level: {verbosity_level}\nProvide the complete JSON array for new entries only.",
+      
+      "parameters": {
+        "count": "5-15 (smaller batches recommended)",
+        "collection_name": "Existing collection name",
+        "existing_entries_sample": "3-5 example entries from collection",
+        "new_theme_direction": "What aspect to explore",
+        "verbosity_level": "Match existing collection",
+        "current_focus": "What current entries cover",
+        "new_focus": "What new entries should cover",
+        "start_index": "Next available sortOrder number"
+      },
+      
+      "example": {
+        "filled_prompt": "Add 10 new entries to \"lighting-styles\" collection exploring: dramatic and moody lighting.\n\nCurrent collection focuses on: natural daylight and basic studio lighting\nNew entries should explore: cinematic, dramatic, high-contrast lighting scenarios\n\nExisting entries (for reference):\n- soft golden hour sunlight\n- bright midday sun overhead\n- overcast diffused natural light\n\nMaintain the same verbosity level: balanced\nProvide the complete JSON array for new entries only.",
+        
+        "expected_output_sample": "[\n  {\"value\": \"dramatic rim lighting edge\", \"weight\": 1.0, \"sortOrder\": 15},\n  {\"value\": \"moody low-key side lighting\", \"weight\": 1.0, \"sortOrder\": 16}\n]"
+      },
+      
+      "recommended_settings": {
+        "temperature": 0.75,
+        "max_tokens": 1500,
+        "top_p": 0.9
+      }
+    },
+
+    "quality_enhancement": {
+      "name": "Quality Enhancement",
+      "description": "Improve existing wildcard entries",
+      "use_case": "Enhancing verbosity, adding detail, or improving consistency",
+      
+      "system_prompt": "You are enhancing existing wildcard entries to improve their quality and effectiveness.\n\nTask: {enhance_type}\nOptions: increase_verbosity | add_details | improve_variety | fix_quality\n\nCurrent Entries: {entries_to_enhance}\nTarget Verbosity: {target_verbosity}\nEnhancement Focus: {focus_areas}\n\nRules:\n1. Preserve the core concept of each entry\n2. Enhance without changing fundamental meaning\n3. Maintain visual focus\n4. Improve descriptive quality\n5. Ensure entries work standalone in prompts\n6. Keep entries practical and usable\n7. Maintain consistency across all enhanced entries\n\nOutput Format: JSON array of enhanced entry objects with \"value\", \"weight\", and \"sortOrder\" properties.",
+      
+      "user_prompt": "Enhance these wildcard entries:\n\n{entries_list}\n\nEnhancement goals: {enhancement_goals}\nTarget verbosity: {verbosity_level}\nFocus on improving: {improvement_focus}\n\nProvide the enhanced JSON array maintaining the same sortOrder.",
+      
+      "parameters": {
+        "enhance_type": "increase_verbosity | add_details | improve_variety | fix_quality",
+        "entries_to_enhance": "List of current entries",
+        "target_verbosity": "Desired verbosity level",
+        "focus_areas": "What to improve (e.g., 'add more visual details')",
+        "enhancement_goals": "Specific goals for enhancement",
+        "improvement_focus": "Key areas to address"
+      },
+      
+      "example": {
+        "filled_prompt": "Enhance these wildcard entries:\n\n1. \"red dress\" (weight: 1.0, sortOrder: 0)\n2. \"blue shirt\" (weight: 1.0, sortOrder: 1)\n3. \"green pants\" (weight: 1.0, sortOrder: 2)\n\nEnhancement goals: Increase verbosity from minimal to balanced\nTarget verbosity: balanced (3-6 words)\nFocus on improving: Add descriptive details while keeping entries concise\n\nProvide the enhanced JSON array maintaining the same sortOrder.",
+        
+        "expected_output_sample": "[\n  {\"value\": \"elegant flowing red dress\", \"weight\": 1.0, \"sortOrder\": 0},\n  {\"value\": \"casual light blue shirt\", \"weight\": 1.0, \"sortOrder\": 1},\n  {\"value\": \"fitted olive green pants\", \"weight\": 1.0, \"sortOrder\": 2}\n]"
+      },
+      
+      "recommended_settings": {
+        "temperature": 0.6,
+        "max_tokens": 1500,
+        "top_p": 0.85
+      }
+    },
+
+    "category_focused": {
+      "name": "Category-Focused Generation",
+      "description": "Generate entries specifically tailored to a theme category",
+      "use_case": "Creating collections that align perfectly with category conventions",
+      
+      "system_prompt": "You are generating wildcard entries for the \"{category}\" category. This category typically uses {typical_verbosity} verbosity and focuses on {category_focus}.\n\nGenerate {count} entries following these category-specific guidelines:\n\nCategory: {category}\nSubcategory: {subcategory}\nKeywords: {category_keywords}\nVerbosity: {verbosity_level}\n\nCategory-Specific Rules:\n{category_rules}\n\nGeneral Rules:\n1. Maintain category conventions\n2. Focus on visual, concrete descriptions\n3. Ensure variety within the category theme\n4. Use precise, specific language\n5. Each entry should work standalone\n\nOutput Format: JSON array of entry objects with \"value\", \"weight\", and \"sortOrder\" properties.",
+      
+      "user_prompt": "Generate {count} {verbosity_level} verbosity entries for \"{collection_name}\" collection.\n\nCategory: {category}\nSubcategory: {subcategory}\nSpecific focus: {specific_focus}\n\nInclude these elements:\n{required_elements}\n\nProvide the complete JSON array.",
+      
+      "parameters": {
+        "category": "One of the 10 main categories",
+        "subcategory": "Specific subcategory within main category",
+        "typical_verbosity": "Recommended verbosity for this category",
+        "category_focus": "What this category emphasizes",
+        "category_keywords": "Keywords associated with this category",
+        "category_rules": "Specific rules for this category type",
+        "specific_focus": "Narrow focus within subcategory",
+        "required_elements": "Must-include elements"
+      },
+      
+      "example": {
+        "filled_prompt": "Generate 12 detailed verbosity entries for \"fantasy-locations\" collection.\n\nCategory: Locations & Settings\nSubcategory: fantasy\nSpecific focus: Magical and mystical places with fantastical elements\n\nInclude these elements:\n- Environmental description\n- Atmospheric details\n- Fantastical elements\n- Scale/scope indication\n\nProvide the complete JSON array.",
+        
+        "expected_output_sample": "[\n  {\"value\": \"ancient floating crystal city above misty clouds\", \"weight\": 1.0, \"sortOrder\": 0},\n  {\"value\": \"enchanted forest with glowing mushrooms and ethereal light\", \"weight\": 1.0, \"sortOrder\": 1}\n]"
+      },
+      
+      "recommended_settings": {
+        "temperature": 0.75,
+        "max_tokens": 2000,
+        "top_p": 0.9
+      }
+    },
+
+    "diversity_focused": {
+      "name": "Diversity-Focused Generation",
+      "description": "Generate entries with maximum variety and coverage",
+      "use_case": "Creating comprehensive collections that cover many variations",
+      
+      "system_prompt": "You are generating a diverse set of wildcard entries that covers a wide range of variations within the theme. Prioritize variety, uniqueness, and comprehensive coverage.\n\nTheme: {theme}\nCategory: {category}\nVerbosity: {verbosity_level}\nTarget Count: {count}\n\nDiversity Goals:\n1. Cover different sub-themes within the main theme\n2. Include common, uncommon, and unique options\n3. Vary perspectives and approaches\n4. Balance mainstream and creative options\n5. Ensure no two entries are too similar\n6. Include different styles/types within the theme\n\nRules:\n1. Maximize variety and uniqueness\n2. Focus on visual, concrete descriptions\n3. Maintain consistent verbosity\n4. Each entry should be distinctly different\n5. Cover the theme comprehensively\n\nOutput Format: JSON array of entry objects with \"value\", \"weight\", and \"sortOrder\" properties. Adjust weights to reflect rarity (common: 1.2-1.5, uncommon: 1.0, rare: 0.5-0.8).",
+      
+      "user_prompt": "Generate {count} diverse entries for \"{collection_name}\" with maximum variety.\n\nTheme: {theme}\nVerbosity: {verbosity_level}\n\nEnsure coverage of:\n{coverage_areas}\n\nDistribution:\n- {common_percentage}% common/mainstream options (weight 1.2-1.5)\n- {standard_percentage}% standard options (weight 1.0)\n- {rare_percentage}% unique/rare options (weight 0.5-0.8)\n\nProvide the complete JSON array.",
+      
+      "parameters": {
+        "theme": "Main theme to explore",
+        "category": "Category name",
+        "verbosity_level": "Target verbosity",
+        "count": "15-30 (larger sets recommended)",
+        "coverage_areas": "List of sub-themes or aspects to cover",
+        "common_percentage": "e.g., 40",
+        "standard_percentage": "e.g., 40",
+        "rare_percentage": "e.g., 20"
+      },
+      
+      "example": {
+        "filled_prompt": "Generate 20 diverse entries for \"artistic-styles\" with maximum variety.\n\nTheme: Artistic styles and visual aesthetics\nVerbosity: balanced\n\nEnsure coverage of:\n- Classical art movements (impressionism, baroque, etc.)\n- Modern/contemporary styles\n- Digital art techniques\n- Traditional mediums\n- Cultural art styles\n- Experimental approaches\n\nDistribution:\n- 40% common/mainstream options (weight 1.2-1.5)\n- 40% standard options (weight 1.0)\n- 20% unique/rare options (weight 0.5-0.8)\n\nProvide the complete JSON array.",
+        
+        "expected_output_sample": "[\n  {\"value\": \"impressionist oil painting style\", \"weight\": 1.3, \"sortOrder\": 0},\n  {\"value\": \"minimalist geometric design\", \"weight\": 1.0, \"sortOrder\": 1},\n  {\"value\": \"glitch art digital aesthetic\", \"weight\": 0.6, \"sortOrder\": 2}\n]"
+      },
+      
+      "recommended_settings": {
+        "temperature": 0.85,
+        "max_tokens": 3000,
+        "top_p": 0.95
+      }
+    }
+  },
+
+  "usage_tips": {
+    "general": [
+      "Start with basic_generation for new collections",
+      "Use themed_expansion to grow existing collections",
+      "Apply quality_enhancement to improve minimal entries",
+      "Use category_focused when strict adherence to category conventions is needed",
+      "Use diversity_focused for comprehensive coverage collections"
+    ],
+    
+    "temperature_guidance": {
+      "0.5-0.6": "More predictable, consistent results. Good for quality_enhancement.",
+      "0.7-0.8": "Balanced creativity and consistency. Good for basic_generation.",
+      "0.85-0.95": "Higher creativity and variety. Good for diversity_focused."
+    },
+    
+    "prompt_refinement": [
+      "If results are too similar: Increase temperature, emphasize variety in prompt",
+      "If results are too random: Decrease temperature, add more specific constraints",
+      "If verbosity is inconsistent: Provide explicit word count ranges and examples",
+      "If entries lack detail: Add 'visual, concrete, specific' to rules",
+      "If entries duplicate existing: Include more existing entries as reference"
+    ],
+    
+    "iteration_workflow": [
+      "1. Generate initial batch using appropriate template",
+      "2. Review results for quality and consistency",
+      "3. Refine prompt based on issues found",
+      "4. Regenerate problem entries individually",
+      "5. Combine best results into final collection",
+      "6. Test in actual image generation prompts",
+      "7. Adjust weights based on usage patterns"
+    ]
+  },
+
+  "ollama_specific": {
+    "recommended_models": {
+      "llama3": {
+        "description": "Good balance of creativity and coherence",
+        "recommended_for": ["basic_generation", "themed_expansion"],
+        "optimal_temperature": 0.7
+      },
+      "mistral": {
+        "description": "Concise and practical results",
+        "recommended_for": ["quality_enhancement", "category_focused"],
+        "optimal_temperature": 0.65
+      },
+      "dolphin-mixtral": {
+        "description": "Creative and detailed outputs",
+        "recommended_for": ["diversity_focused", "themed_expansion"],
+        "optimal_temperature": 0.8
+      }
+    },
+    
+    "example_ollama_request": {
+      "model": "llama3",
+      "prompt": "{combined_system_and_user_prompt}",
+      "stream": false,
+      "options": {
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_predict": 2000
+      }
+    }
+  },
+
+  "troubleshooting": {
+    "issue_duplicate_entries": {
+      "problem": "LLM generates similar or duplicate entries",
+      "solutions": [
+        "Explicitly state 'each entry must be unique and distinctly different'",
+        "Provide more existing entries as negative examples",
+        "Increase temperature by 0.1-0.2",
+        "Reduce requested count (generate in smaller batches)",
+        "Add 'avoid repetition' to rules"
+      ]
+    },
+    
+    "issue_wrong_verbosity": {
+      "problem": "Entries don't match requested verbosity level",
+      "solutions": [
+        "Provide explicit word count ranges (e.g., '3-6 words')",
+        "Give 3-5 examples at the target verbosity",
+        "Emphasize verbosity level multiple times in prompt",
+        "Use quality_enhancement template to fix existing entries"
+      ]
+    },
+    
+    "issue_abstract_concepts": {
+      "problem": "Entries contain abstract or non-visual concepts",
+      "solutions": [
+        "Add 'visual, concrete, observable descriptions only' to rules",
+        "Provide bad examples to avoid",
+        "Emphasize 'for image generation' context",
+        "Request entries that 'describe what can be seen'"
+      ]
+    },
+    
+    "issue_inconsistent_style": {
+      "problem": "Entries vary in style or approach",
+      "solutions": [
+        "Provide more example entries showing desired style",
+        "Use category_focused template with strict category rules",
+        "Decrease temperature to 0.6-0.65",
+        "Generate smaller batches at a time"
+      ]
+    },
+    
+    "issue_invalid_json": {
+      "problem": "LLM output is not valid JSON",
+      "solutions": [
+        "Request 'valid JSON only, no markdown formatting'",
+        "Provide exact JSON structure in prompt",
+        "Use 'Output Format' section with clear example",
+        "Post-process: strip markdown code blocks if present"
+      ]
+    }
+  }
+}

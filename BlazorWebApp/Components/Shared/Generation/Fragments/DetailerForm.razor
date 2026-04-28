@@ -57,6 +57,23 @@
         </MudDynamicTabs>
     </MudItem>
 
+    @* ================= Pass Enable/Disable Toggle ================= *@
+    <MudItem xs="12">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudSwitch T="bool"
+                       @bind-Value="@CurrentPassEnabled"
+                       Color="Color.Primary"
+                       Label="@($"Enable Pass {_currentPass + 1}")"
+                       Size="Size.Small" />
+            @if (!CurrentPassEnabled)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                    This pass will be skipped during generation
+                </MudText>
+            }
+        </MudStack>
+    </MudItem>
+
     @* ================= Compact copy/clear action bar =================
        Merges the previous per-section copy/clear rows into a single
        control surface. Placeholder text on the prompt field replaces
@@ -396,6 +413,7 @@
             "detailer_guide_size",
             "detailer_max_size",
             "detailer_cycle",
+            "detailer_enabled",
         };
 
         var srcPrefix = sourcePass == 0 ? string.Empty : $"pass_{sourcePass}_";
@@ -433,6 +451,9 @@
         _currentPass = _passCount - 1;
         // Ensure a LoRA bucket exists for the new pass.
         _ = ParameterService.Current.GetDetailerLoras(_currentPass);
+        // New passes are enabled by default.
+        var key = _currentPass == 0 ? "detailer_enabled" : $"pass_{_currentPass}_detailer_enabled";
+        ParameterService.SetFragmentProperty(Fragment, key, true, notify: false);
         LoadFromFragment();
         await OnChanged.InvokeAsync();
         StateHasChanged();
@@ -525,6 +546,8 @@
 
         _positivePrompt = ParameterService.GetFragmentProperty(Fragment, Key("detailer_prompt"), string.Empty) ?? string.Empty;
         _negativePrompt = ParameterService.GetFragmentProperty(Fragment, Key("detailer_negative_prompt"), string.Empty) ?? string.Empty;
+
+        _currentPassEnabled = GetPassEnabled(_currentPass);
 
         var workflow = Orchestrator.GetCurrentWorkflow();
         _isDualModel = workflow?.Base == ModelBase.Wan;
@@ -667,6 +690,39 @@
     private async Task ClearLoras()
     {
         ParameterService.Current.GetDetailerLoras(_currentPass).Clear();
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    // ===================== Pass enable/disable =====================
+
+    private bool _currentPassEnabled = true;
+
+    private bool CurrentPassEnabled
+    {
+        get => _currentPassEnabled;
+        set
+        {
+            if (_currentPassEnabled != value)
+            {
+                _currentPassEnabled = value;
+                _ = SetPassEnabledAsync(value);
+            }
+        }
+    }
+
+    private bool GetPassEnabled(int pass)
+    {
+        if (Fragment == null) return true;
+        var key = pass == 0 ? "detailer_enabled" : $"pass_{pass}_detailer_enabled";
+        return ParameterService.GetFragmentProperty(Fragment, key, true);
+    }
+
+    private async Task SetPassEnabledAsync(bool enabled)
+    {
+        if (Fragment == null) return;
+        var key = _currentPass == 0 ? "detailer_enabled" : $"pass_{_currentPass}_detailer_enabled";
+        ParameterService.SetFragmentProperty(Fragment, key, enabled, notify: true);
         await OnChanged.InvokeAsync();
         StateHasChanged();
     }

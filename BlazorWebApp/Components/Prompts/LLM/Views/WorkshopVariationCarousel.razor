@@ -24,7 +24,8 @@
                     }
                     else if (_statuses.TryGetValue(sibling.Id, out var status2) && status2 == WorkshopPreviewStatus.Failed)
                     {
-                        <MudTooltip Text="@(_errors.TryGetValue(sibling.Id, out var err) && !string.IsNullOrEmpty(err) ? err : "Preview failed")">
+                        <MudTooltip
+                            Text="@(_errors.TryGetValue(sibling.Id, out var err) && !string.IsNullOrEmpty(err) ? err : "Preview failed")">
                             <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" Color="Color.Error" />
                         </MudTooltip>
                     }

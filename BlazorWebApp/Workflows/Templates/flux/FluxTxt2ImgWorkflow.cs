@@ -175,6 +175,11 @@ public class FluxTxt2ImgWorkflow : IWorkflowBuilder
                 var scopeTitle = i == 0 ? "Detailer " : $"Detailer {i + 1} ";
                 var kp = i == 0 ? string.Empty : $"pass_{i}_";
 
+                // Check if this pass is enabled
+                var passEnabledKey = i == 0 ? "detailer_enabled" : $"pass_{i}_detailer_enabled";
+                if (!detailerFragmentParams.GetBool(passEnabledKey, true))
+                    continue;
+
                 var detailerPrompt = detailerFragmentParams.GetStringOrFallback($"{kp}detailer_prompt", positive);
 
                 _loadFluxFragment.Build(builder, registry, new LoadFluxFragment.Parameters
