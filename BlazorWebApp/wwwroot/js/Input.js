@@ -50,6 +50,7 @@ window.setCaretPosition = (element, position) => {
 // Store event handlers to avoid memory leaks
 const autocompleteHandlers = new WeakMap();
 const promptFieldsHandlers = new WeakMap();
+const llmInstructionHandlers = new WeakMap();
 
 /**
  * Initialize autocomplete functionality on a text input/textarea element
@@ -249,6 +250,29 @@ export function initializePromptFieldsKeyboard(containerRef, dotNetHelper) {
 
     // Remove focus outline for better UX
     containerRef.style.outline = 'none';
+}
+
+/**
+ * Attach Enter-to-send handler to LLM instruction field
+ * Prevents default newline insertion on Enter (without Shift/Ctrl/Alt)
+ * @param {HTMLElement} fieldRef - The field container element
+ */
+export function attachLLMInstructionEnterHandler(fieldRef) {
+    if (!fieldRef) return;
+    
+    const textarea = fieldRef.querySelector('textarea');
+    if (!textarea || textarea.dataset.llmInstructionAttached === '1') return;
+    
+    textarea.dataset.llmInstructionAttached = '1';
+    
+    const keydownHandler = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+        }
+    };
+    
+    llmInstructionHandlers.set(textarea, keydownHandler);
+    textarea.addEventListener('keydown', keydownHandler);
 }
 
 // Tracks wrapper -> resize handler mapping for autogrow, so we can re-invoke

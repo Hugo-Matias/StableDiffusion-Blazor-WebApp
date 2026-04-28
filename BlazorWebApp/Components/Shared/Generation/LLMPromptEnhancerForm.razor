@@ -9,36 +9,13 @@
 <MudPaper Class="pa-4 mb-4">
     <MudGrid>
         <MudItem xs="12">
-            <MudSelect @bind-Value="_selectedModel"
-                      Label="LLM Model"
-                      Variant="Variant.Outlined"
-                      AnchorOrigin="Origin.BottomLeft"
-                      TransformOrigin="Origin.TopLeft">
-                @if (_availableModels != null)
-                {
-                    foreach (var model in _availableModels)
-                    {
-                        <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
-                    }
-                }
-            </MudSelect>
+            <MudTextField @bind-Value="_currentPrompt" Label="Simple Prompt" Variant="Variant.Outlined" Lines="3"
+                          Placeholder="e.g., beautiful woman, sunset, beach" Immediate />
         </MudItem>
 
         <MudItem xs="12">
-            <MudTextField @bind-Value="_currentPrompt"
-                          Label="Simple Prompt"
-                          Variant="Variant.Outlined"
-                          Lines="3"
-                          Placeholder="e.g., beautiful woman, sunset, beach"
-                          Immediate />
-        </MudItem>
-
-        <MudItem xs="12">
-            <MudSelect Value="_selectedTemplateId"
-                       ValueChanged="OnTemplateChanged"
-                       Label="Template"
-                       Variant="Variant.Outlined"
-                       T="int">
+            <MudSelect Value="_selectedTemplateId" ValueChanged="OnTemplateChanged" Label="Template"
+                       Variant="Variant.Outlined" T="int">
                 @if (_templates != null)
                 {
                     foreach (var template in _templates)
@@ -58,84 +35,24 @@
         </MudItem>
 
         <MudItem xs="6">
-            <MudNumericField @bind-Value="State.State.Generation.LLM.Options.Seed"
-                           Label="Seed"
-                           Variant="Variant.Outlined"
-                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
-                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max"
-                           Immediate />
+            <MudNumericField @bind-Value="State.State.Generation.LLM.Options.Seed" Label="Seed"
+                             Variant="Variant.Outlined" Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
+                             Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max" Immediate />
         </MudItem>
 
         <MudItem xs="6" Class="d-flex align-center">
             <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary">
-                <MudButton OnClick="GeneratePrompt"
-                          Disabled="_isGenerating"
-                          StartIcon="@Icons.Material.Filled.AutoAwesome">
+                <MudButton OnClick="GeneratePrompt" Disabled="_isGenerating"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome">
                     @(_isGenerating ? "Generating..." : "Enhance Prompt")
                 </MudButton>
-                <MudIconButton Icon="@Icons.Material.Filled.Shuffle"
-                              OnClick="RandomizeSeed"
-                              Disabled="_isGenerating" />
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle" OnClick="RandomizeSeed" Disabled="_isGenerating" />
             </MudButtonGroup>
         </MudItem>
 
-        <MudItem xs="12">
-            <MudExpansionPanel Text="Advanced Options">
-                <MudGrid>
-                    <MudItem xs="6">
-                        <MudSlider @bind-Value="State.State.Generation.LLM.Options.Temperature"
-                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Min"
-                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Max"
-                                   Step="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Step"
-                                   Variant="Variant.Filled"
-                                   ValueLabel><small>Temperature:</small> @State.State.Generation.LLM.Options.Temperature.ToString("F1")</MudSlider>
-                    </MudItem>
-                    <MudItem xs="6">
-                        <MudSlider @bind-Value="State.State.Generation.LLM.Options.TopP"
-                                   Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Min"
-                                   Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Max"
-                                   Step="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Step"
-                                   Variant="Variant.Filled"
-                                   ValueLabel><small>Top P:</small> @State.State.Generation.LLM.Options.TopP.ToString("F2")</MudSlider>
-                    </MudItem>
-                    <MudItem xs="6">
-                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.TopK"
-                                       Label="Top K"
-                                       Variant="Variant.Outlined"
-                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
-                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
-                    </MudItem>
-                    <MudItem xs="6">
-                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumPredict"
-                                       Label="Max Tokens"
-                                       Variant="Variant.Outlined"
-                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
-                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
-                    </MudItem>
-                    <MudItem xs="6">
-                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.MinP"
-                                       Label="Min P"
-                                       Variant="Variant.Outlined"
-                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
-                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
-                                       Step="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Step"
-                                       HelperText="Minimum probability threshold (optional)" />
-                    </MudItem>
-                    <MudItem xs="6">
-                        <MudNumericField @bind-Value="State.State.Generation.LLM.Options.NumCtx"
-                                       Label="Context Length"
-                                       Variant="Variant.Outlined"
-                                       Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
-                                       Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max"
-                                       HelperText="Number of tokens in context (optional)" />
-                    </MudItem>
-                </MudGrid>
-            </MudExpansionPanel>
-        </MudItem>
-
         @{
-            var enhancedPrompt = IsNegativePrompt 
-                ? State.State.Generation.LLM.EnhancedNegativePrompt 
+            var enhancedPrompt = IsNegativePrompt
+                ? State.State.Generation.LLM.EnhancedNegativePrompt
                 : State.State.Generation.LLM.EnhancedPrompt;
         }
 
@@ -143,25 +60,19 @@
         {
             <MudItem xs="12">
                 <MudDivider Class="my-2" />
-                <MudTextField @bind-Value="_currentEnhancedPrompt"
-                              Label="Enhanced Prompt"
-                              Variant="Variant.Filled"
+                <MudTextField @bind-Value="_currentEnhancedPrompt" Label="Enhanced Prompt" Variant="Variant.Filled"
                               Lines="20" />
             </MudItem>
 
             <MudItem xs="12">
                 <MudButtonGroup Variant="Variant.Filled" Color="Color.Success">
-                    <MudButton OnClick="ApplyToMainPrompt"
-                              StartIcon="@Icons.Material.Filled.Check">
+                    <MudButton OnClick="ApplyToMainPrompt" StartIcon="@Icons.Material.Filled.Check">
                         Apply to Main Prompt
                     </MudButton>
-                    <MudButton OnClick="GeneratePrompt"
-                              StartIcon="@Icons.Material.Filled.Refresh">
+                    <MudButton OnClick="GeneratePrompt" StartIcon="@Icons.Material.Filled.Refresh">
                         Regenerate
                     </MudButton>
-                    <MudButton OnClick="ClearResult"
-                              StartIcon="@Icons.Material.Filled.Clear"
-                              Color="Color.Default">
+                    <MudButton OnClick="ClearResult" StartIcon="@Icons.Material.Filled.Clear" Color="Color.Default">
                         Clear
                     </MudButton>
                 </MudButtonGroup>
@@ -186,9 +97,7 @@
 
     private bool _isGenerating;
     private string? _errorMessage;
-    private List<OllamaModel>? _availableModels;
     private List<SystemPromptTemplate>? _templates;
-    private string _selectedModel = string.Empty;
     private int _selectedTemplateId;
     private SystemPromptTemplate? _selectedTemplate;
 
@@ -218,28 +127,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadModels();
         await LoadTemplates();
-    }
-
-    private async Task LoadModels()
-    {
-        try
-        {
-            _availableModels = await OllamaAPI.GetModels();
-            if (_availableModels != null && _availableModels.Count > 0)
-            {
-                _selectedModel = Settings.Settings.Generation.Shared.LLMEnhancer.Model;
-                if (!_availableModels.Any(m => m.Name == _selectedModel))
-                {
-                    _selectedModel = _availableModels[0].Name;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Failed to load models: {ex.Message}";
-        }
     }
 
     private async Task LoadTemplates()
@@ -251,7 +139,7 @@
             if (_templates != null && _templates.Any())
             {
                 // Select appropriate default template based on IsNegativePrompt
-                var defaultTemplate = _templates.FirstOrDefault(t => 
+                var defaultTemplate = _templates.FirstOrDefault(t =>
                     t.IsDefault && t.Name.Contains(IsNegativePrompt ? "Negative" : "Enhance"));
                 
                 if (defaultTemplate != null)
@@ -301,9 +189,9 @@
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_selectedModel))
+        if (string.IsNullOrWhiteSpace(State.State.Generation.LLM.Model))
         {
-            _errorMessage = "Please select an LLM model first.";
+            _errorMessage = "Please select an LLM model in the toolbar first.";
             return;
         }
 
@@ -327,7 +215,7 @@
             }).ToList();
 
             var response = await OllamaAPI.SendChatMessage(
-                _selectedModel,
+                State.State.Generation.LLM.Model,
                 messages,
                 State.State.Generation.LLM.Options.ToOllamaOptions());
 

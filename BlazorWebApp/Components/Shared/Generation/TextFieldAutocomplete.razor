@@ -15,6 +15,7 @@
                   Value="@Value"
                   ValueChanged="@HandleValueChanged"
                   OnAdornmentClick="@OnAdornmentClick"
+                  OnBlur="@OnBlur"
                   Adornment="@Adornment"
                   AdornmentIcon="@AdornmentIcon"
                   T="string"
@@ -299,6 +300,9 @@
     // Phase 4: Event callbacks for non-prompt triggers (LoRA/Style selection)
     [Parameter] public EventCallback<Lora> OnLoraSelected { get; set; }
     [Parameter] public EventCallback<PromptStyle> OnStyleSelected { get; set; }
+
+    // Event callback for blur events (for history persistence)
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
 
     private MudTextField<string> _textFieldRef;
     private ElementReference _wrapperRef;

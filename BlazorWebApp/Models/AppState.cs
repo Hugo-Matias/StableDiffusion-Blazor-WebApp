@@ -100,6 +100,13 @@ namespace BlazorWebApp.Models
         public AppStateGenerationAutocomplete Autocomplete { get; set; } = new();
 
         /// <summary>
+        /// Legacy chat edit settings - kept for state migration.
+        /// Use AppStateLLMEnhancer (LLM property) instead for shared LLM settings.
+        /// </summary>
+        [Obsolete("Use State.Generation.LLM for shared LLM settings across all features")]
+        public AppStateGenerateChatEdit? ChatEdit { get; set; }
+
+        /// <summary>
         /// Page size for the session-wide Results gallery on the Generate page.
         /// Persisted with the rest of the app state.
         /// </summary>
@@ -143,6 +150,9 @@ namespace BlazorWebApp.Models
         public int MaxInputHeight { get; set; }
     }
 
+    /// <summary>
+    /// Shared LLM settings used by both LLM Enhancer and inline Chat Edit on Generate page.
+    /// </summary>
     public class AppStateLLMEnhancer
     {
         public string Prompt { get; set; } = string.Empty;
@@ -153,6 +163,14 @@ namespace BlazorWebApp.Models
         public string EnhancedNegativePrompt { get; set; } = string.Empty;
         public string LastPromptId { get; set; } = string.Empty;
         public string LastNegativePromptId { get; set; } = string.Empty;
+
+        /// <summary>Selected LLM model for all LLM operations on Generate page.</summary>
+        public string Model { get; set; } = string.Empty;
+
+        /// <summary>Verbosity setting for chat edit responses (inline instruction editing).</summary>
+        public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+
+        /// <summary>Advanced Ollama options shared across LLM features.</summary>
         public AppStateOllamaOptions Options { get; set; } = new();
     }
 
@@ -185,6 +203,27 @@ namespace BlazorWebApp.Models
     {
         public bool IsEnabled { get; set; } = true;
         public bool EnableFuzzySearch { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Legacy page-aware LLM chat edit settings.
+    /// Replaced by AppStateLLMEnhancer which consolidates all LLM settings.
+    /// Kept for backwards compatibility with existing state files.
+    /// </summary>
+    [Obsolete("Use AppStateLLMEnhancer instead for shared LLM settings")]
+    public class AppStateGenerateChatEdit
+    {
+        /// <summary>Selected LLM model for chat edit operations.</summary>
+        public string Model { get; set; } = string.Empty;
+
+        /// <summary>Verbosity setting for chat edit responses.</summary>
+        public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+
+        /// <summary>Temperature for chat edit operations.</summary>
+        public float Temperature { get; set; } = 0.7f;
+
+        /// <summary>Whether the LLM settings toolbar is collapsed (advanced settings).</summary>
+        public bool SettingsCollapsed { get; set; } = true;
     }
 
     public class AppStateGallery

@@ -3,17 +3,17 @@
    renders its child inside an inline-block wrapper which ignores the
    FullWidth MudButton prop by default. */
 .gen-btn-schedule-wrap {
-    width: 100%;
+  width: 100%;
 }
 
 .gen-btn-schedule-wrap ::deep .mud-tooltip-root {
-    display: block;
-    width: 100%;
+  display: block;
+  width: 100%;
 }
 
 .gen-btn-schedule-wrap ::deep .gen-btn-schedule {
-    width: 100%;
-    min-height: 2.5rem;
+  width: 100%;
+  min-height: 2.5rem;
 }
 
 /* --- Sticky Generate button overlap ------------------------------
@@ -34,27 +34,33 @@
    CSS b- attribute). MudPaper renders outside this scope so declaring the
    vars there would never match. Inherited down to .gen-btn-sticky. */
 .prompts-form-root {
-    --gen-sticky-width: 30%;
-    --gen-sticky-max-width: 500px;
-    --gen-sticky-top-gap: 2rem;
-    --gen-sticky-overlap: 3.3rem;
-    --gen-sticky-height: 3.5rem;
+  --gen-sticky-width: 30%;
+  --gen-sticky-max-width: 500px;
+  --gen-sticky-top-gap: 2rem;
+  --gen-sticky-overlap: 3.3rem;
+  --gen-sticky-height: 3.5rem;
 
-    margin-bottom: 3rem;
+  margin-bottom: 3rem;
 }
 
 .prompts-paper {
-    position: relative;
-    /* Enough room for the top gap plus the portion of the button that sits
+  position: relative;
+  /* Enough room for the top gap plus the portion of the button that sits
        inside the paper (height - overlap). */
-    padding-bottom: calc(var(--gen-sticky-top-gap) + var(--gen-sticky-height) - var(--gen-sticky-overlap)) !important;
+  padding-bottom: calc(
+    var(--gen-sticky-top-gap) + var(--gen-sticky-height) -
+      var(--gen-sticky-overlap)
+  ) !important;
 }
 
 .prompts-paper {
-    position: relative;
-    /* Enough room for the top gap plus the portion of the button that sits
+  position: relative;
+  /* Enough room for the top gap plus the portion of the button that sits
        inside the paper (height - overlap). */
-    padding-bottom: calc(var(--gen-sticky-top-gap) + var(--gen-sticky-height) - var(--gen-sticky-overlap)) !important;
+  padding-bottom: calc(
+    var(--gen-sticky-top-gap) + var(--gen-sticky-height) -
+      var(--gen-sticky-overlap)
+  ) !important;
 }
 
 /* MudPaper renders outside our component's scope, so the bare .prompts-paper
@@ -62,47 +68,51 @@
    element does not have. Mirror the rule via ::deep so the style actually
    lands on the paper div. */
 ::deep .prompts-paper {
-    position: relative;
-    padding-bottom: calc(var(--gen-sticky-top-gap) + var(--gen-sticky-height) - var(--gen-sticky-overlap)) !important;
+  position: relative;
+  padding-bottom: calc(
+    var(--gen-sticky-top-gap) + var(--gen-sticky-height) -
+      var(--gen-sticky-overlap)
+  ) !important;
 }
 
 .gen-btn-sticky {
-    position: relative;
-    width: var(--gen-sticky-width);
-    max-width: var(--gen-sticky-max-width);
-    margin: var(--gen-sticky-top-gap) auto calc(-1 * var(--gen-sticky-overlap)) auto;
-    z-index: 2;
-    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+  position: relative;
+  width: var(--gen-sticky-width);
+  max-width: var(--gen-sticky-max-width);
+  margin: var(--gen-sticky-top-gap) auto calc(-1 * var(--gen-sticky-overlap))
+    auto;
+  z-index: 2;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
 }
 
 .gen-btn-sticky ::deep .gen-btn--generate,
 .gen-btn-sticky ::deep .gen-btn-group {
-    min-height: var(--gen-sticky-height);
-    height: var(--gen-sticky-height);
+  min-height: var(--gen-sticky-height);
+  height: var(--gen-sticky-height);
 }
 
 .gen-btn-sticky ::deep .gen-btn {
-    min-height: var(--gen-sticky-height);
+  min-height: var(--gen-sticky-height);
 }
 
 @media (max-height: 700px) {
-    ::deep .prompts-paper {
-        padding-bottom: 1.5rem !important;
-    }
+  ::deep .prompts-paper {
+    padding-bottom: 1.5rem !important;
+  }
 
-    .gen-btn-sticky {
-        margin-bottom: 0;
-    }
+  .gen-btn-sticky {
+    margin-bottom: 0;
+  }
 }
 
 /* Styles row: select expands, chip toggles sit inline and don't stretch. */
 .styles-row ::deep .styles-select {
-    flex: 1 1 auto;
+  flex: 1 1 auto;
 }
 
 .styles-row ::deep .mud-chip {
-    flex: 0 0 auto;
-    cursor: pointer;
+  flex: 0 0 auto;
+  cursor: pointer;
 }
 
 /* Applied styles chips - single horizontal row that scrolls when there are
@@ -112,147 +122,159 @@
    Uses ::deep because the class is on a MudChipSet (child component) whose
    root element does not carry our scope attribute. */
 ::deep .applied-styles-chips {
-    position: relative;
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 0.25rem;
-    margin: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-    padding-right: 1.5rem;
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent 100%);
-            mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent 100%);
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-right: 1.5rem;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - 1.5rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - 1.5rem),
+    transparent 100%
+  );
 }
 
 ::deep .applied-styles-chips::-webkit-scrollbar {
-    height: 4px;
+  height: 4px;
 }
 
 ::deep .applied-styles-chips::-webkit-scrollbar-thumb {
-    background: var(--mud-palette-action-default-hover);
-    border-radius: 2px;
+  background: var(--mud-palette-action-default-hover);
+  border-radius: 2px;
 }
 
 ::deep .applied-styles-chips .mud-chip {
-    flex: 0 0 auto;
+  flex: 0 0 auto;
 }
 
 /* Prompt tabs: flush with the paper's top edge. Remove rounding and
    background so the tab header reads as a continuation of the paper.
    The underline slider acts as the active indicator. */
 ::deep .prompt-tabs .mud-tabs-tabbar {
-    background-color: transparent;
-    border-radius: 0;
-    min-height: 2.25rem;
+  background-color: transparent;
+  border-radius: 0;
+  min-height: 2.25rem;
 }
 
 ::deep .prompt-tabs .mud-tabs-tabbar-inner {
-    min-height: 2.25rem;
+  min-height: 2.25rem;
 }
 
 ::deep .prompt-tabs .mud-tab {
-    min-height: 2.25rem;
-    text-transform: none;
-    font-size: 0.85rem;
-    letter-spacing: 0;
+  min-height: 2.25rem;
+  text-transform: none;
+  font-size: 0.85rem;
+  letter-spacing: 0;
 }
 
 /* Panel body has a small gap to the textarea below. */
 ::deep .prompt-tabs .mud-tabs-panels {
-    padding-top: 0.5rem;
+  padding-top: 0.5rem;
 }
 
 /* Per-tab accent coloring: the active tab label, the slider underline, and
    the underline below the textarea in the active panel all take the tab's
    semantic color (green for positive, red for negative). */
 ::deep .prompt-tabs-positive .mud-tab.mud-tab-active {
-    color: var(--mud-palette-success);
+  color: var(--mud-palette-success);
 }
 
 ::deep .prompt-tabs-positive .mud-tab-slider {
-    background-color: var(--mud-palette-success) !important;
+  background-color: var(--mud-palette-success) !important;
 }
 
 ::deep .prompt-tabs-positive .mud-input.mud-input-underline::before,
 ::deep .prompt-tabs-positive .mud-input.mud-input-underline::after {
-    border-bottom-color: var(--mud-palette-success) !important;
+  border-bottom-color: var(--mud-palette-success) !important;
 }
 
 ::deep .prompt-tabs-negative .mud-tab.mud-tab-active {
-    color: var(--mud-palette-error);
+  color: var(--mud-palette-error);
 }
 
 ::deep .prompt-tabs-negative .mud-tab-slider {
-    background-color: var(--mud-palette-error) !important;
+  background-color: var(--mud-palette-error) !important;
 }
 
 ::deep .prompt-tabs-negative .mud-input.mud-input-underline::before,
 ::deep .prompt-tabs-negative .mud-input.mud-input-underline::after {
-    border-bottom-color: var(--mud-palette-error) !important;
+  border-bottom-color: var(--mud-palette-error) !important;
 }
 
 /* Styles tab accent (info/blue). Only the active tab label and slider are
    colored; there is no textarea underline in the styles panel. */
 ::deep .prompt-tabs-styles .mud-tab.mud-tab-active {
-    color: var(--mud-palette-info);
+  color: var(--mud-palette-info);
 }
 
 ::deep .prompt-tabs-styles .mud-tab-slider {
-    background-color: var(--mud-palette-info) !important;
+  background-color: var(--mud-palette-info) !important;
 }
 
 /* --- Styles tab panel -------------------------------------------- */
 .styles-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    max-height: 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 18rem;
 }
 
 ::deep .styles-panel .styles-search {
-    flex: 0 0 auto;
+  flex: 0 0 auto;
 }
 
 .styles-list {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    border: 1px solid var(--mud-palette-divider);
-    border-radius: 4px;
-    padding: 0.25rem;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 4px;
+  padding: 0.25rem;
 }
 
 .styles-list::-webkit-scrollbar {
-    width: 6px;
+  width: 6px;
 }
 
 .styles-list::-webkit-scrollbar-thumb {
-    background: var(--mud-palette-action-default-hover);
-    border-radius: 3px;
+  background: var(--mud-palette-action-default-hover);
+  border-radius: 3px;
 }
 
 .style-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.12s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease;
 }
 
 .style-row:hover {
-    background-color: var(--mud-palette-action-default-hover);
+  background-color: var(--mud-palette-action-default-hover);
 }
 
 .style-row.selected {
-    background-color: color-mix(in srgb, var(--mud-palette-info) 15%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--mud-palette-info) 15%,
+    transparent
+  );
 }
 
 .style-name {
-    font-size: 0.9rem;
+  font-size: 0.9rem;
 }
 
 /* --- Prompt panel row: textarea (flex) + side column --------------
@@ -261,60 +283,121 @@
    them visibility without adding a separate row that would break the
    vertical balance of the panel. */
 .prompt-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
 }
 
 .prompt-field {
-    flex: 1 1 auto;
-    min-width: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .prompt-side {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.4rem;
-    width: 11rem;
-    padding-top: 0.25rem;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 11rem;
+  padding-top: 0.25rem;
+}
+
+.undo-redo-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem;
+  align-items: center;
 }
 
 ::deep .prompt-side .prompt-side-btn {
-    align-self: flex-end;
+  align-self: flex-end;
 }
 
 ::deep .prompt-side .prompt-side-util-btn {
-    border-radius: 0.7rem;
-    text-transform: none;
-    font-size: 0.75rem;
-    min-height: 0;
-    height: 2rem;
-    padding: 0 10px; 
-    right: 60px;
-    width: 7rem;
+  border-radius: 0.7rem;
+  text-transform: none;
+  font-size: 0.75rem;
+  min-height: 0;
+  height: 2rem;
+  padding: 0 10px;
+  right: 60px;
+  width: 7rem;
 }
 
 ::deep .prompt-side .prompt-side-chip {
-	justify-content: flex-start;
-    width: 7rem;
-    height: 1.8rem;
+  justify-content: flex-start;
+  width: 7rem;
+  height: 1.8rem;
 }
 
 /* --- Styles tab search row ---------------------------------------- */
 .styles-search-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 ::deep .styles-search-row .styles-search {
-    flex: 1 1 auto;
+  flex: 1 1 auto;
 }
 
 /* Prompt textarea font size */
 ::deep .prompt textarea,
 ::deep .negative-prompt textarea {
-    font-size: 1.2rem;
+  font-size: 1.2rem;
+}
+
+/* --- LLM Instruction Row ------------------------------------------ */
+.llm-instruction-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--mud-palette-divider);
+}
+
+.llm-instruction-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+::deep .llm-instruction-field .llm-instruction-input {
+  font-size: 0.95rem;
+}
+
+::deep .llm-instruction-field .llm-instruction-input .mud-input-adornment {
+  cursor: pointer;
+}
+
+::deep
+  .llm-instruction-field
+  .llm-instruction-input
+  .mud-input-adornment:hover {
+  opacity: 0.8;
+}
+
+.llm-instruction-verbosity {
+  flex: 0 0 180px;
+  display: flex;
+  align-items: center;
+}
+
+::deep .llm-instruction-verbosity .verbosity-slider {
+  width: 100%;
+}
+
+::deep .llm-instruction-verbosity .mud-slider-track {
+  height: 4px;
+}
+
+::deep .llm-instruction-verbosity .mud-slider-thumb {
+  width: 14px;
+  height: 14px;
+}
+
+/* When processing, dim the instruction field slightly */
+::deep .llm-instruction-field .llm-instruction-input:disabled {
+  opacity: 0.6;
 }

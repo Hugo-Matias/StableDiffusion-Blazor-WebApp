@@ -166,6 +166,9 @@ builder.Services.AddTransient<MagickService>();
 // Workshop service – prompt workshop session/node tree orchestration
 builder.Services.AddSingleton<IWorkshopService, WorkshopService>();
 
+// Prompt history service - session-scoped undo/redo for Generate page prompts
+builder.Services.AddScoped<IPromptHistoryService, PromptHistoryService>();
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
