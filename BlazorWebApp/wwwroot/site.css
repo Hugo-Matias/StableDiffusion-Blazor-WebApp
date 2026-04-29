@@ -51,6 +51,41 @@
   --app-dialog-max-width: 1400px;
   --app-dialog-padding: 16px;
   --app-dialog-radius: 6px;
+
+  /* Card grid primitive defaults.
+     Consumed by the .app-grid utility below. Per-page overrides may set
+     --app-card-min on the .app-grid element to tune card width without
+     re-declaring the grid rule. See 04-UI-DESIGN-LANGUAGE.md (Card grid). */
+  --app-card-min: 140px;
+  --app-grid-gap: var(--app-gutter-inner);
+}
+
+/* ============================================================
+   App primitives (extracted from /dev/design-testbed prototypes)
+   ============================================================ */
+
+/* Card grid: replaces ad-hoc `repeat(auto-fill, minmax(NNNpx, 1fr))`
+   declarations scattered across component-scoped CSS. Override
+   --app-card-min / --app-grid-gap on the element when a surface needs
+   a different card density. */
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--app-card-min), 1fr));
+  gap: var(--app-grid-gap);
+}
+
+/* Unified empty-state primitive: replaces inline opacity / margin-top
+   one-offs in pages like Index.razor and Danbooru.razor. */
+.app-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  gap: 8px;
+  color: var(--mud-palette-text-secondary);
+  opacity: 0.7;
+  text-align: center;
 }
 
 /*Bootstrap Overrides*/

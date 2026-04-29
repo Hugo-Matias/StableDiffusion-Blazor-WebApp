@@ -4,6 +4,8 @@ Living document. The Generate page is the current baseline for all UI integratio
 When in doubt about spacing, input variants, selector patterns or cascading behaviors,
 mirror what `PromptsForm`, `LoraForm` and the Generate-page toolbars already do.
 
+> **See also:** [UI Design Test Bed](/dev/design-testbed) - Visual reference page demonstrating all patterns below (development environment only). See [Usage Guide](../Plans/ui-design-testbed/USAGE_GUIDE.md) for iteration workflow.
+
 > Status: seed rules. Will be revisited after a broader design review.
 
 ---
@@ -132,6 +134,8 @@ global spacing tokens declared in `BlazorWebApp/wwwroot/site.css` (`:root`).
 | `--app-dialog-max-width`                  | Max width clamp for app-wide modal dialogs (e.g., `AssetViewer`, CivitAI model dialog)     |
 | `--app-dialog-padding`                    | Internal padding of app-wide modal dialogs; children render flush inside this              |
 | `--app-dialog-radius`                     | Corner radius for app-wide modal dialogs                                                   |
+| `--app-card-min`                          | Default minimum card width for the `.app-grid` primitive; override per-element to retune   |
+| `--app-grid-gap`                          | Default gap for the `.app-grid` primitive (defaults to `--app-gutter-inner`)               |
 
 **Never hard-code spacing on a tabbed page** (`px-5`, `pa-4`, etc. on the shell or top-level
 panel paper). If a gap needs tuning, tune the token.
@@ -245,3 +249,27 @@ When the content column renders a long card grid or table and the pagination / h
 Pattern used by `ResourcePanel` (`--resources-scroll-offset`) and the CivitAI panels (`--civitai-scroll-offset`). The offset default (280px) accounts for NavBar + tabs + gutters + surface padding + pagination.
 
 If a child card component has a fixed width set in its own `.razor.css`, expose that width through a CSS variable (e.g. `--civitai-card-width`) so the parent can drive size tokens without editing the card's CSS. See `CivitaiImageCard.razor.css`.
+
+### Card grid primitive (`.app-grid`)
+
+Use the global `.app-grid` utility (declared in [`site.css`](../../BlazorWebApp/wwwroot/site.css)) instead of redeclaring `grid-template-columns: repeat(auto-fill, minmax(...))` in component-scoped CSS. Tune density per surface by overriding `--app-card-min` (and optionally `--app-grid-gap`) on the element:
+
+```html
+<div class="app-grid" style="--app-card-min: 180px;">
+  @* cards *@
+</div>
+```
+
+Defaults: `--app-card-min: 140px`, `--app-grid-gap: var(--app-gutter-inner)`. Live demo on the [Design Test Bed](/dev/design-testbed) Data Display tab.
+
+### Empty-state primitive (`.app-empty-state`)
+
+Use `.app-empty-state` (in [`site.css`](../../BlazorWebApp/wwwroot/site.css)) for "no results / nothing here yet" messaging. It centers content, applies the standard secondary-text color and opacity, and replaces inline `Style="opacity: 0.4; margin-top: 10rem;"` one-offs.
+
+```html
+<div class="app-empty-state">
+    <MudIcon Icon="@Icons.Material.Outlined.Inbox" Size="Size.Large" />
+    <MudText Typo="Typo.body2">No items</MudText>
+    <MudText Typo="Typo.caption">Hint text...</MudText>
+</div>
+```
