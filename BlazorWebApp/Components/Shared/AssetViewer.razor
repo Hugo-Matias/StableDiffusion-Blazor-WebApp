@@ -25,8 +25,7 @@
 
             <!-- Main Display -->
             <div class="asset-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "") @(_isCompareMode ? "compare-mode" : "") @(_isCompareLocked ? "compare-locked" : "")"
-                 @ref="_stageRef"
-                 @onclick="HandleStageClick" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove"
+                 @ref="_stageRef" @onclick="HandleStageClick" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove"
                  @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
                 @if (CurrentAsset != null && !_isLoadingPage)
                 {
@@ -41,7 +40,7 @@
                     {
                         <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
                              src="@GetAssetUrl(CurrentAsset)" alt="Asset @(_currentIndex + 1)" style="@GetImageTransformStyle()"
-                             draggable="false" @onclick:stopPropagation="true" />
+                             draggable="false" @onclick:stopPropagation="@(!_isCompareMode)" />
                     }
                 }
                 @if (_isLoadingPage)
@@ -54,196 +53,193 @@
 
                 @if (_isCompareMode && !IsCurrentVideo && CurrentSource != null && !_isLoadingPage)
                 {
-                    var splitStyle = $"--ab-split: {(_splitPosition * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}%;";
-                    <div class="compare-frame" style="@splitStyle">
-                        <img class="compare-overlay" src="@GetSourceUrl(CurrentSource)" alt="Source"
-                             draggable="false" @onclick:stopPropagation="true" />
-                        <div class="compare-divider"
-                             @onmousedown="HandleDividerMouseDown" @onmousedown:stopPropagation="true"
-                             @onclick:stopPropagation="true">
+                    <div class="compare-frame" @ref="_compareFrameRef">
+                        <img class="compare-overlay" src="@GetSourceUrl(CurrentSource)" alt="Source" draggable="false"
+                             @onclick:stopPropagation="true" />
+                        <div class="compare-divider" @onclick:stopPropagation="true">
                             <div class="compare-divider-line"></div>
                             <div class="compare-handle">
                                 <MudIcon Icon="fa-solid fa-arrows-left-right" Size="Size.Small" />
                             </div>
                         </div>
                         <span class="compare-label compare-label-base">Generated</span>
-                        <span class="compare-label compare-label-source">@(string.IsNullOrWhiteSpace(CurrentSource.Label) ? "Source" : CurrentSource.Label)</span>
-                    </div>
-                    @if (_isCompareLocked)
-                    {
-                        <div class="compare-lock-indicator">
-                            <MudIcon Icon="fa-solid fa-lock" Size="Size.Small" />
-                            <span>Locked &middot; click to unlock</span>
+                        <span class="compare-label compare-label-source">@(string.IsNullOrWhiteSpace(CurrentSource.Label) ?
+                                        "Source" : CurrentSource.Label)</span>
                         </div>
-                    }
-                    @if (_compareSourceKeys.Count > 1)
-                    {
-                        <div class="compare-source-picker" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true">
-                            @foreach (var key in _compareSourceKeys)
-                            {
-                                var src = State.GenerationParameters.Sources[key];
-                                <button class="compare-source-chip @(_currentSourceKey == key ? "active" : "")"
-                                        @onclick="() => SelectCompareSource(key)" type="button"
-                                        title="@(src.Label ?? key)">
-                                    <span>@(string.IsNullOrWhiteSpace(src.Label) ? key : src.Label)</span>
-                                </button>
-                            }
-                        </div>
-                    }
-                }
-            </div>
-
-            <!-- Bottom Control Bar -->
-            @if (!_isLoadingPage)
-            {
-                <div class="control-bar" @onclick:stopPropagation="true">
-                    <!-- Left: Favorite & Rating -->
-                    @if (CurrentAsset?.Id > 0 && (ShowFavorite || ShowScore))
-                    {
-                        <div class="control-section">
-                            @if (ShowFavorite)
-                            {
-                                <button class="viewer-btn @(CurrentAsset.Favorite ? "active-fav" : "")" @onclick="ToggleFavorite"
-                                        title="Favorite (F)">
-                                    <MudIcon
-                                    Icon="@(CurrentAsset.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
-                                </button>
-                                @if (TotalCount > 1)
+                        @if (_isCompareLocked)
+                        {
+                            <div class="compare-lock-indicator">
+                                <MudIcon Icon="fa-solid fa-lock" Size="Size.Small" />
+                                <span>Locked &middot; click to unlock</span>
+                            </div>
+                        }
+                        @if (_compareSourceKeys.Count > 1)
+                        {
+                            <div class="compare-source-picker" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true">
+                                @foreach (var key in _compareSourceKeys)
                                 {
-                                    <button class="viewer-btn fav-all-btn" @onclick="FavoriteAllOnPage" title="Favorite All on Page">
-                                        <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                                    var src = State.GenerationParameters.Sources[key];
+                                    <button class="compare-source-chip @(_currentSourceKey == key ? "active" : "")"
+                                            @onclick="() => SelectCompareSource(key)" type="button" title="@(src.Label ?? key)">
+                                        <span>@(string.IsNullOrWhiteSpace(src.Label) ? key : src.Label)</span>
                                     </button>
                                 }
-                            }
-                            @if (ShowScore)
-                            {
-                                <div class="rating-container">
-                                    <MudRating SelectedValue="CurrentAsset.Score" SelectedValueChanged="SetScore" MaxValue="3"
-                                               Size="Size.Medium" FullIcon="fa-solid fa-star" EmptyIcon="fa-regular fa-star" />
-                                </div>
-                            }
-                        </div>
+                            </div>
+                        }
                     }
+                </div>
 
-                    <!-- Center: Navigation -->
-                    <div class="control-section nav-section">
-                        <button class="viewer-btn nav-btn" @onclick="Previous" title="Previous (←)">
-                            <MudIcon Icon="fa-solid fa-chevron-left" />
-                        </button>
-                        
-                        <div class="counter">
-                            <div class="counter-main">
-                                <span class="counter-current">@(_currentIndex + 1)</span>
-                                <span class="counter-sep">/</span>
-                                <span class="counter-total">@Assets.Count</span>
-                                <span class="counter-dot">•</span>
-                                <span class="counter-total-label">@TotalCount</span>
+                <!-- Bottom Control Bar -->
+                @if (!_isLoadingPage)
+                {
+                    <div class="control-bar" @onclick:stopPropagation="true">
+                        <!-- Left: Favorite & Rating -->
+                        @if (CurrentAsset?.Id > 0 && (ShowFavorite || ShowScore))
+                        {
+                            <div class="control-section">
+                                @if (ShowFavorite)
+                                {
+                                    <button class="viewer-btn @(CurrentAsset.Favorite ? "active-fav" : "")" @onclick="ToggleFavorite"
+                                            title="Favorite (F)">
+                                        <MudIcon
+                                        Icon="@(CurrentAsset.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
+                                    </button>
+                                    @if (TotalCount > 1)
+                                    {
+                                        <button class="viewer-btn fav-all-btn" @onclick="FavoriteAllOnPage" title="Favorite All on Page">
+                                            <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                                        </button>
+                                    }
+                                }
+                                @if (ShowScore)
+                                {
+                                    <div class="rating-container">
+                                        <MudRating SelectedValue="CurrentAsset.Score" SelectedValueChanged="SetScore" MaxValue="3"
+                                                   Size="Size.Medium" FullIcon="fa-solid fa-star" EmptyIcon="fa-regular fa-star" />
+                                    </div>
+                                }
                             </div>
-                            @if (PageCount > 1)
+                        }
+
+                        <!-- Center: Navigation -->
+                        <div class="control-section nav-section">
+                            <button class="viewer-btn nav-btn" @onclick="Previous" title="Previous (←)">
+                                <MudIcon Icon="fa-solid fa-chevron-left" />
+                            </button>
+                        
+                            <div class="counter">
+                                <div class="counter-main">
+                                    <span class="counter-current">@(_currentIndex + 1)</span>
+                                    <span class="counter-sep">/</span>
+                                    <span class="counter-total">@Assets.Count</span>
+                                    <span class="counter-dot">•</span>
+                                    <span class="counter-total-label">@TotalCount</span>
+                                </div>
+                                @if (PageCount > 1)
+                                {
+                                    <div class="counter-page-info">
+                                        <span class="counter-page-label">Page @CurrentPage of @PageCount</span>
+                                    </div>
+                                }
+                            </div>
+                        
+                            <button class="viewer-btn nav-btn" @onclick="Next" title="Next (→)">
+                                <MudIcon Icon="fa-solid fa-chevron-right" />
+                            </button>
+                        </div>
+
+                        <!-- Right: Actions -->
+                        <div class="control-section actions-section">
+                            @if (Assets.Count > 1)
                             {
-                                <div class="counter-page-info">
-                                    <span class="counter-page-label">Page @CurrentPage of @PageCount</span>
+                                <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
+                                    <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
+                                        <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
+                                    </button>
+                                </MudTooltip>
+                                <div class="slideshow-controls">
+                                    <input type="number" class="slideshow-input" @bind="_autoPlayInterval" @bind:event="onchange"
+                                           min="1" max="60" step="0.5" title="Slideshow interval (seconds)" />
+                                    <span class="slideshow-unit">s</span>
                                 </div>
                             }
-                        </div>
                         
-                        <button class="viewer-btn nav-btn" @onclick="Next" title="Next (→)">
-                            <MudIcon Icon="fa-solid fa-chevron-right" />
-                        </button>
-                    </div>
-
-                    <!-- Right: Actions -->
-                    <div class="control-section actions-section">
-                        @if (Assets.Count > 1)
-                        {
-                            <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
-                                <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
-                                    <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
-                                </button>
-                            </MudTooltip>
-                            <div class="slideshow-controls">
-                                <input type="number" class="slideshow-input" @bind="_autoPlayInterval" @bind:event="onchange"
-                                       min="1" max="60" step="0.5" title="Slideshow interval (seconds)" />
-                                <span class="slideshow-unit">s</span>
-                            </div>
-                        }
-                        
-                        @if (!IsCurrentVideo)
-                        {
-                            <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
-                                <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode"
-                                        title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
-                                    <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
-                                </button>
-                            </MudTooltip>
-                            @if (_isPanMode)
+                            @if (!IsCurrentVideo)
                             {
-                                <MudTooltip Text="Reset View (R)" Delay="300">
-                                    <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
-                                        <MudIcon Icon="fa-solid fa-crosshairs" />
+                                <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
+                                    <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode"
+                                            title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
+                                        <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
                                     </button>
                                 </MudTooltip>
+                                @if (_isPanMode)
+                                {
+                                    <MudTooltip Text="Reset View (R)" Delay="300">
+                                        <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
+                                            <MudIcon Icon="fa-solid fa-crosshairs" />
+                                        </button>
+                                    </MudTooltip>
+                                }
+                                @if (HasCompareSources)
+                                {
+                                    <MudTooltip Text="@(_isCompareMode ? "Exit Compare (C)" : "A/B Compare with source (C)")" Delay="300">
+                                        <button class="viewer-btn @(_isCompareMode ? "active" : "")" @onclick="ToggleCompareMode"
+                                                title="@(_isCompareMode ? "Exit Compare" : "A/B Compare")">
+                                            <MudIcon Icon="fa-solid fa-arrows-left-right" />
+                                        </button>
+                                    </MudTooltip>
+                                }
                             }
-                            @if (HasCompareSources)
-                            {
-                                <MudTooltip Text="@(_isCompareMode ? "Exit Compare (C)" : "A/B Compare with source (C)")" Delay="300">
-                                    <button class="viewer-btn @(_isCompareMode ? "active" : "")" @onclick="ToggleCompareMode"
-                                            title="@(_isCompareMode ? "Exit Compare" : "A/B Compare")">
-                                        <MudIcon Icon="fa-solid fa-arrows-left-right" />
-                                    </button>
-                                </MudTooltip>
-                            }
-                        }
 
-                        <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
-                            <MudIcon Icon="fa-solid fa-circle-info" />
-                        </button>
-                        
-                        @if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path) && ShowOpenInExplorer)
-                        {
-                            <button class="viewer-btn" @onclick="OpenInExplorer" title="Open in Explorer">
-                                <MudIcon Icon="fa-solid fa-folder-open" />
+                            <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
+                                <MudIcon Icon="fa-solid fa-circle-info" />
                             </button>
-                        }
+                        
+                            @if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path) && ShowOpenInExplorer)
+                            {
+                                <button class="viewer-btn" @onclick="OpenInExplorer" title="Open in Explorer">
+                                    <MudIcon Icon="fa-solid fa-folder-open" />
+                                </button>
+                            }
 
-                        @if (!string.IsNullOrWhiteSpace(ExternalSourceUrl))
-                        {
-                            <MudTooltip Text="Open source in new tab" Delay="300">
-                                <a class="viewer-btn" href="@ExternalSourceUrl" target="_blank" rel="noopener noreferrer"
-                                       title="Open source">
-                                    <MudIcon Icon="fa-solid fa-up-right-from-square" />
-                                </a>
-                            </MudTooltip>
-                        }
+                            @if (!string.IsNullOrWhiteSpace(ExternalSourceUrl))
+                            {
+                                <MudTooltip Text="Open source in new tab" Delay="300">
+                                    <a class="viewer-btn" href="@ExternalSourceUrl" target="_blank" rel="noopener noreferrer"
+                                           title="Open source">
+                                        <MudIcon Icon="fa-solid fa-up-right-from-square" />
+                                    </a>
+                                </MudTooltip>
+                            }
+                        </div>
                     </div>
-                </div>
-            }
+                }
 
-            <!-- Zoom indicator -->
-            @if (_isPanMode && _showZoomIndicator)
-            {
-                <div class="zoom-indicator">
-                    @((_zoom * 100).ToString("0"))%
-                </div>
-            }
+                <!-- Zoom indicator -->
+                @if (_isPanMode && _showZoomIndicator)
+                {
+                    <div class="zoom-indicator">
+                        @((_zoom * 100).ToString("0"))%
+                    </div>
+                }
 
-            <!-- Asset type indicator -->
-            @if (!_isLoadingPage)
-            {
-                <div class="asset-type-indicator">
-                    <MudIcon Icon="@(IsCurrentVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
-                </div>
-            }
+                <!-- Asset type indicator -->
+                @if (!_isLoadingPage)
+                {
+                    <div class="asset-type-indicator">
+                        <MudIcon Icon="@(IsCurrentVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
+                    </div>
+                }
 
-            <!-- Info Panel -->
-            <div class="info-panel @(_showInfo ? "open" : "")">
-                <AssetInfoPanel Asset="CurrentAsset" IsVideo="IsCurrentVideo" ShowKeyboardShortcuts="true"
-                                SelectedParams="_selectedParams" SelectedParamsChanged="HandleSelectedParamsChanged"
-                                OnClose="ToggleInfo" />
+                <!-- Info Panel -->
+                <div class="info-panel @(_showInfo ? "open" : "")">
+                    <AssetInfoPanel Asset="CurrentAsset" IsVideo="IsCurrentVideo" ShowKeyboardShortcuts="true"
+                                    SelectedParams="_selectedParams" SelectedParamsChanged="HandleSelectedParamsChanged"
+                                    OnClose="ToggleInfo" />
+                </div>
             </div>
         </div>
-    </div>
-}
+    }
 
 @code {
     [Parameter] public List<ImageEntity> Assets { get; set; } = new();
@@ -299,12 +295,11 @@
 
     // A/B Compare state
     private ElementReference _stageRef;
+    private ElementReference _compareFrameRef;
     private bool _isCompareMode;
     private bool _isCompareLocked;
-    private bool _isCompareDragHandle;
-    private double _splitPosition = 0.5; // 0..1, 0=full source, 1=full base
-    private double _stageRectLeft;
-    private double _stageRectWidth = 1;
+    private bool _compareAttached;
+    private double _splitPosition = 0.5; // 0..1, source on left, base on right
     private string? _currentSourceKey;
     private List<string> _compareSourceKeys = new();
     private const double CompareNudgeStep = 0.02;
@@ -395,11 +390,15 @@
             await SetBodyScrollLock(false);
         }
 
-        // Keep stage rect fresh whenever compare mode is on (covers entry, navigation,
-        // viewport resize triggered by other UI changes that re-render the viewer).
-        if (IsVisible && _isCompareMode && !_isCompareDragHandle)
+        // Attach the JS compare controller once the compare-frame element is in the DOM.
+        if (IsVisible && _isCompareMode && !_compareAttached)
         {
-            await RefreshStageRectAsync();
+            try
+            {
+                await JS.InvokeVoidAsync("assetViewerCompare.attach", _stageRef, _compareFrameRef, _splitPosition);
+                _compareAttached = true;
+            }
+            catch { }
         }
 
         _wasVisible = IsVisible;
@@ -434,24 +433,32 @@
         return $"transform: translate({_panX}px, {_panY}px) scale({_zoom});";
     }
 
-    private void HandleStageClick(MouseEventArgs e)
+    private async Task HandleStageClick(MouseEventArgs e)
     {
         if (_isCompareMode)
         {
             // Click toggles lock (cursor follow vs frozen). Suppressed if we just finished
-            // a divider drag (HandleMouseUp clears the drag flag, but the click still fires).
+            // a divider drag (HandleMouseUp sets the flag based on JS drag state).
             if (_suppressNextStageClick)
             {
                 _suppressNextStageClick = false;
                 return;
             }
             _isCompareLocked = !_isCompareLocked;
+            if (_isCompareLocked)
+            {
+                // Snapshot the current split so keyboard nudges resume from where we locked.
+                try { _splitPosition = await JS.InvokeAsync<double>("assetViewerCompare.getSplit"); }
+                catch { }
+            }
+            try { await JS.InvokeVoidAsync("assetViewerCompare.setLocked", _isCompareLocked); }
+            catch { }
             return;
         }
 
         if (!_isPanMode)
         {
-            Close();
+            await Close();
         }
     }
 
@@ -459,7 +466,7 @@
     {
         StopAutoPlay();
         _isPanMode = false;
-        ExitCompareMode();
+        await ExitCompareModeAsync();
         ResetZoom();
         _selectedParams.Clear();
         IsVisible = false;
@@ -549,17 +556,16 @@
         ResetZoom();
         _selectedParams.Clear();
         // If compare is active and the new asset is video, exit compare. Source list is
-        // workflow-driven so it doesn't change with navigation, but we keep behaviour clean.
-        if (_isCompareMode && IsCurrentVideo) ExitCompareMode();
-        if (_isCompareMode) await RefreshStageRectAsync();
+        // workflow-driven so it doesn't change with navigation.
+        if (_isCompareMode && IsCurrentVideo) await ExitCompareModeAsync();
     }
 
     private void ToggleInfo() => _showInfo = !_showInfo;
 
-    private void TogglePanMode()
+    private async Task TogglePanMode()
     {
         if (IsCurrentVideo) return;
-        if (_isCompareMode) ExitCompareMode();
+        if (_isCompareMode) await ExitCompareModeAsync();
         _isPanMode = !_isPanMode;
         if (!_isPanMode) ResetZoom();
         else _zoom = 1.0;
@@ -577,7 +583,7 @@
         if (IsCurrentVideo) return;
         if (_isCompareMode)
         {
-            ExitCompareMode();
+            await ExitCompareModeAsync();
             return;
         }
 
@@ -596,19 +602,23 @@
             : _compareSourceKeys[0];
         _splitPosition = 0.5;
         _isCompareLocked = false;
-        _isCompareDragHandle = false;
         _suppressNextStageClick = false;
         _isCompareMode = true;
-
-        await RefreshStageRectAsync();
+        _compareAttached = false;
+        // Actual JS attach happens in OnAfterRenderAsync once the compare-frame ref is bound.
     }
 
-    private void ExitCompareMode()
+    private async Task ExitCompareModeAsync()
     {
         _isCompareMode = false;
         _isCompareLocked = false;
-        _isCompareDragHandle = false;
         _suppressNextStageClick = false;
+        if (_compareAttached)
+        {
+            _compareAttached = false;
+            try { await JS.InvokeVoidAsync("assetViewerCompare.detach"); }
+            catch { }
+        }
     }
 
     private void SelectCompareSource(string key)
@@ -616,23 +626,8 @@
         if (string.IsNullOrEmpty(key)) return;
         if (!State.GenerationParameters.Sources.ContainsKey(key)) return;
         _currentSourceKey = key;
+        // Split persists across source switches; no JS reset required.
     }
-
-    private async Task RefreshStageRectAsync()
-    {
-        try
-        {
-            var rect = await JS.InvokeAsync<StageRect>("assetViewerCompare.getRect", _stageRef);
-            if (rect != null && rect.Width > 0)
-            {
-                _stageRectLeft = rect.Left;
-                _stageRectWidth = rect.Width;
-            }
-        }
-        catch { }
-    }
-
-    private record StageRect(double Left, double Width);
 
     private void HandleWheel(WheelEventArgs e)
     {
@@ -675,14 +670,7 @@
             _dragStartPanX = _panX;
             _dragStartPanY = _panY;
         }
-    }
-
-    private void HandleDividerMouseDown(MouseEventArgs e)
-    {
-        if (!_isCompareMode || e.Button != 0) return;
-        _isCompareDragHandle = true;
-        // Update split immediately so the handle snaps to the cursor.
-        UpdateSplitFromClientX(e.ClientX);
+        // Compare-mode pointer math is owned by JS (see assetViewerCompare in Site.js).
     }
 
     private void HandleMouseMove(MouseEventArgs e)
@@ -691,36 +679,25 @@
         {
             _panX = _dragStartPanX + (e.ClientX - _dragStartX);
             _panY = _dragStartPanY + (e.ClientY - _dragStartY);
-            return;
         }
-
-        if (_isCompareMode && !IsCurrentVideo)
-        {
-            // Track cursor when unlocked, or while dragging the handle (works even when locked).
-            if (_isCompareDragHandle || !_isCompareLocked)
-            {
-                UpdateSplitFromClientX(e.ClientX);
-            }
-        }
+        // Compare-mode mouse tracking is handled in JS to avoid stale rect caches and
+        // round-trip latency. JS writes directly to the --ab-split CSS variable.
     }
 
-    private void HandleMouseUp(MouseEventArgs e)
+    private async Task HandleMouseUp(MouseEventArgs e)
     {
         _isDragging = false;
-        if (_isCompareDragHandle)
+        // If the user just released a divider drag, suppress the synthetic click that
+        // bubbles up to the stage so we don't accidentally toggle the lock.
+        if (_isCompareMode)
         {
-            _isCompareDragHandle = false;
-            // Browser will fire a click after this mouseup if mousedown was on the divider
-            // and mouseup is over the stage. Suppress that synthetic toggle-lock.
-            _suppressNextStageClick = true;
+            try
+            {
+                var wasDragging = await JS.InvokeAsync<bool>("assetViewerCompare.wasDragging");
+                if (wasDragging) _suppressNextStageClick = true;
+            }
+            catch { }
         }
-    }
-
-    private void UpdateSplitFromClientX(double clientX)
-    {
-        if (_stageRectWidth <= 0) return;
-        var x = (clientX - _stageRectLeft) / _stageRectWidth;
-        _splitPosition = Math.Clamp(x, 0.0, 1.0);
     }
 
     private void ToggleAutoPlay()
@@ -765,19 +742,23 @@
             case " ": ToggleAutoPlay(); break;
             case "i": case "I": ToggleInfo(); break;
             case "f": case "F": await ToggleFavorite(); break;
-            case "z": case "Z": TogglePanMode(); break;
+            case "z": case "Z": await TogglePanMode(); break;
             case "r": case "R": ResetZoom(); break;
             case "c": case "C": await ToggleCompareMode(); break;
             case "[":
                 if (_isCompareMode)
                 {
+                    try { _splitPosition = await JS.InvokeAsync<double>("assetViewerCompare.getSplit"); } catch { }
                     _splitPosition = Math.Clamp(_splitPosition - CompareNudgeStep, 0.0, 1.0);
+                    try { await JS.InvokeVoidAsync("assetViewerCompare.setSplit", _splitPosition); } catch { }
                 }
                 break;
             case "]":
                 if (_isCompareMode)
                 {
+                    try { _splitPosition = await JS.InvokeAsync<double>("assetViewerCompare.getSplit"); } catch { }
                     _splitPosition = Math.Clamp(_splitPosition + CompareNudgeStep, 0.0, 1.0);
+                    try { await JS.InvokeVoidAsync("assetViewerCompare.setSplit", _splitPosition); } catch { }
                 }
                 break;
             case "+":
@@ -848,5 +829,10 @@
         _zoomIndicatorTimer?.Stop();
         _zoomIndicatorTimer?.Dispose();
         _ = SetBodyScrollLock(false);
+        if (_compareAttached)
+        {
+            _compareAttached = false;
+            try { _ = JS.InvokeVoidAsync("assetViewerCompare.detach"); } catch { }
+        }
     }
 }

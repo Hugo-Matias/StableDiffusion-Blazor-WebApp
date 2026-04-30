@@ -10,90 +10,94 @@
 /* Wraps each layout-variant demo so the user can see the slot anatomy
    (a dashed boundary around the actual layout component). */
 .dt-variant-frame {
-    border: 1px dashed var(--mud-palette-lines-default);
-    border-radius: var(--app-surface-radius);
-    padding: 12px;
-    background: var(--mud-palette-background-grey);
+  border: 1px dashed var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: 12px;
+  background: var(--mud-palette-background-grey);
 }
 
 .dt-variant-header {
-    margin-bottom: 8px;
+  margin-bottom: 8px;
 }
 
 /* Constrained stage so each layout variant has a predictable preview height
    without consuming the full viewport. The layout variant fills this stage. */
 .dt-variant-stage {
-    min-height: 180px;
+  min-height: 180px;
 }
 
 /* Visual bar used to preview length-valued tokens in the Tokens table. */
 .dt-token-bar {
-    height: 10px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--mud-palette-primary), var(--mud-palette-secondary));
-    max-width: 100%;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--mud-palette-primary),
+    var(--mud-palette-secondary)
+  );
+  max-width: 100%;
 }
 
 .dt-muted {
-    color: var(--mud-palette-text-disabled);
-    font-style: italic;
+  color: var(--mud-palette-text-disabled);
+  font-style: italic;
 }
 
 /* Comparison grid: side-by-side "correct vs avoid vs forbidden" columns.
    Used to demonstrate variant matrices, density choices, etc. Auto-fits on
    narrow widths. */
 .dt-compare-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-    align-items: start;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  align-items: start;
 }
 
 /* Two-column variant when only correct + default need to be shown. */
 .dt-compare-grid.dt-compare-grid--two {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .dt-compare-col {
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: var(--app-surface-radius);
-    padding: 12px;
-    background: var(--mud-palette-background-grey);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: 12px;
+  background: var(--mud-palette-background-grey);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .dt-compare-col--good {
-    border-color: var(--mud-palette-success);
-    box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.15);
+  border-color: var(--mud-palette-success);
+  box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.15);
 }
 
 .dt-compare-col--bad {
-    border-color: var(--mud-palette-warning);
-    opacity: 0.85;
+  border-color: var(--mud-palette-warning);
+  opacity: 0.85;
 }
 
 .dt-compare-tag {
-    align-self: flex-start;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid currentColor;
+  align-self: flex-start;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
 }
 
 .dt-compare-tag--good {
-    color: var(--mud-palette-success);
+  color: var(--mud-palette-success);
 }
 
 .dt-compare-tag--bad {
-    color: var(--mud-palette-warning);
+  color: var(--mud-palette-warning);
 }
 
 .dt-compare-tag--neutral {
-    color: var(--mud-palette-text-secondary);
+  color: var(--mud-palette-text-secondary);
 }
 
 /* ============================================================
@@ -101,62 +105,65 @@
    Columns: live render | label | source link.
    ============================================================ */
 .dt-inv {
-    display: grid;
-    grid-template-columns: minmax(180px, 1fr) minmax(140px, 1.2fr) minmax(180px, 1.4fr);
-    gap: 8px 16px;
-    align-items: center;
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: var(--app-surface-radius);
-    padding: 10px 12px;
-    background: var(--mud-palette-background-grey);
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, 1.2fr) minmax(
+      180px,
+      1.4fr
+    );
+  gap: 8px 16px;
+  align-items: center;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: 10px 12px;
+  background: var(--mud-palette-background-grey);
 }
 
 .dt-inv-row {
-    display: contents;
+  display: contents;
 }
 
 .dt-inv-render {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 32px;
 }
 
 .dt-inv-label {
-    font-size: 0.85rem;
-    color: var(--mud-palette-text-primary);
+  font-size: 0.85rem;
+  color: var(--mud-palette-text-primary);
 }
 
 .dt-inv-src {
-    font-size: 0.75rem;
-    color: var(--mud-palette-text-secondary);
-    font-family: var(--mud-typography-default-family), monospace;
-    word-break: break-all;
+  font-size: 0.75rem;
+  color: var(--mud-palette-text-secondary);
+  font-family: var(--mud-typography-default-family), monospace;
+  word-break: break-all;
 }
 
 .dt-inv-src code {
-    background: transparent;
-    color: var(--mud-palette-secondary);
+  background: transparent;
+  color: var(--mud-palette-secondary);
 }
 
 /* Section header inside an inventory: a small underlined caption row. */
 .dt-section-head {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-top: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .dt-section-head .dt-section-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--mud-palette-text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--mud-palette-text-primary);
 }
 
 .dt-section-head .dt-section-sub {
-    font-size: 0.75rem;
-    color: var(--mud-palette-text-secondary);
+  font-size: 0.75rem;
+  color: var(--mud-palette-text-secondary);
 }
 
 /* ============================================================
@@ -164,19 +171,19 @@
    patterns that are unification targets.
    ============================================================ */
 .dt-dev-list {
-    margin: 0;
-    padding-left: 18px;
-    color: var(--mud-palette-text-primary);
+  margin: 0;
+  padding-left: 18px;
+  color: var(--mud-palette-text-primary);
 }
 
 .dt-dev-list li {
-    font-size: 0.85rem;
-    margin-bottom: 4px;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
 }
 
 .dt-dev-list li code {
-    font-size: 0.78rem;
-    color: var(--mud-palette-warning-darken);
+  font-size: 0.78rem;
+  color: var(--mud-palette-warning-darken);
 }
 
 /* ============================================================
@@ -184,32 +191,34 @@
    around the prototype renders.
    ============================================================ */
 .dt-lab {
-    border: 1px dashed var(--mud-palette-primary);
-    border-radius: var(--app-surface-radius);
-    padding: 14px;
-    background: linear-gradient(180deg,
-        rgba(94, 53, 177, 0.04) 0%,
-        var(--mud-palette-background-grey) 100%);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  border: 1px dashed var(--mud-palette-primary);
+  border-radius: var(--app-surface-radius);
+  padding: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(94, 53, 177, 0.04) 0%,
+    var(--mud-palette-background-grey) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .dt-lab-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    align-items: center;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--mud-palette-lines-default);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mud-palette-lines-default);
 }
 
 .dt-lab-stage {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    padding: 6px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
 }
 
 /* ============================================================
@@ -220,110 +229,113 @@
    applied via additional classes (dt-proto-btn--<tone>, --<size>).
    ============================================================ */
 .dt-proto-btn {
-    --proto-bg: transparent;
-    --proto-fg: var(--mud-palette-text-primary);
-    --proto-border: var(--mud-palette-lines-default);
-    --proto-bg-hover: var(--mud-palette-action-default-hover);
-    --proto-pad-y: 6px;
-    --proto-pad-x: 10px;
-    --proto-font: 0.85rem;
-    --proto-radius: 6px;
-    --proto-gap: 6px;
+  --proto-bg: transparent;
+  --proto-fg: var(--mud-palette-text-primary);
+  --proto-border: var(--mud-palette-lines-default);
+  --proto-bg-hover: var(--mud-palette-action-default-hover);
+  --proto-pad-y: 6px;
+  --proto-pad-x: 10px;
+  --proto-font: 0.85rem;
+  --proto-radius: 6px;
+  --proto-gap: 6px;
 
-    display: inline-flex;
-    align-items: center;
-    gap: var(--proto-gap);
-    background: var(--proto-bg);
-    color: var(--proto-fg);
-    border: 1px solid var(--proto-border);
-    border-radius: var(--proto-radius);
-    padding: var(--proto-pad-y) var(--proto-pad-x);
-    font-size: var(--proto-font);
-    line-height: 1.2;
-    cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
-    user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--proto-gap);
+  background: var(--proto-bg);
+  color: var(--proto-fg);
+  border: 1px solid var(--proto-border);
+  border-radius: var(--proto-radius);
+  padding: var(--proto-pad-y) var(--proto-pad-x);
+  font-size: var(--proto-font);
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+  user-select: none;
 }
 
 .dt-proto-btn:hover {
-    background: var(--proto-bg-hover);
-    border-color: var(--mud-palette-primary);
-    color: var(--mud-palette-primary);
+  background: var(--proto-bg-hover);
+  border-color: var(--mud-palette-primary);
+  color: var(--mud-palette-primary);
 }
 
 .dt-proto-btn:focus-visible {
-    outline: 2px solid var(--mud-palette-primary);
-    outline-offset: 2px;
+  outline: 2px solid var(--mud-palette-primary);
+  outline-offset: 2px;
 }
 
 .dt-proto-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .dt-proto-btn--icon-only {
-    --proto-pad-x: var(--proto-pad-y);
-    aspect-ratio: 1 / 1;
-    justify-content: center;
+  --proto-pad-x: var(--proto-pad-y);
+  aspect-ratio: 1 / 1;
+  justify-content: center;
 }
 
 /* Sizes */
 .dt-proto-btn--sm {
-    --proto-pad-y: 3px;
-    --proto-pad-x: 7px;
-    --proto-font: 0.75rem;
-    --proto-radius: 4px;
+  --proto-pad-y: 3px;
+  --proto-pad-x: 7px;
+  --proto-font: 0.75rem;
+  --proto-radius: 4px;
 }
 
 .dt-proto-btn--md {
-    /* default */
+  /* default */
 }
 
 .dt-proto-btn--lg {
-    --proto-pad-y: 9px;
-    --proto-pad-x: 14px;
-    --proto-font: 0.95rem;
-    --proto-radius: 8px;
+  --proto-pad-y: 9px;
+  --proto-pad-x: 14px;
+  --proto-font: 0.95rem;
+  --proto-radius: 8px;
 }
 
 /* Tones (mirror the muted/neutral feel of .send-to-btn but tunable) */
 .dt-proto-btn--neutral {
-    --proto-bg: var(--mud-palette-background);
-    --proto-fg: var(--mud-palette-text-primary);
-    --proto-border: var(--mud-palette-lines-default);
+  --proto-bg: var(--mud-palette-background);
+  --proto-fg: var(--mud-palette-text-primary);
+  --proto-border: var(--mud-palette-lines-default);
 }
 
 .dt-proto-btn--ghost {
-    --proto-bg: transparent;
-    --proto-border: transparent;
+  --proto-bg: transparent;
+  --proto-border: transparent;
 }
 
 .dt-proto-btn--ghost:hover {
-    border-color: transparent;
-    background: var(--mud-palette-action-default-hover);
+  border-color: transparent;
+  background: var(--mud-palette-action-default-hover);
 }
 
 .dt-proto-btn--accent {
-    --proto-bg: rgba(94, 53, 177, 0.08);
-    --proto-border: rgba(94, 53, 177, 0.32);
-    --proto-fg: var(--mud-palette-primary);
+  --proto-bg: rgba(94, 53, 177, 0.08);
+  --proto-border: rgba(94, 53, 177, 0.32);
+  --proto-fg: var(--mud-palette-primary);
 }
 
 .dt-proto-btn--danger {
-    --proto-fg: var(--mud-palette-error);
-    --proto-border: rgba(244, 67, 54, 0.32);
+  --proto-fg: var(--mud-palette-error);
+  --proto-border: rgba(244, 67, 54, 0.32);
 }
 
 .dt-proto-btn--danger:hover {
-    background: rgba(244, 67, 54, 0.10);
-    border-color: var(--mud-palette-error);
-    color: var(--mud-palette-error);
+  background: rgba(244, 67, 54, 0.1);
+  border-color: var(--mud-palette-error);
+  color: var(--mud-palette-error);
 }
 
 /* Density modifier */
 .dt-proto-btn--dense {
-    --proto-pad-y: calc(var(--proto-pad-y) - 2px);
-    --proto-pad-x: calc(var(--proto-pad-x) - 2px);
+  --proto-pad-y: calc(var(--proto-pad-y) - 2px);
+  --proto-pad-x: calc(var(--proto-pad-x) - 2px);
 }
 
 /* ============================================================
@@ -333,78 +345,81 @@
    currently hard-code border-radius, box-shadow, and padding.
    ============================================================ */
 .dt-proto-card {
-    --pcard-bg: var(--mud-palette-surface);
-    --pcard-fg: var(--mud-palette-text-primary);
-    --pcard-border: transparent;
-    --pcard-radius: var(--app-surface-radius, 8px);
-    --pcard-pad: var(--app-surface-padding, 16px);
-    --pcard-shadow: var(--mud-elevation-1);
+  --pcard-bg: var(--mud-palette-surface);
+  --pcard-fg: var(--mud-palette-text-primary);
+  --pcard-border: transparent;
+  --pcard-radius: var(--app-surface-radius, 8px);
+  --pcard-pad: var(--app-surface-padding, 16px);
+  --pcard-shadow: var(--mud-elevation-1);
 
-    background: var(--pcard-bg);
-    color: var(--pcard-fg);
-    border: 1px solid var(--pcard-border);
-    border-radius: var(--pcard-radius);
-    padding: var(--pcard-pad);
-    box-shadow: var(--pcard-shadow);
-    transition: box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease;
+  background: var(--pcard-bg);
+  color: var(--pcard-fg);
+  border: 1px solid var(--pcard-border);
+  border-radius: var(--pcard-radius);
+  padding: var(--pcard-pad);
+  box-shadow: var(--pcard-shadow);
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    border-color 160ms ease;
 }
 
 /* Tones */
 .dt-proto-card--flush {
-    --pcard-shadow: none;
-    --pcard-border: transparent;
-    --pcard-pad: 0;
+  --pcard-shadow: none;
+  --pcard-border: transparent;
+  --pcard-pad: 0;
 }
 
 .dt-proto-card--surface {
-    /* default */
+  /* default */
 }
 
 .dt-proto-card--focus {
-    --pcard-shadow: var(--mud-elevation-2);
-    --pcard-border: rgba(94, 53, 177, 0.18);
+  --pcard-shadow: var(--mud-elevation-2);
+  --pcard-border: rgba(94, 53, 177, 0.18);
 }
 
 .dt-proto-card--outlined {
-    --pcard-shadow: none;
-    --pcard-border: var(--mud-palette-lines-default);
+  --pcard-shadow: none;
+  --pcard-border: var(--mud-palette-lines-default);
 }
 
 /* Density */
 .dt-proto-card--dense {
-    --pcard-pad: 8px;
+  --pcard-pad: 8px;
 }
 
 .dt-proto-card--cozy {
-    /* default */
+  /* default */
 }
 
 .dt-proto-card--comfortable {
-    --pcard-pad: 24px;
+  --pcard-pad: 24px;
 }
 
 /* Interactive (cards used as buttons in galleries) */
 .dt-proto-card--interactive {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .dt-proto-card--interactive:hover {
-    --pcard-shadow: var(--mud-elevation-4);
-    --pcard-border: rgba(94, 53, 177, 0.32);
-    transform: translateY(-1px);
+  --pcard-shadow: var(--mud-elevation-4);
+  --pcard-border: rgba(94, 53, 177, 0.32);
+  transform: translateY(-1px);
 }
 
 .dt-proto-card--interactive:focus-visible {
-    outline: 2px solid var(--mud-palette-primary);
-    outline-offset: 2px;
+  outline: 2px solid var(--mud-palette-primary);
+  outline-offset: 2px;
 }
 
 /* Stage helper for the flush vs double-wrap demo */
 .dt-stage-slot {
-    background: var(--mud-palette-background-grey);
-    border: 1px dashed var(--mud-palette-lines-default);
-    border-radius: var(--app-surface-radius, 8px);
-    padding: var(--app-surface-padding, 16px);
+  background: var(--mud-palette-background-grey);
+  border: 1px dashed var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius, 8px);
+  padding: var(--app-surface-padding, 16px);
 }
 
 /* ============================================================
@@ -413,48 +428,48 @@
    Dialogs & Modals tab.
    ============================================================ */
 .dt-dialog-frame {
-    background: var(--mud-palette-surface);
-    border-radius: var(--app-dialog-radius, 6px);
-    box-shadow: var(--mud-elevation-8);
-    max-width: min(var(--app-dialog-max-width, 1400px), 100%);
-    width: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  background: var(--mud-palette-surface);
+  border-radius: var(--app-dialog-radius, 6px);
+  box-shadow: var(--mud-elevation-8);
+  max-width: min(var(--app-dialog-max-width, 1400px), 100%);
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .dt-dialog-frame__title {
-    padding: 12px var(--app-dialog-padding, 16px);
-    border-bottom: 1px solid var(--mud-palette-lines-default);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+  padding: 12px var(--app-dialog-padding, 16px);
+  border-bottom: 1px solid var(--mud-palette-lines-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .dt-dialog-frame__body {
-    padding: var(--app-dialog-padding, 16px);
-    overflow-y: auto;
+  padding: var(--app-dialog-padding, 16px);
+  overflow-y: auto;
 }
 
 .dt-dialog-frame__body--scrollable {
-    max-height: 40vh;
+  max-height: 40vh;
 }
 
 .dt-dialog-frame__actions {
-    padding: 8px var(--app-dialog-padding, 16px);
-    border-top: 1px solid var(--mud-palette-lines-default);
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
+  padding: 8px var(--app-dialog-padding, 16px);
+  border-top: 1px solid var(--mud-palette-lines-default);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .dt-dialog-backdrop {
-    background: rgba(0, 0, 0, 0.32);
-    border-radius: var(--app-surface-radius, 8px);
-    padding: 24px;
-    display: flex;
-    justify-content: center;
+  background: rgba(0, 0, 0, 0.32);
+  border-radius: var(--app-surface-radius, 8px);
+  padding: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 /* ============================================================
@@ -463,27 +478,27 @@
    only testbed-specific cell + scroll chrome lives here.
    ============================================================ */
 .dt-grid-cell {
-    background: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: var(--app-surface-radius, 8px);
-    padding: 8px;
-    aspect-ratio: 3 / 4;
-    display: flex;
-    align-items: end;
-    font-size: 0.75rem;
-    color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius, 8px);
+  padding: 8px;
+  aspect-ratio: 3 / 4;
+  display: flex;
+  align-items: end;
+  font-size: 0.75rem;
+  color: var(--mud-palette-text-secondary);
 }
 
 .dt-scroll-frame {
-    background: var(--mud-palette-background);
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: var(--app-surface-radius, 8px);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius, 8px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .dt-scroll-body {
-    overflow-y: auto;
-    padding: 8px 12px;
+  overflow-y: auto;
+  padding: 8px 12px;
 }

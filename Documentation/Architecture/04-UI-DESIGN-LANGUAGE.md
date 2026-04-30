@@ -255,9 +255,7 @@ If a child card component has a fixed width set in its own `.razor.css`, expose 
 Use the global `.app-grid` utility (declared in [`site.css`](../../BlazorWebApp/wwwroot/site.css)) instead of redeclaring `grid-template-columns: repeat(auto-fill, minmax(...))` in component-scoped CSS. Tune density per surface by overriding `--app-card-min` (and optionally `--app-grid-gap`) on the element:
 
 ```html
-<div class="app-grid" style="--app-card-min: 180px;">
-  @* cards *@
-</div>
+<div class="app-grid" style="--app-card-min: 180px;">@* cards *@</div>
 ```
 
 Defaults: `--app-card-min: 140px`, `--app-grid-gap: var(--app-gutter-inner)`. Live demo on the [Design Test Bed](/dev/design-testbed) Data Display tab.
@@ -268,8 +266,8 @@ Use `.app-empty-state` (in [`site.css`](../../BlazorWebApp/wwwroot/site.css)) fo
 
 ```html
 <div class="app-empty-state">
-    <MudIcon Icon="@Icons.Material.Outlined.Inbox" Size="Size.Large" />
-    <MudText Typo="Typo.body2">No items</MudText>
-    <MudText Typo="Typo.caption">Hint text...</MudText>
+  <MudIcon Icon="@Icons.Material.Outlined.Inbox" Size="Size.Large" />
+  <MudText Typo="Typo.body2">No items</MudText>
+  <MudText Typo="Typo.caption">Hint text...</MudText>
 </div>
 ```
