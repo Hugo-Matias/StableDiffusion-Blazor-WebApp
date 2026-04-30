@@ -24,6 +24,28 @@ public class LtxVideoSettingsFragment : IFragmentBuilder
         [
             new FragmentParameter
             {
+                Name = "width",
+                Label = "Width",
+                Type = ParameterType.Slider,
+                Min = 256,
+                Max = 1920,
+                Step = 32,
+                DefaultValue = 1280,
+                Description = "Used by Txt2Vid workflows; Img2Vid reads dimensions from the source image."
+            },
+            new FragmentParameter
+            {
+                Name = "height",
+                Label = "Height",
+                Type = ParameterType.Slider,
+                Min = 256,
+                Max = 1920,
+                Step = 32,
+                DefaultValue = 720,
+                Description = "Used by Txt2Vid workflows; Img2Vid reads dimensions from the source image."
+            },
+            new FragmentParameter
+            {
                 Name = "duration",
                 Label = "Duration (seconds)",
                 Type = ParameterType.Slider,

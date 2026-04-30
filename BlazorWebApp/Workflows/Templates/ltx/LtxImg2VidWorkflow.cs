@@ -34,7 +34,10 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
 
     public WorkflowMetadata Metadata => new()
     {
-        Title = "Img2Vid",
+        Title = "LTX 2.3 I2V Basic",
+        Description = "Animates a single still image into a short clip. The source image anchors composition and color; " +
+                      "the prompt drives motion, while resolution is inherited from the image. " +
+                      "Use for quick image-to-video tests before moving to specialized workflows.",
         Base = Data.Enums.ModelBase.LTX,
         Mode = ModeType.Img2Vid,
         Assets =

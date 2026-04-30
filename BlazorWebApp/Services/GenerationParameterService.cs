@@ -397,7 +397,7 @@ namespace BlazorWebApp.Services
                         var fragment = new FragmentParameters
                         {
                             FragmentFile = $"fluent:{metadata.Id}",
-                            IsActive = !isOptional,
+                            IsActive = metadata.DefaultActive ?? !isOptional,
                             Order = order++
                         };
 
@@ -529,7 +529,7 @@ namespace BlazorWebApp.Services
                 var fragment = new FragmentParameters
                 {
                     FragmentFile = $"fluent:{fragmentId}", // Mark as fluent API fragment
-                    IsActive = !isOptional, // Optional fragments start inactive
+                    IsActive = metadata.DefaultActive ?? !isOptional, // Optional fragments start inactive unless overridden
                     Order = order++
                 };
 
@@ -668,21 +668,41 @@ namespace BlazorWebApp.Services
             }
 
             // Fallback: If no latent fragment found by type, check for any fragment with resolution params
+            // We deliberately skip Settings / Enhancement / Input fragments here - those already render
+            // in their own slot (OptionalFragments), and promoting them to _primaryLatentFragment without
+            // their schema causes (a) a duplicate render and (b) a spurious "component not found" warning
+            // because the FragmentReference is rebuilt without its Schema.
             if (_primaryLatentFragment == null)
             {
                 foreach (var kvp in current.Fragments)
                 {
-                    if (kvp.Value.Values.ContainsKey("width") && kvp.Value.Values.ContainsKey("height"))
+                    if (!kvp.Value.Values.ContainsKey("width") || !kvp.Value.Values.ContainsKey("height"))
                     {
-                        _primaryLatentFragment = new FragmentReference
-                        {
-                            Id = kvp.Key,
-                            Parameters = kvp.Value,
-                            Schema = null
-                        };
-                        _logger.LogDebug("Fallback: Using fragment '{FragmentId}' as latent (has width/height)", kvp.Key);
-                        break;
+                        continue;
                     }
+
+                    FragmentSchema? fallbackSchema = null;
+                    if (builderMetadata?.TryGetValue(kvp.Key, out var fallbackMeta) == true)
+                    {
+                        // Skip fragments that already have a dedicated slot.
+                        if (fallbackMeta.Type == FragmentType.Settings ||
+                            fallbackMeta.Type == FragmentType.Enhancement ||
+                            fallbackMeta.Type == FragmentType.Input)
+                        {
+                            continue;
+                        }
+
+                        fallbackSchema = BuildSchemaFromMetadata(fallbackMeta);
+                    }
+
+                    _primaryLatentFragment = new FragmentReference
+                    {
+                        Id = kvp.Key,
+                        Parameters = kvp.Value,
+                        Schema = fallbackSchema
+                    };
+                    _logger.LogDebug("Fallback: Using fragment '{FragmentId}' as latent (has width/height)", kvp.Key);
+                    break;
                 }
             }
 

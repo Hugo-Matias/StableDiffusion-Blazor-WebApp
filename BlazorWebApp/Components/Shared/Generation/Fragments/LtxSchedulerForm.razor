@@ -1,0 +1,143 @@
+@*
+    LtxSchedulerForm - Form for the ltx_scheduler fragment.
+
+    Modes:
+      - "ltxv":   LTXVScheduler (steps + max_shift + base_shift + stretch + terminal)
+      - "manual": ManualSigmas (multiline CSV)
+*@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("LtxSchedulerForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudSelect T="string" Label="Mode" @bind-Value="_localMode" @bind-Value:after="OnModeChanged"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelectItem Value="@("ltxv")">LTXVScheduler</MudSelectItem>
+            <MudSelectItem Value="@("manual")">Manual sigmas</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+
+    @if (_localMode == "ltxv")
+    {
+        <MudItem xs="6">
+            <MudNumericField T="int" @bind-Value="_localSteps" @bind-Value:after="OnStepsChanged"
+                             Label="Steps"
+                             Min="@GetConstraint(nameof(_localSteps)).GetMin(1)"
+                             Max="@GetConstraint(nameof(_localSteps)).GetMax(50)"
+                             Step="@GetConstraint(nameof(_localSteps)).GetStep(1)" />
+        </MudItem>
+        <MudItem xs="6" Class="d-flex align-items-center">
+            <MudCheckBox T="bool" @bind-Value="_localStretch" @bind-Value:after="OnStretchChanged" Label="Stretch" />
+        </MudItem>
+        <MudItem xs="4">
+            <MudSlider T="double" @bind-Value="_localMaxShift" @bind-Value:after="OnMaxShiftChanged"
+                       Min="0" Max="5" Step="0.05" ValueLabel>
+                <small>Max Shift:</small> @_localMaxShift.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="4">
+            <MudSlider T="double" @bind-Value="_localBaseShift" @bind-Value:after="OnBaseShiftChanged"
+                       Min="0" Max="5" Step="0.05" ValueLabel>
+                <small>Base Shift:</small> @_localBaseShift.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="4">
+            <MudSlider T="double" @bind-Value="_localTerminal" @bind-Value:after="OnTerminalChanged"
+                       Min="0" Max="1" Step="0.01" ValueLabel>
+                <small>Terminal:</small> @_localTerminal.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
+    else
+    {
+        <MudItem xs="12">
+            <MudTextField T="string" @bind-Value="_localManualSigmas" @bind-Value:after="OnManualSigmasChanged"
+                          Label="Sigmas (CSV)" Lines="2" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _localMode = "ltxv";
+    private int _localSteps = 8;
+    private double _localMaxShift = 2.05;
+    private double _localBaseShift = 0.95;
+    private bool _localStretch = true;
+    private double _localTerminal = 0.1;
+    private string _localManualSigmas = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0";
+
+    private Dictionary<string, ParameterConstraints> _constraints = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        if (Fragment.Schema?.Parameters != null)
+        {
+            _constraints = Fragment.Schema.Parameters;
+        }
+        InitializeFromFragment();
+    }
+
+    private ParameterConstraints GetConstraint(string parameterName)
+        => _constraints.GetValueOrDefault(parameterName) ?? new ParameterConstraints();
+
+    private void InitializeFromFragment()
+    {
+        if (Fragment == null) return;
+        _localMode = ParameterService.GetFragmentProperty(Fragment, "mode", "ltxv") ?? "ltxv";
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, "steps", 8);
+        _localMaxShift = ParameterService.GetFragmentProperty(Fragment, "max_shift", 2.05);
+        _localBaseShift = ParameterService.GetFragmentProperty(Fragment, "base_shift", 0.95);
+        _localStretch = ParameterService.GetFragmentProperty(Fragment, "stretch", true);
+        _localTerminal = ParameterService.GetFragmentProperty(Fragment, "terminal", 0.1);
+        _localManualSigmas = ParameterService.GetFragmentProperty(Fragment, "manual_sigmas",
+            "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0")
+            ?? "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0";
+    }
+
+    private async Task OnModeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "mode", _localMode, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnStepsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "steps", _localSteps, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnMaxShiftChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "max_shift", _localMaxShift, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnBaseShiftChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "base_shift", _localBaseShift, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnStretchChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "stretch", _localStretch, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTerminalChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "terminal", _localTerminal, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnManualSigmasChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "manual_sigmas", _localManualSigmas, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

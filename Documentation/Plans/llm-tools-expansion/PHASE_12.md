@@ -4,43 +4,99 @@
 
 **Phase:** 12
 **Build Status:** Not yet attempted
-**Phase Status:** [ ] Not Started (flagged as nice-to-have in `MAIN_PLAN.md`)
+**Phase Status:** [ ] Not Started
 
 ---
 
 ## Objective
 
-Enable uploading (or selecting from the gallery) an image and receiving a prompt produced by an Ollama vision-language model (LLaVA, MiniCPM-V, Qwen2-VL, etc.). Support interrogation styles (Detailed / Focus / Artistic / Technical / Tags / Simple), optional normalization to Danbooru tags via `TagPromptService` (Phase 2), and batch mode for multiple images.
+Enable selecting an image (drag-drop, file pick, or routed in from the Gallery) and receiving a diffusion-prompt produced by an Ollama vision-language model (Qwen2-VL / Qwen3-VL, LLaVA, MiniCPM-V, etc.). Single-image only in this phase. Result is editable, then dispatchable via Send-to-Generate / Workshop / Process or saveable as a `Prompt` preset.
+
+Batch / captioning workflow is split into **Phase 12B** (deferred) - see stub at end of this document.
 
 ---
 
 ## Context
 
+### Validated environment
+
+User confirmed Qwen3-VL 4B and 8B models work on a GTX 1070 Ollama instance. Native Ollama VL support handles `images: [base64...]` in `/api/chat`. Earlier attempts to stitch an mmproj onto Gemma 4 E4B failed at the llama.cpp level (`unknown model architecture: 'gemma4'`), so the strategy is to use a dedicated VL model selectable per-tool.
+
 ### Dependencies on prior phases
 
-- **Phase 1** required.
-- **Phase 2** required for tag-normalization mode; degrades gracefully if absent.
-- **Phase 3 Step 3** required for seeded templates.
-
-### Ollama multimodal support - scaffolding required
-
-Per the workspace audit (see PHASE_2 / session notes), `OllamaService` currently has **no multimodal plumbing**. `OllamaChatMessage` has only `Role` + `Content`. The Ollama `/api/chat` endpoint accepts an `images: [base64strings]` field per message when the target model is multimodal.
-
-This phase therefore adds the scaffolding as Step 1 before building the view.
+- **Phase 1** required (LLM Tools sidebar nav). Complete.
+- **Phase 2** (`TagPromptService`) required for tag-normalization mode; degrades gracefully if absent. Complete.
+- **Phase 3 Step 3** required for seeded templates (`OllamaService.GetDefaultTemplates()` + idempotent seeder). Complete.
 
 ### Existing infrastructure to reuse
 
-- `OllamaService.SendChatMessage` (to be extended).
-- `OllamaService.GetModels()` (already exists) - we need a way to flag multimodal models (by name pattern: `llava`, `minicpm`, `qwen2-vl`, `bakllava`, etc.) or rely on user selection.
-- `TagPromptService.BuildAsync` (Phase 2) for tag normalization.
-- `IDatabaseService.GetImageById` / gallery integration for "send from gallery" flow.
-- `Image` entity with `Path` (absolute file path) for disk reads.
+- `OllamaService.SendChatMessage(modelName, messages, options, keepAlive, stream)` - extend, do not replace.
+- `OllamaService.GetModels()` - already returns `/api/tags`.
+- `TagPromptService.BuildAsync` for tag normalization.
+- `IDatabaseService.GetImageById` / `Image.Path` for gallery routing.
+- `IImageSendToService` for "Send to Generate" routing into the right workflow for the current base.
+- `EventService` pub/sub for cross-page signaling.
+- Existing source-input pattern from the Generate page (drop + click-to-pick) - reuse the same component if possible for visual consistency.
+- `Prompt` entity (`Title`, `Positive`, `Category`, `Tags`) for "Save as Preset".
 
 ### Architectural rules
 
 - `OllamaChatMessage.Images` added as an optional property; existing callers unaffected.
-- Image encoding happens in `VLModelService`, not in the view.
-- Batch mode runs sequentially by default to avoid blowing up local GPU memory; a parallelism cap can be exposed in Phase 10 Settings.
+- Image base64 encoding happens in `VLModelService`, not in the view.
+- Tool-local model selector lives in the view itself (top row), independent from the global LLM model in `LLMSettingsPanel`.
+- Streaming is opt-in via a new `StreamChatMessageAsync` method on `OllamaService`; the existing `SendChatMessage` keeps its current signature and behavior.
+- Gallery integration is **redirect-only** - both the `ImageCard` quick action and the `AssetInfoPanel` button publish an event + navigate to the LLM Tools view; no per-surface dialogs or duplicated UI.
+
+---
+
+## UX Specification (for Steps 4 / 6)
+
+```
++-------------------------------------------------------------+
+| [VL Model: qwen2-vl:8b v]  [Style: Detailed v]      [Run]   |
++-------------------------------------------------------------+
+|                                                             |
+|  +-------------------------------------------------------+  |
+|  |                                                       |  |
+|  |             IMAGE PREVIEW (click / drop)              |  |
+|  |             (drop-zone styling when empty)            |  |
+|  |                                                       |  |
+|  |   Replace          Open file...        Clear          |  |
+|  +-------------------------------------------------------+  |
+|                                                             |
+|  Result                                                     |
+|  +-------------------------------------------------------+  |
+|  | Auto-grow editable textarea                           |  |
+|  | (placeholder: "Run to generate a prompt...")          |  |
+|  +-------------------------------------------------------+  |
+|                                                             |
+|  [ ] Normalize to Danbooru tags    (View raw response)      |
+|                                                             |
+|  [Send to Generate] [Send to Workshop] [Send to Process]    |
+|  [Save as Preset]   [Copy]                                  |
++-------------------------------------------------------------+
+```
+
+Behavior:
+
+- **VL Model selector**: tool-local. Reads/writes `AppState.Prompts.LLM.ImageToPrompt.LastModel`. Lists all `OllamaService.GetModels()`; non-multimodal entries get a small warning icon but stay selectable.
+- **Style selector**: top-row. Reads/writes `AppState.Prompts.LLM.ImageToPrompt.LastStyle`. Six values from `InterrogationStyle` enum.
+- **Run button**: disabled when no image or no model. While running, swaps to **Cancel** with an elapsed-seconds counter.
+- **Image container**: single component, drop-zone when empty, preview when loaded. Same visual pattern as Generate-page source inputs (consistency requirement). Action row: Replace, Open file, Clear.
+- **Result textarea**: editable (auto-grow). Send-to / Save-as-Preset always read the _current_ textarea content, not the raw VL response. If user has edited and clicks Run, prompt to confirm overwrite (only when textarea is dirty vs the last raw response).
+- **Normalize toggle**: when on, Run executes the two-pass flow (VL -> `TagPromptService.BuildAsync`) and the textarea shows the normalized version. A small "View raw response" link toggles between raw and normalized.
+- **Action row**: Generate, Workshop, Process, Save Preset, Copy. No Mixer or Tag Builder fan-out (Tag Builder is reachable via Normalize toggle).
+
+### Gallery routing (Step 6)
+
+Gallery surfaces never run the VL model themselves. They:
+
+1. Set `AppState.Prompts.LLM.ActiveViewId = "image-to-prompt"`.
+2. Save state.
+3. Publish `ImageToPromptRequestedEventArgs(string imagePath)`.
+4. Navigate to the Prompts page.
+
+`ImageToPromptView` subscribes on `OnInitializedAsync`. When it receives an event, it loads the image and shows an inline chip _"Image received from Gallery"_. **No auto-run** - user picks style and clicks Run.
 
 ---
 
@@ -71,23 +127,15 @@ This phase therefore adds the scaffolding as Step 1 before building the view.
   }
   ```
 
-- [ ] Smoke-test: existing calls with `Images == null` omit the field in the JSON payload.
-- [ ] `OllamaService.SendChatMessage` requires no signature change - the new property rides along. Verify the `System.Text.Json` serializer honors `[JsonIgnore(Condition = WhenWritingNull)]` so pre-existing text-only calls send identical payloads.
-- [ ] Add a helper `OllamaService.EncodeImageBase64Async(string path)`:
-  ```csharp
-  public async Task<string> EncodeImageBase64Async(string path)
-  {
-      var bytes = await File.ReadAllBytesAsync(path);
-      return Convert.ToBase64String(bytes);
-  }
-  ```
-- [ ] Document multimodal model-name patterns in a comment (or an internal `IsLikelyMultimodal(string model)` heuristic that flags `llava`, `minicpm`, `qwen.*vl`, `bakllava`, `llama3.2-vision`, `moondream`).
+- [ ] Add `OllamaService.EncodeImageBase64Async(string path)` using `File.ReadAllBytesAsync`.
+- [ ] Add internal helper `OllamaService.IsLikelyMultimodal(string modelName)` flagging name patterns: `llava`, `bakllava`, `minicpm`, `qwen.*vl`, `llama.*vision`, `moondream`, `internvl`, `cogvlm`, `pixtral`. Used by the view for the warning icon.
+- [ ] Smoke-test: existing text-only calls produce identical JSON (the `[JsonIgnore(Condition = WhenWritingNull)]` should drop the field). Inspect `payload_ollama.json` after one generate-page LLM call to confirm.
 
 #### Success Criteria
 
-- Existing text-only chat calls unchanged (payload regression test: compare serialized JSON before/after).
-- Sending a test request with a known multimodal model + a small image returns a description.
-- `EncodeImageBase64Async` handles large files without blocking the UI thread (use `File.ReadAllBytesAsync`).
+- Existing text-only chat calls produce identical payloads (no `"images"` field).
+- A test request to a known multimodal model with a small image returns a non-empty description.
+- `EncodeImageBase64Async` reads files asynchronously (no UI thread block on large images).
 
 ---
 
@@ -108,8 +156,8 @@ This phase therefore adds the scaffolding as Step 1 before building the view.
   {
       public string ModelName { get; set; } = string.Empty;
       public InterrogationStyle Style { get; set; } = InterrogationStyle.Detailed;
-      public string? ImagePath { get; set; } // file path
-      public byte[]? ImageBytes { get; set; } // alternative to path (for uploads)
+      public string? ImagePath { get; set; }
+      public byte[]? ImageBytes { get; set; }
       public bool NormalizeToDanbooruTags { get; set; } = false;
   }
 
@@ -123,57 +171,20 @@ This phase therefore adds the scaffolding as Step 1 before building the view.
   }
   ```
 
-- [ ] Public method:
-
-  ```csharp
-  public async Task<InterrogationResult> InterrogateAsync(InterrogationRequest request, CancellationToken ct = default)
-  {
-      var tpl = await LoadTemplateAsync($"VL.{request.Style}");
-      if (tpl == null) throw new InvalidOperationException($"Template VL.{request.Style} missing");
-
-      var base64 = request.ImageBytes is { Length: > 0 }
-          ? Convert.ToBase64String(request.ImageBytes)
-          : await _ollama.EncodeImageBase64Async(request.ImagePath!);
-
-      var messages = tpl.Messages.Select(m => new OllamaChatMessage {
-          Role = m.Role,
-          Content = m.Content,
-          Images = m.Role == "user" ? new List<string> { base64 } : null
-      }).ToList();
-
-      var response = await _ollama.SendChatMessage(request.ModelName, messages);
-      var raw = response?.Message?.Content?.Trim() ?? string.Empty;
-
-      string? tagPrompt = null;
-      if (request.NormalizeToDanbooruTags && _tagPrompts != null)
-      {
-          var tagRequest = new TagBuilderRequest {
-              Input = raw,
-              Verbosity = TagVerbosity.Standard,
-              Preset = TagModelPreset.Illustrious,
-              EnabledCategories = new HashSet<TagCategory> { TagCategory.General, TagCategory.Character, TagCategory.Copyright, TagCategory.Meta },
-              AllowNsfw = false
-          };
-          var built = await _tagPrompts.BuildAsync(tagRequest, request.ModelName, null, ct);
-          tagPrompt = built.FinalPrompt;
-      }
-
-      return new InterrogationResult {
-          ModelName = request.ModelName,
-          Style = request.Style,
-          Prompt = raw,
-          NormalizedTagPrompt = tagPrompt,
-          RawResponse = raw
-      };
-  }
-  ```
-
+- [ ] Public method `InterrogateAsync(InterrogationRequest, CancellationToken)`:
+  - Loads `SystemPromptTemplate` named `VL.{Style}` from DB.
+  - Encodes image to base64 (path or bytes).
+  - Builds `List<OllamaChatMessage>` from template, attaching the image to the `user`-role message.
+  - Calls `OllamaService.SendChatMessage` (non-streaming path for v1).
+  - If `NormalizeToDanbooruTags && _tagPrompts != null`, runs the raw output through `TagPromptService.BuildAsync` with `Verbosity=Standard`, `Preset=Illustrious`, `AllowNsfw=false`.
+  - Returns `InterrogationResult` with both raw and normalized text.
 - [ ] Register in `Program.cs` as scoped.
 
 #### Success Criteria
 
-- Given a real image + multimodal model, returns a prompt description.
-- Tag normalization returns a Danbooru-style version when enabled.
+- Real image + multimodal model -> non-empty `Prompt`.
+- Tag normalization populates `NormalizedTagPrompt` when enabled.
+- Cancellation token cancels mid-call cleanly.
 
 ---
 
@@ -184,138 +195,151 @@ This phase therefore adds the scaffolding as Step 1 before building the view.
 
 #### Tasks
 
-- [ ] Append six templates to `OllamaService.GetDefaultTemplates()`, one per style: `VL.Detailed`, `VL.Focus`, `VL.Artistic`, `VL.Technical`, `VL.Tags`, `VL.Simple`. Example for Detailed:
-  ```csharp
-  new SystemPromptTemplate
-  {
-      Name = "VL.Detailed",
-      Description = "Produces a rich, image-model-friendly description of a provided image.",
-      IsDefault = true,
-      Messages = new List<OllamaChatMessage>
-      {
-          new() { Role = "system", Content =
-              "You are an image captioner for diffusion prompts. Describe the provided image in detail covering: " +
-              "subject, pose, clothing, setting, lighting, mood, style, composition. Avoid speculation about the " +
-              "artist or the model. Output a single comma-separated prompt suitable for an image-generation model. " +
-              "No preamble, no bullet points, no markdown." },
-          new() { Role = "user", Content = "Describe this image." }
-      }
-  }
-  ```
-- [ ] Variants:
-  - `VL.Focus`: emphasize the main subject + one stylistic descriptor only.
-  - `VL.Artistic`: emphasize style, brushwork / rendering, palette, mood.
-  - `VL.Technical`: emphasize composition, lighting type, camera angle.
-  - `VL.Tags`: output Danbooru-style space/underscore tags (still natural-language until Step 2 normalization).
-  - `VL.Simple`: 1-2 short sentences.
-- [ ] Depends on Phase 3 Step 3 (idempotent seeding).
+- [ ] Append six templates to `OllamaService.GetDefaultTemplates()`:
+  - `VL.Detailed` - rich diffusion-friendly description (subject, pose, clothing, setting, lighting, mood, style, composition).
+  - `VL.Focus` - main subject + one stylistic descriptor only.
+  - `VL.Artistic` - style, brushwork, palette, mood emphasis.
+  - `VL.Technical` - composition, lighting type, camera angle.
+  - `VL.Tags` - Danbooru-style space/underscore tags (natural-language; Step 5 normalize handles the strict version).
+  - `VL.Simple` - 1-2 short sentences.
+- [ ] All templates: `IsDefault = true`, two messages (system + user), no preamble / no markdown / single comma-separated output instruction.
 
 #### Success Criteria
 
-- All six templates seed.
-- Each style produces visibly different output for the same image.
+- All six templates seed on a fresh DB (idempotent).
+- Each style yields visibly different output for the same input image.
 
 ---
 
 ### Step 4: `ImageToPromptView.razor`
+
+**Complexity:** 5
+**Status:** [ ] Not Started
+
+#### Tasks
+
+- [ ] Create `BlazorWebApp/Components/Prompts/LLM/Views/ImageToPromptView.razor`.
+- [ ] Top-row controls:
+  - VL model `MudSelect` (label "VL Model"). Items from `OllamaService.GetModels()`. Non-multimodal items show a `Icons.Material.Filled.Warning` adornment via item template. Persists to `AppState.Prompts.LLM.ImageToPrompt.LastModel`.
+  - Style `MudSelect` over `InterrogationStyle`. Persists to `AppState.Prompts.LLM.ImageToPrompt.LastStyle`.
+  - **Run** button: disabled when image or model missing; swaps to **Cancel** while running with elapsed seconds.
+- [ ] Image container: reuse the source-input visual pattern from the Generate page. Drop-zone when empty, preview when set, action row beneath (Replace, Open file, Clear). Accept `image/*`. Track `_imagePath` (file uploads -> temp file or in-memory bytes).
+- [ ] Result textarea: `MudTextField` with `AutoGrow`, `Lines="3"`, `MaxLines="0"`. Bound to `_resultText`.
+- [ ] Normalize-to-tags `MudSwitch` below textarea (disabled if `TagPromptService` not registered). "View raw response" link toggles `_showRaw` to swap textarea content between `_rawText` and `_normalizedText`.
+- [ ] Action row: `Send to Generate`, `Send to Workshop`, `Send to Process`, `Save as Preset`, `Copy`. All read `_resultText`. Disabled when text empty.
+- [ ] Run handler:
+  - Cancels any prior run.
+  - Builds `InterrogationRequest` and calls `VLModelService.InterrogateAsync`.
+  - On success, sets `_rawText` and `_normalizedText`, displays whichever the toggle says.
+  - On failure, snackbar with the exception message.
+- [ ] Dirty-overwrite confirm: if user edited the textarea after a run, Run prompts before overwriting.
+- [ ] Send-to wiring:
+  - **Generate**: `IImageSendToService` for the current base, default workflow.
+  - **Workshop**: `OnSendToWorkshop.InvokeAsync(_resultText)` -> handled by `LLMToolsTab` like other views.
+  - **Process**: `OnSendToProcess.InvokeAsync(_resultText)`.
+  - **Save Preset**: opens `SavePresetDialog` (Step 4a).
+
+#### Step 4a: `SavePresetDialog`
+
+- [ ] `MudDialog` with fields: Title, Category, Tags (chip input).
+- [ ] **Suggest button** next to Title: invokes `OllamaService.SendChatMessage` with a small system prompt asking for a 3-6 word title summarizing the prompt. Pre-fills Title field. Mirrors the Wildcard Forge "suggest collection name" UX. Uses the **globally selected** LLM model (text-only) - not the VL model.
+- [ ] On save, creates a `Prompt` row via `IDatabaseService` with `Positive = _resultText`, `Negative = null`, `Title`, `Category`, `Tags`. Snackbar confirmation.
+
+#### Success Criteria
+
+- Drag-drop or file-pick sets the image; preview renders.
+- Run produces text in the textarea matching the selected style.
+- Style change followed by Run produces visibly different output.
+- Normalize toggle produces tag version; raw toggle restores original.
+- Each Send-to button routes correctly; Save Preset persists a row visible in the Prompt library.
+- Cancel button stops mid-run within ~1s.
+
+---
+
+### Step 5: Streaming response (opt-in)
 
 **Complexity:** 3
 **Status:** [ ] Not Started
 
 #### Tasks
 
-- [ ] Create `BlazorWebApp/Components/Prompts/LLM/Views/ImageToPromptView.razor`.
-- [ ] Layout:
-  - **Input section**:
-    - `MudFileUpload` drag-drop zone (accept `image/*`).
-    - "Or pick from gallery" button opens a `MudDialog` showing recent `Image` entities with thumbnails (pull top 50 via `IDatabaseService.GetImages(top: 50, orderByDate: true)` or whatever the gallery uses).
-    - Selected image preview (small thumbnail).
-  - **Options**:
-    - Model dropdown - `MudSelect` populated from `OllamaService.GetModels()` with multimodal heuristics flag (non-multimodal entries still selectable but show a warning icon).
-    - Style dropdown (`InterrogationStyle` enum).
-    - Normalize-to-tags `MudSwitch` (disabled if Phase 2 unavailable).
-  - **Run** button.
-  - **Result panel**: raw prompt + normalized tag prompt (when generated). Copy / Save / Send to Process / Send to Workshop actions.
-- [ ] Wire model detection: if the selected model isn't flagged multimodal by the heuristic, show a warning snackbar but still allow the call.
-- [ ] Persist last selected model / style / normalize flag to `AppState.Prompts.LLM.ImageToPrompt`.
+- [ ] Add `OllamaService.StreamChatMessageAsync(...) -> IAsyncEnumerable<OllamaChatResponse>`:
+  - Uses `HttpClient.SendAsync` with `HttpCompletionOption.ResponseHeadersRead`.
+  - Reads response body line-by-line via `StreamReader.ReadLineAsync`.
+  - Each line is one NDJSON object; deserialize and `yield return`.
+  - `[EnumeratorCancellation] CancellationToken ct` parameter; check between reads.
+  - Stops when a chunk has `Done == true` or stream closes.
+- [ ] Existing `SendChatMessage` untouched.
+- [ ] Add `VLModelService.InterrogateStreamingAsync(InterrogationRequest, IProgress<string>, CancellationToken)`:
+  - Calls the new streaming method.
+  - Aggregates `chunk.Message.Content` into a buffer.
+  - Reports buffer to `IProgress<string>` after each chunk.
+  - Returns the final `InterrogationResult` once stream completes (then runs tag-normalization if requested - normalization itself stays non-streaming).
+- [ ] View update: subscribe to `IProgress<string>` and append into `_resultText`. Throttle `StateHasChanged` to ~10Hz (use a timer or last-update timestamp) to avoid re-render thrash.
+- [ ] Add `AppState.Prompts.LLM.ImageToPrompt.UseStreaming` flag, default `true`. Small toggle in the view's overflow menu (or just a checkbox under the textarea, TBD during implementation).
 
 #### Success Criteria
 
-- Drag-drop or gallery pick sets the input image.
-- Clicking Run invokes `VLModelService.InterrogateAsync` and populates the result panel.
-- Style change regenerates different output.
-- Normalize toggle produces the tag version.
+- Streaming on -> textarea fills incrementally as the model generates.
+- Cancellation during stream stops the response and leaves whatever text was already received.
+- Streaming off -> view falls back to `InterrogateAsync`, behaves identically to Step 4.
+- Normalize-to-tags still works (runs after streaming completes).
 
 ---
 
-### Step 5: Batch mode
+### Step 6: AppState + nav + gallery hooks
 
 **Complexity:** 2
 **Status:** [ ] Not Started
 
 #### Tasks
 
-- [ ] Add a "Batch" toggle at the top of the view. When enabled:
-  - File upload accepts multiple files.
-  - Input list shows thumbnails of queued images.
-  - Run iterates sequentially, showing progress (`N / M` + current image preview).
-  - Results render as a list with per-image prompt + copy action.
-  - "Save all to library" button creates one `Prompt` per image with `Title = filename` and `Positive = resulting prompt`.
-- [ ] Cancellation: `CancellationTokenSource` exposed via a Cancel button.
-
-#### Success Criteria
-
-- Queuing 10 images runs through all 10; cancel stops mid-run cleanly.
-- Save-all creates 10 library rows.
-
----
-
-### Step 6: `AppState` + nav + info
-
-**Complexity:** 1
-**Status:** [ ] Not Started
-
-#### Tasks
-
-- [ ] In `AppState.cs`:
+- [ ] Add to `AppState.cs`:
   ```csharp
   public class AppStatePromptsLLMImageToPrompt
   {
       public string? LastModel { get; set; }
       public InterrogationStyle LastStyle { get; set; } = InterrogationStyle.Detailed;
       public bool NormalizeToTags { get; set; } = false;
-      public bool BatchMode { get; set; } = false;
+      public bool UseStreaming { get; set; } = true;
   }
   ```
-- [ ] Nav item: `new("image-to-prompt", "Image → Prompt", Icons.Material.Filled.ImageSearch),`.
-- [ ] Switch case in `LLMToolsTab`.
-- [ ] Info content: explain multimodal-model requirement; list known-supported model name patterns; warn that big images slow down calls; suggest `llava:13b` / `minicpm-v` as starting points.
+  Reference from `AppStatePromptsLLM`. No migration required (JSON column).
+- [ ] Add nav item to `LLMNavMenu`: `new("image-to-prompt", "Image to Prompt", Icons.Material.Filled.ImageSearch)`.
+- [ ] Add the view to `LLMToolsTab`'s switch.
+- [ ] New event args `Events/ImageToPromptRequestedEventArgs.cs`:
+  ```csharp
+  public class ImageToPromptRequestedEventArgs : EventArgs
+  {
+      public string ImagePath { get; init; } = string.Empty;
+      public string? SourceLabel { get; init; }   // e.g., "Gallery"
+  }
+  ```
+- [ ] **`ImageCard` quick-action** menu item "Generate Prompt" - visible only when `SendTo.IsLocal(image.Path)`. Handler: set `ActiveViewId`, save state, publish event, navigate to `/prompts`.
+- [ ] **`AssetInfoPanel`** button "Generate Prompt" - placed in the existing Send-to action row (or just below it if cramped). Same handler. Visible only for local images.
+- [ ] `ImageToPromptView` subscribes to the event in `OnInitializedAsync`, unsubscribes in `Dispose`. On receipt: load image into the preview, show `MudChip` "Image from {SourceLabel}" that auto-dismisses on next user image change. **Does not auto-run.**
 
 #### Success Criteria
 
-- State persists.
-- Nav entry present.
+- Nav entry shows in sidebar; switching to it persists across reloads.
+- Gallery card menu and AssetInfoPanel button route correctly to the LLM tab with the image preloaded.
+- URL-based images do not show the action.
+- All AppState fields persist and restore on reload.
 
 ---
 
 ## Progress Tracking
 
-| Step | Status | Complexity | Notes                               |
-| ---- | ------ | ---------- | ----------------------------------- |
-| 1    | [ ]    | 3          | Extend Ollama DTOs + base64 helper  |
-| 2    | [ ]    | 3          | `VLModelService` orchestration      |
-| 3    | [ ]    | 2          | Seed six VL default templates       |
-| 4    | [ ]    | 3          | `ImageToPromptView` single-image UX |
-| 5    | [ ]    | 2          | Batch mode                          |
-| 6    | [ ]    | 1          | AppState + nav + info               |
+| Step | Status | Complexity | Notes                                       |
+| ---- | ------ | ---------- | ------------------------------------------- |
+| 1    | [ ]    | 3          | Ollama DTOs + base64 helper + heuristic     |
+| 2    | [ ]    | 3          | `VLModelService` orchestration              |
+| 3    | [ ]    | 2          | Seed six VL default templates               |
+| 4    | [ ]    | 5          | `ImageToPromptView` + `SavePresetDialog`    |
+| 5    | [ ]    | 3          | Streaming (`StreamChatMessageAsync` + view) |
+| 6    | [ ]    | 2          | AppState + nav + gallery hooks              |
 
-**Total:** 14 points (original plan estimate: 13).
-
----
-
-## Issues & Resolutions
-
-_None yet._
+**Total:** 18 points.
 
 ---
 
@@ -324,20 +348,63 @@ _None yet._
 - [ ] After Step 1 (standalone Ollama plumbing change; commit separately for easier rollback)
 - [ ] After Step 2
 - [ ] After Step 3
-- [ ] After Step 4
-- [ ] After Step 5
-- [ ] After Step 6
+- [ ] After Step 4 (single-image MVP - usable end-to-end without streaming or gallery hooks)
+- [ ] After Step 5 (streaming layered on)
+- [ ] After Step 6 (gallery integration; phase complete)
 
 ---
 
 ## Open Risks
 
-1. **Ollama multimodal API drift.** The `images` field has been stable but different versions accept different encodings (raw base64 vs data-uri). Mitigation: test against the current deployed Ollama; strip `data:image/...;base64,` prefix defensively.
-2. **`GetModels()` doesn't reveal multimodal capability.** Heuristic-by-name is fragile - new vision model families will surface and not match the regex. Mitigation: allow user to force any model; only warn, don't block.
-3. **Large images blow up local memory.** A 4K image encodes to ~5MB base64; some models time out. Mitigation: optional auto-resize to 768px max dimension before sending (add in Phase 10 as a setting).
-4. **Tag normalization double-call.** Currently `VLModelService` routes the raw prompt through `TagPromptService.BuildAsync` which itself runs a two-pass LLM. That's three LLM calls per image in normalize mode. Document latency; no mitigation in v1.
-5. **Gallery dialog performance.** Pulling all images is expensive. Mitigation: limit to 50 most recent; add search later.
-6. **Send-to-Workshop** reuses Phase 8 infrastructure; ensure `LLMToolsTab.HandleSendToWorkshop` handler is still present (if Phase 8 was removed or refactored, fall back to Send-to-Process).
+1. **Ollama multimodal API drift.** `images` field has been stable but versions differ on `data:image/...;base64,` prefix handling. Mitigation: send raw base64 (no data-URI prefix), as Qwen tests confirm this works.
+2. **`GetModels()` doesn't reveal multimodal capability.** Heuristic-by-name is fragile - new families surface and don't match. Mitigation: warn-don't-block; user can still try any model.
+3. **Streaming + cancellation edge cases.** Aborting an in-flight `HttpClient` stream can leak sockets if not disposed correctly. Mitigation: wrap reader/response in `using` blocks; rely on `[EnumeratorCancellation]` to throw cleanly.
+4. **Large images.** A 4K image -> ~5 MB base64; some models time out. Mitigation: out of scope for v1, revisit in Phase 10 settings (auto-resize to 1024px max dim before encode).
+5. **Tag normalization latency.** Normalize=on means VL call + 2-pass `TagPromptService` = 3 LLM calls per image. Document this in the info-content; no mitigation in v1.
+6. **Suggest-title button blocking.** Calling text-LLM while VL is loaded may cause Ollama to swap models (slow). Acceptable cost; users invoke Suggest manually.
+
+---
+
+## Phase 12B - Batch / Captioning workflow (deferred)
+
+**Status:** Not started. Documented here as forward-looking scope; track as its own phase doc when it gets prioritized.
+
+### Scope
+
+Multi-image processing geared toward dataset captioning rather than ad-hoc prompt generation. Distinct UI affordance from the single-image flow because the action set is different.
+
+### Anticipated features
+
+- **Source modes:**
+  - Multi-file upload (drag-drop many).
+  - Folder picker (pick a directory, recurse optional).
+  - Multi-select from Gallery -> "Generate Prompts (Batch)".
+- **Queue UI:** thumbnail strip with per-item status (pending / running / done / failed), live progress, current-item preview pane.
+- **Per-item editing:** click a completed item to edit its caption inline before export.
+- **Cancellation:** stop button halts after the current item finishes.
+- **Sequential by default**, with a single concurrency knob exposed in Phase 10 settings (`max_concurrent_vl_calls`, default 1).
+- **Export targets:**
+  - Sidecar `.txt` files alongside each image (standard captioning convention).
+  - Bulk save to `Prompt` library (one row per image, title from filename).
+  - JSON manifest export (`{ image_path, caption, model, style }[]`) for downstream training pipelines.
+- **Style + model controls** are batch-wide (set once, applies to all).
+- **Resume support:** if cancelled, persist the queue state in `AppState` so reopening the view can pick up where it left off.
+
+### Open questions for 12B
+
+- Does Phase 12B reuse `ImageToPromptView` with a "Batch" toggle, or get its own `BatchCaptionView`? (Leaning toward separate view - the action surfaces are too different.)
+- Where do exported sidecar files go - alongside source, or to a configured output dir?
+- Does the gallery multi-select integration go through the same `ImageToPromptRequestedEventArgs` (with a list payload) or a dedicated batch event?
+
+### Estimated complexity
+
+~13 points (separate view + queue runner + export + gallery multi-select hook + AppState persistence).
+
+---
+
+## Issues & Resolutions
+
+_None yet._
 
 ---
 

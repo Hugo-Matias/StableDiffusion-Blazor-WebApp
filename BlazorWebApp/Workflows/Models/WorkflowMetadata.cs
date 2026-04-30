@@ -26,6 +26,13 @@ public record WorkflowMetadata
     public required string Title { get; init; }
 
     /// <summary>
+    /// Short, user-facing description of what the workflow does and how to use it.
+    /// Surfaced on the Generate page (banner) and in the Info drawer. Aim for 1-2 sentences
+    /// covering purpose, primary inputs, and any non-obvious behavior. Optional.
+    /// </summary>
+    public string? Description { get; init; }
+
+    /// <summary>
     /// The model base this workflow is designed for (Flux, SD, SDXL, etc.).
     /// </summary>
     public required ModelBase Base { get; init; }
@@ -205,6 +212,7 @@ public enum AssetType
     CheckpointModel,
     DiffusionModel,
     Vae,
+    AudioVae,
     Clip,
     ClipVision,
     Lora,
@@ -218,5 +226,6 @@ public enum AssetType
 public enum SourceType
 {
     Image,
-    Video
+    Video,
+    Audio
 }

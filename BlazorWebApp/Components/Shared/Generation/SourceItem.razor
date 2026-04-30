@@ -1,39 +1,39 @@
 @using BlazorWebApp.Models
 @using BlazorWebApp.Components.Shared.Image
+@using BlazorWebApp.Components.Shared.Generation
 
 @* Individual source input (image or video) - reuses ImageInput for images *@
 
 <div class="source-item">
     @if (Source.Type?.ToLowerInvariant() == "video")
     {
-        @* Video input - custom handling *@
+        @* Video input - drag/drop with browser-side preview. Uploads bypass SignalR
+           via fetch() to /api/upload-source so the page stays responsive. *@
+        <VideoInput Filename="@Source.Filename" FilenameChanged="HandleVideoFilenameChanged" Title="@Source.Label"
+                    MaxFileSizeMB="1024" />
+    }
+    else if (Source.Type?.ToLowerInvariant() == "audio")
+
+    {
+        @* Audio input - file upload only *@
         <MudText Typo="Typo.caption" Class="mb-1">@Source.Label</MudText>
-        <MudFileUpload T="IBrowserFile" 
-                       Accept=".mp4,.webm,.mov,.avi"
-                       FilesChanged="HandleVideoUpload"
-                       Class="mb-2">
+        <MudFileUpload T="IBrowserFile" Accept=".wav,.mp3,.flac,.ogg,.m4a" FilesChanged="HandleAudioUpload" Class="mb-2">
             <ButtonTemplate>
-                <MudButton HtmlTag="label"
-                           Variant="Variant.Outlined" 
-                           Color="Color.Primary" 
-                           StartIcon="@Icons.Material.Filled.VideoFile"
-                           FullWidth="true"
-                           for="@context">
-                    @(string.IsNullOrEmpty(Source.Filename) ? "Upload Video" : Source.Filename)
+                <MudButton HtmlTag="label" Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.AudioFile" FullWidth="true" for="@context">
+                    @(string.IsNullOrEmpty(Source.Filename) ? "Upload Audio" : Source.Filename)
                 </MudButton>
             </ButtonTemplate>
         </MudFileUpload>
-        
+
         @if (!string.IsNullOrEmpty(Source.Data))
         {
             <div class="d-flex justify-space-between align-center">
                 <MudText Typo="Typo.caption" Color="Color.Success">
                     <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
-                    Video loaded
+                    Audio loaded
                 </MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.Clear" 
-                               Size="Size.Small" 
-                               Color="Color.Error"
+                <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" Color="Color.Error"
                                OnClick="ClearSource" />
             </div>
         }
@@ -41,14 +41,9 @@
     else
     {
         @* Image input - reuse ImageInput component for drag/drop, clipboard, and editor *@
-        <ImageInput ImageData="@Source.Data"
-                    ImageDataChanged="HandleImageChanged"
-                    Title="@Source.Label"
-                    OnImageLoaded="HandleImageLoaded"
-                    OnEditClicked="HandleEditClicked"
-                    OnBlankCanvasClicked="HandleBlankCanvasClicked"
-                    MaxFileSizeMB="50"
-                    AutoResize="false" />
+        <ImageInput ImageData="@Source.Data" ImageDataChanged="HandleImageChanged" Title="@Source.Label"
+                    OnImageLoaded="HandleImageLoaded" OnEditClicked="HandleEditClicked"
+                    OnBlankCanvasClicked="HandleBlankCanvasClicked" MaxFileSizeMB="50" AutoResize="false" />
     }
 </div>
 
@@ -107,27 +102,40 @@
         await OnBlankCanvasClicked.InvokeAsync(SourceId);
     }
 
-    private async Task HandleVideoUpload(IBrowserFile file)
+    private async Task HandleVideoFilenameChanged(string? filename)
+    {
+        // The VideoInput component uploads directly to ComfyUI and gives us back the
+        // server-side input filename. The workflow fragments resolve videos through
+        // SourceAsset.Filename, and UploadSourceImagesAsync skips re-uploading when
+        // Data is short and not a data: URI - so we leave Data null on purpose.
+        Source.Filename = filename;
+        Source.Data = filename; // Marks the source as "has data" without storing bytes.
+        if (string.IsNullOrEmpty(filename))
+        {
+            Source.Clear();
+        }
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task HandleAudioUpload(IBrowserFile file)
     {
         if (file == null) return;
 
         try
         {
-            // For videos, store as base64 for now
-            // In future, might want to save to temp file for large videos
             var buffer = new byte[file.Size];
-            await file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024).ReadAsync(buffer);
+            await file.OpenReadStream(maxAllowedSize: 200 * 1024 * 1024).ReadAsync(buffer);
             var base64 = Convert.ToBase64String(buffer);
-            var mimeType = file.ContentType;
-            
+            var mimeType = string.IsNullOrEmpty(file.ContentType) ? "audio/wav" : file.ContentType;
+
             Source.Data = $"data:{mimeType};base64,{base64}";
             Source.Filename = file.Name;
-            
+
             await OnSourceChanged.InvokeAsync((SourceId, Source));
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error uploading video: {ex.Message}");
+            Console.Error.WriteLine($"Error uploading audio: {ex.Message}");
         }
     }
 

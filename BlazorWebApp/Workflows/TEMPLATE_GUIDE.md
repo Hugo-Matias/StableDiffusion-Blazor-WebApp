@@ -18,8 +18,9 @@ For workflow-specific UI integration standards, component reuse rules, and field
 8. [Conditional Logic](#conditional-logic)
 9. [Fragment Design Principles](#fragment-design-principles)
 10. [Converting Raw Workflows](#converting-raw-workflows)
-11. [Examples](#examples)
-12. [Troubleshooting](#troubleshooting)
+11. [LTX Fragment Reuse](#ltx-fragment-reuse)
+12. [Examples](#examples)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -70,7 +71,26 @@ ComfyUI Workflow JSON
 
 ## Core Conventions
 
-### 1. Output Naming Convention
+### 1. Workflow Description (Required)
+
+Every workflow's `WorkflowMetadata` MUST set a `Description`. The description is surfaced through `IInfoService`
+in the right-side Info drawer (`InfoDrawer.razor`) - **do not** add a banner, alert, or other on-page hint
+above prompts. The drawer is the single, dismissable surface for workflow guidance and keeps the page chrome
+quiet.
+
+Guidelines:
+
+- 1-3 sentences in plain language.
+- Lead with what the workflow does, not which nodes it wires.
+- Mention required inputs only when they're not obvious from the workflow name (e.g. "expects a clean
+  front-facing portrait", "needs a separate audio track").
+- End with the "when to pick this" cue if the workflow overlaps with siblings (e.g. "use this for quick
+  image-to-video tests before moving to specialized workflows").
+
+The description is rendered as the drawer's `Overview`. Source-slot labels are auto-published to a
+`Required Inputs` section by the Generate page, so don't repeat them in the description text.
+
+### 2. Output Naming Convention
 
 All outputs follow the pattern: `{scope}{type}_output`
 
@@ -84,7 +104,7 @@ All outputs follow the pattern: `{scope}{type}_output`
 | `negative_output` | Negative conditioning |
 | `image_output`    | Decoded image output  |
 
-### 2. Scope System
+### 3. Scope System
 
 The `scope` parameter controls namespace isolation:
 
@@ -104,7 +124,7 @@ _loadDiffusionWithPromptsFragment.Build(builder, registry, new LoadDiffusionWith
 _detailerFragment.Build(builder, registry, new DetailerFragment.Parameters { Scope = "detailer_", ... });
 ```
 
-### 3. Pipeline Flow Pattern
+### 4. Pipeline Flow Pattern
 
 **Critical concept:** Processing fragments overwrite main pipeline outputs.
 
@@ -155,6 +175,7 @@ public interface IWorkflowBuilder
 public WorkflowMetadata Metadata => new()
 {
     Title = "Txt2Img",
+    Description = "One-line summary of what this workflow does and when to pick it.",
     Base = Data.Enums.ModelBase.Anima,
     Mode = ModeType.Txt2Img,
     Assets = [ ... ],
@@ -162,13 +183,14 @@ public WorkflowMetadata Metadata => new()
 };
 ```
 
-| Field                          | Description                                                                            |
-| ------------------------------ | -------------------------------------------------------------------------------------- |
-| `Title`                        | Display name in UI                                                                     |
-| `Base`                         | Model base enum: `StableDiffusion`, `Flux`, `Chroma`, `Qwen`, `ZImage`, `Wan`, `Anima` |
-| `Mode`                         | Mode type: `Txt2Img`, `Img2Img`, `Upscale`, `Img2Vid`                                  |
-| `Assets`                       | Dynamic model selectors (see [Assets System](#assets-system))                          |
-| `CompatibleResourceBaseModels` | CivitAI base model strings for filtering asset selectors and LoRA lists (see below)    |
+| Field                          | Description                                                                                                                                                                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Title`                        | Display name in UI                                                                                                                                                                                                                                                                         |
+| `Description`                  | **Required.** Short paragraph (1-3 sentences) shown in the right-side Info drawer. Explain what the workflow does, what inputs it expects, and when a user should pick it over similar workflows. Do **not** add a top-of-page banner; the description is consumed by `IInfoService` only. |
+| `Base`                         | Model base enum: `StableDiffusion`, `Flux`, `Chroma`, `Qwen`, `ZImage`, `Wan`, `Anima`, `LTX`                                                                                                                                                                                              |
+| `Mode`                         | Mode type: `Txt2Img`, `Img2Img`, `Upscale`, `Img2Vid`, `Txt2Vid`, `Vid2Vid`                                                                                                                                                                                                                |
+| `Assets`                       | Dynamic model selectors (see [Assets System](#assets-system))                                                                                                                                                                                                                              |
+| `CompatibleResourceBaseModels` | CivitAI base model strings for filtering asset selectors and LoRA lists (see below)                                                                                                                                                                                                        |
 
 #### CompatibleResourceBaseModels
 
@@ -766,6 +788,95 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
 
 ---
 
+## LTX Fragment Reuse
+
+The LTX 2.3 workflow pack ships a stack of reusable fragments under `Workflows/Fragments/Ltx/`. Most are `IsHidden = true` building blocks composed inside a workflow's `Build()` method - they expose no UI but can be instantiated freely with different `scope` prefixes. The user-facing fragments (`prompts`, `ltx_video_settings`, `ltx_sampler`, `ltx_scheduler`, plus the enhancement toggles) are surfaced via `GetFragments()`.
+
+### Loaders
+
+| Fragment                 | Purpose                                                                                                                                                                                          | Used by                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `LtxLoadModelFragment`   | Single-file checkpoint (`CheckpointLoaderSimple`) + AudioVAE + UpscaleModel.                                                                                                                     | `LtxImg2VidWorkflow` (Comfy-default I2V path).                           |
+| `LtxLoadSplitFragment`   | Split safetensors: `UNETLoader` + `DualCLIPLoader` + `VAELoader` + `LTXVAudioVAELoader` + `LatentUpscaleModelLoader` + always-on `LTXVChunkFeedForward` / `LTX2SamplingPreviewOverride`.         | `LtxTxt2VidWorkflow`, `LtxFml2VidWorkflow`, `LtxControlVid2VidWorkflow`. |
+| `LtxLoadSplitAvFragment` | Same as `LtxLoadSplitFragment` but the CLIP slot uses the AV-aware `LTXAVTextEncoderLoader`. Required by AV / lip-sync workflows that ship audio prompt features through the AV text projection. | `LtxV2vJustTalkWorkflow`, `LtxTalkingAvatarWorkflow`.                    |
+
+**Dual-loader policy:** Use `LtxLoadModelFragment` when the upstream JSON ships a single checkpoint; use `LtxLoadSplitFragment` for split-file packs (UNet + Clip + Vae); use `LtxLoadSplitAvFragment` for any workflow that needs audio conditioning fed through the text encoder (Just-Talk, Talking Avatar). All three register the same five outputs (`{scope}model_output`, `{scope}clip_output`, `{scope}vae_output`, `{scope}audio_vae_output`, `{scope}upscale_model_output`) so downstream fragments are interchangeable.
+
+### Inputs (sources / assets)
+
+| Fragment               | Purpose                                                                                                                                                                                                                                                   | Registers                                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `LtxLoadImageFragment` | `LoadImage` -> resize -> `LTXVPreprocess`.                                                                                                                                                                                                                | `{scope}preprocessed_image`.                                                                                                                                                                     |
+| `LtxLoadVideoFragment` | `VHS_LoadVideoFFmpeg` -> longer-edge resize -> `GetImageSizeAndCount` + first/last frame split.                                                                                                                                                           | `{scope}loaded_video_images`, `{scope}loaded_video_first_frame`, `{scope}loaded_video_last_frame`, `{scope}loaded_video_width`, `{scope}loaded_video_height`, `{scope}loaded_video_frame_count`. |
+| `LtxLoadAudioFragment` | `LoadAudio` -> `TrimAudioDuration` (clamped to `LtxVideoSettings.duration`). Reads `parameters.Sources["audio_track"]`.                                                                                                                                   | `{scope}audio_input`.                                                                                                                                                                            |
+| `LtxOmniVoiceFragment` | OmniVoice voice-clone: `LoadAudio` (reference voice) -> `OmniVoiceWhisperLoader` -> `OmniVoiceVoiceCloneTTS` -> `TrimAudioDuration`. Reads `parameters.Sources["reference_audio"]` and (in the default overload) `prompts.positive` as the spoken script. | `{scope}audio_input` (interchangeable with `LtxLoadAudioFragment`).                                                                                                                              |
+
+### Latent / conditioning
+
+| Fragment                         | Purpose                                                                                                          | Notes                                                                                                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LtxEmptyLatentFragment`         | `EmptyLTXVLatentVideo` (+ optional `LTXVEmptyLatentAudio`).                                                      | Set `SkipAudio = true` whenever a real audio track is encoded later (e.g. OmniVoice or `LtxLoadAudioFragment`); avoids emitting an unused empty audio latent. |
+| `LtxVaeEncodeVideoFragment`      | `VAEEncode` over a video frame batch.                                                                            | Re-registers `{scope}video_latent` (or a custom `OutputName`) so V2V workflows reuse the AV concat / sampler chain unchanged.                                 |
+| `LtxAudioVaeEncodeFragment`      | `LTXVAudioVAEEncode` -> `SolidMask` -> `SetLatentNoiseMask`.                                                     | Reads `{scope}audio_input` + `{scope}audio_vae_output`; registers `{scope}audio_latent`.                                                                      |
+| `LtxImgToVideoFragment`          | `LTXVImgToVideoInplace` (image conditioning).                                                                    | Re-registers `ltx_positive_output`, `ltx_negative_output`, `video_latent`.                                                                                    |
+| `LtxAddLatentGuideFragment`      | `LTXVAddLatentGuide` (e.g. last-frame guide for V2V).                                                            | Re-registers conditioning + latent.                                                                                                                           |
+| `LtxAddVideoIcLoraGuideFragment` | `LTXAddVideoICLoRAGuide` (control-pose guide).                                                                   | Phase 4 (DWPose Control).                                                                                                                                     |
+| `LtxAudioVideoMaskFragment`      | `LTXVAudioVideoMask` time-range AV mask.                                                                         | Used by V2V Just-Talk for face-region lip-sync.                                                                                                               |
+| `LtxFaceMaskFragment`            | `FaceSegment` -> `BlockifyMask` -> `LTXVPreprocessMasks` -> `LTXVSetVideoLatentNoiseMasks`.                      | V2V Just-Talk face lock.                                                                                                                                      |
+| `LtxConcatAVLatentFragment`      | `LTXVConcatAVLatent`.                                                                                            | Combines `video_latent` + `audio_latent` into `av_latent_output`.                                                                                             |
+| `LtxConditioningFragment`        | `LTXVConditioning` (frame_rate). Has `BuildCropped` overload that runs `LTXVCropGuides` between sampling passes. | Always run after `PromptsFragment`.                                                                                                                           |
+| `LtxIcLoraLoaderFragment`        | `LTXICLoRALoaderModelOnly`.                                                                                      | Phase 4 (Control-reference Vid2Vid).                                                                                                                          |
+| `LtxControlPreprocessorFragment` | `DWPreprocessor` -> `ImageBlend` (multiply / 0.5).                                                               | Phase 4.                                                                                                                                                      |
+
+### Sampling / scheduling
+
+| Fragment                    | Purpose                                                                                                                                                                                                                                |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LtxSchedulerFragment`      | `LTXVScheduler` (auto / manual sigmas modes). Registers `{scope}sigmas_output`.                                                                                                                                                        |
+| `LtxSamplingPassFragment`   | `KSamplerSelect` + `RandomNoise` + `BasicGuider` (LTX path) + `SamplerCustomAdvanced`. Set `UseRegistrySigmas = true` to read `{SigmasInputName}` from a previous scheduler pass; otherwise pass `Sigmas` as a comma-separated string. |
+| `LtxUpsampleLatentFragment` | `LTXVLatentUpscale` (between passes).                                                                                                                                                                                                  |
+| `LtxDecodeFragment`         | `VAEDecode` + `LTXVAudioVAEDecode` + `VHS_VideoCombine`.                                                                                                                                                                               |
+
+### Enhancement toggles (header-only)
+
+All four are `IsHidden = false` header-only fragments with an `IsActive` toggle. Workflows opt-in by reading `IsActive` and conditionally calling `BuildPatch(builder, registry)`.
+
+| Fragment                               | Patch                                                                                                                                                                                                                            |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LtxNagEnhancementFragment`            | `NAG_Patcher` on `model_output`.                                                                                                                                                                                                 |
+| `LtxSageAttentionEnhancementFragment`  | `SageAttentionPatcher` on `model_output`.                                                                                                                                                                                        |
+| `LtxMelSeparationEnhancementFragment`  | Mel-band audio separation patch on `audio_vae_output`.                                                                                                                                                                           |
+| `LtxRefinementPassEnhancementFragment` | Drives the optional second sampler pass (auto / manual sigmas, sampler name, cfg, seed). The **workflow** is responsible for the actual `Upsample -> CropGuides -> Concat -> Scheduler -> Sampler` pass when `IsActive` is true. |
+
+### Standard build order for an LTX AV workflow
+
+```
+1. AV split loader (LtxLoadSplitAvFragment)
+2. Optional NAG / Sage model patches
+3. LoraLoaderFragment.BuildAll
+4. Source loader (LtxLoadImageFragment / LtxLoadVideoFragment)
+5. (V2V only) LtxVaeEncodeVideoFragment for source frames + last-frame split
+6. Audio path (LtxLoadAudioFragment OR LtxOmniVoiceFragment)
+   -> Optional Mel patch
+   -> LtxAudioVaeEncodeFragment
+7. PromptsFragment + LtxConditioningFragment
+8. (T2V/I2V only) LtxEmptyLatentFragment with SkipAudio = true
+   (V2V uses encoded video_latent from step 5)
+9. (Img2Vid) LtxImgToVideoFragment
+   (V2V Just-Talk) LtxAddLatentGuideFragment + LtxFaceMaskFragment + LtxAudioVideoMaskFragment
+   (Control) LtxIcLoraLoaderFragment + LtxControlPreprocessorFragment + LtxAddVideoIcLoraGuideFragment
+10. LtxConcatAVLatentFragment (pass1)
+11. LtxSchedulerFragment
+12. LtxSamplingPassFragment (UseRegistrySigmas = true)
+13. Optional refinement pass: LtxUpsampleLatentFragment -> LtxConditioningFragment.BuildCropped
+    -> LtxImgToVideoFragment (pass2) / LtxConcatAVLatentFragment (pass2)
+    -> LtxSchedulerFragment (scope: "pass2_")
+    -> LtxSamplingPassFragment (PassId: "pass2", SigmasInputName: "pass2_sigmas_output")
+14. LtxDecodeFragment
+```
+
+---
+
 ## Examples
 
 ### Minimal Workflow (Anima Txt2Img)
@@ -784,6 +895,7 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
     public WorkflowMetadata Metadata => new()
     {
         Title = "Txt2Img",
+        Description = "One-line summary shown in the Info drawer.",
         Base = Data.Enums.ModelBase.Anima,
         Mode = ModeType.Txt2Img,
         CompatibleResourceBaseModels = ["Anima"],

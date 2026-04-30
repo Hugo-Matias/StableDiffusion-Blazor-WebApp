@@ -244,6 +244,43 @@ app.UseRouting();
 
 app.MapBlazorHub();
 
+// Direct multipart upload endpoint that streams large source files (videos in particular)
+// to ComfyUI WITHOUT going through SignalR. The Generate page's video drag/drop control
+// uses fetch() against this route so the circuit stays responsive while the file uploads.
+// Returns the ComfyUI input filename which is then stored on SourceAsset.Filename.
+app.MapPost("/api/upload-source", async (HttpRequest request, IComfyUIService comfy, ILogger<Program> log) =>
+{
+    if (!request.HasFormContentType)
+    {
+        return Results.BadRequest(new { error = "Expected multipart/form-data." });
+    }
+
+    var form = await request.ReadFormAsync();
+    var file = form.Files.GetFile("file");
+    if (file == null || file.Length == 0)
+    {
+        return Results.BadRequest(new { error = "Missing file." });
+    }
+
+    try
+    {
+        await using var stream = file.OpenReadStream();
+        var filename = await comfy.UploadStreamAsync(stream, file.FileName, file.ContentType);
+        return Results.Json(new { filename });
+    }
+    catch (Exception ex)
+    {
+        log.LogError(ex, "Failed to forward source upload '{OriginalName}' ({Bytes} bytes) to ComfyUI", file.FileName, file.Length);
+        return Results.StatusCode(StatusCodes.Status502BadGateway);
+    }
+})
+.DisableAntiforgery()
+// Allow up to 2 GB per source upload (videos). Kestrel's default request body limit is 30 MB
+// and the form parser's multipart limit is 128 MB; both would reject most video clips
+// before the handler ever runs.
+.WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(2L * 1024 * 1024 * 1024))
+.WithMetadata(new Microsoft.AspNetCore.Mvc.RequestFormLimitsAttribute { MultipartBodyLengthLimit = 2L * 1024 * 1024 * 1024 });
+
 app.MapFallbackToPage("/_Host");
 
 app.Run();

@@ -149,6 +149,7 @@ namespace BlazorWebApp.Services
             {
                 Id = metadata.Id,
                 Title = metadata.Title,
+                Description = metadata.Description,
                 Base = metadata.Base,
                 Mode = metadata.Mode,
                 Assets = metadata.Assets?.Select(a => new Models.WorkflowAsset

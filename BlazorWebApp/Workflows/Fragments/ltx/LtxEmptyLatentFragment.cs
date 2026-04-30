@@ -26,6 +26,14 @@ public class LtxEmptyLatentFragment : IFragmentBuilder
         public int Length { get; set; } = 126;
         public int BatchSize { get; set; } = 1;
         public int FrameRate { get; set; } = 25;
+
+        /// <summary>
+        /// When <c>true</c>, the empty audio latent node is omitted and only the video
+        /// latent is registered. Workflows that supply a real audio track
+        /// (e.g. <c>LtxAudioVaeEncodeFragment</c>) should set this to avoid emitting
+        /// an unused empty audio latent that needs the audio VAE.
+        /// </summary>
+        public bool SkipAudio { get; set; } = false;
     }
 
     public void Build(
@@ -57,7 +65,6 @@ public class LtxEmptyLatentFragment : IFragmentBuilder
     {
         var videoLatentId = $"{scope}empty_ltx_latent_video";
         var audioLatentId = $"{scope}empty_ltx_latent_audio";
-        var audioVaeRef = registry.GetRef($"{scope}audio_vae_output");
 
         // EmptyLTXVLatentVideo
         builder.AddNode(videoLatentId, node => node
@@ -68,6 +75,15 @@ public class LtxEmptyLatentFragment : IFragmentBuilder
             .Input("length", p.Length)
             .Input("batch_size", p.BatchSize));
 
+        registry.Register($"{scope}video_latent", videoLatentId, 0);
+
+        if (p.SkipAudio)
+        {
+            return;
+        }
+
+        var audioVaeRef = registry.GetRef($"{scope}audio_vae_output");
+
         // LTXVEmptyLatentAudio
         builder.AddNode(audioLatentId, node => node
             .Type("LTXVEmptyLatentAudio")
@@ -77,7 +93,6 @@ public class LtxEmptyLatentFragment : IFragmentBuilder
             .Input("batch_size", p.BatchSize)
             .InputRef("audio_vae", audioVaeRef));
 
-        registry.Register($"{scope}video_latent", videoLatentId, 0);
         registry.Register($"{scope}audio_latent", audioLatentId, 0);
     }
 }

@@ -3,7 +3,9 @@ using BlazorWebApp.Components.Shared.Generation;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
+using BlazorWebApp.Services;
 using Microsoft.AspNetCore.Components;
+using MudBlazor;
 using static BlazorWebApp.Data.Enums;
 using static BlazorWebApp.Models.FragmentKeys;
 
@@ -65,9 +67,20 @@ public partial class Generate : IDisposable
         Events.Subscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
         Events.Subscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
 
-        // Load all workflows
+        // Load all workflows that may appear on the Generate page. The WorkflowStrip
+        // (which reads from State.Generation.Workflows) shows tabs for every mode the
+        // current base supports, so this list MUST cover the same modes - otherwise
+        // navigating to a workflow whose mode is missing here silently no-ops in
+        // InitializeFromUrl and the page content stays stuck on the previous workflow.
         _workflows = new List<Workflow>();
-        foreach (var mode in new[] { ModeType.Txt2Img, ModeType.Img2Img, ModeType.Img2Vid })
+        foreach (var mode in new[]
+        {
+            ModeType.Txt2Img,
+            ModeType.Img2Img,
+            ModeType.Img2Vid,
+            ModeType.Txt2Vid,
+            ModeType.Vid2Vid
+        })
         {
             var modeWorkflows = Orchestrator.GetWorkflowsForMode(mode);
             if (modeWorkflows != null)
@@ -172,6 +185,11 @@ public partial class Generate : IDisposable
         // Load session images into sources if available
         await LoadSessionSourcesAsync(workflow);
 
+        // Push workflow info to the right-side Info drawer (Title + Description +
+        // a Sources section listing the slot labels). The drawer auto-shows its
+        // toggle when CurrentInfo is non-null.
+        PublishWorkflowInfo(workflow);
+
         // Fragment discovery is now handled by ParameterService.DiscoverFragments()
         // (called automatically during InitializeFromWorkflowAsync)
 
@@ -193,6 +211,46 @@ public partial class Generate : IDisposable
         }
 
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Publishes the active workflow's metadata to the global Info drawer so users
+    /// can open the right-side panel for a longer-form description, source-slot guidance,
+    /// and any future tips. When the workflow has no <see cref="Workflow.Description"/>
+    /// and no Sources, the drawer's info button hides itself (CurrentInfo == null).
+    /// </summary>
+    private void PublishWorkflowInfo(Workflow workflow)
+    {
+        var hasDescription = !string.IsNullOrWhiteSpace(workflow.Description);
+        var hasSources = workflow.Sources?.Count > 0;
+
+        if (!hasDescription && !hasSources)
+        {
+            InfoService.ClearInfo();
+            return;
+        }
+
+        var sections = new List<InfoSection>();
+
+        if (hasSources)
+        {
+            sections.Add(new InfoSection(
+                Id: "workflow-sources",
+                Title: "Required Inputs",
+                Icon: Icons.Material.Filled.Input,
+                Items: workflow.Sources!
+                    .Select(s => new InfoItem(
+                        Label: s.Label + (s.Required ? "" : " (optional)"),
+                        Text: $"Type: {s.Type}"))
+                    .ToList()));
+        }
+
+        InfoService.SetInfo(new InfoContent(
+            Title: workflow.Title,
+            Overview: workflow.Description ?? string.Empty,
+            Shortcuts: new List<ShortcutInfo>(),
+            Tips: new List<string>(),
+            Sections: sections.Count > 0 ? sections : null));
     }
 
     /// <summary>
@@ -646,6 +704,9 @@ public partial class Generate : IDisposable
         Events.Unsubscribe<PendingSourceImagesChangedEventArgs>(OnPendingSourceImages);
         Events.Unsubscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
         Events.Unsubscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
+
+        // Clear any workflow info we pushed to the global Info drawer.
+        InfoService.ClearInfo();
 
         // Save workflow state and global state on dispose
         _ = Task.Run(async () =>

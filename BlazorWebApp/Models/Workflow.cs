@@ -11,6 +11,13 @@ namespace BlazorWebApp.Models
     {
         public Guid Id { get; set; }
         public string Title { get; set; } = "";
+
+        /// <summary>
+        /// Short, user-facing description of what the workflow does and how to use it.
+        /// Optional. Surfaced on the Generate page banner and Info drawer.
+        /// </summary>
+        public string? Description { get; set; }
+
         public ModelBase Base { get; set; }
         public ModeType Mode { get; set; }
 

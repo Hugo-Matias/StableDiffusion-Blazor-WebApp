@@ -443,6 +443,176 @@ public class PromptWorkshopNode
 
 ---
 
+### Phase 13: Workshop Wizard (Button-Based Prompt Builder)
+
+**Objective:** Add a gamified, button-driven wizard panel above the Workshop composer that lets users build and iterate on a prompt without typing. A hardcoded intro questionnaire seeds a baseline prompt; from there the LLM returns JSON-formatted suggestion buttons that drive the next turn. The wizard always emits a draft into the composer textbox - it does NOT auto-create nodes in the session tree.
+
+**Complexity:** 21 points
+**Status:** [ ] Not Started
+
+#### Problem Recap
+
+Today's Workshop assumes the user types meaningful free-text instructions ("add rain", "make it cyberpunk"). For users who don't know how to express what they want, this is a blank-page problem. The wizard reframes prompt-building as a "creative chess game" of ask/answer turns where the LLM proposes the next plausible directions and the user just clicks.
+
+#### Design Decisions
+
+| Decision                                                                               | Rationale                                                                                                               |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Coexists with chat/evolve; does not replace either                                     | Wizard is a builder for the composer; chat/evolve still operate on the tree                                             |
+| Wizard runs **independently of any active session** for its flow                       | Users can build a draft before picking/creating a session; Commit just writes text into the composer                    |
+| Wizard **state is per-session** for restoration (nullable `SessionId`)                 | One in-progress wizard per Workshop session, plus one "unbound" wizard slot when no session is selected                 |
+| Intro **sections** are hardcoded; **all option labels are LLM-generated**              | Predictable scaffolding (Subject -> Scenery -> Lighting -> Mood -> Style) but every list of buttons is a fresh surprise |
+| Every option turn includes a **More...** button to re-roll without repeating           | Drives the "creative chess game" feel and avoids stale catalogs                                                         |
+| **JSON-mode** Ollama responses with a fixed schema in the system prompt                | Reliable parsing; no regex/free-text fallback path                                                                      |
+| Context budget: **current draft + last 1-2 Q/A pairs only**                            | Honors the constraint of low-compute setups; avoids sending full history every turn                                     |
+| Persistent action verbs: Improve, Change, Add, Remove, Surprise me, Commit -> Composer | Hardcoded set always rendered; LLM-suggested buttons rendered alongside per turn                                        |
+| **Undo is deterministic** (local turn-history stack, no LLM round-trip)                | Reverts last turn from stored history; cheap and predictable                                                            |
+| Panel **always visible above the composer**, collapsible header                        | Wizard is the gamified hub; user can collapse to free vertical space                                                    |
+| Wizard does NOT generate images, branches, or nodes                                    | Strict separation of concerns: wizard builds text, composer/Workshop handles execution                                  |
+
+#### Data Model
+
+```csharp
+public class WorkshopWizardSession
+{
+    public int Id { get; set; }
+
+    /// <summary>Optional FK. Null = the unbound wizard slot used when no Workshop session is active.</summary>
+    public int? SessionId { get; set; }
+    public PromptWorkshopSession? Session { get; set; }
+
+    /// <summary>JSON-serialized WizardBody (single complex column, JSON-backed entity pattern).</summary>
+    public string Body { get; set; } = "{}";
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+// Serialized into Body via ValueConverter, mirroring SchedulerDraft / State conventions.
+public sealed class WizardBody
+{
+    public WizardStage Stage { get; set; }              // Intro | Iteration | Committed
+    public int IntroStepIndex { get; set; }             // 0..N for hardcoded intro questions
+    public string CurrentDraft { get; set; } = "";     // The current prompt being built
+    public List<WizardTurn> History { get; set; } = new(); // For deterministic undo + last-N context
+    public List<WizardOption> PendingOptions { get; set; } = new(); // Buttons currently rendered
+    public string? LastActionVerb { get; set; }         // e.g. "Add", "Change"
+    public string? LastUserChoice { get; set; }
+}
+
+public sealed class WizardTurn
+{
+    public string Question { get; set; } = "";
+    public string Choice { get; set; } = "";
+    public string? ActionVerb { get; set; }
+    public string DraftBefore { get; set; } = "";
+    public string DraftAfter { get; set; } = "";
+}
+
+public sealed class WizardOption
+{
+    public string Label { get; set; } = "";    // Button text
+    public string? Hint { get; set; }          // Optional secondary text / tooltip
+    public string? Payload { get; set; }       // Sent back to LLM as the choice (often == Label)
+}
+```
+
+#### LLM Contract (JSON Mode)
+
+Single response shape requested from Ollama (`format: "json"`):
+
+```json
+{
+  "question": "What should we focus on next?",
+  "options": [
+    { "label": "Add atmospheric fog", "hint": "evening mist, cool palette" },
+    { "label": "Specify camera angle", "hint": "low-angle, dutch tilt..." }
+  ]
+}
+```
+
+Schema constraints documented in the system prompt: 3-6 options per turn, each label <= 60 chars, hints optional and <= 80 chars. Parser fails closed (re-prompt once, then surface a snackbar and let the user click a hardcoded verb).
+
+#### UI Placement
+
+```
++-------------------------------------------------------------+
+| WorkshopWizardPanel  [collapse ^]                           |
+|   Stage: Iteration   Turn 4   Draft: "..."                  |
+|                                                             |
+|   Question: "What should we focus on next?"                 |
+|   [Add fog] [Camera angle] [Time of day] [Outfit detail]    |
+|                                                             |
+|   --- Always-visible verbs ---                              |
+|   [Improve] [Change] [Add] [Remove] [Surprise] [Undo]       |
+|   [Commit -> Composer]                                       |
++-------------------------------------------------------------+
+| WorkshopComposer (unchanged)                                |
+|   <textarea>     [Tune] [Variations] [Send]                 |
++-------------------------------------------------------------+
+```
+
+#### Steps
+
+1. **Entity + migration** - `WorkshopWizardSession` with JSON-backed `Body` (follow `Documentation/Architecture/03-PERSISTENCE-AND-MIGRATIONS.md` checklist). Update `AppDbContextModelSnapshot.cs`.
+2. **DTOs + JSON contract** - `WizardBody`, `WizardTurn`, `WizardOption`, `WizardStage`, `WizardLLMResponse`. Add `WizardJsonOptions` mirroring `SchedulerJsonOptions.Compact`.
+3. **`WorkshopWizardService`** - load/save by `SessionId?`, advance turn (intro vs iteration paths), undo, reset, commit. Encapsulates the context-trimming policy (current draft + last 1-2 turns only).
+4. **System prompts (seeded)** - `Workshop.WizardIntroOptions`, `Workshop.WizardIterate`, `Workshop.WizardActionVerb` (one prompt per persistent verb that needs LLM expansion: Improve / Change / Add / Remove / Surprise). Marked `IsDefault`.
+5. **Hardcoded intro sections only** - `BlazorWebApp/Data/wizard_intro.json` defines the ordered section list (id, title, prompt-fragment shown to the LLM, optional 1-3 reply examples used as few-shot guidance). NO option labels are stored; every step calls the LLM for fresh options. The schema response is the same `{ question, options[] }` contract used in iteration.
+6. **`WorkshopWizardPanel.razor`** - collapsible card above composer; renders question, dynamic option grid (`MudButton` / `.send-to-btn`), persistent verb row, Undo (local), Commit. Uses spacing tokens from `wwwroot/site.css`.
+7. **Composer integration** - `WorkshopWizardPanel` lives inside `WorkshopView.razor`'s composer slot, sits above existing `WorkshopComposer`. Commit calls `_composer.SetText(draft)`; user presses Send manually. No changes to `WorkshopComposer` internals.
+8. **State persistence** - on every turn, `WorkshopWizardService.SaveAsync()` updates `Body`. On `WorkshopView` mount, hydrate via `SessionId` (or null slot when no session). `IsModified` flag set per persistence convention.
+9. **EventService events** - `WizardTurnAdvancedEventArgs`, `WizardCommittedEventArgs`, `WizardResetEventArgs` via the pub/sub pattern.
+10. **AppState** - `AppState.Prompts.LLM.Workshop.WizardCollapsed` (bool) for header collapse persistence.
+11. **Failure handling** - on JSON parse failure, retry once with a stricter system prompt; on second failure show snackbar "Suggestions unavailable - use the action buttons" and keep the persistent verbs functional.
+12. **Telemetry / dev affordance** - log raw LLM JSON to console in DEBUG only for tuning the schema.
+
+#### Success Criteria
+
+- Cold start (no session, empty wizard): clicking through the 5-step intro produces a coherent baseline draft visible in the panel.
+- Clicking any LLM-suggested button or persistent verb advances the draft and renders new options without typing anything.
+- Commit -> Composer writes the draft into the composer textbox; pressing Send creates the session/node exactly as today.
+- Undo reverts the previous turn deterministically (no LLM call); the option grid shows the prior turn's options.
+- Navigating away and back restores the wizard's stage, draft, and pending options for the active session (and for the unbound slot).
+- A sample turn payload sent to Ollama contains only: current draft, last 1-2 Q/A pairs, the action verb / chosen option. No full session history is sent.
+- JSON-mode parse failures retry once and degrade gracefully.
+
+#### Files Affected
+
+- New: `BlazorWebApp/Data/Entities/WorkshopWizardSession.cs`
+- New: `BlazorWebApp/Migrations/{timestamp}_Add_WorkshopWizardSession.cs` + snapshot update
+- New: `BlazorWebApp/Models/WizardModels.cs` (DTOs + enum)
+- New: `BlazorWebApp/Services/WorkshopWizardService.cs` + interface
+- New: `BlazorWebApp/Data/wizard_intro.json`
+- New: `BlazorWebApp/Components/Prompts/LLM/Views/WorkshopWizardPanel.razor` (+ `.razor.css`)
+- New: `BlazorWebApp/Events/WizardTurnAdvancedEventArgs.cs`, `WizardCommittedEventArgs.cs`, `WizardResetEventArgs.cs`
+- Extend: `BlazorWebApp/Data/AppDbContext.cs` (DbSet + JSON converter wiring)
+- Extend: `BlazorWebApp/Components/Prompts/LLM/Views/WorkshopView.razor` (mount panel above composer; hydrate on session change)
+- Extend: `BlazorWebApp/Models/AppState.cs` (`Workshop.WizardCollapsed`)
+- Extend: `BlazorWebApp/Services/DatabaseService.cs` (seed wizard system-prompt templates if missing)
+- Extend: `BlazorWebApp/Program.cs` (register `IWorkshopWizardService`)
+
+#### Stress Points & Risks
+
+| Risk                                                          | Mitigation                                                                                          | Complexity |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------- |
+| Small models produce malformed JSON                           | Strict schema in system prompt, JSON mode, single retry, snackbar fallback                          | 3          |
+| Context creep across turns inflates payloads                  | Hard-coded sliding window of last 1-2 turns + draft only; service-level enforcement                 | 2          |
+| Per-session FK + nullable unbound slot creates two code paths | Single load helper `LoadOrCreate(int? sessionId)`; one row per non-null FK enforced by unique index | 2          |
+| Panel collisions with existing composer keyboard handlers     | Panel uses buttons only; no global key listeners                                                    | 1          |
+| Seeded system prompts drift from schema                       | Version-stamp each template; `DatabaseService` re-seeds when version mismatches                     | 2          |
+| Deterministic Undo conflicts with LLM continuity              | Undo restores `Body.PendingOptions` from `History`; LLM is not re-invoked                           | 1          |
+
+#### Resolved Assumptions
+
+- **Surprise me** is pure-LLM with no wildcard constraints - the goal is genuine surprise.
+- **Turn cap**: hard limit 50 turns; soft snackbar nudge at 30. Counter resets on Reset / Commit.
+- **System-prompt versioning**: each seeded wizard template carries a version stamp; `DatabaseService` re-seeds entries whose version is older than the embedded constant.
+- **More...** button calls the same iteration endpoint with an explicit `excludeLabels` hint listing the labels just shown so the model rotates suggestions instead of repeating.
+- Auto-Commit is **not** triggered at intro completion; the user always clicks Commit -> Composer.
+
+---
+
 ## Deferred Items
 
 Recorded here for future planning. When picked up, use this plan as reference context.
@@ -479,8 +649,9 @@ Recorded here for future planning. When picked up, use this plan as reference co
 | 10  | Wildcard Forge                | 36          | 1, 2                               | [~]    |
 | 11  | Polish & Settings             | 3           | 1-10                               | [ ]    |
 | 12  | Image -> Prompt (VL)          | 13          | 1, 2                               | [ ]    |
+| 13  | Workshop Wizard               | 21          | 8                                  | [ ]    |
 
-**Total:** ~113 complexity points.
+**Total:** ~134 complexity points.
 
 ---
 

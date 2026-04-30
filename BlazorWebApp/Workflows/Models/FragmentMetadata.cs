@@ -57,6 +57,16 @@ public record FragmentMetadata
     public bool IsHidden { get; init; } = false;
 
     /// <summary>
+    /// Optional override for the fragment's initial <c>IsActive</c> state.
+    /// When null, optional fragments (Collapsible == true or Type == Enhancement)
+    /// start inactive and required fragments start active.
+    /// When set, that value is used verbatim - useful for enhancement fragments
+    /// that should be on by default (for example refinement passes that match
+    /// upstream defaults).
+    /// </summary>
+    public bool? DefaultActive { get; init; }
+
+    /// <summary>
     /// Parameter definitions for UI generation and validation.
     /// </summary>
     public IEnumerable<FragmentParameter> Parameters { get; init; } = Array.Empty<FragmentParameter>();

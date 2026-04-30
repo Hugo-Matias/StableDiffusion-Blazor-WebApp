@@ -39,6 +39,19 @@ namespace BlazorWebApp.Services
         // Image Upload
         Task<string> UploadImageAsync(string base64Data, Guid? promptId = null);
 
+        /// <summary>
+        /// Uploads an audio file to ComfyUI's input folder. The extension is preserved
+        /// (defaults to <c>.wav</c>) so that nodes such as <c>LoadAudio</c> can read it.
+        /// </summary>
+        Task<string> UploadAudioAsync(string base64Data, string? extensionOrFilename = null, Guid? promptId = null);
+
+        /// <summary>
+        /// Streams an upload directly to ComfyUI's input folder. Used by the browser-side
+        /// video / large-file upload flow that posts via fetch to a minimal API endpoint
+        /// and bypasses the SignalR circuit entirely. Returns the uploaded filename.
+        /// </summary>
+        Task<string> UploadStreamAsync(Stream stream, string originalFilename, string mediaType, Guid? promptId = null);
+
         #region New GenerationParameters-based Methods
 
         /// <summary>

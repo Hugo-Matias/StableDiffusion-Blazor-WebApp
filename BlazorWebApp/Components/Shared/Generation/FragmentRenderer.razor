@@ -98,14 +98,19 @@
             return;
         }
 
-        // Get component name from schema, or derive from fragment file
+        // Get component name from schema. We intentionally only look up a component
+        // when the fragment metadata explicitly declares one (Schema.Component). Header-only
+        // fragments (e.g. enhancement toggles like NAG / SageAttention / Mel separation)
+        // legitimately have no component, and the legacy file-based fallback below would
+        // mangle a fluent fragment id like "fluent:ltx_video_settings" into a bogus name
+        // such as "Fluent:ltxVideoSettingsForm" and log a misleading registry warning.
         _componentName = Fragment.Schema?.Component;
 
         if (string.IsNullOrEmpty(_componentName))
         {
-            // Try to derive component name from fragment file: "upscale.sbn" -> "UpscaleForm"
-            var baseName = Path.GetFileNameWithoutExtension(Fragment.Parameters.FragmentFile);
-            _componentName = ToPascalCase(baseName) + "Form";
+            _componentType = null;
+            _componentParams = null;
+            return;
         }
 
         // Look up component type in registry
@@ -132,25 +137,13 @@
                 _componentParams["UseGuidance"] = UseGuidance;
             }
 
-            Logger.LogTrace("Resolved component '{ComponentName}' for fragment '{FragmentId}'", 
+            Logger.LogTrace("Resolved component '{ComponentName}' for fragment '{FragmentId}'",
                 _componentName, Fragment.Id);
         }
         else
         {
-            Logger.LogWarning("Component '{ComponentName}' not found for fragment '{FragmentId}'", 
+            Logger.LogWarning("Component '{ComponentName}' not found for fragment '{FragmentId}'",
                 _componentName, Fragment.Id);
         }
-    }
-
-    /// <summary>
-    /// Converts a kebab-case or snake_case string to PascalCase.
-    /// </summary>
-    private static string ToPascalCase(string input)
-    {
-        if (string.IsNullOrEmpty(input)) return input;
-
-        var parts = input.Split(new[] { '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-        return string.Concat(parts.Select(p =>
-            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p.Substring(1).ToLowerInvariant() : "")));
     }
 }

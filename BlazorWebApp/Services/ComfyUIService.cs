@@ -555,32 +555,172 @@ namespace BlazorWebApp.Services
         /// </summary>
         public async Task<string> UploadImageAsync(string base64Data, Guid? promptId = null)
         {
+            return await UploadInputAsync(base64Data, "image/png", ".png", promptId);
+        }
+
+        /// <summary>
+        /// Uploads an audio file to ComfyUI's input folder. The extension is preserved
+        /// so that <c>LoadAudio</c> and similar nodes can resolve the file.
+        /// </summary>
+        /// <param name="base64Data">Base64 (with or without data URI prefix) of the audio bytes.</param>
+        /// <param name="extensionOrFilename">Optional extension (e.g. <c>.wav</c>) or filename to derive the extension from. Defaults to <c>.wav</c>.</param>
+        /// <param name="promptId">Optional prompt id for cleanup tracking.</param>
+        public async Task<string> UploadAudioAsync(string base64Data, string? extensionOrFilename = null, Guid? promptId = null)
+        {
+            var ext = ResolveExtension(extensionOrFilename, ".wav");
+            var mime = ext.ToLowerInvariant() switch
+            {
+                ".mp3" => "audio/mpeg",
+                ".flac" => "audio/flac",
+                ".ogg" => "audio/ogg",
+                ".m4a" => "audio/mp4",
+                _ => "audio/wav"
+            };
+            return await UploadInputAsync(base64Data, mime, ext, promptId);
+        }
+
+        /// <summary>
+        /// Streams an upload directly to ComfyUI's input folder without going through a
+        /// base64 round-trip. This is the path used by the browser-side video / large-file
+        /// upload flow: bytes flow from <c>fetch()</c> -> minimal API endpoint -> here ->
+        /// ComfyUI, never touching the SignalR circuit. Returns the uploaded filename.
+        /// </summary>
+        public async Task<string> UploadStreamAsync(Stream stream, string originalFilename, string mediaType, Guid? promptId = null)
+        {
+            if (stream == null) throw new ArgumentNullException(nameof(stream));
+
+            // Buffer to memory so we can hash for dedup. For typical video inputs this is the
+            // simplest path; if multi-GB sources become a concern we can switch to streamed
+            // hashing + a temp file, but ComfyUI itself loads the full file into memory anyway.
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            var hash = ComputeHash(bytes);
+
+            if (_imageHashCache.TryGetValue(hash, out var existingFilename))
+            {
+                _logger.LogDebug("Stream upload hit cache for {OriginalFilename} -> {Filename}", originalFilename, existingFilename);
+                if (promptId.HasValue)
+                {
+                    _uploadedImages.AddOrUpdate(
+                        promptId.Value,
+                        new List<string> { existingFilename },
+                        (_, list) =>
+                        {
+                            if (!list.Contains(existingFilename)) list.Add(existingFilename);
+                            return list;
+                        });
+                }
+                return existingFilename;
+            }
+
+            var ext = ResolveExtension(originalFilename, ".bin");
+            var filename = $"blazor_input_{hash[..16]}{ext}";
+
+            using var content = new MultipartFormDataContent();
+            var fileContent = new ByteArrayContent(bytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(
+                string.IsNullOrWhiteSpace(mediaType) ? "application/octet-stream" : mediaType);
+            content.Add(fileContent, "image", filename);
+            content.Add(new StringContent("true"), "overwrite");
+
+            var response = await _httpClient.PostAsync("/upload/image", content);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<ComfyUIUploadResponse>();
+            var uploadedFilename = result?.Name ?? filename;
+
+            _imageHashCache[hash] = uploadedFilename;
+
+            if (promptId.HasValue)
+            {
+                _uploadedImages.AddOrUpdate(
+                    promptId.Value,
+                    new List<string> { uploadedFilename },
+                    (_, list) => { list.Add(uploadedFilename); return list; });
+            }
+
+            _logger.LogDebug("Streamed input {OriginalFilename} ({Bytes} bytes) -> {Filename}",
+                originalFilename, bytes.Length, uploadedFilename);
+            return uploadedFilename;
+        }
+
+        private static string ResolveExtension(string? extensionOrFilename, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(extensionOrFilename)) return fallback;
+            // If a data URI is supplied, sniff the type after "data:".
+            if (extensionOrFilename.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var slash = extensionOrFilename.IndexOf('/');
+                var semi = extensionOrFilename.IndexOf(';');
+                if (slash > 0 && semi > slash)
+                {
+                    var sub = extensionOrFilename[(slash + 1)..semi];
+                    return "." + sub.Replace("mpeg", "mp3");
+                }
+                return fallback;
+            }
+            // If a path/filename is supplied, take its extension.
+            var dot = extensionOrFilename.LastIndexOf('.');
+            if (dot >= 0 && dot < extensionOrFilename.Length - 1)
+            {
+                return extensionOrFilename[dot..].ToLowerInvariant();
+            }
+            return fallback;
+        }
+
+        /// <summary>
+        /// Generic upload to ComfyUI's <c>/upload/image</c> endpoint (which actually accepts any
+        /// input file type, with <c>image</c> being the form field name). The extension and MIME
+        /// type drive what nodes such as <c>LoadAudio</c> can resolve later.
+        /// </summary>
+        private async Task<string> UploadInputAsync(string base64Data, string mediaType, string extension, Guid? promptId)
+        {
             // Remove data URI prefix if present
             var base64 = base64Data;
-            if (base64.Contains(","))
+            if (base64.Contains(','))
             {
                 base64 = base64.Split(',')[1];
             }
 
-            var imageBytes = Convert.FromBase64String(base64);
+            var bytes = Convert.FromBase64String(base64);
 
-            // Generate hash of image content for deduplication
-            var hash = ComputeHash(imageBytes);
+            // Generate hash of content for deduplication
+            var hash = ComputeHash(bytes);
 
-            // Check if we already uploaded this exact image
+            // Check if we already uploaded this exact payload
             if (_imageHashCache.TryGetValue(hash, out var existingFilename))
             {
-                _logger.LogDebug("Image already uploaded with hash {Hash}, reusing {Filename}", hash, existingFilename);
+                _logger.LogDebug("Input already uploaded with hash {Hash}, reusing {Filename}", hash, existingFilename);
+
+                // Track this prompt as also referencing the file so a concurrent
+                // (e.g. queued) generation does not delete it on cleanup while
+                // we still need it. Without this, queued Img2Img runs that share
+                // the same input image fail when the first run's cleanup removes
+                // the file from ComfyUI's input folder.
+                if (promptId.HasValue)
+                {
+                    _uploadedImages.AddOrUpdate(
+                        promptId.Value,
+                        new List<string> { existingFilename },
+                        (_, list) =>
+                        {
+                            if (!list.Contains(existingFilename)) list.Add(existingFilename);
+                            return list;
+                        }
+                    );
+                }
                 return existingFilename;
             }
 
             // Use hash as filename to ensure uniqueness and deduplication
-            var filename = $"blazor_input_{hash[..16]}.png";
+            var filename = $"blazor_input_{hash[..16]}{extension}";
 
             using var content = new MultipartFormDataContent();
-            var imageContent = new ByteArrayContent(imageBytes);
-            imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-            content.Add(imageContent, "image", filename);
+            var fileContent = new ByteArrayContent(bytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+            content.Add(fileContent, "image", filename);
             content.Add(new StringContent("true"), "overwrite");
 
             var response = await _httpClient.PostAsync("/upload/image", content);
@@ -602,7 +742,7 @@ namespace BlazorWebApp.Services
                 );
             }
 
-            _logger.LogDebug("Uploaded image {Filename} with hash {Hash}", uploadedFilename, hash);
+            _logger.LogDebug("Uploaded input {Filename} with hash {Hash}", uploadedFilename, hash);
             return uploadedFilename;
         }
 
@@ -628,6 +768,17 @@ namespace BlazorWebApp.Services
             {
                 try
                 {
+                    // If another in-flight prompt (e.g. a queued generation that
+                    // reused the same hash-cached input) still references this
+                    // file, skip deletion and cache eviction so its run can
+                    // still load the input.
+                    var stillInUse = _uploadedImages.Values.Any(list => list.Contains(filename));
+                    if (stillInUse)
+                    {
+                        _logger.LogDebug("Skipping cleanup of input image {Filename} - still referenced by another prompt", filename);
+                        continue;
+                    }
+
                     // Remove from hash cache so it can be re-uploaded if needed
                     var hashToRemove = _imageHashCache.FirstOrDefault(kv => kv.Value == filename).Key;
                     if (hashToRemove != null)
@@ -900,15 +1051,26 @@ namespace BlazorWebApp.Services
         {
             foreach (var source in parameters.Sources.Values)
             {
+                var typeKey = (source.Type ?? "image").ToLowerInvariant();
+                var isAudio = typeKey == "audio";
                 if (source.HasData && !string.IsNullOrEmpty(source.Data))
                 {
                     // Check if it's base64 data (not already an uploaded filename)
                     if (source.Data.StartsWith("data:") || source.Data.Length > 260)
                     {
-                        var uploadedFilename = await UploadImageAsync(source.Data, tempId);
+                        string uploadedFilename;
+                        if (isAudio)
+                        {
+                            var ext = source.Filename ?? source.Data; // ResolveExtension sniffs both
+                            uploadedFilename = await UploadAudioAsync(source.Data, ext, tempId);
+                        }
+                        else
+                        {
+                            uploadedFilename = await UploadImageAsync(source.Data, tempId);
+                        }
                         source.Data = uploadedFilename;
                         source.Filename = uploadedFilename;
-                        _logger.LogDebug("Uploaded source image from data: {Filename}", uploadedFilename);
+                        _logger.LogDebug("Uploaded source {Type} from data: {Filename}", typeKey, uploadedFilename);
                     }
                 }
                 else if (!string.IsNullOrEmpty(source.FilePath) && File.Exists(source.FilePath))
@@ -917,9 +1079,17 @@ namespace BlazorWebApp.Services
                     var base64 = _io.GetBase64FromFile(source.FilePath);
                     if (!string.IsNullOrEmpty(base64))
                     {
-                        var uploadedFilename = await UploadImageAsync(base64, tempId);
+                        string uploadedFilename;
+                        if (isAudio)
+                        {
+                            uploadedFilename = await UploadAudioAsync(base64, source.FilePath, tempId);
+                        }
+                        else
+                        {
+                            uploadedFilename = await UploadImageAsync(base64, tempId);
+                        }
                         source.Filename = uploadedFilename;
-                        _logger.LogDebug("Uploaded source image from file path: {FilePath} -> {Filename}", source.FilePath, uploadedFilename);
+                        _logger.LogDebug("Uploaded source {Type} from file path: {FilePath} -> {Filename}", typeKey, source.FilePath, uploadedFilename);
                     }
                 }
             }
