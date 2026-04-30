@@ -28,10 +28,23 @@ public class LtxLoadSplitFragment : IFragmentBuilder
     public class Parameters
     {
         public string UnetName { get; set; } = "ltx-2.3-22b-distilled-bf16.safetensors";
-        public string ClipName { get; set; } = "gemma_3_12B_it_fp4_mixed.safetensors";
+        // DualCLIPLoader.clip_name1 — the Gemma text encoder.
+        public string ClipName { get; set; } = "gemma_3_12B_it_fpmixed.safetensors";
+        // DualCLIPLoader.clip_name2 — distinct LTX text-projection file. Loaded
+        // from the same /text_encoders folder per ComfyUI /object_info, but it
+        // is NOT the same file as clip_name1; upstream T2V_Basic.json wires both.
+        public string ClipName2 { get; set; } = "ltx-2.3_text_projection_bf16.safetensors";
         public string VaeName { get; set; } = "ltx-2.3_video_vae.safetensors";
-        public string AudioVaeName { get; set; } = "ltx-2.3_audio_vae.safetensors";
-        public string UpscaleModelName { get; set; } = "ltx-2.3-spatial-upscaler-x2-1.1.safetensors";
+        // Audio VAE — by default the upstream T2V Basic GUI uses KJNodes'
+        // VAELoaderKJ which reads /models/vae (verified via /object_info).
+        // Set AudioVaeNodeType = "LTXVAudioVAELoader" to instead use the
+        // official LTX node, which reads ckpt_name from /models/checkpoints.
+        public string AudioVaeName { get; set; } = "LTX23_audio_vae_bf16_KJ.safetensors";
+        public string AudioVaeNodeType { get; set; } = "VAELoaderKJ";
+        public string AudioVaeWeightDtype { get; set; } = "bf16";
+        // LatentUpscaleModelLoader reads /models/latent_upscale_models, distinct
+        // from UpscaleModelLoader's /models/upscale_models.
+        public string UpscaleModelName { get; set; } = "ltx-2-spatial-upscaler-x2-1.0.safetensors";
         public string UnetWeightDtype { get; set; } = "default";
     }
 
@@ -43,13 +56,19 @@ public class LtxLoadSplitFragment : IFragmentBuilder
         string scopeTitle = "")
     {
         var assets = parameters.Assets;
+        var defaults = new Parameters();
         var p = new Parameters
         {
-            UnetName = assets?.GetValueOrDefault("UNet") ?? new Parameters().UnetName,
-            ClipName = assets?.GetValueOrDefault("Clip") ?? new Parameters().ClipName,
-            VaeName = assets?.GetValueOrDefault("Vae") ?? new Parameters().VaeName,
-            AudioVaeName = assets?.GetValueOrDefault("AudioVae") ?? new Parameters().AudioVaeName,
-            UpscaleModelName = assets?.GetValueOrDefault("UpscaleModel") ?? new Parameters().UpscaleModelName
+            UnetName = assets?.GetValueOrDefault("UNet") ?? defaults.UnetName,
+            ClipName = assets?.GetValueOrDefault("Clip") ?? defaults.ClipName,
+            ClipName2 = assets?.GetValueOrDefault("Clip2") ?? defaults.ClipName2,
+            VaeName = assets?.GetValueOrDefault("Vae") ?? defaults.VaeName,
+            AudioVaeName = assets?.GetValueOrDefault("AudioVae") ?? defaults.AudioVaeName,
+            // AudioVaeNodeType keeps its default; templates that need the
+            // checkpoint-backed LTXVAudioVAELoader call the Parameters
+            // overload of Build(...) directly.
+            AudioVaeNodeType = defaults.AudioVaeNodeType,
+            UpscaleModelName = assets?.GetValueOrDefault("UpscaleModel") ?? defaults.UpscaleModelName
         };
         BuildInternal(builder, registry, p, scope, scopeTitle);
     }
@@ -89,7 +108,7 @@ public class LtxLoadSplitFragment : IFragmentBuilder
             .Type("DualCLIPLoader")
             .Title($"{scopeTitle}DualCLIPLoader")
             .Input("clip_name1", p.ClipName)
-            .Input("clip_name2", p.ClipName)
+            .Input("clip_name2", p.ClipName2)
             .Input("type", "ltxv")
             .Input("device", "default"));
 
@@ -98,10 +117,7 @@ public class LtxLoadSplitFragment : IFragmentBuilder
             .Title($"{scopeTitle}Load VAE")
             .Input("vae_name", p.VaeName));
 
-        builder.AddNode(audioVaeId, node => node
-            .Type("LTXVAudioVAELoader")
-            .Title($"{scopeTitle}LTXV Audio VAE Loader")
-            .Input("ckpt_name", p.AudioVaeName));
+        builder.AddNode(audioVaeId, node => BuildAudioVaeNode(node, p, scopeTitle));
 
         builder.AddNode(upscaleId, node => node
             .Type("LatentUpscaleModelLoader")
@@ -128,5 +144,29 @@ public class LtxLoadSplitFragment : IFragmentBuilder
         registry.Register($"{scope}vae_output", vaeId, 0);
         registry.Register($"{scope}audio_vae_output", audioVaeId, 0);
         registry.Register($"{scope}upscale_model_output", upscaleId, 0);
+    }
+
+    /// <summary>
+    /// Configures the audio VAE loader node based on <see cref="Parameters.AudioVaeNodeType"/>.
+    /// VAELoaderKJ (default, KJNodes) reads from /models/vae and exposes
+    /// device + weight_dtype widgets. LTXVAudioVAELoader reads ckpt_name from
+    /// /models/checkpoints. Both output a VAE socket so downstream
+    /// LTXVAudioVAEDecode / LTXVAudioVAEEncode wiring is unaffected.
+    /// </summary>
+    private static void BuildAudioVaeNode(NodeBuilder node, Parameters p, string scopeTitle)
+    {
+        if (string.Equals(p.AudioVaeNodeType, "LTXVAudioVAELoader", StringComparison.Ordinal))
+        {
+            node.Type("LTXVAudioVAELoader")
+                .Title($"{scopeTitle}LTXV Audio VAE Loader")
+                .Input("ckpt_name", p.AudioVaeName);
+            return;
+        }
+
+        node.Type("VAELoaderKJ")
+            .Title($"{scopeTitle}VAELoader KJ (audio VAE)")
+            .Input("vae_name", p.AudioVaeName)
+            .Input("device", "main_device")
+            .Input("weight_dtype", p.AudioVaeWeightDtype);
     }
 }

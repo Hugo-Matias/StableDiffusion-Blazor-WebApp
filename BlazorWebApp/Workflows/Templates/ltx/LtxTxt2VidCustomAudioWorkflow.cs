@@ -70,10 +70,19 @@ public class LtxTxt2VidCustomAudioWorkflow : IWorkflowBuilder
             new WorkflowAsset
             {
                 Parameter = "Clip",
-                Label = "Text Encoder",
+                Label = "Text Encoder (Gemma)",
                 Type = AssetType.Clip,
-                DefaultValue = "gemma_3_12B_it_fp4_mixed.safetensors",
+                DefaultValue = "gemma_3_12B_it_fpmixed.safetensors",
                 Order = 2,
+                ColumnSize = 6
+            },
+            new WorkflowAsset
+            {
+                Parameter = "Clip2",
+                Label = "Text Encoder (LTX projection)",
+                Type = AssetType.Clip,
+                DefaultValue = "ltx-2.3_text_projection_bf16.safetensors",
+                Order = 3,
                 ColumnSize = 6
             },
             new WorkflowAsset
@@ -82,25 +91,26 @@ public class LtxTxt2VidCustomAudioWorkflow : IWorkflowBuilder
                 Label = "Video VAE",
                 Type = AssetType.Vae,
                 DefaultValue = "ltx-2.3_video_vae.safetensors",
-                Order = 3,
+                Order = 4,
                 ColumnSize = 6
             },
             new WorkflowAsset
             {
                 Parameter = "AudioVae",
                 Label = "Audio VAE",
-                Type = AssetType.AudioVae,
-                DefaultValue = "ltx-2.3_audio_vae.safetensors",
-                Order = 4,
+                // VAELoaderKJ (default audio VAE loader) reads /models/vae.
+                Type = AssetType.Vae,
+                DefaultValue = "LTX23_audio_vae_bf16_KJ.safetensors",
+                Order = 5,
                 ColumnSize = 6
             },
             new WorkflowAsset
             {
                 Parameter = "UpscaleModel",
                 Label = "Spatial Upscaler",
-                Type = AssetType.UpscaleModel,
-                DefaultValue = "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-                Order = 5,
+                Type = AssetType.LatentUpscaleModel,
+                DefaultValue = "ltx-2-spatial-upscaler-x2-1.0.safetensors",
+                Order = 6,
                 ColumnSize = 12
             }
         ],

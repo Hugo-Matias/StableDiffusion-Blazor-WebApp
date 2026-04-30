@@ -24,6 +24,23 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetBBoxDetailers();
 
         /// <summary>
+        /// Pixel-space upscalers (ESRGAN-style) backed by <c>UpscaleModelLoader.model_name</c>.
+        /// Resolved through ComfyUI's <c>/object_info</c> so the folder location stays
+        /// authoritative on the backend rather than hardcoded here.
+        /// </summary>
+        Task<List<string>> GetUpscaleModels();
+
+        /// <summary>
+        /// Latent-space (diffusion) upscalers backed by <c>LatentUpscaleModelLoader.model_name</c>.
+        /// </summary>
+        Task<List<string>> GetLatentUpscaleModels();
+
+        /// <summary>
+        /// ControlNet models backed by <c>ControlNetLoader.control_net_name</c>.
+        /// </summary>
+        Task<List<string>> GetControlNetModels();
+
+        /// <summary>
         /// Gets input options for a specific node input from ComfyUI's object_info API.
         /// Used to dynamically fetch available options for node parameters (e.g., model lists).
         /// </summary>

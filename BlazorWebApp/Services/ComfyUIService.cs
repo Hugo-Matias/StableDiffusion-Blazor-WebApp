@@ -322,6 +322,20 @@ namespace BlazorWebApp.Services
         public async Task<List<string>> GetBBoxDetailers() => await GetModels("ultralytics_bbox", m => m);
 
         /// <inheritdoc />
+        // Resolve loader folders through /object_info so we always read the same combo
+        // ComfyUI exposes for the node, not a hardcoded /models/<folder> guess.
+        public Task<List<string>> GetUpscaleModels()
+            => GetNodeInputOptionsAsync("UpscaleModelLoader", "model_name");
+
+        /// <inheritdoc />
+        public Task<List<string>> GetLatentUpscaleModels()
+            => GetNodeInputOptionsAsync("LatentUpscaleModelLoader", "model_name");
+
+        /// <inheritdoc />
+        public Task<List<string>> GetControlNetModels()
+            => GetNodeInputOptionsAsync("ControlNetLoader", "control_net_name");
+
+        /// <inheritdoc />
         public async Task<List<string>> GetNodeInputOptionsAsync(string classType, string inputName)
         {
             return await GetNodeInputOptions<string>(classType, inputName, name => name);

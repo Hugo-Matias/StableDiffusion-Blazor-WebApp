@@ -34,11 +34,18 @@ public class LtxLoadSplitAvFragment : IFragmentBuilder
     {
         public string UnetName { get; set; } = "ltx-2.3-22b-distilled-bf16.safetensors";
         public string UnetWeightDtype { get; set; } = "default";
-        public string ClipName { get; set; } = "gemma_3_12B_it_fp4_mixed.safetensors";
-        public string AvTextProjectionCkpt { get; set; } = "ltx-2.3-22b-distilled-bf16.safetensors";
+        public string ClipName { get; set; } = "gemma_3_12B_it_fpmixed.safetensors";
+        // LTXAVTextEncoderLoader.ckpt_name reads /models/checkpoints (verified
+        // via ComfyUI /object_info), independent from the UNet diffusion model.
+        // Upstream V2V_Just_Talk default: "VIDEO/LTX/LTX-2/ltx-2.3_text_projection_bf16.safetensors".
+        public string AvProjectionCkpt { get; set; } = "ltx-2.3_text_projection_bf16.safetensors";
         public string VaeName { get; set; } = "ltx-2.3_video_vae.safetensors";
-        public string AudioVaeName { get; set; } = "ltx-2.3_audio_vae.safetensors";
-        public string UpscaleModelName { get; set; } = "ltx-2.3-spatial-upscaler-x2-1.1.safetensors";
+        // Audio VAE loader — see LtxLoadSplitFragment.Parameters for the
+        // VAELoaderKJ vs LTXVAudioVAELoader distinction.
+        public string AudioVaeName { get; set; } = "LTX23_audio_vae_bf16_KJ.safetensors";
+        public string AudioVaeNodeType { get; set; } = "VAELoaderKJ";
+        public string AudioVaeWeightDtype { get; set; } = "bf16";
+        public string UpscaleModelName { get; set; } = "ltx-2-spatial-upscaler-x2-1.0.safetensors";
     }
 
     public void Build(
@@ -52,12 +59,11 @@ public class LtxLoadSplitAvFragment : IFragmentBuilder
         if (parameters.Assets is not null)
         {
             if (parameters.Assets.TryGetValue("UNet", out var unet) && !string.IsNullOrWhiteSpace(unet))
-            {
                 p.UnetName = unet;
-                p.AvTextProjectionCkpt = unet;
-            }
             if (parameters.Assets.TryGetValue("Clip", out var clip) && !string.IsNullOrWhiteSpace(clip))
                 p.ClipName = clip;
+            if (parameters.Assets.TryGetValue("AvProjectionCkpt", out var avProj) && !string.IsNullOrWhiteSpace(avProj))
+                p.AvProjectionCkpt = avProj;
             if (parameters.Assets.TryGetValue("Vae", out var vae) && !string.IsNullOrWhiteSpace(vae))
                 p.VaeName = vae;
             if (parameters.Assets.TryGetValue("AudioVae", out var avae) && !string.IsNullOrWhiteSpace(avae))
@@ -103,7 +109,7 @@ public class LtxLoadSplitAvFragment : IFragmentBuilder
             .Type("LTXAVTextEncoderLoader")
             .Title($"{scopeTitle}LTXV Audio Text Encoder Loader")
             .Input("text_encoder", p.ClipName)
-            .Input("ckpt_name", p.AvTextProjectionCkpt)
+            .Input("ckpt_name", p.AvProjectionCkpt)
             .Input("device", "default"));
 
         builder.AddNode(vaeId, node => node
@@ -111,10 +117,7 @@ public class LtxLoadSplitAvFragment : IFragmentBuilder
             .Title($"{scopeTitle}Load VAE")
             .Input("vae_name", p.VaeName));
 
-        builder.AddNode(audioVaeId, node => node
-            .Type("LTXVAudioVAELoader")
-            .Title($"{scopeTitle}LTXV Audio VAE Loader")
-            .Input("ckpt_name", p.AudioVaeName));
+        builder.AddNode(audioVaeId, node => BuildAudioVaeNode(node, p, scopeTitle));
 
         builder.AddNode(upscaleId, node => node
             .Type("LatentUpscaleModelLoader")
@@ -137,5 +140,22 @@ public class LtxLoadSplitAvFragment : IFragmentBuilder
         registry.Register($"{scope}vae_output", vaeId, 0);
         registry.Register($"{scope}audio_vae_output", audioVaeId, 0);
         registry.Register($"{scope}upscale_model_output", upscaleId, 0);
+    }
+
+    private static void BuildAudioVaeNode(NodeBuilder node, Parameters p, string scopeTitle)
+    {
+        if (string.Equals(p.AudioVaeNodeType, "LTXVAudioVAELoader", StringComparison.Ordinal))
+        {
+            node.Type("LTXVAudioVAELoader")
+                .Title($"{scopeTitle}LTXV Audio VAE Loader")
+                .Input("ckpt_name", p.AudioVaeName);
+            return;
+        }
+
+        node.Type("VAELoaderKJ")
+            .Title($"{scopeTitle}VAELoader KJ (audio VAE)")
+            .Input("vae_name", p.AudioVaeName)
+            .Input("device", "main_device")
+            .Input("weight_dtype", p.AudioVaeWeightDtype);
     }
 }

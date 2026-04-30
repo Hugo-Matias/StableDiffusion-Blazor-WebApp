@@ -189,6 +189,9 @@ namespace BlazorWebApp.Services
                 Workflows.Models.AssetType.CheckpointModel => Models.AssetType.CheckpointModel,
                 Workflows.Models.AssetType.ClipVision => Models.AssetType.ClipVision,
                 Workflows.Models.AssetType.Lora => Models.AssetType.Lora,
+                Workflows.Models.AssetType.UpscaleModel => Models.AssetType.UpscaleModel,
+                Workflows.Models.AssetType.LatentUpscaleModel => Models.AssetType.LatentUpscaleModel,
+                Workflows.Models.AssetType.ControlNet => Models.AssetType.ControlNet,
                 _ => Models.AssetType.DiffusionModel
             };
         }

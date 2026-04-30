@@ -138,10 +138,24 @@ public sealed class WizardOption
     "id": "subject",
     "title": "Subject",
     "guidance": "Propose 5 concise subject choices for an image prompt. Mix concrete (a person, a creature) and conceptual (a memory, a feeling). Avoid genre cliches.",
-    "examples": ["A solitary lighthouse keeper", "An ancient courier owl", "A cellist on a rooftop"]
+    "examples": [
+      "A solitary lighthouse keeper",
+      "An ancient courier owl",
+      "A cellist on a rooftop"
+    ]
   },
-  { "id": "scenery", "title": "Scenery", "guidance": "...", "examples": ["..."] },
-  { "id": "lighting", "title": "Lighting", "guidance": "...", "examples": ["..."] },
+  {
+    "id": "scenery",
+    "title": "Scenery",
+    "guidance": "...",
+    "examples": ["..."]
+  },
+  {
+    "id": "lighting",
+    "title": "Lighting",
+    "guidance": "...",
+    "examples": ["..."]
+  },
   { "id": "mood", "title": "Mood", "guidance": "...", "examples": ["..."] },
   { "id": "style", "title": "Style", "guidance": "...", "examples": ["..."] }
 ]
@@ -478,19 +492,19 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 
 ## Progress Tracking
 
-| Step | Status | Complexity | Notes |
-|------|--------|------------|-------|
-| 1 - Entity + migration | [ ] | 3 | |
-| 2 - DTOs + JSON contract | [ ] | 2 | |
-| 3 - Intro sections asset | [ ] | 1 | |
-| 4 - WorkshopWizardService | [ ] | 8 | Largest step; split per public method if it slips |
-| 5 - Events | [ ] | 1 | |
-| 6 - Seeded system prompts | [ ] | 3 | Versioned re-seed |
-| 7 - WorkshopWizardPanel | [ ] | 5 | UI surface |
-| 8 - WorkshopView integration | [ ] | 2 | |
-| 9 - AppState extension | [ ] | 1 | |
-| 10 - Failure-mode polish | [ ] | 1 | |
-| 11 - Manual test pass + build | [ ] | 2 | |
+| Step                          | Status | Complexity | Notes                                             |
+| ----------------------------- | ------ | ---------- | ------------------------------------------------- |
+| 1 - Entity + migration        | [ ]    | 3          |                                                   |
+| 2 - DTOs + JSON contract      | [ ]    | 2          |                                                   |
+| 3 - Intro sections asset      | [ ]    | 1          |                                                   |
+| 4 - WorkshopWizardService     | [ ]    | 8          | Largest step; split per public method if it slips |
+| 5 - Events                    | [ ]    | 1          |                                                   |
+| 6 - Seeded system prompts     | [ ]    | 3          | Versioned re-seed                                 |
+| 7 - WorkshopWizardPanel       | [ ]    | 5          | UI surface                                        |
+| 8 - WorkshopView integration  | [ ]    | 2          |                                                   |
+| 9 - AppState extension        | [ ]    | 1          |                                                   |
+| 10 - Failure-mode polish      | [ ]    | 1          |                                                   |
+| 11 - Manual test pass + build | [ ]    | 2          |                                                   |
 
 **Total:** 29 points (above the headline 21 estimate; absorb if it slips, or split Step 4 into 4a/4b at execution time).
 
@@ -498,15 +512,15 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 
 ## Stress Points & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Small models produce malformed JSON | `format: "json"` + strict schema in system prompt + single retry + snackbar fallback (Steps 6 & 10) |
-| Context creep across turns | Hard sliding window of last 1-2 turns enforced by `BuildContextWindow` (Step 4) |
-| Per-session FK + unbound null slot creates two code paths | Single `LoadOrCreateAsync(int?)` + filtered unique index (Step 1) |
-| Repetition of LLM options | `excludeLabels` rule and "More..." rotation (Step 4 + Step 6 prompts) |
-| Seeded prompts drift from schema | Version stamp + re-seed loop in `DatabaseService` (Step 6) |
-| Undo destabilizes the LLM continuity | Undo never calls LLM; restores `Body` snapshot deterministically (Step 4) |
-| Composer keyboard collisions | Panel is buttons-only; no keyboard handlers (Step 7) |
+| Risk                                                      | Mitigation                                                                                          |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Small models produce malformed JSON                       | `format: "json"` + strict schema in system prompt + single retry + snackbar fallback (Steps 6 & 10) |
+| Context creep across turns                                | Hard sliding window of last 1-2 turns enforced by `BuildContextWindow` (Step 4)                     |
+| Per-session FK + unbound null slot creates two code paths | Single `LoadOrCreateAsync(int?)` + filtered unique index (Step 1)                                   |
+| Repetition of LLM options                                 | `excludeLabels` rule and "More..." rotation (Step 4 + Step 6 prompts)                               |
+| Seeded prompts drift from schema                          | Version stamp + re-seed loop in `DatabaseService` (Step 6)                                          |
+| Undo destabilizes the LLM continuity                      | Undo never calls LLM; restores `Body` snapshot deterministically (Step 4)                           |
+| Composer keyboard collisions                              | Panel is buttons-only; no keyboard handlers (Step 7)                                                |
 
 ---
 

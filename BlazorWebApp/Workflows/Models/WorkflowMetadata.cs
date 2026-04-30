@@ -212,12 +212,16 @@ public enum AssetType
     CheckpointModel,
     DiffusionModel,
     Vae,
-    AudioVae,
     Clip,
     ClipVision,
     Lora,
     ControlNet,
-    UpscaleModel
+    UpscaleModel,
+    /// <summary>
+    /// Diffusion-space (latent) upscalers backed by <c>LatentUpscaleModelLoader</c>
+    /// (ComfyUI <c>latent_upscale_models</c> folder). Distinct from <see cref="UpscaleModel"/>.
+    /// </summary>
+    LatentUpscaleModel
 }
 
 /// <summary>

@@ -40,6 +40,28 @@ namespace BlazorWebApp.Models
         /// LoRA models for fine-tuning
         /// Maps to: ComfyUIService.GetLoras()
         /// </summary>
-        Lora
+        Lora,
+
+        /// <summary>
+        /// ESRGAN-style spatial upscalers loaded by <c>UpscaleModelLoader</c> from
+        /// the ComfyUI <c>upscale_models</c> folder.
+        /// Maps to: ComfyUIService.GetUpscaleModels()
+        /// </summary>
+        UpscaleModel,
+
+        /// <summary>
+        /// Diffusion-space (latent) upscalers loaded by <c>LatentUpscaleModelLoader</c>
+        /// from the ComfyUI <c>latent_upscale_models</c> folder. Distinct from
+        /// <see cref="UpscaleModel"/> which is the pixel-space variant.
+        /// Maps to: ComfyUIService.GetLatentUpscaleModels()
+        /// </summary>
+        LatentUpscaleModel,
+
+        /// <summary>
+        /// ControlNet models loaded by <c>ControlNetLoader</c> from the ComfyUI
+        /// <c>controlnet</c> folder.
+        /// Maps to: ComfyUIService.GetControlNetModels()
+        /// </summary>
+        ControlNet
     }
 }

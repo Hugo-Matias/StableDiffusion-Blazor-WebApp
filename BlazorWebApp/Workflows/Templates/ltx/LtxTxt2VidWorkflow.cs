@@ -67,10 +67,21 @@ public class LtxTxt2VidWorkflow : IWorkflowBuilder
             new WorkflowAsset
             {
                 Parameter = "Clip",
-                Label = "Text Encoder",
+                Label = "Text Encoder (Gemma)",
                 Type = AssetType.Clip,
-                DefaultValue = "gemma_3_12B_it_fp4_mixed.safetensors",
+                DefaultValue = "gemma_3_12B_it_fpmixed.safetensors",
                 Order = 2,
+                ColumnSize = 6
+            },
+            new WorkflowAsset
+            {
+                // DualCLIPLoader.clip_name2 — distinct LTX text-projection file,
+                // verified via /object_info to live in /models/text_encoders.
+                Parameter = "Clip2",
+                Label = "Text Encoder (LTX projection)",
+                Type = AssetType.Clip,
+                DefaultValue = "ltx-2.3_text_projection_bf16.safetensors",
+                Order = 3,
                 ColumnSize = 6
             },
             new WorkflowAsset
@@ -79,25 +90,30 @@ public class LtxTxt2VidWorkflow : IWorkflowBuilder
                 Label = "Video VAE",
                 Type = AssetType.Vae,
                 DefaultValue = "ltx-2.3_video_vae.safetensors",
-                Order = 3,
-                ColumnSize = 6
-            },
-            new WorkflowAsset
-            {
-                Parameter = "AudioVae",
-                Label = "Audio VAE",
-                Type = AssetType.AudioVae,
-                DefaultValue = "ltx-2.3_audio_vae.safetensors",
                 Order = 4,
                 ColumnSize = 6
             },
             new WorkflowAsset
             {
+                // LTXVAudioVAELoader.ckpt_name reads /models/checkpoints — the
+                // AudioVae enum is backed by the regular checkpoints listing.
+                Parameter = "AudioVae",
+                Label = "Audio VAE",
+                // VAELoaderKJ (default audio VAE loader) reads /models/vae.
+                Type = AssetType.Vae,
+                DefaultValue = "LTX23_audio_vae_bf16_KJ.safetensors",
+                Order = 5,
+                ColumnSize = 6
+            },
+            new WorkflowAsset
+            {
+                // LatentUpscaleModelLoader reads /models/latent_upscale_models —
+                // distinct from /models/upscale_models served by UpscaleModelLoader.
                 Parameter = "UpscaleModel",
                 Label = "Spatial Upscaler",
-                Type = AssetType.UpscaleModel,
-                DefaultValue = "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-                Order = 5,
+                Type = AssetType.LatentUpscaleModel,
+                DefaultValue = "ltx-2-spatial-upscaler-x2-1.0.safetensors",
+                Order = 6,
                 ColumnSize = 12
             }
         ],

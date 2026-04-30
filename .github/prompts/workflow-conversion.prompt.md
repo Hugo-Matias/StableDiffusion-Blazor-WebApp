@@ -51,15 +51,43 @@ Analyze the ComfyUI workflow JSON provided by the user.
    - UNETLoader + DualCLIPLoader (Flux) -> `LoadFluxFragment`
    - Other -> describe
 
-6. **LoRA strategy** - Determine:
+6. **Loader asset validation (mandatory)** - For every loader node identified
+   above, probe its actual ComfyUI metadata before assigning `WorkflowAsset.Type`:
+   - Run `Utils/Probe-ComfyObjectInfo.ps1 -ClassTypes <Loader1>,<Loader2>,...`
+     against a live ComfyUI instance. The script returns the node category,
+     output sockets, and the exact COMBO list that `/object_info/{ClassType}`
+     reports for each input.
+   - For every loader input that picks a file (e.g. `ckpt_name`, `unet_name`,
+     `clip_name`, `clip_name1`, `clip_name2`, `vae_name`, `model_name`,
+     `control_net_name`), record which `models/<folder>` the COMBO matches.
+   - Map each input to the correct `AssetType` enum from `TEMPLATE_GUIDE.md`'s
+     "Asset Types" table. Do NOT infer from the input name alone — e.g.
+     `LTXVAudioVAELoader.ckpt_name` reads `models/checkpoints` (type
+     `CheckpointModel`) while the swappable `VAELoaderKJ.vae_name` for the
+     same audio-VAE slot reads `models/vae` (type `Vae`);
+     `LatentUpscaleModelLoader.model_name` reads
+     `models/latent_upscale_models` (`LatentUpscaleModel`), distinct from
+     `UpscaleModelLoader`'s `models/upscale_models` (`UpscaleModel`).
+   - When two loader nodes can fill the same slot but read from different
+     folders, expose the node-class as a fragment parameter (see
+     `LtxLoadSplitFragment.Parameters.AudioVaeNodeType`) so callers can pick
+     the implementation without forking the fragment.
+   - For nodes returning HTTP 200 with `{}`, flag the custom-node pack as
+     missing on the target install and stop — do not guess the folder.
+   - For `DualCLIPLoader`-style nodes, declare **two distinct** `Clip` assets
+     (`Clip` + `Clip2`) with separate defaults sourced from the upstream JSON's
+     `widgets_values`. Never share a single asset across both `clip_name*`
+     inputs.
+
+7. **LoRA strategy** - Determine:
    - App-generated nodes (default for UNet-based): `LoraLoaderFragment`
    - PCLazy prompt syntax: `LoadCheckpointFragment`
 
-7. **Sampler class** - Identify:
+8. **Sampler class** - Identify:
    - `KSampler` -> `SamplerStandardFragment`
    - `ClownsharKSampler_Beta` -> `SamplerFragment`
    - Other -> describe
-8. **UI surface audit** - For every UI-visible fragment, determine whether an existing form component can be reused or whether a new component is required
+9. **UI surface audit** - For every UI-visible fragment, determine whether an existing form component can be reused or whether a new component is required
 
 ---
 

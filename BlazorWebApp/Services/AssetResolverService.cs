@@ -50,6 +50,10 @@ namespace BlazorWebApp.Services
                     AssetType.Vae => await _comfy.GetVAEModels() ?? new List<string>(),
                     AssetType.Clip => await _comfy.GetClipModels() ?? new List<string>(),
                     AssetType.ClipVision => await _comfy.GetClipVisionModels() ?? new List<string>(),
+                    AssetType.UpscaleModel => await _comfy.GetUpscaleModels() ?? new List<string>(),
+                    AssetType.LatentUpscaleModel => await _comfy.GetLatentUpscaleModels() ?? new List<string>(),
+                    AssetType.ControlNet => await _comfy.GetControlNetModels() ?? new List<string>(),
+                    AssetType.Lora => await _comfy.GetLoras() ?? new List<string>(),
                     _ => new List<string>()
                 };
             }

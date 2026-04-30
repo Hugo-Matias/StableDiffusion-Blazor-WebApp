@@ -44,8 +44,8 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
         [
             new WorkflowAsset
             {
-                Parameter = "Model",
-                Label = "Model",
+                Parameter = "Checkpoint",
+                Label = "Checkpoint",
                 Type = AssetType.CheckpointModel,
                 DefaultValue = "ltx-2.3-22b-dev-fp8.safetensors",
                 Order = 1,
@@ -53,12 +53,42 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
             },
             new WorkflowAsset
             {
-                Parameter = "TextEncoder",
-                Label = "Text Encoder",
+                Parameter = "Clip",
+                Label = "Text Encoder (Gemma)",
                 Type = AssetType.Clip,
-                DefaultValue = "gemma_3_12B_it_fp4_mixed.safetensors",
+                DefaultValue = "gemma_3_12B_it_fpmixed.safetensors",
                 Order = 2,
                 ColumnSize = 6
+            },
+            new WorkflowAsset
+            {
+                // LTXAVTextEncoderLoader.ckpt_name reads /models/checkpoints
+                // (verified via /object_info), distinct from the diffusion ckpt.
+                Parameter = "AvProjectionCkpt",
+                Label = "AV Text Projection Ckpt",
+                Type = AssetType.CheckpointModel,
+                DefaultValue = "ltx-2.3_text_projection_bf16.safetensors",
+                Order = 3,
+                ColumnSize = 6
+            },
+            new WorkflowAsset
+            {
+                Parameter = "AudioVae",
+                Label = "Audio VAE",
+                // VAELoaderKJ (default audio VAE loader) reads /models/vae.
+                Type = AssetType.Vae,
+                DefaultValue = "LTX23_audio_vae_bf16_KJ.safetensors",
+                Order = 4,
+                ColumnSize = 6
+            },
+            new WorkflowAsset
+            {
+                Parameter = "UpscaleModel",
+                Label = "Spatial Upscaler",
+                Type = AssetType.LatentUpscaleModel,
+                DefaultValue = "ltx-2-spatial-upscaler-x2-1.0.safetensors",
+                Order = 5,
+                ColumnSize = 12
             }
         ],
         Sources =

@@ -22,9 +22,19 @@ public class LtxLoadModelFragment : IFragmentBuilder
 
     public class Parameters
     {
+        // CheckpointLoaderSimple.ckpt_name resolves against /models/checkpoints
+        // (verified via ComfyUI /object_info).
         public string CheckpointName { get; set; } = "ltx-2.3-22b-dev-fp8.safetensors";
-        public string TextEncoderName { get; set; } = "gemma_3_12B_it_fp4_mixed.safetensors";
-        public string UpscaleModelName { get; set; } = "ltx-2.3-spatial-upscaler-x2-1.1.safetensors";
+        public string TextEncoderName { get; set; } = "gemma_3_12B_it_fpmixed.safetensors";
+        // LTXAVTextEncoderLoader.ckpt_name reads /models/checkpoints — distinct
+        // file from CheckpointName; defaults to the LTX text-projection ckpt.
+        public string AvProjectionCkpt { get; set; } = "ltx-2.3_text_projection_bf16.safetensors";
+        // Audio VAE loader — see LtxLoadSplitFragment.Parameters for the
+        // VAELoaderKJ vs LTXVAudioVAELoader distinction.
+        public string AudioVaeName { get; set; } = "LTX23_audio_vae_bf16_KJ.safetensors";
+        public string AudioVaeNodeType { get; set; } = "VAELoaderKJ";
+        public string AudioVaeWeightDtype { get; set; } = "bf16";
+        public string UpscaleModelName { get; set; } = "ltx-2-spatial-upscaler-x2-1.0.safetensors";
     }
 
     public void Build(
@@ -34,7 +44,21 @@ public class LtxLoadModelFragment : IFragmentBuilder
         string scope = "",
         string scopeTitle = "")
     {
-        BuildInternal(builder, registry, new Parameters(), scope, scopeTitle);
+        var p = new Parameters();
+        if (parameters.Assets is not null)
+        {
+            if (parameters.Assets.TryGetValue("Checkpoint", out var ckpt) && !string.IsNullOrWhiteSpace(ckpt))
+                p.CheckpointName = ckpt;
+            if (parameters.Assets.TryGetValue("Clip", out var clip) && !string.IsNullOrWhiteSpace(clip))
+                p.TextEncoderName = clip;
+            if (parameters.Assets.TryGetValue("AvProjectionCkpt", out var avProj) && !string.IsNullOrWhiteSpace(avProj))
+                p.AvProjectionCkpt = avProj;
+            if (parameters.Assets.TryGetValue("AudioVae", out var avae) && !string.IsNullOrWhiteSpace(avae))
+                p.AudioVaeName = avae;
+            if (parameters.Assets.TryGetValue("UpscaleModel", out var upscale) && !string.IsNullOrWhiteSpace(upscale))
+                p.UpscaleModelName = upscale;
+        }
+        BuildInternal(builder, registry, p, scope, scopeTitle);
     }
 
     public void Build(
@@ -65,19 +89,17 @@ public class LtxLoadModelFragment : IFragmentBuilder
             .Title($"{scopeTitle}Load Checkpoint")
             .Input("ckpt_name", p.CheckpointName));
 
-        // LTXAVTextEncoderLoader -> clip[0]
+        // LTXAVTextEncoderLoader -> clip[0]. ckpt_name reads /models/checkpoints
+        // (own AV projection file), distinct from CheckpointLoaderSimple's ckpt.
         builder.AddNode(textEncoderId, node => node
             .Type("LTXAVTextEncoderLoader")
             .Title($"{scopeTitle}LTXV Audio Text Encoder Loader")
             .Input("text_encoder", p.TextEncoderName)
-            .Input("ckpt_name", p.CheckpointName)
+            .Input("ckpt_name", p.AvProjectionCkpt)
             .Input("device", "default"));
 
-        // LTXVAudioVAELoader -> audio_vae[0]
-        builder.AddNode(audioVaeId, node => node
-            .Type("LTXVAudioVAELoader")
-            .Title($"{scopeTitle}LTXV Audio VAE Loader")
-            .Input("ckpt_name", p.CheckpointName));
+        // Audio VAE loader — default VAELoaderKJ pulls from /models/vae.
+        builder.AddNode(audioVaeId, node => BuildAudioVaeNode(node, p, scopeTitle));
 
         // LatentUpscaleModelLoader -> upscale_model[0]
         builder.AddNode(upscaleModelId, node => node
@@ -90,5 +112,22 @@ public class LtxLoadModelFragment : IFragmentBuilder
         registry.Register($"{scope}vae_output", checkpointId, 2);
         registry.Register($"{scope}audio_vae_output", audioVaeId, 0);
         registry.Register($"{scope}upscale_model_output", upscaleModelId, 0);
+    }
+
+    private static void BuildAudioVaeNode(NodeBuilder node, Parameters p, string scopeTitle)
+    {
+        if (string.Equals(p.AudioVaeNodeType, "LTXVAudioVAELoader", StringComparison.Ordinal))
+        {
+            node.Type("LTXVAudioVAELoader")
+                .Title($"{scopeTitle}LTXV Audio VAE Loader")
+                .Input("ckpt_name", p.AudioVaeName);
+            return;
+        }
+
+        node.Type("VAELoaderKJ")
+            .Title($"{scopeTitle}VAELoader KJ (audio VAE)")
+            .Input("vae_name", p.AudioVaeName)
+            .Input("device", "main_device")
+            .Input("weight_dtype", p.AudioVaeWeightDtype);
     }
 }
