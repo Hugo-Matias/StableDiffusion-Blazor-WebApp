@@ -24,7 +24,8 @@
             </button>
 
             <!-- Main Display -->
-            <div class="asset-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
+            <div class="asset-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "") @(_isCompareMode ? "compare-mode" : "") @(_isCompareLocked ? "compare-locked" : "")"
+                 @ref="_stageRef"
                  @onclick="HandleStageClick" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove"
                  @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
                 @if (CurrentAsset != null && !_isLoadingPage)
@@ -49,6 +50,46 @@
                         <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
                         <span class="loading-text">Loading page...</span>
                     </div>
+                }
+
+                @if (_isCompareMode && !IsCurrentVideo && CurrentSource != null && !_isLoadingPage)
+                {
+                    var splitStyle = $"--ab-split: {(_splitPosition * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}%;";
+                    <div class="compare-frame" style="@splitStyle">
+                        <img class="compare-overlay" src="@GetSourceUrl(CurrentSource)" alt="Source"
+                             draggable="false" @onclick:stopPropagation="true" />
+                        <div class="compare-divider"
+                             @onmousedown="HandleDividerMouseDown" @onmousedown:stopPropagation="true"
+                             @onclick:stopPropagation="true">
+                            <div class="compare-divider-line"></div>
+                            <div class="compare-handle">
+                                <MudIcon Icon="fa-solid fa-arrows-left-right" Size="Size.Small" />
+                            </div>
+                        </div>
+                        <span class="compare-label compare-label-base">Generated</span>
+                        <span class="compare-label compare-label-source">@(string.IsNullOrWhiteSpace(CurrentSource.Label) ? "Source" : CurrentSource.Label)</span>
+                    </div>
+                    @if (_isCompareLocked)
+                    {
+                        <div class="compare-lock-indicator">
+                            <MudIcon Icon="fa-solid fa-lock" Size="Size.Small" />
+                            <span>Locked &middot; click to unlock</span>
+                        </div>
+                    }
+                    @if (_compareSourceKeys.Count > 1)
+                    {
+                        <div class="compare-source-picker" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true">
+                            @foreach (var key in _compareSourceKeys)
+                            {
+                                var src = State.GenerationParameters.Sources[key];
+                                <button class="compare-source-chip @(_currentSourceKey == key ? "active" : "")"
+                                        @onclick="() => SelectCompareSource(key)" type="button"
+                                        title="@(src.Label ?? key)">
+                                    <span>@(string.IsNullOrWhiteSpace(src.Label) ? key : src.Label)</span>
+                                </button>
+                            }
+                        </div>
+                    }
                 }
             </div>
 
@@ -140,6 +181,15 @@
                                 <MudTooltip Text="Reset View (R)" Delay="300">
                                     <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
                                         <MudIcon Icon="fa-solid fa-crosshairs" />
+                                    </button>
+                                </MudTooltip>
+                            }
+                            @if (HasCompareSources)
+                            {
+                                <MudTooltip Text="@(_isCompareMode ? "Exit Compare (C)" : "A/B Compare with source (C)")" Delay="300">
+                                    <button class="viewer-btn @(_isCompareMode ? "active" : "")" @onclick="ToggleCompareMode"
+                                            title="@(_isCompareMode ? "Exit Compare" : "A/B Compare")">
+                                        <MudIcon Icon="fa-solid fa-arrows-left-right" />
                                     </button>
                                 </MudTooltip>
                             }
@@ -247,6 +297,19 @@
     private const double MaxZoom = 5.0;
     private const double ZoomStep = 0.15;
 
+    // A/B Compare state
+    private ElementReference _stageRef;
+    private bool _isCompareMode;
+    private bool _isCompareLocked;
+    private bool _isCompareDragHandle;
+    private double _splitPosition = 0.5; // 0..1, 0=full source, 1=full base
+    private double _stageRectLeft;
+    private double _stageRectWidth = 1;
+    private string? _currentSourceKey;
+    private List<string> _compareSourceKeys = new();
+    private const double CompareNudgeStep = 0.02;
+    private bool _suppressNextStageClick;
+
     private ImageEntity? CurrentAsset => _currentIndex >= 0 && _currentIndex < Assets.Count
         ? Assets[_currentIndex]
         : null;
@@ -258,6 +321,50 @@
         if (string.IsNullOrWhiteSpace(path)) return false;
         var extension = Path.GetExtension(path)?.ToLowerInvariant();
         return VideoExtensions.Contains(extension);
+    }
+
+    // ----- A/B Compare helpers -----
+
+    private bool HasCompareSources => GetCompareSourceKeys().Count > 0;
+
+    private BlazorWebApp.Models.SourceAsset? CurrentSource =>
+        _currentSourceKey != null && State.GenerationParameters.Sources.TryGetValue(_currentSourceKey, out var s)
+            ? s
+            : null;
+
+    private List<string> GetCompareSourceKeys()
+    {
+        var sources = State.GenerationParameters?.Sources;
+        if (sources == null || sources.Count == 0) return new();
+        return sources
+            .Where(kvp => IsImageSource(kvp.Value))
+            .Select(kvp => kvp.Key)
+            .ToList();
+    }
+
+    private static bool IsImageSource(BlazorWebApp.Models.SourceAsset s)
+    {
+        if (!s.HasData) return false;
+        // Treat anything not explicitly "video" as comparable. Defensive against missing Type.
+        if (string.Equals(s.Type, "video", StringComparison.OrdinalIgnoreCase)) return false;
+        return true;
+    }
+
+    private string GetSourceUrl(BlazorWebApp.Models.SourceAsset source)
+    {
+        // Prefer in-memory data (most accurate to what's loaded). Fall back to disk path.
+        if (!string.IsNullOrWhiteSpace(source.Data))
+        {
+            var data = source.Data!;
+            if (data.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return data;
+            // Raw base64 -> assume png
+            return $"data:image/png;base64,{data}";
+        }
+        if (!string.IsNullOrWhiteSpace(source.FilePath))
+        {
+            try { return IO.GetImageStaticFile(source.FilePath!); } catch { }
+        }
+        return string.Empty;
     }
 
     private void HandleSelectedParamsChanged(HashSet<string> selectedParams)
@@ -287,7 +394,14 @@
         {
             await SetBodyScrollLock(false);
         }
-        
+
+        // Keep stage rect fresh whenever compare mode is on (covers entry, navigation,
+        // viewport resize triggered by other UI changes that re-render the viewer).
+        if (IsVisible && _isCompareMode && !_isCompareDragHandle)
+        {
+            await RefreshStageRectAsync();
+        }
+
         _wasVisible = IsVisible;
     }
 
@@ -322,6 +436,19 @@
 
     private void HandleStageClick(MouseEventArgs e)
     {
+        if (_isCompareMode)
+        {
+            // Click toggles lock (cursor follow vs frozen). Suppressed if we just finished
+            // a divider drag (HandleMouseUp clears the drag flag, but the click still fires).
+            if (_suppressNextStageClick)
+            {
+                _suppressNextStageClick = false;
+                return;
+            }
+            _isCompareLocked = !_isCompareLocked;
+            return;
+        }
+
         if (!_isPanMode)
         {
             Close();
@@ -332,6 +459,7 @@
     {
         StopAutoPlay();
         _isPanMode = false;
+        ExitCompareMode();
         ResetZoom();
         _selectedParams.Clear();
         IsVisible = false;
@@ -420,6 +548,10 @@
     {
         ResetZoom();
         _selectedParams.Clear();
+        // If compare is active and the new asset is video, exit compare. Source list is
+        // workflow-driven so it doesn't change with navigation, but we keep behaviour clean.
+        if (_isCompareMode && IsCurrentVideo) ExitCompareMode();
+        if (_isCompareMode) await RefreshStageRectAsync();
     }
 
     private void ToggleInfo() => _showInfo = !_showInfo;
@@ -427,6 +559,7 @@
     private void TogglePanMode()
     {
         if (IsCurrentVideo) return;
+        if (_isCompareMode) ExitCompareMode();
         _isPanMode = !_isPanMode;
         if (!_isPanMode) ResetZoom();
         else _zoom = 1.0;
@@ -438,6 +571,68 @@
         _panX = 0;
         _panY = 0;
     }
+
+    private async Task ToggleCompareMode()
+    {
+        if (IsCurrentVideo) return;
+        if (_isCompareMode)
+        {
+            ExitCompareMode();
+            return;
+        }
+
+        _compareSourceKeys = GetCompareSourceKeys();
+        if (_compareSourceKeys.Count == 0) return;
+
+        // Pan/Zoom and Compare are mutually exclusive.
+        if (_isPanMode)
+        {
+            _isPanMode = false;
+            ResetZoom();
+        }
+
+        _currentSourceKey = _compareSourceKeys.Contains(_currentSourceKey ?? string.Empty)
+            ? _currentSourceKey
+            : _compareSourceKeys[0];
+        _splitPosition = 0.5;
+        _isCompareLocked = false;
+        _isCompareDragHandle = false;
+        _suppressNextStageClick = false;
+        _isCompareMode = true;
+
+        await RefreshStageRectAsync();
+    }
+
+    private void ExitCompareMode()
+    {
+        _isCompareMode = false;
+        _isCompareLocked = false;
+        _isCompareDragHandle = false;
+        _suppressNextStageClick = false;
+    }
+
+    private void SelectCompareSource(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return;
+        if (!State.GenerationParameters.Sources.ContainsKey(key)) return;
+        _currentSourceKey = key;
+    }
+
+    private async Task RefreshStageRectAsync()
+    {
+        try
+        {
+            var rect = await JS.InvokeAsync<StageRect>("assetViewerCompare.getRect", _stageRef);
+            if (rect != null && rect.Width > 0)
+            {
+                _stageRectLeft = rect.Left;
+                _stageRectWidth = rect.Width;
+            }
+        }
+        catch { }
+    }
+
+    private record StageRect(double Left, double Width);
 
     private void HandleWheel(WheelEventArgs e)
     {
@@ -471,24 +666,61 @@
 
     private void HandleMouseDown(MouseEventArgs e)
     {
-        if (!_isPanMode || e.Button != 0 || IsCurrentVideo) return;
-        _isDragging = true;
-        _dragStartX = e.ClientX;
-        _dragStartY = e.ClientY;
-        _dragStartPanX = _panX;
-        _dragStartPanY = _panY;
+        if (e.Button != 0) return;
+        if (_isPanMode && !IsCurrentVideo)
+        {
+            _isDragging = true;
+            _dragStartX = e.ClientX;
+            _dragStartY = e.ClientY;
+            _dragStartPanX = _panX;
+            _dragStartPanY = _panY;
+        }
+    }
+
+    private void HandleDividerMouseDown(MouseEventArgs e)
+    {
+        if (!_isCompareMode || e.Button != 0) return;
+        _isCompareDragHandle = true;
+        // Update split immediately so the handle snaps to the cursor.
+        UpdateSplitFromClientX(e.ClientX);
     }
 
     private void HandleMouseMove(MouseEventArgs e)
     {
-        if (!_isDragging) return;
-        _panX = _dragStartPanX + (e.ClientX - _dragStartX);
-        _panY = _dragStartPanY + (e.ClientY - _dragStartY);
+        if (_isDragging)
+        {
+            _panX = _dragStartPanX + (e.ClientX - _dragStartX);
+            _panY = _dragStartPanY + (e.ClientY - _dragStartY);
+            return;
+        }
+
+        if (_isCompareMode && !IsCurrentVideo)
+        {
+            // Track cursor when unlocked, or while dragging the handle (works even when locked).
+            if (_isCompareDragHandle || !_isCompareLocked)
+            {
+                UpdateSplitFromClientX(e.ClientX);
+            }
+        }
     }
 
     private void HandleMouseUp(MouseEventArgs e)
     {
         _isDragging = false;
+        if (_isCompareDragHandle)
+        {
+            _isCompareDragHandle = false;
+            // Browser will fire a click after this mouseup if mousedown was on the divider
+            // and mouseup is over the stage. Suppress that synthetic toggle-lock.
+            _suppressNextStageClick = true;
+        }
+    }
+
+    private void UpdateSplitFromClientX(double clientX)
+    {
+        if (_stageRectWidth <= 0) return;
+        var x = (clientX - _stageRectLeft) / _stageRectWidth;
+        _splitPosition = Math.Clamp(x, 0.0, 1.0);
     }
 
     private void ToggleAutoPlay()
@@ -535,6 +767,19 @@
             case "f": case "F": await ToggleFavorite(); break;
             case "z": case "Z": TogglePanMode(); break;
             case "r": case "R": ResetZoom(); break;
+            case "c": case "C": await ToggleCompareMode(); break;
+            case "[":
+                if (_isCompareMode)
+                {
+                    _splitPosition = Math.Clamp(_splitPosition - CompareNudgeStep, 0.0, 1.0);
+                }
+                break;
+            case "]":
+                if (_isCompareMode)
+                {
+                    _splitPosition = Math.Clamp(_splitPosition + CompareNudgeStep, 0.0, 1.0);
+                }
+                break;
             case "+":
             case "=":
                 if (_isPanMode && !IsCurrentVideo)

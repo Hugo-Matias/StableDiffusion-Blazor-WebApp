@@ -402,3 +402,188 @@
 .info-panel.open {
     transform: translateX(0);
 }
+
+/* ===== A/B Compare ===== */
+
+/* While compare is active, the stage shows a crosshair-style cursor by default,
+   indicating the live cursor-tracking mode. When locked, default cursor is restored. */
+.asset-stage.compare-mode {
+    cursor: ew-resize;
+}
+
+.asset-stage.compare-mode.compare-locked {
+    cursor: pointer;
+}
+
+/* Frame matches the stage padding-box exactly so absolute children align with the
+   centered base image. */
+.compare-frame {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 100px;
+    pointer-events: none;
+}
+
+/* The source overlay is sized to the same letterbox area as the base image and is
+   clipped to reveal only the portion to the right of the split. */
+.compare-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* clip-path inset(top right bottom left) - left=split% reveals right portion */
+    clip-path: inset(0 0 0 var(--ab-split, 50%));
+    -webkit-clip-path: inset(0 0 0 var(--ab-split, 50%));
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+    border-radius: 4px;
+}
+
+.compare-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--ab-split, 50%);
+    width: 0;
+    pointer-events: auto;
+    z-index: 2;
+}
+
+.compare-divider-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -1px;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+.compare-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+    transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.compare-handle:hover {
+    background: var(--mud-palette-primary);
+    border-color: #fff;
+    transform: translate(-50%, -50%) scale(1.06);
+}
+
+.compare-handle:active {
+    cursor: grabbing;
+    transform: translate(-50%, -50%) scale(0.96);
+}
+
+/* Side labels - "Generated" stays on the left half, "Source" floats with the divider
+   on the right half. They fade out near the edges to avoid overflowing tiny gaps. */
+.compare-label {
+    position: absolute;
+    top: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.compare-label-base {
+    left: 12px;
+    background: rgba(var(--mud-palette-primary-rgb), 0.85);
+}
+
+.compare-label-source {
+    right: 12px;
+    background: rgba(255, 152, 0, 0.85);
+}
+
+.compare-lock-indicator {
+    position: fixed;
+    bottom: 110px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(var(--mud-palette-warning-rgb, 255, 152, 0), 0.92);
+    color: #1a1a1a;
+    padding: 6px 14px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    z-index: 10100;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    animation: fadeIn 0.15s ease;
+    pointer-events: none;
+}
+
+.compare-source-picker {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 6px 8px;
+    z-index: 10101;
+    max-width: calc(100vw - 200px);
+    overflow-x: auto;
+}
+
+.compare-source-chip {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.compare-source-chip:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+
+.compare-source-chip.active {
+    background: var(--mud-palette-primary);
+    color: var(--mud-palette-primary-text);
+    border-color: var(--mud-palette-primary);
+}

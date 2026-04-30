@@ -31,3 +31,11 @@ window.downloadFile = function (filename, content, mimeType) {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 };
+
+window.assetViewerCompare = {
+  getRect: function (el) {
+    if (!el || !el.getBoundingClientRect) return { left: 0, width: 1 };
+    const r = el.getBoundingClientRect();
+    return { left: r.left, width: r.width };
+  },
+};
