@@ -169,6 +169,12 @@ builder.Services.AddTransient<MagickService>();
 // Workshop service – prompt workshop session/node tree orchestration
 builder.Services.AddSingleton<IWorkshopService, WorkshopService>();
 
+// Workshop wizard intro catalog (loaded once from Data/wizard_intro.json)
+builder.Services.AddSingleton<WizardIntroCatalog>();
+
+// Workshop wizard - button-driven prompt builder above the composer (Phase 13)
+builder.Services.AddSingleton<IWorkshopWizardService, WorkshopWizardService>();
+
 // Prompt history service - session-scoped undo/redo for Generate page prompts
 builder.Services.AddScoped<IPromptHistoryService, PromptHistoryService>();
 

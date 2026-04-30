@@ -426,6 +426,9 @@ namespace BlazorWebApp.Models
         // LLM elaborates when applying a chat instruction to the prompt.
         public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
         public float ChatTemperature { get; set; } = 0.7f;
+
+        // Phase 13 - Workshop Wizard panel collapse state. False = panel visible.
+        public bool WizardCollapsed { get; set; } = false;
     }
 
     public class AppStatePromptsLLMSceneBuilder

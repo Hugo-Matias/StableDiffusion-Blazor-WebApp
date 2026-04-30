@@ -18,6 +18,14 @@ namespace BlazorWebApp.Data.Dtos.Ollama
 
         [JsonPropertyName("options")]
         public OllamaOptions? Options { get; set; }
+
+        /// <summary>
+        /// When set to <c>"json"</c>, instructs Ollama to constrain output to a single JSON document.
+        /// Omitted from serialized payloads when null so existing free-form callers are unaffected.
+        /// </summary>
+        [JsonPropertyName("format")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Format { get; set; }
     }
 
     public class OllamaChatMessage

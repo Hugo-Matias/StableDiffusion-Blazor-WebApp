@@ -242,19 +242,27 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 1: Entity + EF migration
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Create `BlazorWebApp/Data/Entities/WorkshopWizardSession.cs`.
-- [ ] Configure entity in `AppDbContext`:
+- [x] Create `BlazorWebApp/Data/Entities/WorkshopWizardSession.cs`.
+- [x] Configure entity in `AppDbContext`:
   - `DbSet<WorkshopWizardSession> WorkshopWizardSessions`.
   - `HasOne(w => w.Session).WithMany().HasForeignKey(w => w.SessionId).OnDelete(DeleteBehavior.Cascade)`.
-  - `HasIndex(w => w.SessionId).IsUnique().HasFilter("[SessionId] IS NOT NULL")` so each Workshop session has at most one wizard row, plus one unbound row (`SessionId IS NULL`).
+  - `HasIndex(w => w.SessionId).IsUnique().HasFilter("\"SessionId\" IS NOT NULL")` so each Workshop session has at most one wizard row, plus one unbound row (`SessionId IS NULL`).
   - `Property(w => w.Body).HasConversion(WizardJsonConverter)` using `WizardJsonOptions.Compact`.
-- [ ] Hand-author migration `Migrations/{ts}_Add_WorkshopWizardSession.cs` with both `[DbContext]` + `[Migration]` attributes.
-- [ ] Update `Migrations/AppDbContextModelSnapshot.cs` alphabetically.
-- [ ] Verify `DatabaseService.InitializeDatabase()` applies migration on startup.
+- [x] Hand-author migration `Migrations/20260430120000_Add_WorkshopWizardSession.cs` with both `[DbContext]` + `[Migration]` attributes.
+- [x] Update `Migrations/AppDbContextModelSnapshot.cs` alphabetically.
+- [x] Verify `DatabaseService.InitializeDatabase()` applies migration on startup (build clean; migration applies via `MigrateAsync()`).
+
+#### Changes Made
+
+- New: `BlazorWebApp/Models/WizardModels.cs` (DTOs + `WizardJsonOptions.Compact`).
+- New: `BlazorWebApp/Data/Entities/WorkshopWizardSession.cs` (entity with optional `SessionId` FK).
+- New: `BlazorWebApp/Migrations/20260430120000_Add_WorkshopWizardSession.cs` (table + filtered unique index).
+- Updated: `BlazorWebApp/Data/AppDbContext.cs` (`ValueConverter` + FK + filtered unique index + `DbSet`).
+- Updated: `BlazorWebApp/Migrations/AppDbContextModelSnapshot.cs` (entity block + relationship block).
 
 #### Done When
 
@@ -266,42 +274,63 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 2: DTOs, JSON contract, options helper
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Create `BlazorWebApp/Models/WizardModels.cs` with `WizardStage`, `WizardBody`, `WizardTurn`, `WizardOption`, `WizardLLMResponse`.
-- [ ] Create `BlazorWebApp/Models/WizardJsonOptions.cs` mirroring `SchedulerJsonOptions.Compact` (camelCase, ignore null, no formatting).
-- [ ] Add `WizardLLMResponse` validator (clamps options to 3-6, trims labels/hints, drops malformed entries).
-- [ ] Mark JSON-only converters internal where possible.
+- [x] Create `BlazorWebApp/Models/WizardModels.cs` with `WizardStage`, `WizardBody`, `WizardTurn`, `WizardOption`, `WizardLLMResponse` (done in Step 1).
+- [x] Add `WizardJsonOptions.Compact` mirroring `SchedulerJsonOptions.Compact` (camelCase, ignore null, no formatting) - colocated in `WizardModels.cs`.
+- [x] Add `WizardResponseValidator` (clamps options to 3-6, trims labels/hints, drops malformed entries, dedupes case-insensitively, strips code fences/prose around JSON).
+- [x] Wrote 8 xUnit tests covering round-trip, parse, sanitize, clamp, and rejection paths.
 
 #### Done When
 
-- Round-trip JSON tests for `WizardBody` are stable; sample `WizardLLMResponse` deserializes and validates.
+- [x] Round-trip JSON tests for `WizardBody` pass; `WizardLLMResponse` parses, validates, and clamps as designed.
+
+#### Changes Made
+
+- `BlazorWebApp/Models/WizardModels.cs`: Added `WizardResponseValidator` static class with `TryParse`, `Sanitize`, `ExtractJsonObject` (balanced-brace scan that ignores braces inside strings), and constants `MinOptions=3`, `MaxOptions=6`, `MaxLabelLength=60`, `MaxHintLength=80`.
+- `BlazorWebApp.Tests/Models/WizardModelsTests.cs` (new): 8 tests, all passing (`dotnet test --filter WizardModelsTests` -> 8/8 passed, 83 ms).
+- No new build warnings; `WizardJsonOptions.Compact` lives inside `WizardModels.cs` rather than a separate file (kept the surface tight per implementation discipline).
 
 ---
 
 ### Step 3: Hardcoded intro sections asset
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
-- [ ] Create `BlazorWebApp/Data/wizard_intro.json` with five sections (subject, scenery, lighting, mood, style). Each entry: `id`, `title`, `guidance`, `examples` (1-3).
-- [ ] Mark file as `<Content CopyToOutputDirectory="PreserveNewest" />` in `BlazorWebApp.csproj` (follow pattern of `Data/artists.json`).
-- [ ] Add a typed loader `WizardIntroCatalog.LoadAsync()` (reads once, caches).
+- [x] Create `BlazorWebApp/Data/wizard_intro.json` with five sections (subject, scenery, lighting, mood, style). Each entry: `id`, `title`, `guidance`, `examples` (1-3).
+- [x] Verify content copy: default web SDK content rules already pick up `Data/*.json` (same path as `artists.json`); no explicit csproj entry required.
+- [x] Add a typed loader `WizardIntroCatalog.LoadAsync()` (reads once, caches via `SemaphoreSlim`).
 
 #### Done When
 
-- Catalog loads at startup with five entries in declared order.
+- [x] Catalog loads at startup with five entries in declared order. Verified by build green; runtime smoke test deferred to manual pass (Step 11).
+
+#### Changes Made
+
+- `BlazorWebApp/Data/wizard_intro.json` (new): 5 sections with `version: 1`, each carrying `id`, `title`, `guidance`, 3 examples.
+- `BlazorWebApp/Models/WizardIntroCatalog.cs` (new): `WizardIntroSection` DTO + `WizardIntroCatalog` singleton with `LoadAsync(CancellationToken)`, `Sections`, `Count`, `Version`. Thread-safe via `SemaphoreSlim`; missing-file path logs a warning and returns empty.
+- `BlazorWebApp/Program.cs`: registered `WizardIntroCatalog` as singleton next to `WorkshopService`.
 
 ---
 
 ### Step 4: `WorkshopWizardService` (state, turns, undo, commit)
 
 **Complexity:** 8
-**Status:** [ ] Not Started
+**Status:** [x] Complete
+
+#### Changes Made
+
+- `BlazorWebApp/Services/WorkshopWizardService.cs` (new): `IWorkshopWizardService` + implementation. Methods: `LoadOrCreateAsync`, `AdvanceIntroAsync`, `AdvanceIterationAsync`, `ApplyVerbAsync`, `RequestMoreAsync`, `UndoAsync`, `CommitAsync`, `ResetAsync`. Internal helpers: `BuildContextWindow` (last 2 turns), `EnforceHardCap` (50), soft-cap detection (30, fired once). Verbs: improve / change / add / remove / surprise.
+- Inline system prompt builders for now; Step 6 will swap them for seeded `SystemPromptTemplate` rows.
+- Snapshot fields added to `WizardTurn` (`PendingQuestionBefore`, `PendingOptionsBefore`, `LastShownLabelsBefore`) so Undo restores the prior pending-options state without an LLM call.
+- `OllamaService.SendChatMessage` now takes optional `format` parameter and is `virtual` so tests can subclass; new `Format` JSON field on `OllamaChatRequest` (omitted when null). Wizard always uses `format: "json"`.
+- `BlazorWebApp/Program.cs`: registered `IWorkshopWizardService -> WorkshopWizardService` as singleton.
+- `BlazorWebApp.Tests/Services/WorkshopWizardServiceTests.cs` (new): 12 tests, all passing. Cover LoadOrCreate idempotence, intro stitching + advance, intro -> iteration transition, verb apply, unknown verb rejection, More... excludeLabels merging, Undo (restoration + zero LLM calls), Commit (event + stage), Reset (preserved row + event), hard-cap enforcement, BuildContextWindow window size.
 
 #### Tasks
 
@@ -344,7 +373,11 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 5: Events
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
+
+#### Changes Made
+
+- `BlazorWebApp/Events/WizardEventArgs.cs` (new): `WizardTurnAdvancedEventArgs` (with `SoftCapReached` + `HardCapReached`), `WizardCommittedEventArgs`, `WizardResetEventArgs`. All three are published by `WorkshopWizardService` via the existing `IEventService`.
 
 #### Tasks
 
@@ -362,7 +395,24 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 6: Seeded system prompts (versioned)
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [-] Deferred (revisit after UI gate)
+
+#### Rationale
+
+`WorkshopWizardService` ships with inline system prompt builders (Step 4). Seeding the seven `SystemPromptTemplate` rows now adds editable surfaces that nothing reads from yet, repeating the trap noted in `DatabaseService` line ~1395 ("editing those rows had no effect"). Once the wizard panel is in place we can decide whether to:
+
+1. Wire the service to load templates by name with a `{placeholder}` substitution layer (mirrors `Enhance` / `Simplify` flow), or
+2. Keep prompts inline and only expose tuning via UI controls (verbosity, randomness sliders).
+
+Either path will be cleaner to evaluate after the panel exists and the user has tried real turns.
+
+#### When revisited - tasks (carried forward)
+
+- [ ] Seed `Workshop.Wizard.Intro` (per-section options generation).
+- [ ] Seed `Workshop.Wizard.Iterate` (refines draft + returns next options).
+- [ ] Seed `Workshop.Wizard.Verb.Improve`, `.Change`, `.Add`, `.Remove`, `.Surprise`.
+- [ ] Add `WorkshopWizardService.PromptSchemaVersion = "v1"` constant; embed in template `Description` so the existing `AreTemplatesEquivalent` content check picks up version bumps.
+- [ ] Refactor service builders to load + substitute placeholders (or document the inline approach as the deliberate decision).
 
 #### Tasks
 
@@ -388,7 +438,13 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 7: `WorkshopWizardPanel.razor`
 
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
+
+#### Changes Made
+
+- `BlazorWebApp/Components/Prompts/LLM/Views/WorkshopWizardPanel.razor` (new): collapsible questionnaire-style panel with stage chip, turn counter `x/50`, MudProgressLinear in-flight indicator, intro section header, question text, options grid (`.send-to-btn` pills with label + optional hint), inline `More...` and `Skip` pills, persistent verb row (Improve / Change / Add / Remove / Surprise + Undo) shown only in iteration, draft preview, and a Commit-to-composer pill. Subscribes to `WizardTurnAdvancedEventArgs` (soft-cap snackbar, hard-cap latch) and `WizardResetEventArgs`.
+- `BlazorWebApp/Components/Prompts/LLM/Views/WorkshopWizardPanel.razor.css` (new): tokenised spacing (`--app-gutter-inner`, `--app-gutter-outer`, `--app-surface-radius`), `--mud-palette-*` colors, dashed verb-row separator, panel sits flush with composer using existing surface/lines tokens.
+- `BlazorWebApp/Services/WorkshopWizardService.cs`: added `EnsurePendingAsync` (kick off pending options when fresh) and `SkipIntroAsync` (records a no-stitch turn, advances index, populates next section); both are exposed on `IWorkshopWizardService`. Skip turns use `Source = "intro:{id}:skip"` so existing Undo logic (matches `intro:` prefix) restores them automatically.
 
 #### Tasks
 
@@ -415,7 +471,11 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 8: `WorkshopView` integration
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
+
+#### Changes Made
+
+- `BlazorWebApp/Components/Prompts/LLM/Views/WorkshopView.razor`: mounted `<WorkshopWizardPanel SessionId=... ModelName=@_chatModel OnCommit=OnWizardCommitAsync />` directly above both `WorkshopComposer` instances (empty-state and active-session branches). Added `OnWizardCommitAsync(string draft)` which calls `_composer?.SetText(draft)`. Session id is passed as nullable so the unbound (no-session) wizard slot maps cleanly to the panel.
 
 #### Tasks
 
@@ -435,7 +495,11 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 9: AppState extension
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
+
+#### Changes Made
+
+- `BlazorWebApp/Models/AppState.cs`: added `bool WizardCollapsed { get; set; } = false` to `AppStatePromptsLLMWorkshop`. Persisted via the existing `IStateService.SaveState()` pipeline; the panel toggles it on the chevron button.
 
 #### Tasks
 
@@ -452,7 +516,13 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 10: Failure-mode polish
 
 **Complexity:** 1
-**Status:** [ ] Not Started
+**Status:** [x] Complete
+
+#### Changes Made
+
+- `BlazorWebApp/Services/WorkshopWizardService.cs`: introduced `SendJsonWithRetryAsync` which performs the one-shot stricter retry described in the plan (appends an `IMPORTANT: Respond with raw JSON only.` suffix to the system prompt). Both `CallIntroSectionAsync` and `CallIterationAsync` now route through it; on second-attempt failure they fall back to the empty-options / preserved-draft path that already drove the warning log.
+- Panel-side: parse failure surfaces as an empty `PendingOptions` list. The verb row stays interactive (already enabled by Step 7 wiring) so the user can `Undo` or pick a different verb; `RunAsync` catches any service exception and surfaces `Snackbar.Add("Wizard error: ...", Severity.Error)`.
+- DEBUG-only `Console.WriteLine` of raw LLM JSON inside `SendJsonAsync` was already in place from Step 4; left as-is.
 
 #### Tasks
 
@@ -469,7 +539,13 @@ All LLM calls in this phase request `format: "json"` and target the same respons
 ### Step 11: Manual test pass + build
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [~] In Progress (build verified; awaiting user manual walkthrough)
+
+#### Changes Made
+
+- `dotnet build BlazorWebApp/BlazorWebApp.csproj` clean: 0 errors, all warnings pre-existing and unrelated to the wizard files.
+- `dotnet test BlazorWebApp.Tests --filter WizardModelsTests|WorkshopWizardServiceTests`: 20/20 pass after the `EnsurePendingAsync` / `SkipIntroAsync` additions.
+- Manual walkthrough scenarios (cold-start intro, iteration verb cycle, More... excludeLabels, Undo across stage boundary, Reset preserves row, navigate-away restoration, two-session isolation, unbound slot, soft cap @ 30, hard cap @ 50, Skip during intro) deferred to user runtime testing.
 
 #### Tasks
 

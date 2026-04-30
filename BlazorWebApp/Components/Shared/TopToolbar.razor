@@ -34,11 +34,11 @@
         <MudItem xs="2">
             <MudButtonGroup Class="w-100" OverrideStyles=false>
                 <MudIconButton Style="flex:1;" Icon="fa-solid fa-plus" Color=Color.Primary OnClick=@(() =>
-                                                                                                                                                                                                                                          ShowStateDialog(new())) Title="Create new state" />
+                                                                                                                                                                                                                                                                                                                                                     ShowStateDialog(new())) Title="Create new state" />
                 <MudIconButton Style="flex:1;" Icon="fa-solid fa-pen" Color=Color.Info OnClick=@(() =>
-                                                                                                                                                                                                                                  ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) Title="Edit state" />
+                                                                                                                                                                                                                                                                                                                                         ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) Title="Edit state" />
                 <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() =>
-                                                                                                                                                                                                                                          LoadStatePreset(_selectedState)) Disabled=@(_selectedState == null) Title="Load state" />
+                                                                                                                                                                                                                                                                                                                                                     LoadStatePreset(_selectedState)) Disabled=@(_selectedState == null) Title="Load state" />
             </MudButtonGroup>
         </MudItem>
     </MudGrid>
@@ -55,6 +55,12 @@
         <ToolbarLLMSettings />
         <MudDivider Class="my-3" />
         <ToolbarResourceFilters />
+    }
+
+    @if (CurrentPage.StartsWith("/prompts"))
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarLLMSettings />
     }
 </div>
 

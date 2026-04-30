@@ -251,17 +251,17 @@ new WorkflowAsset
 
 ### Asset Types
 
-| Type                 | ComfyUI Source (folder / loader node)                                                     | Description                                                                                             |
-| -------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Type                 | ComfyUI Source (folder / loader node)                                                         | Description                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `CheckpointModel`    | `models/checkpoints` (`CheckpointLoaderSimple.ckpt_name`, `LTXAVTextEncoderLoader.ckpt_name`) | Traditional SD checkpoint files plus LTX text-projection ckpts that read from `checkpoints` |
-| `DiffusionModel`     | `models/diffusion_models` (`UNETLoader.unet_name`)                                        | Diffusion / UNet model files (Flux, Anima, ZImage, LTX UNet, etc.)                                      |
-| `Vae`                | `models/vae` (`VAELoader.vae_name`, `VAELoaderKJ.vae_name`)                               | Image / video / audio VAEs that resolve from `models/vae`                                               |
-| `Clip`               | `models/text_encoders` (`CLIPLoader.clip_name`, `DualCLIPLoader.clip_*`)                  | CLIP / T5 / Gemma text encoder models                                                                   |
-| `ClipVision`         | `models/clip_vision` (`CLIPVisionLoader.clip_name`)                                       | CLIP vision encoder models                                                                              |
-| `UpscaleModel`       | `models/upscale_models` (`UpscaleModelLoader.model_name`)                                 | Pixel-space upscalers (ESRGAN-style)                                                                    |
-| `LatentUpscaleModel` | `models/latent_upscale_models` (`LatentUpscaleModelLoader.model_name`)                    | Latent / diffusion-space upscalers (LTX spatial upscaler)                                               |
-| `ControlNet`         | `models/controlnet` (`ControlNetLoader.control_net_name`)                                 | ControlNet conditioning models                                                                          |
-| `Lora`               | `models/loras` (LoRA loaders)                                                             | LoRA / IC-LoRA adapter files                                                                            |
+| `DiffusionModel`     | `models/diffusion_models` (`UNETLoader.unet_name`)                                            | Diffusion / UNet model files (Flux, Anima, ZImage, LTX UNet, etc.)                          |
+| `Vae`                | `models/vae` (`VAELoader.vae_name`, `VAELoaderKJ.vae_name`)                                   | Image / video / audio VAEs that resolve from `models/vae`                                   |
+| `Clip`               | `models/text_encoders` (`CLIPLoader.clip_name`, `DualCLIPLoader.clip_*`)                      | CLIP / T5 / Gemma text encoder models                                                       |
+| `ClipVision`         | `models/clip_vision` (`CLIPVisionLoader.clip_name`)                                           | CLIP vision encoder models                                                                  |
+| `UpscaleModel`       | `models/upscale_models` (`UpscaleModelLoader.model_name`)                                     | Pixel-space upscalers (ESRGAN-style)                                                        |
+| `LatentUpscaleModel` | `models/latent_upscale_models` (`LatentUpscaleModelLoader.model_name`)                        | Latent / diffusion-space upscalers (LTX spatial upscaler)                                   |
+| `ControlNet`         | `models/controlnet` (`ControlNetLoader.control_net_name`)                                     | ControlNet conditioning models                                                              |
+| `Lora`               | `models/loras` (LoRA loaders)                                                                 | LoRA / IC-LoRA adapter files                                                                |
 
 > Note: the folder path on the right is the **default** ComfyUI mapping. The
 > source of truth is the loader node's `/object_info/{ClassType}` combo, NOT the
@@ -280,10 +280,10 @@ folders bit us in LTX 2.3:
     from `models/vae` — same folder as the regular video VAE.
   - `LTXVAudioVAELoader.ckpt_name` (official LTX, used by some embedded API
     prompts) reads from `models/checkpoints`.
-  Templates default to VAELoaderKJ (asset type `Vae`). Workflows that need the
-  checkpoint-backed loader should call the LTX loader fragment's `Build(...)`
-  Parameters overload with `AudioVaeNodeType = "LTXVAudioVAELoader"` and an
-  `AssetType.CheckpointModel` asset for the dropdown.
+    Templates default to VAELoaderKJ (asset type `Vae`). Workflows that need the
+    checkpoint-backed loader should call the LTX loader fragment's `Build(...)`
+    Parameters overload with `AudioVaeNodeType = "LTXVAudioVAELoader"` and an
+    `AssetType.CheckpointModel` asset for the dropdown.
 - `LTXAVTextEncoderLoader.ckpt_name` reads from `models/checkpoints` — it is
   the LTX text-projection ckpt, NOT a copy of the diffusion UNet name. Type
   it as `CheckpointModel`.
@@ -847,11 +847,11 @@ The LTX 2.3 workflow pack ships a stack of reusable fragments under `Workflows/F
 
 ### Loaders
 
-| Fragment                 | Purpose                                                                                                                                                                                          | Used by                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| `LtxLoadModelFragment`   | Single-file checkpoint (`CheckpointLoaderSimple`) + AudioVAE + UpscaleModel.                                                                                                                     | `LtxImg2VidWorkflow` (Comfy-default I2V path).                           |
-| `LtxLoadSplitFragment`   | Split safetensors: `UNETLoader` + `DualCLIPLoader` + `VAELoader` + audio VAE loader (`VAELoaderKJ` by default; switchable to `LTXVAudioVAELoader`) + `LatentUpscaleModelLoader` + always-on `LTXVChunkFeedForward` / `LTX2SamplingPreviewOverride`.         | `LtxTxt2VidWorkflow`, `LtxFml2VidWorkflow`, `LtxControlVid2VidWorkflow`. |
-| `LtxLoadSplitAvFragment` | Same as `LtxLoadSplitFragment` but the CLIP slot uses the AV-aware `LTXAVTextEncoderLoader`. Required by AV / lip-sync workflows that ship audio prompt features through the AV text projection. | `LtxV2vJustTalkWorkflow`, `LtxTalkingAvatarWorkflow`.                    |
+| Fragment                 | Purpose                                                                                                                                                                                                                                             | Used by                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `LtxLoadModelFragment`   | Single-file checkpoint (`CheckpointLoaderSimple`) + AudioVAE + UpscaleModel.                                                                                                                                                                        | `LtxImg2VidWorkflow` (Comfy-default I2V path).                           |
+| `LtxLoadSplitFragment`   | Split safetensors: `UNETLoader` + `DualCLIPLoader` + `VAELoader` + audio VAE loader (`VAELoaderKJ` by default; switchable to `LTXVAudioVAELoader`) + `LatentUpscaleModelLoader` + always-on `LTXVChunkFeedForward` / `LTX2SamplingPreviewOverride`. | `LtxTxt2VidWorkflow`, `LtxFml2VidWorkflow`, `LtxControlVid2VidWorkflow`. |
+| `LtxLoadSplitAvFragment` | Same as `LtxLoadSplitFragment` but the CLIP slot uses the AV-aware `LTXAVTextEncoderLoader`. Required by AV / lip-sync workflows that ship audio prompt features through the AV text projection.                                                    | `LtxV2vJustTalkWorkflow`, `LtxTalkingAvatarWorkflow`.                    |
 
 **Dual-loader policy:** Use `LtxLoadModelFragment` when the upstream JSON ships a single checkpoint; use `LtxLoadSplitFragment` for split-file packs (UNet + Clip + Vae); use `LtxLoadSplitAvFragment` for any workflow that needs audio conditioning fed through the text encoder (Just-Talk, Talking Avatar). All three register the same five outputs (`{scope}model_output`, `{scope}clip_output`, `{scope}vae_output`, `{scope}audio_vae_output`, `{scope}upscale_model_output`) so downstream fragments are interchangeable.
 

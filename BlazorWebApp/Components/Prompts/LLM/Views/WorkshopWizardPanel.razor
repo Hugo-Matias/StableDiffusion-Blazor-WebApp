@@ -1,0 +1,460 @@
+@* Workshop Wizard panel (Phase 13).
+   Button-driven prompt builder that lives directly above the WorkshopComposer.
+   Stage flow:
+     - Intro: walks N hardcoded sections, each presenting LLM-generated options + Skip + More.
+     - Iteration: persistent verb row + LLM-suggested context options + More.
+     - Committed: shows the final draft with a New Wizard button. *@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Events
+@using BlazorWebApp.Models
+@implements IDisposable
+@inject IWorkshopWizardService Wizard
+@inject WizardIntroCatalog IntroCatalog
+@inject IEventService Events
+@inject IStateService State
+@inject ISnackbar Snackbar
+
+<div class="@($"workshop-wizard-panel {AccentClass}")">
+    <div class="workshop-wizard-accent-strip" aria-hidden="true"></div>
+    <div class="workshop-wizard-header">
+        <MudIconButton Icon="@(_collapsed? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ExpandLess)"
+                       Size="Size.Small" Title="@(_collapsed ? "Expand wizard" : "Collapse wizard")"
+                       OnClick="ToggleCollapseAsync" />
+        <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Size="Size.Small" />
+        <span class="workshop-wizard-title">Prompt Wizard</span>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@StageChipColor">@StageLabel</MudChip>
+        @if (!_collapsed && _row != null)
+        {
+            <span class="workshop-wizard-counter" title="Turn @_row.Body.TurnCount of @WorkshopWizardService.HardCap">
+                @_row.Body.TurnCount / @WorkshopWizardService.HardCap
+            </span>
+        }
+        <MudSpacer />
+        @if (!_collapsed && _row != null)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Title="Reset wizard" Disabled="@_busy"
+                           OnClick="OnResetAsync" />
+        }
+    </div>
+
+    @if (!_collapsed)
+    {
+        @if (_busy)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="workshop-wizard-progress" />
+        }
+
+        @if (_row == null)
+        {
+            <div class="workshop-wizard-empty">
+                <MudText Typo="Typo.body2" Class="text-disabled">Loading wizard.</MudText>
+            </div>
+        }
+        else if (_row.Body.Stage == WizardStage.Committed)
+        {
+            <div class="workshop-wizard-committed">
+                <MudText Typo="Typo.caption" Class="text-disabled">Committed draft</MudText>
+                <MudText Typo="Typo.body2">@(_row.Body.CurrentDraft.Length > 0 ? _row.Body.CurrentDraft : "(empty)")</MudText>
+                <div class="workshop-wizard-actions">
+                    <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.RestartAlt"
+                               OnClick="OnResetAsync" Disabled="@_busy">Start over</MudButton>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="workshop-wizard-body">
+                @* Section header (intro only) *@
+                @if (_row.Body.Stage == WizardStage.Intro && _activeSection != null)
+                {
+                    <div class="workshop-wizard-section-head">
+                        <MudText Typo="Typo.overline" Class="text-disabled">
+                            Step @(_row.Body.IntroSectionIndex + 1) of @IntroCatalog.Count
+                            . @_activeSection.Title
+                        </MudText>
+                        @if (!string.IsNullOrWhiteSpace(_activeSection.Guidance))
+                        {
+                            <MudText Typo="Typo.caption" Class="text-disabled">@_activeSection.Guidance</MudText>
+                        }
+                    </div>
+                }
+
+                @* Question text *@
+                @if (!string.IsNullOrWhiteSpace(_row.Body.PendingQuestion))
+                {
+                    <MudText Typo="Typo.body1" Class="workshop-wizard-question">@_row.Body.PendingQuestion</MudText>
+                }
+                else if (_row.Body.PendingOptions.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="text-disabled">
+                        Press Start to have the wizard suggest the first round of options.
+                    </MudText>
+                }
+
+                @* Options grid *@
+                @if (_row.Body.PendingOptions.Count > 0)
+                {
+                    <div class="workshop-wizard-options">
+                        @foreach (var option in _row.Body.PendingOptions)
+                        {
+                            var label = option.Label;
+                            var hint = option.Hint;
+                            <button class="send-to-btn workshop-wizard-option" type="button" disabled="@(_busy || _hardCap)"
+                                    title="@(string.IsNullOrWhiteSpace(hint) ? label : hint)" @onclick="@(() => OnOptionAsync(option))">
+                                <span class="workshop-wizard-option-label">@label</span>
+                                @if (!string.IsNullOrWhiteSpace(hint))
+                                {
+                                    <span class="workshop-wizard-option-hint">@hint</span>
+                                }
+                            </button>
+                        }
+                        <button class="send-to-btn workshop-wizard-option workshop-wizard-more" type="button"
+                                disabled="@(_busy || _hardCap)" title="Get fresh options" @onclick="OnMoreAsync">
+                            <MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" />
+                            <span>More.</span>
+                        </button>
+                        @if (_row.Body.Stage == WizardStage.Intro)
+                        {
+                            <button class="send-to-btn workshop-wizard-option workshop-wizard-skip" type="button"
+                                    disabled="@(_busy || _hardCap)" title="Skip this section" @onclick="OnSkipAsync">
+                                <MudIcon Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small" />
+                                <span>Skip</span>
+                            </button>
+                        }
+                    </div>
+                }
+                else if (_row.Body.Stage == WizardStage.Intro)
+                {
+                    <div class="workshop-wizard-actions workshop-wizard-actions--center">
+                        <button type="button" class="workshop-wizard-start-btn"
+                                disabled="@(_busy || _hardCap || string.IsNullOrWhiteSpace(EffectiveModel))" @onclick="OnStartAsync">
+                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
+                            <span>Start</span>
+                        </button>
+                    </div>
+                }
+
+                @* Verb row (iteration only) *@
+                @if (_row.Body.Stage == WizardStage.Iteration)
+                {
+                    <div class="workshop-wizard-verbs">
+                        @foreach (var verb in WorkshopWizardService.Verbs)
+                        {
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@VerbIcon(verb)" Color="@VerbColor(verb)"
+                                       Disabled="@(_busy || _hardCap)" OnClick="@(() => OnVerbAsync(verb))">
+                                @CapitalizeFirst(verb)
+                            </MudButton>
+                        }
+                    </div>
+                }
+
+                @* Draft preview + commit (hidden until the user has chosen at least one option). *@
+                @if (!string.IsNullOrWhiteSpace(_row.Body.CurrentDraft))
+                {
+                    <div class="workshop-wizard-draft">
+                        <MudText Typo="Typo.caption" Class="text-disabled">Current draft</MudText>
+                        <MudText Typo="Typo.body2" Class="workshop-wizard-draft-text">@_row.Body.CurrentDraft</MudText>
+                    </div>
+                    <div class="workshop-wizard-actions workshop-wizard-actions--commit">
+                        <button class="send-to-btn workshop-wizard-undo-btn" type="button"
+                                disabled="@(_busy || _row.Body.History.Count == 0)" title="Undo last action" @onclick="OnUndoAsync">
+                            <MudIcon Icon="@Icons.Material.Filled.Undo" Size="Size.Small" />
+                            <span>Undo</span>
+                        </button>
+                        <button class="send-to-btn workshop-wizard-commit-btn" type="button" disabled="@_busy"
+                                title="Send the current draft to the composer" @onclick="OnCommitAsync">
+                            <MudIcon Icon="@Icons.Material.Filled.SendAndArchive" Size="Size.Small" />
+                            <span>Commit to composer</span>
+                        </button>
+                    </div>
+                }
+                else if (_row.Body.History.Count > 0)
+                {
+                    @* No draft yet (skipped intro sections only): expose Undo as a stand-alone pill. *@
+                    <div class="workshop-wizard-actions workshop-wizard-actions--commit">
+                        <button class="send-to-btn workshop-wizard-undo-btn" type="button" disabled="@_busy"
+                                title="Undo last action" @onclick="OnUndoAsync">
+                            <MudIcon Icon="@Icons.Material.Filled.Undo" Size="Size.Small" />
+                            <span>Undo</span>
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>Owning Workshop session id, or null for the unbound slot.</summary>
+    [Parameter] public int? SessionId { get; set; }
+
+    /// <summary>Ollama model name used for every wizard turn.</summary>
+    [Parameter] public string? ModelName { get; set; }
+
+    /// <summary>Fired after a successful Commit. The host fills the composer with the draft.</summary>
+    [Parameter] public EventCallback<string> OnCommit { get; set; }
+
+    private WorkshopWizardSession? _row;
+    private WizardIntroSection? _activeSection;
+    private bool _busy;
+    private bool _collapsed;
+    private bool _hardCap;
+    private int? _loadedSessionId; // sentinel so OnParametersSetAsync only reloads on real change.
+    private bool _initialised;
+
+    private string EffectiveModel => string.IsNullOrWhiteSpace(ModelName) ? string.Empty : ModelName!;
+
+    private string StageLabel => _row?.Body.Stage switch
+    {
+        WizardStage.Intro => "Intro",
+        WizardStage.Iteration => "Iterate",
+        WizardStage.Committed => "Committed",
+        _ => "."
+    };
+
+    private Color StageChipColor => _row?.Body.Stage switch
+    {
+        WizardStage.Iteration => Color.Primary,
+        WizardStage.Committed => Color.Success,
+        _ => Color.Default,
+    };
+
+    /// <summary>
+    /// CSS modifier class that drives the top accent line. The line tracks the
+    /// stage in Intro / Committed and the most recently used verb in Iteration,
+    /// so the panel reads as "alive" without us having to render extra chrome.
+    /// </summary>
+    private string AccentClass
+    {
+        get
+        {
+            if (_row == null) return "accent-default";
+            return _row.Body.Stage switch
+            {
+                WizardStage.Committed => "accent-success",
+                WizardStage.Iteration => _row.Body.LastActionVerb switch
+                {
+                    "improve" => "accent-improve",
+                    "change" => "accent-change",
+                    "add" => "accent-add",
+                    "remove" => "accent-remove",
+                    "surprise" => "accent-surprise",
+                    _ => "accent-iteration",
+                },
+                _ => "accent-intro",
+            };
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _collapsed = State.State.Prompts.LLM.Workshop.WizardCollapsed;
+        Events.Subscribe<WizardTurnAdvancedEventArgs>(OnTurnAdvanced);
+        Events.Subscribe<WizardResetEventArgs>(OnReset);
+        await IntroCatalog.LoadAsync();
+        _initialised = true;
+        await ReloadAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_initialised) return;
+        if (_loadedSessionId == SessionId) return;
+        await ReloadAsync();
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<WizardTurnAdvancedEventArgs>(OnTurnAdvanced);
+        Events.Unsubscribe<WizardResetEventArgs>(OnReset);
+    }
+
+    // ---------------- Event handlers ----------------
+
+    private void OnTurnAdvanced(WizardTurnAdvancedEventArgs e)
+    {
+        if (e.SessionId != SessionId) return;
+        _hardCap = e.HardCapReached;
+        if (e.SoftCapReached)
+        {
+            Snackbar.Add(
+                $"Wizard soft cap reached ({WorkshopWizardService.SoftCap} turns). Consider committing soon.",
+                Severity.Warning);
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnReset(WizardResetEventArgs e)
+    {
+        if (e.SessionId != SessionId) return;
+        _hardCap = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    // ---------------- Loaders ----------------
+
+    private async Task ReloadAsync()
+    {
+        _loadedSessionId = SessionId;
+        try
+        {
+            _busy = true;
+            _row = await Wizard.LoadOrCreateAsync(SessionId);
+            _hardCap = _row.Body.TurnCount >= WorkshopWizardService.HardCap;
+            UpdateActiveSection();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Wizard failed to load: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateActiveSection()
+    {
+        if (_row?.Body.Stage == WizardStage.Intro && IntroCatalog.Sections.Count > 0)
+        {
+            var idx = Math.Clamp(_row.Body.IntroSectionIndex, 0, IntroCatalog.Sections.Count - 1);
+            _activeSection = IntroCatalog.Sections[idx];
+        }
+        else
+        {
+            _activeSection = null;
+        }
+    }
+
+    // ---------------- Button handlers ----------------
+
+    private async Task ToggleCollapseAsync()
+    {
+        _collapsed = !_collapsed;
+        State.State.Prompts.LLM.Workshop.WizardCollapsed = _collapsed;
+        await State.SaveState();
+    }
+
+    private async Task OnStartAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EffectiveModel))
+        {
+            Snackbar.Add("No Ollama model selected for the wizard.", Severity.Warning);
+            return;
+        }
+        await RunAsync(async () =>
+        {
+            _row = await Wizard.EnsurePendingAsync(SessionId, EffectiveModel);
+            UpdateActiveSection();
+        });
+    }
+
+    private async Task OnOptionAsync(WizardOption option)
+    {
+        if (_row == null || string.IsNullOrWhiteSpace(EffectiveModel)) return;
+        await RunAsync(async () =>
+        {
+            if (_row.Body.Stage == WizardStage.Intro)
+                _row = await Wizard.AdvanceIntroAsync(SessionId, option, EffectiveModel);
+            else
+                _row = await Wizard.AdvanceIterationAsync(SessionId, option, EffectiveModel);
+            UpdateActiveSection();
+        });
+    }
+
+    private Task OnSkipAsync() => RunAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(EffectiveModel)) return;
+        _row = await Wizard.SkipIntroAsync(SessionId, EffectiveModel);
+        UpdateActiveSection();
+    });
+
+    private Task OnMoreAsync() => RunAsync(async () =>
+    {
+        if (_row == null || string.IsNullOrWhiteSpace(EffectiveModel)) return;
+        // RequestMoreAsync now handles both Intro (re-roll same section) and Iteration
+        // (re-roll context options). Either way, excludeLabels is forwarded so the LLM
+        // doesn't echo the labels we just rejected.
+        if (_row.Body.Stage == WizardStage.Intro || _row.Body.Stage == WizardStage.Iteration)
+        {
+            _row = await Wizard.RequestMoreAsync(SessionId, EffectiveModel);
+        }
+    });
+
+    private Task OnVerbAsync(string verb) => RunAsync(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(EffectiveModel)) return;
+        _row = await Wizard.ApplyVerbAsync(SessionId, verb, EffectiveModel);
+    });
+
+    private Task OnUndoAsync() => RunAsync(async () =>
+    {
+        _row = await Wizard.UndoAsync(SessionId);
+        UpdateActiveSection();
+    });
+
+    private Task OnResetAsync() => RunAsync(async () =>
+    {
+        _row = await Wizard.ResetAsync(SessionId);
+        UpdateActiveSection();
+    });
+
+    private async Task OnCommitAsync()
+    {
+        if (_row == null || string.IsNullOrWhiteSpace(_row.Body.CurrentDraft)) return;
+        await RunAsync(async () =>
+        {
+            var draft = _row.Body.CurrentDraft;
+            _row = await Wizard.CommitAsync(SessionId);
+            await OnCommit.InvokeAsync(draft);
+        });
+    }
+
+    // ---------------- Helpers ----------------
+
+    private async Task RunAsync(Func<Task> work)
+    {
+        if (_busy) return;
+        _busy = true;
+        StateHasChanged();
+        try
+        {
+            await work();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("hard cap", StringComparison.OrdinalIgnoreCase))
+        {
+            _hardCap = true;
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Wizard error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string CapitalizeFirst(string s)
+        => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..];
+
+    private static string VerbIcon(string verb) => verb switch
+    {
+        "improve" => Icons.Material.Filled.AutoFixHigh,
+        "change" => Icons.Material.Filled.SwapHoriz,
+        "add" => Icons.Material.Filled.Add,
+        "remove" => Icons.Material.Filled.Remove,
+        "surprise" => Icons.Material.Filled.Casino,
+        _ => Icons.Material.Filled.PlayArrow,
+    };
+
+    private static Color VerbColor(string verb) => verb switch
+    {
+        "surprise" => Color.Secondary,
+        "remove" => Color.Warning,
+        _ => Color.Default,
+    };
+}

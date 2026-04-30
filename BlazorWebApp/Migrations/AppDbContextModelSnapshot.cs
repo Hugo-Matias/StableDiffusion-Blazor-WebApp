@@ -788,6 +788,34 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("WorkflowStates");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WorkshopWizardSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .IsUnique()
+                        .HasFilter("\"SessionId\" IS NOT NULL");
+
+                    b.ToTable("WorkshopWizardSessions");
+                });
+
             modelBuilder.Entity("ImageSelection", b =>
                 {
                     b.Property<int>("ImagesId")
@@ -875,6 +903,16 @@ namespace BlazorWebApp.Migrations
                         .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WorkshopWizardSession", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.PromptWorkshopSession", "Session")
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Session");
                 });

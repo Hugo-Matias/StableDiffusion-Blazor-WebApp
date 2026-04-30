@@ -48,12 +48,13 @@ namespace BlazorWebApp.Services
             return response?.Message?.Content ?? input;
         }
 
-        public async Task<OllamaChatResponse?> SendChatMessage(
+        public async virtual Task<OllamaChatResponse?> SendChatMessage(
             string modelName,
             List<OllamaChatMessage> messages,
             OllamaOptions? options = null,
             string? keepAlive = "15m",
-            bool stream = false)
+            bool stream = false,
+            string? format = null)
         {
             BaseProgress? progressBar = null;
 
@@ -73,7 +74,8 @@ namespace BlazorWebApp.Services
                     Messages = messages,
                     Stream = stream,
                     KeepAlive = keepAlive,
-                    Options = options ?? new OllamaOptions()
+                    Options = options ?? new OllamaOptions(),
+                    Format = format,
                 };
 
                 var json = JsonSerializer.Serialize(payload);

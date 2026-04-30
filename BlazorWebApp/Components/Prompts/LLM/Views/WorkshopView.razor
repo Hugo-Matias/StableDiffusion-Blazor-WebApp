@@ -90,6 +90,8 @@
                     <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Class="workshop-empty-state-icon" />
                     <MudText Typo="Typo.body2">Type your initial prompt to start a new session.</MudText>
                 </div>
+                <WorkshopWizardPanel SessionId="@(_activeSessionId == 0 ? null : (int?)_activeSessionId)"
+                                     ModelName="@_chatModel" OnCommit="OnWizardCommitAsync" />
                 <WorkshopComposer @ref="_composer" Disabled="@_isProcessing"
                                   Placeholder="Type your initial prompt - Enter to start a new session" OnSend="OnComposerFirstSendAsync"
                                   OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
@@ -121,6 +123,8 @@
                         }
                     }
                 </div>
+                <WorkshopWizardPanel SessionId="@(_activeSessionId == 0 ? null : (int?)_activeSessionId)"
+                                     ModelName="@_chatModel" OnCommit="OnWizardCommitAsync" />
                 <WorkshopComposer @ref="_composer" Disabled="@(_isProcessing || _currentNode == null)"
                                   OnSend="OnComposerSendAsync" OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
             }
@@ -562,6 +566,14 @@
         _sessionRailCollapsed = !_sessionRailCollapsed;
         State.State.Prompts.LLM.Workshop.SessionRailCollapsed = _sessionRailCollapsed;
         await State.SaveState();
+    }
+
+    /// <summary>Phase 13 - WorkshopWizardPanel emits its committed draft string;
+    /// we forward it into the composer so the user can review and press Send.</summary>
+    private Task OnWizardCommitAsync(string draft)
+    {
+        _composer?.SetText(draft ?? string.Empty);
+        return Task.CompletedTask;
     }
 
     /// <summary>Phase 8.6 Step 6 - toggle the auto-queue switch on the thread header.</summary>

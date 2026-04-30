@@ -22,7 +22,8 @@
     <MudLayout Style="overflow:hidden;">
         <MudAppBar Style="z-index: 1400;">
             <ProgressContainer />
-            <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" Style="font-size: 1.75rem;" />
+            <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto"
+                           Style="font-size: 1.75rem;" />
             <NavBar />
             <MudSpacer />
 
@@ -36,19 +37,11 @@
                 @* Base Selector (ComfyUI only) *@
                 @if (Backend.IsBackendAvailable && _workflowBases != null && _workflowBases.Count > 0)
                 {
-                    <MudSelect Value="State.State.Generation.WorkflowBase" 
-                               T="ModelBase" 
-                               ValueChanged="HandleWorkflowBaseSelected" 
-                               Label="Base" 
-                               Variant="Variant.Text"
-                               Class="base-selector"
-                               AnchorOrigin="Origin.BottomCenter" 
-                               TransformOrigin="Origin.TopCenter"
-                               MaxHeight="500"
-                               Adornment="Adornment.End"
-                               AdornmentIcon="@Icons.Material.Filled.Refresh"
-                               AdornmentColor="Color.Inherit"
-                               OnAdornmentClick="RefreshWorkflows">
+                    <MudSelect Value="State.State.Generation.WorkflowBase" T="ModelBase"
+                               ValueChanged="HandleWorkflowBaseSelected" Label="Base" Variant="Variant.Text" Class="base-selector"
+                               AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="500"
+                               Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Refresh"
+                               AdornmentColor="Color.Inherit" OnAdornmentClick="RefreshWorkflows">
                         @foreach (var workflowBase in _workflowBases)
                         {
                             <MudSelectItem Value="@workflowBase" />
@@ -59,23 +52,20 @@
                 <ProjectSelectorDropdown />
                 
                 @* Dark/Light Mode Toggle *@
-                <MudIconButton Icon="@(State.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
-                               Color="Color.Inherit" 
-                               Title="@(State.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
-                               OnClick="ToggleDarkMode" />
+                <MudIconButton
+                Icon="@(State.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                Color="Color.Inherit"
+                Title="@(State.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
+                OnClick="ToggleDarkMode" />
                 
                 @* Info/Help Button *@
                 @if (InfoService.CurrentInfo != null)
                 {
-                    <MudIconButton Icon="@Icons.Material.Filled.Info"
-                                   Color="Color.Inherit"
-                                   Title="Help & Shortcuts"
+                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Inherit" Title="Help & Shortcuts"
                                    OnClick="OpenInfoDrawer" />
                 }
                 
-                <MudIconButton Class=@(_isModelLoading ? "spinner" : "") 
-                               Icon="@Icons.Material.Filled.Settings" 
-                               Color=@(_isModelLoading ? Color.Info : Color.Inherit) 
+                <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Title="Settings"
                                OnClick="() => DrawerToggler()" />
             </MudStack>
         </MudAppBar>
@@ -113,7 +103,6 @@
 
 @code {
     private bool _isToolbarOpen = false;
-    private bool _isModelLoading = false;
     private bool _isAppReady = false;
     private bool _loaderDismissed = false;
     private MudTheme _currentTheme = new MudTheme();
@@ -133,8 +122,8 @@
         LoadTheme();
     }
 
-    protected async override Task OnInitializedAsync() 
-    { 
+    protected async override Task OnInitializedAsync()
+    {
         // Load persisted state from database via Orchestrator
         // This ensures workflows are refreshed from disk templates (not just from database)
         await M.LoadState();
@@ -232,7 +221,7 @@
         StateHasChanged();
     }
 
-    private void DrawerToggler() 
+    private void DrawerToggler()
     {
         _isToolbarOpen = !_isToolbarOpen;
         StateHasChanged();
@@ -274,7 +263,6 @@
 
     private async void Refresh()
     {
-        _isModelLoading = string.IsNullOrEmpty(Models.GetCurrentModel()) || Models.GetCurrentModel() == "Loading...";
         LoadWorkflowBases();
         await InvokeAsync(StateHasChanged);
     }

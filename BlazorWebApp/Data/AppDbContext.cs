@@ -193,6 +193,29 @@ namespace BlazorWebApp.Data
                 .WithMany(p => p.Children)
                 .HasForeignKey(n => n.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Workshop Wizard - JSON-backed body, FK to optional PromptWorkshopSession,
+            // filtered unique index ensures one wizard per session plus one unbound slot (SessionId IS NULL).
+            var wizardBodyConverter = new ValueConverter<WizardBody, string>(
+                v => JsonSerializer.Serialize(v ?? new WizardBody(), WizardJsonOptions.Compact),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new WizardBody()
+                    : JsonSerializer.Deserialize<WizardBody>(v, WizardJsonOptions.Compact) ?? new WizardBody());
+
+            modelBuilder.Entity<WorkshopWizardSession>()
+                .Property(w => w.Body)
+                .HasConversion(wizardBodyConverter);
+
+            modelBuilder.Entity<WorkshopWizardSession>()
+                .HasOne(w => w.Session)
+                .WithMany()
+                .HasForeignKey(w => w.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WorkshopWizardSession>()
+                .HasIndex(w => w.SessionId)
+                .IsUnique()
+                .HasFilter("\"SessionId\" IS NOT NULL");
         }
 
         public DbSet<Image> Images { get; set; }
@@ -217,5 +240,6 @@ namespace BlazorWebApp.Data
         public DbSet<SchedulerDraft> SchedulerDrafts { get; set; }
         public DbSet<PromptWorkshopSession> PromptWorkshopSessions { get; set; }
         public DbSet<PromptWorkshopNode> PromptWorkshopNodes { get; set; }
+        public DbSet<WorkshopWizardSession> WorkshopWizardSessions { get; set; }
     }
 }
