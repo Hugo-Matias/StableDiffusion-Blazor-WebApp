@@ -17,32 +17,22 @@
 <div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
     @* Image Container *@
     <div class="image-wrapper">
-        <img src="@IO.GetImageStaticFile(Image.Path)" 
-             alt="Generated image" 
-             class="card-image"
-             loading="lazy" />
+        <img src="@IO.GetImageStaticFile(Image.Path)" alt="Generated image" class="card-image" loading="lazy" />
         
         @* Hover Overlay *@
         <div class="hover-overlay @(_isHovered || _isMenuOpen ? "visible" : "")">
             @* Top Section - Score & Selection *@
             <div class="overlay-top">
                 <div class="rating-container @(_isHovered || _isMenuOpen || Image.Score > 0 ? "visible" : "")">
-                    <MudRating SelectedValue="Image.Score" 
-                               SelectedValueChanged="SetScore" 
-                               MaxValue="3" 
-                               Size="Size.Small"
-                               Color="Color.Warning" />
+                    <MudRating SelectedValue="Image.Score" SelectedValueChanged="SetScore" MaxValue="3"
+                               Size="Size.Small" Color="Color.Warning" />
                 </div>
                 
                 @if (ShowSelectionCheckbox)
                 {
                     <div class="selection-container @(_isHovered || _isMenuOpen || _isSelected ? "visible" : "")">
-                        <MudCheckBox Checked="_isSelected" 
-                                     T="bool" 
-                                     CheckedChanged="HandleSelected" 
-                                     Color="Color.Success" 
-                                     UncheckedColor="Color.Default"
-                                     Size="Size.Medium" />
+                        <MudCheckBox Checked="_isSelected" T="bool" CheckedChanged="HandleSelected" Color="Color.Success"
+                                     UncheckedColor="Color.Default" Size="Size.Medium" />
                     </div>
                 }
             </div>
@@ -50,10 +40,13 @@
             @* Center Section - Quick Actions *@
             <div class="overlay-center @(_isHovered || _isMenuOpen ? "visible" : "")">
                 <div class="quick-actions">
-                    <button class="action-btn primary" @onclick="@(() => OnSelectImage.InvokeAsync(Image))" title="View Fullscreen">
+                    <button class="action-btn primary" @onclick="@(() => OnSelectImage.InvokeAsync(Image))"
+                            title="View Fullscreen">
                         <i class="fa-solid fa-expand"></i>
                     </button>
-                    <button class="action-btn @(Image.Favorite ? "active" : "")" @onclick="@(() => ToggleFavorite(!Image.Favorite))" title="@(Image.Favorite ? "Remove from Favorites" : "Add to Favorites")">
+                    <button class="action-btn @(Image.Favorite ? "active" : "")"
+                            @onclick="@(() => ToggleFavorite(!Image.Favorite))"
+                            title="@(Image.Favorite ? "Remove from Favorites" : "Add to Favorites")">
                         <i class="@(Image.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
                     </button>
                     <button class="action-btn" @onclick="ToggleInfoDrawer" title="View Info">
@@ -92,13 +85,9 @@
                 </div>
                 
                 <div class="more-actions">
-                    <MudMenu @bind-Open="_isMenuOpen"
-                             Icon="@Icons.Material.Filled.MoreVert" 
-                             AnchorOrigin="Origin.TopCenter" 
-                             TransformOrigin="Origin.BottomCenter"
-                             Size="Size.Small"
-                             Dense="true"
-                             Class="more-menu">
+                    <MudMenu @bind-Open="_isMenuOpen" Icon="@Icons.Material.Filled.MoreVert"
+                             AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Size="Size.Small"
+                             Dense="true" Class="more-menu">
                         <ChildContent>
                             <div class="action-menu">
                                 @{
@@ -119,16 +108,20 @@
                                                 {
                                                     var slotCapture = slot;
                                                     var wfRef = workflow;
-                                                    <MudMenuItem OnClick="@(() => SendTo.SendImageToSourceSlot(Image, wfRef, slotCapture.Key))" Class="menu-item">
+                                                    <MudMenuItem
+                                                        OnClick="@(() => SendTo.SendImageToSourceSlot(Image, wfRef, slotCapture.Key))"
+                                                        Class="menu-item">
                                                         <div class="menu-item-content">
-                                                            <i class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
+                                                            <i
+                                                            class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
                                                             <span>@slotCapture.Label</span>
                                                         </div>
                                                     </MudMenuItem>
                                                 }
                                                 var wfAdd = workflow;
                                                 var msAdd = multiSource;
-                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToNewSlot(Image, wfAdd, msAdd))" Class="menu-item">
+                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToNewSlot(Image, wfAdd, msAdd))"
+                                                             Class="menu-item">
                                                     <div class="menu-item-content">
                                                         <i class="fa-solid fa-plus menu-icon @GetModeIconColor(wfAdd.Mode)"></i>
                                                         <span>@(wfAdd.Title) Add</span>
@@ -138,14 +131,32 @@
                                             else
                                             {
                                                 var wfRef = workflow;
-                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToWorkflow(Image, wfRef))" Class="menu-item">
+                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToWorkflow(Image, wfRef))"
+                                                             Class="menu-item">
                                                     <div class="menu-item-content">
-                                                        <i class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
+                                                        <i
+                                                        class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
                                                         <span>@wfRef.Title</span>
                                                     </div>
                                                 </MudMenuItem>
                                             }
                                         }
+                                    </div>
+
+                                    <div class="menu-divider"></div>
+                                }
+
+                                @* Phase 12 - Image-to-Prompt entry. Only meaningful for files we can read locally. *@
+                                @if (SendTo.IsLocal(Image.Path))
+                                {
+                                    <div class="menu-section">
+                                        <div class="menu-section-title">LLM Tools</div>
+                                        <MudMenuItem OnClick="SendToImageToPrompt" Class="menu-item">
+                                            <div class="menu-item-content">
+                                                <i class="fa-solid fa-magnifying-glass menu-icon tertiary"></i>
+                                                <span>Generate Prompt</span>
+                                            </div>
+                                        </MudMenuItem>
                                     </div>
 
                                     <div class="menu-divider"></div>
@@ -176,7 +187,8 @@
                                             <span>Open in Explorer</span>
                                         </div>
                                     </MudMenuItem>
-                                    <MudMenuItem OnClick="@(() => OnDeleteImage.InvokeAsync(Image))" Class="menu-item danger">
+                                    <MudMenuItem OnClick="@(() => OnDeleteImage.InvokeAsync(Image))"
+                                                 Class="menu-item danger">
                                         <div class="menu-item-content">
                                             <i class="fa-solid fa-trash-can menu-icon error"></i>
                                             <span>Delete</span>
@@ -204,9 +216,7 @@
 </div>
 
 <!-- Info Drawer -->
-<AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" 
-                 Image="Image" 
-                 IsVideo="false" />
+<AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" Image="Image" IsVideo="false" />
 
 @code {
     [Parameter] public Image Image { get; set; }
@@ -309,6 +319,57 @@
         await DB.SetProjectCover(State.State.Gallery.ProjectId, Image.Path);
         await OnCoverChanged.InvokeAsync();
         Snackbar.Add($"Cover image selected for project {State.State.Gallery.ProjectName}.", Severity.Success);
+    }
+
+    /// <summary>
+    /// Phase 12: Switch the LLM Tools tab to the Image-to-Prompt view, hand off the image
+    /// through persisted state (Publish would race the navigation - the target view does not
+    /// exist yet when the event fires, so the subscription set is empty), and navigate to /prompts.
+    /// </summary>
+    private async Task SendToImageToPrompt()
+    {
+        var resolved = IO.ResolveFilePath(Image.Path);
+        if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
+        {
+            Snackbar.Add("Image file is not available on disk.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(resolved);
+            var ext = Path.GetExtension(resolved).TrimStart('.').ToLowerInvariant();
+            var mime = ext switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                "gif" => "image/gif",
+                _ => "image/png"
+            };
+
+            var s = State.State.Prompts.LLM.ImageToPrompt;
+            s.LastImageDataUri = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            s.LastSourceLabel = "Gallery";
+            // Clear stale result so the new image starts with an empty prompt area.
+            s.LastResultText = null;
+
+            State.State.Prompts.LLM.ActiveViewId = "image-to-prompt";
+            await State.SaveState();
+
+            // Also publish the event for the same-page case (user already on /prompts and the
+            // ImageToPromptView is mounted). The view's handler is idempotent with the state hydration.
+            Events.Publish(new ImageToPromptRequestedEventArgs
+            {
+                ImagePath = resolved,
+                SourceLabel = "Gallery"
+            });
+
+            NavManager.NavigateTo("/prompts");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to send image: {ex.Message}", Severity.Error);
+        }
     }
 
     private void ToggleInfoDrawer()

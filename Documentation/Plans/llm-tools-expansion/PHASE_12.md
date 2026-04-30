@@ -3,8 +3,8 @@
 ## Status
 
 **Phase:** 12
-**Build Status:** Not yet attempted
-**Phase Status:** [ ] Not Started
+**Build Status:** Succeeds (warnings only)
+**Phase Status:** [x] Complete
 
 ---
 
@@ -105,7 +105,7 @@ Gallery surfaces never run the VL model themselves. They:
 ### Step 1: Extend `OllamaService` / `OllamaChatMessage` for multimodal input
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -142,7 +142,7 @@ Gallery surfaces never run the VL model themselves. They:
 ### Step 2: `VLModelService` orchestration
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -191,7 +191,7 @@ Gallery surfaces never run the VL model themselves. They:
 ### Step 3: Seed VL default templates
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -214,7 +214,7 @@ Gallery surfaces never run the VL model themselves. They:
 ### Step 4: `ImageToPromptView.razor`
 
 **Complexity:** 5
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -259,7 +259,7 @@ Gallery surfaces never run the VL model themselves. They:
 ### Step 5: Streaming response (opt-in)
 
 **Complexity:** 3
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 
@@ -290,7 +290,7 @@ Gallery surfaces never run the VL model themselves. They:
 ### Step 6: AppState + nav + gallery hooks
 
 **Complexity:** 2
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 #### Tasks
 

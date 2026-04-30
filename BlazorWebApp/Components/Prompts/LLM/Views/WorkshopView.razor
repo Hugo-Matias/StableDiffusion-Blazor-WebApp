@@ -1,6 +1,7 @@
 @* Workshop: Tree-based iterative prompt refinement *@
 @using BlazorWebApp.Data.Dtos.Ollama
 @using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Components.Prompts.LLM.Shared
 @inject IWorkshopService WorkshopService
 @inject OllamaService OllamaService
 @inject IDialogService DialogService
@@ -8,133 +9,138 @@
 @inject IJSRuntime JSRuntime
 @inject IStateService State
 
-<MudPaper Elevation="0" Class="d-flex" Style="height: calc(100vh - 200px); overflow: hidden;">
-    @* Left: Session Sidebar (Phase 8.6 Step 5 - collapsible rail) *@
-    <MudPaper Elevation="1"
-              Class="@($"d-flex flex-column workshop-session-sidebar{(_sessionRailCollapsed ? " collapsed" : "")}")">
-        <div class="workshop-session-sidebar-header">
-            @if (!_sessionRailCollapsed)
-            {
-                <MudText Typo="Typo.subtitle2" Class="workshop-session-sidebar-title text-truncate">Sessions</MudText>
-                <div class="d-flex align-center">
+<MudStack Spacing="3">
+    <LLMToolPageDescription Title="Workshop" Icon="@Icons.Material.Filled.Forum"
+                            Description="Iterate on a prompt as a tree of variations. Spawn children, branch promising directions, run group critiques, and pick the best leaf. Sessions and tree state persist across reloads." />
+
+    <MudPaper Elevation="0" Class="d-flex" Style="height: calc(100vh - 260px); overflow: hidden;">
+        @* Left: Session Sidebar (Phase 8.6 Step 5 - collapsible rail) *@
+        <MudPaper Elevation="1"
+                  Class="@($"d-flex flex-column workshop-session-sidebar{(_sessionRailCollapsed ? " collapsed" : "")}")">
+            <div class="workshop-session-sidebar-header">
+                @if (!_sessionRailCollapsed)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="workshop-session-sidebar-title text-truncate">Sessions</MudText>
+                    <div class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small"
+                                       Title="Create new session" OnClick="DeselectSessionAsync" />
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small"
+                                       Title="Collapse session rail" OnClick="ToggleSessionRailAsync" />
+                    </div>
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Title="Expand session rail"
+                                   OnClick="ToggleSessionRailAsync" />
                     <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small"
                                    Title="Create new session" OnClick="DeselectSessionAsync" />
-                    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" Title="Collapse session rail"
-                                   OnClick="ToggleSessionRailAsync" />
+                }
+            </div>
+            @if (_sessionRailCollapsed)
+            {
+                @* Collapsed rail: one icon button per session, tooltip carries name + node count. *@
+                <MudStack Spacing="0" Class="pa-1">
+                    @foreach (var session in _sessions)
+                    {
+                        var isActive = session.Id == _activeSessionId;
+                        var tooltipText = $"{session.Name} - {session.Nodes.Count} node(s) - {session.UpdatedAt:MMM d}";
+                        <div class="@($"workshop-session-rail-item{(isActive ? " active" : "")}")">
+                            <MudTooltip Text="@tooltipText" Placement="Placement.Right">
+                                <MudIconButton Icon="@Icons.Material.Filled.Forum"
+                                               Color="@(isActive ? Color.Primary : Color.Default)" Size="Size.Medium"
+                                               OnClick="@(() => SelectSessionAsync(session))" />
+                            </MudTooltip>
+                        </div>
+                    }
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Spacing="0" Class="pa-1">
+                    @foreach (var session in _sessions)
+                    {
+                        var isActive = session.Id == _activeSessionId;
+                        <MudButton Variant="Variant.Text" Color="@(isActive? Color.Primary: Color.Default)"
+                                   Class="justify-start pa-2" Style="min-height: auto;" OnClick="@(() => SelectSessionAsync(session))">
+                            <div class="d-flex align-center w-100">
+                                <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+                                    <MudText Typo="Typo.body2" Class="text-truncate">@session.Name</MudText>
+                                    <MudText Typo="Typo.caption" Class="text-disabled">
+                                        @session.Nodes.Count node(s) . @session.UpdatedAt.ToString("MMM d")
+                                    </MudText>
+                                </div>
+                                @if (isActive)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                   OnClick="(async () => await DeleteSessionAsync(session))!" />
+                                }
+                            </div>
+                        </MudButton>
+                    }
+                </MudStack>
+            }
+        </MudPaper>
+
+        @* Center: Chat-thread Timeline *@
+        <MudPaper Elevation="1" Class="d-flex flex-column flex-grow-1 ma-1" Style="overflow: hidden;">
+            @if (_activeSessionId == 0)
+            {
+                @* Empty state: no session selected -> composer drives first-send flow. *@
+                <div class="workshop-empty-state">
+                    <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Class="workshop-empty-state-icon" />
+                    <MudText Typo="Typo.body2">Type your initial prompt to start a new session.</MudText>
+                </div>
+                <WorkshopComposer @ref="_composer" Disabled="@_isProcessing"
+                                  Placeholder="Type your initial prompt - Enter to start a new session" OnSend="OnComposerFirstSendAsync"
+                                  OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
+            }
+            else
+            {
+                <div class="pa-3 d-flex justify-space-between align-center">
+                    <MudText Typo="Typo.subtitle2">@_activeSession?.Name</MudText>
+                    <div class="d-flex align-center gap-2">
+                        <MudSwitch T="bool" Value="State.State.Prompts.LLM.Workshop.AutoQueuePreviews"
+                                   ValueChanged="OnAutoQueueChanged" Label="Auto-queue" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.caption" Class="text-disabled">
+                            @_allNodes.Count node(s) total
+                        </MudText>
+                    </div>
+                </div>
+                <div class="workshop-thread" @ref="_threadElement">
+                    @foreach (var item in _timeline)
+                    {
+                        if (item.Kind == TimelineItemKind.Bubble && item.Node is not null)
+                        {
+                            <WorkshopChatBubble Node="@item.Node" IsCurrent="@(item.Node.Id == _activeSession?.CurrentNodeId)"
+                                                ChatSiblings="@item.ChatSiblings" OnSelect="SetCurrentAsync" />
+                        }
+                        else if (item.Kind == TimelineItemKind.Carousel && item.Siblings is not null)
+                        {
+                            <WorkshopVariationCarousel Siblings="@item.Siblings" ActiveSiblingId="@item.ActiveSiblingId"
+                                                       OnSelect="SetCurrentAsync" />
+                        }
+                    }
+                </div>
+                <WorkshopComposer @ref="_composer" Disabled="@(_isProcessing || _currentNode == null)"
+                                  OnSend="OnComposerSendAsync" OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
+            }
+        </MudPaper>
+
+        @* Right: Current Node Panel *@
+        <MudPaper Elevation="1" Class="d-flex flex-column" Style="width: 600px; min-width: 400px; overflow-y: auto;">
+            @if (_currentNode == null)
+            {
+                <div class="d-flex align-center justify-center flex-grow-1 pa-4">
+                    <InfoMessage>Select a node from the list to view its details.</InfoMessage>
                 </div>
             }
             else
             {
-                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Title="Expand session rail"
-                               OnClick="ToggleSessionRailAsync" />
-                <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small" Title="Create new session"
-                               OnClick="DeselectSessionAsync" />
+                <WorkshopNodeDetail Node="@_currentNode" />
             }
-        </div>
-        @if (_sessionRailCollapsed)
-        {
-            @* Collapsed rail: one icon button per session, tooltip carries name + node count. *@
-            <MudStack Spacing="0" Class="pa-1">
-                @foreach (var session in _sessions)
-                {
-                    var isActive = session.Id == _activeSessionId;
-                    var tooltipText = $"{session.Name} - {session.Nodes.Count} node(s) - {session.UpdatedAt:MMM d}";
-                    <div class="@($"workshop-session-rail-item{(isActive ? " active" : "")}")">
-                        <MudTooltip Text="@tooltipText" Placement="Placement.Right">
-                            <MudIconButton Icon="@Icons.Material.Filled.Forum"
-                                           Color="@(isActive ? Color.Primary : Color.Default)" Size="Size.Medium"
-                                           OnClick="@(() => SelectSessionAsync(session))" />
-                        </MudTooltip>
-                    </div>
-                }
-            </MudStack>
-        }
-        else
-        {
-            <MudStack Spacing="0" Class="pa-1">
-                @foreach (var session in _sessions)
-                {
-                    var isActive = session.Id == _activeSessionId;
-                    <MudButton Variant="Variant.Text" Color="@(isActive? Color.Primary: Color.Default)"
-                               Class="justify-start pa-2" Style="min-height: auto;" OnClick="@(() => SelectSessionAsync(session))">
-                        <div class="d-flex align-center w-100">
-                            <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
-                                <MudText Typo="Typo.body2" Class="text-truncate">@session.Name</MudText>
-                                <MudText Typo="Typo.caption" Class="text-disabled">
-                                    @session.Nodes.Count node(s) . @session.UpdatedAt.ToString("MMM d")
-                                </MudText>
-                            </div>
-                            @if (isActive)
-                            {
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                               OnClick="(async () => await DeleteSessionAsync(session))!" />
-                            }
-                        </div>
-                    </MudButton>
-                }
-            </MudStack>
-        }
+        </MudPaper>
     </MudPaper>
-
-    @* Center: Chat-thread Timeline *@
-    <MudPaper Elevation="1" Class="d-flex flex-column flex-grow-1 ma-1" Style="overflow: hidden;">
-        @if (_activeSessionId == 0)
-        {
-            @* Empty state: no session selected -> composer drives first-send flow. *@
-            <div class="workshop-empty-state">
-                <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Class="workshop-empty-state-icon" />
-                <MudText Typo="Typo.body2">Type your initial prompt to start a new session.</MudText>
-            </div>
-            <WorkshopComposer @ref="_composer" Disabled="@_isProcessing"
-                              Placeholder="Type your initial prompt - Enter to start a new session" OnSend="OnComposerFirstSendAsync"
-                              OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
-        }
-        else
-        {
-            <div class="pa-3 d-flex justify-space-between align-center">
-                <MudText Typo="Typo.subtitle2">@_activeSession?.Name</MudText>
-                <div class="d-flex align-center gap-2">
-                    <MudSwitch T="bool" Value="State.State.Prompts.LLM.Workshop.AutoQueuePreviews"
-                               ValueChanged="OnAutoQueueChanged" Label="Auto-queue" Color="Color.Primary" Size="Size.Small" />
-                    <MudText Typo="Typo.caption" Class="text-disabled">
-                        @_allNodes.Count node(s) total
-                    </MudText>
-                </div>
-            </div>
-            <div class="workshop-thread" @ref="_threadElement">
-                @foreach (var item in _timeline)
-                {
-                    if (item.Kind == TimelineItemKind.Bubble && item.Node is not null)
-                    {
-                        <WorkshopChatBubble Node="@item.Node" IsCurrent="@(item.Node.Id == _activeSession?.CurrentNodeId)"
-                                            ChatSiblings="@item.ChatSiblings" OnSelect="SetCurrentAsync" />
-                    }
-                    else if (item.Kind == TimelineItemKind.Carousel && item.Siblings is not null)
-                    {
-                        <WorkshopVariationCarousel Siblings="@item.Siblings" ActiveSiblingId="@item.ActiveSiblingId"
-                                                   OnSelect="SetCurrentAsync" />
-                    }
-                }
-            </div>
-            <WorkshopComposer @ref="_composer" Disabled="@(_isProcessing || _currentNode == null)"
-                              OnSend="OnComposerSendAsync" OnSpawnVariations="ShowEvolveDialog" OnAdvanced="ShowChatOptionsDialog" />
-        }
-    </MudPaper>
-
-    @* Right: Current Node Panel *@
-    <MudPaper Elevation="1" Class="d-flex flex-column" Style="width: 600px; min-width: 400px; overflow-y: auto;">
-        @if (_currentNode == null)
-        {
-            <div class="d-flex align-center justify-center flex-grow-1 pa-4">
-                <InfoMessage>Select a node from the list to view its details.</InfoMessage>
-            </div>
-        }
-        else
-        {
-            <WorkshopNodeDetail Node="@_currentNode" />
-        }
-    </MudPaper>
-</MudPaper>
+</MudStack>
 
 @code {
     private PromptWorkshopSession? _activeSession;

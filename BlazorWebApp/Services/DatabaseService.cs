@@ -1331,26 +1331,61 @@ namespace BlazorWebApp.Services
             // Get default templates from OllamaService
             var defaultTemplates = _ollamaService.GetDefaultTemplates();
 
-            // Per-name check: only seed templates that don't exist yet (by Name)
-            var existingNames = await context.SystemPromptTemplates
+            var existingDefaults = await context.SystemPromptTemplates
                 .Where(t => t.IsDefault)
-                .Select(t => t.Name)
                 .ToListAsync();
-            var toAdd = defaultTemplates.Where(t => !existingNames.Contains(t.Name)).ToList();
+            var existingByName = existingDefaults.ToDictionary(t => t.Name, t => t);
 
-            if (toAdd.Count == 0)
-                return; // All defaults already seeded
-
-            foreach (var template in toAdd)
+            int added = 0, refreshed = 0;
+            foreach (var template in defaultTemplates)
             {
-                template.CreatedAt = DateTime.UtcNow;
-                template.UpdatedAt = DateTime.UtcNow;
+                if (!existingByName.TryGetValue(template.Name, out var existing))
+                {
+                    // New default template: seed it.
+                    template.CreatedAt = DateTime.UtcNow;
+                    template.UpdatedAt = DateTime.UtcNow;
+                    await context.SystemPromptTemplates.AddAsync(template);
+                    added++;
+                    continue;
+                }
+
+                // Existing default: refresh in place if the in-code definition has changed.
+                // This lets prompt tweaks ship via app updates without requiring a manual DB reset.
+                // User customizations should clone the template (IsDefault=false) instead of editing the default.
+                if (!AreTemplatesEquivalent(existing, template))
+                {
+                    existing.Description = template.Description;
+                    existing.Messages = template.Messages;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    refreshed++;
+                }
             }
 
-            await context.SystemPromptTemplates.AddRangeAsync(toAdd);
-            await context.SaveChangesAsync();
+            if (added == 0 && refreshed == 0)
+                return;
 
-            _logger.LogInformation("Seeded {Count} new default system prompt templates from OllamaService", toAdd.Count);
+            await context.SaveChangesAsync();
+            _logger.LogInformation("System prompt template seeding: {Added} added, {Refreshed} refreshed.", added, refreshed);
+        }
+
+        /// <summary>
+        /// Shallow body comparison between an in-code default template and the matching DB row.
+        /// Compares description plus the role+content of every message. Used by the seeder to
+        /// decide whether to refresh an IsDefault row in place.
+        /// </summary>
+        private static bool AreTemplatesEquivalent(SystemPromptTemplate a, SystemPromptTemplate b)
+        {
+            if (!string.Equals(a.Description ?? string.Empty, b.Description ?? string.Empty, StringComparison.Ordinal))
+                return false;
+            var ma = a.Messages ?? new();
+            var mb = b.Messages ?? new();
+            if (ma.Count != mb.Count) return false;
+            for (int i = 0; i < ma.Count; i++)
+            {
+                if (!string.Equals(ma[i].Role, mb[i].Role, StringComparison.Ordinal)) return false;
+                if (!string.Equals(ma[i].Content ?? string.Empty, mb[i].Content ?? string.Empty, StringComparison.Ordinal)) return false;
+            }
+            return true;
         }
 
         public async Task<List<SystemPromptTemplate>> GetSystemPromptTemplates()

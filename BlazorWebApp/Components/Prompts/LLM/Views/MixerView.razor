@@ -1,6 +1,7 @@
 @* Prompt Mixer: Blend two prompts into a cohesive hybrid using an LLM *@
 @using BlazorWebApp.Data.Dtos.Ollama
 @using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Components.Prompts.LLM.Shared
 @inject OllamaService OllamaService
 @inject IDatabaseService DB
 @inject IStateService State
@@ -8,8 +9,8 @@
 @inject IJSRuntime JSRuntime
 
 <MudStack Spacing="4">
-    @* Header *@
-    <MudText Typo="Typo.h5">Prompt Mixer</MudText>
+    <LLMToolPageDescription Title="Prompt Mixer" Icon="@Icons.Material.Filled.Tune"
+                            Description="Blend two prompts into a cohesive hybrid. Drop in Prompt A and Prompt B, slide the ratio, and let the LLM weave them into a single coherent prompt." />
 
     @* Input Section *@
     <MudCard Elevation="2" Class="pa-4">

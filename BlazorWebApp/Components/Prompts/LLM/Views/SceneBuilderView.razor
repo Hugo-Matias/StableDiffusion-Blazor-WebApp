@@ -2,6 +2,7 @@
 @using BlazorWebApp.Data.Dtos.Ollama
 @using BlazorWebApp.Data.Entities
 @using BlazorWebApp.Models
+@using BlazorWebApp.Components.Prompts.LLM.Shared
 @inject OllamaService OllamaService
 @inject IDatabaseService DB
 @inject TagPromptService TagService
@@ -10,8 +11,8 @@
 @inject IJSRuntime JSRuntime
 
 <MudStack Spacing="4">
-    @* Header *@
-    <MudText Typo="Typo.h5">Scene Builder</MudText>
+    <LLMToolPageDescription Title="Scene Builder" Icon="@Icons.Material.Filled.Movie"
+                            Description="Assemble a prompt from structured fields - subject, style, environment, lighting, mood, action, details. The LLM weaves them into a coherent prompt with optional Danbooru tag normalization." />
 
     @* Form Fields *@
     <MudCard Elevation="2" Class="pa-4">

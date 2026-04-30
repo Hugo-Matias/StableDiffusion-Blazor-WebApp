@@ -51,6 +51,10 @@
                 case "scene-builder":
                     <SceneBuilderView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
                     break;
+                case "image-to-prompt":
+                    <ImageToPromptView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess"
+                                       OnSendToWorkshop="HandleSendToWorkshop" />
+                    break;
                 case "workshop":
                     <WorkshopView />
                     break;

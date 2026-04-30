@@ -1,0 +1,530 @@
+@* Phase 12 - Image-to-Prompt view. Selects a VL model + style, runs the image through
+   VLModelService.InterrogateAsync, and exposes the result for editing / send-to / save-as-preset.
+   Step 4 is non-streaming + no gallery subscription; Steps 5 and 6 layer those on. *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Events
+@using BlazorWebApp.Models
+@using BlazorWebApp.Services
+@using BlazorWebApp.Components.Prompts.LLM.Shared
+@inject OllamaService Ollama
+@inject VLModelService VL
+@inject IPromptSendToService PromptSendTo
+@inject IStateService State
+@inject IEventService Events
+@inject IIOService IO
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="image-to-prompt-page">
+    <MudStack Spacing="3">
+        <LLMToolPageDescription Title="Image to Prompt" Icon="@Icons.Material.Filled.ImageSearch"
+                                Description="Drop an image (or pull one from the gallery), pick a vision-language Ollama model and a description style, and turn it into a stable-diffusion prompt. Toggle Normalize to remap free-form output onto verified Danbooru tags." />
+
+        @if (!string.IsNullOrWhiteSpace(_sourceLabel))
+        {
+            <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                <MudChip Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.Image"
+                         OnClose="@(() => _sourceLabel = null)" Text="@($"Image from {_sourceLabel}")" />
+            </MudStack>
+        }
+
+        @* Top row: VL model + style + run/cancel button. *@
+        <MudStack Row Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            <MudSelect T="string" @bind-Value="_vlModel" Label="VL Model" Variant="Variant.Text"
+                       Style="min-width: 260px;" Dense="true" Clearable="true">
+                @foreach (var m in _models)
+                {
+                    var likely = OllamaService.IsLikelyMultimodal(m.Name);
+                    <MudSelectItem T="string" Value="@m.Name">
+                        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                            @if (!likely)
+                            {
+                                <MudTooltip Text="Name does not match any known multimodal family. May not accept images.">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" />
+                                </MudTooltip>
+                            }
+                            <span>@m.Name</span>
+                        </MudStack>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="InterrogationStyle" @bind-Value="_style" Label="Style" Variant="Variant.Text"
+                       Style="min-width: 180px;" Dense="true">
+                @foreach (var s in Enum.GetValues<InterrogationStyle>())
+                {
+                    <MudSelectItem T="InterrogationStyle" Value="@s">@s.ToString()</MudSelectItem>
+                }
+            </MudSelect>
+
+            <div class="flex-grow-1"></div>
+
+            @if (!_isRunning)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.AutoAwesome"
+                           Disabled="@(!CanRun())" OnClick="RunAsync">
+                    Run
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Color="Color.Error" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Stop"
+                           OnClick="Cancel">
+                    Cancel (@_elapsedSeconds s)
+                </MudButton>
+            }
+        </MudStack>
+
+        @* Image preview + drop zone (reuses Generate-page ImageInput component). *@
+        <ImageInput ImageData="@_imageData" ImageDataChanged="HandleImageChanged" Title="Source image" />
+
+        @* Result textarea + raw/normalized toggle. *@
+        <MudStack Spacing="1">
+            <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.subtitle2">Result</MudText>
+                <div class="flex-grow-1"></div>
+                @if (!string.IsNullOrWhiteSpace(_normalizedText) && !string.IsNullOrWhiteSpace(_rawText))
+                {
+                    <MudLink Underline="Underline.Hover" OnClick="ToggleRawView">
+                        @(_showRaw ? "View normalized" : "View raw response")
+                    </MudLink>
+                }
+            </MudStack>
+
+            <MudTextField T="string" @bind-Value="_resultText" Immediate="true" Lines="6" AutoGrow="true"
+                          Variant="Variant.Outlined" Placeholder="Run to generate a prompt..." />
+
+            <MudStack Row Spacing="3" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                <MudSwitch T="bool" @bind-Value="_useStreaming" Label="Stream response" Color="Color.Primary" />
+                <MudSwitch T="bool" @bind-Value="_normalizeToTags" Label="Normalize to Danbooru tags"
+                           Color="Color.Primary" />
+                @if (_normalizeToTags)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        Adds a 2-pass tag-resolution call after the VL response (slower).
+                    </MudText>
+                }
+            </MudStack>
+        </MudStack>
+
+        @* Action row: Workshop-style send-to bar. *@
+        <div class="send-to-section image-to-prompt-send-to" @onclick:stopPropagation="true">
+            <div class="send-to-group">
+                <span class="send-to-group-label">LLM Tools</span>
+                <div class="send-to-buttons">
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Variant="Variant.Text"
+                                   Disabled="@(string.IsNullOrWhiteSpace(_resultText))" OnClick="CopyAsync" Title="Copy prompt" />
+                    <button type="button" class="send-to-btn" disabled="@(string.IsNullOrWhiteSpace(_resultText))"
+                            @onclick="SaveAsPresetAsync" title="Save as Prompt preset">
+                        <MudIcon Icon="@Icons.Material.Filled.Bookmark" Size="Size.Small" />
+                        <span>Save Preset</span>
+                    </button>
+                    @if (OnSendToProcess.HasDelegate)
+                    {
+                        <button type="button" class="send-to-btn" disabled="@(string.IsNullOrWhiteSpace(_resultText))"
+                                @onclick="HandleSendToProcessAsync" title="Send to Process">
+                            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" />
+                            <span>Process</span>
+                        </button>
+                    }
+                    @if (OnSendToWorkshop.HasDelegate)
+                    {
+                        <button type="button" class="send-to-btn" disabled="@(string.IsNullOrWhiteSpace(_resultText))"
+                                @onclick="HandleSendToWorkshopAsync" title="Send to Workshop (new session)">
+                            <MudIcon Icon="@Icons.Material.Filled.Forum" Size="Size.Small" />
+                            <span>Workshop</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (_sendWorkflows.Count > 0)
+            {
+                <div class="send-to-group">
+                    <span class="send-to-group-label">Workflows</span>
+                    <div class="send-to-buttons">
+                        @foreach (var wf in _sendWorkflows)
+                        {
+                            <button type="button" class="send-to-btn @PromptSendTo.GetWorkflowModeClass(wf.Mode)"
+                                    disabled="@(string.IsNullOrWhiteSpace(_resultText))"
+                                    @onclick="() => PromptSendTo.SendPromptToWorkflow(_resultText, wf)" title="Send to @wf.Title">
+                                <MudIcon Icon="@PromptSendTo.GetWorkflowIcon(wf.Mode)" Size="Size.Small" />
+                                <span>@wf.Title</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSendToProcess { get; set; }
+    [Parameter] public EventCallback<string> OnSendToWorkshop { get; set; }
+
+    private List<OllamaModel> _models = new();
+    private List<Workflow> _sendWorkflows = new();
+
+    private string _vlModel = string.Empty;
+    private InterrogationStyle _style = InterrogationStyle.Detailed;
+
+    // Image state. _imageData is the data-URI (drives the ImageInput preview);
+    // _imageBytes is the raw image bytes used to build the multimodal request.
+    private string _imageData = string.Empty;
+    private byte[]? _imageBytes;
+    private string? _sourceLabel;
+
+    // Result state.
+    private string _resultText = string.Empty;
+    private string _rawText = string.Empty;
+    private string _normalizedText = string.Empty;
+    private bool _showRaw = false;
+    private bool _normalizeToTags = false;
+    private bool _useStreaming = true;
+    // The last raw response *we* set into _resultText. Used to detect dirty edits before overwriting.
+    private string _lastAppliedText = string.Empty;
+
+    // Run lifecycle.
+    private bool _isRunning;
+    private CancellationTokenSource? _cts;
+    private System.Timers.Timer? _elapsedTimer;
+    private int _elapsedSeconds;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Hydrate persisted view state. This is also the channel cross-page redirects use
+        // (ImageCard / AssetInfoPanel write the source image into State here before navigating)
+        // because publishing an event before navigation would race against the view's own
+        // subscription which is registered later on this very method.
+        var s = State.State.Prompts.LLM.ImageToPrompt;
+        _vlModel = s.LastModel ?? string.Empty;
+        _style = s.LastStyle;
+        _normalizeToTags = s.NormalizeToTags;
+        _useStreaming = s.UseStreaming;
+        if (!string.IsNullOrWhiteSpace(s.LastImageDataUri))
+        {
+            _imageData = s.LastImageDataUri!;
+            _imageBytes = ExtractBytes(_imageData);
+        }
+        if (!string.IsNullOrWhiteSpace(s.LastSourceLabel))
+        {
+            _sourceLabel = s.LastSourceLabel;
+        }
+        if (!string.IsNullOrWhiteSpace(s.LastResultText))
+        {
+            _resultText = s.LastResultText!;
+            _lastAppliedText = _resultText;
+        }
+
+        await LoadModels();
+        _sendWorkflows = PromptSendTo.GetParameterWorkflows();
+
+        Events.Subscribe<ImageToPromptRequestedEventArgs>(HandleImageRequested);
+        // The backend (sd.next/forge/etc.) may come online after this view initialises.
+        // PromptSendTo.GetParameterWorkflows() returns an empty list while the backend is
+        // unavailable, so refresh the workflows list whenever availability flips.
+        Events.Subscribe<BackendAvailabilityChangedEventArgs>(HandleBackendAvailabilityChanged);
+        // Same refresh is needed when the user switches the active workflow or base from another
+        // page (or via the topbar selector) - the eligible workflow set is filtered by the current
+        // WorkflowBase, so swapping bases without leaving the view would otherwise leave a stale
+        // (or empty) send-to bar visible.
+        Events.Subscribe<WorkflowChangedEventArgs>(HandleWorkflowChanged);
+    }
+
+    private async void HandleBackendAvailabilityChanged(BackendAvailabilityChangedEventArgs e)
+    {
+        try
+        {
+            _sendWorkflows = PromptSendTo.GetParameterWorkflows();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* swallow - view may already be disposed */ }
+    }
+
+    private async void HandleWorkflowChanged(WorkflowChangedEventArgs e)
+    {
+        try
+        {
+            _sendWorkflows = PromptSendTo.GetParameterWorkflows();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* swallow - view may already be disposed */ }
+    }
+
+    private async void HandleImageRequested(ImageToPromptRequestedEventArgs e)
+    {
+        // Same-page fallback path - the cross-page redirect flow primarily uses the State
+        // channel hydrated in OnInitializedAsync. The path may still be a relative or web-style
+        // path ("/image/...", "/files/danbooru/..."), so resolve before reading.
+        var resolved = string.IsNullOrWhiteSpace(e.ImagePath) ? null : IO.ResolveFilePath(e.ImagePath);
+        if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
+        {
+            Snackbar.Add("Requested image was not found on disk.", Severity.Warning);
+            return;
+        }
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(resolved);
+            var ext = Path.GetExtension(resolved).TrimStart('.').ToLowerInvariant();
+            var mime = ext switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                "gif" => "image/gif",
+                _ => "image/png"
+            };
+            _imageBytes = bytes;
+            _imageData = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            _sourceLabel = e.SourceLabel;
+            await PersistStateAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load image: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadModels()
+    {
+        try
+        {
+            _models = await Ollama.GetModels();
+            // If the persisted model is not present in the live list, drop it to avoid a confusing empty selector.
+            if (!string.IsNullOrWhiteSpace(_vlModel) && !_models.Any(m => m.Name == _vlModel))
+            {
+                _vlModel = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load Ollama models: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private bool CanRun() =>
+        !_isRunning &&
+        !string.IsNullOrWhiteSpace(_vlModel) &&
+        _imageBytes is { Length: > 0 };
+
+    private async Task HandleImageChanged(string data)
+    {
+        _imageData = data;
+        _imageBytes = ExtractBytes(data);
+        await PersistStateAsync();
+    }
+
+    /// <summary>
+    /// Decode a "data:image/...;base64,XXXX" string to raw bytes. Returns null when the input
+    /// is empty or not a data URI we can parse.
+    /// </summary>
+    private static byte[]? ExtractBytes(string? data)
+    {
+        if (string.IsNullOrWhiteSpace(data)) return null;
+        var commaIdx = data.IndexOf(',');
+        var payload = commaIdx >= 0 ? data[(commaIdx + 1)..] : data;
+        try
+        {
+            return Convert.FromBase64String(payload);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task RunAsync()
+    {
+        if (!CanRun()) return;
+
+        // Dirty-overwrite guard.
+        if (!string.IsNullOrWhiteSpace(_resultText) && _resultText != _lastAppliedText)
+        {
+            var ok = await DialogService.ShowMessageBox(
+                "Overwrite result?",
+                "You've edited the prompt since the last run. Run again will replace it.",
+                yesText: "Overwrite", cancelText: "Cancel");
+            if (ok != true) return;
+        }
+
+        _cts = new CancellationTokenSource();
+        _isRunning = true;
+        _elapsedSeconds = 0;
+        StartElapsedTimer();
+        StateHasChanged();
+
+        try
+        {
+            var request = new InterrogationRequest
+            {
+                ModelName = _vlModel,
+                Style = _style,
+                ImageBytes = _imageBytes,
+                NormalizeToDanbooruTags = _normalizeToTags,
+                TagNormalizationModelName = string.IsNullOrWhiteSpace(SelectedModel) ? null : SelectedModel
+            };
+
+            InterrogationResult result;
+            if (_useStreaming)
+            {
+                // Stream chunks straight into the textarea. We use Action<string> rather than
+                // Progress<string> because Progress<T> queues callbacks via the captured
+                // SynchronizationContext - on Blazor Server those queued posts can land AFTER
+                // the await completes and the final assignment runs, duplicating the tail of
+                // the response. The synchronous Action runs inline with the foreach.
+                _resultText = string.Empty;
+                _lastAppliedText = string.Empty;
+                var lastRender = DateTime.MinValue;
+                Action<string> onChunk = piece =>
+                {
+                    _resultText += piece;
+                    var now = DateTime.UtcNow;
+                    if ((now - lastRender).TotalMilliseconds >= 100)
+                    {
+                        lastRender = now;
+                        InvokeAsync(StateHasChanged);
+                    }
+                };
+                result = await VL.InterrogateStreamingAsync(request, onChunk, _cts.Token);
+
+                // _resultText already holds the streamed text. Capture raw + normalized for the toggle
+                // but DO NOT overwrite _resultText with result.Prompt - that would re-append the tail
+                // chunks already streamed in.
+                _rawText = result.RawResponse;
+                _normalizedText = result.NormalizedTagPrompt ?? string.Empty;
+                _showRaw = false;
+                if (_normalizeToTags && !string.IsNullOrWhiteSpace(_normalizedText))
+                {
+                    // Normalization runs after the stream completes; swap the textarea to the normalized
+                    // tag list since that's what the user asked for.
+                    _resultText = _normalizedText;
+                }
+                _lastAppliedText = _resultText;
+            }
+            else
+            {
+                result = await VL.InterrogateAsync(request, _cts.Token);
+                _rawText = result.RawResponse;
+                _normalizedText = result.NormalizedTagPrompt ?? string.Empty;
+                _showRaw = false;
+                _resultText = result.Prompt;
+                _lastAppliedText = _resultText;
+            }
+
+            await PersistStateAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add("Run cancelled.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Run failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            StopElapsedTimer();
+            _isRunning = false;
+            _cts?.Dispose();
+            _cts = null;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        try { _cts?.Cancel(); } catch { /* already disposed */ }
+    }
+
+    private void StartElapsedTimer()
+    {
+        StopElapsedTimer();
+        _elapsedTimer = new System.Timers.Timer(1000) { AutoReset = true };
+        _elapsedTimer.Elapsed += (_, _) =>
+        {
+            _elapsedSeconds++;
+            InvokeAsync(StateHasChanged);
+        };
+        _elapsedTimer.Start();
+    }
+
+    private void StopElapsedTimer()
+    {
+        _elapsedTimer?.Stop();
+        _elapsedTimer?.Dispose();
+        _elapsedTimer = null;
+    }
+
+    private void ToggleRawView()
+    {
+        _showRaw = !_showRaw;
+        _resultText = _showRaw ? _rawText : (string.IsNullOrWhiteSpace(_normalizedText) ? _rawText : _normalizedText);
+        _lastAppliedText = _resultText;
+    }
+
+    private async Task CopyAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_resultText)) return;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _resultText);
+            Snackbar.Add("Copied to clipboard.", Severity.Info);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy.", Severity.Error);
+        }
+    }
+
+    private async Task HandleSendToProcessAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_resultText)) return;
+        await OnSendToProcess.InvokeAsync(_resultText);
+    }
+
+    private async Task HandleSendToWorkshopAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_resultText)) return;
+        await OnSendToWorkshop.InvokeAsync(_resultText);
+    }
+
+    private async Task SaveAsPresetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_resultText)) return;
+        var parameters = new DialogParameters
+        {
+            ["Prompt"] = _resultText,
+            ["ModelName"] = SelectedModel ?? string.Empty,
+            ["InitialTitle"] = $"Image: {_style} ({DateTime.Now:yy-MM-dd HH:mm})"
+        };
+        await DialogService.ShowAsync<SavePresetDialog>("Save as Prompt preset", parameters);
+    }
+
+    private async Task PersistStateAsync()
+    {
+        var s = State.State.Prompts.LLM.ImageToPrompt;
+        s.LastModel = string.IsNullOrWhiteSpace(_vlModel) ? null : _vlModel;
+        s.LastStyle = _style;
+        s.NormalizeToTags = _normalizeToTags;
+        s.UseStreaming = _useStreaming;
+        s.LastImageDataUri = string.IsNullOrWhiteSpace(_imageData) ? null : _imageData;
+        s.LastSourceLabel = string.IsNullOrWhiteSpace(_sourceLabel) ? null : _sourceLabel;
+        s.LastResultText = string.IsNullOrWhiteSpace(_resultText) ? null : _resultText;
+        await State.SaveState();
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<ImageToPromptRequestedEventArgs>(HandleImageRequested);
+        Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(HandleBackendAvailabilityChanged);
+        Events.Unsubscribe<WorkflowChangedEventArgs>(HandleWorkflowChanged);
+        try { _cts?.Cancel(); } catch { /* ignored */ }
+        _cts?.Dispose();
+        StopElapsedTimer();
+    }
+}

@@ -1,6 +1,7 @@
 @* Random Inspiration: Inspire Me (LLM-driven) and Roulette (wildcard spin) *@
 @using BlazorWebApp.Data.Dtos.Ollama
 @using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Components.Prompts.LLM.Shared
 @inject OllamaService OllamaService
 @inject IDatabaseService DB
 @inject IStateService State
@@ -9,8 +10,8 @@
 @inject IWildcardService WildcardService
 
 <MudStack Spacing="4">
-    @* Header *@
-    <MudText Typo="Typo.h5">Random Inspiration</MudText>
+    <LLMToolPageDescription Title="Random Inspiration" Icon="@Icons.Material.Filled.Casino"
+                            Description="Stuck for ideas? Roll the dice. Inspire Me asks an LLM for a fresh prompt seed in your chosen style; Roulette spins your wildcard collections into a random combination." />
 
     @* Mode Toggle *@
     <MudToggleGroup @bind-Selected="_mode" T="string" Class="mb-2">

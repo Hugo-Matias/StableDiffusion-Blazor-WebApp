@@ -27,14 +27,25 @@ public class PromptSendToService : IPromptSendToService
         _snackbar = snackbar;
     }
 
+    /// <summary>
+    /// Workflow IDs explicitly excluded from prompt-targeted send-to lists. Empty by default;
+    /// every workflow that exposes a positive-prompt fragment is a valid target. Add IDs here
+    /// for special-case workflows that have no prompt input (e.g. pure post-processing /
+    /// upscale-only graphs) so they don't appear as send-to options.
+    /// </summary>
+    private static readonly HashSet<Guid> PromptBlacklist = new();
+
     public List<Workflow> GetParameterWorkflows()
     {
         if (!_backend.IsBackendAvailable || _state.State.Generation.Workflows == null)
             return new List<Workflow>();
 
         var currentBase = _state.State.Generation.WorkflowBase;
+        // Every supported workflow type (txt2img, img2img, img2vid, etc.) carries a positive
+        // prompt as a core fragment, so we no longer filter by Mode. Blacklist remains as the
+        // single opt-out mechanism for workflows that genuinely have no prompt input.
         return _state.State.Generation.Workflows
-            .Where(w => w.Base == currentBase && (w.Mode == ModeType.Txt2Img || w.Mode == ModeType.Img2Img))
+            .Where(w => w.Base == currentBase && !PromptBlacklist.Contains(w.Id))
             .OrderBy(w => w.Mode)
             .ThenBy(w => w.Title)
             .ToList();

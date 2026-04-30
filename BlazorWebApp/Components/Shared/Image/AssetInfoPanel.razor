@@ -1,4 +1,5 @@
 @using BlazorWebApp.Extensions
+@using BlazorWebApp.Events
 @using System.Text.Json
 @using ImageEntity = BlazorWebApp.Data.Entities.Image
 @using static BlazorWebApp.Data.Enums
@@ -11,6 +12,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager NavManager
 @inject IImageSendToService SendTo
+@inject IEventService Events
 
 <div class="info-panel-header">
     <MudIcon Icon="@(IsVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
@@ -112,6 +114,21 @@
                             </div>
                         </div>
                     }
+
+                    @* Phase 12 - Image-to-Prompt action. Local images only. *@
+                    @if (SendTo.IsLocal(Asset!.Path))
+                    {
+                        <div class="send-to-section">
+                            <span class="send-to-label">LLM Tools:</span>
+                            <div class="send-to-buttons">
+                                <button class="send-to-btn" @onclick="SendToImageToPrompt"
+                                        title="Generate a prompt from this image with a vision LLM">
+                                    <MudIcon Icon="@Icons.Material.Filled.ImageSearch" Size="Size.Small" />
+                                    <span>Generate Prompt</span>
+                                </button>
+                            </div>
+                        </div>
+                    }
                     <MudDivider />
                 }
 
@@ -124,7 +141,7 @@
                             <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")"
                                  @onclick="@(() => ToggleParam("Width"))" title="Resolution">
                                 <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
-                        <span>@Asset.Width × @Asset.Height</span>
+                                <span>@Asset.Width ï¿½ @Asset.Height</span>
                             </div>
                         }
                         @if (Asset.Seed > 0)
@@ -396,6 +413,57 @@
         {
             _selectedParams.Clear();
             await SelectedParamsChanged.InvokeAsync(_selectedParams);
+        }
+    }
+
+    /// <summary>
+    /// Phase 12: Switch the LLM Tools tab to the Image-to-Prompt view, hand off the asset image
+    /// through persisted state (Publish would race the navigation - the target view does not
+    /// exist yet when the event fires), and navigate to /prompts.
+    /// </summary>
+    private async Task SendToImageToPrompt()
+    {
+        if (Asset == null || string.IsNullOrWhiteSpace(Asset.Path)) return;
+
+        var resolved = IO.ResolveFilePath(Asset.Path);
+        if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
+        {
+            Snackbar.Add("Image file is not available on disk.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(resolved);
+            var ext = Path.GetExtension(resolved).TrimStart('.').ToLowerInvariant();
+            var mime = ext switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                "gif" => "image/gif",
+                _ => "image/png"
+            };
+
+            var s = State.State.Prompts.LLM.ImageToPrompt;
+            s.LastImageDataUri = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            s.LastSourceLabel = "Asset Info";
+            s.LastResultText = null;
+
+            State.State.Prompts.LLM.ActiveViewId = "image-to-prompt";
+            await State.SaveState();
+
+            // Same-page fallback - if the view happens to be already mounted it'll pick this up.
+            Events.Publish(new ImageToPromptRequestedEventArgs
+            {
+                ImagePath = resolved,
+                SourceLabel = "Asset Info"
+            });
+
+            NavManager.NavigateTo("/prompts");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to send image: {ex.Message}", Severity.Error);
         }
     }
 

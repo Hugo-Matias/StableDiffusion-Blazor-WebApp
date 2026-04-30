@@ -143,6 +143,9 @@ builder.Services.AddSingleton<OllamaService>();
 // Tag prompt builder service (two-pass Danbooru tag resolution)
 builder.Services.AddScoped<TagPromptService>();
 
+// Phase 12 - Image-to-Prompt orchestrator (vision-language models)
+builder.Services.AddScoped<VLModelService>();
+
 // Wildcard service for prompt wildcard management
 builder.Services.AddSingleton<IWildcardService, WildcardService>();
 

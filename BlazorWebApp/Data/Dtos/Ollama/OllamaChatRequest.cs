@@ -27,6 +27,15 @@ namespace BlazorWebApp.Data.Dtos.Ollama
 
         [JsonPropertyName("content")]
         public string Content { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Optional list of base64-encoded image payloads (no data-URI prefix) per the Ollama chat API spec.
+        /// Only honored by multimodal models (LLaVA, Qwen2-VL / Qwen3-VL, MiniCPM-V, llama3.2-vision, moondream, etc.).
+        /// Omitted from the serialized JSON when null so existing text-only callers produce identical payloads.
+        /// </summary>
+        [JsonPropertyName("images")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? Images { get; set; }
     }
 
     public class OllamaOptions

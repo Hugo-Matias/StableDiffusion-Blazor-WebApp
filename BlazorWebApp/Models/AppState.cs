@@ -362,6 +362,33 @@ namespace BlazorWebApp.Models
         public AppStatePromptsLLMSceneBuilder SceneBuilder { get; set; } = new();
         public AppStatePromptsLLMWorkshop Workshop { get; set; } = new();
         public AppStatePromptsLLMWildcardForge WildcardForge { get; set; } = new();
+        public AppStatePromptsLLMImageToPrompt ImageToPrompt { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Phase 12 - Image-to-Prompt (vision-language) persisted view state.
+    /// No EF entity; serialized into the existing State JSON column.
+    /// </summary>
+    public class AppStatePromptsLLMImageToPrompt
+    {
+        public string? LastModel { get; set; }
+        public InterrogationStyle LastStyle { get; set; } = InterrogationStyle.Detailed;
+        public bool NormalizeToTags { get; set; } = false;
+        public bool UseStreaming { get; set; } = true;
+
+        /// <summary>
+        /// Last image loaded into the view, persisted as a "data:{mime};base64,..." URI so the
+        /// drop-zone preview and the run request both rehydrate after a page reload. We store the
+        /// data URI rather than a file path because images can be drag-dropped from the browser
+        /// (no path available) and gallery-sourced images are easy to re-encode anyway.
+        /// </summary>
+        public string? LastImageDataUri { get; set; }
+
+        /// <summary>Origin label rendered as a chip when the image came from another page (Gallery, Asset Info, etc.).</summary>
+        public string? LastSourceLabel { get; set; }
+
+        /// <summary>Last result text shown in the textarea (raw or normalized, whichever was active).</summary>
+        public string? LastResultText { get; set; }
     }
 
     public class AppStatePromptsLLMWorkshop

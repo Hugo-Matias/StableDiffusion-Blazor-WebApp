@@ -1,6 +1,11 @@
 @using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Components.Prompts.LLM.Shared
 
-<SystemPromptEditor @ref="_editor" OnTemplateChanged="HandleTemplateChanged" />
+<MudStack Spacing="3">
+    <LLMToolPageDescription Title="System Prompts" Icon="@Icons.Material.Filled.Description"
+                            Description="Manage the system + user message templates the LLM tools draw from. Defaults are seeded from the app and refreshed on update; clone one to customize without losing the upstream version." />
+    <SystemPromptEditor @ref="_editor" OnTemplateChanged="HandleTemplateChanged" />
+</MudStack>
 
 @code {
     [Parameter] public EventCallback OnTemplatesChanged { get; set; }
