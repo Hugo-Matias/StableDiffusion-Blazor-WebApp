@@ -12,6 +12,14 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class SamplerStandardFragment : IFragmentBuilder
 {
+    /// <summary>
+    /// Workflow-specific defaults. Set once per workflow in the field initializer using the
+    /// existing <see cref="Parameters"/> type. Both <see cref="Metadata"/> (for first-load
+    /// UI initialization) and the <see cref="Build(ComfyWorkflowBuilder, GenerationParameters, NodeRegistry, string, string)"/>
+    /// fallback values read from here, making this the single source of truth.
+    /// </summary>
+    public Parameters Defaults { get; init; } = new();
+
     public FragmentMetadata Metadata => new()
     {
         Id = "main_sampler",
@@ -28,6 +36,7 @@ public class SamplerStandardFragment : IFragmentBuilder
                 Name = "sampler_name",
                 Label = "Sampler",
                 Type = ParameterType.Select,
+                DefaultValue = Defaults.SamplerName,
                 Source = new DynamicSource("KSampler", "sampler_name")
             },
             new FragmentParameter
@@ -35,6 +44,7 @@ public class SamplerStandardFragment : IFragmentBuilder
                 Name = "scheduler",
                 Label = "Scheduler",
                 Type = ParameterType.Select,
+                DefaultValue = Defaults.Scheduler,
                 Source = new DynamicSource("KSampler", "scheduler")
             },
             new FragmentParameter
@@ -45,7 +55,7 @@ public class SamplerStandardFragment : IFragmentBuilder
                 Min = 1,
                 Max = 150,
                 Step = 1,
-                DefaultValue = 20
+                DefaultValue = Defaults.Steps
             },
             new FragmentParameter
             {
@@ -55,7 +65,7 @@ public class SamplerStandardFragment : IFragmentBuilder
                 Min = 1,
                 Max = 30,
                 Step = 0.5,
-                DefaultValue = 7.0
+                DefaultValue = Defaults.Cfg
             },
             new FragmentParameter
             {
@@ -65,7 +75,7 @@ public class SamplerStandardFragment : IFragmentBuilder
                 Min = 0,
                 Max = 1,
                 Step = 0.01,
-                DefaultValue = 1.0
+                DefaultValue = Defaults.Denoise
             },
             new FragmentParameter
             {
@@ -107,11 +117,11 @@ public class SamplerStandardFragment : IFragmentBuilder
         {
             SamplerId = fragment?.GetString("sampler_id", "sampler_main") ?? "sampler_main",
             Title = fragment?.GetString("title", "KSampler") ?? "KSampler",
-            SamplerName = fragment?.GetString("sampler_name", "euler") ?? "euler",
-            Scheduler = fragment?.GetString("scheduler", "normal") ?? "normal",
-            Steps = fragment?.GetInt("steps", 20) ?? 20,
-            Cfg = fragment?.GetDouble("cfg", 7.0) ?? 7.0,
-            Denoise = fragment?.GetDouble("denoise", 1.0) ?? 1.0,
+            SamplerName = fragment?.GetString("sampler_name", Defaults.SamplerName) ?? Defaults.SamplerName,
+            Scheduler = fragment?.GetString("scheduler", Defaults.Scheduler) ?? Defaults.Scheduler,
+            Steps = fragment?.GetInt("steps", Defaults.Steps) ?? Defaults.Steps,
+            Cfg = fragment?.GetDouble("cfg", Defaults.Cfg) ?? Defaults.Cfg,
+            Denoise = fragment?.GetDouble("denoise", Defaults.Denoise) ?? Defaults.Denoise,
             Seed = fragment?.GetLong("seed", 42) ?? 42,
             Scope = scope
         });

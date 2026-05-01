@@ -11,6 +11,14 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class SamplerFragment : IFragmentBuilder
 {
+    /// <summary>
+    /// Workflow-specific defaults. Set once per workflow in the field initializer using the
+    /// existing <see cref="Parameters"/> type. Both <see cref="Metadata"/> (for first-load
+    /// UI initialization) and the <see cref="Build(ComfyWorkflowBuilder, GenerationParameters, Builders.NodeRegistry, string, string)"/>
+    /// fallback values read from here, making this the single source of truth.
+    /// </summary>
+    public Parameters Defaults { get; init; } = new();
+
     public FragmentMetadata Metadata => new()
     {
         Id = "main_sampler",
@@ -27,6 +35,7 @@ public class SamplerFragment : IFragmentBuilder
                 Name = "sampler_name",
                 Label = "Sampler",
                 Type = ParameterType.Select,
+                DefaultValue = Defaults.SamplerName,
                 Source = new DynamicSource("ClownsharKSampler_Beta", "sampler_name")
             },
             new FragmentParameter
@@ -34,6 +43,7 @@ public class SamplerFragment : IFragmentBuilder
                 Name = "scheduler",
                 Label = "Scheduler",
                 Type = ParameterType.Select,
+                DefaultValue = Defaults.Scheduler,
                 Source = new DynamicSource("ClownsharKSampler_Beta", "scheduler")
             },
             new FragmentParameter
@@ -44,7 +54,7 @@ public class SamplerFragment : IFragmentBuilder
                 Min = 1,
                 Max = 150,
                 Step = 1,
-                DefaultValue = 20
+                DefaultValue = Defaults.Steps
             },
             new FragmentParameter
             {
@@ -54,7 +64,7 @@ public class SamplerFragment : IFragmentBuilder
                 Min = 1,
                 Max = 30,
                 Step = 0.5,
-                DefaultValue = 7.0
+                DefaultValue = Defaults.Cfg
             },
             new FragmentParameter
             {
@@ -64,7 +74,7 @@ public class SamplerFragment : IFragmentBuilder
                 Min = 0,
                 Max = 1,
                 Step = 0.01,
-                DefaultValue = 1.0
+                DefaultValue = Defaults.Denoise
             },
             new FragmentParameter
             {
@@ -74,7 +84,7 @@ public class SamplerFragment : IFragmentBuilder
                 Min = 0,
                 Max = 1,
                 Step = 0.01,
-                DefaultValue = 0.5
+                DefaultValue = Defaults.Eta
             },
             new FragmentParameter
             {
@@ -104,6 +114,28 @@ public class SamplerFragment : IFragmentBuilder
         public int StepsToRun { get; set; } = -1;
         public string SamplerMode { get; set; } = "standard";
         public string ClassType { get; set; } = "ClownsharKSampler_Beta";
+
+        /// <summary>
+        /// Optional override for the model input. When set, takes precedence over the
+        /// scoped <c>model_output</c> registry lookup. Used by workflows that need to
+        /// route a sampler to a model branch other than the main pipeline (e.g. a
+        /// per-sampler LoRA stack).
+        /// </summary>
+        public (string nodeId, int outputIndex)? ModelOverride { get; set; }
+
+        /// <summary>
+        /// Optional reference to a node that produces a sampler <c>OPTIONS</c> bundle
+        /// (e.g. <c>SharkOptions_Beta</c>). When set, the sampler wires the <c>options</c>
+        /// input. Only meaningful for ClownsharKSampler-style class types.
+        /// </summary>
+        public (string nodeId, int outputIndex)? OptionsRef { get; set; }
+
+        /// <summary>
+        /// When false, the sampler does not overwrite <c>latent_output</c>. Use for
+        /// branched topologies where a downstream stage needs both the original and
+        /// sampled latents. Default true preserves the standard pipeline contract.
+        /// </summary>
+        public bool RegisterLatentOutput { get; set; } = true;
     }
 
     public void Build(
@@ -117,12 +149,12 @@ public class SamplerFragment : IFragmentBuilder
 
         var samplerId = fragment?.GetString("sampler_id", "sampler_main") ?? "sampler_main";
         var title = fragment?.GetString("title", "Sampler") ?? "Sampler";
-        var samplerName = fragment?.GetString("sampler_name", "euler") ?? "euler";
-        var scheduler = fragment?.GetString("scheduler", "normal") ?? "normal";
-        var steps = fragment?.GetInt("steps", 20) ?? 20;
-        var cfg = fragment?.GetDouble("cfg", 7.0) ?? 7.0;
-        var denoise = fragment?.GetDouble("denoise", 1.0) ?? 1.0;
-        var eta = fragment?.GetDouble("eta", 0.5) ?? 0.5;
+        var samplerName = fragment?.GetString("sampler_name", Defaults.SamplerName) ?? Defaults.SamplerName;
+        var scheduler = fragment?.GetString("scheduler", Defaults.Scheduler) ?? Defaults.Scheduler;
+        var steps = fragment?.GetInt("steps", Defaults.Steps) ?? Defaults.Steps;
+        var cfg = fragment?.GetDouble("cfg", Defaults.Cfg) ?? Defaults.Cfg;
+        var denoise = fragment?.GetDouble("denoise", Defaults.Denoise) ?? Defaults.Denoise;
+        var eta = fragment?.GetDouble("eta", Defaults.Eta) ?? Defaults.Eta;
         var seed = fragment?.GetLong("seed", -1) ?? -1;
         var stepsToRun = fragment?.GetInt("steps_to_run", -1) ?? -1;
         var samplerMode = fragment?.GetString("sampler_mode", "standard") ?? "standard";
@@ -163,31 +195,42 @@ public class SamplerFragment : IFragmentBuilder
         Parameters p,
         string scope)
     {
-        // Get references from registry with scope support
-        var modelRef = registry.GetRef($"{scope}model_output");
+        // Get references from registry with scope support. ModelOverride bypasses the
+        // registry lookup so workflows can route a sampler to a side model branch.
+        var modelRef = p.ModelOverride ?? registry.GetRef($"{scope}model_output");
         var positiveRef = registry.GetRef($"{scope}positive_output");
         var negativeRef = registry.GetRef($"{scope}negative_output");
         var latentRef = registry.GetRef($"{scope}latent_output");
 
-        builder.AddNode(p.SamplerId, node => node
-            .Type(p.ClassType)
-            .Title(p.Title)
-            .Input("eta", p.Eta)
-            .Input("sampler_name", p.SamplerName)
-            .Input("scheduler", p.Scheduler)
-            .Input("steps", p.Steps)
-            .Input("steps_to_run", p.StepsToRun)
-            .Input("denoise", p.Denoise)
-            .Input("cfg", p.Cfg)
-            .Input("seed", p.Seed)
-            .Input("sampler_mode", p.SamplerMode)
-            .Input("bongmath", true)
-            .InputRef("model", modelRef)
-            .InputRef("positive", positiveRef)
-            .InputRef("negative", negativeRef)
-            .InputRef("latent_image", latentRef));
+        builder.AddNode(p.SamplerId, node =>
+        {
+            node.Type(p.ClassType)
+                .Title(p.Title)
+                .Input("eta", p.Eta)
+                .Input("sampler_name", p.SamplerName)
+                .Input("scheduler", p.Scheduler)
+                .Input("steps", p.Steps)
+                .Input("steps_to_run", p.StepsToRun)
+                .Input("denoise", p.Denoise)
+                .Input("cfg", p.Cfg)
+                .Input("seed", p.Seed)
+                .Input("sampler_mode", p.SamplerMode)
+                .Input("bongmath", true)
+                .InputRef("model", modelRef)
+                .InputRef("positive", positiveRef)
+                .InputRef("negative", negativeRef)
+                .InputRef("latent_image", latentRef);
 
-        // Overwrite latent_output with sampler output
-        registry.Register("latent_output", p.SamplerId, 0);
+            if (p.OptionsRef.HasValue)
+            {
+                node.InputRef("options", p.OptionsRef.Value);
+            }
+        });
+
+        if (p.RegisterLatentOutput)
+        {
+            // Overwrite latent_output with sampler output
+            registry.Register("latent_output", p.SamplerId, 0);
+        }
     }
 }

@@ -20,7 +20,7 @@ public class QwenImg2ImgEditWorkflow : IWorkflowBuilder
     private readonly LoadQwenEditFragment _loadQwenEditFragment = new();
     private readonly VaeEncodeFragment _vaeEncodeFragment = new();
     private readonly EncodeEditFragment _encodeEditFragment = new();
-    private readonly SamplerStandardFragment _samplerStandardFragment = new();
+    private readonly SamplerStandardFragment _samplerStandardFragment = new() { Defaults = new() { Steps = 4, Cfg = 1.0 } };
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 

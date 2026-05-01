@@ -533,7 +533,7 @@ namespace BlazorWebApp.Services
                     Order = order++
                 };
 
-                // Apply default values from metadata parameters
+                // Apply default values from fragment schema parameters
                 if (metadata.Parameters != null)
                 {
                     foreach (var param in metadata.Parameters)
@@ -541,7 +541,7 @@ namespace BlazorWebApp.Services
                         if (param.DefaultValue != null)
                         {
                             fragment.Values[param.Name] = param.DefaultValue;
-                            _logger.LogTrace("Set default for '{FragmentId}.{Param}' = {Value}",
+                            _logger.LogTrace("Set schema default for '{FragmentId}.{Param}' = {Value}",
                                 fragmentId, param.Name, param.DefaultValue);
                         }
                     }

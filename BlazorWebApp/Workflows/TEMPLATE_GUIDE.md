@@ -268,11 +268,31 @@ new WorkflowAsset
 > folder name. See "Validating Loader Nodes via /object_info" below before
 > picking an `AssetType` for a new node.
 
-### Validating Loader Nodes via /object_info
+### Validating Nodes via /object_info
 
-Always probe the actual loader node before declaring `WorkflowAsset.Type`. Two
-cases that look identical from the workflow JSON but resolve to different
-folders bit us in LTX 2.3:
+Always probe **every upstream node** referenced by the workflow JSON before
+writing the C# build pipeline — not just loaders. Probing catches four classes
+of bugs that the compiler cannot:
+
+1. **Wrong class name** — upstream JSON often uses a custom-pack variant that
+   is not installed locally. Example: the Adonis workflow ships
+   `ImageScaleToTotalPixelsX` (third-party `scale-image-to-total-pixels-advanced`),
+   while the built-in node is `ImageScaleToTotalPixels` and exposes a
+   different input set and output shape.
+2. **Wrong input names** — widget order in the JSON is positional, but the
+   builder writes named inputs. Example: `SharkOptions_Beta` widgets
+   `[laplacian, 1, 1, false]` map to `noise_type_init`, `s_noise_init`,
+   `denoise_alt`, `channelwise_cfg` — never to `noise_type_init_eta`,
+   `noise_type_init_eta_var`, `noise_normalize`.
+3. **Invalid default COMBO values** — defaults must be exact members of the
+   COMBO list. Example: `ClownsharKSampler_Beta.sampler_name` has no bare
+   `res_2s` entry; the actual member is `exponential/res_2s`.
+4. **Wrong output count / order** — chained references break silently when
+   an output index is invalid. Example: built-in `ImageScaleToTotalPixels`
+   returns only `IMAGE`; pull width/height from a separate `GetImageSize`
+   probe (outputs `width, height, batch_size`).
+
+Two loader-specific gotchas that bit LTX 2.3 still apply:
 
 - The upstream LTX 2.3 audio VAE slot has **two interchangeable loader nodes**
   with different folder backings:
@@ -297,20 +317,47 @@ folders bit us in LTX 2.3:
 
 How to validate:
 
-1. Run `Utils/Probe-ComfyObjectInfo.ps1 -ClassTypes <Loader1>,<Loader2>` against
-   a live ComfyUI instance (default `http://localhost:8188`). The script hits
-   `/object_info/{ClassType}` and prints category, output sockets, and required
-   inputs (including the COMBO field that lists the folder contents).
-2. Confirm the COMBO option list matches what `/models/{folder}` returns. If it
-   does, choose (or add) the matching `AssetType` enum. If a node returns HTTP
-   200 with `{}`, the custom-node pack is not installed on that backend.
-3. If a folder is new, add a getter to `IComfyUIService` /
+1. **Probe every class_type from the workflow JSON** (loaders, samplers,
+   conditioning helpers, image/latent ops, options nodes, save nodes — all of
+   them). Run:
+   ```powershell
+   Utils/Probe-ComfyObjectInfo.ps1 -Nodes <Node1>,<Node2>,<Node3>,...
+   ```
+   against a live ComfyUI instance (default `http://localhost:8188`). The
+   script hits `/object_info/{ClassType}` and prints category, output sockets,
+   and required inputs (including COMBO option samples).
+2. For **every node** the workflow will emit, verify:
+   - The class is registered (no `MISSING NODE` line). If a node is missing,
+     **stop and present the finding to the user before writing any code**.
+     Report the class name, the custom-node pack it belongs to (from the
+     upstream JSON's `cnr_id` / `properties` field when available), and
+     optionally a built-in alternative with explicit notes on differences
+     (input name changes, lost output sockets, etc.). Never swap to an
+     alternative unilaterally — the user decides whether to install the pack
+     or accept a substitution. Proceed with implementation only after
+     explicit user approval.
+   - The required input names match what the C# builder will write (use
+     `Invoke-RestMethod /object_info/<Node> | ConvertTo-Json -Depth 10` for
+     full optional-input details when needed).
+   - All hardcoded default values for COMBO inputs (sampler names, schedulers,
+     noise types, weight dtypes, clip types, etc.) are exact COMBO members.
+     Cross-check against the live list — defaults like `res_2s`, `flux2`,
+     `default` look plausible but only some are actual COMBO entries.
+   - The output count and ordering match what the workflow chains as
+     `InputFromNode(<input>, <node>, <index>)` — read the node's
+     `output` / `output_name` arrays.
+3. For loader nodes, additionally confirm the COMBO option list matches what
+   `/models/{folder}` returns and pick (or add) the matching `AssetType`.
+   If a folder is new, add a getter to `IComfyUIService` /
    `ComfyUIService` that calls `GetNodeInputOptionsAsync(<NodeClass>, <inputName>)`,
    wire it into `AssetResolverService.GetAssetOptions`, and register both enum
    values in `Models.AssetType` and `Workflows.Models.AssetType` (plus
    `WorkflowService.ConvertAssetType`).
+4. Record the probe result in the conversion plan (Phase 1) so the user can
+   see which nodes were verified and which were swapped or dropped.
 
-This validation step is **mandatory** for any new workflow conversion.
+This validation step is **mandatory** for any new workflow conversion. Probing
+only the loaders is no longer sufficient.
 
 ### Using Assets in Workflows
 

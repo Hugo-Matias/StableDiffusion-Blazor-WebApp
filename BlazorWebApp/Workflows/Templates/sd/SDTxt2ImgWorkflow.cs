@@ -19,7 +19,7 @@ public class SDTxt2ImgWorkflow : IWorkflowBuilder
     private readonly PromptsFragment _promptsFragment = new();
     private readonly LoadCheckpointFragment _loadCheckpointFragment = new();
     private readonly EmptyLatentFragment _emptyLatentFragment = new();
-    private readonly SamplerFragment _samplerFragment = new();
+    private readonly SamplerFragment _samplerFragment = new() { Defaults = new() { Cfg = 5.5 } };
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 

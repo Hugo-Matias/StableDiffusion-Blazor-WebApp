@@ -53,7 +53,7 @@ Analyze the ComfyUI workflow JSON provided by the user.
 
 6. **Loader asset validation (mandatory)** - For every loader node identified
    above, probe its actual ComfyUI metadata before assigning `WorkflowAsset.Type`:
-   - Run `Utils/Probe-ComfyObjectInfo.ps1 -ClassTypes <Loader1>,<Loader2>,...`
+   - Run `Utils/Probe-ComfyObjectInfo.ps1 -Nodes <Loader1>,<Loader2>,...`
      against a live ComfyUI instance. The script returns the node category,
      output sockets, and the exact COMBO list that `/object_info/{ClassType}`
      reports for each input.
@@ -79,15 +79,47 @@ Analyze the ComfyUI workflow JSON provided by the user.
      `widgets_values`. Never share a single asset across both `clip_name*`
      inputs.
 
-7. **LoRA strategy** - Determine:
+7. **Full upstream node validation (mandatory)** - Probe **every** non-loader
+   `class_type` referenced by the workflow JSON before writing the C# build
+   pipeline. This catches bugs the compiler cannot — wrong class names, wrong
+   input names, invalid default COMBO members, and wrong output counts. See
+   `BlazorWebApp/Workflows/TEMPLATE_GUIDE.md` -> "Validating Nodes via
+   /object_info" for the rationale and full checklist.
+   - Build the node list from the workflow JSON: include samplers, conditioning
+     helpers (e.g. `ConditioningZeroOut`, `ReferenceLatent`), image and latent
+     ops (e.g. `ImageScaleToTotalPixels`, `GetImageSize`, `EmptyFlux2LatentImage`),
+     options nodes (e.g. `SharkOptions_Beta`), and save nodes.
+   - Run a single combined probe:
+     ```powershell
+     Utils/Probe-ComfyObjectInfo.ps1 -Nodes <Node1>,<Node2>,<Node3>,...
+     ```
+   - For every node confirm: (a) the class is registered (no `MISSING NODE`),
+     (b) the required input names match what the builder will write, (c) every
+     hardcoded COMBO default is an exact COMBO member, and (d) the
+     output count and ordering match the chained
+     `InputFromNode(<input>, <node>, <index>)` references.
+   - For unknown / customised inputs, run
+     `Invoke-RestMethod /object_info/<Node> | ConvertTo-Json -Depth 10` to
+     read the full optional-input shape.
+   - If a node returns `MISSING NODE`, **stop and report it to the user**.
+     List the missing class name, the custom-node pack it belongs to (from
+     the JSON's `cnr_id` / `properties` if present), and — optionally — a
+     built-in alternative with a clear note on any differences (e.g. fewer
+     output sockets, different input names). **Do not swap to an alternative
+     unilaterally.** The user decides whether to install the pack or accept a
+     substitute. Only proceed with implementation after the user confirms.
+   - Record the probe outcome in the Phase 1 analysis: which nodes were
+     verified, which packs are required, and any user-approved substitutions.
+
+8. **LoRA strategy** - Determine:
    - App-generated nodes (default for UNet-based): `LoraLoaderFragment`
    - PCLazy prompt syntax: `LoadCheckpointFragment`
 
-8. **Sampler class** - Identify:
+9. **Sampler class** - Identify:
    - `KSampler` -> `SamplerStandardFragment`
    - `ClownsharKSampler_Beta` -> `SamplerFragment`
    - Other -> describe
-9. **UI surface audit** - For every UI-visible fragment, determine whether an existing form component can be reused or whether a new component is required
+10. **UI surface audit** - For every UI-visible fragment, determine whether an existing form component can be reused or whether a new component is required
 
 ---
 
@@ -209,6 +241,16 @@ After the user approves, implement in this order:
    - Include `CompatibleResourceBaseModels` in `Metadata` with the values confirmed in Phase 2e
    - Build order: Load -> LoRA -> EmptyLatent/Input -> Prompts -> Sampler -> VaeDecode -> [Enhancements] -> Save
    - Conditional enhancements must be gated with `parameters.GetFragment("id")?.IsActive == true`
+   - **Fragment field defaults**: Every fragment with configurable defaults (sampler, upscale,
+     latent, enhancement) must set `Defaults = new() { ... }` on the field declaration using
+     only the values that differ from the fragment's canonical defaults. Never hard-code
+     literals inside `Build()` — use the fragment's `Defaults.*` properties instead.
+     ```csharp
+     private readonly SamplerFragment _sampler = new()
+     {
+         Defaults = new() { Steps = 9, Cfg = 1.0, SamplerName = "exponential/res_2s" }
+     };
+     ```
 5. **Build**: Run `dotnet build` on the project
 
 ---
@@ -243,7 +285,10 @@ After the build:
   5. `_detailerFragment.Build(...)` with `Scope = scope`
 - Prompt fallback: `detailer_prompt` / `detailer_negative_prompt` (and their `pass_{i}_`-prefixed variants)
   must resolve via `GetStringOrFallback(key, mainPrompt)` so blank overrides transparently use the main prompt
-- Save always writes to `tmp/img` prefix
+- Save prefix: set via `new SaveFragment() { Defaults = new() { FilenamePrefix = "Workflow/Output" } }`; never hard-code the path inside `Build()`
 - Seed: if value from parameters is < 0, randomize with `Random.Shared.NextInt64(0, int.MaxValue)`
 - `GetFragments()` returns only UI-visible fragments; utility/loader fragments are excluded
 - LoRA `BuildAll()` must be called AFTER the loader and BEFORE `PromptsFragment`
+- **Fragment defaults rule**: No hard-coded literal fallbacks in `Build()`. All `GetInt/GetString/GetDouble` fallback
+  arguments must reference `Defaults.*`. `Metadata.DefaultValue` entries must also reference `Defaults.*`.
+  See TEMPLATE_GUIDE.md "Fragment Defaults" section for the full pattern.

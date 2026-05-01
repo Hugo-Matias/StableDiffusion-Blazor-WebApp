@@ -22,7 +22,7 @@ public class ZImageTxt2ImgUpscaleWorkflow : IWorkflowBuilder
     private readonly EmptyLatentFragment _emptyLatentFragment = new();
     private readonly LoraLoaderFragment _loraLoaderFragment = new();
     private readonly PromptsFragment _promptsFragment = new();
-    private readonly SamplerFragment _samplerFragment = new();
+    private readonly SamplerFragment _samplerFragment = new() { Defaults = new() { Steps = 9, Cfg = 1.0 } };
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 

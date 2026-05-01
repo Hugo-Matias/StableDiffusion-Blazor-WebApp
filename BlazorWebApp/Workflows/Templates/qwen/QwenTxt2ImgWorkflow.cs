@@ -20,7 +20,7 @@ public class QwenTxt2ImgWorkflow : IWorkflowBuilder
     private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
     private readonly EmptyLatentFragment _emptyLatentFragment = new();
     private readonly ModelSamplingAuraFlowFragment _modelSamplingAuraFlowFragment = new();
-    private readonly SamplerFragment _samplerFragment = new();
+    private readonly SamplerFragment _samplerFragment = new() { Defaults = new() { Steps = 4, Cfg = 1.0 } };
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 

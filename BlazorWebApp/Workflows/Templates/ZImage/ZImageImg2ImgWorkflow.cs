@@ -21,7 +21,7 @@ public class ZImageImg2ImgWorkflow : IWorkflowBuilder
     private readonly LoraLoaderFragment _loraLoaderFragment = new();
     private readonly VaeEncodeFragment _vaeEncodeFragment = new();
     private readonly PromptsFragment _promptsFragment = new();
-    private readonly SamplerFragment _samplerFragment = new();
+    private readonly SamplerFragment _samplerFragment = new() { Defaults = new() { Steps = 9, Cfg = 1.0, Denoise = 0.75 } };
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 

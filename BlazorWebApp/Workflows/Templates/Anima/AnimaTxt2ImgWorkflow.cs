@@ -20,7 +20,7 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
     private readonly LoraLoaderFragment _loraLoaderFragment = new();
     private readonly EmptyLatentFragment _emptyLatentFragment = new();
     private readonly PromptsFragment _promptsFragment = new();
-    private readonly SamplerStandardFragment _samplerStandardFragment = new();
+    private readonly SamplerStandardFragment _samplerStandardFragment = new() { Defaults = new() { Steps = 30, Cfg = 4.0 } };
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
 
