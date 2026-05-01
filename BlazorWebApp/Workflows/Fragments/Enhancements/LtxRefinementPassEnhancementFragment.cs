@@ -22,6 +22,13 @@ public class LtxRefinementPassEnhancementFragment : IFragmentBuilder
         Id = FragmentId,
         Type = FragmentType.Enhancement,
         Title = "Refinement Pass (upscale + 2nd pass)",
+        Description = "The Refinement Pass mirrors the upstream LTX two-pass pipeline: Pass 1 runs at " +
+                      "half resolution to lay down composition, then the latent is upscaled and a " +
+                      "second full-resolution pass adds fine detail and sharpens motion. " +
+                      "It is on by default because it closely matches the quality of upstream reference " +
+                      "workflows. Disabling it switches to a single full-resolution pass (faster, " +
+                      "less detail). Sampler, CFG, steps, and denoise can be tuned independently " +
+                      "from Pass 1 to control how aggressively the second pass refines.",
         Icon = "fa-solid fa-wand-magic-sparkles",
         Component = "LtxRefinementPassForm",
         Order = 72,

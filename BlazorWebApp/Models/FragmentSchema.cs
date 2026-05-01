@@ -80,6 +80,12 @@ namespace BlazorWebApp.Models
         public bool HasDesignedComponent => !string.IsNullOrEmpty(Component);
 
         /// <summary>
+        /// Short description surfaced in the Info drawer for enhancement fragments.
+        /// Propagated from <see cref="BlazorWebApp.Workflows.Models.FragmentMetadata.Description"/>.
+        /// </summary>
+        public string? Description { get; set; }
+
+        /// <summary>
         /// Gets whether this fragment has any UI definition.
         /// True if it has a designed component OR dynamic fields.
         /// </summary>
@@ -167,7 +173,7 @@ namespace BlazorWebApp.Models
 
             // Validate dynamic source has input_name (only for ComfyUI node sources, not Backend.* sources)
             // Backend.* sources are resolved from IBackendService and don't need input_name
-            if (!string.IsNullOrEmpty(constraints.Source) && 
+            if (!string.IsNullOrEmpty(constraints.Source) &&
                 !constraints.Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase) &&
                 string.IsNullOrEmpty(constraints.InputName))
             {
@@ -398,7 +404,7 @@ namespace BlazorWebApp.Models
                 errors.Add($"Field '{Parameter}' missing required 'type' property");
 
             // Backend.* sources don't need input_name - they're resolved from IBackendService
-            var isBackendSource = !string.IsNullOrEmpty(Source) && 
+            var isBackendSource = !string.IsNullOrEmpty(Source) &&
                                   Source.StartsWith("Backend.", StringComparison.OrdinalIgnoreCase);
 
             switch (Type?.ToLowerInvariant())

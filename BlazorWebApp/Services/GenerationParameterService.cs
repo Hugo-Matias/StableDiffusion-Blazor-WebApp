@@ -729,7 +729,8 @@ namespace BlazorWebApp.Services
                 Order = metadata.Order,
                 DefaultCollapsed = metadata.Collapsible && metadata.DefaultCollapsed,
                 Collapsible = metadata.Collapsible,
-                Component = metadata.Component
+                Component = metadata.Component,
+                Description = metadata.Description
             };
 
             if (metadata.Parameters != null)

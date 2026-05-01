@@ -72,6 +72,12 @@ public record FragmentMetadata
     public IEnumerable<FragmentParameter> Parameters { get; init; } = Array.Empty<FragmentParameter>();
 
     /// <summary>
+    /// Short description of what this fragment does, why it is optional, and how to use it.
+    /// When non-null, the Info drawer surfaces one section per enhancement with this text.
+    /// </summary>
+    public string? Description { get; init; }
+
+    /// <summary>
     /// Optional condition that determines if this fragment should be included.
     /// If null, fragment is always included (controlled by IsActive flag).
     /// </summary>

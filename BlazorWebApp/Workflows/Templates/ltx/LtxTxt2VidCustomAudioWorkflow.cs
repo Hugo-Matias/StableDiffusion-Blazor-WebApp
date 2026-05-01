@@ -175,7 +175,7 @@ public class LtxTxt2VidCustomAudioWorkflow : IWorkflowBuilder
         _loadFragment.Build(builder, parameters, registry);
 
         // --- 2. enhancement model patches ---
-        if (nagActive) _nagFragment.BuildPatch(builder, registry);
+        if (nagActive) _nagFragment.BuildPatch(builder, registry, parameters);
         if (sageActive) _sageFragment.BuildPatch(builder, registry);
 
         // --- 3. LoRAs ---
@@ -243,6 +243,9 @@ public class LtxTxt2VidCustomAudioWorkflow : IWorkflowBuilder
                 NodeId = "ltx_concat_av_pass2",
                 Title = "LTXVConcatAVLatent (Pass 2)"
             });
+            // Also register under the pass2-scoped key so the scoped scheduler can find it.
+            var pass2AvRef = registry.GetRef("av_latent_output");
+            registry.Register("pass2_av_latent_output", pass2AvRef.nodeId, pass2AvRef.outputIndex);
 
             var refSigmasMode = refinementFrag?.GetString("sigmas_mode", "auto") ?? "auto";
             var refManualSigmas = refinementFrag?.GetString("manual_sigmas", "0.85, 0.7250, 0.4219, 0.0")

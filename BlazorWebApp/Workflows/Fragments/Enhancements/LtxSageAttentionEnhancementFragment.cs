@@ -20,6 +20,12 @@ public class LtxSageAttentionEnhancementFragment : IFragmentBuilder
         Id = "ltx_sage_attention",
         Type = FragmentType.Enhancement,
         Title = "SageAttention (performance)",
+        Description = "SageAttention replaces the standard attention kernel with a memory-efficient, " +
+                      "hardware-optimised variant that can significantly reduce VRAM usage and generation " +
+                      "time on compatible GPUs. It is disabled by default because it requires SageAttention " +
+                      "to be installed in your ComfyUI environment — enable it only if you have confirmed " +
+                      "the package is available. There are no quality-affecting parameters; enabling it " +
+                      "produces identical output with lower resource consumption.",
         Icon = "fa-solid fa-bolt",
         Order = 71,
         Collapsible = true,
@@ -58,13 +64,20 @@ public class LtxSageAttentionEnhancementFragment : IFragmentBuilder
         builder.AddNode(tunerId, node => node
             .Type("LTX2AttentionTunerPatch")
             .Title($"{scopeTitle}LTX2 Attention Tuner Patch")
-            .InputFromNode("model", sageId, 0));
+            .InputFromNode("model", sageId, 0)
+            .Input("blocks", "")
+            .Input("video_scale", 1.0)
+            .Input("audio_scale", 1.0)
+            .Input("video_to_audio_scale", 1.0)
+            .Input("audio_to_video_scale", 1.0)
+            .Input("triton_kernels", true));
         registry.Register($"{scope}model_output", tunerId, 0);
 
         builder.AddNode(memEffId, node => node
             .Type("LTX2MemoryEfficientSageAttentionPatch")
             .Title($"{scopeTitle}LTX2 Memory Efficient SageAttention Patch")
-            .InputFromNode("model", tunerId, 0));
+            .InputFromNode("model", tunerId, 0)
+            .Input("triton_kernels", true));
         registry.Register($"{scope}model_output", memEffId, 0);
     }
 }

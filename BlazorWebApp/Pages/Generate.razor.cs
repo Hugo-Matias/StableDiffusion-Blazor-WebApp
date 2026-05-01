@@ -39,7 +39,7 @@ public partial class Generate : IDisposable
     #region Computed Properties
 
     private bool HasSources => _selectedWorkflow?.Sources?.Count > 0;
-    private bool IsVideoMode => _selectedWorkflow?.Mode == ModeType.Img2Vid;
+    private bool IsVideoMode => _selectedWorkflow?.Mode is ModeType.Img2Vid or ModeType.Txt2Vid or ModeType.Vid2Vid;
     private bool UseGuidance => _selectedWorkflow?.Base == ModelBase.Flux;
 
     /// <summary>
@@ -216,15 +216,21 @@ public partial class Generate : IDisposable
     /// <summary>
     /// Publishes the active workflow's metadata to the global Info drawer so users
     /// can open the right-side panel for a longer-form description, source-slot guidance,
-    /// and any future tips. When the workflow has no <see cref="Workflow.Description"/>
-    /// and no Sources, the drawer's info button hides itself (CurrentInfo == null).
+    /// enhancement documentation, and any future tips. When the workflow has no
+    /// <see cref="Workflow.Description"/>, no Sources, and no documented enhancements,
+    /// the drawer's info button hides itself (CurrentInfo == null).
     /// </summary>
     private void PublishWorkflowInfo(Workflow workflow)
     {
         var hasDescription = !string.IsNullOrWhiteSpace(workflow.Description);
         var hasSources = workflow.Sources?.Count > 0;
 
-        if (!hasDescription && !hasSources)
+        // Collect optional fragments that carry a description for the info drawer.
+        var documentedFragments = ParameterService.OptionalFragments
+            .Where(f => !string.IsNullOrWhiteSpace(f.Schema?.Description))
+            .ToList();
+
+        if (!hasDescription && !hasSources && documentedFragments.Count == 0)
         {
             InfoService.ClearInfo();
             return;
@@ -242,6 +248,19 @@ public partial class Generate : IDisposable
                     .Select(s => new InfoItem(
                         Label: s.Label + (s.Required ? "" : " (optional)"),
                         Text: $"Type: {s.Type}"))
+                    .ToList()));
+        }
+
+        if (documentedFragments.Count > 0)
+        {
+            sections.Add(new InfoSection(
+                Id: "workflow-enhancements",
+                Title: "Enhancements",
+                Icon: Icons.Material.Filled.Tune,
+                Items: documentedFragments
+                    .Select(f => new InfoItem(
+                        Label: f.Schema!.Title,
+                        Text: f.Schema.Description!))
                     .ToList()));
         }
 
@@ -571,6 +590,8 @@ public partial class Generate : IDisposable
             switch (_selectedWorkflow.Mode)
             {
                 case ModeType.Img2Vid:
+                case ModeType.Txt2Vid:
+                case ModeType.Vid2Vid:
                     var videos = await ImageService.GenerateVideoAsync(Parameters, _selectedWorkflow);
                     break;
 

@@ -23,6 +23,13 @@ public class LtxThirdPassEnhancementFragment : IFragmentBuilder
         Id = FragmentId,
         Type = FragmentType.Enhancement,
         Title = "Third Pass (refinement extension)",
+        Description = "Adds an optional third sampling pass on top of the Refinement Pass. " +
+                      "This extra pass can push detail and temporal coherence further, at the cost " +
+                      "of additional generation time. It is off by default and is only useful once " +
+                      "you are satisfied with composition from Pass 1 and the Refinement Pass. " +
+                      "Enabling the Third Pass automatically enables the Refinement Pass if it is " +
+                      "currently off, since it relies on the cropped conditioning and full-res " +
+                      "latent that the Refinement Pass produces.",
         Icon = "fa-solid fa-wand-magic-sparkles",
         Component = "LtxThirdPassForm",
         Order = 73,

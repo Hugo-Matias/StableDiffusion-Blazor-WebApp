@@ -171,7 +171,7 @@ public class LtxTxt2VidWorkflow : IWorkflowBuilder
         // --- 2. enhancement model patches (chained on model_output) ---
         if (nagActive)
         {
-            _nagFragment.BuildPatch(builder, registry);
+            _nagFragment.BuildPatch(builder, registry, parameters);
         }
         if (sageActive)
         {
@@ -239,6 +239,9 @@ public class LtxTxt2VidWorkflow : IWorkflowBuilder
                 NodeId = "ltx_concat_av_pass2",
                 Title = "LTXVConcatAVLatent (Pass 2)"
             });
+            // Also register under the pass2-scoped key so the scoped scheduler can find it.
+            var pass2AvRef = registry.GetRef("av_latent_output");
+            registry.Register("pass2_av_latent_output", pass2AvRef.nodeId, pass2AvRef.outputIndex);
 
             // 11. pass-2 sigmas (auto: rebuild LTXVScheduler at full-res; manual: ManualSigmas curve)
             var refSigmasMode = refinementFrag?.GetString("sigmas_mode", "auto") ?? "auto";

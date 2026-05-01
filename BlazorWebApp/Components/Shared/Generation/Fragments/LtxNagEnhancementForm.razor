@@ -1,0 +1,117 @@
+@*
+    LtxNagEnhancementForm - Form for the ltx_nag enhancement fragment.
+
+    Exposes three LTX2_NAG parameters:
+      - nag_scale  (0-100, guidance strength)
+      - nag_alpha  (0-1,   mixing coefficient)
+      - nag_tau    (0-10,  clipping threshold)
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("LtxNagEnhancementForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSlider T="double"
+                   @bind-Value="_localNagScale"
+                   @bind-Value:after="OnNagScaleChanged"
+                   Min="@_scaleMin"
+                   Max="@_scaleMax"
+                   Step="@_scaleStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>NAG Scale:</small> @_localNagScale.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double"
+                   @bind-Value="_localNagAlpha"
+                   @bind-Value:after="OnNagAlphaChanged"
+                   Min="@_alphaMin"
+                   Max="@_alphaMax"
+                   Step="@_alphaStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>NAG Alpha:</small> @_localNagAlpha.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double"
+                   @bind-Value="_localNagTau"
+                   @bind-Value:after="OnNagTauChanged"
+                   Min="@_tauMin"
+                   Max="@_tauMax"
+                   Step="@_tauStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>NAG Tau:</small> @_localNagTau.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _localNagScale;
+    private double _localNagAlpha;
+    private double _localNagTau;
+
+    private double _scaleMin = 0, _scaleMax = 100, _scaleStep = 0.5;
+    private double _alphaMin = 0, _alphaMax = 1, _alphaStep = 0.01;
+    private double _tauMin = 0, _tauMax = 10, _tauStep = 0.05;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localNagScale = ParameterService.GetFragmentProperty(Fragment, "nag_scale", 11.0);
+        _localNagAlpha = ParameterService.GetFragmentProperty(Fragment, "nag_alpha", 0.25);
+        _localNagTau   = ParameterService.GetFragmentProperty(Fragment, "nag_tau",   2.5);
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("nag_scale", out var scale))
+        {
+            _scaleMin  = scale.GetMin(0);
+            _scaleMax  = scale.GetMax(100);
+            _scaleStep = scale.GetStep(0.5);
+        }
+        if (Fragment.Schema.Parameters.TryGetValue("nag_alpha", out var alpha))
+        {
+            _alphaMin  = alpha.GetMin(0);
+            _alphaMax  = alpha.GetMax(1);
+            _alphaStep = alpha.GetStep(0.01);
+        }
+        if (Fragment.Schema.Parameters.TryGetValue("nag_tau", out var tau))
+        {
+            _tauMin  = tau.GetMin(0);
+            _tauMax  = tau.GetMax(10);
+            _tauStep = tau.GetStep(0.05);
+        }
+    }
+
+    private async Task OnNagScaleChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "nag_scale", _localNagScale, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnNagAlphaChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "nag_alpha", _localNagAlpha, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnNagTauChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "nag_tau", _localNagTau, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

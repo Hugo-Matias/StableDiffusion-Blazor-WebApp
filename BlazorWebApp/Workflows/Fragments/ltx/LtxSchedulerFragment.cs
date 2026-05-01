@@ -23,8 +23,7 @@ public class LtxSchedulerFragment : IFragmentBuilder
         Component = "LtxSchedulerForm",
         Icon = "fa-solid fa-wave-square",
         Order = 35,
-        Collapsible = true,
-        DefaultCollapsed = true,
+        Collapsible = false,
         Parameters =
         [
             new FragmentParameter

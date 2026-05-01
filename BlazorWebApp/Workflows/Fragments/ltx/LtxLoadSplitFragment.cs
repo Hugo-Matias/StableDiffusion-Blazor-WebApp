@@ -125,17 +125,19 @@ public class LtxLoadSplitFragment : IFragmentBuilder
             .Input("model_name", p.UpscaleModelName));
 
         // Always-on model patches: chunked feed-forward + sampling preview override.
-        // Both reduce VRAM / improve preview quality on distilled LTX 2.3 and have no
-        // user-tunable parameters in the upstream workflow.
+        // Both reduce VRAM / improve preview quality on distilled LTX 2.3.
         builder.AddNode(ffnPatchId, node => node
             .Type("LTXVChunkFeedForward")
             .Title($"{scopeTitle}LTXV Chunk Feed Forward")
-            .InputFromNode("model", unetId, 0));
+            .InputFromNode("model", unetId, 0)
+            .Input("chunks", 2)
+            .Input("dim_threshold", 4096));
 
         builder.AddNode(previewPatchId, node => node
             .Type("LTX2SamplingPreviewOverride")
             .Title($"{scopeTitle}LTX2 Sampling Preview Override")
-            .InputFromNode("model", ffnPatchId, 0));
+            .InputFromNode("model", ffnPatchId, 0)
+            .Input("preview_rate", 8));
 
         // Final patched model output. NAG / SageAttention enhancements (if active) chain
         // additional patches downstream of this and re-register {scope}model_output.

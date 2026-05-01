@@ -482,6 +482,70 @@ public void BuildAll(ComfyWorkflowBuilder builder, NodeRegistry registry,
                      IList<Lora>? loras, string scope = "")
 ```
 
+### Fragment Defaults (Per-Workflow Configuration)
+
+Every fragment with user-visible configurable parameters must expose a `Defaults` property of
+type `Parameters` (the existing inner class). This is the **single source of truth** for
+per-workflow default values.
+
+```csharp
+public class SamplerFragment : IFragmentBuilder
+{
+    // Declare before Metadata - set once at workflow field initialization
+    public Parameters Defaults { get; init; } = new();
+
+    public FragmentMetadata Metadata => new()
+    {
+        // ...
+        Parameters =
+        [
+            // Metadata reads from Defaults - drives UI initialization on first load
+            new FragmentParameter { Name = "steps", DefaultValue = Defaults.Steps },
+            new FragmentParameter { Name = "cfg",   DefaultValue = Defaults.Cfg   },
+        ]
+    };
+
+    public void Build(ComfyWorkflowBuilder builder, GenerationParameters parameters,
+                      NodeRegistry registry, string scope = "", string scopeTitle = "")
+    {
+        var fragment = parameters.GetFragment(Metadata.Id);
+
+        // Build() also reads from Defaults - drives generation-time fallbacks
+        var steps = fragment?.GetInt("steps", Defaults.Steps) ?? Defaults.Steps;
+        var cfg   = fragment?.GetDouble("cfg",  Defaults.Cfg)  ?? Defaults.Cfg;
+        // ...
+    }
+
+    public class Parameters
+    {
+        public int    Steps      { get; set; } = 20;    // Canonical ComfyUI defaults
+        public double Cfg        { get; set; } = 7.0;
+        // ...
+    }
+}
+```
+
+Workflow field declarations set per-workflow overrides using object initializer syntax:
+
+```csharp
+// Workflow field - only override what differs from the canonical default
+private readonly SamplerFragment _sampler = new()
+{
+    Defaults = new() { Steps = 9, Cfg = 1.0, SamplerName = "exponential/res_2s" }
+};
+```
+
+**Rules:**
+- `Defaults` must be declared before `Metadata` in the class body (because `Metadata` is a
+  computed property that reads `Defaults` at access time)
+- `Parameters` inner class defaults represent the canonical ComfyUI defaults, not any
+  particular workflow's preferred values
+- Both `Metadata.DefaultValue` entries and `Build()` fallback literals must read from `Defaults.*`
+  — hard-coded literals in either location are a bug
+- Fragments with only empty-string or structural-constant defaults (e.g., `PromptsFragment`,
+  `LoadImageFragment`) are exempt — there is no per-workflow override surface for them
+- `init`-only property prevents accidental mutation after construction
+
 ### Fragment Types
 
 | Type          | Scope Behavior                                         | Example                                           |

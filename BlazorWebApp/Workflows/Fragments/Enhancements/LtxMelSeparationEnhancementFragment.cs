@@ -22,7 +22,13 @@ public class LtxMelSeparationEnhancementFragment : IFragmentBuilder
         Icon = "fa-solid fa-microphone",
         Order = 73,
         Collapsible = true,
-        DefaultCollapsed = true
+        DefaultCollapsed = true,
+        Description = "When active, a Mel-Band RoFormer model separates the input audio into vocals " +
+                      "and accompaniment before encoding. Only the vocals stem is passed to the audio " +
+                      "encoder, so the model lip-syncs to the voice rather than the full mix. " +
+                      "Enable this when your audio track contains background music, sound effects, or " +
+                      "ambient noise that would otherwise confuse lip-sync timing. Leave it off when " +
+                      "the track is already voice-only — the extra separation pass adds time for no benefit."
     };
 
     /// <summary>No-op. The patch is invoked explicitly by the workflow class.</summary>

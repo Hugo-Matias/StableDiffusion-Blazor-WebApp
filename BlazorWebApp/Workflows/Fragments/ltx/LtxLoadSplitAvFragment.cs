@@ -128,12 +128,15 @@ public class LtxLoadSplitAvFragment : IFragmentBuilder
         builder.AddNode(ffnPatchId, node => node
             .Type("LTXVChunkFeedForward")
             .Title($"{scopeTitle}LTXV Chunk Feed Forward")
-            .InputFromNode("model", unetId, 0));
+            .InputFromNode("model", unetId, 0)
+            .Input("chunks", 2)
+            .Input("dim_threshold", 4096));
 
         builder.AddNode(previewPatchId, node => node
             .Type("LTX2SamplingPreviewOverride")
             .Title($"{scopeTitle}LTX2 Sampling Preview Override")
-            .InputFromNode("model", ffnPatchId, 0));
+            .InputFromNode("model", ffnPatchId, 0)
+            .Input("preview_rate", 8));
 
         registry.Register($"{scope}model_output", previewPatchId, 0);
         registry.Register($"{scope}clip_output", clipId, 0);
