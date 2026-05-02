@@ -26,7 +26,8 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
 
     // Enhancement fragments
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
-
+    private readonly BackgroundRemovalFragment _backgroundRemovalFragment = new();
+    private readonly EasyRemBgFragment _easyRemBgFragment = new();
     // Detailer fragments
     private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
     private readonly DetailerFragment _detailerFragment = new();
@@ -75,6 +76,8 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
         yield return _emptyLatentFragment;
         yield return _samplerStandardFragment;
         yield return _seedVR2UpscaleFragment;
+        yield return _backgroundRemovalFragment;
+        yield return _easyRemBgFragment;
         yield return _detailerFragment;
     }
 
@@ -209,7 +212,11 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
             }
         }
 
-        // 9. Save
+        // 9. Background Removal (conditional)
+        _backgroundRemovalFragment.Build(builder, parameters, registry);
+        _easyRemBgFragment.Build(builder, parameters, registry);
+
+        // 10. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
             FilenamePrefix = "tmp/img"
