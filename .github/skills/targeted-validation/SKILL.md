@@ -1,6 +1,6 @@
 ---
 name: targeted-validation
-description: 'Validate changes with the narrowest useful checks in this repo. Use when choosing focused workflow tests, scheduler tests, service tests, build commands, or file-level error checks in a workspace that can have unrelated build and test noise.'
+description: "Validate changes with the narrowest useful checks in this repo. Use when choosing focused workflow tests, scheduler tests, service tests, build commands, or file-level error checks in a workspace that can have unrelated build and test noise."
 user-invocable: false
 ---
 

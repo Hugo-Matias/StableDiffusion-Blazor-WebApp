@@ -1,6 +1,6 @@
 ---
 name: evented-feature-wiring
-description: 'Wire cross-component and cross-service notifications through the repo pub/sub pattern. Use when publishing an event, subscribing to state changes, adding EventArgs types, replacing direct component coupling, or implementing decoupled communication through IEventService.'
+description: "Wire cross-component and cross-service notifications through the repo pub/sub pattern. Use when publishing an event, subscribing to state changes, adding EventArgs types, replacing direct component coupling, or implementing decoupled communication through IEventService."
 user-invocable: false
 ---
 

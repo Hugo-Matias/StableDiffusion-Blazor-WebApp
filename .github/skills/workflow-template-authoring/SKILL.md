@@ -1,7 +1,7 @@
 ---
 name: workflow-template-authoring
-description: 'Author or modify fluent workflow templates and fragments. Use when converting raw ComfyUI JSON, creating an IWorkflowBuilder, implementing an IFragmentBuilder, wiring NodeRegistry outputs, defining workflow assets, scopes, sources, or adding workflow tests.'
-argument-hint: 'Workflow base, mode, or fragment to add or change'
+description: "Author or modify fluent workflow templates and fragments. Use when converting raw ComfyUI JSON, creating an IWorkflowBuilder, implementing an IFragmentBuilder, wiring NodeRegistry outputs, defining workflow assets, scopes, sources, or adding workflow tests."
+argument-hint: "Workflow base, mode, or fragment to add or change"
 ---
 
 # Workflow Template Authoring

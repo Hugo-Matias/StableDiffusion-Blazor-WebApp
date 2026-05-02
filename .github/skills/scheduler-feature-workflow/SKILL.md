@@ -1,7 +1,7 @@
 ---
 name: scheduler-feature-workflow
-description: 'Implement scheduler features the repo way. Use when adding a scheduler job, directive, variation sequencer change, pause or resume behavior, snapshotting, draft persistence, or editing the scheduler state machine and its tests.'
-argument-hint: 'Scheduler feature, directive, or lifecycle change'
+description: "Implement scheduler features the repo way. Use when adding a scheduler job, directive, variation sequencer change, pause or resume behavior, snapshotting, draft persistence, or editing the scheduler state machine and its tests."
+argument-hint: "Scheduler feature, directive, or lifecycle change"
 ---
 
 # Scheduler Feature Workflow

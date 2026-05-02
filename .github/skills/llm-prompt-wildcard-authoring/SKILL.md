@@ -1,7 +1,7 @@
 ---
 name: llm-prompt-wildcard-authoring
-description: 'Extend prompt tooling, wildcard generation, and LLM template flows. Use when editing llm_prompts.json, theme_catalog.json, WildcardForge services, WildcardService behavior, prompt send-to actions, or LLM-oriented prompt authoring views.'
-argument-hint: 'Prompt, wildcard, or LLM tooling change'
+description: "Extend prompt tooling, wildcard generation, and LLM template flows. Use when editing llm_prompts.json, theme_catalog.json, WildcardForge services, WildcardService behavior, prompt send-to actions, or LLM-oriented prompt authoring views."
+argument-hint: "Prompt, wildcard, or LLM tooling change"
 ---
 
 # LLM Prompt Wildcard Authoring

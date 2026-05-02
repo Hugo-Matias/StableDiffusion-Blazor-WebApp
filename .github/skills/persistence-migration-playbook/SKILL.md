@@ -1,6 +1,6 @@
 ---
 name: persistence-migration-playbook
-description: 'Implement persistence changes the repo way. Use when adding a JSON-backed entity, ValueConverter, repository, singleton-row table, EF Core migration, AppDbContext model update, or debugging a missing SQLite table after startup migration.'
+description: "Implement persistence changes the repo way. Use when adding a JSON-backed entity, ValueConverter, repository, singleton-row table, EF Core migration, AppDbContext model update, or debugging a missing SQLite table after startup migration."
 user-invocable: false
 ---
 

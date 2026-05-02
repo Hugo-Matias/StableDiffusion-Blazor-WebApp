@@ -1,7 +1,7 @@
 ---
 name: comfyui-node-probing
-description: 'Probe live ComfyUI object_info schema before implementing a node, fragment, workflow input binding, or backend option lookup. Use when adding a ComfyUI node, validating input key names, COMBO options, numeric ranges, output indexes, or debugging schema mismatches.'
-argument-hint: 'ComfyUI node type and intended integration surface'
+description: "Probe live ComfyUI object_info schema before implementing a node, fragment, workflow input binding, or backend option lookup. Use when adding a ComfyUI node, validating input key names, COMBO options, numeric ranges, output indexes, or debugging schema mismatches."
+argument-hint: "ComfyUI node type and intended integration surface"
 ---
 
 # ComfyUI Node Probing

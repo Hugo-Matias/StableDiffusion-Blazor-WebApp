@@ -1,7 +1,7 @@
 ---
 name: resource-library-integration
-description: 'Implement resource-browser features for CivitAI, Danbooru, and local resources. Use when adding model discovery, download or import flows, resource cache or filter logic, AssetViewer integration, gallery-like browsing, or resource send-to actions.'
-argument-hint: 'Resource surface or import flow to add or change'
+description: "Implement resource-browser features for CivitAI, Danbooru, and local resources. Use when adding model discovery, download or import flows, resource cache or filter logic, AssetViewer integration, gallery-like browsing, or resource send-to actions."
+argument-hint: "Resource surface or import flow to add or change"
 ---
 
 # Resource Library Integration

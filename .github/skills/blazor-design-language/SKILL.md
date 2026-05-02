@@ -1,6 +1,6 @@
 ---
 name: blazor-design-language
-description: 'Apply the repo design language for MudBlazor and custom UI. Use when creating a page, tabbed page, dialog, toolbar, sidebar, topbar, gallery, Razor component, or component CSS and you need TabbedPageShell, layout variants, send-to buttons, AssetViewer reuse, or token-based spacing.'
+description: "Apply the repo design language for MudBlazor and custom UI. Use when creating a page, tabbed page, dialog, toolbar, sidebar, topbar, gallery, Razor component, or component CSS and you need TabbedPageShell, layout variants, send-to buttons, AssetViewer reuse, or token-based spacing."
 user-invocable: false
 ---
 

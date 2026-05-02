@@ -1,6 +1,6 @@
 ---
 name: workflow-ui-bridge
-description: 'Bridge workflow fragments to the Generate UI. Use when creating or editing a fragment form, setting FragmentMetadata.Component, adding a FragmentComponent, resolving dynamic options, binding local MudBlazor state to GenerationParameters, or fixing form snap-back in Generate-page fragment components.'
+description: "Bridge workflow fragments to the Generate UI. Use when creating or editing a fragment form, setting FragmentMetadata.Component, adding a FragmentComponent, resolving dynamic options, binding local MudBlazor state to GenerationParameters, or fixing form snap-back in Generate-page fragment components."
 user-invocable: false
 ---
 
