@@ -225,6 +225,20 @@ namespace BlazorWebApp.Services
         void NotifyChanged();
 
         /// <summary>
+        /// Returns true if there are any pending overrides, LoRAs, assets, or prompt appends
+        /// waiting to be applied by the next InitializeFromWorkflowAsync or FlushPendingOverrides.
+        /// </summary>
+        bool HasPendingOverrides { get; }
+
+        /// <summary>
+        /// Immediately applies and clears all pending overrides, LoRAs, assets, and prompt
+        /// appends and publishes a ParametersLoaded event. Use when navigating to a workflow
+        /// that is already initialised (same-workflow same-URL navigation) so the queued
+        /// overrides are not silently discarded.
+        /// </summary>
+        void FlushPendingOverrides();
+
+        /// <summary>
         /// Queues a parameter override to be applied after the next InitializeFromWorkflowAsync.
         /// Used by "Send Parameters To" feature where values are set before navigation
         /// and must survive workflow initialization.

@@ -101,7 +101,6 @@ public partial class Generate : IDisposable
         // Check if we have a workflow ID in the URL
         if (!string.IsNullOrEmpty(WorkflowId) && Guid.TryParse(WorkflowId, out var workflowGuid))
         {
-            // Only reinitialize if workflow changed
             if (_selectedWorkflow?.Id != workflowGuid)
             {
                 var workflow = _workflows?.FirstOrDefault(w => w.Id == workflowGuid);
@@ -111,6 +110,13 @@ public partial class Generate : IDisposable
                     await OnWorkflowSelected(workflow, updateUrl: false);
                     return;
                 }
+            }
+            else if (ParameterService.HasPendingOverrides)
+            {
+                // Same workflow navigated to again (e.g. cross-page "Send Parameters To").
+                // InitializeFromWorkflowAsync is skipped by the guard above, so pending
+                // overrides would be silently discarded. Apply them directly.
+                ParameterService.FlushPendingOverrides();
             }
         }
         else if (string.IsNullOrEmpty(WorkflowId))

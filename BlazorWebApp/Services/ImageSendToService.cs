@@ -201,12 +201,25 @@ public class ImageSendToService : IImageSendToService
         }
 
         var isImg2Img = workflow.Mode == ModeType.Img2Img;
+
+        // Detect whether the user is already viewing this workflow's Generate page.
+        // NavigationManager.Uri is the live browser URL, so this correctly distinguishes
+        // "same page" (apply immediately) from "cross-page" (queue + navigate).
+        var currentRelative = _navManager.ToBaseRelativePath(_navManager.Uri).TrimEnd('/');
+        var targetRelative = $"generate/{workflow.Id}";
+        var isAlreadyOnPage = currentRelative.Equals(targetRelative, StringComparison.OrdinalIgnoreCase);
+
         foreach (var param in selectedParams)
         {
-            await _orchestrator.QueueGenerationParameter(asset, param, isImg2Img);
+            if (isAlreadyOnPage)
+                await _orchestrator.SetGenerationParameter(asset, param, isImg2Img);
+            else
+                await _orchestrator.QueueGenerationParameter(asset, param, isImg2Img);
         }
 
-        _navManager.NavigateTo($"/generate/{workflow.Id}");
+        if (!isAlreadyOnPage)
+            _navManager.NavigateTo($"/generate/{workflow.Id}");
+
         _snackbar.Add($"Sent {selectedParams.Count} parameter(s) to {workflow.Title}", Severity.Success);
     }
 }

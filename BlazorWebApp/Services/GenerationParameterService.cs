@@ -171,6 +171,13 @@ namespace BlazorWebApp.Services
         }
 
         /// <inheritdoc />
+        public bool HasPendingOverrides =>
+            _pendingOverrides.Count > 0 || _pendingLoras.Count > 0 || _pendingAssets.Count > 0 || _pendingPromptAppends.Count > 0;
+
+        /// <inheritdoc />
+        public void FlushPendingOverrides() => ApplyPendingOverrides();
+
+        /// <inheritdoc />
         public void QueuePendingOverride(string fragmentId, string key, object? value)
         {
             _pendingOverrides.Add((fragmentId, key, value));
