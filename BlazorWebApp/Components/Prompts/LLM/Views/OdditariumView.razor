@@ -1,0 +1,179 @@
+@* Odditarium - Guided prompt discovery game.
+   Lives as an LLM Tools view inside Prompts page.
+   Phase 1: Intro scene | Phase 2: Persona selection | Phase 5: Round panel *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Components.Prompts.LLM.Shared
+@using BlazorWebApp.Models
+@using BlazorWebApp.Services
+
+<div class="odditarium-page">
+    @if (_showRoundPanel)
+    {
+        <OdditariumRoundPanel Session="_session" SelectedModel="@_resolvedModel" SessionChanged="HandleSessionChanged"
+                              DraftCommitted="HandleDraftCommitted" />
+    }
+    else if (_loading && _selectedPersona != null)
+    {
+        <OdditariumLoading Persona="_selectedPersona" LoadingMessage="@_loadingMessage" />
+    }
+    else if (_showPersonaSelection)
+    {
+        <OdditariumPersonaView PersonaSelected="HandlePersonaSelected" OnBack="HandlePersonaBack" />
+    }
+    else
+    {
+        @* Hero Card *@
+        <div class="odditarium-hero">
+            @* Decorative background elements *@
+            <span class="odditarium-bg odditarium-bg--1" aria-hidden="true"></span>
+            <span class="odditarium-bg odditarium-bg--2" aria-hidden="true"></span>
+            <span class="odditarium-bg odditarium-bg--3" aria-hidden="true"></span>
+
+            <div class="odditarium-hero-content">
+                @* Title with icon *@
+                <div class="odditarium-title-group">
+                    <span class="odditarium-icon-wrap">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoFixHigh" Size="Size.Large" />
+                    </span>
+                    <h2 class="odditarium-hero-title">Odditarium</h2>
+                </div>
+
+                <hr class="odditarium-divider" />
+
+                @* Description *@
+                <p class="odditarium-hero-subtitle">A Guided Prompt Discovery Game</p>
+
+                <p class="odditarium-hero-body">
+                    Step inside and let an AI curator spin you through creative choices that build your prompt one layer at
+                    a time.
+                    <br />
+                    <br />
+                    You never type a single word — just follow the thread, pick what catches your eye, and watch something
+                    unexpected take shape.
+                    <br />
+                    <br />
+                    When the game ends, you walk away with a prompt you'd never have written alone.
+                </p>
+
+                @* Feature list *@
+                <ul class="odditarium-features">
+                    <li>
+                        <span class="odditarium-icon-wrap">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                        </span>
+                        <span>Pick a Persona</span>
+                    </li>
+                    <li>
+                        <span class="odditarium-icon-wrap">
+                            <MudIcon Icon="@Icons.Material.Filled.Apartment" Size="Size.Small" />
+                        </span>
+                        <span>Choose a Vibe</span>
+                    </li>
+                    <li>
+                        <span class="odditarium-icon-wrap">
+                            <MudIcon Icon="@Icons.Material.Filled.DoubleArrow" Size="Size.Small" />
+                        </span>
+                        <span>Collect Layers</span>
+                    </li>
+                    <li>
+                        <span class="odditarium-icon-wrap">
+                            <MudIcon Icon="@Icons.Material.Filled.AutoFixHigh" Size="Size.Small" />
+                        </span>
+                        <span>Get a Surprise Prompt</span>
+                    </li>
+                </ul>
+
+                @* Model warning *@
+                @if (string.IsNullOrWhiteSpace(_resolvedModel))
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="odditarium-warning">
+                        Set an Ollama model in the LLM settings panel before starting.
+                    </MudAlert>
+                }
+
+                @* Start Button *@
+                <div class="odditarium-actions">
+                    <button type="button" class="odditarium-start-btn" @onclick="OnStartAsync" disabled="@_startDisabled">
+                        <span class="odditarium-icon-wrap">
+                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
+                        </span>
+                        <span>Start Game</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "model")]
+    public string? ModelQuery { get; set; }
+
+    [Inject] private IOdditariumService OdditariumService { get; set; } = default!;
+    [Inject] private IStateService State { get; set; } = default!;
+
+    // Resolve the authoritative model: top toolbar state > parameter > query string
+    private string _resolvedModel => State?.State?.Generation?.LLM?.Model ?? SelectedModel ?? ModelQuery ?? string.Empty;
+
+    private bool _startDisabled => string.IsNullOrWhiteSpace(_resolvedModel);
+    private bool _showPersonaSelection;
+    private bool _showRoundPanel;
+    private bool _loading;
+    private string _loadingMessage = string.Empty;
+    private string? _selectedPersonaId;
+    private OdditariumPersona? _selectedPersona => _selectedPersonaId is null ? null :
+OdditariumPersonaRoster.FindById(_selectedPersonaId!);
+    private Data.Entities.OdditariumSession? _session;
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedModel) && !string.IsNullOrWhiteSpace(ModelQuery))
+        {
+            SelectedModel = ModelQuery!;
+        }
+    }
+
+    private async Task OnStartAsync()
+    {
+        if (_startDisabled) return;
+        _showPersonaSelection = true;
+    }
+
+    private async Task HandlePersonaSelected(string personaId)
+    {
+        _selectedPersonaId = personaId;
+        _showPersonaSelection = false;
+        _loading = true;
+        _loadingMessage = "Preparing your journey...";
+        StateHasChanged();
+
+        try
+        {
+            _session = await OdditariumService.StartGameAsync(null, personaId, _resolvedModel);
+            _loading = false;
+            _showRoundPanel = true;
+        }
+        catch (Exception ex)
+        {
+            _loading = false;
+            Console.WriteLine($"Odditarium: Failed to start game: {ex.Message}");
+        }
+    }
+
+    private void HandlePersonaBack()
+    {
+        _showPersonaSelection = false;
+    }
+
+    private async Task HandleSessionChanged(Data.Entities.OdditariumSession? session)
+    {
+        _session = session;
+    }
+
+    private async Task HandleDraftCommitted(string draft)
+    {
+        // Draft committed - could navigate or copy to clipboard
+        // For now, the round panel shows the assembled prompt in-place
+    }
+}

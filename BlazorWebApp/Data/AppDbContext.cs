@@ -194,28 +194,19 @@ namespace BlazorWebApp.Data
                 .HasForeignKey(n => n.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Workshop Wizard - JSON-backed body, FK to optional PromptWorkshopSession,
-            // filtered unique index ensures one wizard per session plus one unbound slot (SessionId IS NULL).
-            var wizardBodyConverter = new ValueConverter<WizardBody, string>(
-                v => JsonSerializer.Serialize(v ?? new WizardBody(), WizardJsonOptions.Compact),
+            // Odditarium - JSON-backed body, standalone table (no FK constraint due to SQLite migration limits).
+            // SessionId is a soft reference to PromptWorkshopSession when the game runs from Workshop context.
+            var odditariumBodyConverter = new ValueConverter<OdditariumBody, string>(
+                v => JsonSerializer.Serialize(v ?? new OdditariumBody(), OdditariumJsonOptions.Compact),
                 v => string.IsNullOrWhiteSpace(v)
-                    ? new WizardBody()
-                    : JsonSerializer.Deserialize<WizardBody>(v, WizardJsonOptions.Compact) ?? new WizardBody());
+                    ? new OdditariumBody()
+                    : JsonSerializer.Deserialize<OdditariumBody>(v, OdditariumJsonOptions.Compact) ?? new OdditariumBody());
 
-            modelBuilder.Entity<WorkshopWizardSession>()
+            modelBuilder.Entity<OdditariumSession>()
                 .Property(w => w.Body)
-                .HasConversion(wizardBodyConverter);
+                .HasConversion(odditariumBodyConverter);
 
-            modelBuilder.Entity<WorkshopWizardSession>()
-                .HasOne(w => w.Session)
-                .WithMany()
-                .HasForeignKey(w => w.SessionId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<WorkshopWizardSession>()
-                .HasIndex(w => w.SessionId)
-                .IsUnique()
-                .HasFilter("\"SessionId\" IS NOT NULL");
+            // No FK constraint - SessionId is a soft reference only.
         }
 
         public DbSet<Image> Images { get; set; }
@@ -240,6 +231,6 @@ namespace BlazorWebApp.Data
         public DbSet<SchedulerDraft> SchedulerDrafts { get; set; }
         public DbSet<PromptWorkshopSession> PromptWorkshopSessions { get; set; }
         public DbSet<PromptWorkshopNode> PromptWorkshopNodes { get; set; }
-        public DbSet<WorkshopWizardSession> WorkshopWizardSessions { get; set; }
+        public DbSet<OdditariumSession> OdditariumSessions { get; set; }
     }
 }

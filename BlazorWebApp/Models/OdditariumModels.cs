@@ -6,26 +6,11 @@ using System.Text.Json.Serialization;
 namespace BlazorWebApp.Models
 {
     /// <summary>
-    /// High-level stage of the Workshop Wizard. Drives which prompts and UI surface are active.
-    /// </summary>
-    public enum WizardStage
-    {
-        /// <summary>Walking the hardcoded section scaffold (Subject -> Scenery -> Lighting -> Mood -> Style).</summary>
-        Intro = 0,
-
-        /// <summary>Free iteration on a built draft using LLM-suggested options + persistent verbs.</summary>
-        Iteration = 1,
-
-        /// <summary>Draft has been pushed into the composer; waiting on user to start a new wizard.</summary>
-        Committed = 2,
-    }
-
-    /// <summary>
     /// Single button option rendered to the user. <see cref="Label"/> is the display text;
     /// <see cref="Hint"/> is optional secondary text. <see cref="Payload"/> may carry a
     /// richer string sent back to the LLM as the chosen value (defaults to <see cref="Label"/>).
     /// </summary>
-    public sealed class WizardOption
+    public sealed class OdditariumOption
     {
         public string Label { get; set; } = string.Empty;
         public string? Hint { get; set; }
@@ -33,85 +18,93 @@ namespace BlazorWebApp.Models
     }
 
     /// <summary>
-    /// One completed turn of the wizard (intro section answered, verb applied, iteration choice, etc.).
-    /// Stored on <see cref="WizardBody.History"/> for deterministic Undo and the rolling
+    /// One completed round of the game (question asked, 6 options shown, user choice recorded).
+    /// Stored on <see cref="OdditariumBody.History"/> for deterministic Undo and the rolling
     /// last-N context window sent to the LLM.
     /// </summary>
-    public sealed class WizardTurn
+    public sealed class OdditariumTurn
     {
-        /// <summary>"intro:{sectionId}" | "iterate" | "verb:{verbId}" | "more"</summary>
+        /// <summary>"round" | "more" | "skip"</summary>
         public string Source { get; set; } = string.Empty;
 
         public string Question { get; set; } = string.Empty;
-        public List<WizardOption> Options { get; set; } = new();
+        public List<OdditariumOption> Options { get; set; } = new();
         public string Choice { get; set; } = string.Empty;
-        public string? ActionVerb { get; set; }
-        public string DraftBefore { get; set; } = string.Empty;
-        public string DraftAfter { get; set; } = string.Empty;
 
-        /// <summary>Snapshot of <c>WizardBody.PendingQuestion</c> taken before this turn applied. Restored by Undo.</summary>
+        /// <summary>The descriptive layer added by this turn (the chosen option payload/label).</summary>
+        public string LayerAdded { get; set; } = string.Empty;
+
+        /// <summary>Snapshot of <c>OdditariumBody.PendingQuestion</c> taken before this turn applied. Restored by Undo.</summary>
         public string? PendingQuestionBefore { get; set; }
 
-        /// <summary>Snapshot of <c>WizardBody.PendingOptions</c> taken before this turn applied. Restored by Undo.</summary>
-        public List<WizardOption>? PendingOptionsBefore { get; set; }
+        /// <summary>Snapshot of <c>OdditariumBody.PendingOptions</c> taken before this turn applied. Restored by Undo.</summary>
+        public List<OdditariumOption>? PendingOptionsBefore { get; set; }
 
-        /// <summary>Snapshot of <c>WizardBody.LastShownLabels</c> taken before this turn applied. Restored by Undo.</summary>
-        public List<string>? LastShownLabelsBefore { get; set; }
+        /// <summary>Snapshot of <c>OdditariumBody.CollectedLayers</c> count before this turn. Used for undo validation.</summary>
+        public int LayersCountBefore { get; set; }
     }
 
     /// <summary>
-    /// JSON-backed body of a <see cref="Data.Entities.WorkshopWizardSession"/> row.
-    /// Persisted as a single complex column via <see cref="WizardJsonOptions.Compact"/>.
+    /// JSON-backed body of an <see cref="Data.Entities.OdditariumSession"/> row.
+    /// Persisted as a single complex column via <see cref="OdditariumJsonOptions.Compact"/>.
     /// </summary>
-    public sealed class WizardBody
+    public sealed class OdditariumBody
     {
-        public WizardStage Stage { get; set; } = WizardStage.Intro;
+        /// <summary>The selected persona ID for this session.</summary>
+        public string? PersonaId { get; set; }
 
-        /// <summary>0..(IntroSections.Count - 1) while in <see cref="WizardStage.Intro"/>.</summary>
-        public int IntroSectionIndex { get; set; }
+        /// <summary>The vibe lock chosen by the user (persona-suggested, user-picked).</summary>
+        public string? Vibe { get; set; }
 
-        /// <summary>Total turns recorded since the last reset/commit. Hard-capped at 50.</summary>
-        public int TurnCount { get; set; }
+        /// <summary>Total rounds completed since session start. No hard cap - freestyle pacing.</summary>
+        public int RoundCount { get; set; }
 
-        public string CurrentDraft { get; set; } = string.Empty;
+        /// <summary>The final assembled prompt (populated at Commit time by the LLM).</summary>
+        public string? CommittedDraft { get; set; }
 
+        /// <summary>Currently active question from the LLM.</summary>
         public string? PendingQuestion { get; set; }
-        public List<WizardOption> PendingOptions { get; set; } = new();
+
+        /// <summary>6 options currently shown to the user.</summary>
+        public List<OdditariumOption> PendingOptions { get; set; } = new();
 
         /// <summary>
-        /// Labels currently / previously shown for the active question. Used as
-        /// <c>excludeLabels</c> when the user clicks the More... button so the
-        /// model rotates suggestions instead of repeating.
+        /// The growing collection of descriptive layers picked by the user across rounds.
+        /// Each pick appends one layer. At Commit time, the LLM assembles these into a coherent prompt.
         /// </summary>
-        public List<string> LastShownLabels { get; set; } = new();
+        public List<string> CollectedLayers { get; set; } = new();
 
-        public List<WizardTurn> History { get; set; } = new();
+        /// <summary>Full history of turns for deterministic Undo.</summary>
+        public List<OdditariumTurn> History { get; set; } = new();
 
-        public string? LastActionVerb { get; set; }
+        /// <summary>True when the session has been committed (draft assembled).</summary>
+        public bool IsCommitted { get; set; }
+
+        /// <summary>True when the game has started (persona + vibe selected, first round loaded).</summary>
+        public bool IsActive { get; set; }
     }
 
     /// <summary>
-    /// Shape of a single LLM response in the wizard. Both intro and iteration prompts
-    /// must conform; iteration / verb prompts may additionally return an updated
-    /// <see cref="Draft"/> string. Validation happens in Step 2.
+    /// Shape of a single LLM response in Odditarium. Both round and commit prompts
+    /// must conform. Commit responses may additionally return an assembled <see cref="Draft"/> string.
     /// </summary>
-    public sealed class WizardLLMResponse
+    public sealed class OdditariumLLMResponse
     {
         [JsonPropertyName("question")]
         public string? Question { get; set; }
 
         [JsonPropertyName("options")]
-        public List<WizardOption>? Options { get; set; }
+        public List<OdditariumOption>? Options { get; set; }
 
         [JsonPropertyName("draft")]
         public string? Draft { get; set; }
     }
 
     /// <summary>
-    /// Shared <see cref="JsonSerializerOptions"/> for wizard persistence and LLM I/O.
-    /// Mirrors <c>SchedulerJsonOptions.Compact</c>: camelCase, ignore null, no formatting.
+    /// Shared <see cref="JsonSerializerOptions"/> for Odditarium persistence and LLM I/O.
+    /// camelCase, ignore null, no formatting.
     /// </summary>
-    public static class WizardJsonOptions
+    public static class OdditariumJsonOptions
     {
         public static readonly JsonSerializerOptions Compact = new()
         {
@@ -122,10 +115,10 @@ namespace BlazorWebApp.Models
     }
 
     /// <summary>
-    /// Parses + sanitizes raw LLM output into a <see cref="WizardLLMResponse"/>.
+    /// Parses + sanitizes raw LLM output into a <see cref="OdditariumLLMResponse"/>.
     /// Trims labels/hints, drops malformed entries, and clamps option count to 3-6.
     /// </summary>
-    public static class WizardResponseValidator
+    public static class OdditariumResponseValidator
     {
         public const int MinOptions = 3;
         public const int MaxOptions = 6;
@@ -137,18 +130,18 @@ namespace BlazorWebApp.Models
         /// Returns <c>true</c> when the result has a non-empty <c>Question</c> and at least
         /// <see cref="MinOptions"/> usable options.
         /// </summary>
-        public static bool TryParse(string? rawJson, out WizardLLMResponse response)
+        public static bool TryParse(string? rawJson, out OdditariumLLMResponse response)
         {
-            response = new WizardLLMResponse();
+            response = new OdditariumLLMResponse();
             if (string.IsNullOrWhiteSpace(rawJson)) return false;
 
             var trimmed = ExtractJsonObject(rawJson);
             if (trimmed is null) return false;
 
-            WizardLLMResponse? parsed;
+            OdditariumLLMResponse? parsed;
             try
             {
-                parsed = JsonSerializer.Deserialize<WizardLLMResponse>(trimmed, WizardJsonOptions.Compact);
+                parsed = JsonSerializer.Deserialize<OdditariumLLMResponse>(trimmed, OdditariumJsonOptions.Compact);
             }
             catch (JsonException)
             {
@@ -165,12 +158,12 @@ namespace BlazorWebApp.Models
         /// Trims, deduplicates, and clamps option count. Drops entries whose label is empty.
         /// Returns a new instance; does not mutate <paramref name="raw"/>.
         /// </summary>
-        public static WizardLLMResponse Sanitize(WizardLLMResponse raw)
+        public static OdditariumLLMResponse Sanitize(OdditariumLLMResponse raw)
         {
             var question = (raw.Question ?? string.Empty).Trim();
             var draft = string.IsNullOrWhiteSpace(raw.Draft) ? null : raw.Draft.Trim();
 
-            var options = new List<WizardOption>();
+            var options = new List<OdditariumOption>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             if (raw.Options is { Count: > 0 })
@@ -191,7 +184,7 @@ namespace BlazorWebApp.Models
                         if (hint.Length > MaxHintLength) hint = hint.Substring(0, MaxHintLength).TrimEnd();
                     }
 
-                    options.Add(new WizardOption
+                    options.Add(new OdditariumOption
                     {
                         Label = label,
                         Hint = hint,
@@ -202,7 +195,7 @@ namespace BlazorWebApp.Models
                 }
             }
 
-            return new WizardLLMResponse
+            return new OdditariumLLMResponse
             {
                 Question = question,
                 Options = options,

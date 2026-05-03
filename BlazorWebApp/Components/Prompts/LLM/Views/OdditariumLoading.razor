@@ -1,0 +1,254 @@
+@* Reusable loading screen shown while Ollama generates content during the Odditarium game loop. *@
+@using BlazorWebApp.Models
+@using Microsoft.Extensions.FileProviders
+@implements IDisposable
+@inject IWebHostEnvironment Env
+
+<div class="odditarium-loading-screen" style="--persona-accent: @GetAccentColor();">
+    <div class="odditarium-loading-inner">
+        <div class="odditarium-loading-art">
+            <div class="odditarium-thought-bubble @(_retortVisible ? "bubble-visible" : "")">
+                <span class="bubble-text">@_retortMessage</span>
+                <span class="bubble-pip pip-a"></span>
+                <span class="bubble-pip pip-b"></span>
+                <span class="bubble-pip pip-c"></span>
+            </div>
+            <div class="odditarium-shimmer-dot dot-1"></div>
+            <div class="odditarium-shimmer-dot dot-2"></div>
+            <div class="odditarium-shimmer-dot dot-3"></div>
+            <div class="odditarium-img-wrap @(_imgFading ? "img-fading" : "")">
+                <img src="@GetCurrentThinkingImage()" alt="@Persona?.Name thinking"
+                     class="odditarium-loading-img @(_prodReady ? "prod-ready" : "")" @onclick="HandleImageClick" />
+            </div>
+        </div>
+        <div class="odditarium-loading-text-group">
+            <h3 class="odditarium-loading-title">@LoadingMessage</h3>
+            <span class="odditarium-loading-persona @(_msgVisible ? "" : "msg-hidden")">@_displayMessage</span>
+        </div>
+        <div class="odditarium-loading-bar">
+            <div class="odditarium-loading-bar-track"></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public OdditariumPersona Persona { get; set; } = default!;
+
+    [Parameter]
+    public string LoadingMessage { get; set; } = "Preparing your journey...";
+
+    // Message cycling
+    private List<string> _shuffled = new();
+    private int _currentIdx = 0;
+    private string _displayMessage = string.Empty;
+    private bool _msgVisible = true;
+
+    // Thought bubble retort
+    private string _retortMessage = string.Empty;
+    private bool _retortVisible = false;
+
+    // Image cycling
+    private int _thinkingImgIndex = 0;
+    private bool _imgFading = false;
+    private string[] _thinkingImages = Array.Empty<string>();
+
+    // Prod easter egg
+    private bool _prodReady = false;
+    private bool _prodOnCooldown = false;
+    private List<string> _shuffledProd = new();
+    private int _prodIdx = 0;
+
+    private CancellationTokenSource? _cts;
+
+    protected override void OnParametersSet()
+    {
+        if (_shuffled.Count > 0) return;
+
+        var msgPool = Persona?.ThinkingMessages?.Length > 0
+            ? Persona.ThinkingMessages.ToList()
+            : _fallbackMessages;
+        _shuffled = msgPool.OrderBy(_ => Random.Shared.Next()).ToList();
+        _currentIdx = 0;
+        _displayMessage = _shuffled[0];
+
+        var prodPool = Persona?.ProdMessages?.Length > 0
+            ? Persona.ProdMessages.ToList()
+            : _fallbackProdMessages;
+        _shuffledProd = prodPool.OrderBy(_ => Random.Shared.Next()).ToList();
+        _prodIdx = 0;
+
+        _thinkingImages = DiscoverThinkingImages();
+        _thinkingImgIndex = _thinkingImages.Length > 0
+            ? Random.Shared.Next(_thinkingImages.Length)
+            : 0;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _ = CycleMessagesAsync(_cts.Token);
+        _ = CycleImagesAsync(_cts.Token);
+        _ = ActivateProdAsync(_cts.Token);
+    }
+
+    private async Task CycleMessagesAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(5500, ct);
+                _msgVisible = false;
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(380, ct);
+                _currentIdx = (_currentIdx + 1) % _shuffled.Count;
+                _displayMessage = _shuffled[_currentIdx];
+                _msgVisible = true;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (ObjectDisposedException) { break; }
+        }
+    }
+
+    private async Task CycleImagesAsync(CancellationToken ct)
+    {
+        if (_thinkingImages.Length <= 1) return;
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(9000, ct);
+                _imgFading = true;
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(400, ct);
+                // Pick a random next image that differs from the current one
+                if (_thinkingImages.Length > 1)
+                {
+                    int next;
+                    do { next = Random.Shared.Next(_thinkingImages.Length); }
+                    while (next == _thinkingImgIndex);
+                    _thinkingImgIndex = next;
+                }
+                _imgFading = false;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (ObjectDisposedException) { break; }
+        }
+    }
+
+    private async Task ActivateProdAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(5000, ct);
+            _prodReady = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private async Task HandleImageClick()
+    {
+        if (!_prodReady || _prodOnCooldown) return;
+
+        var retort = _shuffledProd[_prodIdx];
+        _prodIdx = (_prodIdx + 1) % _shuffledProd.Count;
+
+        _prodOnCooldown = true;
+        _retortMessage = retort;
+        _retortVisible = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var ct = _cts?.Token ?? CancellationToken.None;
+
+            await Task.Delay(3200, ct);
+            _retortVisible = false;
+            await InvokeAsync(StateHasChanged);
+
+            await Task.Delay(380, ct);
+            _retortMessage = string.Empty;
+            _prodOnCooldown = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private string GetCurrentThinkingImage()
+    {
+        if (_thinkingImages.Length > 0 && _thinkingImgIndex < _thinkingImages.Length)
+            return _thinkingImages[_thinkingImgIndex];
+        // Fallback to whatever is set directly on the persona
+        if (Persona is null) return string.Empty;
+        if (!string.IsNullOrWhiteSpace(Persona.ImageAssetThinking)) return Persona.ImageAssetThinking;
+        if (!string.IsNullOrWhiteSpace(Persona.ImageAssetActive)) return Persona.ImageAssetActive;
+        return Persona.ImageAssetIdle;
+    }
+
+    private string[] DiscoverThinkingImages()
+    {
+        if (Persona is null || string.IsNullOrWhiteSpace(Persona.ImageAssetThinking))
+            return Array.Empty<string>();
+
+        var basePath = Persona.ImageAssetThinking;
+        var lastSlash = basePath.LastIndexOf('/');
+        if (lastSlash < 0) return new[] { basePath };
+
+        var webDir = basePath[..lastSlash]; // e.g. "/odditarium/personas/muse"
+        var fsDir = webDir.TrimStart('/');
+
+        try
+        {
+            var contents = Env.WebRootFileProvider.GetDirectoryContents(fsDir);
+            if (!contents.Exists) return new[] { basePath };
+
+            var matches = contents
+                .Where(f => !f.IsDirectory &&
+                            f.Name.StartsWith("thinking-", StringComparison.OrdinalIgnoreCase) &&
+                            f.Name.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                .Select(f => $"{webDir}/{f.Name}")
+                .OrderBy(p => p)
+                .ToArray();
+
+            return matches.Length > 0 ? matches : new[] { basePath };
+        }
+        catch
+        {
+            return new[] { basePath };
+        }
+    }
+
+    private string GetAccentColor() =>
+        !string.IsNullOrWhiteSpace(Persona?.AccentColor) ? Persona.AccentColor : "#5e35b1";
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    private static readonly List<string> _fallbackMessages = new()
+    {
+        "Weaving the threads...",
+        "Consulting the unknown...",
+        "Bending the axis...",
+        "Distilling the signal...",
+        "The idea is forming...",
+        "Something is taking shape...",
+        "Almost there...",
+    };
+
+    private static readonly List<string> _fallbackProdMessages = new()
+    {
+        "Not yet...",
+        "Almost there...",
+        "Hold on...",
+    };
+}

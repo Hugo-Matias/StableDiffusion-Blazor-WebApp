@@ -788,7 +788,7 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("WorkflowStates");
                 });
 
-            modelBuilder.Entity("BlazorWebApp.Data.Entities.WorkshopWizardSession", b =>
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.OdditariumSession", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -813,7 +813,7 @@ namespace BlazorWebApp.Migrations
                         .IsUnique()
                         .HasFilter("\"SessionId\" IS NOT NULL");
 
-                    b.ToTable("WorkshopWizardSessions");
+                    b.ToTable("OdditariumSessions");
                 });
 
             modelBuilder.Entity("ImageSelection", b =>
@@ -907,14 +907,9 @@ namespace BlazorWebApp.Migrations
                     b.Navigation("Session");
                 });
 
-            modelBuilder.Entity("BlazorWebApp.Data.Entities.WorkshopWizardSession", b =>
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.OdditariumSession", b =>
                 {
-                    b.HasOne("BlazorWebApp.Data.Entities.PromptWorkshopSession", "Session")
-                        .WithMany()
-                        .HasForeignKey("SessionId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Session");
+                    // SessionId is a soft reference only - no FK constraint (SQLite migration limitations).
                 });
 
             modelBuilder.Entity("ImageSelection", b =>
