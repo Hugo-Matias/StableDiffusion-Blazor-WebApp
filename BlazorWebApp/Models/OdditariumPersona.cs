@@ -47,5 +47,46 @@ namespace BlazorWebApp.Models
 
         /// <summary>In-character retort messages shown when user clicks the thinking image (easter egg). 15-20 entries recommended.</summary>
         public string[] ProdMessages { get; set; } = Array.Empty<string>();
+
+        // --- Phase 7.5: Anchor personality ---
+
+        /// <summary>
+        /// Anchor names ordered high-to-low persona affinity. Biases the anchor queue shuffle:
+        /// high-affinity anchors surface earlier in the session. Anchors not listed are appended
+        /// in default tier order after all listed ones.
+        /// </summary>
+        public string[] AnchorAffinity { get; set; } = Array.Empty<string>();
+
+        /// <summary>Minimum deepen follow-up rounds to run per anchor for this persona (0 = possible skip).</summary>
+        public int MinDeepensPerAnchor { get; set; } = 1;
+
+        /// <summary>Maximum deepen follow-up rounds to run per anchor for this persona.</summary>
+        public int MaxDeepensPerAnchor { get; set; } = 2;
+
+        // --- Phase 7.6: Persona voice depth ---
+
+        /// <summary>
+        /// How this persona frames a question — injected as a directive in the round system prompt.
+        /// Shapes sentence structure and rhetorical stance, not just vocabulary.
+        /// </summary>
+        public string QuestionFraming { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Register and style rules for option labels and hints — injected so the LLM writes
+        /// labels and hints that sound unmistakably like this persona, not a generic game.
+        /// </summary>
+        public string OptionVoice { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Hard aesthetic exclusions — injected as a FORBIDDEN rule to prevent persona drift
+        /// back toward generic or cross-persona aesthetics across long sessions.
+        /// </summary>
+        public string ForbiddenZones { get; set; } = string.Empty;
+
+        /// <summary>
+        /// What this persona believes makes a great image — injected as context that explains
+        /// why they make the creative choices they do, giving the LLM a reasoning foundation.
+        /// </summary>
+        public string CreativePhilosophy { get; set; } = string.Empty;
     }
 }

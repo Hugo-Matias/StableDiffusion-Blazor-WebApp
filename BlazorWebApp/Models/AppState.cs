@@ -184,6 +184,19 @@ namespace BlazorWebApp.Models
         public int NumCtx { get; set; } = 8192;
         public int NumPredict { get; set; } = 500;
 
+        /// <summary>
+        /// When true, the model is allowed to think (i.e. Think=true is sent to Ollama instead of Think=false).
+        /// Thinking blocks are always stripped from the response before JSON parsing.
+        /// Default false — disables thinking for structured JSON calls.
+        /// </summary>
+        public bool EnableThinking { get; set; } = false;
+
+        /// <summary>Opening tag of a think block (default &lt;think&gt;). Used to strip reasoning from responses.</summary>
+        public string ThinkOpenTag { get; set; } = "<think>";
+
+        /// <summary>Closing tag of a think block (default &lt;/think&gt;).</summary>
+        public string ThinkCloseTag { get; set; } = "</think>";
+
         public OllamaOptions ToOllamaOptions()
         {
             return new OllamaOptions

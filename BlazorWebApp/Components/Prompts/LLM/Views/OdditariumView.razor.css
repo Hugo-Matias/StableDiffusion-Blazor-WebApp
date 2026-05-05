@@ -250,3 +250,44 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ---- Continue section ---- */
+.odditarium-continue-section {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.odditarium-continue-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.odditarium-continue-icon {
+  color: var(--mud-palette-text-disabled);
+}
+
+.odditarium-continue-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mud-palette-text-disabled);
+}
+
+.odditarium-continue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.odditarium-continue-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}

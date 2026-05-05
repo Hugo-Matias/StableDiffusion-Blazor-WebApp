@@ -11,13 +11,8 @@
     <MudGrid Spacing="2" Class="mb-2">
         @* Model Selector *@
         <MudItem xs="12" sm="4">
-            <MudSelect T="string" Value="@State.State.Generation.LLM.Model"
-                       ValueChanged="HandleModelChanged"
-                       Label="Model"
-                       Variant="Variant.Text"
-                       Dense
-                       AnchorOrigin="Origin.BottomLeft"
-                       TransformOrigin="Origin.TopLeft">
+            <MudSelect T="string" Value="@State.State.Generation.LLM.Model" ValueChanged="HandleModelChanged" Label="Model"
+                       Variant="Variant.Text" Dense AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                 @if (_availableModels != null)
                 {
                     foreach (var model in _availableModels)
@@ -31,97 +26,105 @@
         @* Temperature Quick Access *@
         <MudItem xs="12" sm="4" Class="d-flex align-center">
             <div style="width: 100%;">
-                <MudText Typo="Typo.caption" Class="mb-1">Temperature: @State.State.Generation.LLM.Options.Temperature.ToString("F1")</MudText>
-                <MudSlider T="float"
-                           Value="@State.State.Generation.LLM.Options.Temperature"
-                           ValueChanged="HandleTemperatureChanged"
-                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Min"
-                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Max"
-                           Step="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Step"
-                           Variant="Variant.Filled"
-                           Size="Size.Small" />
-            </div>
-        </MudItem>
-
-        @* Advanced Settings Toggle *@
-        <MudItem xs="12" sm="4" Class="d-flex align-center justify-end">
-            <MudButton OnClick="ToggleAdvancedSettings"
-                       StartIcon="@(_showAdvancedSettings ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                       Size="Size.Small"
-                       Variant="Variant.Text"
-                       Color="Color.Primary">
-                Advanced
-            </MudButton>
-        </MudItem>
-
-        @* Advanced Settings Panel *@
-        @if (_showAdvancedSettings)
-        {
-            <MudItem xs="12">
-                <MudPaper Class="pa-3" Outlined>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudNumericField T="int"
-                                           Value="@State.State.Generation.LLM.Options.Seed"
-                                           ValueChanged="HandleSeedChanged"
-                                           Label="Seed"
-                                           Variant="Variant.Text"
-                                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
-                                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudNumericField T="int"
-                                           Value="@State.State.Generation.LLM.Options.TopK"
-                                           ValueChanged="HandleTopKChanged"
-                                           Label="Top K"
-                                           Variant="Variant.Text"
-                                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
-                                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudNumericField T="float"
-                                           Value="@State.State.Generation.LLM.Options.TopP"
-                                           ValueChanged="HandleTopPChanged"
-                                           Label="Top P"
-                                           Variant="Variant.Text"
-                                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Min"
-                                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Max"
-                                           Step="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Step" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudNumericField T="float"
-                                           Value="@State.State.Generation.LLM.Options.MinP"
-                                           ValueChanged="HandleMinPChanged"
-                                           Label="Min P"
-                                           Variant="Variant.Text"
-                                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
-                                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
-                                           Step="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Step" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudNumericField T="int"
-                                           Value="@State.State.Generation.LLM.Options.NumCtx"
-                                           ValueChanged="HandleNumCtxChanged"
-                                           Label="Context Length"
-                                           Variant="Variant.Text"
-                                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
-                                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudNumericField T="int"
-                                           Value="@State.State.Generation.LLM.Options.NumPredict"
-                                           ValueChanged="HandleNumPredictChanged"
-                                           Label="Max Tokens"
-                                           Variant="Variant.Text"
-                                           Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
-                                           Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
-                        </MudItem>
-                    </MudGrid>
-                </MudPaper>
+                <MudText Typo="Typo.caption" Class="mb-1">Temperature:
+                    @State.State.Generation.LLM.Options.Temperature.ToString("F1")</MudText>
+                    <MudSlider T="float" Value="@State.State.Generation.LLM.Options.Temperature"
+                               ValueChanged="HandleTemperatureChanged"
+                               Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Min"
+                               Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Max"
+                               Step="@Settings.Settings.Generation.Shared.LLMEnhancer.Temperature.Step" Variant="Variant.Filled"
+                               Size="Size.Small" />
+                </div>
             </MudItem>
-        }
-    </MudGrid>
-}
+
+            @* Advanced Settings Toggle *@
+            <MudItem xs="12" sm="4" Class="d-flex align-center justify-end">
+                <MudButton OnClick="ToggleAdvancedSettings"
+                           StartIcon="@(_showAdvancedSettings ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                           Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">
+                    Advanced
+                </MudButton>
+            </MudItem>
+
+            @* Advanced Settings Panel *@
+            @if (_showAdvancedSettings)
+            {
+                <MudItem xs="12">
+                    <MudPaper Class="pa-3" Outlined>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudNumericField T="int" Value="@State.State.Generation.LLM.Options.Seed"
+                                                 ValueChanged="HandleSeedChanged" Label="Seed" Variant="Variant.Text"
+                                                 Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
+                                                 Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudNumericField T="int" Value="@State.State.Generation.LLM.Options.TopK"
+                                                 ValueChanged="HandleTopKChanged" Label="Top K" Variant="Variant.Text"
+                                                 Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Min"
+                                                 Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopK.Max" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudNumericField T="float" Value="@State.State.Generation.LLM.Options.TopP"
+                                                 ValueChanged="HandleTopPChanged" Label="Top P" Variant="Variant.Text"
+                                                 Min="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Min"
+                                                 Max="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Max"
+                                                 Step="@Settings.Settings.Generation.Shared.LLMEnhancer.TopP.Step" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudNumericField T="float" Value="@State.State.Generation.LLM.Options.MinP"
+                                                 ValueChanged="HandleMinPChanged" Label="Min P" Variant="Variant.Text"
+                                                 Min="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Min"
+                                                 Max="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Max"
+                                                 Step="@Settings.Settings.Generation.Shared.LLMEnhancer.MinP.Step" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudNumericField T="int" Value="@State.State.Generation.LLM.Options.NumCtx"
+                                                 ValueChanged="HandleNumCtxChanged" Label="Context Length" Variant="Variant.Text"
+                                                 Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Min"
+                                                 Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumCtx.Max" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudNumericField T="int" Value="@State.State.Generation.LLM.Options.NumPredict"
+                                                 ValueChanged="HandleNumPredictChanged" Label="Max Tokens" Variant="Variant.Text"
+                                                 Min="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Min"
+                                                 Max="@Settings.Settings.Generation.Shared.LLMEnhancer.NumPredict.Max" />
+                            </MudItem>
+
+                            @* Thinking mode *@
+                            <MudItem xs="12">
+                                <MudDivider />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4" Class="d-flex align-center gap-2">
+                                <MudSwitch T="bool" Value="@State.State.Generation.LLM.Options.EnableThinking"
+                                           ValueChanged="HandleEnableThinkingChanged" Color="Color.Warning" Label="Enable Thinking"
+                                           Size="Size.Small" />
+                                <MudTooltip
+                                    Text="When enabled, the model reasons before answering. Think blocks are always stripped before JSON parsing.">
+                                    <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Small"
+                                             Class="mud-text-secondary" />
+                                </MudTooltip>
+                            </MudItem>
+
+                            @if (State.State.Generation.LLM.Options.EnableThinking)
+                            {
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudTextField T="string" Value="@State.State.Generation.LLM.Options.ThinkOpenTag"
+                                                  ValueChanged="HandleThinkOpenTagChanged" Label="Think open tag" Variant="Variant.Text"
+                                                  Margin="Margin.Dense" Dense="true" HelperText="e.g. &lt;think&gt;" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudTextField T="string" Value="@State.State.Generation.LLM.Options.ThinkCloseTag"
+                                                  ValueChanged="HandleThinkCloseTagChanged" Label="Think close tag" Variant="Variant.Text"
+                                                  Margin="Margin.Dense" Dense="true" HelperText="e.g. &lt;/think&gt;" />
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
 
 @code {
     private bool _isInitialized;
@@ -213,6 +216,25 @@
         State.State.Generation.LLM.Options.NumPredict = numPredict;
         await State.SaveState();
         StateHasChanged();
+    }
+
+    private async Task HandleEnableThinkingChanged(bool value)
+    {
+        State.State.Generation.LLM.Options.EnableThinking = value;
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task HandleThinkOpenTagChanged(string value)
+    {
+        State.State.Generation.LLM.Options.ThinkOpenTag = value;
+        await State.SaveState();
+    }
+
+    private async Task HandleThinkCloseTagChanged(string value)
+    {
+        State.State.Generation.LLM.Options.ThinkCloseTag = value;
+        await State.SaveState();
     }
 
     private void ToggleAdvancedSettings()

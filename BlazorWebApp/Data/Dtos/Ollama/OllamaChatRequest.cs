@@ -26,6 +26,16 @@ namespace BlazorWebApp.Data.Dtos.Ollama
         [JsonPropertyName("format")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Format { get; set; }
+
+        /// <summary>
+        /// Controls thinking mode for models that support it (e.g. Qwen3, QwQ).
+        /// This is a top-level Ollama API field — NOT inside <c>options</c>.
+        /// Set to <c>false</c> to disable the reasoning phase (saves tokens, recommended for structured JSON).
+        /// Omitted when null so non-thinking models are unaffected.
+        /// </summary>
+        [JsonPropertyName("think")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? Think { get; set; }
     }
 
     public class OllamaChatMessage
@@ -80,5 +90,7 @@ namespace BlazorWebApp.Data.Dtos.Ollama
         [JsonPropertyName("stop")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? Stop { get; set; }
+
+
     }
 }

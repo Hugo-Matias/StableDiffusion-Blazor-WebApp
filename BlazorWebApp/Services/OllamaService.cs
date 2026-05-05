@@ -54,7 +54,8 @@ namespace BlazorWebApp.Services
             OllamaOptions? options = null,
             string? keepAlive = "15m",
             bool stream = false,
-            string? format = null)
+            string? format = null,
+            bool? think = null)
         {
             BaseProgress? progressBar = null;
 
@@ -76,6 +77,7 @@ namespace BlazorWebApp.Services
                     KeepAlive = keepAlive,
                     Options = options ?? new OllamaOptions(),
                     Format = format,
+                    Think = think,
                 };
 
                 var json = JsonSerializer.Serialize(payload);

@@ -21,6 +21,13 @@
     </None>
   </ItemGroup>
 
+  <!-- Odditarium persona JSON files -->
+  <ItemGroup>
+    <None Update="Data\Odditarium\Personas\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.6" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />

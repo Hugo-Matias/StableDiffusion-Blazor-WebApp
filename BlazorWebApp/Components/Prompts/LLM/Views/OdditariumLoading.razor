@@ -202,18 +202,15 @@
         if (lastSlash < 0) return new[] { basePath };
 
         var webDir = basePath[..lastSlash]; // e.g. "/odditarium/personas/muse"
-        var fsDir = webDir.TrimStart('/');
+        var fsDir = Path.Combine(Env.WebRootPath, webDir.TrimStart('/', '\\'));
 
         try
         {
-            var contents = Env.WebRootFileProvider.GetDirectoryContents(fsDir);
-            if (!contents.Exists) return new[] { basePath };
+            if (!Directory.Exists(fsDir))
+                return new[] { basePath };
 
-            var matches = contents
-                .Where(f => !f.IsDirectory &&
-                            f.Name.StartsWith("thinking-", StringComparison.OrdinalIgnoreCase) &&
-                            f.Name.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-                .Select(f => $"{webDir}/{f.Name}")
+            var matches = Directory.GetFiles(fsDir, "thinking-*.png", SearchOption.TopDirectoryOnly)
+                .Select(f => $"{webDir}/{Path.GetFileName(f)}")
                 .OrderBy(p => p)
                 .ToArray();
 

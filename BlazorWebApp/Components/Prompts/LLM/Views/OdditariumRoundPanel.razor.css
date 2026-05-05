@@ -27,10 +27,17 @@
   gap: 8px;
 }
 
+/* Badge row — round badge + optional mode badge sit side by side */
+.odditarium-question-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .odditarium-round-badge {
   display: inline-flex;
   align-items: center;
-  self-start: flex-start;
   padding: 4px 12px;
   border-radius: var(--odd-radius-pill, 999px);
   background: color-mix(in srgb, var(--mud-palette-secondary) 12%, transparent);
@@ -39,6 +46,50 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--mud-palette-secondary);
+}
+
+/* Mode badge */
+.odditarium-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--odd-radius-pill, 999px);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.odditarium-mode-badge--expand {
+  background: color-mix(in srgb, var(--mud-palette-primary) 12%, transparent);
+  color: var(--mud-palette-primary);
+}
+
+.odditarium-mode-badge--deepen {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-tertiary, var(--mud-palette-info)) 12%,
+    transparent
+  );
+  color: var(--mud-palette-tertiary, var(--mud-palette-info));
+}
+
+.odditarium-mode-badge--pivot {
+  background: color-mix(in srgb, var(--mud-palette-warning) 14%, transparent);
+  color: color-mix(
+    in srgb,
+    var(--mud-palette-warning) 80%,
+    var(--mud-palette-text-primary)
+  );
+}
+
+.odditarium-mode-badge--default {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-text-secondary) 10%,
+    transparent
+  );
+  color: var(--mud-palette-text-secondary);
 }
 
 .odditarium-question {
@@ -188,6 +239,18 @@
 .odditarium-layer-chip .mud-icon {
   color: var(--mud-palette-primary);
   flex-shrink: 0;
+}
+
+.odditarium-layer-anchor {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.6;
+  text-transform: lowercase;
+}
+
+.odditarium-layer-sep {
+  opacity: 0.4;
+  font-size: 0.8rem;
 }
 
 @keyframes odd-layer-enter {

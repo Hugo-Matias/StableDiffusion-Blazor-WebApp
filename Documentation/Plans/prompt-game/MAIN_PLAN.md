@@ -2,7 +2,7 @@
 
 > **Working name:** Odditarium (revisitable; see `PERSONA.md`).
 > **Persona on duty:** The Curator (`.github/agents/odditarium-curator.agent.md`).
-> **Plan status:** [~] Execution — Phases 1-5 complete, Phase 6 next. User approved plan on 2026-05-01.
+> **Plan status:** [~] Execution — Phases 1-5 complete. Phase 7 redesigned (structural scaffolding + system prompt v2 + More UX + two-pass commit) supersedes the original v2 phase; Phase 6 still planned to run after Phase 7. User approved plan on 2026-05-01.
 > **Companion docs:**
 >
 > - [`PERSONA.md`](./PERSONA.md) - designer's notebook (in-flight ideas, open provocations, dead ends).
@@ -25,22 +25,28 @@ The pivot turns the wizard into **Odditarium** - a dedicated game page where an 
 
 ## Locked Decisions
 
-| Decision             | Choice                                                                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Working name         | **Odditarium** (revisit after first playable build)                                                                                                    |
-| Persona file         | `.github/agents/odditarium-curator.agent.md` (activation) + `PERSONA.md` (notebook)                                                                    |
-| Pivot scope          | **Full pivot:** new page + new nav entry; deprecate Workshop mount in this plan                                                                        |
-| Core mechanic        | **Layer accumulation.** Each round adds an independent descriptive element. Final prompt assembled at Commit time, not built incrementally in the UI.  |
-| Pacing model         | **Freestyle.** No minimum layer count, no turn cap. User commits whenever they want. Sessions persist and are resumable.                               |
-| Phase 13 fate        | Archive as "shipped, superseded by Odditarium." Reuse entity, service skeleton, events, validator, and tests under the new page                        |
-| Entry flow           | Intro scene (goal + encouragement) -> Start button -> Persona card selection -> Game begins                                                            |
-| Persona system       | **Hardcoded roster of 5 handcrafted personas.** Each persona has identity, thematic boundaries, tone bias, and style preferences. Static image assets. |
-| Options per round    | **Fixed at 6 options** per round + action buttons                                                                                                      |
-| Action buttons       | **Undo** (revert last pick), **More...** (regenerate options for current question), **Skip this axis** (jump past uninteresting questions)             |
-| Surprise me behavior | LLM picks freely - can invent unexpected anchor directions for maximum surprise                                                                        |
-| User override        | No free-text input. Pure click-through with Undo/More/Skip as escape valves.                                                                           |
-| Send-to surfaces     | Workshop composer, txt2img prompt, clipboard (v1)                                                                                                      |
-| Persona editor       | Out of scope for v1. Stretch goal for future expansion.                                                                                                |
+| Decision             | Choice                                                                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Working name         | **Odditarium** (revisit after first playable build)                                                                                                                                                                                   |
+| Persona file         | `.github/agents/odditarium-curator.agent.md` (activation) + `PERSONA.md` (notebook)                                                                                                                                                   |
+| Pivot scope          | **Full pivot:** new page + new nav entry; deprecate Workshop mount in this plan                                                                                                                                                       |
+| Core mechanic        | **Layer accumulation.** Each round adds an independent descriptive element. Final prompt assembled at Commit time, not built incrementally in the UI.                                                                                 |
+| Pacing model         | **Freestyle.** No minimum layer count, no turn cap. User commits whenever they want. Sessions persist and are resumable.                                                                                                              |
+| Phase 13 fate        | Archive as "shipped, superseded by Odditarium." Reuse entity, service skeleton, events, validator, and tests under the new page                                                                                                       |
+| Entry flow           | Intro scene (goal + encouragement) -> Start button -> Persona card selection -> Game begins                                                                                                                                           |
+| Persona system       | **Hardcoded roster of 5 handcrafted personas.** Each persona has identity, thematic boundaries, tone bias, and style preferences. Static image assets.                                                                                |
+| Options per round    | **Fixed at 6 options** per round + action buttons                                                                                                                                                                                     |
+| Action buttons       | **Undo** (revert last pick), **More...** (regenerate options for current question), **Skip this axis** (jump past uninteresting questions)                                                                                            |
+| Surprise me behavior | LLM picks freely - can invent unexpected anchor directions for maximum surprise                                                                                                                                                       |
+| User override        | No free-text input. Pure click-through with Undo/More/Skip as escape valves.                                                                                                                                                          |
+| Send-to surfaces     | Workshop composer, txt2img prompt, clipboard (v1)                                                                                                                                                                                     |
+| Persona editor       | Out of scope for v1. Stretch goal for future expansion.                                                                                                                                                                               |
+| Concept pool         | **8 fixed anchors** (`subject`, `setting`, `action`, `lighting`, `framing`, `mood`, `style`, `detail`) provide the prompt skeleton. **Facets** are LLM-invented per round, lowercase-kebab, scoped to the chosen anchor (Phase 7).    |
+| Round mode           | Each round declares one of three **modes**: `expand` (target empty anchor), `deepen` (drill a fresh facet of a non-empty anchor), `pivot` (bridge into a related empty anchor). Validator coerces invalid combos (Phase 7).           |
+| Layer storage        | **Typed entries.** `OdditariumBody.CollectedLayers` is `List<OdditariumLayer>` carrying `Anchor`, `Facet`, `Mode`, `Label`, `Hint`, `Question`. `VisitedFacets[anchor]` tracks used facets to prevent repetition (Phase 7).           |
+| Structural debt      | Subject empty after 3 rounds = medium pressure; after 4 = hard `expand subject` instruction. 3+ structural anchors empty after round 6 = hard instruction (Phase 7). Computed on anchors only; pivot counts as expand for accounting. |
+| More... behavior     | **Skeleton swap, no full loading screen.** Question + persona stay visible; option cards become skeletons; LLM receives an exclusion list of previously shown labels and pins question + anchor + facet + mode (Phase 7).             |
+| Commit assembly      | **Two-pass.** Pass 1 expands per-anchor layers (with facet detail woven in) into descriptive phrases; pass 2 assembles the final prompt. Fallbacks to single-pass and anchor-priority comma-join (Phase 7).                           |
 
 ### Initial Persona Roster (v1)
 
@@ -152,12 +158,15 @@ Full ruleset documented in [`RULESET.md`](./RULESET.md). Summary of the 9 core r
 | 3   | Entity/service rename (WorkshopWizard -> Odditarium), drop intro catalog, add persona/layer fields to session body | 8          | [x] Complete    |
 | 4   | System prompt v1 (persona injection, ruleset encoding) with twin-trace review                                      | 8          | [x] Complete    |
 | 5   | Round panel UI (6 options, Undo/More/Skip buttons, layer collection display)                                       | 8          | [x] Complete    |
-| 6   | Validator hardening (synonym-stacking heuristic, specificity ramp enforcement)                                     | 5          | [ ] Not started |
-| 7   | System prompt v2 - tuned from real playthroughs, twin-trace regression baseline                                    | 5          | [ ] Not started |
+| 6   | Validator hardening (synonym-stacking heuristic, specificity ramp enforcement) - runs AFTER Phase 7.5              | 5          | [ ] Not started |
+| 7   | Structural scaffolding (anchors + facets + modes) + system prompt v2 + More UX redesign + two-pass commit          | 21         | [x] Complete    |
+| 7.5 | Service-driven anchor interleaving + persona anchor personality + choice-driven facet entropy (A/B/C)              | 13         | [ ] Not started |
 | 8   | Workshop integration: remove old mount, add "Open in Odditarium" affordance on composer                            | 3          | [ ] Not started |
 | 9   | Manual playthrough pass + build/test green + Phase 13 archived as superseded                                       | 2          | [ ] Not started |
 
-Total estimated complexity: **47 points**. Completed: **32 pts** (Phases 1-5). Remaining: **15 pts**.
+Total estimated complexity: **76 points**. Completed: **53 pts** (Phases 1-5 + 7). Remaining: **23 pts**. Phase 7 was bumped from 13 to 21 after the anchors+facets+modes redesign; Phase 7.5 (13 pts) added after live playthroughs revealed LLM-driven anchor selection produced breadth-first drift and choice-invariant facets.
+
+**Execution order note:** Phase 7 ships before Phase 7.5; Phase 7.5 ships before Phase 6. Phase 6 validator heuristics are scoped to the simplified round response schema (no `mode`/`anchor` in LLM output) introduced in Phase 7.5.
 
 ---
 
@@ -306,25 +315,61 @@ Total estimated complexity: **47 points**. Completed: **32 pts** (Phases 1-5). R
 
 ---
 
-### Phase 7: System Prompt v2 (Tuned from Real Playthroughs)
+### Phase 7: Structural Scaffolding + System Prompt v2 + More UX + Two-Pass Commit
 
-**Objective:** Refine system prompt based on real playthrough data. Establish twin-trace regression baseline.
-**Status:** [ ] Not started
+**Objective:** Solve the abstract-drift, broken More button, and weak commit output observed in v1 playthroughs by introducing a two-tier concept pool (8 fixed anchors + LLM-invented facets), explicit round modes (expand/deepen/pivot), soft structural pressure, a typed layer model, an in-place skeleton refresh on More, and a two-pass commit. Ships system prompt v2.
+**Status:** [x] Complete — all 7 steps implemented and 31 unit tests passing. See [`PHASE_7.md`](./PHASE_7.md).
 
-#### Steps
+#### Steps (high level)
 
-- [ ] Conduct manual playthroughs with each persona — At least 3 full sessions per persona (15 total)
-- [ ] Collect failure cases — Document rounds where options felt stale, too specific, or off-vibe
-- [ ] Tune system prompt v2 — Adjust ruleset encoding based on observed failures
-- [ ] Twin-trace regression baseline — Re-run twin-trace with v2; confirm improvement over v1
-- [ ] Create `SYSTEM_PROMPTS/v2.md` — Versioned literal system prompt file
+- [x] Add `OdditariumLayer` (Anchor, Facet, Mode, Label, Hint, Question). Promote `CollectedLayers` to `List<OdditariumLayer>`.
+- [x] Add `body.PendingAnchor` / `PendingFacet` / `PendingMode`, `VisitedFacets`, `ShownLabelsForCurrentQuestion`, `BodySchemaVersion` with legacy reset.
+- [x] Implement anchor-coverage / visited-facets / structural-debt helpers in `OdditariumService`.
+- [x] Rewrite `BuildRoundSystemPrompt` / `BuildRoundUserPrompt` per v2 (mode + anchor + facet declaration). Add a More overlay that pins all four.
+- [x] Refactor `RequestMoreAsync` (preserve pinned values, accumulate exclusions). Refactor `NextRoundAsync` (record anchor/facet/mode, update VisitedFacets).
+- [x] Implement two-pass `CommitAsync` (expand then assemble) with documented fallbacks.
+- [x] Validator updates: `mode`/`anchor`/`facet`/`expansions` parsing, unknown-anchor coercion, kebab coercion, mode invariant enforcement.
+- [ ] New `OdditariumOptionSkeleton.razor` + mode badge in `OdditariumRoundPanel.razor` — deferred to Phase 7.5 UI polish.
+- [ ] Manual twin-trace baseline (`PHASE_7_TWIN_TRACE.md`) — pending Phase 7.5 anchor interleaving (twin-trace after 7.5 ships is more representative).
 
 #### Success Criteria
 
-- At least 15 manual playthroughs completed (3 per persona) ✓
-- Documented failure cases addressed in v2 ✓
-- Twin-trace shows improved divergence and quality over v1 ✓
-- `SYSTEM_PROMPTS/v2.md` created and versioned ✓
+- 4-round playthrough reaches at least 3 distinct anchors, one of which is `subject` ✔
+- At least one round per playthrough uses `mode=deepen` with a freshly-invented facet ✔
+- More keeps question + anchor + facet + mode pinned and only refreshes options ✔
+- Commit on a 5-layer session produces a draft mentioning subject + setting + at least one of lighting / mood / style ✔
+- Persona voice still identifiable; persona alone no longer dictates which anchor a round targets ✔
+- `SYSTEM_PROMPTS/v2.md` matches the literal prompts emitted by the service ✔
+- All Odditarium tests pass; build clean ✔
+
+---
+
+### Phase 7.5: Service-Driven Anchor Interleaving + Choice-Driven Facet Entropy
+
+**Objective:** Move anchor + mode decisions from the LLM to the service. Add persona anchor personality (affinity, deepen depth). Implement three choice-driven entropy mechanisms: resonance queue dynamics (A), facet seeding from prior picks (B), and cross-anchor facet inheritance on deepens (C). Simplify the round response schema to `{ facet, question, options }`. Ships system prompt v3 (round prompt only).
+**Status:** [ ] Not started — see [`PHASE_7.5.md`](./PHASE_7.5.md) for full design and step-by-step plan.
+
+#### Steps (high level)
+
+- [ ] Add `AnchorAffinity`, `MinDeepensPerAnchor`, `MaxDeepensPerAnchor` to `OdditariumPersona`. Update all 5 persona roster entries.
+- [ ] Add `CurrentAnchorTarget`, `RemainingDeepensForAnchor`, `AnchorQueue` to `OdditariumBody`.
+- [ ] Implement `BuildAnchorQueue(body, persona)` — weighted tier shuffle with affinity + jitter, skip visited.
+- [ ] Implement `AdvanceAnchorTarget(body, persona)` — deepen countdown / queue pop / bonus-deepen fallback.
+- [ ] Implement resonance map + `MutateQueueOnPick(body, anchor)`. Call from `NextRoundAsync` after each pick.
+- [ ] Implement `BuildFacetSeedBlock(body, anchor, mode)` — seed text for expand (B) and deepen (C) rounds.
+- [ ] Rewrite `PopulatePendingFromLLMAsync` — service sets anchor+mode first, then passes seed to prompt builder.
+- [ ] Rewrite `BuildRoundSystemPrompt` / `BuildRoundUserPrompt` per v3 — inject anchor+mode directive + seed, remove LLM mode/anchor declaration.
+- [ ] Update `RoundSchemaPriming` + `OdditariumResponseValidator.Sanitize` — strip mode/anchor from round validation.
+- [ ] Write `SYSTEM_PROMPTS/v3.md`.
+- [ ] Unit tests (16 new tests covering queue build, resonance, deepen countdown, facet seed content).
+
+#### Success Criteria
+
+- Iron Mother and Pixel Pixie produce different anchor sequences by round 3 from the same opening pick ✓
+- Deepen round questions reference the cross-anchor inheritance seed (feel connected to prior picks) ✓
+- Resonance bump is observable: pick from `subject` → next non-deepen round targets `action` ✓
+- LLM round responses no longer include `mode` or `anchor`; `SYSTEM_PROMPTS/v3.md` matches service output ✓
+- All Odditarium tests pass; build clean ✓
 
 ---
 

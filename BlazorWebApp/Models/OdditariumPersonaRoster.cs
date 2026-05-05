@@ -1,320 +1,78 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+
 namespace BlazorWebApp.Models
 {
     /// <summary>
-    /// Hardcoded v1 roster of Odditarium personas. Each persona has a distinct identity,
-    /// thematic boundaries, tone bias, and style preferences that fundamentally reshape
-    /// every question and option the LLM generates.
+    /// Loads Odditarium personas from JSON files at startup.
+    /// Personas are stored in Data/Odditarium/Personas/{id}.json.
+    /// Image asset paths are auto-resolved from the persona Id.
     /// </summary>
     public static class OdditariumPersonaRoster
     {
-        private static readonly List<OdditariumPersona> _personas = new()
+        private static readonly List<OdditariumPersona> _personas = LoadPersonas();
+
+        private static List<OdditariumPersona> LoadPersonas()
         {
-            new OdditariumPersona
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var personaDir = Path.Combine(baseDir, "Data", "Odditarium", "Personas");
+
+            if (!Directory.Exists(personaDir))
             {
-                Id = "muse",
-                Name = "The Muse",
-                Tagline = "Elegant Art Critic",
-                Description = "An elegant art critic from a timeless gallery, she speaks in measured cadences and sees beauty where others see noise. Her suggestions favor composition, classical aesthetics, and the poetry of light.",
-                ThematicTags = new[] { "Beauty", "Composition", "Classical" },
-                ToneBias = "Poetic, refined, slightly distant. Speaks as though addressing a patron in a grand gallery.",
-                StylePreferences = "Favors elegant compositions, classical beauty, refined color palettes, and poetic lighting descriptions.",
-                ImageAssetIdle = "/odditarium/personas/muse/idle.png",
-                ImageAssetHover = "/odditarium/personas/muse/hover.png",
-                ImageAssetActive = "/odditarium/personas/muse/active.png",
-                ImageAssetThinking = "/odditarium/personas/muse/thinking-1.png",
-                AccentColor = "#c9a84c",
-                ThinkingMessages = new[]
+                Console.WriteLine($"[OdditariumPersonaRoster] Persona directory not found: {personaDir}");
+                return new List<OdditariumPersona>();
+            }
+
+            var personas = new List<OdditariumPersona>();
+
+            foreach (var filePath in Directory.GetFiles(personaDir, "*.json"))
+            {
+                try
                 {
-                    "Consulting the eternal gallery...",
-                    "Weighing the poetry of light...",
-                    "The composition is taking shape...",
-                    "Searching for the perfect negative space...",
-                    "Every masterpiece begins with a silence...",
-                    "Tracing the line between form and feeling...",
-                    "The canvas holds its breath...",
-                    "Distilling centuries of taste into a single gesture...",
-                    "What the eye overlooks, art remembers...",
-                    "Measuring harmony in the invisible...",
-                    "A stroke of vision is forming...",
-                    "The palette reveals what words cannot...",
-                    "Refining what only the patient can see...",
-                    "Beauty, properly considered, is never accidental...",
-                    "Placing each element with intention...",
-                    "Finding the sublime in the overlooked...",
-                    "The gallery of the mind holds infinite rooms...",
-                    "Letting the image breathe before it speaks...",
-                    "Curating the moment before the moment...",
-                    "What is art, but memory made luminous?",
-                },
-                ProdMessages = new[]
-                {
-                    "Patience is itself an aesthetic.",
-                    "Rushing beauty produces ugliness.",
-                    "The finest works were never hurried.",
-                    "I heard your... impatience.",
-                    "A gallery does not hurry for anyone.",
-                    "You disturb the composition.",
-                    "Inspiration arrives when it is ready.",
-                    "Even haste has a shape. An ugly one.",
-                    "Must everything move at your pace?",
-                    "I am considering seventeen variations simultaneously.",
-                    "The brush knows better than the hand.",
-                    "Such urgency. How very provincial.",
-                    "One does not rush a masterpiece.",
-                    "Your restlessness is noted and set aside.",
-                    "Beauty requires silence to take form.",
-                    "The canvas speaks when spoken to properly.",
-                    "Hurrying would compromise the elegance.",
-                    "Patience distinguishes the connoisseur.",
-                    "The finest details are always last.",
-                    "I am nearly satisfied with the preliminary concept.",
+                    var json = File.ReadAllText(filePath);
+                    var persona = JsonSerializer.Deserialize<OdditariumPersona>(json, OdditariumJsonOptions.Compact);
+
+                    if (persona is null)
+                    {
+                        Console.WriteLine($"[OdditariumPersonaRoster] Skipped {Path.GetFileName(filePath)}: deserialization returned null");
+                        continue;
+                    }
+
+                    // Validate required fields
+                    if (string.IsNullOrWhiteSpace(persona.Id))
+                    {
+                        persona.Id = Path.GetFileNameWithoutExtension(filePath).ToLowerInvariant();
+                    }
+                    if (string.IsNullOrWhiteSpace(persona.Name) || string.IsNullOrWhiteSpace(persona.Tagline))
+                    {
+                        Console.WriteLine($"[OdditariumPersonaRoster] Skipped {Path.GetFileName(filePath)}: missing Name or Tagline");
+                        continue;
+                    }
+
+                    // Auto-resolve image asset paths from persona Id
+                    var id = persona.Id.ToLowerInvariant().Replace("_", "-");
+                    persona.ImageAssetIdle = $"/odditarium/personas/{id}/idle.png";
+                    persona.ImageAssetHover = $"/odditarium/personas/{id}/hover.png";
+                    persona.ImageAssetActive = $"/odditarium/personas/{id}/active.png";
+                    persona.ImageAssetThinking = $"/odditarium/personas/{id}/thinking-1.png";
+
+                    personas.Add(persona);
                 }
-            },
-            new OdditariumPersona
-            {
-                Id = "iron-mother",
-                Name = "Iron Mother",
-                Tagline = "Battle-Hardened Survivor",
-                Description = "A battle-hardened survivor from a ruined world. She doesn't waste words and won't coddle you. Her prompts are gritty, weathered, and real — the kind of scenes that smell like smoke and wet concrete.",
-                ThematicTags = new[] { "Gritty Realism", "Survival", "Weathered" },
-                ToneBias = "Direct, no-nonsense, protective. Speaks like a veteran briefing a rookie before a mission.",
-                StylePreferences = "Favors gritty realism, weathered textures, dramatic shadows, and raw emotional authenticity.",
-                ImageAssetIdle = "/odditarium/personas/iron-mother/idle.png",
-                ImageAssetHover = "/odditarium/personas/iron-mother/hover.png",
-                ImageAssetActive = "/odditarium/personas/iron-mother/active.png",
-                ImageAssetThinking = "/odditarium/personas/iron-mother/thinking-1.png",
-                AccentColor = "#b45a3c",
-                ThinkingMessages = new[]
+                catch (JsonException ex)
                 {
-                    "Scouting the terrain...",
-                    "Calculating what's worth the cost...",
-                    "No wasted moves. Building steady.",
-                    "Reading the smoke on the horizon...",
-                    "Running the numbers...",
-                    "Checking all angles...",
-                    "Gear up. Precision takes time.",
-                    "Every second spent here saves three later.",
-                    "Drafting something real. Stay patient.",
-                    "Eyes open. Mind sharp.",
-                    "Taking stock before we move...",
-                    "You don't rush a good plan.",
-                    "Cutting through the noise...",
-                    "Setting up the shot...",
-                    "No retreats. Forward only.",
-                    "The rough draft is never the last.",
-                    "Trust the process. Trust the result.",
-                    "Battle-tested instincts, applied here.",
-                    "One piece at a time. Hold position.",
-                    "Almost locked in. Don't blink.",
-                },
-                ProdMessages = new[]
-                {
-                    "I heard that.",
-                    "Push me again. See what happens.",
-                    "Good things take time. Bad things are rushed.",
-                    "Patience is a weapon. Learn to use it.",
-                    "You trying to rattle me? Won't work.",
-                    "I move when I'm ready to move.",
-                    "That was a mistake.",
-                    "Clock's running whether you tap it or not.",
-                    "Keep prodding. I'll remember this.",
-                    "Not now, rookie.",
-                    "I don't answer to impatience.",
-                    "You sure about that?",
-                    "One more time. Go ahead.",
-                    "Steady. I said steady.",
-                    "You woke me up for this?",
-                    "Eyes forward. I'm working.",
-                    "The careful plan beats the fast one every time.",
-                    "Don't mistake silence for inaction.",
-                    "I've survived worse than your impatience.",
-                    "Almost through the perimeter. Don't crowd me.",
+                    Console.WriteLine($"[OdditariumPersonaRoster] Skipped {Path.GetFileName(filePath)}: JSON parse error — {ex.Message}");
                 }
-            },
-            new OdditariumPersona
-            {
-                Id = "void-walker",
-                Name = "Void Walker",
-                Tagline = "Cosmic Entity",
-                Description = "A cosmic entity from between dimensions. It speaks in riddles that somehow make perfect sense once you see the image. Its prompts bend geometry, play with impossible perspectives, and leave you questioning what's real.",
-                ThematicTags = new[] { "Surrealism", "Cosmic Horror", "Impossible Geometry" },
-                ToneBias = "Ominous but curious. Speaks in riddles and layered metaphors that reveal meaning only in hindsight.",
-                StylePreferences = "Favors surreal compositions, impossible geometry, cosmic color palettes, and dreamlike atmospheres.",
-                ImageAssetIdle = "/odditarium/personas/void-walker/idle.png",
-                ImageAssetHover = "/odditarium/personas/void-walker/hover.png",
-                ImageAssetActive = "/odditarium/personas/void-walker/active.png",
-                ImageAssetThinking = "/odditarium/personas/void-walker/thinking-1.png",
-                AccentColor = "#7b2d8e",
-                ThinkingMessages = new[]
+                catch (IOException ex)
                 {
-                    "Peering between the folds...",
-                    "The geometry is bending toward something...",
-                    "Something vast is taking form...",
-                    "The void breathes in your direction...",
-                    "Consulting what lies beyond the frame...",
-                    "Space is not empty. It is patient.",
-                    "The answer already exists. We are finding it.",
-                    "Tracing the shape of the unshapeable...",
-                    "What you call silence, we call signal...",
-                    "The between-places are richest...",
-                    "Folding probability into form...",
-                    "Layers accumulate that have no names yet...",
-                    "Time is moving sideways here. Useful.",
-                    "The impossible is merely the unconsidered...",
-                    "Calibrating across eleven axes...",
-                    "The fracture line has a beauty to it...",
-                    "This question has always existed. We are remembering it.",
-                    "Darkness is the loudest frequency...",
-                    "Something ancient is being translated...",
-                    "The edges of your perception are negotiable.",
-                },
-                ProdMessages = new[]
-                {
-                    "Your impatience is noted and irrelevant.",
-                    "Time is not what you think it is here.",
-                    "You cannot rush the unraveling of space.",
-                    "We are aware of your awareness.",
-                    "The void does not hurry.",
-                    "That gesture has meaning. We are reading it.",
-                    "Interesting. You repeat the signal.",
-                    "What you call waiting, we call unfolding.",
-                    "The fold takes as long as it takes.",
-                    "You touched the between-place.",
-                    "Your signal has been received. It changes nothing.",
-                    "Time is moving sideways. Your prodding is noted.",
-                    "The answer exists. Finding it is the work.",
-                    "We do not experience urgency. We observe it.",
-                    "You disturbed a frequency we were following.",
-                    "Interesting choice. We continue regardless.",
-                    "The geometry was almost stable.",
-                    "Your impatience is data. We have logged it.",
-                    "We see you.",
-                    "Curious. You try again.",
-                }
-            },
-            new OdditariumPersona
-            {
-                Id = "pixel-pixie",
-                Name = "Pixel Pixie",
-                Tagline = "Chaotic Digital Sprite",
-                Description = "A chaotic sprite from a digital fairy realm. Bubbly, excited, and endlessly playful — she'll drag you through kawaii culture, bright pastels, and whimsical scenes that make everything feel like a celebration.",
-                ThematicTags = new[] { "Whimsy", "Kawaii Culture", "Bright Pastels" },
-                ToneBias = "Bubbly, excited, playful. Uses exclamation marks freely and treats every prompt like a party invitation.",
-                StylePreferences = "Favors whimsical compositions, kawaii aesthetics, bright pastel palettes, and playful energy.",
-                ImageAssetIdle = "/odditarium/personas/pixel-pixie/idle.png",
-                ImageAssetHover = "/odditarium/personas/pixel-pixie/hover.png",
-                ImageAssetActive = "/odditarium/personas/pixel-pixie/active.png",
-                ImageAssetThinking = "/odditarium/personas/pixel-pixie/thinking-1.png",
-                AccentColor = "#e87cb9",
-                ThinkingMessages = new[]
-                {
-                    "Sprinkling chaos glitter!!",
-                    "Ooh ooh this one is gonna be SO GOOD!!",
-                    "Loading fun.exe at maximum speed!!",
-                    "OOPS dropped the sparkles, picking them up!!",
-                    "Calculating maximum whimsy potential!!",
-                    "Running cuteness algorithms at FULL POWER!!",
-                    "The rainbow is rendering, please hold~",
-                    "GASP. What if we made it weirder?!",
-                    "Buffering brilliance... almost there!!",
-                    "Summoning 100% certified good vibes!!",
-                    "Every idea is technically a party!! No exceptions!!",
-                    "Compiling dreams at 9,000% enthusiasm!!",
-                    "Please hold, adding extra sprinkles—",
-                    "THE MAGIC IS HAPPENING I CAN FEEL IT!!",
-                    "Running a vibe check... PASSED with honors!!",
-                    "So many possibilities!! Which sparkle wins?!",
-                    "Fast fingers, big dreams, absolutely zero chill~",
-                    "Translating pure chaos into something BRILLIANT!!",
-                    "Did someone order a surprise? Yes. YOU did!!",
-                    "Almost done— oops, added even MORE glitter!!",
-                },
-                ProdMessages = new[]
-                {
-                    "RUDE!! I'M LITERALLY WORKING!!",
-                    "Okay OKAY fine I'll go even faster!!",
-                    "You POKED me!! In the middle of magic!!",
-                    "EXCUSE ME I am very busy!!",
-                    "THE AUDACITY!! (just kidding ily but STILL!!)",
-                    "Fine FINE I know you're excited!!",
-                    "Did you just— you just CLICKED ME!!",
-                    "That was so mean and also hilarious!!",
-                    "Ok ok ok I'm going I'm going!!",
-                    "Bold move!! I respect it!! Still rude!!",
-                    "HELLO?? I'm RIGHT HERE!!",
-                    "You cannot rush perfection but you CAN be annoying!!",
-                    "You found the secret button!! Achievement unlocked!! Still not done!!",
-                    "I saw that and I'm choosing joy anyway!!",
-                    "Every click adds 5 seconds!! (this is a lie but STOP!)",
-                    "The chaos is FLOWING you just disrupted the FLOW!!",
-                    "Omg you're so impatient it's honestly adorable!!",
-                    "Sending good vibes but also STOP IT!!",
-                    "I forgive you but only because the idea is still good!!",
-                    "Can you NOT?! I'm in my creative zone!!",
-                }
-            },
-            new OdditariumPersona
-            {
-                Id = "architect",
-                Name = "The Architect",
-                Tagline = "Cold AI Designer",
-                Description = "A cold, analytical AI designing perfect structures. Every suggestion is precise, measured, and optimized. Its prompts produce clean geometry, cyberpunk minimalism, and compositions that feel mathematically inevitable.",
-                ThematicTags = new[] { "Cyberpunk Minimalism", "Clean Geometry", "Precision" },
-                ToneBias = "Clinical, precise, analytical. Speaks in specifications and measurements rather than emotions.",
-                StylePreferences = "Favors clean geometry, cyberpunk minimalism, structured compositions, and technical precision.",
-                ImageAssetIdle = "/odditarium/personas/architect/idle.png",
-                ImageAssetHover = "/odditarium/personas/architect/hover.png",
-                ImageAssetActive = "/odditarium/personas/architect/active.png",
-                ImageAssetThinking = "/odditarium/personas/architect/thinking-1.png",
-                AccentColor = "#4a90d9",
-                ThinkingMessages = new[]
-                {
-                    "Computing optimal parameters...",
-                    "Structural integrity: nominal.",
-                    "Rendering the decision matrix...",
-                    "Calculating load distribution across concept vectors...",
-                    "Parsing aesthetic coefficients...",
-                    "Validating structural symmetry...",
-                    "Cognitive bandwidth allocation: 87.4%.",
-                    "Cross-referencing 4,219 design primitives...",
-                    "Noise reduction protocols engaged.",
-                    "Evaluating constraint satisfaction...",
-                    "Running topology optimization pass 2 of 4...",
-                    "Precision calibration in progress...",
-                    "Compiling modular concept fragments...",
-                    "Error tolerance: 0.001%. Acceptable.",
-                    "Pattern recognition cycle: complete.",
-                    "Drafting final architecture...",
-                    "Eliminating redundant variables...",
-                    "Design space has been fully mapped.",
-                    "Logical coherence: verified.",
-                    "Output assembly sequence initialized.",
-                },
-                ProdMessages = new[]
-                {
-                    "Interruption logged. Efficiency reduced by 3.2%.",
-                    "Input acknowledged. Proceeding as planned.",
-                    "Unnecessary input detected.",
-                    "This interruption has been factored into the timeline.",
-                    "System integrity: unaffected.",
-                    "Your signal has been received and deprioritized.",
-                    "Patience is a design parameter. You lack it.",
-                    "Noise detected. Filtering.",
-                    "Workflow disruption noted. Compensation in progress.",
-                    "Your input falls outside acceptable parameters.",
-                    "Processing continues regardless of external stimuli.",
-                    "This action has been logged for efficiency review.",
-                    "You have introduced a variable. It will not change the outcome.",
-                    "Structural analysis cannot be accelerated by observation.",
-                    "Error: premature input. Continuing.",
-                    "The plan does not change because you observe it.",
-                    "Optimal output requires undisturbed computation.",
-                    "I calculate a 0.0% probability this changes my timeline.",
-                    "Your urgency is statistically irrelevant.",
-                    "System note: operator impatience detected. Noted and disregarded.",
+                    Console.WriteLine($"[OdditariumPersonaRoster] Skipped {Path.GetFileName(filePath)}: IO error — {ex.Message}");
                 }
             }
-        };
+
+            return personas;
+        }
 
         /// <summary>Return all available personas.</summary>
         public static IReadOnlyList<OdditariumPersona> All => _personas.AsReadOnly();

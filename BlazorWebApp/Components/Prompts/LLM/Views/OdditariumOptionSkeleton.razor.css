@@ -1,0 +1,66 @@
+/* OdditariumOptionSkeleton — shimmer card matching option button geometry */
+
+.odditarium-option-skeleton {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--odd-spacing-md, 16px);
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--odd-radius-md, 8px);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-text-primary) 5%,
+    transparent
+  );
+  overflow: hidden;
+  position: relative;
+}
+
+/* Shimmer sweep */
+.odditarium-option-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--mud-palette-text-primary) 6%, transparent) 40%,
+    color-mix(in srgb, var(--mud-palette-text-primary) 10%, transparent) 50%,
+    color-mix(in srgb, var(--mud-palette-text-primary) 6%, transparent) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: odd-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes odd-skeleton-shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+.odd-skel-label {
+  height: 1rem;
+  width: 68%;
+  border-radius: 4px;
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-text-primary) 12%,
+    transparent
+  );
+}
+
+.odd-skel-hint {
+  height: 0.75rem;
+  width: 48%;
+  border-radius: 4px;
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-text-primary) 7%,
+    transparent
+  );
+}

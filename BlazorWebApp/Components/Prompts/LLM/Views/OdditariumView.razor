@@ -91,13 +91,37 @@
                     </MudAlert>
                 }
 
+                @* Continue a journey *@
+                @if (_activeSessions is { Count: > 0 })
+                {
+                    <div class="odditarium-continue-section">
+                        <div class="odditarium-continue-header">
+                            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Class="odditarium-continue-icon" />
+                            <span class="odditarium-continue-title">Continue a journey</span>
+                        </div>
+                        <div class="odditarium-continue-list">
+                            @foreach (var s in _activeSessions)
+                            {
+                                <OdditariumSessionCard Session="s" OnResume="HandleResumeSession"
+                                                       OnDiscard="HandleDiscardSession" />
+                            }
+                        </div>
+                    </div>
+                }
+                else if (_loadingSessions)
+                {
+                    <div class="odditarium-continue-loading">
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                    </div>
+                }
+
                 @* Start Button *@
                 <div class="odditarium-actions">
                     <button type="button" class="odditarium-start-btn" @onclick="OnStartAsync" disabled="@_startDisabled">
                         <span class="odditarium-icon-wrap">
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
                         </span>
-                        <span>Start Game</span>
+                        <span>Start New Game</span>
                     </button>
                 </div>
             </div>
@@ -125,6 +149,15 @@
     private OdditariumPersona? _selectedPersona => _selectedPersonaId is null ? null :
 OdditariumPersonaRoster.FindById(_selectedPersonaId!);
     private Data.Entities.OdditariumSession? _session;
+    private IReadOnlyList<Data.Entities.OdditariumSession>? _activeSessions;
+    private bool _loadingSessions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loadingSessions = true;
+        _activeSessions = await OdditariumService.ListActiveSessionsAsync(5);
+        _loadingSessions = false;
+    }
 
     protected override void OnParametersSet()
     {
@@ -164,6 +197,29 @@ OdditariumPersonaRoster.FindById(_selectedPersonaId!);
     private void HandlePersonaBack()
     {
         _showPersonaSelection = false;
+    }
+
+    private async Task HandleResumeSession(int id)
+    {
+        var session = await OdditariumService.LoadOrCreateAsync(null);
+        // LoadOrCreateAsync on the unbound slot won't work for resuming by Id;
+        // load directly via ListActive result we already have.
+        var target = _activeSessions?.FirstOrDefault(s => s.Id == id);
+        if (target == null) return;
+
+        _session = target;
+        _selectedPersonaId = target.Body.PersonaId;
+        _showPersonaSelection = false;
+        _showRoundPanel = true;
+    }
+
+    private async Task HandleDiscardSession(int id)
+    {
+        var target = _activeSessions?.FirstOrDefault(s => s.Id == id);
+        if (target == null) return;
+
+        await OdditariumService.ResetAsync(target.SessionId);
+        _activeSessions = await OdditariumService.ListActiveSessionsAsync(5);
     }
 
     private async Task HandleSessionChanged(Data.Entities.OdditariumSession? session)

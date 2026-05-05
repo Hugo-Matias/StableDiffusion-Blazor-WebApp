@@ -11,13 +11,7 @@
 
 <TwoColumnLayout Collapsible="true" @bind-Collapsed="_isNavCollapsed" SidebarTitle="LLM">
     <Sidebar>
-        <div class="d-flex flex-column" style="height: calc(100vh - 200px); gap: 4px;">
-            <LLMNavMenu ActiveViewId="@_activeViewId" OnViewSelected="HandleViewSelected" />
-            <MudDivider Style="margin: 2px 0;" />
-            <div style="flex: 1; min-height: 0; overflow-y: auto;">
-                <LLMSettingsPanel SelectedModel="@_selectedModel" SelectedModelChanged="HandleSelectedModelChanged" />
-            </div>
-        </div>
+        <LLMNavMenu ActiveViewId="@_activeViewId" OnViewSelected="HandleViewSelected" />
     </Sidebar>
     <CollapsedSidebar>
         <LLMNavMenu ActiveViewId="@_activeViewId" IsCollapsed="true" OnViewSelected="HandleViewSelected" />
@@ -27,7 +21,7 @@
             @switch (_activeViewId)
             {
                 case "process":
-                    <ProcessView SelectedModel="@_selectedModel" Templates="@_templates" TemplatesVersion="@_templatesVersion"
+                    <ProcessView SelectedModel="@State.State.Generation.LLM.Model" Templates="@_templates" TemplatesVersion="@_templatesVersion"
                                  PendingRestore="@_pendingRestore" RestoreVersion="@_restoreVersion" OnHistoryAdded="HandleHistoryAdded"
                                  OnHistoryMutated="HandleHistoryMutated" />
                     break;
@@ -35,31 +29,31 @@
                     <SystemPromptsView OnTemplatesChanged="HandleSystemPromptTemplatesChanged" />
                     break;
                 case "tag-builder":
-                    <TagBuilderView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess"
+                    <TagBuilderView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess"
                                     OnSendToWorkshop="HandleSendToWorkshop" />
                     break;
                 case "wildcard-forge":
-                    <WildcardForgeView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess"
+                    <WildcardForgeView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess"
                                        OnSendToWorkshop="HandleSendToWorkshop" />
                     break;
                 case "mixer":
-                    <MixerView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
+                    <MixerView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess" />
                     break;
                 case "inspiration":
-                    <InspirationView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
+                    <InspirationView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess" />
                     break;
                 case "scene-builder":
-                    <SceneBuilderView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess" />
+                    <SceneBuilderView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess" />
                     break;
                 case "image-to-prompt":
-                    <ImageToPromptView SelectedModel="@_selectedModel" OnSendToProcess="HandleSendToProcess"
+                    <ImageToPromptView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess"
                                        OnSendToWorkshop="HandleSendToWorkshop" />
                     break;
                 case "workshop":
                     <WorkshopView />
                     break;
                 case "odditarium":
-                    <OdditariumView SelectedModel="@_selectedModel" />
+                    <OdditariumView SelectedModel="@State.State.Generation.LLM.Model" />
                     break;
             }
         </div>
@@ -67,7 +61,6 @@
 </TwoColumnLayout>
 
 @code {
-    private string _selectedModel = string.Empty;
     private string _activeViewId = "process";
     private bool _isNavCollapsed = false;
 
@@ -115,7 +108,6 @@
         // History was merged into Process; redirect any stale persisted state.
         if (_activeViewId == "history") _activeViewId = "process";
         _isNavCollapsed = llm.IsNavCollapsed;
-        _selectedModel = llm.SelectedModel;
 
         await LoadTemplates();
     }
@@ -162,13 +154,6 @@
     {
         await LoadTemplates();
         StateHasChanged();
-    }
-
-    private async Task HandleSelectedModelChanged(string model)
-    {
-        _selectedModel = model;
-        State.State.Prompts.LLM.SelectedModel = model;
-        await State.SaveState();
     }
 
     private void HandleHistoryAdded(PromptHistoryEntry entry)

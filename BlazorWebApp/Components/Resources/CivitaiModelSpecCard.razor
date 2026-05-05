@@ -311,6 +311,7 @@ typeOverride);
 showSnackbar = true)
     {
         image = await Civitai.GetImageByModelVersionId(versionId, image);
+        if (image == null) return;
         var path = Path.Combine(Configuration["OutputDir"], "Saved", _resolvedType,
 $"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
         var imageFilename = string.IsNullOrWhiteSpace(filename) ? Parser.SanitizePath(image.Hash) : filename;
