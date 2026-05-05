@@ -1,0 +1,108 @@
+/* ==========================================
+   LoRA Card - Applied LoRA row / banner
+   ========================================== */
+
+.lora-card {
+    position: relative;
+    margin-bottom: 4px;
+    border-radius: var(--app-surface-radius);
+    overflow: hidden;
+    border: 1px solid var(--mud-palette-divider);
+    background: var(--mud-palette-surface);
+    min-height: 44px;
+}
+
+/* Banner variant — shown when a preview image is available */
+.lora-card--banner {
+    height: 72px;
+}
+
+/* Preview image: fills the card as a background */
+.lora-card-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    z-index: 0;
+}
+
+/* Content layer above the image */
+.lora-card-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 4px 4px 8px;
+    height: 100%;
+}
+
+/* Gradient overlay when banner is active */
+.lora-card--banner .lora-card-body {
+    background: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0.78) 0%,
+        rgba(0, 0, 0, 0.58) 55%,
+        rgba(0, 0, 0, 0.82) 100%
+    );
+}
+
+/* Name column */
+.lora-card-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.lora-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block !important;
+}
+
+.lora-card--banner .lora-name-text {
+    color: rgba(255, 255, 255, 0.92) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+}
+
+/* Controls row */
+.lora-card-controls {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 0;
+}
+
+/* Normalize both toggle-icon states to the same rendered size */
+.lora-card-controls ::deep .mud-icon-root {
+    font-size: 1rem !important;
+    width: 1rem !important;
+    height: 1rem !important;
+}
+
+.lora-strength-field {
+    width: 58px !important;
+    margin-top: 0 !important;
+}
+
+/* H/L dual-model button */
+.lora-ctrl-btn {
+    min-width: 26px !important;
+    height: 22px !important;
+    padding: 0 5px !important;
+    font-size: 0.68rem !important;
+    line-height: 1 !important;
+}
+
+/* White controls when banner is showing */
+.lora-card--banner .lora-card-controls .mud-icon-button,
+.lora-card--banner .lora-card-controls .mud-toggle-icon-button {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.lora-card--banner .lora-card-controls .mud-checkbox .mud-icon-button {
+    color: rgba(255, 255, 255, 0.8) !important;
+}

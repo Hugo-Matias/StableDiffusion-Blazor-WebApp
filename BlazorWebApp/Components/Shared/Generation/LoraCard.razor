@@ -1,50 +1,53 @@
-﻿<MudPaper Class="p-1 mb-1">
-    <MudGrid Class="d-flex align-items-center">
-        <MudItem xs="@(IsDualModel ? 5 : 7)">
-            <MudText Class="ms-3">@Lora.Name</MudText>
-        </MudItem>
-        <MudItem xs="2">
-            <MudNumericField Class="mt-n4"
-                             Value="Lora.Strength"
+﻿@inject IResourceCacheService ResourceCache
+@inject IIOService IO
+
+<div class="@(_previewSrc != null ? "lora-card lora-card--banner" : "lora-card")">
+    @if (_previewSrc != null)
+    {
+        <img class="lora-card-bg" src="@_previewSrc" loading="lazy" />
+    }
+    <div class="lora-card-body">
+        <div class="lora-card-name">
+            <MudText Typo="Typo.caption" Class="lora-name-text">@Lora.Name</MudText>
+        </div>
+        <div class="lora-card-controls">
+            <MudNumericField Value="Lora.Strength"
                              ValueChanged="@(async (float v) => await OnStrengthChanged(v))"
                              Variant="Variant.Text"
-                             Min="-5f" Max="5f" Step="0.05f" Format="N2" />
-        </MudItem>
-        @if (IsDualModel)
-        {
-            <MudItem xs="1">
+                             Min="-5f" Max="5f" Step="0.05f" Format="N2"
+                             Margin="Margin.Dense"
+                             Class="lora-strength-field" />
+            @if (IsDualModel)
+            {
                 <MudButton Variant="Variant.Filled"
                            Color="@(_isHigh ? Color.Primary : Color.Secondary)"
                            Size="Size.Small"
                            OnClick="TogglePath"
-                           Title="@(_isHigh ? "Assigned to High model" : "Assigned to Low model")" Style="margin: -5px">
+                           Title="@(_isHigh ? "Assigned to High model" : "Assigned to Low model")"
+                           Class="lora-ctrl-btn">
                     @(_isHigh ? "H" : "L")
                 </MudButton>
-            </MudItem>
-        }
-        <MudItem xs="1">
+            }
             <MudToggleIconButton Toggled="Lora.IsNegative"
                                  ToggledChanged="@(async (bool v) => await OnIsNegativeChanged(v))"
                                  Icon="fa-solid fa-circle-plus"
                                  Color="@Color.Success"
                                  ToggledIcon="fa-solid fa-circle-minus"
                                  ToggledColor="@Color.Error"
-                                 Title="@(Lora.IsNegative ? "Negative Prompt" : "Prompt")"/>
-        </MudItem>
-        <MudItem xs="1">
+                                 Size="Size.Small"
+                                 Title="@(Lora.IsNegative ? "Negative Prompt" : "Prompt")" />
             <MudCheckBox Checked="Lora.IsEnabled"
                          CheckedChanged="@(async (bool v) => await OnIsEnabledChanged(v))"
                          Title="Toggle Activation"
-                         Dense="true"/>
-        </MudItem>
-        <MudItem xs="1">
+                         Dense="true" />
             <MudIconButton Icon="fa-solid fa-xmark"
                            OnClick="async () => await OnRemoveLora.InvokeAsync(Lora)"
                            Color="Color.Error"
-                           Title="Remove"/>
-        </MudItem>
-    </MudGrid>
-</MudPaper>
+                           Size="Size.Small"
+                           Title="Remove" />
+        </div>
+    </div>
+</div>
 
 @code {
     [Parameter] public Lora Lora { get; set; }
@@ -53,10 +56,27 @@
     [Parameter] public EventCallback<Lora> OnLoraChanged { get; set; }
 
     private bool _isHigh;
+    private string? _previewSrc;
+    private string? _cachedPath;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         _isHigh = Lora.HasHighPath || !Lora.HasLowPath;
+
+        if (Lora.Path != _cachedPath)
+        {
+            _cachedPath = Lora.Path;
+            _previewSrc = await LoadPreviewAsync(Lora.Path);
+        }
+    }
+
+    private async Task<string?> LoadPreviewAsync(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        var resource = await ResourceCache.FindByFilenameAsync(path);
+        if (resource == null) return null;
+        var img = IO.GetResourceImagePath(resource.Type?.Name ?? "LORA", path);
+        return string.IsNullOrEmpty(img) ? null : img;
     }
 
     private async Task TogglePath()

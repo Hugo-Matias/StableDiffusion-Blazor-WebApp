@@ -1,17 +1,7 @@
 @using static BlazorWebApp.Data.Enums
-@using BlazorWebApp.Events
-@inject IRouterService Router
-@inject IOrchestratorService M
-@inject IResourceFilterService ResourceFilter
-@inject IResourceFilterStateService FilterState
-@inject IEventService Events
-@implements IDisposable
 
 <MudText Typo="Typo.caption" Class="mb-1">Loras</MudText>
-<MudAutocomplete T="string" @bind-Value=_lora Label="Search..." SearchFunc="SearchLoras" Adornment="Adornment.End"
-                 AdornmentIcon="fa-solid fa-plus" OnAdornmentClick="AddLora" MaxItems="null" MaxHeight="600" CoerceValue="true"
-                 CoerceText="true" ResetValueOnEmptyText="true" Clearable="true" SelectOnClick="false"
-                 ToStringFunc="@(s => string.IsNullOrWhiteSpace(s) ? string.Empty : s.Substring(0, s.LastIndexOf('.')))" />
+<LoraSelectorPanel Backend="Backend" Loras="Loras" IsDualModel="IsDualModel" OnLorasUpdated="OnLorasUpdated" />
 @if (Loras != null && Loras.Count > 0)
 {
     <div class="loras-panels-flush">
@@ -47,55 +37,12 @@
     [Parameter]
     public EventCallback OnLorasUpdated { get; set; }
 
-    private string _lora;
     private bool _isEnabledExpanded = true;
     private bool _isDisabledExpanded = false;
 
-    override protected void OnInitialized()
+    protected override void OnInitialized()
     {
         if (Loras == null) Loras = new List<Lora>();
-        Events.Subscribe<ResourceFilterChangedEventArgs>(OnFilterChanged);
-        Events.Subscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
-    }
-
-    public async Task<IEnumerable<string>> SearchLoras(string search)
-    {
-        var results = await Router.SearchLoras(Backend, search);
-        var resultList = results.ToList();
-
-        var workflow = M.GetCurrentWorkflow();
-        if (workflow == null)
-            return resultList;
-
-        await FilterState.EnsureInitializedForWorkflowAsync(workflow);
-        var effectiveBaseModels = FilterState.GetEffectiveBaseModels();
-
-        if (effectiveBaseModels == null)
-            return await ResourceFilter.FilterLorasByWorkflowAsync(resultList, workflow, includeUntracked:
-FilterState.IncludeUntracked);
-
-        return await ResourceFilter.FilterByBaseModelsAsync(resultList, effectiveBaseModels, includeUntracked:
-FilterState.IncludeUntracked);
-    }
-
-    public async Task AddLora()
-    {
-        if (string.IsNullOrWhiteSpace(_lora)) return;
-
-        var name = Path.GetFileNameWithoutExtension(_lora);
-        var path = _lora;
-
-        Loras.Add(new()
-        {
-            Name = name,
-            Path = path,
-            IsNegative = false,
-            Strength = 1,
-            IsEnabled = true,
-            HighPath = IsDualModel ? path : null
-        });
-
-        await OnLorasUpdated.InvokeAsync();
     }
 
     public async Task RemoveLora(Lora lora)
@@ -107,21 +54,5 @@ FilterState.IncludeUntracked);
     public async Task UpdateLora(Lora lora)
     {
         await OnLorasUpdated.InvokeAsync();
-    }
-
-    private void OnFilterChanged(ResourceFilterChangedEventArgs args)
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    private void OnResourcesChanged(ResourcesChangedEventArgs args)
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Events.Unsubscribe<ResourceFilterChangedEventArgs>(OnFilterChanged);
-        Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
     }
 }
