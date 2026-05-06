@@ -41,6 +41,11 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetControlNetModels();
 
         /// <summary>
+        /// Model patches backed by <c>ModelPatchLoader.name</c>.
+        /// </summary>
+        Task<List<string>> GetModelPatches();
+
+        /// <summary>
         /// Gets input options for a specific node input from ComfyUI's object_info API.
         /// Used to dynamically fetch available options for node parameters (e.g., model lists).
         /// </summary>

@@ -86,11 +86,13 @@ public class VaeMergeFragment : IFragmentBuilder
             .Input("vae_name", p.VaeBName));
 
         // Merge VAEs with weighted sum
+        // Use direct node-id tuples — vae_loader_a/b are nodes built in this fragment,
+        // not registry-registered outputs, so GetRef would throw.
         builder.AddNode(vaeMergeNodeId, node => node
             .Type("VAE Merge")
             .Title($"{scopeTitle}Merge VAEs")
-            .InputRef("vae_a", registry.GetRef($"{vaeANodeId}"))
-            .InputRef("vae_b", registry.GetRef($"{vaeBNodeId}"))
+            .InputRef("vae_a", (vaeANodeId, 0))
+            .InputRef("vae_b", (vaeBNodeId, 0))
             .Input("method", "weighted_sum")
             .Input("ratio", p.Ratio));
 

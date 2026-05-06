@@ -10,7 +10,7 @@
 @attribute [FragmentComponent("ZImageUpscaleForm")]
 @inject IGenerationParameterService ParameterService
 
-<MudGrid>
+<MudGrid Spacing="2">
     <MudItem xs="6">
         <MudSlider T="double" @bind-Value="_localUpscaleBy" @bind-Value:after="OnUpscaleByChanged"
                    Min="@_constraints.upscale_by.GetMin(1)" Max="@_constraints.upscale_by.GetMax(4)"
@@ -20,26 +20,170 @@
     </MudItem>
     <MudItem xs="6">
         <MudSlider T="double" @bind-Value="_localStrength" @bind-Value:after="OnStrengthChanged"
-                   Min="@_constraints.strength.GetMin(0)" Max="@_constraints.strength.GetMax(2)"
+                   Min="@_constraints.strength.GetMin(-10)" Max="@_constraints.strength.GetMax(10)"
                    Step="@_constraints.strength.GetStep(0.01)" Variant="Variant.Filled" ValueLabel>
             <small>ControlNet Strength:</small> @_localStrength.ToString("F2")
         </MudSlider>
     </MudItem>
+
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Upscale Sampler" @bind-Value="_localSamplerName"
+                   @bind-Value:after="OnSamplerNameChanged" Variant="Variant.Text" Dense="true"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var sampler in _samplerOptions)
+            {
+                <MudSelectItem Value="@sampler" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Upscale Scheduler" @bind-Value="_localScheduler"
+                   @bind-Value:after="OnSchedulerChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var scheduler in _schedulerOptions)
+            {
+                <MudSelectItem Value="@scheduler" />
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudSlider T="int" @bind-Value="_localSteps" @bind-Value:after="OnStepsChanged" Min="1" Max="150" Step="1"
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Upscale Steps:</small> @_localSteps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Upscale Seed"
+                         Min="-1" Max="long.MaxValue" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localCfg" @bind-Value:after="OnCfgChanged" Min="0" Max="30" Step="0.5"
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Upscale CFG:</small> @_localCfg.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localDenoise" @bind-Value:after="OnDenoiseChanged" Min="0" Max="1"
+                   Step="0.01" Variant="Variant.Filled" ValueLabel>
+            <small>Upscale Denoise:</small> @_localDenoise.ToString("F2")
+        </MudSlider>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudSwitch T="bool" @bind-Value="_localUseZImageControlNet" @bind-Value:after="OnControlNetNodeChanged"
+                   Color="Color.Primary" Size="Size.Small" Label="Use Z-Image ControlNet node" />
+    </MudItem>
+
     <MudItem xs="12" Class="align-items-center justify-content-center d-flex">
         <MudText Typo="Typo.overline">@_resizeInfo</MudText>
     </MudItem>
+
     <MudItem xs="12">
-        <MudAlert Severity="Severity.Info" Dense="true">
-            <MudText Typo="Typo.caption">
-                <strong>Z-Image Turbo Upscale</strong> chains base generation into tiled upscale
-                with ControlNet tile guidance for high-resolution, structurally consistent output.
-                <br /><br />
-                <em>ControlNet strength controls tile guidance intensity. Lower values (0.1-0.3) preserve
-                    the original style; higher values (0.5+) enforce stricter structural guidance.</em>
-                </MudText>
-            </MudAlert>
-        </MudItem>
-    </MudGrid>
+        <MudExpansionPanels Elevation="0">
+            <MudExpansionPanel Text="Advanced">
+                <MudGrid Spacing="2">
+                    <MudItem xs="4">
+                        <MudSwitch T="bool" @bind-Value="_localAutoTileSize" @bind-Value:after="OnAutoTileSizeChanged"
+                                   Color="Color.Primary" Size="Size.Small" Label="Auto Tile Size" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localTileWidth" @bind-Value:after="OnTileWidthChanged" Min="64"
+                                   Max="8192" Step="8" Variant="Variant.Filled" ValueLabel Disabled="@_localAutoTileSize">
+                            <small>Tile Width:</small> @_localTileWidth
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localTileHeight" @bind-Value:after="OnTileHeightChanged"
+                                   Min="64" Max="8192" Step="8" Variant="Variant.Filled" ValueLabel
+                                   Disabled="@_localAutoTileSize">
+                            <small>Tile Height:</small> @_localTileHeight
+                        </MudSlider>
+                    </MudItem>
+
+                    <MudItem xs="4">
+                        <MudSelect T="string" Label="Mode Type" @bind-Value="_localModeType"
+                                   @bind-Value:after="OnModeTypeChanged" Variant="Variant.Text" Dense="true"
+                                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            @foreach (var modeType in _modeTypeOptions)
+                            {
+                                <MudSelectItem Value="@modeType" />
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localMaskBlur" @bind-Value:after="OnMaskBlurChanged" Min="0"
+                                   Max="64" Step="1" Variant="Variant.Filled" ValueLabel>
+                            <small>Mask Blur:</small> @_localMaskBlur
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localTilePadding" @bind-Value:after="OnTilePaddingChanged"
+                                   Min="0" Max="8192" Step="8" Variant="Variant.Filled" ValueLabel>
+                            <small>Tile Padding:</small> @_localTilePadding
+                        </MudSlider>
+                    </MudItem>
+
+                    <MudItem xs="4">
+                        <MudSelect T="string" Label="Seam Fix" @bind-Value="_localSeamFixMode"
+                                   @bind-Value:after="OnSeamFixModeChanged" Variant="Variant.Text" Dense="true"
+                                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            @foreach (var seamFixMode in _seamFixModeOptions)
+                            {
+                                <MudSelectItem Value="@seamFixMode" />
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="double" @bind-Value="_localSeamFixDenoise"
+                                   @bind-Value:after="OnSeamFixDenoiseChanged" Min="0" Max="1" Step="0.01"
+                                   Variant="Variant.Filled" ValueLabel>
+                            <small>Seam Denoise:</small> @_localSeamFixDenoise.ToString("F2")
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localSeamFixWidth" @bind-Value:after="OnSeamFixWidthChanged"
+                                   Min="0" Max="8192" Step="8" Variant="Variant.Filled" ValueLabel>
+                            <small>Seam Width:</small> @_localSeamFixWidth
+                        </MudSlider>
+                    </MudItem>
+
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localSeamFixMaskBlur"
+                                   @bind-Value:after="OnSeamFixMaskBlurChanged" Min="0" Max="64" Step="1"
+                                   Variant="Variant.Filled" ValueLabel>
+                            <small>Seam Mask Blur:</small> @_localSeamFixMaskBlur
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localSeamFixPadding"
+                                   @bind-Value:after="OnSeamFixPaddingChanged" Min="0" Max="8192" Step="8"
+                                   Variant="Variant.Filled" ValueLabel>
+                            <small>Seam Padding:</small> @_localSeamFixPadding
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSlider T="int" @bind-Value="_localBatchSize" @bind-Value:after="OnBatchSizeChanged" Min="1"
+                                   Max="16" Step="1" Variant="Variant.Filled" ValueLabel>
+                            <small>Tile Batch:</small> @_localBatchSize
+                        </MudSlider>
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudSwitch T="bool" @bind-Value="_localForceUniformTiles"
+                                   @bind-Value:after="OnForceUniformTilesChanged" Color="Color.Primary" Size="Size.Small"
+                                   Label="Force Uniform Tiles" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSwitch T="bool" @bind-Value="_localTiledDecode" @bind-Value:after="OnTiledDecodeChanged"
+                                   Color="Color.Primary" Size="Size.Small" Label="Tiled Decode" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudItem>
+</MudGrid>
 
 @code {
     /// <summary>
@@ -54,26 +198,75 @@
     
     #region Local State (for MudBlazor binding - prevents snap-back)
     
-    private double _localUpscaleBy;
-    private double _localStrength;
+    private double _localUpscaleBy = 2.0;
+    private double _localStrength = 0.2;
+    private string? _localSamplerName = "deis_2m";
+    private string? _localScheduler = "beta";
+    private int _localSteps = 6;
+    private long _localSeed = -1;
+    private double _localCfg = 1.0;
+    private double _localDenoise = 0.21;
+    private bool _localUseZImageControlNet;
+    private bool _localAutoTileSize = true;
+    private int _localTileWidth = 512;
+    private int _localTileHeight = 512;
+    private string? _localModeType = "Linear";
+    private int _localMaskBlur = 8;
+    private int _localTilePadding = 32;
+    private string? _localSeamFixMode = "None";
+    private double _localSeamFixDenoise = 1.0;
+    private int _localSeamFixWidth = 64;
+    private int _localSeamFixMaskBlur = 8;
+    private int _localSeamFixPadding = 16;
+    private bool _localForceUniformTiles = true;
+    private bool _localTiledDecode;
+    private int _localBatchSize = 1;
     private MarkupString _resizeInfo = new();
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+    private static readonly string[] _modeTypeOptions = ["Linear", "Chess", "None"];
+    private static readonly string[] _seamFixModeOptions = ["None", "Band Pass", "Half Tile", "Half Tile + Intersections"];
     
     // Cached constraints from schema
-    private (ParameterConstraints upscale_by, ParameterConstraints strength) _constraints;
+    private (ParameterConstraints upscale_by, ParameterConstraints strength) _constraints = (new(), new());
     
     protected override void OnParametersSet()
     {
         if (Fragment == null) return;
         
-        // Load constraints from schema
-        _constraints = (
-            Fragment.Schema.GetConstraints("upscale_by"),
-            Fragment.Schema.GetConstraints("strength")
-        );
+        var schema = Fragment.Schema;
+        _constraints = schema is null
+            ? (new ParameterConstraints(), new ParameterConstraints())
+            : (schema.GetConstraints("upscale_by"), schema.GetConstraints("strength"));
+
+        _samplerOptions = GetOptions("upscale_sampler_name", "deis_2m", "dpmpp_2m", "euler");
+        _schedulerOptions = GetOptions("upscale_scheduler", "beta", "simple", "normal");
         
         // Sync local state FROM service
-        _localUpscaleBy = ParameterService.GetFragmentProperty(Fragment, "upscale_by", 1.5);
+        _localUpscaleBy = ParameterService.GetFragmentProperty(Fragment, "upscale_by", 2.0);
         _localStrength = ParameterService.GetFragmentProperty(Fragment, "strength", 0.2);
+        _localSamplerName = ParameterService.GetFragmentProperty(Fragment, "upscale_sampler_name", "deis_2m") ?? "deis_2m";
+        _localScheduler = ParameterService.GetFragmentProperty(Fragment, "upscale_scheduler", "beta") ?? "beta";
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, "upscale_steps", 6);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, "upscale_seed", -1L);
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, "upscale_cfg", 1.0);
+        _localDenoise = ParameterService.GetFragmentProperty(Fragment, "upscale_denoise", 0.21);
+        _localUseZImageControlNet = (ParameterService.GetFragmentProperty(Fragment, "controlnet_node_type",
+"QwenImageDiffsynthControlnet") ?? "QwenImageDiffsynthControlnet") == "ZImageFunControlnet";
+        _localAutoTileSize = ParameterService.GetFragmentProperty(Fragment, "auto_tile_size", true);
+        _localTileWidth = ParameterService.GetFragmentProperty(Fragment, "tile_width", 512);
+        _localTileHeight = ParameterService.GetFragmentProperty(Fragment, "tile_height", 512);
+        _localModeType = ParameterService.GetFragmentProperty(Fragment, "mode_type", "Linear") ?? "Linear";
+        _localMaskBlur = ParameterService.GetFragmentProperty(Fragment, "mask_blur", 8);
+        _localTilePadding = ParameterService.GetFragmentProperty(Fragment, "tile_padding", 32);
+        _localSeamFixMode = ParameterService.GetFragmentProperty(Fragment, "seam_fix_mode", "None") ?? "None";
+        _localSeamFixDenoise = ParameterService.GetFragmentProperty(Fragment, "seam_fix_denoise", 1.0);
+        _localSeamFixWidth = ParameterService.GetFragmentProperty(Fragment, "seam_fix_width", 64);
+        _localSeamFixMaskBlur = ParameterService.GetFragmentProperty(Fragment, "seam_fix_mask_blur", 8);
+        _localSeamFixPadding = ParameterService.GetFragmentProperty(Fragment, "seam_fix_padding", 16);
+        _localForceUniformTiles = ParameterService.GetFragmentProperty(Fragment, "force_uniform_tiles", true);
+        _localTiledDecode = ParameterService.GetFragmentProperty(Fragment, "tiled_decode", false);
+        _localBatchSize = ParameterService.GetFragmentProperty(Fragment, "batch_size", 1);
         
         RefreshResizeInfo();
     }
@@ -94,26 +287,91 @@
         ParameterService.SetFragmentProperty(Fragment, "strength", _localStrength, notify: true);
         await OnChanged.InvokeAsync();
     }
+
+    private Task OnSamplerNameChanged() => SetValue("upscale_sampler_name", _localSamplerName);
+    private Task OnSchedulerChanged() => SetValue("upscale_scheduler", _localScheduler);
+    private Task OnStepsChanged() => SetValue("upscale_steps", _localSteps);
+    private Task OnSeedChanged() => SetValue("upscale_seed", _localSeed);
+    private Task OnCfgChanged() => SetValue("upscale_cfg", _localCfg);
+    private Task OnDenoiseChanged() => SetValue("upscale_denoise", _localDenoise);
+    private Task OnModeTypeChanged() => SetValue("mode_type", _localModeType);
+    private Task OnMaskBlurChanged() => SetValue("mask_blur", _localMaskBlur);
+    private Task OnTilePaddingChanged() => SetValue("tile_padding", _localTilePadding);
+    private Task OnSeamFixModeChanged() => SetValue("seam_fix_mode", _localSeamFixMode);
+    private Task OnSeamFixDenoiseChanged() => SetValue("seam_fix_denoise", _localSeamFixDenoise);
+    private Task OnSeamFixWidthChanged() => SetValue("seam_fix_width", _localSeamFixWidth);
+    private Task OnSeamFixMaskBlurChanged() => SetValue("seam_fix_mask_blur", _localSeamFixMaskBlur);
+    private Task OnSeamFixPaddingChanged() => SetValue("seam_fix_padding", _localSeamFixPadding);
+    private Task OnForceUniformTilesChanged() => SetValue("force_uniform_tiles", _localForceUniformTiles);
+    private Task OnTiledDecodeChanged() => SetValue("tiled_decode", _localTiledDecode);
+    private Task OnBatchSizeChanged() => SetValue("batch_size", _localBatchSize);
+
+    private async Task OnControlNetNodeChanged()
+    {
+        var nodeType = _localUseZImageControlNet ? "ZImageFunControlnet" : "QwenImageDiffsynthControlnet";
+        await SetValue("controlnet_node_type", nodeType);
+    }
+
+    private async Task OnAutoTileSizeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "auto_tile_size", _localAutoTileSize, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTileWidthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "tile_width", _localTileWidth, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTileHeightChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "tile_height", _localTileHeight, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
     
     #endregion
+
+    private async Task SetValue<T>(string key, T value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
     
     private void RefreshResizeInfo()
     {
-        var baseWidth = 1568;
-        var baseHeight = 1356;
+        var baseWidth = 872;
+        var baseHeight = 1248;
         
         // Try to read base dimensions from primary latent fragment
         if (ParameterService.PrimaryLatentFragment != null)
         {
             var latentW = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "width", 872);
             var latentH = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "height", 1248);
-            // Approximate pixel space from latent (Z-Image uses ~8x downsampling, but latent dims are already adjusted)
             baseWidth = latentW;
             baseHeight = latentH;
         }
         
         var targetW = (int)(baseWidth * _localUpscaleBy);
         var targetH = (int)(baseHeight * _localUpscaleBy);
-        _resizeInfo = new MarkupString($"From: {baseWidth}x{baseHeight} px &rarr; To: <strong>{targetW}x{targetH} px</strong> ({_localUpscaleBy:F1}x)");
+        var tileW = _localAutoTileSize ? CalculateTileSize(baseWidth, _localUpscaleBy) : _localTileWidth;
+        var tileH = _localAutoTileSize ? CalculateTileSize(baseHeight, _localUpscaleBy) : _localTileHeight;
+        _resizeInfo = new MarkupString($"From: {baseWidth}x{baseHeight} px &rarr; To: <strong>{targetW}x{targetH} px</strong> ({_localUpscaleBy:F2}x) | Tile: <strong>{tileW}x{tileH}</strong>");
+    }
+
+    private List<string> GetOptions(string parameterName, params string[] fallback)
+    {
+        var resolved = ParameterService.GetResolvedOptions(Fragment?.Id ?? "zimage_upscale", parameterName);
+        return resolved.Count > 0 ? resolved : fallback.ToList();
+    }
+
+    private static int CalculateTileSize(int baseSize, double upscaleBy)
+    {
+        var value = (int)(upscaleBy * baseSize / 2 + 32);
+        var clamped = Math.Clamp(value, 64, 8192);
+        return Math.Max(64, (clamped / 8) * 8);
     }
 }

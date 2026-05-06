@@ -85,19 +85,38 @@
             </MudSlider>
         </MudItem>
     }
-    <MudItem xs="6">
-        <MudSlider T="float" 
-                   @bind-Value="_localDenoise"
-                   @bind-Value:after="OnDenoiseChanged"
-                   Min="(float)Settings.Settings.Generation.Shared.Denoising.Min" 
-                   Max="(float)Settings.Settings.Generation.Shared.Denoising.Max" 
-                   Step="(float)Settings.Settings.Generation.Shared.Denoising.Step" 
-                   Variant="Variant.Filled" 
-                   ValueLabel 
-                   TickMarks>
-            <small>Denoise:</small> @_localDenoise.ToString("F2")
-        </MudSlider>
-    </MudItem>
+    @if (_showDenoise)
+    {
+        <MudItem xs="6">
+            <MudSlider T="float" 
+                       @bind-Value="_localDenoise"
+                       @bind-Value:after="OnDenoiseChanged"
+                       Min="(float)Settings.Settings.Generation.Shared.Denoising.Min" 
+                       Max="(float)Settings.Settings.Generation.Shared.Denoising.Max" 
+                       Step="(float)Settings.Settings.Generation.Shared.Denoising.Step" 
+                       Variant="Variant.Filled" 
+                       ValueLabel 
+                       TickMarks>
+                <small>Denoise:</small> @_localDenoise.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
+    @if (_showEta)
+    {
+        <MudItem xs="6">
+            <MudSlider T="float"
+                       @bind-Value="_localEta"
+                       @bind-Value:after="OnEtaChanged"
+                       Min="_etaConstraints.GetMin(0f)"
+                       Max="_etaConstraints.GetMax(1f)"
+                       Step="_etaConstraints.GetStep(0.01f)"
+                       Variant="Variant.Filled"
+                       ValueLabel
+                       TickMarks>
+                <small>Eta:</small> @_localEta.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
 </MudGrid>
 
 @code {
@@ -129,12 +148,20 @@
     private float _localCfgScale;
     private float _localGuidance;
     private float _localDenoise;
+    private float _localEta;
+    private bool _showDenoise = true;
+    private bool _showEta;
+    private ParameterConstraints _etaConstraints = new();
     private List<string> _samplerOptions = new();
     private List<string> _schedulerOptions = new();
 
     protected override void OnParametersSet()
     {
         if (Fragment == null) return;
+
+        _showDenoise = Fragment.Schema?.Parameters.ContainsKey(Params.Denoise) ?? true;
+        _showEta = Fragment.Schema?.Parameters.ContainsKey(Params.Eta) ?? false;
+        _etaConstraints = Fragment.Schema?.GetConstraints(Params.Eta) ?? new ParameterConstraints();
 
         // Load resolved options from pre-resolution cache
         _samplerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.SamplerName);
@@ -157,6 +184,7 @@
         }
         
         _localDenoise = ParameterService.GetFragmentProperty(Fragment, Params.Denoise, 1.0f);
+        _localEta = ParameterService.GetFragmentProperty(Fragment, Params.Eta, _etaConstraints.GetMin(0.5f));
     }
     
     #endregion
@@ -209,6 +237,13 @@
     {
         // Write TO service (with notification for UI updates)
         ParameterService.SetFragmentProperty(Fragment, Params.Denoise, _localDenoise, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnEtaChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Eta, _localEta, notify: true);
         await OnChanged.InvokeAsync();
     }
     

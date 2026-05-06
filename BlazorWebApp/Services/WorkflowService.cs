@@ -192,6 +192,7 @@ namespace BlazorWebApp.Services
                 Workflows.Models.AssetType.UpscaleModel => Models.AssetType.UpscaleModel,
                 Workflows.Models.AssetType.LatentUpscaleModel => Models.AssetType.LatentUpscaleModel,
                 Workflows.Models.AssetType.ControlNet => Models.AssetType.ControlNet,
+                Workflows.Models.AssetType.ModelPatch => Models.AssetType.ModelPatch,
                 _ => Models.AssetType.DiffusionModel
             };
         }

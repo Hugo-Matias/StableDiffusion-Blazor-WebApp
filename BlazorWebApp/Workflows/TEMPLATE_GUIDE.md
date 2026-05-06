@@ -261,6 +261,7 @@ new WorkflowAsset
 | `UpscaleModel`       | `models/upscale_models` (`UpscaleModelLoader.model_name`)                                     | Pixel-space upscalers (ESRGAN-style)                                                        |
 | `LatentUpscaleModel` | `models/latent_upscale_models` (`LatentUpscaleModelLoader.model_name`)                        | Latent / diffusion-space upscalers (LTX spatial upscaler)                                   |
 | `ControlNet`         | `models/controlnet` (`ControlNetLoader.control_net_name`)                                     | ControlNet conditioning models                                                              |
+| `ModelPatch`         | `models/model_patches` (`ModelPatchLoader.name`)                                              | Model patch files used by patch-style ControlNet loaders                                    |
 | `Lora`               | `models/loras` (LoRA loaders)                                                                 | LoRA / IC-LoRA adapter files                                                                |
 
 > Note: the folder path on the right is the **default** ComfyUI mapping. The
@@ -536,6 +537,7 @@ private readonly SamplerFragment _sampler = new()
 ```
 
 **Rules:**
+
 - `Defaults` must be declared before `Metadata` in the class body (because `Metadata` is a
   computed property that reads `Defaults` at access time)
 - `Parameters` inner class defaults represent the canonical ComfyUI defaults, not any

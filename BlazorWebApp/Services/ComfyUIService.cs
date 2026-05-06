@@ -336,6 +336,10 @@ namespace BlazorWebApp.Services
             => GetNodeInputOptionsAsync("ControlNetLoader", "control_net_name");
 
         /// <inheritdoc />
+        public Task<List<string>> GetModelPatches()
+            => GetNodeInputOptionsAsync("ModelPatchLoader", "name");
+
+        /// <inheritdoc />
         public async Task<List<string>> GetNodeInputOptionsAsync(string classType, string inputName)
         {
             return await GetNodeInputOptions<string>(classType, inputName, name => name);

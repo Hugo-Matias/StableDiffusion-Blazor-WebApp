@@ -53,6 +53,7 @@ namespace BlazorWebApp.Services
                     AssetType.UpscaleModel => await _comfy.GetUpscaleModels() ?? new List<string>(),
                     AssetType.LatentUpscaleModel => await _comfy.GetLatentUpscaleModels() ?? new List<string>(),
                     AssetType.ControlNet => await _comfy.GetControlNetModels() ?? new List<string>(),
+                    AssetType.ModelPatch => await _comfy.GetModelPatches() ?? new List<string>(),
                     AssetType.Lora => await _comfy.GetLoras() ?? new List<string>(),
                     _ => new List<string>()
                 };

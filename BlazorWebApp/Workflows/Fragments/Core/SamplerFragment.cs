@@ -11,6 +11,14 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class SamplerFragment : IFragmentBuilder
 {
+    public string Id { get; init; } = "main_sampler";
+    public string Title { get; init; } = "Sampler";
+    public FragmentType Type { get; init; } = FragmentType.Sampler;
+    public int Order { get; init; } = 50;
+    public bool Collapsible { get; init; } = true;
+    public bool DefaultCollapsed { get; init; } = false;
+    public bool? DefaultActive { get; init; }
+
     /// <summary>
     /// Workflow-specific defaults. Set once per workflow in the field initializer using the
     /// existing <see cref="Parameters"/> type. Both <see cref="Metadata"/> (for first-load
@@ -21,13 +29,15 @@ public class SamplerFragment : IFragmentBuilder
 
     public FragmentMetadata Metadata => new()
     {
-        Id = "main_sampler",
-        Type = FragmentType.Sampler,
-        Title = "Sampler",
+        Id = Id,
+        Type = Type,
+        Title = Title,
         Component = "SamplerForm",
         Icon = "fa-solid fa-dice",
-        Order = 50,
-        Collapsible = true,
+        Order = Order,
+        Collapsible = Collapsible,
+        DefaultCollapsed = DefaultCollapsed,
+        DefaultActive = DefaultActive,
         Parameters =
         [
             new FragmentParameter
@@ -145,10 +155,10 @@ public class SamplerFragment : IFragmentBuilder
         string scope = "",
         string scopeTitle = "")
     {
-        var fragment = parameters.GetFragment(Metadata.Id);
+        var fragment = parameters.GetFragment(Id);
 
-        var samplerId = fragment?.GetString("sampler_id", "sampler_main") ?? "sampler_main";
-        var title = fragment?.GetString("title", "Sampler") ?? "Sampler";
+        var samplerId = fragment?.GetString("sampler_id", Id == "main_sampler" ? "sampler_main" : Id) ?? (Id == "main_sampler" ? "sampler_main" : Id);
+        var title = fragment?.GetString("title", Title) ?? Title;
         var samplerName = fragment?.GetString("sampler_name", Defaults.SamplerName) ?? Defaults.SamplerName;
         var scheduler = fragment?.GetString("scheduler", Defaults.Scheduler) ?? Defaults.Scheduler;
         var steps = fragment?.GetInt("steps", Defaults.Steps) ?? Defaults.Steps;

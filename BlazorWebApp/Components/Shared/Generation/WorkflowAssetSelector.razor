@@ -251,6 +251,7 @@ else if (ShowEmptyMessage)
             AssetType.Vae => "fa-solid fa-wand-magic-sparkles",
             AssetType.Clip => "fa-solid fa-font",
             AssetType.ClipVision => "fa-solid fa-eye",
+            AssetType.ModelPatch => "fa-solid fa-code-branch",
             _ => "fa-solid fa-file"
         };
     }
@@ -264,6 +265,7 @@ else if (ShowEmptyMessage)
             AssetType.Vae => Color.Success,
             AssetType.Clip => Color.Warning,
             AssetType.ClipVision => Color.Secondary,
+            AssetType.ModelPatch => Color.Tertiary,
             _ => Color.Default
         };
     }

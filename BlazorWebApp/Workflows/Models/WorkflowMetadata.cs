@@ -216,6 +216,10 @@ public enum AssetType
     ClipVision,
     Lora,
     ControlNet,
+    /// <summary>
+    /// Model patches backed by <c>ModelPatchLoader.name</c> (ComfyUI <c>model_patches</c> folder).
+    /// </summary>
+    ModelPatch,
     UpscaleModel,
     /// <summary>
     /// Diffusion-space (latent) upscalers backed by <c>LatentUpscaleModelLoader</c>

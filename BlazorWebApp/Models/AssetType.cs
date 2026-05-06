@@ -62,6 +62,13 @@ namespace BlazorWebApp.Models
         /// <c>controlnet</c> folder.
         /// Maps to: ComfyUIService.GetControlNetModels()
         /// </summary>
-        ControlNet
+        ControlNet,
+
+        /// <summary>
+        /// Model patches loaded by <c>ModelPatchLoader</c> from ComfyUI's
+        /// <c>model_patches</c> folder. Used by newer patch-style ControlNet nodes.
+        /// Maps to: ComfyUIService.GetModelPatches()
+        /// </summary>
+        ModelPatch
     }
 }

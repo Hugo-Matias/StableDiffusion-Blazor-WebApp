@@ -34,7 +34,7 @@ public class ModelPatchLoaderFragment : IFragmentBuilder
         string scope = "",
         string scopeTitle = "")
     {
-        var patchName = GetParameterValue(parameters, "ControlNet", "Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.safetensors");
+        var patchName = GetModelPatchAsset(parameters);
 
         BuildInternal(builder, registry, new Parameters
         {
@@ -67,16 +67,21 @@ public class ModelPatchLoaderFragment : IFragmentBuilder
         builder.AddNode(patchNodeId, node => node
             .Type("ModelPatchLoader")
             .Title($"{scopeTitle}Load Model Patch")
-            .Input("name", p.PatchName));
+            .Input("name", NormalizePatchName(p.PatchName)));
 
         registry.Register($"{scope}model_patch_output", patchNodeId, 0);
     }
 
-    private static string GetParameterValue(GenerationParameters parameters, string key, string defaultValue)
+    private static string GetModelPatchAsset(GenerationParameters parameters)
+        => parameters.Assets?.GetValueOrDefault("ModelPatch")
+           ?? parameters.Assets?.GetValueOrDefault("ControlNet")
+           ?? "Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.safetensors";
+
+    private static string NormalizePatchName(string patchName)
     {
-        var assetValue = parameters.Assets?.GetValueOrDefault(key);
-        if (!string.IsNullOrEmpty(assetValue))
-            return assetValue;
-        return defaultValue;
+        if (string.IsNullOrWhiteSpace(patchName))
+            return patchName;
+
+        return patchName.Replace('\\', '/');
     }
 }
