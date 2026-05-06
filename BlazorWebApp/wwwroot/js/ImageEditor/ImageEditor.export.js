@@ -25,6 +25,10 @@ export const ExportMixin = {
         };
         
         const maskWasVisible = this.maskVisible;
+        const hiddenDecorations = typeof this._setEditorDecorationsVisible === 'function'
+            ? this._setEditorDecorationsVisible(false)
+            : null;
+
         if (maskWasVisible) {
             this.maskObjects.forEach(obj => obj.set('visible', false));
             this.canvas.renderAll();
@@ -49,6 +53,10 @@ export const ExportMixin = {
                 this.maskObjects.forEach(obj => obj.set('visible', true));
                 this.canvas.renderAll();
             }
+
+            if (typeof this._restoreEditorDecorationsVisible === 'function') {
+                this._restoreEditorDecorationsVisible(hiddenDecorations);
+            }
             
             return dataUrl;
         } catch (error) {
@@ -57,6 +65,9 @@ export const ExportMixin = {
             if (maskWasVisible) {
                 this.maskObjects.forEach(obj => obj.set('visible', true));
                 this.canvas.renderAll();
+            }
+            if (typeof this._restoreEditorDecorationsVisible === 'function') {
+                this._restoreEditorDecorationsVisible(hiddenDecorations);
             }
             throw error;
         }

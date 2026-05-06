@@ -12,16 +12,17 @@
  * - Flat mask compositing with animated overlay
  */
 
-import { ensureFabricLoaded } from './ImageEditor.utils.js';
-import { LayerMixin } from './ImageEditor.layers.js';
-import { CanvasMixin } from './ImageEditor.canvas.js';
-import { ToolsMixin } from './ImageEditor.tools.js';
-import { HistoryMixin } from './ImageEditor.history.js';
-import { EventsMixin } from './ImageEditor.events.js';
-import { ExportMixin } from './ImageEditor.export.js';
-import { CallbacksMixin } from './ImageEditor.callbacks.js';
-import { MaskMixin } from './ImageEditor.mask.js';
-import { SelectionMixin } from './ImageEditor.selection.js';
+import { ensureFabricLoaded } from './ImageEditor.utils.js?v=20260506-crop-tool-v5';
+import { LayerMixin } from './ImageEditor.layers.js?v=20260506-crop-tool-v5';
+import { CanvasMixin } from './ImageEditor.canvas.js?v=20260506-crop-tool-v5';
+import { ToolsMixin } from './ImageEditor.tools.js?v=20260506-crop-tool-v5';
+import { HistoryMixin } from './ImageEditor.history.js?v=20260506-crop-tool-v5';
+import { EventsMixin } from './ImageEditor.events.js?v=20260506-crop-tool-v5';
+import { ExportMixin } from './ImageEditor.export.js?v=20260506-crop-tool-v5';
+import { CallbacksMixin } from './ImageEditor.callbacks.js?v=20260506-crop-tool-v5';
+import { MaskMixin } from './ImageEditor.mask.js?v=20260506-crop-tool-v5';
+import { SelectionMixin } from './ImageEditor.selection.js?v=20260506-crop-tool-v5';
+import { CropMixin } from './ImageEditor.crop.js?v=20260506-crop-tool-v5';
 
 /**
  * Initialize the ImageEditor
@@ -114,6 +115,7 @@ class ImageEditor {
         this._initCanvas();
         this._initMaskSystem(); // Initialize mask system
         this._initSelectionSystem(); // Initialize selection system
+        this._initCropSystem(); // Initialize crop system
         this._setupEventListeners();
         this._createBrushCursor();
         this._setupDragDrop();
@@ -130,6 +132,11 @@ class ImageEditor {
         // Cleanup selection system
         if (typeof this._disposeSelectionSystem === 'function') {
             this._disposeSelectionSystem();
+        }
+
+        // Cleanup crop system
+        if (typeof this._disposeCropSystem === 'function') {
+            this._disposeCropSystem();
         }
         
         // Cleanup mask system
@@ -176,5 +183,6 @@ Object.assign(ImageEditor.prototype, ExportMixin);
 Object.assign(ImageEditor.prototype, CallbacksMixin);
 Object.assign(ImageEditor.prototype, MaskMixin);
 Object.assign(ImageEditor.prototype, SelectionMixin);
+Object.assign(ImageEditor.prototype, CropMixin);
 
 export default ImageEditor;

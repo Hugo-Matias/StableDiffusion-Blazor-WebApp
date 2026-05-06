@@ -181,6 +181,11 @@ namespace BlazorWebApp.Models
         /// Whether an active selection exists on the canvas
         /// </summary>
         public bool HasSelection { get; set; }
+
+        /// <summary>
+        /// Whether an active crop region exists on the canvas
+        /// </summary>
+        public bool HasCropRegion { get; set; }
         
         /// <summary>
         /// The type of the current selection tool (rect, ellipse, lasso)
@@ -370,6 +375,7 @@ namespace BlazorWebApp.Models
             MaskOpacity = 0.5f;
             MaskPreviewMode = MaskPreviewMode.Overlay;
             HasSelection = false;
+            HasCropRegion = false;
             ActiveSelectionType = "rect";
             BaseLayerVisible = true;
             DrawingLayerVisible = true;
@@ -603,7 +609,12 @@ namespace BlazorWebApp.Models
         /// <summary>
         /// Freeform lasso selection for mask creation
         /// </summary>
-        SelectLasso
+        SelectLasso,
+
+        /// <summary>
+        /// Rectangular crop tool for destructive image cropping
+        /// </summary>
+        Crop
     }
     
     /// <summary>

@@ -147,15 +147,27 @@ export const ToolsMixin = {
      * Set the current tool
      */
     setTool(tool) {
+        tool = String(tool || 'brush').toLowerCase();
         this.previousTool = this.currentTool;
         this.currentTool = tool;
+
+        const isDrawingTool = ['brush', 'eraser', 'maskbrush', 'maskeraser'].includes(tool);
+        if (!isDrawingTool) {
+            this.canvas.isDrawingMode = false;
+            this._hideBrushCursor();
+        }
         
         // Disable object selection for most tools
-        this.canvas.selection = (tool === 'select');
+        this.canvas.selection = tool === 'select';
         
         // Update selectability of objects based on tool
         this.canvas.forEachObject(obj => {
-            if (obj.name === 'baseImage' || obj.name === '_brushCursor') {
+            if (obj.name === '_cropRegion') {
+                obj.selectable = tool === 'crop';
+                obj.evented = false;
+                obj.hasControls = tool === 'crop';
+                obj.hasBorders = tool === 'crop';
+            } else if (obj.name === 'baseImage' || obj.name === '_brushCursor') {
                 obj.selectable = false;
                 obj.evented = false;
             } else if (obj.name === 'mask') {
@@ -237,10 +249,23 @@ export const ToolsMixin = {
                     this.setSelectionType(selType);
                 }
                 break;
+
+            case 'crop':
+                this.canvas.isDrawingMode = false;
+                this.canvas.defaultCursor = 'crosshair';
+                this._hideBrushCursor();
+                this.canvas.discardActiveObject();
+                if (this._cropRect) {
+                    this.canvas.setActiveObject(this._cropRect);
+                }
+                this.canvas.renderAll();
+                break;
                 
             default:
-                this.canvas.isDrawingMode = true;
-                this._setupBrush('brush');
+                console.warn(`Unknown image editor tool '${tool}', disabling drawing mode`);
+                this.canvas.isDrawingMode = false;
+                this.canvas.defaultCursor = 'default';
+                this._hideBrushCursor();
         }
     },
     

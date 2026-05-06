@@ -67,6 +67,11 @@
                                                Color="@(_state.CurrentTool == ImageEditorTool.Select ? Color.Primary : Color.Default)"
                                                OnClick="@(() => SetTool(ImageEditorTool.Select))" />
                             </MudTooltip>
+                            <MudTooltip Text="Crop (C)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Crop" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.Crop ? Color.Error : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.Crop))" />
+                            </MudTooltip>
                             <MudTooltip Text="Pan (Hold Space)">
                                 <MudIconButton Icon="@Icons.Material.Filled.PanTool" 
                                                Color="@(_state.CurrentTool == ImageEditorTool.Pan ? Color.Primary : Color.Default)"
@@ -159,6 +164,28 @@
                                 <MudTooltip Text="Invert Selection (Ctrl+Shift+I)">
                                     <MudIconButton Icon="@Icons.Material.Filled.InvertColors" 
                                                    OnClick="InvertSelection" />
+                                </MudTooltip>
+                            </MudButtonGroup>
+                        }
+
+                        @if (_state.CurrentTool == ImageEditorTool.Crop)
+                        {
+                            <MudDivider Vertical FlexItem Class="mx-2" />
+                            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                <MudTooltip Text="Crop to Region">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.Crop"
+                                               Disabled="@(!_state.HasCropRegion)"
+                                               OnClick="ApplyCrop">
+                                        Crop
+                                    </MudButton>
+                                </MudTooltip>
+                                <MudTooltip Text="Clear Crop Region (Escape)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                   Disabled="@(!_state.HasCropRegion)"
+                                                   OnClick="ClearCrop" />
                                 </MudTooltip>
                             </MudButtonGroup>
                         }
@@ -477,6 +504,8 @@
     
     // Element references
     private ElementReference _containerRef;
+
+    private const string ImageEditorModuleVersion = "20260506-crop-tool-v5";
     
     // JS Interop
     private IJSObjectReference? _jsModule;
@@ -599,7 +628,7 @@
                 await Task.Delay(200);
             }
             
-            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/ImageEditor/ImageEditor.js");
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", $"./js/ImageEditor/ImageEditor.js?v={ImageEditorModuleVersion}");
             
             _editorInstance = await _jsModule.InvokeAsync<IJSObjectReference>(
                 "init", 
@@ -637,7 +666,7 @@
             // Sync the current tool with JS (ensures cursor matches tool button state)
             if (_editorInstance != null)
             {
-                await _editorInstance.InvokeVoidAsync("setTool", _state.CurrentTool.ToString().ToLowerInvariant());
+                await _editorInstance.InvokeVoidAsync("setTool", GetJsToolName(_state.CurrentTool));
             }
             
             Logger.LogInformation("Image editor initialized successfully with {LayerCount} layers", _state.Layers.Count);
@@ -720,11 +749,23 @@
         
         if (_editorInstance != null)
         {
-            await _editorInstance.InvokeVoidAsync("setTool", tool.ToString().ToLowerInvariant());
+            await _editorInstance.InvokeVoidAsync("setTool", GetJsToolName(tool));
         }
         
         StateHasChanged();
     }
+
+    private static string GetJsToolName(ImageEditorTool tool) => tool switch
+    {
+        ImageEditorTool.ColorPicker => "colorpicker",
+        ImageEditorTool.MaskBrush => "maskbrush",
+        ImageEditorTool.MaskEraser => "maskeraser",
+        ImageEditorTool.SelectRect => "selectrect",
+        ImageEditorTool.SelectEllipse => "selectellipse",
+        ImageEditorTool.SelectLasso => "selectlasso",
+        ImageEditorTool.Crop => "crop",
+        _ => tool.ToString().ToLowerInvariant()
+    };
     
     private async Task SetSelectionTool(string type)
     {
@@ -778,16 +819,85 @@
         ImageEditorTool.SelectRect => "Rect Select",
         ImageEditorTool.SelectEllipse => "Ellipse Select",
         ImageEditorTool.SelectLasso => "Lasso Select",
+        ImageEditorTool.Crop => "Crop",
         _ => "Unknown"
     };
     
     private Color GetToolColor() => _state.CurrentTool switch
     {
         ImageEditorTool.MaskBrush or ImageEditorTool.MaskEraser => Color.Secondary,
+        ImageEditorTool.Crop => Color.Error,
         ImageEditorTool.Select => Color.Info,
         ImageEditorTool.SelectRect or ImageEditorTool.SelectEllipse or ImageEditorTool.SelectLasso => Color.Info,
         _ => Color.Primary
     };
+
+    private async Task ApplyCrop()
+    {
+        if (_editorInstance == null || !_state.HasCropRegion)
+        {
+            return;
+        }
+
+        try
+        {
+            Logger.LogInformation("Cropping edited image (flattening crop region to new source)...");
+
+            var cropResult = await _editorInstance.InvokeAsync<JsonElement?>("applyCrop");
+            if (!cropResult.HasValue)
+            {
+                Logger.LogWarning("Crop did not produce an image result");
+                return;
+            }
+
+            var result = cropResult.Value;
+            if (!result.TryGetProperty("image", out var imageElement))
+            {
+                Logger.LogWarning("Crop result did not contain image data");
+                return;
+            }
+
+            var imageData = imageElement.GetString();
+            if (string.IsNullOrWhiteSpace(imageData))
+            {
+                Logger.LogWarning("Cropped image data is empty");
+                return;
+            }
+
+            var width = result.TryGetProperty("width", out var widthElement) ? widthElement.GetInt32() : 0;
+            var height = result.TryGetProperty("height", out var heightElement) ? heightElement.GetInt32() : 0;
+
+            _state.ResetLayersToBase();
+            _state.BaseImageData = imageData;
+            _state.BaseImageWidth = width;
+            _state.BaseImageHeight = height;
+            _state.IsBlankCanvas = false;
+            _state.CanvasJson = null;
+            _state.HasCropRegion = false;
+            _state.HasMask = false;
+            _state.MaskData = null;
+            Session.ImageEditorState = _state;
+
+            await CleanupEditorAsync();
+
+            _isVisible = false;
+            StateHasChanged();
+
+            await OnApply.InvokeAsync((imageData, null));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to crop image");
+        }
+    }
+
+    private async Task ClearCrop()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("clearCrop");
+        }
+    }
     
     private async Task AddSelectionToMask()
     {
@@ -1306,6 +1416,19 @@
     {
         _state.HasSelection = hasSelection;
         InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnCropRegionChanged(bool hasCropRegion)
+    {
+        _state.HasCropRegion = hasCropRegion;
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnCropRequested()
+    {
+        return InvokeAsync(ApplyCrop);
     }
     
     [JSInvokable]

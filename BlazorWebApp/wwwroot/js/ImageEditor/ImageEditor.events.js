@@ -59,6 +59,12 @@ export const EventsMixin = {
      * Native mouse down handler for middle mouse button
      */
     _handleNativeMouseDown(e) {
+        if (this.currentTool === 'crop') {
+            this.canvas.isDrawingMode = false;
+            this.canvas.defaultCursor = 'crosshair';
+            this._hideBrushCursor();
+        }
+
         if (e.button === 1) {
             e.preventDefault();
             e.stopPropagation();
@@ -166,6 +172,12 @@ export const EventsMixin = {
      */
     _handleMouseDown(opt) {
         const e = opt.e;
+
+        if (this.currentTool === 'crop') {
+            this.canvas.isDrawingMode = false;
+            this.canvas.defaultCursor = 'crosshair';
+            this._hideBrushCursor();
+        }
         
         // Skip if middle mouse panning is active (handled by native events)
         if (this._middleMousePanning) {
@@ -203,6 +215,21 @@ export const EventsMixin = {
             this._notifyColorPicked(color);
             return;
         }
+
+        // Crop tool
+        if (this.currentTool === 'crop' && e.button === 0) {
+            const pointer = this.canvas.getPointer(e);
+
+            if (typeof this.beginCropEdit === 'function' && this.beginCropEdit(pointer.x, pointer.y)) {
+                e.preventDefault();
+                return;
+            }
+
+            if (typeof this.startCrop === 'function') {
+                this.startCrop(pointer.x, pointer.y);
+            }
+            return;
+        }
         
         // Selection tools
         if (this.isSelectionToolActive && this.isSelectionToolActive() && e.button === 0) {
@@ -237,6 +264,30 @@ export const EventsMixin = {
             this.pan(deltaX, deltaY);
             this.lastPanPoint = { x: e.clientX, y: e.clientY };
             return;
+        }
+
+        // Handle crop tool dragging
+        if (this.currentTool === 'crop' && this._isEditingCrop) {
+            const pointer = this.canvas.getPointer(e);
+            if (typeof this.updateCropEdit === 'function') {
+                this.updateCropEdit(pointer.x, pointer.y);
+            }
+            return;
+        }
+
+        if (this.currentTool === 'crop' && this._isDrawingCrop) {
+            const pointer = this.canvas.getPointer(e);
+            if (typeof this.updateCrop === 'function') {
+                this.updateCrop(pointer.x, pointer.y);
+            }
+            return;
+        }
+
+        if (this.currentTool === 'crop') {
+            const pointer = this.canvas.getPointer(e);
+            if (typeof this._setCropCursorForPoint === 'function') {
+                this._setCropCursorForPoint(pointer.x, pointer.y);
+            }
         }
         
         // Handle selection tool dragging
@@ -277,6 +328,21 @@ export const EventsMixin = {
         if (this.isSelectionToolActive && this.isSelectionToolActive() && this._isDrawingSelection) {
             if (typeof this.finishSelection === 'function') {
                 this.finishSelection();
+            }
+            return;
+        }
+
+        // Handle crop tool finish
+        if (this.currentTool === 'crop' && this._isEditingCrop) {
+            if (typeof this.finishCropEdit === 'function') {
+                this.finishCropEdit();
+            }
+            return;
+        }
+
+        if (this.currentTool === 'crop' && this._isDrawingCrop) {
+            if (typeof this.finishCrop === 'function') {
+                this.finishCrop();
             }
             return;
         }
@@ -471,10 +537,25 @@ export const EventsMixin = {
             e.preventDefault();
         }
         
-        // Escape - clear selection
+        // Escape - clear selection/crop
         if (e.code === 'Escape') {
+            if (this.currentTool === 'crop' && typeof this.hasCropRegion === 'function' && this.hasCropRegion()) {
+                this.clearCrop();
+                e.preventDefault();
+                return;
+            }
+
             if (typeof this.hasSelection === 'function' && this.hasSelection()) {
                 this.clearSelection();
+                e.preventDefault();
+                return;
+            }
+        }
+
+        // Enter - apply crop
+        if (e.code === 'Enter' && this.currentTool === 'crop') {
+            if (typeof this.hasCropRegion === 'function' && this.hasCropRegion() && this.dotNetRef) {
+                this.dotNetRef.invokeMethodAsync('OnCropRequested');
                 e.preventDefault();
                 return;
             }
@@ -571,6 +652,9 @@ export const EventsMixin = {
                     break;
                 case 'KeyV':
                     this._notifyToolChange('select');
+                    break;
+                case 'KeyC':
+                    this._notifyToolChange('crop');
                     break;
                 case 'KeyR':
                     this._notifyToolChange('selectrect');
