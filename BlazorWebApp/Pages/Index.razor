@@ -21,8 +21,10 @@ else if (_projects.Count() == 0 && State.State.Gallery.FolderId == 0)
 {
     <MudContainer Class="d-flex flex-column align-items-center justify-content-center" Style="height: 50vh">
         <MudPaper Class="pa-10 d-flex flex-column align-items-center" MaxWidth="30vw" Elevation="5">
-            <MudText Typo="Typo.h4" Class="mb-5" Style="text-align:center;">Create a new project to get started! 😎</MudText>
-            <CreateProjectButton Color="Color.Info" Variant="Variant.Text" OnProjectCreated="async () => await RefreshProjects()">
+            <MudText Typo="Typo.h4" Class="mb-5" Style="text-align:center;">Create a new project to get started! 😎
+            </MudText>
+            <CreateProjectButton Color="Color.Info" Variant="Variant.Text"
+                                 OnProjectCreated="async () => await RefreshProjects()">
                 Lets Go
             </CreateProjectButton>
         </MudPaper>
@@ -31,29 +33,24 @@ else if (_projects.Count() == 0 && State.State.Gallery.FolderId == 0)
 else
 {
     <GallerySettings OnFilterImages="async () => await FilterImages(false)"
-                     OnReshuffleImages="async () => await ReshuffleImages()"
-                     OnResetFilters="async () => await FilterImages(true)"
-                     OnProjectDeleted="async () => await RefreshProjects()" 
-                     OnPageChanged="HandlePageChanged"
-                     OnNavigationModeChanged="HandleNavigationModeChanged"
-                     OnPageSizeChanged="HandlePageSizeChanged"/>
+                     OnReshuffleImages="async () => await ReshuffleImages()" OnResetFilters="async () => await FilterImages(true)"
+                     OnProjectDeleted="async () => await RefreshProjects()" OnPageChanged="HandlePageChanged"
+                     OnNavigationModeChanged="HandleNavigationModeChanged" OnPageSizeChanged="HandlePageSizeChanged"
+                     OnDisplayModeChanged="HandleDisplayModeChanged" />
     @if (images != null && images.Images != null && images.Images.Count > 0)
     {
         @if (State.State.Gallery.UseInfiniteScroll)
         {
-            <InfiniteScrollMasonry Images="@images" 
-                                   OnLoadNextPage="LoadNextPage"
-                                   OnImagesChanged="async () => await InvokeAsync(StateHasChanged)"/>
+            <InfiniteScrollMasonry Images="@images" PresentationMode="State.State.Gallery.PresentationMode"
+                                   TileSize="State.State.Gallery.TileSize" OnLoadNextPage="LoadNextPage"
+                                   OnImagesChanged="async () => await InvokeAsync(StateHasChanged)" />
         }
         else
         {
-            <ImagesContainer @ref=_imagesContainer
-                             Style="margin-bottom: 2rem; margin-top: 2rem;"
-                             Images="@images"
-                             OnPageSelected="async (page) => await LoadPage(page)"
-                             OnDeleteImage="async () => await LoadImages(false)"
-                             OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
-                             CanSelect=true />
+            <ImagesContainer @ref=_imagesContainer Style="margin-bottom: 2rem; margin-top: 2rem;" Images="@images"
+                             PresentationMode="State.State.Gallery.PresentationMode" TileSize="State.State.Gallery.TileSize"
+                             OnPageSelected="async (page) => await LoadPage(page)" OnDeleteImage="async () => await LoadImages(false)"
+                             OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" CanSelect=true />
         }
     }
     else if (images != null && images.Images != null && images.Images.Count == 0)
@@ -74,8 +71,6 @@ else
     private List<Project>? _projects;
     private int currentImgPage;
     private bool _isLoadingNext;
-    private IJSObjectReference? _infiniteScrollModule;
-    private DotNetObjectReference<Index>? _dotNetRef;
     private ImagesContainer _imagesContainer = new();
 
     protected override async Task OnInitializedAsync()
@@ -85,24 +80,6 @@ else
         Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
         await LoadProjects();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && State.State.Gallery.UseInfiniteScroll)
-        {
-            await InitializeInfiniteScroll();
-        }
-    }
-
-    private async Task InitializeInfiniteScroll()
-    {
-        if (_infiniteScrollModule == null)
-        {
-            _dotNetRef = DotNetObjectReference.Create(this);
-            _infiniteScrollModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/InfiniteMasonry.js");
-            await _infiniteScrollModule.InvokeAsync<IJSObjectReference>("attachWindowScroll", _dotNetRef, new { threshold = 500 });
-        }
     }
 
     private async Task<ImagesDto> FetchImagesPage(int page)
@@ -220,7 +197,6 @@ else
         }
     }
 
-    [JSInvokable]
     public async Task LoadNextPage()
     {
         if (_isLoadingNext || images == null || !images.HasNext) return;
@@ -251,6 +227,11 @@ else
         await LoadImages(false);
     }
 
+    private Task HandleDisplayModeChanged()
+    {
+        return InvokeAsync(StateHasChanged);
+    }
+
     private async Task LoadPage(int page)
     {
         currentImgPage = page;
@@ -263,12 +244,9 @@ else
     {
         if (State.State.Gallery.UseInfiniteScroll)
         {
-            await InitializeInfiniteScroll();
+            await InvokeAsync(StateHasChanged);
+            await Task.Yield();
             await EnsureEnoughContent();
-        }
-        else
-        {
-            await DisposeInfiniteScroll();
         }
         await InvokeAsync(StateHasChanged);
     }
@@ -313,29 +291,12 @@ else
         _ = InvokeAsync(StateHasChanged);
     }
 
-    private async Task DisposeInfiniteScroll()
-    {
-        if (_infiniteScrollModule != null)
-        {
-            try
-            {
-                await _infiniteScrollModule.InvokeVoidAsync("dispose");
-                await _infiniteScrollModule.DisposeAsync();
-            }
-            catch (JSDisconnectedException) { }
-            catch (Exception) { }
-            _infiniteScrollModule = null;
-        }
-        _dotNetRef?.Dispose();
-        _dotNetRef = null;
-    }
-
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         Events.Unsubscribe<ProjectChangedEventArgs>(OnProjectChanged);
         Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
 
-        await DisposeInfiniteScroll();
+        return ValueTask.CompletedTask;
     }
 }

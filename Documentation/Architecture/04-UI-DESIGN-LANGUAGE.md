@@ -128,7 +128,7 @@ global spacing tokens declared in `BlazorWebApp/wwwroot/site.css` (`:root`).
 | `--app-sidebar-width`                     | Sidebar width as a percentage of the shell                                                 |
 | `--app-sidebar-min` / `--app-sidebar-max` | Clamp for the sidebar width                                                                |
 | `--app-sidebar-rail-width`                | Width of a collapsed sidebar rail (always keeps an expand affordance visible)              |
-| `--app-shell-max-width`                   | Page max-width clamp; prevents ultra-wide stretching                                       |
+| `--app-shell-max-width`                   | App body and tabbed-shell max-width clamp; prevents ultra-wide stretching                  |
 | `--app-surface-radius`                    | Shared corner radius for sidebar / topbar / content surfaces                               |
 | `--app-surface-padding`                   | Internal padding of sidebar / topbar / content surfaces; children render flush inside this |
 | `--app-dialog-max-width`                  | Max width clamp for app-wide modal dialogs (e.g., `AssetViewer`, CivitAI model dialog)     |
@@ -142,6 +142,12 @@ panel paper). If a gap needs tuning, tune the token.
 
 Outer gutter may be slightly larger than inner gutters, but both must be uniform around
 the page.
+
+The app body wrapper in `MainLayout` consumes `--app-shell-max-width` and
+`--app-gutter-outer`; `TabbedPageShell` uses the same width token for tabbed
+routes. Tune this token first when the whole application feels too constrained.
+Use page-local width variables only for deliberate exceptions such as an
+image-first gallery surface.
 
 ### Elevation constants
 

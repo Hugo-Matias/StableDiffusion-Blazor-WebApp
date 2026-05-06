@@ -4,17 +4,12 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+<div class="@GetCardClasses()" @onclick="SelectProject" @onmouseenter="HandleMouseEnter"
+     @onmouseleave="HandleMouseLeave">
     <div class="media-wrapper">
         @if (_isVideo)
         {
-            <video id="@_videoId"
-                   src="@_mediaUrl"
-                   class="card-media"
-                   muted
-                   loop
-                   playsinline
-                   preload="metadata" />
+            <video id="@_videoId" src="@_mediaUrl" class="card-media" muted loop playsinline preload="metadata" />
         }
         else
         {
@@ -31,13 +26,16 @@
             @* Center Section - Quick Actions *@
             <div class="overlay-center @(_isHovered ? "visible" : "")">
                 <div class="quick-actions">
-                    <button class="action-btn primary" @onclick="() => OnSelected.InvokeAsync(ProjectId)" title="Select Project">
+                    <button class="action-btn primary" @onclick="SelectProject" @onclick:stopPropagation="true"
+                            title="Select Project">
                         <i class="fa-solid fa-check"></i>
                     </button>
-                    <button class="action-btn" @onclick="() => OnEdited.InvokeAsync(ProjectId)" title="Edit Project">
+                    <button class="action-btn" @onclick="EditProject" @onclick:stopPropagation="true"
+                            title="Edit Project">
                         <i class="fa-solid fa-pen"></i>
                     </button>
-                    <button class="action-btn danger" @onclick="() => OnDeleted.InvokeAsync(ProjectId)" title="Delete Project">
+                    <button class="action-btn danger" @onclick="DeleteProject" @onclick:stopPropagation="true"
+                            title="Delete Project">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>
@@ -56,16 +54,17 @@
 
 @code {
     [Parameter] public int ProjectId { get; set; }
-    [Parameter] public string Name { get; set; }
+    [Parameter] public string Name { get; set; } = string.Empty;
     [Parameter] public EventCallback<int> OnDeleted { get; set; }
     [Parameter] public EventCallback<int> OnSelected { get; set; }
     [Parameter] public EventCallback<int> OnEdited { get; set; }
+    [Parameter] public bool Compact { get; set; }
 
     private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
 
     private IJSObjectReference? _jsModule;
     private string _videoId = $"project-video-{Guid.NewGuid():N}";
-    private string _mediaUrl;
+    private string _mediaUrl = "./no_image.png";
     private bool _isVideo;
     private bool _isHovered;
 
@@ -85,10 +84,17 @@
     private string GetCardClasses()
     {
         var classes = "project-card";
+        if (Compact) classes += " compact";
         if (State.State.Gallery.ProjectId == ProjectId) classes += " selected";
         if (_isHovered) classes += " hovered";
         return classes;
     }
+
+    private Task SelectProject() => OnSelected.InvokeAsync(ProjectId);
+
+    private Task EditProject() => OnEdited.InvokeAsync(ProjectId);
+
+    private Task DeleteProject() => OnDeleted.InvokeAsync(ProjectId);
 
     private bool IsVideoFile(string path)
     {

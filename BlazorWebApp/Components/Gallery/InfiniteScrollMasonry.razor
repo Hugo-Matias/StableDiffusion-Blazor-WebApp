@@ -7,17 +7,24 @@
 @implements IAsyncDisposable
 @using Microsoft.JSInterop
 
-<div class="masonry-gallery-wrapper">
+<div class="@GetWrapperClasses()" data-tile-size="@GetTileSizeName()">
     <div class="gallery-toolbar">
-        <MudButton OnClick="() => OpenViewer(0)" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
-        <MudButton OnClick="ShowSelectionsDialog" StartIcon="fa-solid fa-check" Color="Color.Secondary">Selections</MudButton>
+        <div class="gallery-toolbar-row gallery-primary-actions">
+            <GalleryActionButton Icon="fa-solid fa-window-maximize" Label="Fullscreen" Tone="secondary"
+                                 OnClick="@(() => OpenViewer(0))" />
+            <GalleryActionButton Icon="fa-solid fa-check" Label="Selections" Tone="secondary"
+                                 OnClick="ShowSelectionsDialog" />
+        </div>
         @if (Gallery.SelectedImageIds.Count > 0)
         {
-            <div class="selection-btn-group">
-                <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
-                <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
-                <MudButton OnClick="Gallery.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">@($"Clear ({Gallery.SelectedImageIds.Count})")</MudButton>
-                <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
+            <div class="gallery-toolbar-row gallery-selection-actions">
+                <GalleryActionButton Icon="fa-solid fa-layer-group" Label="Set Project" Tone="tertiary"
+                                     OnClick="ShowSwitchProjectDialog" />
+                <GalleryActionButton Icon="fa-solid fa-trash-can" Label="Delete" Tone="error"
+                                     OnClick="ShowDeleteImagesDialog" />
+                <GalleryActionButton Icon="fa-regular fa-square" Label="@($"Deselect ({Gallery.SelectedImageIds.Count})")"
+                                     Tone="warning" OnClick="Gallery.ClearSelectedImages" />
+                <GalleryActionButton Icon="fa-solid fa-check-double" Label="Select All" Tone="info" OnClick="SelectAll" />
             </div>
         }
     </div>
@@ -28,21 +35,22 @@
             <div class="gallery-item">
                 @if (IsVideoFile(image.Path))
                 {
-                    <VideoCard Video="@ConvertToGeneratedVideo(image)"
-                               Index="@Images.Images.IndexOf(image)"
-                               OnSelectVideo="idx => OpenVideoViewer(idx)"
-                               OnDeleteVideo="video => DeleteVideoFromImage(video)"
-                               OnVideoChanged="HandleVideoChanged"
-                               ShowSelectionCheckbox="true" />
+                    <VideoCard Video="@ConvertToGeneratedVideo(image)" Index="@Images.Images.IndexOf(image)"
+                               OnSelectVideo="OpenViewer" OnDeleteVideo="video => DeleteVideoFromImage(video)"
+                               OnVideoChanged="HandleVideoChanged" ShowSelectionCheckbox="true" />
+                }
+                else if (IsPureGallery)
+                {
+                    <GalleryImageTile Image="@image" OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
+                                      OnDeleteImage="DeleteSingleImage" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
+                                      ShowSelectionCheckbox="true" />
                 }
                 else
                 {
-                    <ImageCard Image="@image"
-                               Target="fullscreen-modal"
+                    <ImageCard Image="@image" Target="fullscreen-modal"
                                OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
                                OnDeleteImage="async () => await DeleteSingleImage(image)"
-                               OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
-                               ShowSelectionCheckbox="true" />
+                               OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" ShowSelectionCheckbox="true" />
                 }
             </div>
         }
@@ -62,38 +70,27 @@
     }
 </div>
 
-<!-- Image Viewer (for non-video files) -->
-<ImageViewer @bind-IsVisible="_showViewer" 
-             Images="@_cachedNonVideoImages" 
-             StartIndex="_viewerStartIndex" 
-             OnClosed="HandleViewerClosed" />
-
-<!-- Video Viewer (for video files) -->
-<VideoViewer IsVisible="@_showVideoViewer"
-             IsVisibleChanged="HandleVideoViewerVisibilityChanged"
-             Videos="@_cachedVideoItems"
-             StartIndex="_videoViewerStartIndex"
-             OnVideoChanged="HandleVideoChanged"
-             OnClosed="HandleViewerClosed" />
+<AssetViewer @bind-IsVisible="_showViewer" Assets="@(Images.Images ?? new List<Image>())" StartIndex="_viewerStartIndex"
+             CurrentPage="Images.CurrentPage" PageCount="1" TotalCount="@(Images.Images?.Count ?? 0)"
+             OnAssetChanged="HandleAssetChanged" OnClosed="HandleViewerClosed" />
 
 @code {
     [Parameter, EditorRequired] public ImagesDto Images { get; set; } = new();
+    [Parameter] public GalleryPresentationMode PresentationMode { get; set; } = GalleryPresentationMode.Rich;
+    [Parameter] public ResourceCardSize TileSize { get; set; } = ResourceCardSize.Medium;
     [Parameter] public EventCallback OnLoadNextPage { get; set; }
     [Parameter] public EventCallback OnImagesChanged { get; set; }
 
     private bool _isLoadingNext;
     private bool _showViewer;
-    private bool _showVideoViewer;
     private int _viewerStartIndex;
-    private int _videoViewerStartIndex;
     private IJSObjectReference? _infiniteScrollModule;
     private DotNetObjectReference<InfiniteScrollMasonry>? _dotNetRef;
-    
-    // Cached lists for viewers - only updated when opening viewer
-    private List<Image> _cachedNonVideoImages = new();
-    private List<GeneratedVideo> _cachedVideoItems = new();
+    private string? _lastLayoutSignature;
 
     private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+
+    private bool IsPureGallery => PresentationMode == GalleryPresentationMode.Pure;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -101,6 +98,8 @@
         {
             await InitializeInfiniteScroll();
         }
+
+        await RefreshLayoutIfNeeded();
     }
 
     private async Task InitializeInfiniteScroll()
@@ -112,6 +111,27 @@
             await _infiniteScrollModule.InvokeAsync<IJSObjectReference>("attachWindowScroll", _dotNetRef, new { threshold = 500 });
         }
     }
+
+    private async Task RefreshLayoutIfNeeded()
+    {
+        if (_infiniteScrollModule == null) return;
+
+        var signature = $"{Images.Images?.Count ?? 0}:{PresentationMode}:{TileSize}";
+        if (signature == _lastLayoutSignature) return;
+
+        _lastLayoutSignature = signature;
+        await _infiniteScrollModule.InvokeVoidAsync("refreshLayout");
+    }
+
+    private string GetWrapperClasses()
+    {
+        var classes = "masonry-gallery-wrapper";
+        classes += IsPureGallery ? " pure-gallery-masonry" : " rich-gallery-masonry";
+        classes += $" masonry-size-{GetTileSizeName()}";
+        return classes;
+    }
+
+    private string GetTileSizeName() => TileSize.ToString().ToLowerInvariant();
 
     [JSInvokable]
     public async Task LoadNextPage()
@@ -153,49 +173,21 @@
 
     private void OpenViewer(int startIndex)
     {
-        var image = Images.Images[startIndex];
-        
-        if (IsVideoFile(image.Path))
-        {
-            OpenVideoViewer(startIndex);
-            return;
-        }
-        
-        // Cache the non-video images list when opening
-        _cachedNonVideoImages = Images.Images.Where(i => !IsVideoFile(i.Path)).ToList();
-        _viewerStartIndex = _cachedNonVideoImages.IndexOf(image);
-        if (_viewerStartIndex < 0) _viewerStartIndex = 0;
-        _showViewer = true;
-    }
+        if (Images.Images == null || Images.Images.Count == 0) return;
 
-    private void OpenVideoViewer(int startIndex)
-    {
-        var image = Images.Images[startIndex];
-        
-        // Cache the video items list when opening
-        _cachedVideoItems = Images.Images
-            .Where(i => IsVideoFile(i.Path))
-            .Select(ConvertToGeneratedVideo)
-            .ToList();
-        
-        _videoViewerStartIndex = _cachedVideoItems.FindIndex(v => v.FilePath == image.Path);
-        if (_videoViewerStartIndex < 0) _videoViewerStartIndex = 0;
-        _showVideoViewer = true;
+        _viewerStartIndex = Math.Clamp(startIndex, 0, Images.Images.Count - 1);
+        _showViewer = true;
     }
 
     private void HandleViewerClosed()
     {
-        // Sync any changes from cached items back to the main list
-        foreach (var video in _cachedVideoItems)
-        {
-            var image = Images.Images.FirstOrDefault(i => i.Id == video.Id);
-            if (image != null)
-            {
-                image.Favorite = video.Favorite;
-                image.Score = video.Score;
-            }
-        }
         StateHasChanged();
+    }
+
+    private Task HandleAssetChanged(Image image)
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private void ShowSelectionsDialog()
@@ -242,7 +234,8 @@
             { "OkButtonColor", Color.Error },
             { "Content", new MarkupString("<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected items?<br /></span><small>This action is irreversible!</small>") }
         };
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items",
+parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled)
         {
@@ -274,11 +267,6 @@
             Gallery.ClearSelectedImages();
             await OnImagesChanged.InvokeAsync();
         }
-    }
-
-    private void HandleVideoViewerVisibilityChanged(bool isVisible)
-    {
-        _showVideoViewer = isVisible;
     }
 
     private void SelectAll()

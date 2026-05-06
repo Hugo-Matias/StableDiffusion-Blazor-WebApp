@@ -1,82 +1,121 @@
 .masonry-gallery-wrapper {
-    width: 100%;
-    margin-top: 0.5rem;
-    overflow: visible;
-    max-width: 85vw;
-    margin-left: auto;
-    margin-right: auto;
+  --gallery-masonry-gap: 16px;
+  width: 100%;
+  margin-top: 0.5rem;
+  overflow: visible;
+  max-width: 85vw;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pure-gallery-masonry {
+  max-width: var(--app-shell-max-width);
+}
+
+.pure-gallery-masonry.masonry-size-small {
+  --gallery-masonry-gap: var(--gallery-pure-grid-gap, 8px);
+}
+
+.pure-gallery-masonry.masonry-size-medium {
+  --gallery-masonry-gap: 10px;
+}
+
+.pure-gallery-masonry.masonry-size-large {
+  --gallery-masonry-gap: 12px;
 }
 
 .gallery-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: center;
-    margin: 0 0 1rem 0;
-    justify-content: center;
+  --gallery-toolbar-gap: 8px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: var(--gallery-toolbar-gap);
+  align-items: center;
+  margin: 0 0 1rem 0;
+  justify-content: center;
+}
+
+.gallery-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gallery-toolbar-gap);
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.gallery-selection-actions {
+  padding-top: 2px;
 }
 
 /* Masonry container - requires JS positioning */
 .gallery-flex {
-    position: relative;
-    width: 100%;
-    min-height: 100px;
-    transition: height 0.3s ease;
+  position: relative;
+  width: 100%;
+  min-height: 100px;
+  transition: height 0.3s ease;
 }
 
 .gallery-item {
-    position: absolute !important;
-    box-sizing: border-box;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.4s ease-in-out, visibility 0s linear 0s;
+  position: absolute !important;
+  box-sizing: border-box;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.4s ease-in-out,
+    visibility 0s linear 0s;
 }
 
 .gallery-item > div {
-    width: 100%;
-    position: static !important;
+  width: 100%;
+  position: static !important;
+}
+
+.pure-gallery-masonry .gallery-item {
+  transition:
+    opacity 0.25s ease-in-out,
+    visibility 0s linear 0s;
 }
 
 /* Ensure MudBlazor cards render properly */
 :root ::deep .mud-card-media {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible;
 }
 
 :root ::deep .mud-card-media img,
 :root ::deep .mud-card-media picture,
 :root ::deep .mud-card-media video {
-    display: block;
-    width: 100% !important;
-    height: auto !important;
-    object-fit: contain !important;
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  object-fit: contain !important;
 }
 
 :root ::deep .mud-card {
-    height: auto;
+  height: auto;
 }
 
 .load-more-spinner {
-    display: flex;
-    justify-content: center;
-    margin: 2rem 0 3rem 0;
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0 3rem 0;
 }
 
 .end-of-results {
-    opacity: 0.4;
-    text-align: center;
-    margin: 3rem 0;
-}
-
-.selection-btn-group {
-    display: inline-flex;
-    gap: 0.5rem;
+  opacity: 0.4;
+  text-align: center;
+  margin: 3rem 0;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .masonry-gallery-wrapper {
-        max-width: 95vw;
-    }
+  .masonry-gallery-wrapper {
+    max-width: 95vw;
+  }
+
+  .gallery-toolbar-row {
+    flex-direction: column;
+  }
 }

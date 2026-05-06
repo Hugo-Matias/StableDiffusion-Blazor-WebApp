@@ -263,6 +263,9 @@ namespace BlazorWebApp.Models
         public int Score { get; set; } = 0;
         public bool IsScore { get; set; } = false;
         public bool UseInfiniteScroll { get; set; } = true;
+        public GalleryPresentationMode PresentationMode { get; set; } = GalleryPresentationMode.Rich;
+        public ProjectPanelMode ProjectPanelMode { get; set; } = ProjectPanelMode.Expanded;
+        public ResourceCardSize TileSize { get; set; } = ResourceCardSize.Medium;
 
         /// <summary>
         /// Seed for consistent random ordering across page navigations.
@@ -272,6 +275,10 @@ namespace BlazorWebApp.Models
     }
 
     public enum GalleryOrderBy { Random, Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }
+
+    public enum GalleryPresentationMode { Rich, Pure }
+
+    public enum ProjectPanelMode { Expanded, Compact }
 
     public enum ResourceCardSize { Small, Medium, Large }
 
