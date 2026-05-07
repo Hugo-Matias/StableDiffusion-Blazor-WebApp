@@ -16,7 +16,7 @@ namespace BlazorWebApp.Data.Converters
                 return null;
 
             var result = new FragmentParameters();
-            
+
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)
@@ -54,14 +54,14 @@ namespace BlazorWebApp.Data.Converters
         public override void Write(Utf8JsonWriter writer, FragmentParameters value, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
-            
+
             writer.WriteString(nameof(FragmentParameters.FragmentFile), value.FragmentFile);
             writer.WriteBoolean(nameof(FragmentParameters.IsActive), value.IsActive);
             writer.WriteNumber(nameof(FragmentParameters.Order), value.Order);
-            
+
             writer.WritePropertyName(nameof(FragmentParameters.Values));
             WriteValuesDictionary(writer, value.Values);
-            
+
             writer.WriteEndObject();
         }
 
@@ -248,7 +248,7 @@ namespace BlazorWebApp.Data.Converters
                 return null;
 
             var result = new GenerationParameters();
-            
+
             while (reader.Read())
             {
                 if (reader.TokenType == JsonTokenType.EndObject)

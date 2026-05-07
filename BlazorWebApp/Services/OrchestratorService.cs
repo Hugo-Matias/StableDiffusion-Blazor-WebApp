@@ -262,9 +262,9 @@ namespace BlazorWebApp.Services
             if (workflow?.Assets == null || workflow.Assets.Count == 0) return;
 
             // Get the default model from workflow assets (C# workflows define defaults in metadata)
-            var modelAsset = workflow.Assets.FirstOrDefault(a => 
+            var modelAsset = workflow.Assets.FirstOrDefault(a =>
                 a.Type == AssetType.DiffusionModel || a.Type == AssetType.CheckpointModel);
-            
+
             if (modelAsset != null && !string.IsNullOrWhiteSpace(modelAsset.DefaultValue))
             {
                 // Update GenerationParameters.Assets (unified model)

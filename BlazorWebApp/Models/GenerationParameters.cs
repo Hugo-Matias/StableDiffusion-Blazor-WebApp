@@ -168,7 +168,7 @@ namespace BlazorWebApp.Models
         {
             string positive = string.Empty;
             string negative = string.Empty;
-            
+
             foreach (var lora in loras.Where(l => l.IsEnabled))
             {
                 var loraString = $" <lora:{lora.Name}:{lora.Strength:N2}>";
@@ -177,7 +177,7 @@ namespace BlazorWebApp.Models
                 else
                     positive += loraString;
             }
-            
+
             return (positive, negative);
         }
     }

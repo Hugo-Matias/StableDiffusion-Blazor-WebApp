@@ -11,27 +11,34 @@
 </MudText>
 <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
     <MudSelect T="GenerateStatePreset" Value="_selectedPreset" ValueChanged="HandlePresetSelected" Label="Preset"
-               Variant="Variant.Text" Dense="true" Clearable="true" Class="flex-grow-1"
-               AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+               Variant="Variant.Text" Dense="true" Clearable="true" Class="flex-grow-1" AnchorOrigin="Origin.BottomLeft"
+               TransformOrigin="Origin.TopLeft">
         @foreach (var preset in _presets)
         {
             <MudSelectItem Value="preset">@(preset.Name)</MudSelectItem>
         }
     </MudSelect>
-    <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" Title="Create workflow state"
-                   OnClick="CreatePreset" Disabled="@(Workflow == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small"
+                   Title="Create workflow state" OnClick="CreatePreset" Disabled="@(Workflow == null)" />
     <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small" Title="Edit workflow state"
                    OnClick="EditPreset" Disabled="@(_selectedPreset == null)" />
-    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small" Title="Apply workflow state"
-                   OnClick="ApplyPreset" Disabled="@(_selectedPreset == null || Workflow == null)" />
-    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Title="Delete workflow state"
-                   OnClick="DeletePreset" Disabled="@(_selectedPreset == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small"
+                   Title="Apply workflow state" OnClick="ApplyPreset" Disabled="@(_selectedPreset == null || Workflow == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                   Title="Delete workflow state" OnClick="DeletePreset" Disabled="@(_selectedPreset == null)" />
 </MudStack>
 
 @code {
     [Parameter] public Workflow? Workflow { get; set; }
 
-    private readonly DialogOptions _dialogOptions = new() { CloseButton = true, CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        CloseOnEscapeKey = true,
+        MaxWidth =
+MaxWidth.Small,
+        FullWidth = true
+    };
     private List<GenerateStatePreset> _presets = new();
     private GenerateStatePreset? _selectedPreset;
     private Guid? _loadedWorkflowId;

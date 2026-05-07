@@ -10,7 +10,8 @@
                           Variant="Variant.Text" Dense="true" Immediate="true" AutoFocus="true" />
             @if (Preset != null)
             {
-                <MudCheckBox T="bool" @bind-Value="_replaceWithCurrent" Label="Replace saved settings with current settings" />
+                <MudCheckBox T="bool" @bind-Value="_replaceWithCurrent"
+                             Label="Replace saved settings with current settings" />
             }
         </MudStack>
     </DialogContent>
