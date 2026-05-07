@@ -278,6 +278,35 @@ namespace BlazorWebApp.Services
             _logger.LogDebug("Saved current workflow state for {WorkflowId}", workflowId.Value);
         }
 
+        /// <inheritdoc />
+        public async Task ApplyPresetAsync(Workflow workflow, GenerationParameters parameters)
+        {
+            if (workflow == null)
+            {
+                _logger.LogWarning("Cannot apply preset to null workflow");
+                return;
+            }
+
+            var currentWorkflowId = Current.WorkflowId;
+            if (currentWorkflowId.HasValue && currentWorkflowId.Value != workflow.Id)
+            {
+                await SaveCurrentWorkflowStateAsync();
+            }
+
+            var snapshot = parameters.Clone();
+            snapshot.WorkflowId = workflow.Id;
+
+            ClearSourceCache();
+            Current.WorkflowId = workflow.Id;
+            RestoreFromSavedState(workflow, Current, snapshot);
+            Current.WorkflowId = workflow.Id;
+
+            DiscoverFragments();
+            await PreResolveDynamicSourcesAsync(workflow);
+
+            PublishChange(GenerationParametersChangedEventArgs.ParametersLoaded());
+        }
+
         /// <summary>
         /// Internal initialization that handles both fresh initialization and restoring saved state.
         /// </summary>
@@ -380,6 +409,15 @@ namespace BlazorWebApp.Services
             // Loras from saved state (if any)
             current.Loras.Clear();
             current.Loras.AddRange(savedState.Loras.Select(l => new Lora(l)));
+
+            current.Styles.Clear();
+            current.Styles.AddRange(savedState.Styles.Select(s => new PromptStyle
+            {
+                Name = s.Name,
+                Prompt = s.Prompt,
+                NegativePrompt = s.NegativePrompt,
+                Loras = s.Loras?.Select(l => new Lora(l)).ToList() ?? new List<Lora>()
+            }));
 
             // Per-pass detailer Loras from saved state
             current.DetailerLorasByPass.Clear();
@@ -949,6 +987,8 @@ namespace BlazorWebApp.Services
             }
             current.Loras.Clear();
             current.Loras.AddRange(parameters.Loras);
+            current.Styles.Clear();
+            current.Styles.AddRange(parameters.Styles);
             current.DetailerLorasByPass.Clear();
             foreach (var kvp in parameters.DetailerLorasByPass)
             {

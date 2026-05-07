@@ -85,6 +85,9 @@ builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 // Workflow state persistence service (per-workflow saved parameters)
 builder.Services.AddSingleton<IWorkflowStateService, WorkflowStateService>();
 
+// Generate-page named workflow state presets
+builder.Services.AddScoped<IGenerateStatePresetService, GenerateStatePresetService>();
+
 // Scheduler job persistence
 builder.Services.AddSingleton<BlazorWebApp.Scheduler.Persistence.IJobRepository, BlazorWebApp.Scheduler.Persistence.JobRepository>();
 

@@ -455,9 +455,9 @@ public partial class Generate : IDisposable
 
     private async Task HandleStylesChanged()
     {
-        // Styles are managed by PromptsForm via State.State.Generation.Styles
+        // Styles are managed by PromptsForm via GenerationParameters.Styles
         // Apply style LoRAs to our LoRA list
-        foreach (var style in State.State.Generation.Styles ?? Enumerable.Empty<PromptStyle>())
+        foreach (var style in Parameters.Styles ?? Enumerable.Empty<PromptStyle>())
         {
             foreach (var lora in style.Loras ?? Enumerable.Empty<Lora>())
             {

@@ -424,9 +424,9 @@ namespace BlazorWebApp.Services
         private string CleanStylesFromPrompt(string cleanedFromLoras, bool isNegative)
         {
             var cleanedFromStyles = cleanedFromLoras;
-            if (_state.State?.Generation?.Styles != null)
+            if (_state.GenerationParameters?.Styles != null)
             {
-                foreach (var style in _state.State.Generation.Styles)
+                foreach (var style in _state.GenerationParameters.Styles)
                 {
                     var styleText = isNegative ? style.NegativePrompt : style.Prompt;
                     if (!string.IsNullOrWhiteSpace(styleText))

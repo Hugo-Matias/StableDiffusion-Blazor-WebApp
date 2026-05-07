@@ -34,6 +34,11 @@ namespace BlazorWebApp.Models
         public List<Lora> Loras { get; set; } = new();
 
         /// <summary>
+        /// Prompt styles active for this workflow generation state.
+        /// </summary>
+        public List<PromptStyle> Styles { get; set; } = new();
+
+        /// <summary>
         /// LoRAs scoped to the Detailer enhancement pass 0. Independent of <see cref="Loras"/>;
         /// mutating one list does not affect the other. Used by workflow templates to emit
         /// <c>detailer_</c>-scoped LoRA loader nodes for the Detailer sub-pipeline.
@@ -88,6 +93,13 @@ namespace BlazorWebApp.Models
                     kvp => kvp.Value.Clone()
                 ),
                 Loras = Loras.Select(l => new Lora(l)).ToList(),
+                Styles = Styles.Select(s => new PromptStyle
+                {
+                    Name = s.Name,
+                    Prompt = s.Prompt,
+                    NegativePrompt = s.NegativePrompt,
+                    Loras = s.Loras?.Select(l => new Lora(l)).ToList() ?? new List<Lora>()
+                }).ToList(),
                 DetailerLorasByPass = DetailerLorasByPass.ToDictionary(
                     kvp => kvp.Key,
                     kvp => kvp.Value.Select(l => new Lora(l)).ToList()

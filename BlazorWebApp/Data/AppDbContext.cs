@@ -72,6 +72,11 @@ namespace BlazorWebApp.Data
             var generationParamsConverter = new ValueConverter<GenerationParameters, string>(
                 v => JsonSerializer.Serialize(v, generationParamsJsonOptions),
                 v => JsonSerializer.Deserialize<GenerationParameters>(v, generationParamsJsonOptions) ?? new GenerationParameters());
+            var generateStatePresetBodyConverter = new ValueConverter<GenerateStatePresetBody, string>(
+                v => JsonSerializer.Serialize(v ?? new GenerateStatePresetBody(), generationParamsJsonOptions),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? new GenerateStatePresetBody()
+                    : JsonSerializer.Deserialize<GenerateStatePresetBody>(v, generationParamsJsonOptions) ?? new GenerateStatePresetBody());
             var listIntConverter = new ValueConverter<List<int>, string>(v => JsonSerializer.Serialize(v, opt), v => JsonSerializer.Deserialize<List<int>>(v, opt));
             var listIntComparer = new ValueComparer<List<int>>((c1, c2) => c1.SequenceEqual(c2), c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())), c => c.ToList());
             var loraListConverter = new ValueConverter<List<Lora>, string>(
@@ -112,6 +117,13 @@ namespace BlazorWebApp.Data
             modelBuilder.Entity<Prompt>().Property(p => p.Tags).HasConversion(listStringConverter, listStringComparer);
             modelBuilder.Entity<State>().Property(nameof(State.AppState)).HasConversion(stateConverter);
             modelBuilder.Entity<State>().Property(nameof(State.GenerationParameters)).HasConversion(generationParamsConverter);
+
+            modelBuilder.Entity<GenerateStatePreset>()
+                .HasIndex(p => p.WorkflowId);
+
+            modelBuilder.Entity<GenerateStatePreset>()
+                .Property(p => p.Body)
+                .HasConversion(generateStatePresetBodyConverter);
 
             // Wildcard entity configuration
             modelBuilder.Entity<WildcardCollection>()
@@ -210,6 +222,7 @@ namespace BlazorWebApp.Data
         }
 
         public DbSet<Image> Images { get; set; }
+        public DbSet<GenerateStatePreset> GenerateStatePresets { get; set; }
         public DbSet<SavedDanbooruMedia> SavedDanbooruMedia { get; set; }
         public DbSet<Entities.Sampler> Samplers { get; set; }
         public DbSet<Project> Projects { get; set; }

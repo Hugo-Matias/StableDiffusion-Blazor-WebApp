@@ -318,11 +318,11 @@ namespace BlazorWebApp.Services
                 negativePrompt = await _wildcardService.ParseWildcards(negativePrompt);
 
                 prompt = prompt.ParseStyles(
-                    _state.State.Generation.Styles
+                    prepared.Styles
                         ?.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList() ?? new(),
                     false);
                 negativePrompt = negativePrompt.ParseStyles(
-                    _state.State.Generation.Styles
+                    prepared.Styles
                         ?.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList() ?? new(),
                     true);
 

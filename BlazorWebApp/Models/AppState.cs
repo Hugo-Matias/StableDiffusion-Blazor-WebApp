@@ -83,7 +83,6 @@ namespace BlazorWebApp.Models
         public int RandomImagesAmount { get; set; }
         public string RandomImagesSource { get; set; }
         public AppStateGenerationImg2Img Img2Img { get; set; }
-        public IEnumerable<PromptStyle> Styles { get; set; } = new List<PromptStyle>();
         public long Seed { get; set; }
         public bool IsInterrupted { get; set; } = false;
         public List<Workflow> Workflows { get; set; }

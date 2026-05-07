@@ -1,47 +1,19 @@
 @using static BlazorWebApp.Data.Enums
 @inject IStateService State
-@inject IDatabaseService DB
+@inject IOrchestratorService Orchestrator
 @inject ThemeService ThemeService
-@inject IDialogService DialogService
-@inject IConfiguration Configuration
 
 <div class="mt-6">
-    <MudGrid Justify="Justify.FlexEnd">
-        <MudItem xs="3">
-            <MudSelect T="string" Value="@(State.State.CurrentTheme ?? "Default")" ValueChanged="HandleThemeSelected"
-                       Label="Theme" AdornmentIcon="@Icons.Material.Filled.Palette" AdornmentColor="Color.Info"
-                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                @foreach (var themeName in ThemeService.ThemeNames)
-                {
-                    <MudSelectItem Value="@themeName">@themeName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-
-        <MudItem xs="7">
-            <MudSelect @bind-Value=_selectedState T="BlazorWebApp.Data.Entities.State" Label="State Preset"
-                       Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft"
-                       TransformOrigin="Origin.TopLeft">
-                @if (_states != null)
-                {
-                    @foreach (var state in _states)
-                    {
-                        <MudSelectItem Value="state">@state.Title</MudSelectItem>
-                    }
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="2">
-            <MudButtonGroup Class="w-100" OverrideStyles=false>
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-plus" Color=Color.Primary OnClick=@(() =>
-                                                                                                                                                                                                                                                                                                                                                     ShowStateDialog(new())) Title="Create new state" />
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-pen" Color=Color.Info OnClick=@(() =>
-                                                                                                                                                                                                                                                                                                                                         ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) Title="Edit state" />
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() =>
-                                                                                                                                                                                                                                                                                                                                                     LoadStatePreset(_selectedState)) Disabled=@(_selectedState == null) Title="Load state" />
-            </MudButtonGroup>
-        </MudItem>
-    </MudGrid>
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Spacing="2">
+        <MudSelect T="string" Value="@(State.State.CurrentTheme ?? "Default")" ValueChanged="HandleThemeSelected"
+                   Label="Theme" Variant="Variant.Text" Dense="true" AdornmentIcon="@Icons.Material.Filled.Palette"
+                   AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var themeName in ThemeService.ThemeNames)
+            {
+                <MudSelectItem Value="@themeName">@themeName</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
 
     @if (CurrentPage == "/civitai")
     {
@@ -51,6 +23,13 @@
 
     @if (CurrentPage.StartsWith("/generate"))
     {
+        var workflow = GetGenerateWorkflow();
+        if (workflow != null)
+        {
+            <MudDivider Class="my-3" />
+            <GenerateStatePresetPanel Workflow="@workflow" />
+        }
+
         <MudDivider Class="my-3" />
         <ToolbarLLMSettings />
         <MudDivider Class="my-3" />
@@ -68,47 +47,24 @@
     [CascadingParameter] public Action? OnThemeChanged { get; set; }
     [Parameter] public string CurrentPage { get; set; } = "/";
 
-    private BlazorWebApp.Data.Entities.State? _selectedState;
-    private List<BlazorWebApp.Data.Entities.State> _states = new();
-
-    protected async override Task OnInitializedAsync()
-    {
-        await InitializeStates();
-    }
-
-    private async Task InitializeStates()
-    {
-        _states = await DB.GetStates(int.Parse(Configuration["StateVersion"]));
-        if (_states != null && _states.Count > 0)
-        {
-            _states.RemoveAt(0);
-        }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task ShowStateDialog(BlazorWebApp.Data.Entities.State state)
-    {
-        var options = new DialogOptions() { CloseButton = true, CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
-        var param = new DialogParameters();
-        param.Add("StatePreset", state);
-        var dialog = await DialogService.ShowAsync<StateDialog>("", param, options);
-        await dialog.Result;
-        await InitializeStates();
-    }
-
-    private async Task LoadStatePreset(BlazorWebApp.Data.Entities.State? statePreset)
-    {
-        if (statePreset != null)
-        {
-            await State.LoadState(statePreset.Id);
-        }
-    }
-
     private async Task HandleThemeSelected(string selected)
     {
         State.State.CurrentTheme = selected;
         await State.SaveState();
         OnThemeChanged?.Invoke();
+    }
+
+    private Workflow? GetGenerateWorkflow()
+    {
+        var segments = CurrentPage.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length >= 2
+            && segments[0].Equals("generate", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(segments[1], out var workflowId))
+        {
+            return Orchestrator.GetWorkflowById(workflowId);
+        }
+
+        return Orchestrator.GetCurrentWorkflow();
     }
 
 }

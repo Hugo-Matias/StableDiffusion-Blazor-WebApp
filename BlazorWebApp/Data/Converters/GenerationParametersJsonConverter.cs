@@ -285,6 +285,10 @@ namespace BlazorWebApp.Data.Converters
                         result.Loras = JsonSerializer.Deserialize<List<Lora>>(ref reader, options) ?? new List<Lora>();
                         break;
 
+                    case nameof(GenerationParameters.Styles):
+                        result.Styles = JsonSerializer.Deserialize<List<PromptStyle>>(ref reader, options) ?? new List<PromptStyle>();
+                        break;
+
                     case nameof(GenerationParameters.DetailerLoras):
                         // Legacy pass-0-only shape: stored as a flat List<Lora>. Hydrate into pass 0 of the dictionary.
                         result.DetailerLorasByPass[0] = JsonSerializer.Deserialize<List<Lora>>(ref reader, options) ?? new List<Lora>();
@@ -340,6 +344,10 @@ namespace BlazorWebApp.Data.Converters
             // Loras
             writer.WritePropertyName(nameof(GenerationParameters.Loras));
             JsonSerializer.Serialize(writer, value.Loras, options);
+
+            // Styles
+            writer.WritePropertyName(nameof(GenerationParameters.Styles));
+            JsonSerializer.Serialize(writer, value.Styles, options);
 
             // DetailerLorasByPass - authoritative multi-pass store
             writer.WritePropertyName(nameof(GenerationParameters.DetailerLorasByPass));

@@ -167,7 +167,7 @@
                             <MudTextField @bind-Value="_stylesSearchText" Placeholder="Search styles..."
                                           Immediate="true" Variant="Variant.Text" Adornment="Adornment.Start"
                                           AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Class="styles-search" />
-                            @if (State.State.Generation.Styles != null && State.State.Generation.Styles.Any())
+                            @if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
                             {
                                 <MudTooltip Delay="800" Duration="400"
                                             Text="Write selected styles to the prompts and clear the list."
@@ -216,10 +216,10 @@
                 </div>
             </MudCollapse>
 
-            @if (State.State.Generation.Styles != null && State.State.Generation.Styles.Any())
+            @if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
             {
                 <MudChipSet Class="applied-styles-chips" AllClosable="true" OnClose="HandleAppliedChipClosed">
-                    @foreach (var style in State.State.Generation.Styles)
+                    @foreach (var style in State.GenerationParameters.Styles)
                     {
                         <MudChip Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Value="@style">@style.Name
                         </MudChip>
@@ -462,13 +462,13 @@
     private async Task HandleStyleSelected(PromptStyle style)
     {
         // Get current styles or initialize empty list
-        var currentStyles = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        var currentStyles = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
         
         // Check if style already exists (avoid duplicates)
         if (!currentStyles.Any(s => s.Name.Equals(style.Name, StringComparison.OrdinalIgnoreCase)))
         {
             currentStyles.Add(style);
-            State.State.Generation.Styles = currentStyles;
+            State.GenerationParameters.Styles = currentStyles;
             await OnStylesChanged.InvokeAsync();
             StateHasChanged();
         }
@@ -476,7 +476,7 @@
 
     private async Task HandleStylesSelectionChanged(IEnumerable<PromptStyle> styles)
     {
-        State.State.Generation.Styles = styles;
+        State.GenerationParameters.Styles = styles.ToList();
         await OnStylesChanged.InvokeAsync();
     }
 
@@ -507,7 +507,7 @@
     private async Task WritePrompts()
     {
         // Apply styles to current prompts and emit new values
-        var styles = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        var styles = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
         
         if (styles.Any())
         {
@@ -559,22 +559,22 @@ true);
             _availableStyles = styles;
             
             // If there are currently selected styles in state, preserve them if they still exist
-            if (State.State.Generation.Styles != null && State.State.Generation.Styles.Any())
+            if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
             {
-                var currentStyles = State.State.Generation.Styles.ToList();
-                State.State.Generation.Styles = styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name));
+                var currentStyles = State.GenerationParameters.Styles.ToList();
+                State.GenerationParameters.Styles = styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name)).ToList();
             }
             else
             {
                 // Initialize to empty list if null
-                State.State.Generation.Styles = new List<PromptStyle>();
+                State.GenerationParameters.Styles = new List<PromptStyle>();
             }
         }
         catch (Exception)
         {
             // If styles loading fails, initialize to empty list
             _availableStyles = new List<PromptStyle>();
-            State.State.Generation.Styles ??= new List<PromptStyle>();
+            State.GenerationParameters.Styles ??= new List<PromptStyle>();
         }
     }
 
@@ -851,7 +851,7 @@ true
     /// </summary>
     private string GetStylesTabLabel()
     {
-        var count = State.State?.Generation?.Styles?.Count() ?? 0;
+        var count = State.GenerationParameters?.Styles?.Count ?? 0;
         return count > 0 ? $"Styles ({count})" : "Styles";
     }
 
@@ -893,14 +893,14 @@ true
     }
 
     private bool IsStyleSelected(PromptStyle style)
-        => State.State?.Generation?.Styles?.Any(s => s.Name == style.Name) ?? false;
+        => State.GenerationParameters?.Styles?.Any(s => s.Name == style.Name) ?? false;
 
     /// <summary>
     /// Toggles a style in the selected set. Called from the styles tab checkbox rows.
     /// </summary>
     private async Task ToggleStyle(PromptStyle style)
     {
-        var current = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        var current = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
         var existing = current.FirstOrDefault(s => s.Name == style.Name);
         if (existing != null)
         {
@@ -920,7 +920,7 @@ true
     private async Task HandleAppliedChipClosed(MudChip chip)
     {
         if (chip?.Value is not PromptStyle style) return;
-        var current = State.State.Generation.Styles?.ToList() ?? new List<PromptStyle>();
+        var current = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
         var existing = current.FirstOrDefault(s => s.Name == style.Name);
         if (existing != null)
         {

@@ -123,6 +123,12 @@ namespace BlazorWebApp.Services
         Task SaveCurrentWorkflowStateAsync();
 
         /// <summary>
+        /// Applies a named Generate state preset over the current workflow parameters.
+        /// This bypasses the normal per-workflow saved-state load so the preset snapshot wins.
+        /// </summary>
+        Task ApplyPresetAsync(Workflow workflow, GenerationParameters parameters);
+
+        /// <summary>
         /// Sets a value for a fragment parameter (no event published).
         /// Use for batch updates, call NotifyChanged() when done.
         /// </summary>
