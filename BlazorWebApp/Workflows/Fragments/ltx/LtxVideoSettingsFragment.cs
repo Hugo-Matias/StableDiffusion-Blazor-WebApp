@@ -11,6 +11,13 @@ namespace BlazorWebApp.Workflows.Fragments.Ltx;
 /// </summary>
 public class LtxVideoSettingsFragment : IFragmentBuilder
 {
+    private readonly bool _includeResolution;
+
+    public LtxVideoSettingsFragment(bool includeResolution = true)
+    {
+        _includeResolution = includeResolution;
+    }
+
     public FragmentMetadata Metadata => new()
     {
         Id = "ltx_video_settings",
@@ -20,9 +27,14 @@ public class LtxVideoSettingsFragment : IFragmentBuilder
         Icon = "fa-solid fa-video",
         Order = 30,
         Collapsible = false,
-        Parameters =
-        [
-            new FragmentParameter
+        Parameters = BuildParameters()
+    };
+
+    private IEnumerable<FragmentParameter> BuildParameters()
+    {
+        if (_includeResolution)
+        {
+            yield return new FragmentParameter
             {
                 Name = "width",
                 Label = "Width",
@@ -32,8 +44,8 @@ public class LtxVideoSettingsFragment : IFragmentBuilder
                 Step = 32,
                 DefaultValue = 1280,
                 Description = "Used by Txt2Vid workflows; Img2Vid reads dimensions from the source image."
-            },
-            new FragmentParameter
+            };
+            yield return new FragmentParameter
             {
                 Name = "height",
                 Label = "Height",
@@ -43,49 +55,50 @@ public class LtxVideoSettingsFragment : IFragmentBuilder
                 Step = 32,
                 DefaultValue = 720,
                 Description = "Used by Txt2Vid workflows; Img2Vid reads dimensions from the source image."
-            },
-            new FragmentParameter
-            {
-                Name = "duration",
-                Label = "Duration (seconds)",
-                Type = ParameterType.Slider,
-                Min = 1,
-                Max = 15,
-                Step = 1,
-                DefaultValue = 5
-            },
-            new FragmentParameter
-            {
-                Name = "frame_rate",
-                Label = "Frame Rate",
-                Type = ParameterType.Slider,
-                Min = 8,
-                Max = 30,
-                Step = 1,
-                DefaultValue = 25
-            },
-            new FragmentParameter
-            {
-                Name = "img_compression",
-                Label = "Image Compression",
-                Type = ParameterType.Slider,
-                Min = 1,
-                Max = 30,
-                Step = 1,
-                DefaultValue = 18
-            },
-            new FragmentParameter
-            {
-                Name = "i2v_strength",
-                Label = "I2V Strength",
-                Type = ParameterType.Slider,
-                Min = 0.0,
-                Max = 1.0,
-                Step = 0.05,
-                DefaultValue = 0.7
-            }
-        ]
-    };
+            };
+        }
+
+        yield return new FragmentParameter
+        {
+            Name = "duration",
+            Label = "Duration (seconds)",
+            Type = ParameterType.Slider,
+            Min = 1,
+            Max = 15,
+            Step = 1,
+            DefaultValue = 5
+        };
+        yield return new FragmentParameter
+        {
+            Name = "frame_rate",
+            Label = "Frame Rate",
+            Type = ParameterType.Slider,
+            Min = 8,
+            Max = 30,
+            Step = 1,
+            DefaultValue = 25
+        };
+        yield return new FragmentParameter
+        {
+            Name = "img_compression",
+            Label = "Image Compression",
+            Type = ParameterType.Slider,
+            Min = 1,
+            Max = 30,
+            Step = 1,
+            DefaultValue = 18
+        };
+        yield return new FragmentParameter
+        {
+            Name = "i2v_strength",
+            Label = "I2V Strength",
+            Type = ParameterType.Slider,
+            Min = 0.0,
+            Max = 1.0,
+            Step = 0.05,
+            DefaultValue = 0.7
+        };
+    }
 
     public void Build(
         ComfyWorkflowBuilder builder,

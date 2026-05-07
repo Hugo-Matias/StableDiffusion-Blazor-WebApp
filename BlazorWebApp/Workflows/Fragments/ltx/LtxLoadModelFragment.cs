@@ -7,7 +7,8 @@ namespace BlazorWebApp.Workflows.Fragments.Ltx;
 /// <summary>
 /// Fragment that loads LTX model components:
 /// CheckpointLoaderSimple (model + VAE), LTXAVTextEncoderLoader (CLIP),
-/// LTXVAudioVAELoader (audio VAE), LatentUpscaleModelLoader (spatial upscaler).
+/// LTXVAudioVAELoader (audio VAE), LatentUpscaleModelLoader (spatial upscaler),
+/// and LTX2SamplingPreviewOverride with a lightweight preview VAE.
 /// Registers: model_output, clip_output, vae_output, audio_vae_output, upscale_model_output.
 /// </summary>
 public class LtxLoadModelFragment : IFragmentBuilder
@@ -25,16 +26,20 @@ public class LtxLoadModelFragment : IFragmentBuilder
         // CheckpointLoaderSimple.ckpt_name resolves against /models/checkpoints
         // (verified via ComfyUI /object_info).
         public string CheckpointName { get; set; } = "ltx-2.3-22b-dev-fp8.safetensors";
-        public string TextEncoderName { get; set; } = "gemma_3_12B_it_fpmixed.safetensors";
+        public string TextEncoderName { get; set; } = "gemma_3_12B_it_fp4_mixed.safetensors";
         // LTXAVTextEncoderLoader.ckpt_name reads /models/checkpoints — distinct
-        // file from CheckpointName; defaults to the LTX text-projection ckpt.
-        public string AvProjectionCkpt { get; set; } = "ltx-2.3_text_projection_bf16.safetensors";
-        // Audio VAE loader — see LtxLoadSplitFragment.Parameters for the
-        // VAELoaderKJ vs LTXVAudioVAELoader distinction.
-        public string AudioVaeName { get; set; } = "LTX23_audio_vae_bf16_KJ.safetensors";
-        public string AudioVaeNodeType { get; set; } = "VAELoaderKJ";
+        // slot from CheckpointLoaderSimple; upstream I2V pairs it with the same
+        // LTX 2.3 checkpoint by default.
+        public string AvProjectionCkpt { get; set; } = "ltx-2.3-22b-dev-fp8.safetensors";
+        // Audio VAE loader — upstream I2V uses LTXVAudioVAELoader, which reads
+        // ckpt_name from /models/checkpoints. VAELoaderKJ remains supported.
+        public string AudioVaeName { get; set; } = "ltx-2.3-22b-dev-fp8.safetensors";
+        public string AudioVaeNodeType { get; set; } = "LTXVAudioVAELoader";
         public string AudioVaeWeightDtype { get; set; } = "bf16";
-        public string UpscaleModelName { get; set; } = "ltx-2-spatial-upscaler-x2-1.0.safetensors";
+        public string UpscaleModelName { get; set; } = "ltx-2.3-spatial-upscaler-x2-1.0.safetensors";
+        public string PreviewVaeName { get; set; } = "taeltx2_3.safetensors";
+        public int PreviewRate { get; set; } = 24;
+        public bool EnableSamplingPreviewOverride { get; set; } = true;
     }
 
     public void Build(
@@ -57,6 +62,8 @@ public class LtxLoadModelFragment : IFragmentBuilder
                 p.AudioVaeName = avae;
             if (parameters.Assets.TryGetValue("UpscaleModel", out var upscale) && !string.IsNullOrWhiteSpace(upscale))
                 p.UpscaleModelName = upscale;
+            if (parameters.Assets.TryGetValue("PreviewVae", out var previewVae) && !string.IsNullOrWhiteSpace(previewVae))
+                p.PreviewVaeName = previewVae;
         }
         BuildInternal(builder, registry, p, scope, scopeTitle);
     }
@@ -82,6 +89,8 @@ public class LtxLoadModelFragment : IFragmentBuilder
         var textEncoderId = $"{scope}text_encoder_loader";
         var audioVaeId = $"{scope}audio_vae_loader";
         var upscaleModelId = $"{scope}upscale_model_loader";
+        var previewVaeId = $"{scope}preview_vae_loader";
+        var previewOverrideId = $"{scope}ltx_preview_override";
 
         // CheckpointLoaderSimple -> model[0], clip[1] (unused), vae[2]
         builder.AddNode(checkpointId, node => node
@@ -89,8 +98,7 @@ public class LtxLoadModelFragment : IFragmentBuilder
             .Title($"{scopeTitle}Load Checkpoint")
             .Input("ckpt_name", p.CheckpointName));
 
-        // LTXAVTextEncoderLoader -> clip[0]. ckpt_name reads /models/checkpoints
-        // (own AV projection file), distinct from CheckpointLoaderSimple's ckpt.
+        // LTXAVTextEncoderLoader -> clip[0]. ckpt_name reads /models/checkpoints.
         builder.AddNode(textEncoderId, node => node
             .Type("LTXAVTextEncoderLoader")
             .Title($"{scopeTitle}LTXV Audio Text Encoder Loader")
@@ -98,7 +106,7 @@ public class LtxLoadModelFragment : IFragmentBuilder
             .Input("ckpt_name", p.AvProjectionCkpt)
             .Input("device", "default"));
 
-        // Audio VAE loader — default VAELoaderKJ pulls from /models/vae.
+        // Audio VAE loader. LTXVAudioVAELoader reads checkpoints; VAELoaderKJ reads VAEs.
         builder.AddNode(audioVaeId, node => BuildAudioVaeNode(node, p, scopeTitle));
 
         // LatentUpscaleModelLoader -> upscale_model[0]
@@ -107,7 +115,22 @@ public class LtxLoadModelFragment : IFragmentBuilder
             .Title($"{scopeTitle}Load Latent Upscale Model")
             .Input("model_name", p.UpscaleModelName));
 
-        registry.Register($"{scope}model_output", checkpointId, 0);
+        if (p.EnableSamplingPreviewOverride)
+        {
+            builder.AddNode(previewVaeId, node => node
+                .Type("VAELoader")
+                .Title($"{scopeTitle}Load Preview VAE")
+                .Input("vae_name", p.PreviewVaeName));
+
+            builder.AddNode(previewOverrideId, node => node
+                .Type("LTX2SamplingPreviewOverride")
+                .Title($"{scopeTitle}LTX2 Sampling Preview Override")
+                .InputFromNode("model", checkpointId, 0)
+                .InputFromNode("vae", previewVaeId, 0)
+                .Input("preview_rate", p.PreviewRate));
+        }
+
+        registry.Register($"{scope}model_output", p.EnableSamplingPreviewOverride ? previewOverrideId : checkpointId, 0);
         registry.Register($"{scope}clip_output", textEncoderId, 0);
         registry.Register($"{scope}vae_output", checkpointId, 2);
         registry.Register($"{scope}audio_vae_output", audioVaeId, 0);

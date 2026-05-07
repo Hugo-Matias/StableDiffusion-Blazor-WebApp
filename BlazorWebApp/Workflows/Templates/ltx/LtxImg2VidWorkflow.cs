@@ -29,7 +29,7 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
     private readonly LtxSamplingPassFragment _samplingPassFragment = new();
     private readonly LtxUpsampleLatentFragment _upsampleLatentFragment = new();
     private readonly LtxDecodeFragment _decodeFragment = new();
-    private readonly LtxVideoSettingsFragment _videoSettingsFragment = new();
+    private readonly LtxVideoSettingsFragment _videoSettingsFragment = new(includeResolution: false);
     private readonly LtxSamplerFragment _samplerFragment = new();
 
     public WorkflowMetadata Metadata => new()
@@ -74,10 +74,10 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
             new WorkflowAsset
             {
                 Parameter = "AudioVae",
-                Label = "Audio VAE",
-                // VAELoaderKJ (default audio VAE loader) reads /models/vae.
-                Type = AssetType.Vae,
-                DefaultValue = "LTX23_audio_vae_bf16_KJ.safetensors",
+                Label = "Audio VAE Checkpoint",
+                // LTXVAudioVAELoader.ckpt_name reads /models/checkpoints.
+                Type = AssetType.CheckpointModel,
+                DefaultValue = "ltx-2.3-22b-dev-fp8.safetensors",
                 Order = 4,
                 ColumnSize = 6
             },
@@ -88,7 +88,16 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
                 Type = AssetType.LatentUpscaleModel,
                 DefaultValue = "ltx-2-spatial-upscaler-x2-1.0.safetensors",
                 Order = 5,
-                ColumnSize = 12
+                ColumnSize = 6
+            },
+            new WorkflowAsset
+            {
+                Parameter = "PreviewVae",
+                Label = "Preview VAE",
+                Type = AssetType.Vae,
+                DefaultValue = "taeltx2_3.safetensors",
+                Order = 6,
+                ColumnSize = 6
             }
         ],
         Sources =
@@ -134,6 +143,7 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
         var imageFragment = parameters.GetFragment(_loadImageFragment.Metadata.Id);
         var width = imageFragment?.GetInt("width", 1280) ?? 1280;
         var height = imageFragment?.GetInt("height", 720) ?? 720;
+        var batchSize = imageFragment?.GetInt("batch_size", 1) ?? 1;
         var frameCount = duration * frameRate + 1;
         var halfWidth = width / 2;
         var halfHeight = height / 2;
@@ -145,8 +155,14 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
         // 1. Load Models (checkpoint, text encoder, audio VAE, upscale model)
         _loadModelFragment.Build(builder, registry, new LtxLoadModelFragment.Parameters
         {
-            CheckpointName = parameters.Assets?.GetValueOrDefault("Model") ?? "ltx-2.3-22b-dev-fp8.safetensors",
-            TextEncoderName = parameters.Assets?.GetValueOrDefault("TextEncoder") ?? "gemma_3_12B_it_fp4_mixed.safetensors"
+            CheckpointName = parameters.Assets?.GetValueOrDefault("Checkpoint") ?? "ltx-2.3-22b-dev-fp8.safetensors",
+            TextEncoderName = parameters.Assets?.GetValueOrDefault("Clip") ?? "gemma_3_12B_it_fp4_mixed.safetensors",
+            AvProjectionCkpt = parameters.Assets?.GetValueOrDefault("AvProjectionCkpt") ?? "ltx-2.3-22b-dev-fp8.safetensors",
+            AudioVaeName = parameters.Assets?.GetValueOrDefault("AudioVae") ?? "ltx-2.3-22b-dev-fp8.safetensors",
+            AudioVaeNodeType = "LTXVAudioVAELoader",
+            UpscaleModelName = parameters.Assets?.GetValueOrDefault("UpscaleModel") ?? "ltx-2.3-spatial-upscaler-x2-1.0.safetensors",
+            PreviewVaeName = parameters.Assets?.GetValueOrDefault("PreviewVae") ?? "taeltx2_3.safetensors",
+            PreviewRate = frameRate
         });
 
         // 2. LoRAs (dynamic app nodes)
@@ -183,7 +199,7 @@ public class LtxImg2VidWorkflow : IWorkflowBuilder
             Width = halfWidth,
             Height = halfHeight,
             Length = frameCount,
-            BatchSize = 1,
+            BatchSize = batchSize,
             FrameRate = frameRate
         });
 
