@@ -56,6 +56,7 @@ namespace BlazorWebApp.Services
         Task<ImagesDto> GetPagedImages(int page, int projectId);
         Task<ImagesDto> GetPagedImages(int page, List<int> imageIds);
         Task<ImagesDto> GetSortedImages(int page, int projectId, AppStateGallery state);
+        Task<List<string>> GetProjectWorkflowIds(int projectId);
         Task<ImagesDto> GetRandomImages(int amount);
         Task<Image> GetRandomFavorite(int projectId);
         Task<List<Image>> GetRecentImagesWithPrompts(int limit = 10000);

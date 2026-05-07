@@ -3,6 +3,7 @@
 @inject IGalleryService Gallery
 @inject IEventService Events
 @inject IDatabaseService DB
+@inject IOrchestratorService M
 @inject IDialogService DialogService
 @implements IDisposable
 
@@ -343,6 +344,21 @@
                         </MudChipSet>
                     </div>
 
+                    @if (_availableWorkflows.Count > 0)
+                    {
+                        <div class="modes-action-section">
+                            <MudText Typo="Typo.caption" Class="filter-group-label">Workflows</MudText>
+                            <MudChipSet SelectedChipsChanged="HandleWorkflowSelection" Filter MultiSelection
+                                        Class="mode-chips-action">
+                                @foreach (var wf in _availableWorkflows)
+                                {
+                                    <MudChip Text="@wf.Title" Variant="Variant.Text" Color="Color.Info"
+                                             Default="@(!State.State.Gallery.ActiveWorkflowIds.Any() || State.State.Gallery.ActiveWorkflowIds.Contains(wf.Id))" />
+                                }
+                            </MudChipSet>
+                        </div>
+                    }
+
                     <!-- Filter/Reset Buttons - Centered -->
                     <MudStack Row=true Spacing="2" Class="action-buttons-center">
                         @if (State.State.Gallery.OrderBy == GalleryOrderBy.Random)
@@ -380,15 +396,17 @@
     private bool _showFilters = false;
     private bool _showReorderArrows = false;
     private int _activeFolderTabIndex = 0;
+    private List<(string Id, string Title)> _availableWorkflows = new();
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
 
     private bool IsCompactProjectPanel => State.State.Gallery.ProjectPanelMode == ProjectPanelMode.Compact;
     private bool IsPurePresentation => State.State.Gallery.PresentationMode == GalleryPresentationMode.Pure;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Events.Subscribe<FolderChangedEventArgs>(OnFolderChanged);
         _activeFolderTabIndex = ComputeActiveFolderTabIndex();
+        await LoadAvailableWorkflowsAsync();
     }
 
     private int ComputeActiveFolderTabIndex()
@@ -402,6 +420,8 @@
     private async void OnFolderChanged(FolderChangedEventArgs args)
     {
         await Gallery.GetProjects(args.FolderId);
+        State.State.Gallery.ActiveWorkflowIds = new();
+        await LoadAvailableWorkflowsAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -477,6 +497,8 @@
     private async Task HandleProjectSelected(int projectId)
     {
         await Gallery.SetCurrentProject(projectId);
+        State.State.Gallery.ActiveWorkflowIds = new();
+        await LoadAvailableWorkflowsAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -486,6 +508,32 @@
         State.State.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "I2I");
         State.State.Gallery.IsModeUpscale = chips.Any(c => c.Text == "Upscale");
         State.State.Gallery.IsModeImg2Vid = chips.Any(c => c.Text == "I2V");
+    }
+
+    private void HandleWorkflowSelection(MudChip[] chips)
+    {
+        var selectedTitles = chips.Select(c => c.Text).ToHashSet();
+        State.State.Gallery.ActiveWorkflowIds = _availableWorkflows
+            .Where(w => selectedTitles.Contains(w.Title))
+            .Select(w => w.Id)
+            .ToHashSet();
+    }
+
+    private async Task LoadAvailableWorkflowsAsync()
+    {
+        var projectId = State.State.Gallery.ProjectId;
+        if (projectId <= 0)
+        {
+            _availableWorkflows = new();
+            return;
+        }
+
+        var ids = await DB.GetProjectWorkflowIds(projectId);
+        _availableWorkflows = ids
+            .Select(id => Guid.TryParse(id, out var guid) ? (id, M.GetWorkflowById(guid)?.Title) : (id, null))
+            .Where(w => w.Item2 != null)
+            .Select(w => (w.id, w.Item2!))
+            .ToList();
     }
 
     private async Task HandleNavigationModeChanged(bool value)

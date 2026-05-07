@@ -22,6 +22,10 @@
     {
         <MudChip T="string" Size="Size.Small" Color="@GetModeColor()" Class="mode-chip">@_modeName</MudChip>
     }
+    @if (!string.IsNullOrWhiteSpace(_workflowTitle))
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="mode-chip" title=@($"Workflow:        {_workflowTitle}")>@_workflowTitle</MudChip>
+    }
     @HeaderTrailing
     <button class="viewer-btn small" @onclick="OnClose" title="Close">
         <MudIcon Icon="fa-solid fa-xmark" Size="Size.Small" />
@@ -303,6 +307,7 @@
     private HashSet<string> _selectedParams = new();
     private string? _currentSampler;
     private string? _modeName;
+    private string? _workflowTitle;
     private string? _modelName;
     private JsonTreeNode? _workflowData;
 
@@ -343,6 +348,12 @@
             4 => "Img2Vid",
             _ => null
         };
+
+        // Resolve workflow title from stored WorkflowId
+        if (!string.IsNullOrWhiteSpace(Asset.WorkflowId) && Guid.TryParse(Asset.WorkflowId, out var wfGuid))
+            _workflowTitle = M.GetWorkflowById(wfGuid)?.Title;
+        else
+            _workflowTitle = null;
 
         // Try to load workflow data from file metadata
         await LoadWorkflowData();

@@ -130,6 +130,9 @@ namespace BlazorWebApp.Migrations
                     b.Property<int>("Width")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("WorkflowId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ModeId");

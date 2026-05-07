@@ -393,6 +393,9 @@ namespace BlazorWebApp.Services
             if (modes.Count > 0)
                 query = query.Where(i => modes.Contains(i.ModeId));
 
+            if (state.ActiveWorkflowIds != null && state.ActiveWorkflowIds.Count > 0)
+                query = query.Where(i => state.ActiveWorkflowIds.Contains(i.WorkflowId!));
+
             if (state.IsScore)
                 query = query.Where(i => i.Score == state.Score);
 
@@ -457,6 +460,17 @@ namespace BlazorWebApp.Services
                 HasNext = (int)pageCount > 1 && page < (int)pageCount,
                 HasPrev = page > 1
             };
+        }
+
+        public async Task<List<string>> GetProjectWorkflowIds(int projectId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (context.Images == null) return new();
+            return await context.Images
+                .Where(i => i.ProjectId == projectId && !i.IsHidden && i.WorkflowId != null)
+                .Select(i => i.WorkflowId!)
+                .Distinct()
+                .ToListAsync();
         }
 
         public async Task<string> GetSampleImage(int projectId)

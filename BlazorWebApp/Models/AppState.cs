@@ -256,6 +256,7 @@ namespace BlazorWebApp.Models
         public bool IsModeImg2Img { get; set; } = true;
         public bool IsModeUpscale { get; set; } = true;
         public bool IsModeImg2Vid { get; set; } = true;
+        public HashSet<string> ActiveWorkflowIds { get; set; } = new();
         public DateRange DateRange { get; set; } = new(DateTime.Now.Date, DateTime.Now.Date);
         public bool FilterByDateRange { get; set; } = false;
         public bool IsSelectedOnly { get; set; } = false;

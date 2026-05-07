@@ -31,6 +31,12 @@ namespace BlazorWebApp.Data.Entities
         /// </summary>
         public bool IsHidden { get; set; }
 
+        /// <summary>
+        /// Guid string of the workflow (IWorkflowBuilder.Id) that produced this image.
+        /// Null for images created before this field was introduced or via legacy flows.
+        /// </summary>
+        public string? WorkflowId { get; set; }
+
 
         public Image() { }
         public Image(ResourceImage resourceImage)

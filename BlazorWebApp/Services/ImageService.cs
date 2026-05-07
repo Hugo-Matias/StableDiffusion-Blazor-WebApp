@@ -272,14 +272,21 @@ namespace BlazorWebApp.Services
             var fullpath = GetImagePathFromParams(saveDir.FullName, fileIndex, seed, steps, cfg, samplerName);
             var imagePath = $"{fullpath}.{extension}";
 
-            await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(generated.Images[0]));
+            // Decode once; use for both saving and reading dimensions
+            var imageBytes = Convert.FromBase64String(generated.Images[0]);
+            await _io.SaveFileToDisk(imagePath, imageBytes);
+
+            // Read actual dimensions from the image bytes (upscale flows change resolution)
+            var imageInfo = _magick.ReadInfoFromBytes(imageBytes);
+            var actualWidth = imageInfo.Width > 0 ? (int)imageInfo.Width : width;
+            var actualHeight = imageInfo.Height > 0 ? (int)imageInfo.Height : height;
 
             var image = new Image
             {
                 Path = imagePath,
                 ProjectId = _state.State.Gallery.ProjectId,
-                Width = width,
-                Height = height,
+                Width = actualWidth,
+                Height = actualHeight,
                 Prompt = prompt,
                 NegativePrompt = negativePrompt,
                 SamplerId = await _db.GetSamplerIdByName(samplerName),
@@ -290,6 +297,7 @@ namespace BlazorWebApp.Services
                 DenoisingStrength = denoise,
                 Model = await _db.GetResourceByFilename(_currentModel),
                 ModeId = await _db.GetMode(mode),
+                WorkflowId = workflow?.Id.ToString(),
                 DateCreated = DateTime.Now,
                 IsHidden = true,
             };
@@ -413,15 +421,21 @@ namespace BlazorWebApp.Services
                 var fullpath = GetImagePathFromParams(saveDir.FullName, fileIndex, seed, steps, cfg, samplerName);
                 var imagePath = $"{fullpath}.{extension}";
 
-                await _io.SaveFileToDisk(imagePath, Convert.FromBase64String(Images.Images[i]));
+                var imageBytes = Convert.FromBase64String(Images.Images[i]);
+                await _io.SaveFileToDisk(imagePath, imageBytes);
+
+                // Read actual dimensions from the saved image (upscale flows change resolution)
+                var imageInfo = _magick.ReadInfoFromBytes(imageBytes);
+                var actualWidth = imageInfo.Width > 0 ? (int)imageInfo.Width : width;
+                var actualHeight = imageInfo.Height > 0 ? (int)imageInfo.Height : height;
 
                 // Create image entity from GenerationParameters
                 var image = new Image
                 {
                     Path = imagePath,
                     ProjectId = _state.State.Gallery.ProjectId,
-                    Width = width,
-                    Height = height,
+                    Width = actualWidth,
+                    Height = actualHeight,
                     Prompt = prompt,
                     NegativePrompt = negativePrompt,
                     SamplerId = await _db.GetSamplerIdByName(samplerName),
@@ -432,6 +446,7 @@ namespace BlazorWebApp.Services
                     DenoisingStrength = denoise,
                     Model = await _db.GetResourceByFilename(_currentModel),
                     ModeId = await _db.GetMode(mode),
+                    WorkflowId = workflow?.Id.ToString(),
                     DateCreated = DateTime.Now
                 };
 
