@@ -146,7 +146,7 @@
                             <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")"
                                  @onclick="@(() => ToggleParam("Width"))" title="Resolution">
                                 <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
-                                <span>@Asset.Width � @Asset.Height</span>
+                                <span>@Asset.Width &times; @Asset.Height</span>
                             </div>
                         }
                         @if (Asset.Seed > 0)

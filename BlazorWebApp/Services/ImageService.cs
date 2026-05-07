@@ -630,7 +630,8 @@ namespace BlazorWebApp.Services
                 Scheduler = scheduler,
                 Favorite = false,
                 Score = 0,
-                ModeId = (int)ModeType.Img2Vid,
+                ModeId = await _db.GetMode(ModeType.Img2Vid),
+                WorkflowId = _currentWorkflow?.Id.ToString(),
                 ProjectId = _state.State.Gallery.ProjectId
             };
 
