@@ -66,6 +66,7 @@ public partial class Generate : IDisposable
         Events.Subscribe<PendingSourceImagesChangedEventArgs>(OnPendingSourceImages);
         Events.Subscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
         Events.Subscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
+        Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
 
         // Load all workflows that may appear on the Generate page. The WorkflowStrip
         // (which reads from State.Generation.Workflows) shows tabs for every mode the
@@ -104,10 +105,25 @@ public partial class Generate : IDisposable
             if (_selectedWorkflow?.Id != workflowGuid)
             {
                 var workflow = _workflows?.FirstOrDefault(w => w.Id == workflowGuid);
-                if (workflow != null)
+                if (workflow != null && !Orchestrator.IsWorkflowDisabled(workflow.Id))
                 {
                     // Don't update URL - we're already navigating from URL
                     await OnWorkflowSelected(workflow, updateUrl: false);
+                    return;
+                }
+
+                if (workflow != null && Orchestrator.IsWorkflowDisabled(workflow.Id))
+                {
+                    var resolvedId = Orchestrator.ResolveWorkflowForBase(workflow.Base);
+                    if (resolvedId.HasValue)
+                    {
+                        NavManager.NavigateTo($"/generate/{resolvedId.Value}", forceLoad: false, replace: true);
+                    }
+                    else
+                    {
+                        _selectedWorkflow = null;
+                        NavManager.NavigateTo("/generate", forceLoad: false, replace: true);
+                    }
                     return;
                 }
             }
@@ -137,7 +153,7 @@ public partial class Generate : IDisposable
         if (_selectedWorkflow == null && Parameters.WorkflowId.HasValue)
         {
             var restoredWorkflow = _workflows?.FirstOrDefault(w => w.Id == Parameters.WorkflowId.Value);
-            if (restoredWorkflow != null)
+            if (restoredWorkflow != null && !Orchestrator.IsWorkflowDisabled(restoredWorkflow.Id))
             {
                 // Update URL to reflect restored workflow
                 await OnWorkflowSelected(restoredWorkflow, updateUrl: true);
@@ -152,7 +168,7 @@ public partial class Generate : IDisposable
             if (currentId.HasValue)
             {
                 var fallbackWorkflow = _workflows?.FirstOrDefault(w => w.Id == currentId.Value);
-                if (fallbackWorkflow != null)
+                if (fallbackWorkflow != null && !Orchestrator.IsWorkflowDisabled(fallbackWorkflow.Id))
                 {
                     await OnWorkflowSelected(fallbackWorkflow, updateUrl: true);
                     return;
@@ -174,6 +190,7 @@ public partial class Generate : IDisposable
     private async Task OnWorkflowSelected(Workflow workflow, bool updateUrl = true)
     {
         if (workflow == null) return;
+        if (Orchestrator.IsWorkflowDisabled(workflow.Id)) return;
 
         _selectedWorkflow = workflow;
 
@@ -684,6 +701,31 @@ public partial class Generate : IDisposable
         _ = InvokeAsync(StateHasChanged);
     }
 
+    private void OnWorkflowAvailabilityChanged(WorkflowAvailabilityChangedEventArgs args)
+    {
+        if (_selectedWorkflow?.Id == args.WorkflowId && !args.IsEnabled)
+        {
+            var resolvedId = Orchestrator.ResolveWorkflowForBase(args.WorkflowBase);
+            if (resolvedId.HasValue)
+            {
+                var workflow = _workflows?.FirstOrDefault(w => w.Id == resolvedId.Value);
+                if (workflow != null)
+                {
+                    _ = OnWorkflowSelected(workflow);
+                    return;
+                }
+
+                NavManager.NavigateTo($"/generate/{resolvedId.Value}", forceLoad: false, replace: true);
+                return;
+            }
+
+            _selectedWorkflow = null;
+            NavManager.NavigateTo("/generate", forceLoad: false, replace: true);
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     #endregion
 
     #region Dispose
@@ -731,6 +773,7 @@ public partial class Generate : IDisposable
         Events.Unsubscribe<PendingSourceImagesChangedEventArgs>(OnPendingSourceImages);
         Events.Unsubscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
         Events.Unsubscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
+        Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
 
         // Clear any workflow info we pushed to the global Info drawer.
         InfoService.ClearInfo();

@@ -101,6 +101,21 @@ namespace BlazorWebApp.Services
         List<Workflow> GetWorkflowsForMode(ModeType mode);
 
         /// <summary>
+        /// Gets enabled workflows for the specified (or current) base.
+        /// </summary>
+        List<Workflow> GetEnabledWorkflowsForBase(ModelBase? baseModel = null);
+
+        /// <summary>
+        /// Returns whether the workflow is currently disabled for Generate-page visibility.
+        /// </summary>
+        bool IsWorkflowDisabled(Guid workflowId);
+
+        /// <summary>
+        /// Enables or disables a workflow and persists the choice to application state.
+        /// </summary>
+        Task SetWorkflowEnabledAsync(Guid workflowId, bool enabled);
+
+        /// <summary>
         /// Resolves the best workflow id to route to for the specified (or current) base.
         /// Prefers the last-used workflow for that base, falling back to the first available.
         /// Returns null if no workflow exists for the base.
@@ -286,7 +301,7 @@ namespace BlazorWebApp.Services
 
         /// <summary>
         /// Queues a generation parameter override from an image.
-        /// Use when navigating to a different workflow — overrides are applied after InitializeFromWorkflowAsync.
+        /// Use when navigating to a different workflow ï¿½ overrides are applied after InitializeFromWorkflowAsync.
         /// </summary>
         Task QueueGenerationParameter(Image source, string parameter, bool isImg2Img);
 

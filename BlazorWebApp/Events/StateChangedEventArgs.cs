@@ -55,6 +55,11 @@ namespace BlazorWebApp.Events
         /// <summary>
         /// Assets changed
         /// </summary>
-        Assets
+        Assets,
+
+        /// <summary>
+        /// Enabled or disabled workflow choices changed
+        /// </summary>
+        WorkflowAvailability
     }
 }

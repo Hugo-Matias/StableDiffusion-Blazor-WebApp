@@ -21,15 +21,15 @@
                 : "Generate";
         }
         <MudTooltip Text="@generateTooltip" Placement="Placement.Bottom" Arrow="true">
-            <MudNavLink Href="/generate"
-                        Match=NavLinkMatch.Prefix
-                        Class="@(generateDisabled ? "nav-disabled" : "")">
-                <MudIcon Icon="fa-solid fa-wand-magic-sparkles" Class="nav-icon me-1" /><span class="nav-label">Generate</span>
+            <MudNavLink Href="/generate" Match=NavLinkMatch.Prefix Class="@(generateDisabled ? "nav-disabled" : "")">
+                <MudIcon Icon="fa-solid fa-wand-magic-sparkles" Class="nav-icon me-1" /><span
+                class="nav-label">Generate</span>
             </MudNavLink>
         </MudTooltip>
         <MudTooltip Text="Scheduler" Placement="Placement.Bottom" Arrow="true">
             <MudNavLink Href="/scheduler" Match=NavLinkMatch.Prefix>
-                <MudIcon Icon="fa-solid fa-calendar-check" Class="nav-icon me-1" /><span class="nav-label">Scheduler</span>
+                <MudIcon Icon="fa-solid fa-calendar-check" Class="nav-icon me-1" /><span
+                class="nav-label">Scheduler</span>
             </MudNavLink>
         </MudTooltip>
         <MudTooltip Text="Prompts" Placement="Placement.Bottom" Arrow="true">
@@ -66,6 +66,7 @@
         Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
         Events.Subscribe<ProjectChangedEventArgs>(OnProjectsChanged);
         Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
     }
 
     /// <summary>
@@ -91,6 +92,11 @@
         Refresh();
     }
 
+    private void OnWorkflowAvailabilityChanged(WorkflowAvailabilityChangedEventArgs args)
+    {
+        Refresh();
+    }
+
     private async void Refresh() => await InvokeAsync(StateHasChanged);
 
     public void Dispose()
@@ -98,5 +104,6 @@
         Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
         Events.Unsubscribe<ProjectChangedEventArgs>(OnProjectsChanged);
         Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
     }
 }

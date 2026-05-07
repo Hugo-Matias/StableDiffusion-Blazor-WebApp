@@ -117,13 +117,13 @@ namespace BlazorWebApp.Services
             if (_state.State.Generation.CurrentWorkflowId.HasValue)
             {
                 var workflow = _state.State.Generation.Workflows.FirstOrDefault(w => w.Id == _state.State.Generation.CurrentWorkflowId.Value);
-                if (workflow != null) return workflow;
+                if (workflow != null && !IsWorkflowDisabled(workflow.Id)) return workflow;
             }
 
             if (_state.State.Generation.WorkflowBase != default)
-                return _state.State.Generation.Workflows.FirstOrDefault(w => w.Base == _state.State.Generation.WorkflowBase);
+                return _state.State.Generation.Workflows.FirstOrDefault(w => w.Base == _state.State.Generation.WorkflowBase && !IsWorkflowDisabled(w.Id));
 
-            return _state.State.Generation.Workflows.FirstOrDefault();
+            return _state.State.Generation.Workflows.FirstOrDefault(w => !IsWorkflowDisabled(w.Id));
         }
 
         public Workflow GetWorkflowById(Guid id) => _state.State.Generation.Workflows.FirstOrDefault(w => w.Id == id);
@@ -134,6 +134,96 @@ namespace BlazorWebApp.Services
                 return new List<Workflow>();
 
             return _state.State.Generation.Workflows.Where(w => w.Mode == mode).OrderBy(w => w.Title).ToList();
+        }
+
+        public List<Workflow> GetEnabledWorkflowsForBase(ModelBase? baseModel = null)
+        {
+            var gen = _state.State?.Generation;
+            if (gen?.Workflows == null || gen.Workflows.Count == 0)
+                return new List<Workflow>();
+
+            var target = baseModel ?? gen.WorkflowBase;
+            var disabled = new HashSet<Guid>(gen.DisabledWorkflowIds ?? new List<Guid>());
+
+            return gen.Workflows
+                .Where(w => w.Base == target && !disabled.Contains(w.Id))
+                .OrderBy(w => (int)w.Mode)
+                .ThenBy(w => w.Title)
+                .ToList();
+        }
+
+        public bool IsWorkflowDisabled(Guid workflowId)
+        {
+            var disabled = _state.State?.Generation?.DisabledWorkflowIds;
+            return disabled?.Contains(workflowId) == true;
+        }
+
+        public async Task SetWorkflowEnabledAsync(Guid workflowId, bool enabled)
+        {
+            var gen = _state.State?.Generation;
+            var workflow = gen?.Workflows?.FirstOrDefault(w => w.Id == workflowId);
+            if (gen == null || workflow == null) return;
+
+            gen.DisabledWorkflowIds ??= new List<Guid>();
+            var wasDisabled = gen.DisabledWorkflowIds.Contains(workflowId);
+            if (enabled == !wasDisabled) return;
+
+            if (enabled)
+            {
+                gen.DisabledWorkflowIds.RemoveAll(id => id == workflowId);
+            }
+            else
+            {
+                gen.DisabledWorkflowIds.Add(workflowId);
+            }
+
+            var currentWorkflowChanged = false;
+            if (!enabled)
+            {
+                var replacementId = ResolveWorkflowForBase(workflow.Base);
+
+                if (gen.CurrentWorkflowId == workflowId)
+                {
+                    gen.CurrentWorkflowId = replacementId;
+                    currentWorkflowChanged = true;
+                }
+
+                if (gen.LastWorkflowByBase != null
+                    && gen.LastWorkflowByBase.TryGetValue(workflow.Base, out var lastId)
+                    && lastId == workflowId)
+                {
+                    if (replacementId.HasValue)
+                        gen.LastWorkflowByBase[workflow.Base] = replacementId.Value;
+                    else
+                        gen.LastWorkflowByBase.Remove(workflow.Base);
+                }
+            }
+            else if (gen.CurrentWorkflowId == null && gen.WorkflowBase == workflow.Base)
+            {
+                gen.CurrentWorkflowId = workflowId;
+                gen.LastWorkflowByBase[workflow.Base] = workflowId;
+                currentWorkflowChanged = true;
+            }
+
+            await SaveState();
+
+            _events.Publish(new WorkflowAvailabilityChangedEventArgs
+            {
+                WorkflowId = workflowId,
+                WorkflowBase = workflow.Base,
+                IsEnabled = enabled
+            });
+
+            if (currentWorkflowChanged)
+            {
+                _events.Publish(new WorkflowChangedEventArgs(gen.CurrentWorkflowId ?? Guid.Empty, "WorkflowAvailability"));
+            }
+
+            _events.Publish(new StateChangedEventArgs
+            {
+                ChangeType = StateChangeType.WorkflowAvailability,
+                NewValue = workflowId
+            });
         }
 
         /// <summary>
@@ -148,15 +238,17 @@ namespace BlazorWebApp.Services
             if (gen?.Workflows == null || gen.Workflows.Count == 0) return null;
 
             var target = baseModel ?? gen.WorkflowBase;
+            var enabledWorkflows = GetEnabledWorkflowsForBase(target);
+            if (enabledWorkflows.Count == 0) return null;
 
             if (gen.LastWorkflowByBase != null
                 && gen.LastWorkflowByBase.TryGetValue(target, out var lastId)
-                && gen.Workflows.Any(w => w.Id == lastId && w.Base == target))
+                && enabledWorkflows.Any(w => w.Id == lastId))
             {
                 return lastId;
             }
 
-            return gen.Workflows.FirstOrDefault(w => w.Base == target)?.Id;
+            return enabledWorkflows[0].Id;
         }
 
         public void GetComfyWorkflows() => _state.State.Generation.Workflows = _workflow.GetWorkflows();
@@ -187,7 +279,7 @@ namespace BlazorWebApp.Services
         public void SetCurrentWorkflow(Guid workflowId)
         {
             var workflow = GetWorkflowById(workflowId);
-            if (workflow == null) return;
+            if (workflow == null || IsWorkflowDisabled(workflowId)) return;
 
             _state.State.Generation.CurrentWorkflowId = workflowId;
             _state.State.Generation.WorkflowBase = workflow.Base;
@@ -200,7 +292,7 @@ namespace BlazorWebApp.Services
         public async Task<bool> SetCurrentWorkflowAsync(Guid workflowId, IAssetResolverService assetResolver)
         {
             var workflow = GetWorkflowById(workflowId);
-            if (workflow == null) return false;
+            if (workflow == null || IsWorkflowDisabled(workflowId)) return false;
 
             _state.State.Generation.CurrentWorkflowId = workflowId;
             _state.State.Generation.WorkflowBase = workflow.Base;

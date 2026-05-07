@@ -269,15 +269,16 @@ namespace BlazorWebApp.Services
                 // GenerationParameters here - InitializeFromWorkflowAsync will save the previous
                 // workflow's state and restore (or freshly initialize) the new workflow's state.
                 Guid? resolvedId = null;
+                var disabled = new HashSet<Guid>(State.Generation.DisabledWorkflowIds ?? new List<Guid>());
                 if (State.Generation.LastWorkflowByBase != null
                     && State.Generation.LastWorkflowByBase.TryGetValue(workflowBase, out var lastId)
-                    && State.Generation.Workflows?.Any(w => w.Id == lastId && w.Base == workflowBase) == true)
+                    && State.Generation.Workflows?.Any(w => w.Id == lastId && w.Base == workflowBase && !disabled.Contains(w.Id)) == true)
                 {
                     resolvedId = lastId;
                 }
                 else
                 {
-                    var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase);
+                    var defaultWorkflow = State.Generation.Workflows?.FirstOrDefault(w => w.Base == workflowBase && !disabled.Contains(w.Id));
                     resolvedId = defaultWorkflow?.Id;
                 }
                 State.Generation.CurrentWorkflowId = resolvedId;

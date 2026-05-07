@@ -45,7 +45,9 @@ public class PromptSendToService : IPromptSendToService
         // prompt as a core fragment, so we no longer filter by Mode. Blacklist remains as the
         // single opt-out mechanism for workflows that genuinely have no prompt input.
         return _state.State.Generation.Workflows
-            .Where(w => w.Base == currentBase && !PromptBlacklist.Contains(w.Id))
+            .Where(w => w.Base == currentBase
+                && _state.State.Generation.DisabledWorkflowIds?.Contains(w.Id) != true
+                && !PromptBlacklist.Contains(w.Id))
             .OrderBy(w => w.Mode)
             .ThenBy(w => w.Title)
             .ToList();

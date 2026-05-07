@@ -13,6 +13,7 @@
 @inject NavigationManager NavManager
 @inject IImageSendToService SendTo
 @inject IEventService Events
+@implements IDisposable
 
 <div class="info-panel-header">
     <MudIcon Icon="@(IsVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
@@ -313,6 +314,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
+
         if (SelectedParams != null)
         {
             _selectedParams = SelectedParams;
@@ -492,5 +496,21 @@
             _selectedParams.Remove("Height");
 
         SelectedParamsChanged.InvokeAsync(_selectedParams);
+    }
+
+    private void OnStateChanged(StateChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnWorkflowAvailabilityChanged(WorkflowAvailabilityChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
     }
 }

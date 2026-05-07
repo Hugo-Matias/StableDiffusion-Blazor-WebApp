@@ -3,6 +3,7 @@ using BlazorWebApp.Models;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using ImageEntity = BlazorWebApp.Data.Entities.Image;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services;
 
@@ -50,7 +51,7 @@ public class ImageSendToService : IImageSendToService
 
         var currentBase = _state.State.Generation.WorkflowBase;
         return _state.State.Generation.Workflows
-            .Where(w => w.Base == currentBase && (w.Mode == ModeType.Img2Img || w.Mode == ModeType.Img2Vid))
+            .Where(w => IsEnabledForCurrentBase(w, currentBase) && (w.Mode == ModeType.Img2Img || w.Mode == ModeType.Img2Vid))
             .OrderBy(w => w.Mode)
             .ThenBy(w => w.Title)
             .ToList();
@@ -63,10 +64,16 @@ public class ImageSendToService : IImageSendToService
 
         var currentBase = _state.State.Generation.WorkflowBase;
         return _state.State.Generation.Workflows
-            .Where(w => w.Base == currentBase && (w.Mode == ModeType.Txt2Img || w.Mode == ModeType.Img2Img))
+            .Where(w => IsEnabledForCurrentBase(w, currentBase) && (w.Mode == ModeType.Txt2Img || w.Mode == ModeType.Img2Img))
             .OrderBy(w => w.Mode)
             .ThenBy(w => w.Title)
             .ToList();
+    }
+
+    private bool IsEnabledForCurrentBase(Workflow workflow, ModelBase currentBase)
+    {
+        return workflow.Base == currentBase
+            && _state.State.Generation.DisabledWorkflowIds?.Contains(workflow.Id) != true;
     }
 
     public WorkflowSource? GetMultiSourceDefinition(Workflow workflow)

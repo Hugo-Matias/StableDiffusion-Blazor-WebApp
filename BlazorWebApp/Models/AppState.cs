@@ -88,6 +88,7 @@ namespace BlazorWebApp.Models
         public List<Workflow> Workflows { get; set; }
         public ModelBase WorkflowBase { get; set; }
         public Guid? CurrentWorkflowId { get; set; }
+        public List<Guid> DisabledWorkflowIds { get; set; } = new();
         /// <summary>
         /// Last-selected workflow id per base. Used by the global Generate nav button
         /// to restore the user's previous selection when returning to the generation page,

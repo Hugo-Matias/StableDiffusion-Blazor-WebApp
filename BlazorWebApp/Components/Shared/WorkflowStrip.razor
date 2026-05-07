@@ -3,6 +3,7 @@
 @inject IStateService State
 @inject IBackendService Backend
 @inject IEventService Events
+@inject IOrchestratorService Orchestrator
 @inject NavigationManager NavManager
 @implements IDisposable
 
@@ -18,7 +19,7 @@
             {
                 var isActive = _activeWorkflowId == w.Id;
                 <a class="workflow-strip-btn @(isActive ? "active" : "") mode-@w.Mode.ToString().ToLowerInvariant()"
-                   href="@($"/generate/{w.Id}")">
+                       href="@($"/generate/{w.Id}")">
                     <MudIcon Icon="@GetIconForMode(w.Mode)" Size="Size.Small" Class="workflow-strip-icon" />
                     <span class="workflow-strip-label">@w.Title</span>
                 </a>
@@ -38,6 +39,7 @@
     {
         Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
         Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendChanged);
         NavManager.LocationChanged += OnLocationChanged;
         RebuildWorkflowList();
@@ -55,11 +57,7 @@
         }
 
         var currentBase = gen.WorkflowBase;
-        _orderedWorkflows = gen.Workflows
-            .Where(w => w.Base == currentBase)
-            .OrderBy(w => (int)w.Mode)
-            .ThenBy(w => w.Title)
-            .ToList();
+        _orderedWorkflows = Orchestrator.GetEnabledWorkflowsForBase(currentBase);
 
         _shouldRender = _orderedWorkflows.Count > 0;
 
@@ -119,8 +117,10 @@
 
     private void OnStateChanged(StateChangedEventArgs args) => Refresh();
     private void OnWorkflowChanged(WorkflowChangedEventArgs args) => Refresh();
+    private void OnWorkflowAvailabilityChanged(WorkflowAvailabilityChangedEventArgs args) => Refresh();
     private void OnBackendChanged(BackendAvailabilityChangedEventArgs args) => Refresh();
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => Refresh();
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>
+Refresh();
 
     private async void Refresh()
     {
@@ -132,6 +132,7 @@
     {
         Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
         Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendChanged);
         NavManager.LocationChanged -= OnLocationChanged;
     }
