@@ -14,86 +14,80 @@
 @inject IGenerationParameterService ParameterService
 @inject ILogger<DoubleSamplerForm> Logger
 
-<MudPaper Class="pa-4 mb-4">
-    <MudStack Spacing="3">
-        <MudText Typo="Typo.h6">Video Sampling (Dual-Stage)</MudText>
-        <MudText Typo="Typo.caption" Class="mb-2">
-            High Noise (0?@(_localSteps/2)) ? Low Noise (@(_localSteps/2)??)
-        </MudText>
-        
-        <MudGrid Spacing="2">
-            <MudItem xs="6">
-                <MudSelect T="string" 
-                           Label="Sampler" 
-                           @bind-Value="_localSamplerName"
-                           @bind-Value:after="OnParametersChanged"
-                           AnchorOrigin="Origin.BottomLeft" 
-                           TransformOrigin="Origin.TopLeft">
-                    @foreach (var option in _samplerOptions)
-                    {
-                        <MudSelectItem Value="@option" />
-                    }
-                </MudSelect>
-            </MudItem>
-            
-            <MudItem xs="6">
-                <MudSelect T="string" 
-                           Label="Scheduler" 
-                           @bind-Value="_localScheduler"
-                           @bind-Value:after="OnParametersChanged"
-                           AnchorOrigin="Origin.BottomLeft" 
-                           TransformOrigin="Origin.TopLeft">
-                    @foreach (var option in _schedulerOptions)
-                    {
-                        <MudSelectItem Value="@option" />
-                    }
-                </MudSelect>
-            </MudItem>
-            
-            <MudItem xs="4">
-                <MudSlider T="int" 
-                           @bind-Value="_localSteps"
-                           @bind-Value:after="OnParametersChanged"
-                           Min="_stepsMin" 
-                           Max="_stepsMax" 
-                           Step="_stepsStep"
-                           Variant="Variant.Filled" 
-                           ValueLabel>
-                    <small>Steps:</small> @_localSteps
-                </MudSlider>
-            </MudItem>
-            
-            <MudItem xs="4">
-                <MudSlider T="double" 
-                           @bind-Value="_localCfg"
-                           @bind-Value:after="OnParametersChanged"
-                           Min="_cfgMin" 
-                           Max="_cfgMax" 
-                           Step="_cfgStep"
-                           Variant="Variant.Filled" 
-                           ValueLabel>
-                    <small>CFG Scale:</small> @_localCfg.ToString("F1")
-                </MudSlider>
-            </MudItem>
-            
-            <MudItem xs="4">
-                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
-                    <MudNumericField T="long" 
-                                     @bind-Value="_localSeed" 
-                                     @bind-Value:after="OnParametersChanged"
-                                     Label="Seed" 
-                                     Min="-1" 
-                                     Max="long.MaxValue" 
-                                     Class="flex-grow-1" />
-                    <MudIconButton OnClick="SetRandomSeed" 
-                                   Icon="fa-solid fa-shuffle" 
-                                   Size="Size.Small" 
-                                   Title="Random seed" />
-                </MudStack>
-            </MudItem>
-        </MudGrid>
-    </MudStack>
-</MudPaper>
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudSelect T="string" 
+                   Label="Sampler" 
+                   @bind-Value="_localSamplerName"
+                   @bind-Value:after="OnParametersChanged"
+                   AnchorOrigin="Origin.BottomLeft" 
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _samplerOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="6">
+        <MudSelect T="string" 
+                   Label="Scheduler" 
+                   @bind-Value="_localScheduler"
+                   @bind-Value:after="OnParametersChanged"
+                   AnchorOrigin="Origin.BottomLeft" 
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _schedulerOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="4">
+        <MudSlider T="int" 
+                   @bind-Value="_localSteps"
+                   @bind-Value:after="OnParametersChanged"
+                   Min="_stepsMin" 
+                   Max="_stepsMax" 
+                   Step="_stepsStep"
+                   Variant="Variant.Filled" 
+                   ValueLabel>
+            <small>Steps:</small> @_localSteps
+        </MudSlider>
+    </MudItem>
+    
+    <MudItem xs="4">
+        <MudSlider T="double" 
+                   @bind-Value="_localCfg"
+                   @bind-Value:after="OnParametersChanged"
+                   Min="_cfgMin" 
+                   Max="_cfgMax" 
+                   Step="_cfgStep"
+                   Variant="Variant.Filled" 
+                   ValueLabel>
+            <small>CFG Scale:</small> @_localCfg.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    
+    <MudItem xs="4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" 
+                             @bind-Value="_localSeed" 
+                             @bind-Value:after="OnParametersChanged"
+                             Label="Seed" 
+                             Min="-1" 
+                             Max="long.MaxValue" 
+                             Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" 
+                           Icon="fa-solid fa-shuffle" 
+                           Size="Size.Small" 
+                           Title="Random seed" />
+        </MudStack>
+    </MudItem>
+</MudGrid>
+<MudText Typo="Typo.caption" Class="mt-1">
+    High Noise (0 &#x2192; @(_localSteps/2)) &#xB7; Low Noise (@(_localSteps/2) &#x2192; &#x221E;)
+</MudText>
 
 @code {
     /// <summary>
