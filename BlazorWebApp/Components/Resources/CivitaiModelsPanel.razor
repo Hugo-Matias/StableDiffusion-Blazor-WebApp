@@ -3,167 +3,193 @@
 @inject ISettingsService Settings
 @inject CivitaiService Api
 @inject IDatabaseService DB
-@inject IDialogService DialogService
 @inject IEventService Events
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 @implements IDisposable
 
-<TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.Civitai.SidebarCollapsed" SidebarTitle="Filters">
-    <Sidebar>
-        <EditForm Model="Request" OnSubmit="Search">
-            <MudStack Spacing="2">
-                <MudTextField @bind-Value="Request.Query" Label="Title" Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
-
-                <MudDivider Class="my-1" />
-
-                <MudSelect T="string" Label="Base Model" MultiSelection Class="base-model-select"
-                           SelectedValues="_selectedBaseModels" SelectedValuesChanged="HandleBaseModelsChanged"
-                           AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400"
-                           MultiSelectionTextFunc="@(selected => !selected.Any() || selected.Contains("All") ? "All" : string.Join(", ", selected))">
-                    <MudSelectItem Value=@("All")>All</MudSelectItem>
-                    @{
-                        var disabledFamilies = Settings.Settings.Resources.Civitai.DisabledFamilies;
-                        var disabledModels = Settings.Settings.Resources.Civitai.DisabledModels;
-                        var visibleModels = Api.BaseModelsData.Models
-                            .Where(m => m.Hidden != true)
-                            .Where(m => !disabledModels.Contains(m.Name))
-                            .Where(m => string.IsNullOrEmpty(m.Family) || !disabledFamilies.Contains(m.Family))
-                            .ToList();
-                        var familyGroups = visibleModels
-                            .Where(m => !string.IsNullOrEmpty(m.FamilyDisplayName))
-                            .GroupBy(m => m.FamilyDisplayName)
-                            .OrderBy(g => g.Key);
-                        var ungroupedModels = visibleModels.Where(m => string.IsNullOrEmpty(m.FamilyDisplayName));
-                    }
-                    @foreach (var group in familyGroups)
-                    {
-                        <MudSelectItem T="string" Disabled Value=@($"__header_{group.Key}")>
-                            <div class="base-model-group-header">@group.Key</div>
-                        </MudSelectItem>
-                        @foreach (var model in group)
-                        {
-                            <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
-                        }
-                    }
-                    @if (ungroupedModels.Any())
-                    {
-                        <MudSelectItem T="string" Disabled Value=@("__header_Other")>
-                            <div class="base-model-group-header">Other</div>
-                        </MudSelectItem>
-                        @foreach (var model in ungroupedModels)
-                        {
-                            <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
-                        }
-                    }
-                </MudSelect>
-
-                <MudSelect @bind-Value="Request.Type" Label="Type" AnchorOrigin="Origin.BottomLeft"
-                           TransformOrigin="Origin.TopLeft" MaxHeight="400">
-                    @foreach (CivitaiModelType? modelType in Enum.GetValues(typeof(CivitaiModelType)))
-                    {
-                        <MudSelectItem Value="@modelType">@modelType</MudSelectItem>
-                    }
-                </MudSelect>
-
-                <MudSelect @bind-Value="Request.Sort" Label="Sort" AnchorOrigin="Origin.BottomLeft"
-                           TransformOrigin="Origin.TopLeft">
-                    @foreach (CivitaiSort? sort in Enum.GetValues(typeof(CivitaiSort)))
-                    {
-                        <MudSelectItem Value="@sort">@sort.ToString().Replace("_", " ")</MudSelectItem>
-                    }
-                </MudSelect>
-
-                <MudSelect @bind-Value="Request.Period" Label="Period" AnchorOrigin="Origin.BottomLeft"
-                           TransformOrigin="Origin.TopLeft">
-                    @foreach (CivitaiPeriod? period in Enum.GetValues(typeof(CivitaiPeriod)))
-                    {
-                        <MudSelectItem Value="@period">@period</MudSelectItem>
-                    }
-                </MudSelect>
-
-                <MudDivider Class="my-1" />
-
-                <MudTextField @bind-Value="Request.Username" Label="Username" Adornment="Adornment.Start"
-                              AdornmentIcon="fa-solid fa-user" Clearable />
-                <MudTextField @bind-Value="Request.Tag" Label="Tag" Adornment="Adornment.Start"
-                              AdornmentIcon="fa-solid fa-tag" Clearable />
-
-                <MudTextField @bind-Value="Request.Hash" Label="Hash" Adornment="Adornment.Start"
-                              AdornmentIcon="fa-solid fa-hashtag" Clearable />
-
-                <MudSlider @bind-Value="Request.Limit" Min="Settings.Settings.Resources.Civitai.Limit.Min"
-                           Max="Settings.Settings.Resources.Civitai.Limit.Max"
-                           Step="Settings.Settings.Resources.Civitai.Limit.Step">
-                    <small>Quantity:</small> @Request.Limit
-                </MudSlider>
-                <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
-                    <MudTooltip Text="@($"Card size: {State.State.Civitai.CardSize}")">
-                        <MudIconButton Icon="@GetCardSizeIcon()" Color="Color.Primary" OnClick="CycleCardSize"
-                                       Size="Size.Medium" />
-                    </MudTooltip>
-                </MudStack>
-
-                <MudDivider Class="my-1" />
-
-                <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true" Class="mt-3">Search
-                </MudButton>
-            </MudStack>
-        </EditForm>
-    </Sidebar>
-    <Content>
-        @if (_isSearching)
-        {
+@if (_isLoadingModelDetail)
+{
+    <ContentOnlyLayout>
+        <div class="civitai-detail-loading">
             <LoadingSpinner />
-        }
-        else if (_models != null)
-        {
-            @if (_models.Metadata.TotalPages > 1)
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Loading model details...</MudText>
+        </div>
+    </ContentOnlyLayout>
+}
+else if (_selectedModel != null)
+{
+    <CivitaiModelDetailPanel Model="_selectedModel" OnBack="ReturnToResults" />
+}
+else
+{
+    <TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.Civitai.SidebarCollapsed" SidebarTitle="Filters">
+        <Sidebar>
+            <EditForm Model="Request" OnSubmit="Search">
+                <MudStack Spacing="2">
+                    <MudTextField @bind-Value="Request.Query" Label="Title" Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
+
+                    <MudDivider Class="my-1" />
+
+                    <MudSelect T="string" Label="Base Model" MultiSelection Class="base-model-select"
+                               SelectedValues="_selectedBaseModels" SelectedValuesChanged="HandleBaseModelsChanged"
+                               AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400"
+                               MultiSelectionTextFunc="@(selected => !selected.Any() || selected.Contains("All") ? "All" : string.Join(", ", selected))">
+                        <MudSelectItem Value=@("All")>All</MudSelectItem>
+                        @{
+                            var disabledFamilies = Settings.Settings.Resources.Civitai.DisabledFamilies;
+                            var disabledModels = Settings.Settings.Resources.Civitai.DisabledModels;
+                            var visibleModels = Api.BaseModelsData.Models
+                                .Where(m => m.Hidden != true)
+                                .Where(m => !disabledModels.Contains(m.Name))
+                                .Where(m => string.IsNullOrEmpty(m.Family) || !disabledFamilies.Contains(m.Family))
+                                .ToList();
+                            var familyGroups = visibleModels
+                                .Where(m => !string.IsNullOrEmpty(m.FamilyDisplayName))
+                                .GroupBy(m => m.FamilyDisplayName)
+                                .OrderBy(g => g.Key);
+                            var ungroupedModels = visibleModels.Where(m => string.IsNullOrEmpty(m.FamilyDisplayName));
+                        }
+                        @foreach (var group in familyGroups)
+                        {
+                            <MudSelectItem T="string" Disabled Value=@($"__header_{group.Key}")>
+                                <div class="base-model-group-header">@group.Key</div>
+                            </MudSelectItem>
+                            @foreach (var model in group)
+                            {
+                                <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
+                            }
+                        }
+                        @if (ungroupedModels.Any())
+                        {
+                            <MudSelectItem T="string" Disabled Value=@("__header_Other")>
+                                <div class="base-model-group-header">Other</div>
+                            </MudSelectItem>
+                            @foreach (var model in ungroupedModels)
+                            {
+                                <MudSelectItem Value="@model.Name">@model.Name</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+
+                    <MudSelect @bind-Value="Request.Type" Label="Type" AnchorOrigin="Origin.BottomLeft"
+                               TransformOrigin="Origin.TopLeft" MaxHeight="400">
+                        @foreach (CivitaiModelType? modelType in Enum.GetValues(typeof(CivitaiModelType)))
+                        {
+                            <MudSelectItem Value="@modelType">@modelType</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect @bind-Value="Request.Sort" Label="Sort" AnchorOrigin="Origin.BottomLeft"
+                               TransformOrigin="Origin.TopLeft">
+                        @foreach (CivitaiSort? sort in Enum.GetValues(typeof(CivitaiSort)))
+                        {
+                            <MudSelectItem Value="@sort">@sort.ToString().Replace("_", " ")</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect @bind-Value="Request.Period" Label="Period" AnchorOrigin="Origin.BottomLeft"
+                               TransformOrigin="Origin.TopLeft">
+                        @foreach (CivitaiPeriod? period in Enum.GetValues(typeof(CivitaiPeriod)))
+                        {
+                            <MudSelectItem Value="@period">@period</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudDivider Class="my-1" />
+
+                    <MudTextField @bind-Value="Request.Username" Label="Username" Adornment="Adornment.Start"
+                                  AdornmentIcon="fa-solid fa-user" Clearable />
+                    <MudTextField @bind-Value="Request.Tag" Label="Tag" Adornment="Adornment.Start"
+                                  AdornmentIcon="fa-solid fa-tag" Clearable />
+
+                    <MudTextField @bind-Value="Request.Hash" Label="Hash" Adornment="Adornment.Start"
+                                  AdornmentIcon="fa-solid fa-hashtag" Clearable />
+
+                    <MudSlider @bind-Value="Request.Limit" Min="Settings.Settings.Resources.Civitai.Limit.Min"
+                               Max="Settings.Settings.Resources.Civitai.Limit.Max"
+                               Step="Settings.Settings.Resources.Civitai.Limit.Step">
+                        <small>Quantity:</small> @Request.Limit
+                    </MudSlider>
+                    <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
+                        <MudTooltip Text="@($"Card size: {State.State.Civitai.CardSize}")">
+                            <MudIconButton Icon="@GetCardSizeIcon()" Color="Color.Primary" OnClick="CycleCardSize"
+                                           Size="Size.Medium" />
+                        </MudTooltip>
+                    </MudStack>
+
+                    <MudDivider Class="my-1" />
+
+                    <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true" Class="mt-3">Search
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        </Sidebar>
+        <Content>
+            @if (_isSearching)
             {
-                <div class="d-flex flex-column align-center pb-2">
-                    <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2"
-                                   MiddleCount="5" Count="_models.Metadata.TotalPages" />
-                </div>
+                <LoadingSpinner />
             }
-
-            <div class="civitai-scroll-container">
-                <MudGrid Spacing="1" Justify="Justify.Center">
-                    @foreach (var model in _models.Models)
-                    {
-                        <CivitaiResourceCard Title="@model.Name" ImageSrc="@GetModelImage(model)" Type="@model.Type"
-                                             Width="@CardWidth"
-                                             HoverColor="@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)))"
-                                             OnLoad="@(async () => await ShowInfo(model))" Opacity="CheckModelExists(model).Result"
-                                             Filter="@CheckVersionImagesExist(model).Result" CreatorUsername="@model.Creator?.Username"
-                                             CreatorImage="@model.Creator?.Image" IsNsfw="@model.Nsfw"
-                                             IsEarlyAccess="@(model.ModelVersions?.Count > 0 && model.ModelVersions[0].Images?.Count > 0 && model.ModelVersions[0].Images[0].Availability == "EarlyAccess")"
-                                             DownloadCount="0" FavoriteCount="0" CommentCount="0" Rating="0" RatingCount="0" ShowStats="false" />
-                    }
-                </MudGrid>
-            </div>
-
-            @if (_models.Metadata.TotalPages > 1)
+            else if (_models != null)
             {
-                <div class="d-flex flex-column align-center pt-2">
-                    <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2"
-                                   MiddleCount="5" Count="_models.Metadata.TotalPages" />
-                </div>
-            }
-
-            <div class="d-flex flex-column align-center pa-2">
-                @if (!string.IsNullOrWhiteSpace(_models.Metadata.NextPage))
+                @if (_models.Metadata.TotalPages > 1)
                 {
-                    <MudButton Class="w-50" OnClick=@(() => LoadMore(_models.Metadata.NextPage)) ButtonType="ButtonType.Button"
-                               Color="Color.Primary" Variant="Variant.Outlined">Load More</MudButton>
+                    <div class="d-flex flex-column align-center pb-2">
+                        <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2"
+                                       MiddleCount="5" Count="_models.Metadata.TotalPages" />
+                    </div>
                 }
-            </div>
-        }
-    </Content>
-</TwoColumnLayout>
+
+                <div class="civitai-scroll-container" @ref="_resultsScrollContainer">
+                    <MudGrid Spacing="1" Justify="Justify.Center">
+                        @foreach (var model in _models.Models)
+                        {
+                            <div id="@GetModelCardId(model)" class="civitai-model-result-card">
+                                <CivitaiResourceCard Title="@model.Name" ImageSrc="@GetModelImage(model)" Type="@model.Type"
+                                                     Width="@CardWidth"
+                                                     HoverColor="@(Parser.ParseCivitaiResourceColorAsString((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)))"
+                                                     OnLoad="@(async () => await ShowInfo(model))" Opacity="CheckModelExists(model).Result"
+                                                     Filter="@CheckVersionImagesExist(model).Result" CreatorUsername="@model.Creator?.Username"
+                                                     CreatorImage="@model.Creator?.Image" IsNsfw="@model.Nsfw"
+                                                     IsEarlyAccess="@(model.ModelVersions?.Count > 0 && model.ModelVersions[0].Images?.Count > 0 && model.ModelVersions[0].Images[0].Availability == "EarlyAccess")"
+                                                     DownloadCount="0" FavoriteCount="0" CommentCount="0" Rating="0" RatingCount="0"
+                                                     ShowStats="false" />
+                            </div>
+                        }
+                    </MudGrid>
+                </div>
+
+                @if (_models.Metadata.TotalPages > 1)
+                {
+                    <div class="d-flex flex-column align-center pt-2">
+                        <MudPagination SelectedChanged="HandlePageSelected" Selected="(int)Request.Page" BoundaryCount="2"
+                                       MiddleCount="5" Count="_models.Metadata.TotalPages" />
+                    </div>
+                }
+
+                <div class="d-flex flex-column align-center pa-2">
+                    @if (!string.IsNullOrWhiteSpace(_models.Metadata.NextPage))
+                    {
+                        <MudButton Class="w-50" OnClick=@(() => LoadMore(_models.Metadata.NextPage)) ButtonType="ButtonType.Button"
+                                   Color="Color.Primary" Variant="Variant.Outlined">Load More</MudButton>
+                    }
+                </div>
+            }
+        </Content>
+    </TwoColumnLayout>
+}
 
 @code {
     public CivitaiModelsRequest Request { get; set; }
     private bool _isSearching;
+    private bool _isLoadingModelDetail;
+    private bool _restoreResultsAfterRender;
     private CivitaiModelsDto _models;
+    private CivitaiModelDto? _selectedModel;
+    private ElementReference _resultsScrollContainer;
+    private string? _lastResultAnchorId;
+    private double _lastResultsScrollTop;
     private IEnumerable<string> _selectedBaseModels = new List<string> { "All" };
 
     public void Dispose()
@@ -180,6 +206,22 @@
     {
         Events.Subscribe<CivitaiSettingsChangedEventArgs>(OnCivitaiSettingsChanged);
         LoadState();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_restoreResultsAfterRender) return;
+
+        _restoreResultsAfterRender = false;
+        try
+        {
+            await JS.InvokeVoidAsync("civitaiModelNavigation.restoreResults", _resultsScrollContainer, _lastResultAnchorId,
+_lastResultsScrollTop);
+        }
+        catch
+        {
+            // Best-effort visual restoration only; the in-memory results are already preserved.
+        }
     }
 
     private string CardWidth => State.State.Civitai.CardSize switch
@@ -210,6 +252,7 @@
     private async Task Search()
     {
         _isSearching = true;
+        _selectedModel = null;
         SetState();
         _models = await Api.GetModels(Request);
         await State.SaveState();
@@ -227,19 +270,42 @@
 
     private async Task ShowInfo(CivitaiModelsModelDto modelsModel)
     {
-        var options = new DialogOptions
+        _lastResultAnchorId = GetModelCardId(modelsModel);
+        try
         {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.ExtraLarge,
-            FullWidth = true,
-            ClassBackground = "civitai-model-dialog-backdrop",
-        };
-        var dialogParam = new DialogParameters();
-        var model = await Api.GetModel(modelsModel.Id);
-        dialogParam.Add("Model", model);
-        var dialog = await DialogService.ShowAsync<CivitaiModelInfoDialog>("Model", dialogParam, options);
-        var result = await dialog.Result;
+            _lastResultsScrollTop = await JS.InvokeAsync<double>("civitaiModelNavigation.getScrollTop", _resultsScrollContainer);
+        }
+        catch
+        {
+            _lastResultsScrollTop = 0;
+        }
+
+        _isLoadingModelDetail = true;
+        _selectedModel = null;
+
+        try
+        {
+            _selectedModel = await Api.GetModel(modelsModel.Id);
+        }
+        catch
+        {
+            Snackbar.Add("Unable to load CivitAI model details.", Severity.Error);
+        }
+        finally
+        {
+            _isLoadingModelDetail = false;
+        }
     }
+
+    private async Task ReturnToResults()
+    {
+        _selectedModel = null;
+        _isLoadingModelDetail = false;
+        _restoreResultsAfterRender = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetModelCardId(CivitaiModelsModelDto model) => $"civitai-model-card-{model.Id}";
 
     private async Task HandlePageSelected(int selection)
     {

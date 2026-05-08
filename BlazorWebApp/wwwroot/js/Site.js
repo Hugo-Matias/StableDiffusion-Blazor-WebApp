@@ -32,6 +32,38 @@ window.downloadFile = function (filename, content, mimeType) {
   URL.revokeObjectURL(url);
 };
 
+window.civitaiModelNavigation = {
+  getScrollTop: function (container) {
+    if (!container)
+      return window.scrollY || document.documentElement.scrollTop || 0;
+    return container.scrollTop || 0;
+  },
+  restoreResults: function (container, anchorId, fallbackScrollTop) {
+    requestAnimationFrame(function () {
+      const anchor = anchorId ? document.getElementById(anchorId) : null;
+      if (anchor) {
+        anchor.scrollIntoView({
+          block: "center",
+          inline: "nearest",
+          behavior: "auto",
+        });
+        return;
+      }
+
+      if (container) {
+        container.scrollTop =
+          typeof fallbackScrollTop === "number" ? fallbackScrollTop : 0;
+        return;
+      }
+
+      window.scrollTo({
+        top: typeof fallbackScrollTop === "number" ? fallbackScrollTop : 0,
+        behavior: "auto",
+      });
+    });
+  },
+};
+
 window.assetViewerCompare = (function () {
   let stageEl = null;
   let frameEl = null;

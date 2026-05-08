@@ -64,7 +64,7 @@
                         </div>
                         <span class="compare-label compare-label-base">Generated</span>
                         <span class="compare-label compare-label-source">@(string.IsNullOrWhiteSpace(CurrentSource.Label) ?
-                                        "Source" : CurrentSource.Label)</span>
+                                                                    "Source" : CurrentSource.Label)</span>
                         </div>
                         @if (_isCompareLocked)
                         {
@@ -235,7 +235,10 @@
                 <div class="info-panel @(_showInfo ? "open" : "")">
                     <AssetInfoPanel Asset="CurrentAsset" IsVideo="IsCurrentVideo" ShowKeyboardShortcuts="true"
                                     SelectedParams="_selectedParams" SelectedParamsChanged="HandleSelectedParamsChanged"
-                                    OnClose="ToggleInfo" />
+                                    OnClose="ToggleInfo" OnRequestSaveLocal="ViewerRequestSaveLocal"
+                                    ExternalImageHintText="@ExternalImageHintText" ExternalImageActionText="@ExternalImageActionText"
+                                    ExternalImageActionIcon="@ExternalImageActionIcon"
+                                    ImageToPromptSourceLabel="@ImageToPromptSourceLabel" />
                 </div>
             </div>
         </div>
@@ -263,6 +266,11 @@
     [Parameter] public bool ShowScore { get; set; } = true;
     [Parameter] public bool ShowOpenInExplorer { get; set; } = true;
     [Parameter] public string? ExternalSourceUrl { get; set; }
+    [Parameter] public Func<ImageEntity, Task<ImageEntity?>>? OnRequestSaveLocal { get; set; }
+    [Parameter] public string ExternalImageHintText { get; set; } = "Bookmark this image to enable workflow send. Only prompt parameters are available for external images.";
+    [Parameter] public string ExternalImageActionText { get; set; } = "Bookmark";
+    [Parameter] public string ExternalImageActionIcon { get; set; } = "fa-solid fa-bookmark";
+    [Parameter] public string ImageToPromptSourceLabel { get; set; } = "Asset Info";
 
     private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
 
@@ -310,6 +318,8 @@
         : null;
 
     private bool IsCurrentVideo => CurrentAsset?.Path != null && IsVideoFile(CurrentAsset.Path);
+    private Func<ImageEntity, Task<ImageEntity?>>? ViewerRequestSaveLocal => OnRequestSaveLocal == null ? null :
+HandleRequestSaveLocal;
 
     private bool IsVideoFile(string path)
     {
@@ -558,9 +568,28 @@
         // If compare is active and the new asset is video, exit compare. Source list is
         // workflow-driven so it doesn't change with navigation.
         if (_isCompareMode && IsCurrentVideo) await ExitCompareModeAsync();
+        if (CurrentAsset != null) await OnAssetChanged.InvokeAsync(CurrentAsset);
     }
 
     private void ToggleInfo() => _showInfo = !_showInfo;
+
+    private async Task<ImageEntity?> HandleRequestSaveLocal(ImageEntity asset)
+    {
+        if (OnRequestSaveLocal == null)
+            return null;
+
+        var localAsset = await OnRequestSaveLocal.Invoke(asset);
+        if (localAsset == null)
+            return null;
+
+        if (_currentIndex >= 0 && _currentIndex < Assets.Count)
+        {
+            Assets[_currentIndex] = localAsset;
+        }
+
+        await OnAssetChanged.InvokeAsync(localAsset);
+        return localAsset;
+    }
 
     private async Task TogglePanMode()
     {

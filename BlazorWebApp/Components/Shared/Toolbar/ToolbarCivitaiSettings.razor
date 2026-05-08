@@ -1,10 +1,12 @@
-@inject ISettingsService Settings
 @using BlazorWebApp.Events
 @inject ISettingsService Settings
 @inject IEventService Events
 @inject CivitaiService Api
 
 <MudText Typo="Typo.subtitle2" Class="mb-1">Base Model Filters</MudText>
+<MudSwitch T="bool" Value="@Settings.Settings.Resources.Civitai.DownloadResourceImages"
+           ValueChanged="ToggleDownloadResourceImages" Color="Color.Primary" Size="Size.Small"
+           Label="Download images after resource download" />
 <div class="d-flex flex-wrap gap-1 mb-2">
     @foreach (var family in Api.BaseModelsData.Families)
     {
@@ -101,6 +103,13 @@
         {
             list.Remove(modelName);
         }
+        Settings.SaveSettings();
+        Events.Publish(new CivitaiSettingsChangedEventArgs());
+    }
+
+    private void ToggleDownloadResourceImages(bool value)
+    {
+        Settings.Settings.Resources.Civitai.DownloadResourceImages = value;
         Settings.SaveSettings();
         Events.Publish(new CivitaiSettingsChangedEventArgs());
     }

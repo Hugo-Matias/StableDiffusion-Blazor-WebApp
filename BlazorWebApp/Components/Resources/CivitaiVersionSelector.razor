@@ -4,45 +4,17 @@
 @if (Versions != null && Versions.Count > 0)
 {
     <div class="civitai-version-selector">
-        @if (Versions.Count <= VersionPillThreshold)
-        {
-            <div class="civitai-version-selector__pills">
-                @foreach (var version in Versions)
-                {
-                    var isActive = ReferenceEquals(version, ActiveVersion);
-                    var status = ResolveStatus(version);
-                    var color = CivitaiVersionStatusHelper.ToColor(status);
-                    var tooltip = CivitaiVersionStatusHelper.ToTooltip(status);
-                    <MudTooltip Text="@tooltip">
-                        <MudButton
-                            Class="@($"civitai-version-selector__pill{(isActive ? " civitai-version-selector__pill--active" : string.Empty)}")"
-                            Variant="@(isActive ? Variant.Filled : Variant.Outlined)"
-                            Color="@(isActive ? Color.Primary : Color.Default)" Size="Size.Small" StartIcon="fa-solid fa-server"
-                            IconColor="@color" OnClick="@(() => SelectVersion(version))">
-                            @version.Name
-                        </MudButton>
-                    </MudTooltip>
-                }
-            </div>
-        }
-        else
-        {
-            <MudSelect T="CivitaiModelVersionDto" Class="civitai-version-selector__select" Label="Version"
-                       Variant="Variant.Text" Value="ActiveVersion" ValueChanged="SelectVersion" Dense
-                       ToStringFunc="@(v => v?.Name ?? string.Empty)">
-                @foreach (var version in Versions)
-                {
-                    var status = ResolveStatus(version);
-                    var color = CivitaiVersionStatusHelper.ToColor(status);
-                    <MudSelectItem Value="version">
-                        <span class="civitai-version-selector__select-item">
-                            <MudIcon Icon="fa-solid fa-server" Size="Size.Small" Color="@color" />
-                            @version.Name
-                        </span>
-                    </MudSelectItem>
-                }
-            </MudSelect>
-        }
+        <MudTabs Class="civitai-version-selector__tabs" ActivePanelIndex="ActiveIndex"
+                 ActivePanelIndexChanged="HandleActivePanelIndexChanged" Elevation="0" Rounded="true" Centered="false"
+                 MinimumTabWidth="160px" AlwaysShowScrollButtons="true">
+            @foreach (var version in Versions)
+            {
+                var status = ResolveStatus(version);
+                var color = CivitaiVersionStatusHelper.ToColor(status);
+                var tooltip = CivitaiVersionStatusHelper.ToTooltip(status);
+                <MudTabPanel Text="@version.Name" Icon="fa-solid fa-server" IconColor="@color" ToolTip="@tooltip" />
+            }
+        </MudTabs>
     </div>
 }
 
@@ -51,9 +23,17 @@
     [Parameter] public CivitaiModelVersionDto? ActiveVersion { get; set; }
     [Parameter] public EventCallback<CivitaiModelVersionDto> ActiveVersionChanged { get; set; }
 
-    private const int VersionPillThreshold = 5;
-
     private readonly Dictionary<int, CivitaiVersionStatusHelper.VersionStatus> _statusCache = new();
+
+    private int ActiveIndex
+    {
+        get
+        {
+            if (Versions == null || Versions.Count == 0 || ActiveVersion == null) return 0;
+            var index = Versions.FindIndex(version => version.Id == ActiveVersion.Id);
+            return index >= 0 ? index : 0;
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -67,6 +47,12 @@
 
     private CivitaiVersionStatusHelper.VersionStatus ResolveStatus(CivitaiModelVersionDto version)
         => _statusCache.TryGetValue(version.Id, out var status) ? status : CivitaiVersionStatusHelper.VersionStatus.Unknown;
+
+    private async Task HandleActivePanelIndexChanged(int index)
+    {
+        if (Versions == null || index < 0 || index >= Versions.Count) return;
+        await SelectVersion(Versions[index]);
+    }
 
     private async Task SelectVersion(CivitaiModelVersionDto? version)
     {

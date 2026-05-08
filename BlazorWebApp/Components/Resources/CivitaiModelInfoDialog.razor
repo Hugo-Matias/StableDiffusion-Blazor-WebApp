@@ -10,8 +10,7 @@
         <div class="civitai-model-dialog__body">
             @if (Model.ModelVersions != null && Model.ModelVersions.Count > 1)
             {
-                <CivitaiVersionSelector Versions="Model.ModelVersions"
-                                        ActiveVersion="_activeVersion"
+                <CivitaiVersionSelector Versions="Model.ModelVersions" ActiveVersion="_activeVersion"
                                         ActiveVersionChanged="HandleVersionChanged" />
             }
 
@@ -19,19 +18,15 @@
             {
                 <div class="civitai-model-dialog__layout">
                     <div class="civitai-model-dialog__hero">
-                        <CivitaiModelHero Version="_activeVersion" />
+                        <CivitaiModelHero Model="Model" Version="_activeVersion" />
                     </div>
                     <div class="civitai-model-dialog__spec">
-                        <CivitaiModelSpecCard Model="Model"
-                                              Version="_activeVersion"
-                                              Tags="Model.Tags" />
+                        <CivitaiModelSpecCard Model="Model" Version="_activeVersion" Tags="Model.Tags" />
                     </div>
                 </div>
             }
 
-            <MudExpansionPanels Class="civitai-model-dialog__description"
-                                MultiExpansion="false"
-                                Elevation="0">
+            <MudExpansionPanels Class="civitai-model-dialog__description" MultiExpansion="false" Elevation="0">
                 <MudExpansionPanel Text="Description" Dense>
                     <div class="civitai-model-dialog__description-body">
                         @if (!string.IsNullOrWhiteSpace(Model.Description))

@@ -1017,6 +1017,21 @@ namespace BlazorWebApp.Services
             return context.ResourceImages.Where(i => i.CivitaiModelVersionID == id).ToList();
         }
 
+        public async Task<List<ResourceImage>> GetResourceImagesByHashes(IEnumerable<string> hashes)
+        {
+            var distinctHashes = hashes
+                .Where(hash => !string.IsNullOrWhiteSpace(hash))
+                .Distinct()
+                .ToList();
+
+            if (distinctHashes.Count == 0) return new List<ResourceImage>();
+
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.ResourceImages
+                .Where(image => distinctHashes.Contains(image.Hash))
+                .ToListAsync();
+        }
+
         public async Task<ImagesDto> GetRandomResourceImages(int amount)
         {
             using var context = await _factory.CreateDbContextAsync();

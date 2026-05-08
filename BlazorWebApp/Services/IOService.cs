@@ -224,7 +224,7 @@ namespace BlazorWebApp.Services
                 var outputDir = _configuration["OutputDir"];
                 if (!string.IsNullOrEmpty(outputDir))
                 {
-                    var relativePath = path.Substring("/image/".Length);
+                    var relativePath = Uri.UnescapeDataString(path.Substring("/image/".Length));
                     return Path.Combine(outputDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
                 }
             }

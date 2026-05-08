@@ -1,6 +1,9 @@
 @using BlazorWebApp.Data.Dtos
 @using ImageEntity = BlazorWebApp.Data.Entities.Image
 @inject CivitaiService Civitai
+@inject IStateService State
+@inject ICivitaiResourceImageService ImageSaver
+@inject ISnackbar Snackbar
 
 <div class="civitai-model-hero">
     @if (Version?.Images == null || Version.Images.Count == 0)
@@ -30,16 +33,53 @@
 
         @if (Version.Images.Count > 1)
         {
-            <CivitaiPreviewStrip Images="Version.Images" ActiveIndex="_heroIndex" OnSelect="HandleStripSelect" />
+            <div class="civitai-model-hero__controls">
+                <MudTooltip Text="Previous image">
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" Variant="Variant.Text"
+                                   Disabled="_heroIndex == 0" OnClick="PreviousImage" />
+                </MudTooltip>
+                <MudText Typo="Typo.caption">@($"{_heroIndex + 1} / {Version.Images.Count}")</MudText>
+                <MudTooltip Text="Next image">
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Variant="Variant.Text"
+                                   Disabled="_heroIndex >= Version.Images.Count - 1" OnClick="NextImage" />
+                </MudTooltip>
+            </div>
+
+            <div class="civitai-model-hero__grid">
+                @for (var i = 0; i < Version.Images.Count; i++)
+                {
+                    var capturedIndex = i;
+                    var image = Version.Images[i];
+                    var thumbnailIsVideo = CivitaiAssetAdapter.IsVideoUrl(image.Url);
+                    var isActive = capturedIndex == _heroIndex;
+                    <button type="button"
+                            class="@($"civitai-model-hero__thumb{(isActive ? " civitai-model-hero__thumb--active" : string.Empty)}")"
+                            title="@($"Image {capturedIndex + 1} of {Version.Images.Count}")"
+                            @onclick="@(() => SelectImage(capturedIndex))">
+                        @if (thumbnailIsVideo)
+                        {
+                            <video src="@image.Url" muted playsinline preload="metadata"></video>
+                        }
+                        else
+                        {
+                            <img src="@image.Url" alt="" loading="lazy" />
+                        }
+                    </button>
+                }
+            </div>
         }
     }
 </div>
 
 <AssetViewer @bind-IsVisible="_showViewer" Assets="_viewerAssets" StartIndex="_viewerStartIndex" ShowFavorite="false"
              ShowScore="false" ShowOpenInExplorer="false" ExternalSourceUrl="@_viewerExternalUrl"
+             ExternalImageHintText="Save this CivitAI image locally to enable workflow image send and Generate Prompt. Prompt parameters are available before saving."
+             ExternalImageActionText="Save local" ExternalImageActionIcon="fa-solid fa-download"
+             ImageToPromptSourceLabel="CivitAI image" OnRequestSaveLocal="SaveViewerAssetLocal"
              OnAssetChanged="HandleViewerAssetChanged" />
 
 @code {
+    [Parameter] public CivitaiModelDto? Model { get; set; }
     [Parameter, EditorRequired] public CivitaiModelVersionDto Version { get; set; } = default!;
 
     private int _heroIndex;
@@ -61,12 +101,16 @@
         if (Version?.Images != null && _heroIndex >= Version.Images.Count) _heroIndex = 0;
     }
 
-    private void HandleStripSelect(int index)
+    private void SelectImage(int index)
     {
         if (Version?.Images == null) return;
         if (index < 0 || index >= Version.Images.Count) return;
         _heroIndex = index;
     }
+
+    private void PreviousImage() => SelectImage(_heroIndex - 1);
+
+    private void NextImage() => SelectImage(_heroIndex + 1);
 
     private async Task OpenViewerAt(int index)
     {
@@ -83,6 +127,7 @@
         }
 
         _viewerAssets = CivitaiAssetAdapter.Project(Version.Images);
+        await HydrateSavedViewerAssets(Version.Images);
         _viewerStartIndex = index;
         _viewerExternalUrl = BuildExternalUrl(Version.Images[index]);
         _showViewer = true;
@@ -95,6 +140,58 @@
         if (index < 0 || index >= Version.Images.Count) return;
         _viewerExternalUrl = BuildExternalUrl(Version.Images[index]);
         _heroIndex = index;
+    }
+
+    private async Task<ImageEntity?> SaveViewerAssetLocal(ImageEntity asset)
+    {
+        if (asset == null || Version?.Images == null) return null;
+
+        var index = _viewerAssets.IndexOf(asset);
+        if (index < 0 || index >= Version.Images.Count) return null;
+
+        var modelType = Model?.Type == "Checkpoint"
+            ? State.State.Civitai.ResourceTypeOverride ?? Model.Type
+            : Model?.Type ?? "CivitAI";
+
+        var result = await ImageSaver.SaveImageAsync(new CivitaiResourceImageSaveRequest
+        {
+            Image = Version.Images[index],
+            ModelId = Model?.Id ?? Version.ModelId,
+            ModelName = Model?.Name ?? Version.Name,
+            ModelVersionId = Version.Id,
+            ResourceType = modelType,
+            EnrichFromModelVersion = true
+        });
+
+        if (!result.ImageAvailable)
+        {
+            Snackbar.Add("Unable to save CivitAI image.", Severity.Warning);
+            return null;
+        }
+
+        Version.Images[index] = result.Image!;
+        var localAsset = result.ResourceImage != null
+            ? CivitaiAssetAdapter.Project(result.Image!, result.ResourceImage)
+            : CivitaiAssetAdapter.Project(result.Image!);
+        localAsset.Path = result.LocalPath!;
+
+        _viewerAssets[index] = localAsset;
+        Snackbar.Add(result.FileAlreadyExisted ? "CivitAI image already saved locally." : "CivitAI image saved locally.",
+Severity.Success);
+        return localAsset;
+    }
+
+    private async Task HydrateSavedViewerAssets(IReadOnlyList<CivitaiImageDto> images)
+    {
+        var savedImages = await ImageSaver.GetSavedImagesAsync(images);
+        foreach (var saved in savedImages)
+        {
+            var index = saved.Key;
+            var result = saved.Value;
+            if (index < 0 || index >= _viewerAssets.Count || result.ResourceImage == null) continue;
+
+            _viewerAssets[index] = CivitaiAssetAdapter.Project(images[index], result.ResourceImage);
+        }
     }
 
     private static string? BuildExternalUrl(CivitaiImageDto dto)

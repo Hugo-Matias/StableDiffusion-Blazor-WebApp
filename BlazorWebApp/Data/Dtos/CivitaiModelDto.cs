@@ -64,6 +64,7 @@ namespace BlazorWebApp.Data.Dtos
         public int NsfwLevel { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
+        public string Type { get; set; }
         public string Hash { get; set; }
         public string Availability { get; set; }
     }

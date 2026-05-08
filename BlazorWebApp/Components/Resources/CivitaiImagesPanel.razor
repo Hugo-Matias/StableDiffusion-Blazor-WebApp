@@ -1,6 +1,8 @@
 ﻿@using ImageEntity = BlazorWebApp.Data.Entities.Image
 @inject IStateService State
 @inject CivitaiService Api
+@inject ICivitaiResourceImageService ImageSaver
+@inject ISnackbar Snackbar
 
 <TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.Civitai.SidebarCollapsed" SidebarTitle="Filters">
     <Sidebar>
@@ -81,6 +83,9 @@
 
 <AssetViewer @bind-IsVisible="_showViewer" Assets="_viewerAssets" StartIndex="_viewerStartIndex" ShowFavorite="false"
              ShowScore="false" ShowOpenInExplorer="false" ExternalSourceUrl="@_viewerExternalUrl"
+             ExternalImageHintText="Save this CivitAI image locally to enable workflow image send and Generate Prompt. Prompt parameters are available before saving."
+             ExternalImageActionText="Save local" ExternalImageActionIcon="fa-solid fa-download"
+             ImageToPromptSourceLabel="CivitAI image" OnRequestSaveLocal="SaveViewerAssetLocal"
              OnAssetChanged="HandleViewerAssetChanged" />
 
 @code {
@@ -102,10 +107,10 @@
         var index = list.IndexOf(dto);
         if (index < 0) return;
         _viewerAssets = CivitaiAssetAdapter.Project(list);
+        await HydrateSavedViewerAssets(list);
         _viewerStartIndex = index;
         _viewerExternalUrl = BuildExternalUrl(dto);
         _showViewer = true;
-        await Task.CompletedTask;
     }
 
     private void HandleViewerAssetChanged(ImageEntity asset)
@@ -115,6 +120,57 @@
         var index = _viewerAssets.IndexOf(asset);
         if (index < 0 || index >= _images.Images.Count) return;
         _viewerExternalUrl = BuildExternalUrl(_images.Images[index]);
+    }
+
+    private async Task<ImageEntity?> SaveViewerAssetLocal(ImageEntity asset)
+    {
+        if (asset == null || _images?.Images == null) return null;
+
+        var index = _viewerAssets.IndexOf(asset);
+        if (index < 0 || index >= _images.Images.Count) return null;
+
+        var dto = _images.Images[index];
+        var result = await ImageSaver.SaveImageAsync(new CivitaiResourceImageSaveRequest
+        {
+            Image = dto,
+            ModelId = Request.ModelId.GetValueOrDefault(),
+            ModelVersionId = Request.ModelVersionId.GetValueOrDefault() > 0
+                ? Request.ModelVersionId.GetValueOrDefault()
+                : dto.ModelVersionIds?.FirstOrDefault() ?? 0,
+            ModelName = dto.Meta?.Model,
+            ResourceType = "CivitAI",
+            EnrichFromModelVersion = Request.ModelVersionId > 0 || dto.ModelVersionIds?.Any() == true
+        });
+
+        if (!result.ImageAvailable)
+        {
+            Snackbar.Add("Unable to save CivitAI image.", Severity.Warning);
+            return null;
+        }
+
+        _images.Images[index] = result.Image!;
+        var localAsset = result.ResourceImage != null
+            ? CivitaiAssetAdapter.Project(result.Image!, result.ResourceImage)
+            : CivitaiAssetAdapter.Project(result.Image!);
+        localAsset.Path = result.LocalPath!;
+
+        _viewerAssets[index] = localAsset;
+        Snackbar.Add(result.FileAlreadyExisted ? "CivitAI image already saved locally." : "CivitAI image saved locally.",
+Severity.Success);
+        return localAsset;
+    }
+
+    private async Task HydrateSavedViewerAssets(IReadOnlyList<CivitaiImageDto> images)
+    {
+        var savedImages = await ImageSaver.GetSavedImagesAsync(images);
+        foreach (var saved in savedImages)
+        {
+            var index = saved.Key;
+            var result = saved.Value;
+            if (index < 0 || index >= _viewerAssets.Count || result.ResourceImage == null) continue;
+
+            _viewerAssets[index] = CivitaiAssetAdapter.Project(images[index], result.ResourceImage);
+        }
     }
 
     private static string? BuildExternalUrl(CivitaiImageDto dto)

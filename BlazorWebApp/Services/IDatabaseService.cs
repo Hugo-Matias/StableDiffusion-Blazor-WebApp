@@ -112,6 +112,7 @@ namespace BlazorWebApp.Services
         // Resource Image Operations
         Task<bool> CreateResourceImage(ResourceImage image);
         Task<List<ResourceImage>> GetResourceImages(int id);
+        Task<List<ResourceImage>> GetResourceImagesByHashes(IEnumerable<string> hashes);
         Task<ImagesDto> GetRandomResourceImages(int amount);
         Task<int> ResourceImageByModelVersionIdCount(int id);
         Task DeleteResourceImage(int civitaiModelVersionId);

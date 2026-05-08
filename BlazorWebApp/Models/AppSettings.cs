@@ -427,6 +427,7 @@ namespace BlazorWebApp.Models
         public string ImageOkFilter { get; set; } = "grayscale(70%) brightness(70%)";
         public List<string> DisabledFamilies { get; set; } = new();
         public List<string> DisabledModels { get; set; } = new();
+        public bool DownloadResourceImages { get; set; } = true;
         public CivitaiLimitSettingsModel Limit { get; set; } = new();
     }
 

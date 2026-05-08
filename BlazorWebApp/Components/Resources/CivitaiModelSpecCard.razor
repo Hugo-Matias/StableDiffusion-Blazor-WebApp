@@ -1,14 +1,11 @@
 @inject IStateService State
+@inject ISettingsService Settings
 @inject IDatabaseService DB
-@inject IIOService IO
-@inject IImageService ImageService
 @inject IProgressService Progress
-@inject IConfiguration Configuration
 @inject ISnackbar Snackbar
 @inject CivitaiService Civitai
+@inject ICivitaiResourceImageService ImageSaver
 @inject IJSRuntime JS
-@using System.Text.Json
-@using System.Text.Json.Serialization
 @using BlazorWebApp.Data.Dtos
 
 <div class="civitai-model-spec">
@@ -240,8 +237,9 @@
         try
         {
             var typeOverride = Model.Type == "Checkpoint" ? State.State.Civitai.ResourceTypeOverride : null;
+            var downloadResourceImages = Settings.Settings.Resources.Civitai.DownloadResourceImages;
             var status = await Civitai.DownloadResource(Model, Version, _selected, State.State.Civitai.ResourceSubtype,
-typeOverride);
+                typeOverride, downloadResourceImages);
             switch (status)
             {
                 case CivitaiDownloadStatus.Success:
@@ -258,7 +256,7 @@ typeOverride);
                     break;
             }
 
-            if (Version.Images != null && Version.Images.Count > 0)
+            if (downloadResourceImages && Version.Images != null && Version.Images.Count > 0)
             {
                 await SaveImage(Version.Images[0], Version.Id, isPreview: true, showSnackbar: false);
                 await SaveAllImagesInternal(showProgress: false);
@@ -283,6 +281,8 @@ typeOverride);
 
         _isSavingImages = true;
         var index = 1;
+        var saved = 0;
+        var failed = 0;
         var progress = new BaseProgress() { BarColor = Color.Secondary };
         if (showProgress) Progress.Add(progress);
 
@@ -292,66 +292,59 @@ typeOverride);
             if (showProgress) Progress.Update(progress.Id, pct);
             try
             {
-                await SaveImage(image, Version.Id, filename: index.ToString(), showSnackbar: false);
+                if (await SaveImage(image, Version.Id, filename: index.ToString(), showSnackbar: false))
+                    saved++;
+                else
+                    failed++;
             }
             catch (Exception)
             {
-                Snackbar.Add("Couldn't save image:\n" + image.Url, Severity.Error);
-                continue;
+                failed++;
             }
             index++;
         }
 
         if (showProgress) Progress.Remove(progress.Id);
-        Snackbar.Add($"All images saved!\n{Model.Name}", Severity.Success);
+        if (failed == 0)
+            Snackbar.Add($"All images saved!\n{Model.Name}", Severity.Success);
+        else if (saved > 0)
+            Snackbar.Add($"Saved {saved} image(s); {failed} failed.\n{Model.Name}", Severity.Warning);
+        else
+            Snackbar.Add($"No images could be saved.\n{Model.Name}", Severity.Error);
         _isSavingImages = false;
     }
 
-    private async Task SaveImage(CivitaiImageDto image, int versionId, string filename = "", bool isPreview = false, bool
-showSnackbar = true)
+    private async Task<bool> SaveImage(CivitaiImageDto image, int versionId, string filename = "", bool isPreview = false, bool showSnackbar = true)
     {
-        image = await Civitai.GetImageByModelVersionId(versionId, image);
-        if (image == null) return;
-        var path = Path.Combine(Configuration["OutputDir"], "Saved", _resolvedType,
-$"{Model.Id}-{Parser.SanitizePath(Model.Name)}");
-        var imageFilename = string.IsNullOrWhiteSpace(filename) ? Parser.SanitizePath(image.Hash) : filename;
-        path = isPreview
-            ? Path.Combine(path, versionId.ToString())
-            : Path.Combine(path, versionId.ToString(), imageFilename);
+        var result = await ImageSaver.SaveImageAsync(new CivitaiResourceImageSaveRequest
+        {
+            Image = image,
+            ModelId = Model.Id,
+            ModelName = Model.Name,
+            ModelVersionId = versionId,
+            ResourceType = _resolvedType,
+            Filename = filename,
+            IsPreview = isPreview,
+            EnrichFromModelVersion = true
+        });
 
-        var imagePath = path + ".png";
-        if (File.Exists(imagePath) && showSnackbar)
+        if (!showSnackbar)
+            return result.ImageAvailable;
+
+        if (!result.ImageAvailable)
+        {
+            Snackbar.Add("Unable to save image.", Severity.Warning);
+            return false;
+        }
+        else if (result.FileAlreadyExisted)
         {
             Snackbar.Add("Image and parameters already saved!", Severity.Warning);
+            return true;
         }
         else
         {
-            await ImageService.DownloadImageAsPng(image.Url, imagePath, overwrite: true);
-            if (!isPreview)
-            {
-                var parameters = JsonSerializer.Serialize(image.MetaObject, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                });
-                IO.SaveText(path + ".json", parameters, overwrite: true);
-            }
-            if (showSnackbar) Snackbar.Add("Image saved!", Severity.Success);
-        }
-
-        if (!isPreview)
-        {
-            var entity = new ResourceImage(image)
-            {
-                CivitaiModelId = Model.Id,
-                CivitaiModelVersionID = versionId,
-                Path = imagePath.Replace(Configuration["OutputDir"], "/image/").Replace(@"\", "/")
-            };
-            if (image.Meta != null)
-            {
-                entity.Prompt = Parser.ParseCivitaiImageResources(image.Meta.Prompt, image.Meta.Resources);
-            }
-            await DB.CreateResourceImage(entity);
+            Snackbar.Add("Image saved!", Severity.Success);
+            return true;
         }
     }
 

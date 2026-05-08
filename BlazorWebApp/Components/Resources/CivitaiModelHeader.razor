@@ -70,15 +70,19 @@
             }
         </div>
 
-        <MudTooltip Text="Close">
-            <MudIconButton Class="civitai-model-header__close" Icon="@Icons.Material.Filled.Close" Size="Size.Small"
-                           OnClick="OnClose" />
-        </MudTooltip>
+        @if (ShowClose && OnClose.HasDelegate)
+        {
+            <MudTooltip Text="Close">
+                <MudIconButton Class="civitai-model-header__close" Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               OnClick="OnClose" />
+            </MudTooltip>
+        }
     </div>
 
 @code {
     [Parameter, EditorRequired] public CivitaiModelDto Model { get; set; } = default!;
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool ShowClose { get; set; } = true;
 
     private string TypeChipStyle
     {

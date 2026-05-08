@@ -1,4 +1,5 @@
 using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Entities;
 using ImageEntity = BlazorWebApp.Data.Entities.Image;
 
 namespace BlazorWebApp.Components.Resources
@@ -61,7 +62,9 @@ namespace BlazorWebApp.Components.Resources
                 image.Seed = meta.Seed != 0 ? meta.Seed : -1;
                 image.Steps = meta.Steps > 0 ? meta.Steps : -1;
                 image.CfgScale = meta.CfgScale > 0 ? meta.CfgScale : -1;
-                image.Scheduler = meta.Sampler;
+                image.Scheduler = !string.IsNullOrWhiteSpace(meta.Scheduler) ? meta.Scheduler : meta.Sampler;
+                image.Width = image.Width > 0 ? image.Width : meta.Width;
+                image.Height = image.Height > 0 ? image.Height : meta.Height;
 
                 if (!string.IsNullOrWhiteSpace(meta.DenoisingStrength)
                     && double.TryParse(meta.DenoisingStrength, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var denoise))
@@ -71,6 +74,37 @@ namespace BlazorWebApp.Components.Resources
             }
 
             return image;
+        }
+
+        public static ImageEntity Project(CivitaiImageDto dto, ResourceImage resourceImage)
+        {
+            if (resourceImage == null) throw new ArgumentNullException(nameof(resourceImage));
+
+            var image = Project(dto);
+            ApplyResourceImage(image, resourceImage);
+            return image;
+        }
+
+        public static void ApplyResourceImage(ImageEntity image, ResourceImage resourceImage)
+        {
+            if (image == null) throw new ArgumentNullException(nameof(image));
+            if (resourceImage == null) throw new ArgumentNullException(nameof(resourceImage));
+
+            image.Path = resourceImage.Path;
+            image.Prompt = !string.IsNullOrWhiteSpace(resourceImage.Prompt) ? resourceImage.Prompt : image.Prompt;
+            image.NegativePrompt = !string.IsNullOrWhiteSpace(resourceImage.NegativePrompt) ? resourceImage.NegativePrompt : image.NegativePrompt;
+            image.Seed = resourceImage.Seed ?? image.Seed;
+            image.Steps = resourceImage.Steps ?? image.Steps;
+            image.CfgScale = resourceImage.CfgScale ?? image.CfgScale;
+            image.Scheduler = !string.IsNullOrWhiteSpace(resourceImage.Sampler) ? resourceImage.Sampler : image.Scheduler;
+            image.Width = resourceImage.Width.GetValueOrDefault() > 0 ? resourceImage.Width.GetValueOrDefault() : image.Width;
+            image.Height = resourceImage.Height.GetValueOrDefault() > 0 ? resourceImage.Height.GetValueOrDefault() : image.Height;
+
+            if (!string.IsNullOrWhiteSpace(resourceImage.DenoisingStrength)
+                && double.TryParse(resourceImage.DenoisingStrength, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var denoise))
+            {
+                image.DenoisingStrength = denoise;
+            }
         }
 
         /// <summary>

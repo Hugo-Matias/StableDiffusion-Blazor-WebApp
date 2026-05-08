@@ -42,6 +42,8 @@ namespace BlazorWebApp.Data.Entities
             if (image.Meta != null)
             {
                 NegativePrompt = image.Meta.NegativePrompt;
+                if (Width.GetValueOrDefault() <= 0 && image.Meta.Width > 0) Width = image.Meta.Width;
+                if (Height.GetValueOrDefault() <= 0 && image.Meta.Height > 0) Height = image.Meta.Height;
                 Model = image.Meta.Model;
                 ModelHash = image.Meta.ModelHash;
                 Seed = image.Meta.Seed;

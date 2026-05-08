@@ -4,7 +4,6 @@ using BlazorWebApp.Events;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using Microsoft.AspNetCore.WebUtilities;
-using System.Net.Http.Handlers;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -25,6 +24,10 @@ namespace BlazorWebApp.Services
         private readonly List<string> _ignoreFileType = new() { "config" };
         private readonly List<CivitaiModelType> _ignoreModelTypes = new() { CivitaiModelType.Controlnet, CivitaiModelType.Poses, CivitaiModelType.Wildcards, CivitaiModelType.Other };
         private const string BaseModelsJsonPath = "Data/CivitAI/basemodels.json";
+        private const int MaxImageLookupPages = 20;
+        private static readonly byte[] VideoTypeBytes = new byte[] { 0 };
+        private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase) { ".mp4", ".webm", ".mov", ".m4v" };
+        private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif" };
         private static CivitaiBaseModelsData? _cachedBaseModelsData;
         private static readonly object _baseModelsLock = new();
 
@@ -90,29 +93,29 @@ namespace BlazorWebApp.Services
 
         public async Task<CivitaiImagesDto> GetImages(CivitaiImagesRequest req)
         {
-            if (req.Limit == null || req.Limit <= 0) req.Limit = 100;
-            if (req.Page == null || req.Page <= 0) req.Page = 1;
+            if (req.Limit <= 0) req.Limit = 100;
+            if (req.Page <= 0) req.Page = 1;
 
             var endpoint = "v1/images";
-            var param = new Dictionary<string, string>(){
+            var param = new Dictionary<string, string?>(){
                 {"limit", req.Limit.ToString() },
                 {"page", req.Page.ToString() }
                 };
 
-            if (req.PostId != null && req.PostId > 0) param.Add("postId", req.PostId.ToString());
-            if (req.ModelId != null && req.ModelId > 0) param.Add("modelId", req.ModelId.ToString());
-            if (req.ModelVersionId != null && req.ModelVersionId > 0) param.Add("modelVersionId", req.ModelVersionId.ToString());
+            if (req.PostId is > 0) param.Add("postId", req.PostId.Value.ToString());
+            if (req.ModelId is > 0) param.Add("modelId", req.ModelId.Value.ToString());
+            if (req.ModelVersionId is > 0) param.Add("modelVersionId", req.ModelVersionId.Value.ToString());
             if (!string.IsNullOrWhiteSpace(req.Username)) param.Add("username", req.Username);
-            if (req.Nsfw != null && req.Nsfw != CivitaiNsfw.All) param.Add("nsfw", req.Nsfw.ToString());
-            if (req.Sort != null) param.Add("sort", req.Sort.ToString().Replace("_", " "));
-            if (req.Period != null) param.Add("period", req.Period.ToString());
+            if (req.Nsfw is not null and not CivitaiNsfw.All) param.Add("nsfw", req.Nsfw.Value.ToString());
+            if (req.Sort is not null) param.Add("sort", req.Sort.Value.ToString().Replace("_", " "));
+            if (req.Period is not null) param.Add("period", req.Period.Value.ToString());
 
-            var url = new Uri(QueryHelpers.AddQueryString(new Uri(_httpClient.BaseAddress, endpoint).ToString(), param));
-            var images = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>(url);
+            var baseAddress = _httpClient.BaseAddress ?? new Uri("https://civitai.com/api/");
+            var url = QueryHelpers.AddQueryString(new Uri(baseAddress, endpoint).ToString(), param);
+            var images = NormalizeImagesResponse(await GetCivitaiJsonAsync<CivitaiImagesDto>(url, "images"), url);
             foreach (var image in images.Images)
             {
-                if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
-                if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+                await PrepareImageAsync(image, "images");
             }
             return images;
         }
@@ -120,56 +123,172 @@ namespace BlazorWebApp.Services
         public async Task<CivitaiImageDto?> GetImageById(int id)
         {
             if (id <= 0) return null;
-            var response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?nsfw=X&imageId={id}");
-            if (response == null || response.Images == null || response.Images.Count == 0) return null;
+            var response = NormalizeImagesResponse(await GetCivitaiJsonAsync<CivitaiImagesDto>($"v1/images?nsfw=X&imageId={id}", $"image {id}"), $"image {id}");
+            if (response.Images.Count == 0) return null;
             var image = response.Images[0];
-            if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
-            if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+            await PrepareImageAsync(image, $"image {id}");
             return image;
         }
 
-        public async Task<CivitaiImageDto> GetImageByModelVersionId(int modelVersionId, CivitaiImageDto imageDto)
+        public async Task<CivitaiImageDto?> GetImageByModelVersionId(int modelVersionId, CivitaiImageDto imageDto)
         {
-            if (modelVersionId <= 0) return null;
+            if (imageDto == null) return null;
+            if (modelVersionId <= 0) return imageDto;
             string cursor = "0";
-            CivitaiImagesDto response = new() { Metadata = new() { NextCursor = cursor } };
-            List<CivitaiImageDto> images = new();
-            CivitaiImageDto image = null;
+            var visitedCursors = new HashSet<string>(StringComparer.Ordinal);
+            CivitaiImageDto? image = null;
 
-            while (image == null && !string.IsNullOrWhiteSpace(response.Metadata.NextCursor))
+            for (var page = 0; image == null && !string.IsNullOrWhiteSpace(cursor) && visitedCursors.Add(cursor) && page < MaxImageLookupPages; page++)
             {
-                response = await _httpClient.GetFromJsonAsync<CivitaiImagesDto>($"v1/images?browsingLevel={imageDto.BrowsingLevel}&modelVersionId={modelVersionId}&cursor={cursor}");
-                cursor = response?.Metadata.NextCursor;
-                images.AddRange(response?.Images);
-                image = response?.Images.FirstOrDefault(i => i.Id == imageDto.Id);
+                var endpoint = $"v1/images?browsingLevel={imageDto.BrowsingLevel}&modelVersionId={modelVersionId}&cursor={Uri.EscapeDataString(cursor)}";
+                var response = NormalizeImagesResponse(await GetCivitaiJsonAsync<CivitaiImagesDto>(endpoint, $"model version {modelVersionId} images"), endpoint);
+                image = response.Images.FirstOrDefault(i => i.Id > 0 && i.Id == imageDto.Id);
+                cursor = response.Metadata.NextCursor;
             }
-            if (image == null) return null;
-            if (image.MetaObject.ValueKind != JsonValueKind.Null) image.Meta = new(image.MetaObject);
-            if (!string.IsNullOrWhiteSpace(image.Url)) image.ImageType = await GetImageType(image.Url);
+
+            if (image == null)
+            {
+                _logger.LogInformation("CivitAI image enrichment unavailable for image {ImageId} in model version {ModelVersionId}; using stub data", imageDto.Id, modelVersionId);
+                await PrepareImageAsync(imageDto, $"model version {modelVersionId} image stub");
+                return imageDto;
+            }
+
+            await PrepareImageAsync(image, $"model version {modelVersionId} image {image.Id}");
             return image;
         }
 
-        private async Task<byte[]?> GetImageType(string url)
+        private async Task<T?> GetCivitaiJsonAsync<T>(string endpoint, string context)
         {
-
-            HttpClient httpClientImage = new HttpClient();
-            httpClientImage.DefaultRequestHeaders.Range = new RangeHeaderValue(0, 2);
             try
             {
-                var response = await httpClientImage.GetAsync(url);
+                using var response = await _httpClient.GetAsync(endpoint);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("CivitAI {Context} request failed with status {StatusCode} at {Endpoint}", context, response.StatusCode, endpoint);
+                    return default;
+                }
+
+                return await response.Content.ReadFromJsonAsync<T>();
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "CivitAI {Context} JSON parse failed at {Endpoint}", context, endpoint);
+                return default;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "CivitAI {Context} request failed at {Endpoint}", context, endpoint);
+                return default;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "CivitAI {Context} request timed out at {Endpoint}", context, endpoint);
+                return default;
+            }
+        }
+
+        private CivitaiImagesDto NormalizeImagesResponse(CivitaiImagesDto? response, string context)
+        {
+            if (response == null)
+            {
+                _logger.LogWarning("CivitAI image response was empty for {Context}", context);
+                return new CivitaiImagesDto();
+            }
+
+            response.Images ??= new List<CivitaiImageDto>();
+            response.Metadata ??= new CivitaiImagesMetadataDto();
+            return response;
+        }
+
+        private async Task PrepareImageAsync(CivitaiImageDto image, string context)
+        {
+            if (image == null) return;
+
+            try
+            {
+                if (image.MetaObject.ValueKind != JsonValueKind.Undefined && image.MetaObject.ValueKind != JsonValueKind.Null)
+                    image.Meta = new(image.MetaObject);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse CivitAI metadata for {Context} image {ImageId}", context, image.Id);
+            }
+
+            image.ImageType = await ResolveImageTypeAsync(image, context);
+        }
+
+        private async Task<byte[]?> ResolveImageTypeAsync(CivitaiImageDto image, string context)
+        {
+            if (IsKnownVideo(image.Type, image.Url))
+                return VideoTypeBytes;
+
+            if (IsKnownImage(image.Type, image.Url))
+                return null;
+
+            if (string.IsNullOrWhiteSpace(image.Url))
+                return null;
+
+            return await ProbeImageTypeAsync(image.Url, context, image.Id);
+        }
+
+        private static byte[]? ResolveKnownImageType(string? type, string? url)
+        {
+            return IsKnownVideo(type, url) ? VideoTypeBytes : null;
+        }
+
+        private static bool IsKnownVideo(string? type, string? url)
+        {
+            if (string.Equals(type, "video", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var extension = GetUrlExtension(url);
+            return extension != null && VideoExtensions.Contains(extension);
+        }
+
+        private static bool IsKnownImage(string? type, string? url)
+        {
+            if (string.Equals(type, "image", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var extension = GetUrlExtension(url);
+            return extension != null && ImageExtensions.Contains(extension);
+        }
+
+        private static string? GetUrlExtension(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return null;
+
+            try
+            {
+                var uri = new Uri(url, UriKind.Absolute);
+                return Path.GetExtension(uri.AbsolutePath);
+            }
+            catch (UriFormatException)
+            {
+                var path = url.Split('?', '#')[0];
+                return Path.GetExtension(path);
+            }
+        }
+
+        private async Task<byte[]?> ProbeImageTypeAsync(string url, string context, int imageId)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Range = new RangeHeaderValue(0, 2);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try
+            {
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     return await response.Content.ReadAsByteArrayAsync();
                 }
-                else
-                {
-                    _logger.LogWarning("Failed to get image type, status code: {StatusCode} | {Content}", response.StatusCode, await response.Content.ReadAsStringAsync());
-                    return null;
-                }
+
+                _logger.LogWarning("Failed to probe CivitAI media type for {Context} image {ImageId}, status code: {StatusCode}", context, imageId, response.StatusCode);
+                return null;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
             {
-                _logger.LogError(ex, "Error occurred while getting image type");
+                _logger.LogWarning(ex, "Failed to probe CivitAI media type for {Context} image {ImageId}", context, imageId);
                 return null;
             }
         }
@@ -182,6 +301,9 @@ namespace BlazorWebApp.Services
                 if (id != 0)
                 {
                     var model = await GetModel(id);
+                    if (model == null)
+                        return null;
+
                     return new CivitaiModelsDto() { Models = new List<CivitaiModelsModelDto> { new CivitaiModelsModelDto(model) }, Metadata = new() { CurrentPage = 1, TotalPages = 1 } };
                 }
                 else
@@ -245,8 +367,13 @@ namespace BlazorWebApp.Services
                     };
 
                     var content = JsonSerializer.Deserialize<CivitaiModelDto>(jsonString, options);
+                    if (content == null)
+                    {
+                        _logger.LogWarning("CivitAI model {ModelId} response deserialized to null", id);
+                        return null;
+                    }
 
-                    foreach (var version in content.ModelVersions)
+                    foreach (var version in content.ModelVersions ?? new List<CivitaiModelVersionDto>())
                     {
                         version.Images = new();
                         if (version.ImagesData != null)
@@ -258,7 +385,17 @@ namespace BlazorWebApp.Services
                                     _ = int.TryParse(Path.GetFileNameWithoutExtension(data.Url), out int imageId);
                                     data.Id = imageId;
                                 }
-                                version.Images.Add(new CivitaiImageDto() { Id = data.Id, Url = data.Url, BrowsingLevel = data.NsfwLevel, Width = data.Width, Height = data.Height, Hash = data.Hash });
+                                version.Images.Add(new CivitaiImageDto()
+                                {
+                                    Id = data.Id,
+                                    Url = data.Url,
+                                    Type = data.Type,
+                                    BrowsingLevel = data.NsfwLevel,
+                                    Width = data.Width,
+                                    Height = data.Height,
+                                    Hash = data.Hash,
+                                    ImageType = ResolveKnownImageType(data.Type, data.Url)
+                                });
                             }
                         }
                     }
@@ -280,14 +417,12 @@ namespace BlazorWebApp.Services
                         _logger.LogWarning(fileEx, "Failed to save debug file");
                     }
 
-                    throw new InvalidOperationException(
-                        $"Failed to deserialize CivitAI model {id}. Check logs for details. Debug file: {debugPath}",
-                        jsonEx);
+                    return null;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Unexpected error processing model {ModelId}", id);
-                    throw;
+                    return null;
                 }
             }
             else
@@ -316,7 +451,7 @@ namespace BlazorWebApp.Services
 
         public async Task<CivitaiModelVersionDto> GetModelVersion(int id) => await _httpClient.GetFromJsonAsync<CivitaiModelVersionDto>($"v1/model-versions/{id}");
 
-        public async Task<CivitaiDownloadStatus> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null, string? typeOverride = null)
+        public async Task<CivitaiDownloadStatus> DownloadResource(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string? subtype = null, string? typeOverride = null, bool downloadResourceImages = true)
         {
             CivitaiDownloadStatus status;
             var resourceType = typeOverride ?? model.Type;
@@ -326,16 +461,16 @@ namespace BlazorWebApp.Services
 
                 #region Initialize HTTPClient
                 var progressBar = new BaseProgress() { BarColor = Parser.ParseCivitaiResourceColorAsColor((CivitaiModelType)Enum.Parse(typeof(CivitaiModelType), model.Type)), Value = 0 };
-                var progressHandler = new ProgressMessageHandler(new HttpClientHandler());
-                progressHandler.HttpReceiveProgress += (sender, e) => _progress.Update(progressBar.Id, e.ProgressPercentage);
-                var client = new HttpClient(progressHandler);
-                client.BaseAddress = _httpClient.BaseAddress;
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _configuration["CivitaiApiToken"]);
-                var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to download CivitAI resource {ModelId}/{VersionId}/{FileName}, status code: {StatusCode}", model.Id, version.Id, file.Name, response.StatusCode);
+                    return CivitaiDownloadStatus.Error;
+                }
                 #endregion
 
                 #region Get/Create Directory
-                var path = Path.Combine(_configuration["ResourcesPath"], resourceType);
+                var path = Path.Combine(GetRequiredConfigurationPath("ResourcesPath"), resourceType);
                 if (subtype != null && !subtype.Equals("none", StringComparison.InvariantCultureIgnoreCase)) path = Path.Combine(path, subtype);
                 Directory.CreateDirectory(path);
                 #endregion
@@ -349,18 +484,8 @@ namespace BlazorWebApp.Services
                 #endregion
 
                 #region Download Preview Image
-                var previewPath = Path.Combine(_configuration["ResourcePreviewsPath"], resourceType, Path.GetFileNameWithoutExtension(file.Name) + ".png");
-                if (!File.Exists(previewPath))
-                {
-                    var index = 0;
-                    bool isImageDownloaded;
-                    do
-                    {
-                        isImageDownloaded = await _img.DownloadImageAsPng(version.Images[index].Url, previewPath);
-                        index++;
-                    }
-                    while (!isImageDownloaded && index < version.Images.Count);
-                }
+                if (downloadResourceImages)
+                    await TryDownloadPreviewImageAsync(model, version, file, resourceType);
                 #endregion
 
                 #region Download Resource
@@ -368,10 +493,19 @@ namespace BlazorWebApp.Services
                 if (File.Exists(path) || await _db.CheckResourceExistsByFilename(file.Name)) status = CivitaiDownloadStatus.Database;
                 else
                 {
+                    var progressAdded = false;
                     _progress.Add(progressBar);
-                    using var fs = new FileStream(path, FileMode.Create);
-                    await response.Content.CopyToAsync(fs);
-                    _progress.Remove(progressBar.Id);
+                    progressAdded = true;
+                    try
+                    {
+                        using var fs = new FileStream(path, FileMode.Create);
+                        await CopyContentWithProgressAsync(response.Content, fs, progressBar.Id);
+                    }
+                    finally
+                    {
+                        if (progressAdded)
+                            _progress.Remove(progressBar.Id);
+                    }
                     status = CivitaiDownloadStatus.Success;
                 }
                 #endregion
@@ -397,6 +531,65 @@ namespace BlazorWebApp.Services
                 status = CivitaiDownloadStatus.Error;
             }
             return status;
+        }
+
+        private async Task CopyContentWithProgressAsync(HttpContent content, Stream destination, Guid progressId)
+        {
+            var totalBytes = content.Headers.ContentLength;
+            var buffer = new byte[81920];
+            long totalRead = 0;
+
+            await using var source = await content.ReadAsStreamAsync();
+            int bytesRead;
+            while ((bytesRead = await source.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                await destination.WriteAsync(buffer, 0, bytesRead);
+                totalRead += bytesRead;
+
+                if (totalBytes is > 0)
+                {
+                    var progress = (float)(totalRead * 100d / totalBytes.Value);
+                    _progress.Update(progressId, progress);
+                }
+            }
+        }
+
+        private async Task TryDownloadPreviewImageAsync(CivitaiModelDto model, CivitaiModelVersionDto version, CivitaiModelVersionFileDto file, string resourceType)
+        {
+            if (version.Images == null || version.Images.Count == 0)
+                return;
+
+            var previewPath = Path.Combine(GetRequiredConfigurationPath("ResourcePreviewsPath"), resourceType, Path.GetFileNameWithoutExtension(file.Name) + ".png");
+            if (File.Exists(previewPath))
+                return;
+
+            var previewDirectory = Path.GetDirectoryName(previewPath);
+            if (!string.IsNullOrWhiteSpace(previewDirectory))
+                Directory.CreateDirectory(previewDirectory);
+
+            foreach (var image in version.Images.Where(image => !string.IsNullOrWhiteSpace(image.Url)))
+            {
+                try
+                {
+                    if (await _img.DownloadImageAsPng(image.Url, previewPath))
+                        return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to download CivitAI preview image {ImageId} for model {ModelId}, version {VersionId}, file {FileName}", image.Id, model.Id, version.Id, file.Name);
+                }
+            }
+
+            _logger.LogWarning("No CivitAI preview image could be downloaded for model {ModelId}, version {VersionId}, file {FileName}", model.Id, version.Id, file.Name);
+        }
+
+        private string GetRequiredConfigurationPath(string key)
+        {
+            var value = _configuration[key];
+            if (string.IsNullOrWhiteSpace(value))
+                throw new InvalidOperationException($"Missing required configuration value: {key}");
+
+            return value;
         }
 
         #region For Development
