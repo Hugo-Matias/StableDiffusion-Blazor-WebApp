@@ -60,7 +60,7 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
                 Name = "seedvr2_batch_size",
                 Label = "Batch Size",
                 Type = ParameterType.Slider,
-                Min = 1,
+                Min = 0,
                 Max = 10,
                 Step = 1,
                 DefaultValue = 1
@@ -128,6 +128,7 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
         public long Seed { get; set; } = 42;
         public int Resolution { get; set; } = 2048;
         public int BatchSize { get; set; } = 1;
+        public int AutoBatchSizeFrameCount { get; set; }
         public double InputNoiseScale { get; set; } = 0.0;
         public double LatentNoiseScale { get; set; } = 0.0;
         public int BlocksToSwap { get; set; } = 36;
@@ -142,6 +143,15 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
         string scope = "",
         string scopeTitle = "")
     {
+        Build(builder, parameters, registry, ResolveAutoBatchSizeFrameCount(parameters));
+    }
+
+    public void Build(
+        ComfyWorkflowBuilder builder,
+        GenerationParameters parameters,
+        Builders.NodeRegistry registry,
+        int autoBatchSizeFrameCount)
+    {
         var fragment = parameters.GetFragment(Metadata.Id);
 
         // Check if fragment is active
@@ -155,6 +165,7 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
             Seed = fragment.GetLong("seedvr2_seed", 42),
             Resolution = fragment.GetInt("seedvr2_resolution", 2048),
             BatchSize = fragment.GetInt("seedvr2_batch_size", 1),
+            AutoBatchSizeFrameCount = autoBatchSizeFrameCount,
             InputNoiseScale = fragment.GetDouble("seedvr2_input_noise_scale", 0.0),
             LatentNoiseScale = fragment.GetDouble("seedvr2_latent_noise_scale", 0.0),
             BlocksToSwap = fragment.GetInt("blocks_to_swap", 36),
@@ -183,6 +194,7 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
     {
         // Get image reference
         var imageRef = registry.GetRef("image_output");
+        var batchSize = ResolveBatchSize(p.BatchSize, p.AutoBatchSizeFrameCount);
 
         // Load DiT model
         builder.AddNode("seedvr2_load_dit", node => node
@@ -219,7 +231,7 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
             .Input("seed", p.Seed)
             .Input("resolution", p.Resolution)
             .Input("max_resolution", p.Resolution)
-            .Input("batch_size", p.BatchSize)
+            .Input("batch_size", batchSize)
             .Input("uniform_batch_size", false)
             .Input("color_correction", "lab")
             .Input("temporal_overlap", 16)
@@ -234,5 +246,31 @@ public class SeedVR2UpscaleFragment : IFragmentBuilder
 
         // Overwrite image_output with upscaled version
         registry.Register("image_output", "seedvr2_upscaler", 0);
+    }
+
+    private static int ResolveBatchSize(int requestedBatchSize, int autoBatchSizeFrameCount)
+    {
+        if (requestedBatchSize > 0)
+            return requestedBatchSize;
+
+        return autoBatchSizeFrameCount > 0 ? autoBatchSizeFrameCount : 1;
+    }
+
+    private static int ResolveAutoBatchSizeFrameCount(GenerationParameters parameters)
+    {
+        if (parameters.Sources == null)
+            return 0;
+
+        foreach (var source in parameters.Sources.Values)
+        {
+            if (!string.Equals(source.Type, "video", StringComparison.OrdinalIgnoreCase) && source.VideoOptions == null)
+                continue;
+
+            var frameLoadCap = source.VideoOptions?.FrameLoadCap ?? 0;
+            if (frameLoadCap > 0)
+                return frameLoadCap;
+        }
+
+        return 0;
     }
 }

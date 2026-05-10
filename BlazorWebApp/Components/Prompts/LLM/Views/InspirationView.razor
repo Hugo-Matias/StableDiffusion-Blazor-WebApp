@@ -15,8 +15,8 @@
 
     @* Mode Toggle *@
     <MudToggleGroup @bind-Selected="_mode" T="string" Class="mb-2">
-        <Item Value="inspire" Label="Inspire Me" />
-        <Item Value="roulette" Label="Roulette" />
+        <MudToggleItem Value="@("inspire")">Inspire Me</MudToggleItem>
+        <MudToggleItem Value="@("roulette")">Roulette</MudToggleItem>
     </MudToggleGroup>
 
     @if (_mode == "inspire")
@@ -43,9 +43,9 @@
                 </MudSelect>
 
                 <MudToggleGroup @bind-Selected="_complexity" T="string" Label="Complexity">
-                    <Item Value="Simple" Label="Simple" />
-                    <Item Value="Standard" Label="Standard" />
-                    <Item Value="Rich" Label="Rich" />
+                    <MudToggleItem Value="@("Simple")">Simple</MudToggleItem>
+                    <MudToggleItem Value="@("Standard")">Standard</MudToggleItem>
+                    <MudToggleItem Value="@("Rich")">Rich</MudToggleItem>
                 </MudToggleGroup>
 
                 <MudButton Color="Color.Primary" Variant="Variant.Filled"

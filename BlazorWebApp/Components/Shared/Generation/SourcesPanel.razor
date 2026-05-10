@@ -22,8 +22,9 @@
         {
             @* Single source, no multi-source - no tabs needed *@
             var source = Sources.First();
-            <SourceItem Source="@source.Value" SourceId="@source.Key" OnSourceChanged="HandleSourceChanged"
-                        OnEditClicked="HandleEditClicked" OnBlankCanvasClicked="HandleBlankCanvasClicked" />
+            <SourceItem Source="@source.Value" SourceId="@source.Key" SourceDefinition="@GetSourceDefinition(source.Key)"
+                        OnSourceChanged="HandleSourceChanged" OnEditClicked="HandleEditClicked"
+                        OnBlankCanvasClicked="HandleBlankCanvasClicked" />
         }
         else
         {
@@ -46,7 +47,8 @@
                             </div>
                         </TabContent>
                         <ChildContent>
-                            <SourceItem Source="@source.Value" SourceId="@source.Key" OnSourceChanged="HandleSourceChanged"
+                            <SourceItem Source="@source.Value" SourceId="@source.Key"
+                                        SourceDefinition="@GetSourceDefinition(source.Key)" OnSourceChanged="HandleSourceChanged"
                                         OnEditClicked="HandleEditClicked" OnBlankCanvasClicked="HandleBlankCanvasClicked" />
                         </ChildContent>
                     </MudTabPanel>
@@ -126,6 +128,13 @@
         var count = Sources.Keys.Count(k => k.StartsWith(_multiSourceDefinition.Id));
         // Keep at least one if required
         return !(_multiSourceDefinition.Required && count <= 1);
+    }
+
+    private WorkflowSource? GetSourceDefinition(string sourceId)
+    {
+        if (SourceDefinitions == null) return null;
+        return SourceDefinitions.FirstOrDefault(s => s.Id == sourceId)
+            ?? SourceDefinitions.FirstOrDefault(s => s.AllowMultiple && sourceId.StartsWith($"{s.Id}_", StringComparison.Ordinal));
     }
 
     private async Task AddMultiSource()

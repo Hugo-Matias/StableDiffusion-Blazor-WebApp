@@ -7,22 +7,22 @@ namespace BlazorWebApp.Data.Dtos
     public class CivitaiImageDto
     {
         public int Id { get; set; }
-        public string Url { get; set; }
-        public string Hash { get; set; }
+        public string? Url { get; set; }
+        public string? Hash { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
-        public string Type { get; set; }
+        public string? Type { get; set; }
         public bool Nsfw { get; set; }
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public CivitaiNsfw NsfwLevel { get; set; }
         public DateTime CreatedAt { get; set; }
         public int PostId { get; set; }
-        public CivitaiImageStatsDto Stats { get; set; }
+        public CivitaiImageStatsDto? Stats { get; set; }
         [JsonIgnore]
-        public CivitaiImageMetaDto Meta { get; set; }
+        public CivitaiImageMetaDto? Meta { get; set; }
         [JsonPropertyName("meta")]
         public JsonElement MetaObject { get; set; }
-        public string Username { get; set; }
+        public string? Username { get; set; }
         public byte[]? ImageType { get; set; }
         public List<int> ModelVersionIds { get; set; } = new();
         public int BrowsingLevel { get; set; }
@@ -53,7 +53,7 @@ namespace BlazorWebApp.Data.Dtos
         public string ClipSkip { get; set; }
         public string ModelHash { get; set; }
         public string NegativePrompt { get; set; }
-        public string DenoisingStrength { get; set; }
+        public string? DenoisingStrength { get; set; }
         public string HiresUpscale { get; set; }
         public string HiresUpscaler { get; set; }
         public string HiresSteps { get; set; }
@@ -249,9 +249,9 @@ namespace BlazorWebApp.Data.Dtos
     }
     public class CivitaiImageMetaResourceDto
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public float Weight { get; set; }
-        public string Hash { get; set; }
+        public string? Hash { get; set; }
     }
 }

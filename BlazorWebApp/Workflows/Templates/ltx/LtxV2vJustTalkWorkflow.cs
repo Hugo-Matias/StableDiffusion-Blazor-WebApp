@@ -5,6 +5,7 @@ using BlazorWebApp.Workflows.Fragments.Enhancements;
 using BlazorWebApp.Workflows.Fragments.Ltx;
 using BlazorWebApp.Workflows.Models;
 using GenerationParameters = BlazorWebApp.Models.GenerationParameters;
+using VideoSourceOptions = BlazorWebApp.Models.VideoSourceOptions;
 
 namespace BlazorWebApp.Workflows.Templates.Ltx;
 
@@ -134,7 +135,15 @@ public class LtxV2vJustTalkWorkflow : IWorkflowBuilder
                 Label = "Source Video",
                 Type = SourceType.Video,
                 Required = true,
-                Parameter = "source_video"
+                Parameter = "source_video",
+                DefaultVideoOptions = new VideoSourceOptions
+                {
+                    ForceRate = 0,
+                    FrameLoadCap = 0,
+                    SkipFirstFrames = 0,
+                    SelectEveryNth = 1,
+                    Format = "LTXV"
+                }
             },
             new WorkflowSource
             {

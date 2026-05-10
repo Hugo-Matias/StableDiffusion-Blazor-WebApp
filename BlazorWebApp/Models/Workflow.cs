@@ -51,5 +51,6 @@ namespace BlazorWebApp.Models
         public bool Required { get; set; } = true;
         public bool AllowMultiple { get; set; }
         public string Parameter { get; set; } = "";
+        public VideoSourceOptions? DefaultVideoOptions { get; set; }
     }
 }

@@ -148,3 +148,16 @@
   font-family: var(--mud-typography-monospace-family, monospace);
   color: var(--mud-palette-text-primary);
 }
+
+.video-input-settings {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--mud-palette-lines-default);
+  background: var(--mud-palette-surface);
+}
+
+.video-input-cut-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}

@@ -17,7 +17,7 @@
                            TransformOrigin="Origin.TopLeft" MaxHeight="400">
                     @foreach (CivitaiImageSort? sort in Enum.GetValues(typeof(CivitaiImageSort)))
                     {
-                        <MudSelectItem Value="@sort">@sort.ToString().Replace("_", " ")</MudSelectItem>
+                        <MudSelectItem Value="@sort">@sort?.ToString()?.Replace("_", " ")</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect @bind-Value="Request.Period" Label="Period" AnchorOrigin="Origin.BottomLeft"
@@ -89,9 +89,9 @@
              OnAssetChanged="HandleViewerAssetChanged" />
 
 @code {
-    public CivitaiImagesRequest Request { get; set; }
+    public CivitaiImagesRequest Request { get; set; } = new();
     private bool _isSearching;
-    private CivitaiImagesDto _images;
+    private CivitaiImagesDto? _images;
 
     // AssetViewer host state. The panel owns a single AssetViewer instance and projects
     // the current DTO list to transient ImageEntity objects via CivitaiAssetAdapter.
@@ -239,13 +239,13 @@ Severity.Success);
     private void SetState()
     {
         State.State.Civitai.Images.Limit = Request.Limit;
-        State.State.Civitai.Images.PostId = (int)Request.PostId;
-        State.State.Civitai.Images.ModelId = (int)Request.ModelId;
-        State.State.Civitai.Images.ModelVersionId = (int)Request.ModelVersionId;
-        State.State.Civitai.Images.Username = Request.Username;
-        State.State.Civitai.Images.Nsfw = (CivitaiNsfw)Request.Nsfw;
-        State.State.Civitai.Images.Sort = (CivitaiImageSort)Request.Sort;
-        State.State.Civitai.Images.Period = (CivitaiPeriod)Request.Period;
+        State.State.Civitai.Images.PostId = Request.PostId.GetValueOrDefault();
+        State.State.Civitai.Images.ModelId = Request.ModelId.GetValueOrDefault();
+        State.State.Civitai.Images.ModelVersionId = Request.ModelVersionId.GetValueOrDefault();
+        State.State.Civitai.Images.Username = Request.Username ?? string.Empty;
+        State.State.Civitai.Images.Nsfw = Request.Nsfw.GetValueOrDefault();
+        State.State.Civitai.Images.Sort = Request.Sort.GetValueOrDefault();
+        State.State.Civitai.Images.Period = Request.Period.GetValueOrDefault();
         State.State.Civitai.Images.Page = Request.Page;
     }
 }

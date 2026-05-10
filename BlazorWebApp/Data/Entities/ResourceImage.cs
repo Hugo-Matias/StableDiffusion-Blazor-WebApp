@@ -5,10 +5,10 @@ namespace BlazorWebApp.Data.Entities
     public class ResourceImage
     {
         public int Id { get; set; }
-        public string Path { get; set; }
+        public string? Path { get; set; }
         public int CivitaiModelId { get; set; }
         public int CivitaiModelVersionID { get; set; }
-        public string Hash { get; set; }
+        public string? Hash { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
         public string? Url { get; set; }

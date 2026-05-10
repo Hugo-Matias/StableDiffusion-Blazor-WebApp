@@ -1,0 +1,125 @@
+@*
+    SCAILPoseDetectionForm - Form for scail_pose_detection fragment
+
+    Handles target resize defaults and VitPose ONNX pose detection model selections.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("SCAILPoseDetectionForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline" Class="text-primary">Target Size</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_localTargetWidth" @bind-Value:after="OnTargetWidthChanged" Label="Width"
+                         Min="64" Max="16384" Step="32" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_localTargetHeight" @bind-Value:after="OnTargetHeightChanged"
+                         Label="Height" Min="64" Max="16384" Step="32" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline" Class="text-primary">Pose Detection</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudCheckBox @bind-Value="_localDetectHand" @bind-Value:after="OnDetectHandChanged" Label="Draw Hands" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="ONNX Device" @bind-Value="_localOnnxDevice" @bind-Value:after="OnOnnxDeviceChanged"
+                   Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var device in _onnxDeviceOptions)
+            {
+                <MudSelectItem Value="@device" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="VitPose Model" @bind-Value="_localVitposeModel"
+                   @bind-Value:after="OnVitposeModelChanged" Variant="Variant.Text" Dense="true"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var model in _vitposeModelOptions)
+            {
+                <MudSelectItem Value="@model" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="YOLO Model" @bind-Value="_localYoloModel" @bind-Value:after="OnYoloModelChanged"
+                   Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var model in _yoloModelOptions)
+            {
+                <MudSelectItem Value="@model" />
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _localTargetWidth = 512;
+    private int _localTargetHeight = 896;
+    private bool _localDetectHand = true;
+    private string _localVitposeModel = "vitpose-l-wholebody.onnx";
+    private string _localYoloModel = "yolov10m.onnx";
+    private string _localOnnxDevice = "CUDAExecutionProvider";
+
+    private readonly List<string> _vitposeModelOptions = new()
+    {
+        "vitpose-l-wholebody.onnx", "vitpose-b-wholebody.onnx", "vitpose-h-wholebody.onnx", "vitpose-s-wholebody.onnx"
+    };
+    private readonly List<string> _yoloModelOptions = new() { "yolov10m.onnx" };
+    private readonly List<string> _onnxDeviceOptions = new() { "CUDAExecutionProvider", "CPUExecutionProvider" };
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _localTargetWidth = ParameterService.GetFragmentProperty(Fragment, "target_width", 512);
+        _localTargetHeight = ParameterService.GetFragmentProperty(Fragment, "target_height", 896);
+        _localDetectHand = ParameterService.GetFragmentProperty(Fragment, "detect_hand", true);
+        _localVitposeModel = ParameterService.GetFragmentProperty(Fragment, "vitpose_model", "vitpose-l-wholebody.onnx");
+        _localYoloModel = ParameterService.GetFragmentProperty(Fragment, "yolo_model", "yolov10m.onnx");
+        _localOnnxDevice = ParameterService.GetFragmentProperty(Fragment, "onnx_device", "CUDAExecutionProvider");
+    }
+
+    private async Task OnTargetWidthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "target_width", _localTargetWidth, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTargetHeightChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "target_height", _localTargetHeight, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnDetectHandChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "detect_hand", _localDetectHand, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnVitposeModelChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "vitpose_model", _localVitposeModel, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnYoloModelChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "yolo_model", _localYoloModel, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnOnnxDeviceChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "onnx_device", _localOnnxDevice, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

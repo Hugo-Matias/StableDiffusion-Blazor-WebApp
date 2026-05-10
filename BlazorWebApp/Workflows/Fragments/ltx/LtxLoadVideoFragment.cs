@@ -43,7 +43,9 @@ public class LtxLoadVideoFragment : IFragmentBuilder
     public class Parameters
     {
         public string VideoPath { get; set; } = "";
-        public int ForceRate { get; set; } = 0;
+        public double ForceRate { get; set; } = 0;
+        public int CustomWidth { get; set; } = 0;
+        public int CustomHeight { get; set; } = 0;
         public int FrameLoadCap { get; set; } = 0;
         public double StartTime { get; set; } = 0.0;
         public string Format { get; set; } = "LTXV";
@@ -59,10 +61,24 @@ public class LtxLoadVideoFragment : IFragmentBuilder
         string scopeTitle = "")
     {
         var p = new Parameters();
-        if (parameters.Sources is not null
-            && parameters.Sources.TryGetValue(p.SourceKey, out var src) && src is not null)
+        var source = parameters.Sources?.GetValueOrDefault(p.SourceKey)
+            ?? parameters.Sources?.Values.FirstOrDefault(s => string.Equals(s.Type, "video", StringComparison.OrdinalIgnoreCase));
+
+        if (source is not null)
         {
-            p.VideoPath = src.Filename ?? src.FilePath ?? "";
+            p.VideoPath = source.Filename ?? source.FilePath ?? "";
+            if (source.VideoOptions is not null)
+            {
+                p.ForceRate = source.VideoOptions.ForceRate;
+                p.CustomWidth = source.VideoOptions.CustomWidth;
+                p.CustomHeight = source.VideoOptions.CustomHeight;
+                p.FrameLoadCap = source.VideoOptions.FrameLoadCap;
+                p.Format = string.IsNullOrWhiteSpace(source.VideoOptions.Format) ? p.Format : source.VideoOptions.Format;
+                if (source.VideoOptions.SkipFirstFrames > 0 && source.VideoOptions.ForceRate > 0)
+                {
+                    p.StartTime = source.VideoOptions.SkipFirstFrames / source.VideoOptions.ForceRate;
+                }
+            }
         }
         BuildInternal(builder, registry, p, scope, scopeTitle);
     }
@@ -95,8 +111,8 @@ public class LtxLoadVideoFragment : IFragmentBuilder
             .Title($"{scopeTitle}Load Video (FFmpeg)")
             .Input("video", p.VideoPath)
             .Input("force_rate", p.ForceRate)
-            .Input("custom_width", 0)
-            .Input("custom_height", 0)
+            .Input("custom_width", p.CustomWidth)
+            .Input("custom_height", p.CustomHeight)
             .Input("frame_load_cap", p.FrameLoadCap)
             .Input("start_time", p.StartTime)
             .Input("format", p.Format));

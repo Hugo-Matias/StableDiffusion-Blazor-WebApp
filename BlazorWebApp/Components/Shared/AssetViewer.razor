@@ -64,7 +64,7 @@
                         </div>
                         <span class="compare-label compare-label-base">Generated</span>
                         <span class="compare-label compare-label-source">@(string.IsNullOrWhiteSpace(CurrentSource.Label) ?
-                                                                    "Source" : CurrentSource.Label)</span>
+                                                                                                "Source" : CurrentSource.Label)</span>
                         </div>
                         @if (_isCompareLocked)
                         {
@@ -378,7 +378,7 @@ HandleRequestSaveLocal;
         StateHasChanged();
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync()
     {
         if (IsVisible && !_wasVisible && Assets.Count > 0)
         {
@@ -386,6 +386,7 @@ HandleRequestSaveLocal;
             ResetZoom();
             _selectedParams.Clear();
         }
+        return Task.CompletedTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

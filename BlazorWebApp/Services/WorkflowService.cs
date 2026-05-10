@@ -168,7 +168,8 @@ namespace BlazorWebApp.Services
                     Type = s.Type.ToString().ToLower(),
                     Required = s.Required,
                     AllowMultiple = s.AllowMultiple,
-                    Parameter = s.Parameter
+                    Parameter = s.Parameter,
+                    DefaultVideoOptions = s.DefaultVideoOptions?.Clone()
                 }).ToList(),
                 CompatibleResourceBaseModels = metadata.CompatibleResourceBaseModels.Count > 0
                     ? metadata.CompatibleResourceBaseModels

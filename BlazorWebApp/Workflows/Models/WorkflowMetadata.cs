@@ -202,6 +202,11 @@ public record WorkflowSource
     /// Parameter name for template variable replacement.
     /// </summary>
     public string Parameter { get; init; } = "";
+
+    /// <summary>
+    /// Default loader settings for video sources.
+    /// </summary>
+    public VideoSourceOptions? DefaultVideoOptions { get; init; }
 }
 
 /// <summary>

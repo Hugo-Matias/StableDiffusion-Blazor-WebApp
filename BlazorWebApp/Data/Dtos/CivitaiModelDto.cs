@@ -28,8 +28,8 @@ namespace BlazorWebApp.Data.Dtos
     {
         public int ModelId { get; set; }
         public DateTime UpdatedAt { get; set; }
-        public string BaseModel { get; set; }
-        public string Availability { get; set; }
+        public new string? BaseModel { get; set; }
+        public string? Availability { get; set; }
         [JsonIgnore]
         public bool IsEarlyAccess => Availability?.Equals("EarlyAccess", StringComparison.OrdinalIgnoreCase) ?? false;
         public List<CivitaiModelVersionFileDto> Files { get; set; }
@@ -41,17 +41,17 @@ namespace BlazorWebApp.Data.Dtos
 
     public class CivitaiModelVersionFileDto : CivitaiBaseModelVersionFileDto
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int Id { get; set; }
-        public string Type { get; set; }
-        public string PickleScanMessage { get; set; }
+        public string? Type { get; set; }
+        public string? PickleScanMessage { get; set; }
         public CivitaiModelVersionFileHashesDto Hashes { get; set; }
     }
 
     public class CivitaiModelVersionFileHashesDto
     {
-        public string AutoV1 { get; set; }
-        public string AutoV2 { get; set; }
+        public string? AutoV1 { get; set; }
+        public string? AutoV2 { get; set; }
         public string SHA256 { get; set; }
         public string CRC32 { get; set; }
         public string BLAKE3 { get; set; }
@@ -60,19 +60,19 @@ namespace BlazorWebApp.Data.Dtos
     public class CivitaiModelVersionImageDto
     {
         public int Id { get; set; }
-        public string Url { get; set; }
+        public string? Url { get; set; }
         public int NsfwLevel { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
-        public string Type { get; set; }
-        public string Hash { get; set; }
-        public string Availability { get; set; }
+        public string? Type { get; set; }
+        public string? Hash { get; set; }
+        public string? Availability { get; set; }
     }
 
     public class CivitaiModelVersionImageTagDataDto
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public bool IsCategory { get; set; }
     }
 }

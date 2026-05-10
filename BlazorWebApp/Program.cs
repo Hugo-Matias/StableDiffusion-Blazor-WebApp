@@ -4,6 +4,7 @@ using BlazorWebApp.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.StaticFiles;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -217,17 +218,17 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(builder.Configuration["OutputDir"]),
+    FileProvider = new PhysicalFileProvider(builder.Configuration["OutputDir"]!),
     RequestPath = "/image"
 });
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcesPath"]),
+    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcesPath"]!),
     RequestPath = "/files/resources"
 });
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcePreviewsPath"]),
+    FileProvider = new PhysicalFileProvider(builder.Configuration["ResourcePreviewsPath"]!),
     RequestPath = "/files/resource_previews"
 });
 
@@ -253,6 +254,39 @@ else
 app.UseRouting();
 
 app.MapBlazorHub();
+
+var sourcePreviewContentTypes = new FileExtensionContentTypeProvider();
+app.MapGet("/api/source-preview", IResult (string? filename, IConfiguration configuration, ILogger<Program> log) =>
+{
+    if (string.IsNullOrWhiteSpace(filename))
+    {
+        return Results.BadRequest(new { error = "Missing filename." });
+    }
+
+    var normalized = filename.Replace('\\', '/');
+    var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+    if (Path.IsPathRooted(normalized) || segments.Any(segment => segment is "." or ".."))
+    {
+        return Results.BadRequest(new { error = "Invalid filename." });
+    }
+
+    var previewPath = ResolveSourcePreviewPath(configuration, normalized);
+    if (previewPath is null)
+    {
+        log.LogWarning("Source preview file '{Filename}' was not found under ComfyUI:InputsPath.", normalized);
+        return Results.NotFound(new { error = "Source file not found." });
+    }
+
+    var contentType = ResolveSourcePreviewContentType(sourcePreviewContentTypes, previewPath);
+    var stream = new FileStream(
+        previewPath,
+        FileMode.Open,
+        FileAccess.Read,
+        FileShare.Read,
+        bufferSize: 64 * 1024,
+        FileOptions.Asynchronous | FileOptions.SequentialScan);
+    return Results.File(stream, contentType, enableRangeProcessing: true);
+});
 
 // Direct multipart upload endpoint that streams large source files (videos in particular)
 // to ComfyUI WITHOUT going through SignalR. The Generate page's video drag/drop control
@@ -304,3 +338,54 @@ _ = Task.Run(async () =>
         await tagUsageService.RefreshTagCache();
     }
 });
+
+static string? ResolveSourcePreviewPath(IConfiguration configuration, string normalizedFilename)
+{
+    var configuredInputsPath = configuration["ComfyUI:InputsPath"];
+    if (string.IsNullOrWhiteSpace(configuredInputsPath))
+    {
+        return null;
+    }
+
+    var inputsRoot = Path.GetFullPath(configuredInputsPath);
+    var candidatePaths = new[]
+    {
+        normalizedFilename,
+        Path.Combine("input", normalizedFilename)
+    };
+
+    foreach (var candidatePath in candidatePaths)
+    {
+        var resolvedPath = Path.GetFullPath(Path.Combine(inputsRoot, candidatePath));
+        if (IsPathUnderRoot(inputsRoot, resolvedPath) && File.Exists(resolvedPath))
+        {
+            return resolvedPath;
+        }
+    }
+
+    return null;
+}
+
+static bool IsPathUnderRoot(string rootPath, string candidatePath)
+{
+    var normalizedRoot = rootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+    return candidatePath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
+}
+
+static string ResolveSourcePreviewContentType(FileExtensionContentTypeProvider provider, string path)
+{
+    if (provider.TryGetContentType(path, out var contentType))
+    {
+        return contentType;
+    }
+
+    return Path.GetExtension(path).ToLowerInvariant() switch
+    {
+        ".mp4" => "video/mp4",
+        ".webm" => "video/webm",
+        ".mov" => "video/quicktime",
+        ".mkv" => "video/x-matroska",
+        ".avi" => "video/x-msvideo",
+        _ => "application/octet-stream"
+    };
+}

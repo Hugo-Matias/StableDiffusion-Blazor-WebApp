@@ -21,7 +21,7 @@ public class LoadVideoFragment : IFragmentBuilder
     public class Parameters
     {
         public string Video { get; set; } = "";
-        public int ForceRate { get; set; } = 16;
+        public double ForceRate { get; set; } = 16;
         public int CustomWidth { get; set; } = 480;
         public int CustomHeight { get; set; } = 832;
         public int FrameLoadCap { get; set; } = 176;
@@ -41,7 +41,7 @@ public class LoadVideoFragment : IFragmentBuilder
         BuildInternal(builder, registry, new Parameters
         {
             Video = fragment?.GetString("video", "") ?? "",
-            ForceRate = fragment?.GetInt("force_rate", 16) ?? 16,
+            ForceRate = fragment?.GetDouble("force_rate", 16) ?? 16,
             CustomWidth = fragment?.GetInt("custom_width", 480) ?? 480,
             CustomHeight = fragment?.GetInt("custom_height", 832) ?? 832,
             FrameLoadCap = fragment?.GetInt("frame_load_cap", 176) ?? 176,

@@ -834,23 +834,47 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
 
 > **Agent-driven workflow:** Use the `.github/prompts/workflow-conversion.prompt.md` prompt in Copilot Chat to run the conversion as a guided, multi-phase agent session. The agent follows the exact steps below, plans the workflow and its UI integration together, presents that plan for user approval before writing any code, and confirms build plus UI integration risks at the end.
 
+### Workflow JSON Formats And Fidelity Baseline
+
+There are two common valid ComfyUI workflow formats:
+
+- **Visual workflow export**: top-level `nodes`, `links`, `groups`, and `widgets_values`. This preserves the ComfyUI UI graph and layout. Treat it as the source when no API `prompt` object is present. Reconstruct executable inputs from links, widgets, node state, and live `/object_info` schemas.
+- **API prompt export**: top-level `prompt` object keyed by node id, where each node contains `class_type` and `inputs`. This is already the executable payload sent to ComfyUI. If both `prompt` and visual metadata are present, use `prompt` as execution ground truth and use the visual graph only for labels, positions, and UI context unless the user says otherwise.
+
+The conversion goal is source fidelity: the app workflow should emit the same enabled executable nodes, equivalent dataflow edges, output indexes, and defaults as the source. Existing fragments are reusable only when their emitted payload is equivalent to the source graph. If a fragment would change behavior, create a new fragment or parameterize it.
+
+Every conversion plan must include a source fidelity matrix:
+
+| Source id | Source class | Source role | App node / fragment | Status | Reason                          |
+| --------- | ------------ | ----------- | ------------------- | ------ | ------------------------------- |
+| `12`      | `KSampler`   | main sample | `SamplerStandard`   | exact  | Same class, inputs, and outputs |
+
+Status values are `exact`, `parameterized`, `replaced`, `dropped`, and `blocked`.
+
+Allowed deviations are limited to UI-only annotations, disabled/bypassed nodes, preview/debug outputs not used by final enabled outputs, user-approved substitutions for missing custom nodes, and C# constants/branch decisions that are behaviorally equivalent to helper nodes. Document every deviation and get user approval before implementation.
+
 ### Conversion Process
 
 #### Step 1: Analyze the Raw Workflow
 
 1. Open the raw JSON workflow
-2. Identify logical node groups:
+2. Detect whether the source is a visual workflow export, an API prompt export, or both. Use API `prompt` as the executable ground truth when present.
+3. Inventory executable source nodes with source id, class type, key defaults, enabled/disabled state, and final-output relevance.
+4. Identify logical node groups:
    - **Loading**: Model loaders, CLIP loaders, VAE loaders
    - **Encoding**: Text encoders, image encoders
    - **Processing**: Samplers, model patchers
    - **Post-processing**: Upscalers, detailers
    - **Output**: VAE decode, save
 
-3. Note model-specific nodes and their parameters
-4. Identify nodes to remove:
+5. Trace the final enabled output path from inputs through loading, conditioning, sampling, decode, and save. Preserve required inputs, edge direction, output indexes, audio/fps passthroughs, and final save behavior.
+6. Note model-specific nodes and their parameters
+7. Identify nodes to remove:
    - Debug/preview nodes
    - Duplicate save nodes
    - Nodes not relevant to the pipeline
+
+For every removal, document the proof that it is disabled, UI-only, preview-only, or behaviorally replaced. 8. Build the source fidelity matrix before fragment mapping so substitutions are explicit rather than accidental.
 
 #### Step 2: Planning Phase (Required)
 
@@ -929,7 +953,13 @@ This section provides a step-by-step guide for converting raw ComfyUI workflow J
    - Use values from the raw JSON as sensible defaults
    - CFG, steps, sampler, scheduler should match the model's recommended settings
 
-> **Validation gate:** Do NOT proceed to implementation until the user explicitly approves the full plan, including the enhancement selection, UI component decisions, field mappings, and the UI-exposed vs hardcoded table.
+9. **Source Fidelity Review**
+   - Present the source fidelity matrix for user validation.
+   - Call out every `replaced`, `dropped`, or `blocked` row and whether it is already user-approved.
+   - Confirm which source JSON format is the execution ground truth.
+   - Confirm final output parity, including save node behavior, audio, fps, and selected image/frame range.
+
+> **Validation gate:** Do NOT proceed to implementation until the user explicitly approves the full plan, including the enhancement selection, UI component decisions, field mappings, the UI-exposed vs hardcoded table, and every non-exact row in the source fidelity matrix.
 
 #### Step 3: Implementation
 

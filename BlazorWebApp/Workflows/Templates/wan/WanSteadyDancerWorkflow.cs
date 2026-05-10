@@ -4,6 +4,7 @@ using BlazorWebApp.Workflows.Fragments.Core;
 using BlazorWebApp.Workflows.Fragments.Wan;
 using BlazorWebApp.Workflows.Models;
 using GenerationParameters = BlazorWebApp.Models.GenerationParameters;
+using VideoSourceOptions = BlazorWebApp.Models.VideoSourceOptions;
 
 namespace BlazorWebApp.Workflows.Templates.Wan;
 
@@ -94,7 +95,17 @@ public class WanSteadyDancerWorkflow : IWorkflowBuilder
                 Id = "source_video",
                 Label = "Source Video",
                 Type = SourceType.Video,
-                Required = true
+                Required = true,
+                DefaultVideoOptions = new VideoSourceOptions
+                {
+                    ForceRate = 16,
+                    CustomWidth = 480,
+                    CustomHeight = 832,
+                    FrameLoadCap = 176,
+                    SkipFirstFrames = 0,
+                    SelectEveryNth = 1,
+                    Format = "AnimateDiff"
+                }
             },
             new WorkflowSource
             {
@@ -147,17 +158,19 @@ public class WanSteadyDancerWorkflow : IWorkflowBuilder
         // Resolve source assets
         var videoSource = parameters.Sources?.GetValueOrDefault("source_video");
         var imageSource = parameters.Sources?.GetValueOrDefault("reference_image");
+        var videoOptions = videoSource?.VideoOptions;
 
         // 1. Load Video
         _loadVideoFragment.Build(builder, registry, new LoadVideoFragment.Parameters
         {
             Video = videoSource?.Filename ?? "",
-            ForceRate = videoFragment?.GetInt("force_rate", 16) ?? 16,
-            CustomWidth = videoFragment?.GetInt("custom_width", 480) ?? 480,
-            CustomHeight = videoFragment?.GetInt("custom_height", 832) ?? 832,
-            FrameLoadCap = videoFragment?.GetInt("frame_load_cap", 176) ?? 176,
-            SkipFirstFrames = videoFragment?.GetInt("skip_first_frames", 0) ?? 0,
-            SelectEveryNth = videoFragment?.GetInt("select_every_nth", 1) ?? 1
+            ForceRate = videoOptions?.ForceRate ?? videoFragment?.GetDouble("force_rate", 16) ?? 16,
+            CustomWidth = videoOptions?.CustomWidth ?? videoFragment?.GetInt("custom_width", 480) ?? 480,
+            CustomHeight = videoOptions?.CustomHeight ?? videoFragment?.GetInt("custom_height", 832) ?? 832,
+            FrameLoadCap = videoOptions?.FrameLoadCap ?? videoFragment?.GetInt("frame_load_cap", 176) ?? 176,
+            SkipFirstFrames = videoOptions?.SkipFirstFrames ?? videoFragment?.GetInt("skip_first_frames", 0) ?? 0,
+            SelectEveryNth = videoOptions?.SelectEveryNth ?? videoFragment?.GetInt("select_every_nth", 1) ?? 1,
+            Format = string.IsNullOrWhiteSpace(videoOptions?.Format) ? "AnimateDiff" : videoOptions.Format
         });
 
         // 2. Get Image Size (from video frames)

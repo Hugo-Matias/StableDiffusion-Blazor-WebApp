@@ -42,6 +42,11 @@ namespace BlazorWebApp.Models
         public int? Height { get; set; }
 
         /// <summary>
+        /// Optional loader settings for video sources.
+        /// </summary>
+        public VideoSourceOptions? VideoOptions { get; set; }
+
+        /// <summary>
         /// Whether this source has valid data.
         /// </summary>
         public bool HasData => !string.IsNullOrWhiteSpace(Data) || !string.IsNullOrWhiteSpace(FilePath);
@@ -72,7 +77,8 @@ namespace BlazorWebApp.Models
                 Filename = Filename,
                 FilePath = FilePath,
                 Width = Width,
-                Height = Height
+                Height = Height,
+                VideoOptions = VideoOptions?.Clone()
             };
         }
 

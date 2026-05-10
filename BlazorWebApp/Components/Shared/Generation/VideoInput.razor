@@ -37,12 +37,9 @@
     </div>
 
     <div class="video-input-content @(HasContent ? "has-content" : "is-empty")" @ref="_dropzoneRef">
-        @* The <video> element is always in the DOM so the JS module can bind to it,
-           but it is only visible when we have a local preview to play. Loading a
-           workflow with a persisted Filename shows the stored-file card instead. *@
         <video class="@PreviewClass" @ref="_videoRef" controls playsinline muted preload="metadata"></video>
 
-        @if (!_hasLocalPreview && !string.IsNullOrWhiteSpace(Filename) && !_isUploading)
+        @if (!CanShowPreview && !string.IsNullOrWhiteSpace(Filename) && !_isUploading)
         {
             <div class="video-input-stored">
                 <MudIcon Icon="@Icons.Material.Filled.VideoFile" Size="Size.Large" Color="Color.Primary" />
@@ -91,11 +88,60 @@
            opens the picker through the JS instance. *@
         <input @ref="_inputFileRef" type="file" accept="video/*" class="@FileInputClass" />
     </div>
+
+    <div class="video-input-settings">
+        <div class="video-input-cut-summary">
+            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Info">@CutSummary</MudChip>
+            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@PreviewFrameSummary</MudChip>
+        </div>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" Label="Format" Variant="Variant.Text" Dense="true" Value="@_localFormat"
+                           ValueChanged="SetFormat" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    @foreach (var format in FormatOptions)
+                    {
+                        <MudSelectItem Value="@format" />
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="double" Label="Rate" Variant="Variant.Text" Dense="true" Min="0" Max="60" Step="1"
+                                 Value="@_localForceRate" ValueChanged="SetForceRate" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Preview Frame" Variant="Variant.Text" Dense="true" Min="0"
+                                 Max="@PreviewFrameMax" Value="@_localPreviewFrameOffset" ValueChanged="SetPreviewFrameOffset" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Skip First" Variant="Variant.Text" Dense="true" Min="0" Max="100000"
+                                 Step="1" Value="@_localSkipFirstFrames" ValueChanged="SetSkipFirstFrames" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Frame Cap" Variant="Variant.Text" Dense="true" Min="0" Max="100000"
+                                 Step="1" Value="@_localFrameLoadCap" ValueChanged="SetFrameLoadCap" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Every Nth" Variant="Variant.Text" Dense="true" Min="1" Max="10000"
+                                 Step="1" Value="@_localSelectEveryNth" ValueChanged="SetSelectEveryNth" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Width" Variant="Variant.Text" Dense="true" Min="0" Max="8192" Step="1"
+                                 Value="@_localCustomWidth" ValueChanged="SetCustomWidth" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Height" Variant="Variant.Text" Dense="true" Min="0" Max="8192" Step="1"
+                                 Value="@_localCustomHeight" ValueChanged="SetCustomHeight" />
+            </MudItem>
+        </MudGrid>
+    </div>
 </MudPaper>
 
 @code {
     [Parameter] public string? Filename { get; set; }
     [Parameter] public EventCallback<string?> FilenameChanged { get; set; }
+    [Parameter] public VideoSourceOptions? VideoOptions { get; set; }
+    [Parameter] public EventCallback<VideoSourceOptions> VideoOptionsChanged { get; set; }
+    [Parameter] public VideoSourceOptions? DefaultVideoOptions { get; set; }
     [Parameter] public string Title { get; set; } = "Video Input";
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Style { get; set; }
@@ -103,10 +149,28 @@
     [Parameter] public string UploadEndpoint { get; set; } = "/api/upload-source";
 
     private string CssClass => $"video-input-container {Class}";
-    private string PreviewClass => $"video-input-preview {(_hasLocalPreview ? "" : "hidden")}";
+    private string PreviewClass => $"video-input-preview {(CanShowPreview ? "" : "hidden")}";
     private string OverlayClass => $"video-input-overlay {(_isDragOver ? "drag-over" : "")}";
     private string FileInputClass => $"video-input-file {(HasContent ? "passthrough" : "")}";
     private bool HasContent => _hasLocalPreview || !string.IsNullOrWhiteSpace(Filename);
+    private bool CanShowPreview => _hasLocalPreview || !string.IsNullOrWhiteSpace(PreviewUrl);
+    private string? PreviewUrl => !_hasLocalPreview && !string.IsNullOrWhiteSpace(Filename)
+        ? $"/api/source-preview?filename={Uri.EscapeDataString(Filename)}"
+        : null;
+    private int PreviewFrameMax => _localFrameLoadCap > 0 ? Math.Max(0, _localFrameLoadCap - 1) : 100000;
+    private int PreviewSourceFrame => _localSkipFirstFrames + (_localPreviewFrameOffset * Math.Max(1,
+_localSelectEveryNth));
+    private string CutSummary => _localFrameLoadCap > 0
+        ? $"Frames {PreviewSourceFrameStart}-{PreviewSourceFrameEnd}"
+        : $"From frame {PreviewSourceFrameStart}";
+    private int PreviewSourceFrameStart => _localSkipFirstFrames;
+    private int PreviewSourceFrameEnd => _localSkipFirstFrames + ((Math.Max(1, _localFrameLoadCap) - 1) * Math.Max(1,
+_localSelectEveryNth));
+    private string PreviewFrameSummary => _localForceRate > 0
+        ? $"Showing frame {PreviewSourceFrame}"
+        : "Frame seek needs rate";
+
+    private static readonly string[] FormatOptions = ["None", "AnimateDiff", "Mochi", "LTXV", "Hunyuan", "Cosmos", "Wan"];
 
     private ElementReference _dropzoneRef;
     private ElementReference _videoRef;
@@ -120,8 +184,31 @@
     private bool _hasLocalPreview;
     private int _progress = -1;
     private string? _errorMessage;
+    private string? _syncedPreviewUrl;
+    private string? _syncedPreviewSettings;
     private (int width, int height) _dimensions;
     private double _durationSeconds;
+    private double _localForceRate;
+    private int _localCustomWidth;
+    private int _localCustomHeight;
+    private int _localFrameLoadCap;
+    private int _localSkipFirstFrames;
+    private int _localSelectEveryNth = 1;
+    private string _localFormat = "AnimateDiff";
+    private int _localPreviewFrameOffset;
+
+    protected override void OnParametersSet()
+    {
+        var options = EffectiveOptions();
+        _localForceRate = options.ForceRate;
+        _localCustomWidth = options.CustomWidth;
+        _localCustomHeight = options.CustomHeight;
+        _localFrameLoadCap = options.FrameLoadCap;
+        _localSkipFirstFrames = options.SkipFirstFrames;
+        _localSelectEveryNth = Math.Max(1, options.SelectEveryNth);
+        _localFormat = string.IsNullOrWhiteSpace(options.Format) ? "AnimateDiff" : options.Format;
+        _localPreviewFrameOffset = Math.Clamp(options.PreviewFrameOffset, 0, PreviewFrameMax);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -144,6 +231,12 @@
             {
                 Console.Error.WriteLine($"VideoInput: failed to init JS module: {ex.Message}");
             }
+        }
+
+        if (_instance is not null)
+        {
+            await SyncRemotePreviewAsync();
+            await SyncPreviewFrameAsync();
         }
     }
 
@@ -175,6 +268,16 @@
         _progress = -1;
         _errorMessage = null;
         _hasLocalPreview = true;
+        _syncedPreviewUrl = null;
+        _syncedPreviewSettings = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnPreviewMetadataChanged(int width, int height, double duration)
+    {
+        _dimensions = (width, height);
+        _durationSeconds = duration;
         return InvokeAsync(StateHasChanged);
     }
 
@@ -193,10 +296,13 @@
         _dimensions = (width, height);
         _durationSeconds = duration;
         Filename = filename;
+        _syncedPreviewUrl = null;
+        _syncedPreviewSettings = null;
         if (FilenameChanged.HasDelegate)
         {
             await FilenameChanged.InvokeAsync(filename);
         }
+        await SyncPreviewFrameAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -217,6 +323,8 @@
         _durationSeconds = 0;
         _hasLocalPreview = false;
         _errorMessage = null;
+        _syncedPreviewUrl = null;
+        _syncedPreviewSettings = null;
         if (_instance is not null)
         {
             try { await _instance.InvokeVoidAsync("clear"); } catch { /* ignored */ }
@@ -235,6 +343,134 @@
             await _instance.InvokeVoidAsync("openPicker");
         }
         catch { /* ignored - circuit may be busy */ }
+    }
+
+    private VideoSourceOptions EffectiveOptions()
+    {
+        return VideoOptions?.Clone() ?? DefaultVideoOptions?.Clone() ?? new VideoSourceOptions();
+    }
+
+    private VideoSourceOptions CreateOptionsFromLocal()
+    {
+        return new VideoSourceOptions
+        {
+            ForceRate = _localForceRate,
+            CustomWidth = _localCustomWidth,
+            CustomHeight = _localCustomHeight,
+            FrameLoadCap = _localFrameLoadCap,
+            SkipFirstFrames = _localSkipFirstFrames,
+            SelectEveryNth = Math.Max(1, _localSelectEveryNth),
+            Format = string.IsNullOrWhiteSpace(_localFormat) ? "AnimateDiff" : _localFormat,
+            PreviewFrameOffset = Math.Clamp(_localPreviewFrameOffset, 0, PreviewFrameMax)
+        };
+    }
+
+    private async Task CommitOptionsAsync()
+    {
+        _localPreviewFrameOffset = Math.Clamp(_localPreviewFrameOffset, 0, PreviewFrameMax);
+        var options = CreateOptionsFromLocal();
+        VideoOptions = options;
+        if (VideoOptionsChanged.HasDelegate)
+        {
+            await VideoOptionsChanged.InvokeAsync(options);
+        }
+        await SyncPreviewFrameAsync(force: true);
+    }
+
+    private async Task SyncPreviewFrameAsync(bool force = false)
+    {
+        if (_instance is null) return;
+        var signature = PreviewSettingsSignature();
+        if (!force && _syncedPreviewSettings == signature) return;
+
+        _syncedPreviewSettings = signature;
+        try
+        {
+            await _instance.InvokeVoidAsync(
+                "setFramePreview",
+                _localSkipFirstFrames,
+                Math.Max(1, _localSelectEveryNth),
+                _localFrameLoadCap,
+                _localForceRate,
+                _localPreviewFrameOffset);
+        }
+        catch { /* ignored - preview sync is best-effort */ }
+    }
+
+    private async Task SyncRemotePreviewAsync()
+    {
+        if (_instance is null || _hasLocalPreview) return;
+        var previewUrl = PreviewUrl;
+        if (_syncedPreviewUrl == previewUrl) return;
+
+        _syncedPreviewUrl = previewUrl;
+        _syncedPreviewSettings = null;
+        try
+        {
+            await _instance.InvokeVoidAsync("setRemotePreview", previewUrl);
+        }
+        catch { /* ignored - preview sync is best-effort */ }
+    }
+
+    private string PreviewSettingsSignature()
+    {
+        return string.Join(
+            "|",
+            Filename ?? string.Empty,
+            _hasLocalPreview ? "local" : PreviewUrl ?? string.Empty,
+            _localSkipFirstFrames.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Math.Max(1, _localSelectEveryNth).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _localFrameLoadCap.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _localForceRate.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _localPreviewFrameOffset.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    private async Task SetFormat(string value)
+    {
+        _localFormat = value;
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetForceRate(double value)
+    {
+        _localForceRate = value;
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetCustomWidth(int value)
+    {
+        _localCustomWidth = value;
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetCustomHeight(int value)
+    {
+        _localCustomHeight = value;
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetFrameLoadCap(int value)
+    {
+        _localFrameLoadCap = value;
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetSkipFirstFrames(int value)
+    {
+        _localSkipFirstFrames = value;
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetSelectEveryNth(int value)
+    {
+        _localSelectEveryNth = Math.Max(1, value);
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetPreviewFrameOffset(int value)
+    {
+        _localPreviewFrameOffset = value;
+        await CommitOptionsAsync();
     }
 
     public async ValueTask DisposeAsync()

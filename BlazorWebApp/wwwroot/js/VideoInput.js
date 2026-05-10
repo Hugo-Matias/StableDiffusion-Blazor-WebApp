@@ -35,12 +35,21 @@ class VideoInputHandler {
     this.maxBytes = (maxFileSizeMb || 1024) * 1024 * 1024;
     this.objectUrl = null;
     this.activeXhr = null;
+    this.previewWindow = null;
+    this.isProgrammaticSeek = false;
+    this.videoFrameCallbackId = null;
 
     this._onDragEnter = this.onDragEnter.bind(this);
     this._onDragLeave = this.onDragLeave.bind(this);
     this._onDragOver = this.onDragOver.bind(this);
     this._onDrop = this.onDrop.bind(this);
     this._onChange = this.onChange.bind(this);
+    this._onLoadedMetadata = this.onLoadedMetadata.bind(this);
+    this._onTimeUpdate = this.onTimeUpdate.bind(this);
+    this._onPlay = this.onPlay.bind(this);
+    this._onSeeking = this.onSeeking.bind(this);
+    this._onEnded = this.onEnded.bind(this);
+    this._onVideoFrame = this.onVideoFrame.bind(this);
 
     this.attach();
   }
@@ -57,6 +66,53 @@ class VideoInputHandler {
     if (this.input) {
       this.input.addEventListener("change", this._onChange);
     }
+    if (this.video) {
+      this.video.addEventListener("loadedmetadata", this._onLoadedMetadata);
+      this.video.addEventListener("timeupdate", this._onTimeUpdate);
+      this.video.addEventListener("play", this._onPlay);
+      this.video.addEventListener("seeking", this._onSeeking);
+      this.video.addEventListener("ended", this._onEnded);
+    }
+  }
+
+  onLoadedMetadata() {
+    const meta = this.readVideoMetadata();
+    this.dotNetRef.invokeMethodAsync(
+      "OnPreviewMetadataChanged",
+      meta.width,
+      meta.height,
+      meta.duration,
+    );
+    this.enforcePreviewWindow(false);
+    this.scheduleVideoFrameCallback();
+  }
+
+  onTimeUpdate() {
+    this.enforcePreviewWindow(false);
+  }
+
+  onPlay() {
+    this.enforcePreviewWindow(true);
+    this.scheduleVideoFrameCallback();
+  }
+
+  onSeeking() {
+    if (!this.isProgrammaticSeek) {
+      this.enforcePreviewWindow(false);
+    }
+  }
+
+  onEnded() {
+    if (!this.previewWindow) return;
+
+    this.seekTo(this.previewWindow.startTime || 0);
+    this.video.play().catch(() => {});
+  }
+
+  onVideoFrame() {
+    this.videoFrameCallbackId = null;
+    this.enforcePreviewWindow(false);
+    this.scheduleVideoFrameCallback();
   }
 
   onDragEnter(e) {
@@ -175,12 +231,41 @@ class VideoInputHandler {
     }
     this.objectUrl = URL.createObjectURL(file);
     try {
+      this.video.loop = false;
       this.video.src = this.objectUrl;
       this.video.classList.remove("hidden");
       // Ensure metadata loads so we can grab dimensions/duration on completion.
       this.video.load();
     } catch (err) {
       console.warn("VideoInput: failed to set preview", err);
+    }
+  }
+
+  setRemotePreview(url) {
+    if (!this.video) return;
+    if (this.objectUrl) {
+      URL.revokeObjectURL(this.objectUrl);
+      this.objectUrl = null;
+    }
+    try {
+      if (!url) {
+        this.video.pause();
+        this.video.removeAttribute("src");
+        this.video.load();
+        this.video.classList.add("hidden");
+        this.previewWindow = null;
+        this.cancelVideoFrameCallback();
+        return;
+      }
+
+      this.video.loop = false;
+      if (this.video.getAttribute("src") !== url) {
+        this.video.src = url;
+        this.video.load();
+      }
+      this.video.classList.remove("hidden");
+    } catch (err) {
+      console.warn("VideoInput: failed to set remote preview", err);
     }
   }
 
@@ -191,6 +276,158 @@ class VideoInputHandler {
     const h = v.videoHeight || 0;
     const d = isFinite(v.duration) ? v.duration : 0;
     return { width: w, height: h, duration: d };
+  }
+
+  setFramePreview(
+    skipFirstFrames,
+    selectEveryNth,
+    frameLoadCap,
+    forceRate,
+    previewFrameOffset,
+  ) {
+    if (!this.video) return;
+
+    const rate = Number(forceRate) || 0;
+    if (rate <= 0) {
+      this.previewWindow = null;
+      if (this.video) {
+        this.video.loop = true;
+      }
+      return;
+    }
+
+    const skip = Math.max(0, Number(skipFirstFrames) || 0);
+    const every = Math.max(1, Number(selectEveryNth) || 1);
+    const cap = Math.max(0, Number(frameLoadCap) || 0);
+    const offsetLimit = cap > 0 ? cap - 1 : Number.MAX_SAFE_INTEGER;
+    const offset = Math.max(
+      0,
+      Math.min(Number(previewFrameOffset) || 0, offsetLimit),
+    );
+    const startFrame = skip;
+    const endFrameExclusive = cap > 0 ? skip + cap * every : null;
+    const selectedFrame = skip + offset * every;
+    const seekTime = selectedFrame / rate;
+
+    this.previewWindow = {
+      startFrame,
+      endFrameExclusive,
+      startTime: startFrame / rate,
+      endTime: endFrameExclusive ? endFrameExclusive / rate : null,
+      rate,
+      every,
+    };
+
+    this.video.loop = false;
+
+    const seek = () => {
+      try {
+        const duration = Number.isFinite(this.video.duration)
+          ? this.video.duration
+          : 0;
+        this.seekTo(duration > 0 ? Math.min(seekTime, duration) : seekTime);
+        this.enforcePreviewWindow(false);
+        this.scheduleVideoFrameCallback();
+      } catch (err) {
+        console.warn("VideoInput: frame seek failed", err);
+      }
+    };
+
+    if (this.video.readyState >= 1) {
+      seek();
+    } else {
+      this.video.addEventListener("loadedmetadata", seek, { once: true });
+    }
+  }
+
+  enforcePreviewWindow(resetBeforeStart) {
+    if (!this.video || !this.previewWindow || this.isProgrammaticSeek) return;
+
+    const window = this.previewWindow;
+    const start = window.startTime || 0;
+    const duration = Number.isFinite(this.video.duration)
+      ? this.video.duration
+      : 0;
+    const end = window.endTime || duration || null;
+    const current = this.video.currentTime || 0;
+    const frameDuration = window.rate > 0 ? 1 / window.rate : 0.03;
+    const epsilon = Math.max(0.03, frameDuration * 0.5);
+
+    if (current < start - epsilon) {
+      this.seekTo(start);
+      return;
+    }
+
+    if (end && current >= end - epsilon) {
+      this.seekTo(start);
+      if (!this.video.paused) {
+        this.video.play().catch(() => {});
+      }
+      return;
+    }
+
+    if (window.every <= 1 || window.rate <= 0 || this.video.paused) return;
+
+    const currentFrame = Math.max(
+      window.startFrame,
+      Math.round(current * window.rate),
+    );
+    const distanceFromStart = currentFrame - window.startFrame;
+    if (distanceFromStart % window.every === 0) return;
+
+    let nextFrame =
+      window.startFrame +
+      Math.ceil(distanceFromStart / window.every) * window.every;
+    if (window.endFrameExclusive && nextFrame >= window.endFrameExclusive) {
+      nextFrame = window.startFrame;
+    }
+
+    const nextTime = nextFrame / window.rate;
+    if (Math.abs(nextTime - current) > epsilon) {
+      this.seekTo(nextTime);
+    }
+  }
+
+  scheduleVideoFrameCallback() {
+    if (
+      !this.video ||
+      !this.previewWindow ||
+      this.video.paused ||
+      this.videoFrameCallbackId !== null ||
+      typeof this.video.requestVideoFrameCallback !== "function"
+    ) {
+      return;
+    }
+
+    this.videoFrameCallbackId = this.video.requestVideoFrameCallback(
+      this._onVideoFrame,
+    );
+  }
+
+  cancelVideoFrameCallback() {
+    if (
+      !this.video ||
+      this.videoFrameCallbackId === null ||
+      typeof this.video.cancelVideoFrameCallback !== "function"
+    ) {
+      this.videoFrameCallbackId = null;
+      return;
+    }
+
+    this.video.cancelVideoFrameCallback(this.videoFrameCallbackId);
+    this.videoFrameCallbackId = null;
+  }
+
+  seekTo(time) {
+    if (!this.video) return;
+    this.isProgrammaticSeek = true;
+    try {
+      this.video.currentTime = Math.max(0, time || 0);
+    } finally {
+      setTimeout(() => {
+        this.isProgrammaticSeek = false;
+      }, 0);
+    }
   }
 
   openPicker() {
@@ -215,6 +452,7 @@ class VideoInputHandler {
     if (this.video) {
       try {
         this.video.pause();
+        this.video.loop = false;
         this.video.removeAttribute("src");
         this.video.load();
         this.video.classList.add("hidden");
@@ -222,6 +460,8 @@ class VideoInputHandler {
         /* ignored */
       }
     }
+    this.previewWindow = null;
+    this.cancelVideoFrameCallback();
     if (this.objectUrl) {
       URL.revokeObjectURL(this.objectUrl);
       this.objectUrl = null;
@@ -253,6 +493,14 @@ class VideoInputHandler {
     if (this.input) {
       this.input.removeEventListener("change", this._onChange);
     }
+    if (this.video) {
+      this.video.removeEventListener("loadedmetadata", this._onLoadedMetadata);
+      this.video.removeEventListener("timeupdate", this._onTimeUpdate);
+      this.video.removeEventListener("play", this._onPlay);
+      this.video.removeEventListener("seeking", this._onSeeking);
+      this.video.removeEventListener("ended", this._onEnded);
+    }
+    this.cancelVideoFrameCallback();
     if (this.objectUrl) {
       URL.revokeObjectURL(this.objectUrl);
       this.objectUrl = null;

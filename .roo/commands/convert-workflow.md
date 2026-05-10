@@ -32,34 +32,75 @@ Before starting, read and internalize:
 
 Use existing workflow files (e.g., `AnimaTxt2ImgWorkflow.cs`, `FluxTxt2ImgWorkflow.cs`) as structural references, not as templates to copy blindly.
 
+## Source Fidelity Contract
+
+The upstream workflow is the behavioral source of truth. Reuse existing fragments only when doing so preserves the source node classes, input names, output indexes, dataflow edges, and defaults. If an existing fragment would emit a materially different graph, create a new fragment or parameterize the existing one instead of silently simplifying the workflow.
+
+ComfyUI workflows commonly appear in two valid JSON formats:
+
+- **Visual workflow export**: top-level `nodes`, `links`, `groups`, and `widgets_values`. This is a UI graph. Reconstruct executable inputs from links plus probed node schemas, and respect disabled/bypassed/muted node state when deciding what belongs to the implementation.
+- **API prompt export**: top-level `prompt` object keyed by node id, where each entry contains `class_type` and `inputs`. This is the executable payload. When a JSON contains both an API `prompt` and visual workflow metadata, use `prompt` as the execution ground truth and use the visual graph only for layout, labels, and UI context unless the user explicitly says otherwise.
+
+Default goal: the generated app workflow should emit the same enabled executable nodes, equivalent edges, and same defaults as the source workflow. Every intentional difference must be documented and user-approved before implementation.
+
+Allowed deviations are limited to:
+
+- UI-only annotations, notes, groups, reroutes, and display-only helper nodes with no behavioral effect.
+- Preview/debug outputs that are not used by the final enabled output path, especially saves with `save_output=false`.
+- User-approved substitutions for missing custom nodes or unavailable model packs.
+- C# constants or branch decisions replacing helper nodes, but only when the emitted payload is behaviorally equivalent and the plan records the removed helper nodes.
+
+Do not replace a specialized source branch with a generic app pattern just because it compiles. Do not drop a node because it looks redundant until its downstream consumers prove it is preview-only, disabled, or behaviorally replaced.
+
 ---
 
 ## Phase 1: Workflow Analysis
 
 Analyze the ComfyUI workflow JSON provided by the user.
 
-1. **Node inventory** - List every node with its `class_type` and key parameter values
+0. **Source format detection** - State whether the file is a visual workflow export, an API prompt export, or both. Identify the execution ground truth (`prompt` when present, otherwise the visual graph) and explain how disabled/bypassed/preview-only nodes will be handled.
+1. **Node inventory** - List every executable source node with its source id, `class_type`, key parameter values, enabled/disabled state, and final-output relevance. For visual exports, include widget-derived values after resolving them through the probed schema.
 2. **Logical groups** - Cluster nodes into: Loading, Encoding, Processing, Post-processing, Output
-3. **Nodes to drop** - Flag: preview/debug nodes, duplicate save nodes, UI-only nodes
-4. **Fragment mapping** - Match each group to an existing fragment using the reuse table in TEMPLATE_GUIDE.md
+3. **Nodes to drop** - Flag: preview/debug nodes, duplicate save nodes, UI-only nodes. For each dropped node, record why it is safe to omit and which downstream path proves it is not required for the final enabled output.
+4. **Source fidelity matrix** - Build a table with one row per source node: source id, source `class_type`, source role, emitted C# node/fragment, status (`exact`, `parameterized`, `replaced`, `dropped`, `blocked`), and reason. This table is mandatory and must be included in the plan.
+5. **Dataflow parity check** - Trace the final enabled output path(s) from source inputs through model/conditioning/sampling/decoding/saving. Confirm the app workflow will preserve the same required inputs, edge direction, output indexes, audio/fps passthroughs, and final save behavior.
+6. **Fragment mapping** - Match each group to an existing fragment using the reuse table in TEMPLATE_GUIDE.md
 
    If a node type has no matching fragment, note it as "new fragment needed" with a proposed name and location.
 
-5. **Model loading strategy** - Identify which loader pattern applies:
+7. **Model loading strategy** - Identify which loader pattern applies:
    - UNETLoader + CLIPLoader + VAELoader -> `LoadDiffusionFragment`
    - CheckpointLoaderSimple -> `LoadCheckpointFragment`
    - UNETLoader + DualCLIPLoader (Flux) -> `LoadFluxFragment`
    - Other -> describe
 
-6. **LoRA strategy** - Determine:
-   - App-generated nodes (default for UNet-based): `LoraLoaderFragment`
-   - PCLazy prompt syntax: `LoadCheckpointFragment`
+8. **Loader asset validation (mandatory)** - For every loader node identified above, probe its actual ComfyUI metadata before assigning `WorkflowAsset.Type`:
+   - Run `Utils/Probe-ComfyObjectInfo.ps1 -Nodes <Loader1>,<Loader2>,...` against a live ComfyUI instance.
+   - For every loader input that picks a file, record which `models/<folder>` the COMBO matches.
+   - Map each input to the correct `AssetType` enum from `TEMPLATE_GUIDE.md`'s "Asset Types" table. Do not infer from the input name alone.
+   - For nodes returning HTTP 200 with `{}`, flag the custom-node pack as missing on the target install and stop. Do not guess the folder.
+   - For `DualCLIPLoader`-style nodes, declare two distinct `Clip` assets with separate defaults sourced from the upstream JSON's `widgets_values` or API prompt inputs.
 
-7. **Sampler class** - Identify:
-   - `KSampler` -> `SamplerStandardFragment`
-   - `ClownsharKSampler_Beta` -> `SamplerFragment`
-   - Other -> describe
-8. **UI surface audit** - For every UI-visible fragment, determine whether an existing form component can be reused or whether a new component is required
+9. **Full upstream node validation (mandatory)** - Probe every non-loader `class_type` referenced by the workflow JSON before writing the C# build pipeline.
+   - Build the node list from the execution ground truth: API `prompt` when present, otherwise the visual workflow graph.
+   - Run a single combined probe with `Utils/Probe-ComfyObjectInfo.ps1 -Nodes <Node1>,<Node2>,<Node3>,...`.
+   - For every node confirm: the class is registered, required input names match what the builder will write, every hardcoded COMBO default is an exact COMBO member, and output count/order match the chained references.
+   - For unknown or customized inputs, run `Invoke-RestMethod /object_info/<Node> | ConvertTo-Json -Depth 10` to read the full optional-input shape.
+   - If a node returns `MISSING NODE`, stop and report it to the user. List the missing class name, the custom-node pack from the JSON's `cnr_id` / `properties` if present, and optionally a built-in alternative with clear notes on behavior differences. Do not swap to an alternative unilaterally.
+   - Record the probe outcome in the Phase 1 analysis: verified nodes, required packs, and any user-approved substitutions.
+
+10. **LoRA strategy** - Determine:
+
+- App-generated nodes (default for UNet-based): `LoraLoaderFragment`
+- PCLazy prompt syntax: `LoadCheckpointFragment`
+
+11. **Sampler class** - Identify:
+
+- `KSampler` -> `SamplerStandardFragment`
+- `ClownsharKSampler_Beta` -> `SamplerFragment`
+- Other -> describe
+
+12. **UI surface audit** - For every UI-visible fragment, determine whether an existing form component can be reused or whether a new component is required
 
 ---
 
@@ -148,6 +189,18 @@ Present the list for user confirmation.
 
 List the key defaults that will be used (sampler, scheduler, steps, CFG, denoise, resolution).
 
+### 2h. Source Fidelity Review
+
+Include the mandatory source fidelity matrix from Phase 1 and call out every difference from the source workflow. For each `replaced`, `dropped`, or `blocked` row, state whether the user has already approved the deviation. If approval is missing, stop and ask before implementation.
+
+The review must explicitly answer:
+
+- Which source JSON format was used as execution ground truth.
+- Which enabled source nodes will not be emitted and why.
+- Which emitted nodes differ from source nodes and how behavior is preserved.
+- Which preview/debug/UI-only branches were omitted.
+- Whether final output behavior matches the source, including save node, audio, fps, and frame/image selection.
+
 ---
 
 ## Phase 3: User Validation Gate
@@ -158,7 +211,7 @@ Present a concise summary of the full plan and ask:
 
 > "Does this plan look correct? Please confirm or let me know what to change before I proceed with implementation."
 
-Wait for explicit user approval. Incorporate any requested changes and re-confirm if significant. The summary must include UI component decisions and any new component work.
+Wait for explicit user approval. Incorporate any requested changes and re-confirm if significant. The summary must include UI component decisions, any new component work, and the source fidelity review. Do not implement while any replacement/drop/blocker in the source fidelity matrix lacks explicit user approval.
 
 ---
 
@@ -167,7 +220,7 @@ Wait for explicit user approval. Incorporate any requested changes and re-confir
 After the user approves the plan, but before integrating the workflow into the C# system, create these files under `Documentation/Plans/Workflows/{workflow-name}/`:
 
 1. `plan.md` - A conversion plan document capturing the approved analysis, fragment mapping, UI component decisions, field mappings, UI exposure decisions, enhancements, enum decision, compatible base models, and defaults summary
-2. `workflow.json` - The input JSON file from ComfyUI used for this conversion
+2. `workflow.json` - The input JSON file from ComfyUI used for this conversion. Preserve the original format, whether it is a visual workflow export, an API prompt export, or a combined export.
 
 Requirements:
 
@@ -176,6 +229,7 @@ Requirements:
 - Write `plan.md` before any code integration work begins
 - Rename and move the input JSON instead of recreating it
 - Mention `workflow.json` in the plan as the baseline guide for field values, node names, etc.
+- State which source format is the execution ground truth and include the source fidelity matrix in `plan.md`.
 - User must approve proceeding with Phase 5
 
 ---

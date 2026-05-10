@@ -1,0 +1,125 @@
+@*
+    SCAILEmbedsForm - Form for scail_embeds fragment
+    
+    Handles: ref_strength, pose_strength, start/end percents per section
+    
+    Covers the full embeds chain: EmptyEmbeds -> ReferenceEmbeds -> PoseEmbeds
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("SCAILEmbedsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <!-- Reference Embeds Section -->
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline" Class="text-primary">Reference Embeds</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float" @bind-Value="_localRefStrength" @bind-Value:after="OnRefStrengthChanged" Min="0.0f"
+                   Max="2.0f" Step="0.05f" Variant="Variant.Text" ValueLabel>
+            <small>Ref Strength:</small> @_localRefStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="float" @bind-Value="_localRefStartPercent" @bind-Value:after="OnRefStartPercentChanged"
+                         Label="Start %" Min="0.0f" Max="1.0f" Step="0.05f" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="float" @bind-Value="_localRefEndPercent" @bind-Value:after="OnRefEndPercentChanged"
+                         Label="End %" Min="0.0f" Max="1.0f" Step="0.05f" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+
+    <!-- Pose Embeds Section -->
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline" Class="text-primary">Pose Embeds</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float" @bind-Value="_localPoseStrength" @bind-Value:after="OnPoseStrengthChanged" Min="0.0f"
+                   Max="2.0f" Step="0.05f" Variant="Variant.Text" ValueLabel>
+            <small>Pose Strength:</small> @_localPoseStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="float" @bind-Value="_localPoseStartPercent" @bind-Value:after="OnPoseStartPercentChanged"
+                         Label="Start %" Min="0.0f" Max="1.0f" Step="0.05f" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="float" @bind-Value="_localPoseEndPercent" @bind-Value:after="OnPoseEndPercentChanged"
+                         Label="End %" Min="0.0f" Max="1.0f" Step="0.05f" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // Reference Embeds
+    private float _localRefStrength = 1.0f;
+    private float _localRefStartPercent = 0.0f;
+    private float _localRefEndPercent = 1.0f;
+
+    // Pose Embeds
+    private float _localPoseStrength = 1.0f;
+    private float _localPoseStartPercent = 0.0f;
+    private float _localPoseEndPercent = 0.5f;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        // Reference Embeds
+        _localRefStrength = ParameterService.GetFragmentProperty(Fragment, "ref_strength", 1.0f);
+        _localRefStartPercent = ParameterService.GetFragmentProperty(Fragment, "ref_start_percent", 0.0f);
+        _localRefEndPercent = ParameterService.GetFragmentProperty(Fragment, "ref_end_percent", 1.0f);
+
+        // Pose Embeds
+        _localPoseStrength = ParameterService.GetFragmentProperty(Fragment, "pose_strength", 1.0f);
+        _localPoseStartPercent = ParameterService.GetFragmentProperty(Fragment, "pose_start_percent", 0.0f);
+        _localPoseEndPercent = ParameterService.GetFragmentProperty(Fragment, "pose_end_percent", 0.5f);
+    }
+
+    #region Event Handlers - Reference Embeds
+
+    private async Task OnRefStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "ref_strength", _localRefStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnRefStartPercentChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "ref_start_percent", _localRefStartPercent, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnRefEndPercentChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "ref_end_percent", _localRefEndPercent, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    #endregion
+
+    #region Event Handlers - Pose Embeds
+
+    private async Task OnPoseStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "pose_strength", _localPoseStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnPoseStartPercentChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "pose_start_percent", _localPoseStartPercent, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnPoseEndPercentChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "pose_end_percent", _localPoseEndPercent, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    #endregion
+}
