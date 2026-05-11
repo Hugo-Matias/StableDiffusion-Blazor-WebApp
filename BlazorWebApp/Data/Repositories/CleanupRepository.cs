@@ -94,6 +94,88 @@ namespace BlazorWebApp.Data.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<CleanupImageEmbedding> UpsertImageEmbeddingAsync(CleanupImageEmbedding embedding, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await context.CleanupImageEmbeddings
+                .FirstOrDefaultAsync(row => row.ImageId == embedding.ImageId
+                    && row.ModelKey == embedding.ModelKey
+                    && row.ModelHash == embedding.ModelHash, cancellationToken);
+
+            if (embedding.Status == CleanupEmbeddingStatus.Indexed && embedding.IndexedAtUtc == null)
+            {
+                embedding.IndexedAtUtc = now;
+            }
+
+            if (existing == null)
+            {
+                embedding.CreatedAtUtc = embedding.CreatedAtUtc == default ? now : embedding.CreatedAtUtc;
+                embedding.UpdatedAtUtc = embedding.UpdatedAtUtc == default ? now : embedding.UpdatedAtUtc;
+                context.CleanupImageEmbeddings.Add(embedding);
+                await context.SaveChangesAsync(cancellationToken);
+                return embedding;
+            }
+
+            embedding.Id = existing.Id;
+            embedding.CreatedAtUtc = existing.CreatedAtUtc;
+            embedding.UpdatedAtUtc = now;
+            context.Entry(existing).CurrentValues.SetValues(embedding);
+            await context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        public async Task<CleanupImageEmbedding?> GetImageEmbeddingAsync(int imageId, string modelKey, string? modelHash, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageEmbeddings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(embedding => embedding.ImageId == imageId
+                    && embedding.ModelKey == modelKey
+                    && embedding.ModelHash == modelHash, cancellationToken);
+        }
+
+        public async Task<List<CleanupImageEmbedding>> GetImageEmbeddingsAsync(CleanupEmbeddingFilter filter, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageEmbeddings.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelKey))
+            {
+                query = query.Where(embedding => embedding.ModelKey == filter.ModelKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelHash))
+            {
+                query = query.Where(embedding => embedding.ModelHash == filter.ModelHash);
+            }
+
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(embedding => embedding.Status == filter.Status.Value);
+            }
+
+            return await query
+                .OrderByDescending(embedding => embedding.UpdatedAtUtc)
+                .Skip(filter.Skip)
+                .Take(filter.Take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupImageEmbedding>> GetStaleImageEmbeddingsAsync(string modelKey, string? modelHash, int dimensions, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageEmbeddings
+                .AsNoTracking()
+                .Where(embedding => embedding.ModelKey == modelKey
+                    && (embedding.Status == CleanupEmbeddingStatus.Stale
+                        || embedding.ModelHash != modelHash
+                        || embedding.Dimensions != dimensions))
+                .OrderBy(embedding => embedding.UpdatedAtUtc)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<CleanupGroupRun> CreateGroupRunAsync(CleanupGroupRun run, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);

@@ -20,8 +20,8 @@
             <div class="cleanup-toolbar">
                 <div class="cleanup-toolbar-fields">
                     <MudSelect T="int" Label="Scope" Value="_selectedProjectId" ValueChanged="HandleProjectChanged"
-                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
-                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.FolderSpecial">
+                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.FolderSpecial">
                         <MudSelectItem T="int" Value="0">All projects</MudSelectItem>
                         @foreach (var project in _projects)
                         {
@@ -30,35 +30,36 @@
                     </MudSelect>
 
                     <MudSelect T="CleanupGroupingStrategy" Label="Strategy" @bind-Value="_strategy"
-                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
-                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Hub">
+                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.Hub">
                         <MudSelectItem Value="CleanupGroupingStrategy.ExactDuplicate">Exact duplicates</MudSelectItem>
                         <MudSelectItem Value="CleanupGroupingStrategy.NearDuplicate">Near duplicates</MudSelectItem>
-                        <MudSelectItem Value="CleanupGroupingStrategy.PromptFingerprint">Prompt fingerprint</MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.PromptFingerprint">Prompt fingerprint
+                        </MudSelectItem>
                         <MudSelectItem Value="CleanupGroupingStrategy.PromptFuzzy">Prompt fuzzy</MudSelectItem>
                     </MudSelect>
 
-                    <MudNumericField T="int" Label="Minimum group" @bind-Value="_minimumGroupSize"
-                                     Min="2" Max="50" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    <MudNumericField T="int" Label="Minimum group" @bind-Value="_minimumGroupSize" Min="2" Max="50"
+                                     Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
 
                     @if (_strategy == CleanupGroupingStrategy.NearDuplicate)
                     {
-                        <MudNumericField T="int" Label="Max distance" @bind-Value="_perceptualHashDistance"
-                                         Min="0" Max="16" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                        <MudNumericField T="int" Label="Max distance" @bind-Value="_perceptualHashDistance" Min="0" Max="16"
+                                         Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
                     }
 
                     @if (_strategy == CleanupGroupingStrategy.PromptFuzzy)
                     {
-                        <MudNumericField T="double" Label="Min similarity" @bind-Value="_promptSimilarity"
-                                         Min="0.1" Max="1" Step="0.05" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                        <MudNumericField T="double" Label="Min similarity" @bind-Value="_promptSimilarity" Min="0.1" Max="1"
+                                         Step="0.05" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
                     }
 
-                    <MudNumericField T="int" Label="Max groups" @bind-Value="_maxGroups"
-                                     Min="0" Max="1000" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    <MudNumericField T="int" Label="Max groups" @bind-Value="_maxGroups" Min="0" Max="1000"
+                                     Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
 
                     <MudSelect T="int" Label="Review run" Value="_selectedRunId" ValueChanged="HandleRunChanged"
-                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
-                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.PlaylistPlay">
+                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.PlaylistPlay">
                         <MudSelectItem T="int" Value="0">No run selected</MudSelectItem>
                         @foreach (var run in _runs)
                         {
@@ -82,8 +83,8 @@
                                OnClick="GenerateGroupsAsync">
                         Generate groups
                     </MudButton>
-                    <MudIconButton Icon="fa-solid fa-images" Color="Color.Primary" Size="Size.Small"
-                                   Title="Gallery" OnClick="OpenGallery" />
+                    <MudIconButton Icon="fa-solid fa-images" Color="Color.Primary" Size="Size.Small" Title="Gallery"
+                                   OnClick="OpenGallery" />
                 </div>
             </div>
 
@@ -116,186 +117,210 @@
                         <MudText Typo="Typo.caption" Color="Color.Secondary">@GetReviewSubtitle()</MudText>
                     </div>
                     <div class="cleanup-review-actions">
-                        <MudChip Color="Color.Info" Variant="Variant.Text" Size="Size.Small">@Gallery.SelectedImageIds.Count selected</MudChip>
-                        @if (Gallery.SelectedImageIds.Count > 0)
-                        {
-                            <button type="button" class="send-to-btn" @onclick="ClearSelection">
-                                <MudIcon Icon="@Icons.Material.Filled.Deselect" Size="Size.Small" />
-                                <span>Clear</span>
-                            </button>
-                        }
-                    </div>
-                </div>
-
-                @if (_isLoadingGroups)
-                {
-                    <div class="app-empty-state">
-                        <MudProgressCircular Color="Color.Info" Indeterminate="true" />
-                        <MudText Typo="Typo.body2">Loading cleanup groups</MudText>
-                    </div>
-                }
-                else if (_selectedRun == null)
-                {
-                    <div class="app-empty-state">
-                        <MudIcon Icon="@Icons.Material.Filled.CleaningServices" Size="Size.Large" />
-                        <MudText Typo="Typo.body2">Create or select a cleanup run to begin review.</MudText>
-                    </div>
-                }
-                else if (_groups.Count == 0)
-                {
-                    <div class="app-empty-state">
-                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
-                        <MudText Typo="Typo.body2">No groups matched the current run settings.</MudText>
-                    </div>
-                }
-                else
-                {
-                    <div class="cleanup-group-list">
-                        @foreach (var group in _groups)
-                        {
-                            var state = GetGroupState(group.Id);
-                            <section class="cleanup-group-card">
-                                <div class="cleanup-group-header">
-                                    <div class="cleanup-group-preview" aria-label="Group preview">
-                                        @if (state.IsPreviewLoading)
-                                        {
-                                            <div class="cleanup-group-preview-placeholder">
-                                                <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
-                                            </div>
-                                        }
-                                        else if (state.PreviewViews.Count == 0)
-                                        {
-                                            <div class="cleanup-group-preview-placeholder">
-                                                <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Small" />
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            @foreach (var preview in state.PreviewViews.Select((view, index) => new { view, index }))
-                                            {
-                                                <button type="button" class="cleanup-preview-image" title="Preview image"
-                                                        style="--cleanup-preview-index: @preview.index; --cleanup-preview-z: @(GroupPreviewImageCount - preview.index);"
-                                                        @onclick="() => OpenViewerAsync(preview.view.Image, state.PreviewViews.Select(view => view.Image).ToList())">
-                                                    <img src="@IO.GetImageStaticFile(preview.view.Image.Path)" alt="" loading="lazy" />
-                                                </button>
-                                            }
-                                        }
-                                    </div>
-
-                                    <button type="button" class="cleanup-expand-button" title="@(state.IsExpanded ? "Collapse group" : "Expand group")"
-                                            @onclick="() => ToggleGroupAsync(group)">
-                                        <MudIcon Icon="@(state.IsExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
-                                    </button>
-
-                                    <div class="cleanup-group-title">
-                                        <MudText Typo="Typo.subtitle2">@GetGroupTitle(group)</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Reason</MudText>
-                                    </div>
-
-                                    <div class="cleanup-group-metrics">
-                                        <MudChip Color="Color.Default" Variant="Variant.Text" Size="Size.Small">@group.MemberCount images</MudChip>
-                                        <MudChip Color="Color.Info" Variant="Variant.Text" Size="Size.Small">@FormatBytes(group.EstimatedBytes)</MudChip>
-                                        @if (group.Confidence.HasValue)
-                                        {
-                                            <MudChip Color="Color.Success" Variant="Variant.Text" Size="Size.Small">@FormatPercent(group.Confidence.Value)</MudChip>
-                                        }
-                                    </div>
-
-                                    <div class="cleanup-group-actions">
-                                        <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceSuggested)">
-                                            <MudIcon Icon="@Icons.Material.Filled.Rule" Size="Size.Small" />
-                                            <span>Suggested</span>
-                                        </button>
-                                        <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.AddSuggested)">
-                                            <MudIcon Icon="@Icons.Material.Filled.AddTask" Size="Size.Small" />
-                                            <span>Add</span>
-                                        </button>
-                                        <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.InvertAll)">
-                                            <MudIcon Icon="fa-solid fa-arrows-rotate" Size="Size.Small" />
-                                            <span>Invert</span>
-                                        </button>
-                                        <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.DeselectAll)">
-                                            <MudIcon Icon="@Icons.Material.Filled.Deselect" Size="Size.Small" />
-                                            <span>Deselect</span>
-                                        </button>
-                                        <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SaveGroupSelectionAsync(group)">
-                                            <MudIcon Icon="@Icons.Material.Filled.BookmarkAdd" Size="Size.Small" />
-                                            <span>Save</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                @if (state.IsExpanded)
-                                {
-                                    <div class="cleanup-group-body">
-                                        @if (state.IsLoading)
-                                        {
-                                            <div class="app-empty-state cleanup-group-loading">
-                                                <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
-                                                <MudText Typo="Typo.caption">Loading members</MudText>
-                                            </div>
-                                        }
-                                        else if (state.MemberViews.Count == 0)
-                                        {
-                                            <div class="app-empty-state cleanup-group-loading">
-                                                <MudText Typo="Typo.caption">No member images are available for this group.</MudText>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="cleanup-member-toolbar">
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Representative stays unselected by the suggested action.</MudText>
-                                                <div class="cleanup-member-actions">
-                                                    <button type="button" class="send-to-btn" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceAll)">
-                                                        <MudIcon Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small" />
-                                                        <span>All</span>
-                                                    </button>
-                                                    <button type="button" class="send-to-btn" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceSuggested)">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Rule" Size="Size.Small" />
-                                                        <span>Suggested</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="app-grid cleanup-member-grid">
-                                                @foreach (var member in state.MemberViews)
-                                                {
-                                                    <div class="cleanup-member-card">
-                                                        <div class="cleanup-member-meta">
-                                                            <MudChip Color="@GetRoleColor(member.Member.Role)" Variant="Variant.Text" Size="Size.Small">@GetRoleLabel(member.Member.Role)</MudChip>
-                                                            @if (member.Member.SimilarityScore.HasValue)
-                                                            {
-                                                                <MudText Typo="Typo.caption">@FormatPercent(member.Member.SimilarityScore.Value)</MudText>
-                                                            }
-                                                        </div>
-                                                        <GalleryImageTile Image="member.Image" ShowSelectionCheckbox="true"
-                                                                          SelectionFocusedOverlay="true"
-                                                                          OnSelectImage="image => OpenViewerAsync(image, state.MemberViews.Select(view => view.Image).ToList())"
-                                                                          OnDeleteImage="RejectDirectDeleteAsync"
-                                                                          OnCoverChanged="NoOpAsync" />
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                            </section>
-                        }
+                        <MudChip Color="Color.Info" Variant="Variant.Text" Size="Size.Small">
+                            @Gallery.SelectedImageIds.Count selected</MudChip>
+                            @if (Gallery.SelectedImageIds.Count > 0)
+                            {
+                                <button type="button" class="send-to-btn" @onclick="ClearSelection">
+                                    <MudIcon Icon="@Icons.Material.Filled.Deselect" Size="Size.Small" />
+                                    <span>Clear</span>
+                                </button>
+                            }
+                        </div>
                     </div>
 
-                    @if (_hasMoreGroups)
+                    @if (_isLoadingGroups)
                     {
-                        <div class="cleanup-load-more">
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@_isLoadingGroups"
-                                       StartIcon="@Icons.Material.Filled.ExpandMore" OnClick="LoadMoreGroupsAsync">
-                                Load more groups
-                            </MudButton>
+                        <div class="app-empty-state">
+                            <MudProgressCircular Color="Color.Info" Indeterminate="true" />
+                            <MudText Typo="Typo.body2">Loading cleanup groups</MudText>
                         </div>
                     }
-                }
-            </div>
-        </Content>
-    </TopbarLayout>
-</div>
+                    else if (_selectedRun == null)
+                    {
+                        <div class="app-empty-state">
+                            <MudIcon Icon="@Icons.Material.Filled.CleaningServices" Size="Size.Large" />
+                            <MudText Typo="Typo.body2">Create or select a cleanup run to begin review.</MudText>
+                        </div>
+                    }
+                    else if (_groups.Count == 0)
+                    {
+                        <div class="app-empty-state">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
+                            <MudText Typo="Typo.body2">No groups matched the current run settings.</MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="cleanup-group-list">
+                            @foreach (var group in _groups)
+                            {
+                                var state = GetGroupState(group.Id);
+                                <section class="cleanup-group-card">
+                                    <div class="cleanup-group-header">
+                                        <div class="cleanup-group-preview" aria-label="Group preview">
+                                            @if (state.IsPreviewLoading)
+                                            {
+                                                <div class="cleanup-group-preview-placeholder">
+                                                    <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
+                                                </div>
+                                            }
+                                            else if (state.PreviewViews.Count == 0)
+                                            {
+                                                <div class="cleanup-group-preview-placeholder">
+                                                    <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Small" />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                @foreach (var preview in state.PreviewViews.Select((view, index) => new
+                                                {
+                                                    view,
+                                                    index
+                                                }))
+                                                {
+                                                    <button type="button" class="cleanup-preview-image" title="Preview image"
+                                                            style="--cleanup-preview-index: @preview.index; --cleanup-preview-z: @(GroupPreviewImageCount - preview.index);"
+                                                            @onclick="() => OpenViewerAsync(preview.view.Image, state.PreviewViews.Select(view => view.Image).ToList())">
+                                                        <img src="@IO.GetImageStaticFile(preview.view.Image.Path)" alt="" loading="lazy" />
+                                                    </button>
+                                                }
+                                            }
+                                        </div>
+
+                                        <button type="button" class="cleanup-expand-button"
+                                                title="@(state.IsExpanded ? "Collapse group" : "Expand group")"
+                                                @onclick="() => ToggleGroupAsync(group)">
+                                            <MudIcon
+                                            Icon="@(state.IsExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                            Size="Size.Small" />
+                                        </button>
+
+                                        <div class="cleanup-group-title">
+                                            <MudText Typo="Typo.subtitle2">@GetGroupTitle(group)</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Reason</MudText>
+                                        </div>
+
+                                        <div class="cleanup-group-metrics">
+                                            <MudChip Color="Color.Default" Variant="Variant.Text" Size="Size.Small">
+                                                @group.MemberCount images</MudChip>
+                                                <MudChip Color="Color.Info" Variant="Variant.Text" Size="Size.Small">
+                                                    @FormatBytes(group.EstimatedBytes)</MudChip>
+                                                    @if (group.Confidence.HasValue)
+                                                    {
+                                                        <MudChip Color="Color.Success" Variant="Variant.Text" Size="Size.Small">
+                                                            @FormatPercent(group.Confidence.Value)</MudChip>
+                                                        }
+                                                    </div>
+
+                                                    <div class="cleanup-group-actions">
+                                                        <button type="button" class="send-to-btn cleanup-group-action"
+                                                                disabled="@state.IsLoading"
+                                                                @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceSuggested)">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Rule" Size="Size.Small" />
+                                                            <span>Suggested</span>
+                                                        </button>
+                                                        <button type="button" class="send-to-btn cleanup-group-action"
+                                                                disabled="@state.IsLoading"
+                                                                @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.AddSuggested)">
+                                                            <MudIcon Icon="@Icons.Material.Filled.AddTask" Size="Size.Small" />
+                                                            <span>Add</span>
+                                                        </button>
+                                                        <button type="button" class="send-to-btn cleanup-group-action"
+                                                                disabled="@state.IsLoading"
+                                                                @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.InvertAll)">
+                                                            <MudIcon Icon="fa-solid fa-arrows-rotate" Size="Size.Small" />
+                                                            <span>Invert</span>
+                                                        </button>
+                                                        <button type="button" class="send-to-btn cleanup-group-action"
+                                                                disabled="@state.IsLoading"
+                                                                @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.DeselectAll)">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Deselect" Size="Size.Small" />
+                                                            <span>Deselect</span>
+                                                        </button>
+                                                        <button type="button" class="send-to-btn cleanup-group-action"
+                                                                disabled="@state.IsLoading" @onclick="() => SaveGroupSelectionAsync(group)">
+                                                            <MudIcon Icon="@Icons.Material.Filled.BookmarkAdd" Size="Size.Small" />
+                                                            <span>Save</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                @if (state.IsExpanded)
+                                                {
+                                                    <div class="cleanup-group-body">
+                                                        @if (state.IsLoading)
+                                                        {
+                                                            <div class="app-empty-state cleanup-group-loading">
+                                                                <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
+                                                                <MudText Typo="Typo.caption">Loading members</MudText>
+                                                            </div>
+                                                        }
+                                                        else if (state.MemberViews.Count == 0)
+                                                        {
+                                                            <div class="app-empty-state cleanup-group-loading">
+                                                                <MudText Typo="Typo.caption">No member images are available for this group.</MudText>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="cleanup-member-toolbar">
+                                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Representative stays unselected by
+                                                                    the suggested action.</MudText>
+                                                                    <div class="cleanup-member-actions">
+                                                                        <button type="button" class="send-to-btn"
+                                                                                @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceAll)">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small" />
+                                                                            <span>All</span>
+                                                                        </button>
+                                                                        <button type="button" class="send-to-btn"
+                                                                                @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceSuggested)">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.Rule" Size="Size.Small" />
+                                                                            <span>Suggested</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="app-grid cleanup-member-grid">
+                                                                    @foreach (var member in state.MemberViews)
+                                                                    {
+                                                                        <div class="cleanup-member-card">
+                                                                            <div class="cleanup-member-meta">
+                                                                                <MudChip Color="@GetRoleColor(member.Member.Role)" Variant="Variant.Text"
+                                                                                         Size="Size.Small">@GetRoleLabel(member.Member.Role)</MudChip>
+                                                                                @if (member.Member.SimilarityScore.HasValue)
+                                                                                {
+                                                                                    <MudText Typo="Typo.caption">@FormatPercent(member.Member.SimilarityScore.Value)
+                                                                                    </MudText>
+                                                                                }
+                                                                            </div>
+                                                                            <GalleryImageTile Image="member.Image" ShowSelectionCheckbox="true"
+                                                                                              SelectionFocusedOverlay="true"
+                                                                                              OnSelectImage="image => OpenViewerAsync(image, state.MemberViews.Select(view => view.Image).ToList())"
+                                                                                              OnDeleteImage="RejectDirectDeleteAsync" OnCoverChanged="NoOpAsync" />
+                                                                        </div>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </section>
+                                            }
+                                        </div>
+
+                                        @if (_hasMoreGroups)
+                                        {
+                                            <div class="cleanup-load-more">
+                                                <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@_isLoadingGroups"
+                                                           StartIcon="@Icons.Material.Filled.ExpandMore" OnClick="LoadMoreGroupsAsync">
+                                                    Load more groups
+                                                </MudButton>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </Content>
+                        </TopbarLayout>
+                    </div>
 
 <AssetViewer Assets="_viewerAssets" StartIndex="_viewerStartIndex" @bind-IsVisible="_viewerOpen" />
 
@@ -367,7 +392,8 @@
     private async Task SelectRunAsync(int runId)
     {
         _selectedRunId = runId;
-        _selectedRun = runId <= 0 ? null : _runs.FirstOrDefault(run => run.Id == runId) ?? await CleanupRepository.GetGroupRunAsync(runId);
+        _selectedRun = runId <= 0 ? null : _runs.FirstOrDefault(run => run.Id == runId) ?? await
+CleanupRepository.GetGroupRunAsync(runId);
         _groups.Clear();
         _groupStates.Clear();
         _hasMoreGroups = false;
@@ -596,7 +622,8 @@
         if (mode == CleanupSelectionMode.AddSuggested)
         {
             Gallery.AddSelectedImages(ids);
-            Snackbar.Add($"Added {ids.Count} suggested images. Use the Gallery selections toolbar to delete or move them.", Severity.Info);
+            Snackbar.Add($"Added {ids.Count} suggested images. Use the Gallery selections toolbar to delete or move them.",
+Severity.Info);
         }
         else if (mode == CleanupSelectionMode.DeselectAll)
         {
@@ -657,7 +684,8 @@
         var query = state.MemberViews.Select(view => view.Member);
         if (mode is CleanupSelectionMode.ReplaceSuggested or CleanupSelectionMode.AddSuggested)
         {
-            query = query.Where(member => member.SuggestedAction == CleanupSuggestedAction.Review && member.Role != CleanupGroupMemberRole.Representative);
+            query = query.Where(member => member.SuggestedAction == CleanupSuggestedAction.Review && member.Role !=
+CleanupGroupMemberRole.Representative);
         }
 
         return query
@@ -676,7 +704,8 @@
 
     private Task RejectDirectDeleteAsync(ImageEntity image)
     {
-        Snackbar.Add("Cleanup review only selects images. Delete from the Gallery selections toolbar after review.", Severity.Info);
+        Snackbar.Add("Cleanup review only selects images. Delete from the Gallery selections toolbar after review.",
+Severity.Info);
         return Task.CompletedTask;
     }
 

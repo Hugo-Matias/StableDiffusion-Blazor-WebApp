@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 5 generation save hook and incremental indexing complete and cleanup-test validated
+**Current Phase:** Phase 6 ONNX embedding infrastructure in progress; storage/config checkpoint cleanup-test validated
 
 ---
 
@@ -189,18 +189,18 @@ Names are provisional and should be refined during implementation.
 
 ## Cleanup Strategies
 
-| Strategy                  | Uses Embeddings | Description                                                                      | First-Class Value                            |
-| ------------------------- | --------------: | -------------------------------------------------------------------------------- | -------------------------------------------- |
-| Exact duplicate           |              No | Same file hash.                                                                  | Safest deletion candidates.                  |
-| Near duplicate            |              No | Perceptual hash distance.                                                        | Catches resized/compressed duplicates.       |
-| Prompt fingerprint        |              No | Normalized same prompt after tag/weight cleanup.                                 | Groups repeated generation runs.             |
-| Prompt fuzzy              |              No | Token-set and ordered-token similarity.                                          | Catches reordered or lightly edited prompts. |
-| Same experiment           |              No | Project + workflow + model + date bucket + prompt fingerprint.                   | Useful for seed sweeps and parameter tweaks. |
-| Visual similarity         |             Yes | Embedding cosine similarity.                                                     | Groups images by what they depict.           |
-| Aesthetic/quality triage  |       Optional | Separate ONNX score for perceived appeal, artifacts, blur, or other quality signals. | Ranks variants inside review groups.         |
-| Low-value candidates      |        Optional | Non-favorite, score 0, older variants where group has favorites or higher score. | Practical cleanup assist.                    |
-| Orphans and missing files |              No | DB row missing file, file missing DB row if folder scan is added.                | Keeps storage and DB honest.                 |
-| Large storage offenders   |              No | Videos, upscales, huge files, old non-favorites.                                 | Fast resource recovery.                      |
+| Strategy                  | Uses Embeddings | Description                                                                          | First-Class Value                            |
+| ------------------------- | --------------: | ------------------------------------------------------------------------------------ | -------------------------------------------- |
+| Exact duplicate           |              No | Same file hash.                                                                      | Safest deletion candidates.                  |
+| Near duplicate            |              No | Perceptual hash distance.                                                            | Catches resized/compressed duplicates.       |
+| Prompt fingerprint        |              No | Normalized same prompt after tag/weight cleanup.                                     | Groups repeated generation runs.             |
+| Prompt fuzzy              |              No | Token-set and ordered-token similarity.                                              | Catches reordered or lightly edited prompts. |
+| Same experiment           |              No | Project + workflow + model + date bucket + prompt fingerprint.                       | Useful for seed sweeps and parameter tweaks. |
+| Visual similarity         |             Yes | Embedding cosine similarity.                                                         | Groups images by what they depict.           |
+| Aesthetic/quality triage  |        Optional | Separate ONNX score for perceived appeal, artifacts, blur, or other quality signals. | Ranks variants inside review groups.         |
+| Low-value candidates      |        Optional | Non-favorite, score 0, older variants where group has favorites or higher score.     | Practical cleanup assist.                    |
+| Orphans and missing files |              No | DB row missing file, file missing DB row if folder scan is added.                    | Keeps storage and DB honest.                 |
+| Large storage offenders   |              No | Videos, upscales, huge files, old non-favorites.                                     | Fast resource recovery.                      |
 
 ---
 
@@ -356,17 +356,17 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Add configurable ONNX image embeddings and persist vectors.
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [~] In progress - storage/config checkpoint validated
 
 #### Steps
 
 - [ ] Add ONNX Runtime package strategy and isolate provider selection.
-- [ ] Add simple runtime selector with CPU and CUDA choices from the start.
-- [ ] Add embedding model configuration and model hash detection.
+- [x] Add simple runtime selector with CPU and CUDA choices from the start.
+- [x] Add embedding model configuration and model hash detection.
 - [ ] Implement Magick.NET preprocessing to tensor input.
 - [ ] Implement embedding inference and L2 normalization.
-- [ ] Persist embeddings as float32 BLOBs.
-- [ ] Add CPU-focused tests around vector serialization and model config validation, plus CUDA availability probing around provider initialization.
+- [x] Persist embeddings as float32 BLOBs.
+- [~] Add CPU-focused tests around vector serialization and model config validation, plus CUDA availability probing around provider initialization.
 
 #### Success Criteria
 
@@ -531,13 +531,14 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 
 ## Changelog
 
-| Phase           | Changes                                                                                                                                                  |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Planning        | Initial cleanup tools plan created with ONNX, grouping, persistence, and review UI direction.                                                            |
-| Planning update | Runtime direction updated for first-class CUDA support, simple CPU/CUDA selector, RTX 4090 target environment, and possible ComfyUI provider discussion. |
-| Planning update | Added separate aesthetic/quality scoring direction for advisory triage distinct from visual similarity embeddings. |
-| Phase 1         | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                            |
-| Phase 2         | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.   |
-| Phase 3         | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                     |
+| Phase           | Changes                                                                                                                                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Planning        | Initial cleanup tools plan created with ONNX, grouping, persistence, and review UI direction.                                                                                                                                                       |
+| Planning update | Runtime direction updated for first-class CUDA support, simple CPU/CUDA selector, RTX 4090 target environment, and possible ComfyUI provider discussion.                                                                                            |
+| Planning update | Added separate aesthetic/quality scoring direction for advisory triage distinct from visual similarity embeddings.                                                                                                                                  |
+| Phase 1         | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                                                                                                                       |
+| Phase 2         | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.                                                                                              |
+| Phase 3         | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                                                                                                                |
 | Phase 4         | Added cleanup review UI with scope indexing, deterministic group generation controls, paged groups, lazy members, selection wiring, AssetViewer reuse, determinate indexing progress, selected-tile cues, and Gallery action placement refinements. |
-| Phase 5         | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests. |
+| Phase 5         | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests.                                                    |
+| Phase 6         | Started embedding infrastructure with CPU/CUDA runtime options, model metadata validation, model hash detection, float32 vector codec, embedding repository methods, and focused cleanup tests.                                             |

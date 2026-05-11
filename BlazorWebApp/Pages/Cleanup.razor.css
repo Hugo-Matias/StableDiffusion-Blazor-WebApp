@@ -3,7 +3,9 @@
   --cleanup-list-gap: var(--app-gutter-inner);
   --cleanup-preview-size: 3.75rem;
   --cleanup-preview-offset: 1.1rem;
-  --cleanup-preview-stack-width: calc(var(--cleanup-preview-size) + (var(--cleanup-preview-offset) * 4));
+  --cleanup-preview-stack-width: calc(
+    var(--cleanup-preview-size) + (var(--cleanup-preview-offset) * 4)
+  );
   max-width: var(--app-shell-max-width);
   margin: 0 auto;
   padding: var(--app-gutter-outer);
@@ -98,7 +100,8 @@
 .cleanup-preview-image,
 .cleanup-group-preview-placeholder {
   position: absolute;
-  inset: 0 auto auto calc(var(--cleanup-preview-index, 0) * var(--cleanup-preview-offset));
+  inset: 0 auto auto
+    calc(var(--cleanup-preview-index, 0) * var(--cleanup-preview-offset));
   width: var(--cleanup-preview-size);
   height: var(--cleanup-preview-size);
   overflow: hidden;
@@ -144,7 +147,8 @@
 .cleanup-group-action {
   flex: 0 1 auto;
   min-width: max-content;
-  padding: calc(var(--app-gutter-inner) / 2) calc(var(--app-gutter-inner) * 0.75);
+  padding: calc(var(--app-gutter-inner) / 2)
+    calc(var(--app-gutter-inner) * 0.75);
 }
 
 .cleanup-group-body {

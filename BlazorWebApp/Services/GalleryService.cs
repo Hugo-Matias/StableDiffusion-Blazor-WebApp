@@ -17,7 +17,7 @@ namespace BlazorWebApp.Services
         public List<Project>? Projects { get; private set; }
         public List<int> SelectedImageIds { get; private set; } = new();
         private HashSet<int> _selectedImageIdSet = new();
-        
+
         /// <summary>
         /// Indicates whether gallery filters are currently applied.
         /// </summary>

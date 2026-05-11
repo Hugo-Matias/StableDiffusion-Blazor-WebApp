@@ -102,6 +102,9 @@ builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ICleanupRepository,
 builder.Services.AddSingleton<ICleanupPromptIndexService, CleanupPromptIndexService>();
 builder.Services.AddSingleton<ICleanupImageHashService, CleanupImageHashService>();
 builder.Services.AddSingleton<ICleanupIndexingService, CleanupIndexingService>();
+builder.Services.Configure<CleanupEmbeddingOptions>(builder.Configuration.GetSection(CleanupEmbeddingOptions.SectionName));
+builder.Services.AddSingleton<ICleanupEmbeddingModelMetadataService, CleanupEmbeddingModelMetadataService>();
+builder.Services.AddSingleton<ICleanupEmbeddingVectorCodec, CleanupEmbeddingVectorCodec>();
 builder.Services.Configure<CleanupIndexingQueueOptions>(builder.Configuration.GetSection(CleanupIndexingQueueOptions.SectionName));
 builder.Services.AddSingleton<ICleanupIndexingQueue, CleanupIndexingQueue>();
 builder.Services.AddHostedService(sp => (CleanupIndexingQueue)sp.GetRequiredService<ICleanupIndexingQueue>());

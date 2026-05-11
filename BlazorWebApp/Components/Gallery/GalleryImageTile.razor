@@ -12,7 +12,8 @@
 @inject IMediaSendToService SendTo
 @implements IDisposable
 
-<div class="@GetTileClasses()" @onclick="HandleTileClick" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+<div class="@GetTileClasses()" @onclick="HandleTileClick" @onmouseenter="HandleMouseEnter"
+     @onmouseleave="HandleMouseLeave">
     <img src="@IO.GetImageStaticFile(Image.Path)" alt="Generated image" class="gallery-tile-image" loading="lazy" />
 
     @if (SelectionFocusedOverlay && Image.Favorite)
@@ -31,7 +32,8 @@
 
     @if (SelectionFocusedOverlay)
     {
-        <div class="gallery-tile-selection-overlay @(_isHovered || _isSelected ? "visible" : string.Empty)" @onclick:stopPropagation="true">
+        <div class="gallery-tile-selection-overlay @(_isHovered || _isSelected ? "visible" : string.Empty)"
+             @onclick:stopPropagation="true">
             <button type="button" class="tile-selection-view-action" title="View image" @onclick="OpenImage">
                 <i class="fa-solid fa-expand"></i>
             </button>

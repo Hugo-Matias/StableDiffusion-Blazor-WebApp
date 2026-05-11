@@ -90,6 +90,87 @@ public class CleanupRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task UpsertImageEmbeddingAsync_CreatesAndUpdates_ByImageAndModelIdentity()
+    {
+        var created = await _repository.UpsertImageEmbeddingAsync(new CleanupImageEmbedding
+        {
+            ImageId = 42,
+            ModelKey = "clip-vit-b32",
+            ModelHash = "hash-a",
+            RuntimeProvider = "CPU",
+            Dimensions = 3,
+            Vector = new byte[] { 1, 2, 3, 4 },
+            Status = CleanupEmbeddingStatus.Indexed
+        });
+
+        var updated = await _repository.UpsertImageEmbeddingAsync(new CleanupImageEmbedding
+        {
+            ImageId = 42,
+            ModelKey = "clip-vit-b32",
+            ModelHash = "hash-a",
+            RuntimeProvider = "CUDA",
+            Dimensions = 3,
+            Vector = new byte[] { 4, 3, 2, 1 },
+            Status = CleanupEmbeddingStatus.Stale
+        });
+
+        updated.Id.Should().Be(created.Id);
+
+        var loaded = await _repository.GetImageEmbeddingAsync(42, "clip-vit-b32", "hash-a");
+        loaded.Should().NotBeNull();
+        loaded!.RuntimeProvider.Should().Be("CUDA");
+        loaded.Vector.Should().Equal(4, 3, 2, 1);
+        loaded.Status.Should().Be(CleanupEmbeddingStatus.Stale);
+        loaded.CreatedAtUtc.Should().Be(created.CreatedAtUtc);
+        loaded.UpdatedAtUtc.Should().BeOnOrAfter(created.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public async Task GetStaleImageEmbeddingsAsync_ReturnsRowsForChangedModelOrDimensions()
+    {
+        await _repository.UpsertImageEmbeddingAsync(new CleanupImageEmbedding
+        {
+            ImageId = 1,
+            ModelKey = "clip-vit-b32",
+            ModelHash = "old-hash",
+            Dimensions = 512,
+            Vector = new byte[] { 1, 2, 3, 4 },
+            Status = CleanupEmbeddingStatus.Indexed
+        });
+        await _repository.UpsertImageEmbeddingAsync(new CleanupImageEmbedding
+        {
+            ImageId = 2,
+            ModelKey = "clip-vit-b32",
+            ModelHash = "new-hash",
+            Dimensions = 768,
+            Vector = new byte[] { 1, 2, 3, 4 },
+            Status = CleanupEmbeddingStatus.Indexed
+        });
+        await _repository.UpsertImageEmbeddingAsync(new CleanupImageEmbedding
+        {
+            ImageId = 3,
+            ModelKey = "clip-vit-b32",
+            ModelHash = "new-hash",
+            Dimensions = 512,
+            Vector = new byte[] { 1, 2, 3, 4 },
+            Status = CleanupEmbeddingStatus.Indexed
+        });
+        await _repository.UpsertImageEmbeddingAsync(new CleanupImageEmbedding
+        {
+            ImageId = 4,
+            ModelKey = "other-model",
+            ModelHash = "old-hash",
+            Dimensions = 512,
+            Vector = new byte[] { 1, 2, 3, 4 },
+            Status = CleanupEmbeddingStatus.Stale
+        });
+
+        var stale = await _repository.GetStaleImageEmbeddingsAsync("clip-vit-b32", "new-hash", 512, 10);
+
+        stale.Select(row => row.ImageId).Should().BeEquivalentTo(new[] { 1, 2 });
+    }
+
+    [Fact]
     public async Task AddGroupsAsync_PersistsGroupsAndMembers_ForRun()
     {
         var run = await _repository.CreateGroupRunAsync(new CleanupGroupRun
