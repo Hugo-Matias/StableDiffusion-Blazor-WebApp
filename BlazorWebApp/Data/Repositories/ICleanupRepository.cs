@@ -20,8 +20,9 @@ namespace BlazorWebApp.Data.Repositories
         Task<List<CleanupImageIndex>> GetMissingFileIndexesAsync(int skip, int take, CancellationToken cancellationToken = default);
         Task<CleanupGroupRun> CreateGroupRunAsync(CleanupGroupRun run, CancellationToken cancellationToken = default);
         Task<CleanupGroupRun?> GetGroupRunAsync(int runId, CancellationToken cancellationToken = default);
+        Task<List<CleanupGroupRun>> GetGroupRunsAsync(int skip, int take, CancellationToken cancellationToken = default);
         Task AddGroupsAsync(int runId, IReadOnlyList<CleanupGroup> groups, CancellationToken cancellationToken = default);
         Task<List<CleanupGroup>> GetGroupsAsync(int runId, int skip, int take, CancellationToken cancellationToken = default);
-        Task<List<CleanupGroupMember>> GetGroupMembersAsync(int groupId, CancellationToken cancellationToken = default);
+        Task<List<CleanupGroupMember>> GetGroupMembersAsync(int groupId, int? take = null, CancellationToken cancellationToken = default);
     }
 }

@@ -12,108 +12,139 @@
 @inject IMediaSendToService SendTo
 @implements IDisposable
 
-<div class="@GetTileClasses()" @onclick="OpenImage" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+<div class="@GetTileClasses()" @onclick="HandleTileClick" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
     <img src="@IO.GetImageStaticFile(Image.Path)" alt="Generated image" class="gallery-tile-image" loading="lazy" />
 
-    <div class="gallery-tile-chrome @(_isHovered || _isMenuOpen ? "visible" : string.Empty)">
-        <div class="gallery-tile-topbar">
-            <div class="gallery-tile-indicators">
-                @if (Image.Favorite)
-                {
-                    <span class="gallery-tile-indicator favorite" title="Favorite">
-                        <i class="fa-solid fa-heart"></i>
-                    </span>
-                }
-                @if (Image.Score > 0)
-                {
-                    <span class="gallery-tile-indicator score" title="Score @Image.Score">
-                        <i class="fa-solid fa-star"></i>
-                        <span>@Image.Score</span>
-                    </span>
-                }
-            </div>
+    @if (SelectionFocusedOverlay && Image.Favorite)
+    {
+        <span class="gallery-tile-favorite-cue" title="Favorite">
+            <i class="fa-solid fa-heart"></i>
+        </span>
+    }
 
-            <div class="gallery-tile-actions" @onclick:stopPropagation="true">
-                <button type="button" class="tile-action primary" title="View Fullscreen" @onclick="OpenImage">
-                    <i class="fa-solid fa-expand"></i>
-                </button>
-                <button type="button" class="tile-action @(Image.Favorite ? "active" : string.Empty)"
-                        title="@(Image.Favorite ? "Remove from Favorites" : "Add to Favorites")" @onclick="ToggleFavorite">
-                    <i class="@(Image.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
-                </button>
-                <button type="button" class="tile-action" title="View Info" @onclick="ToggleInfoDrawer">
-                    <i class="fa-solid fa-info"></i>
-                </button>
-                @if (ShowSelectionCheckbox)
-                {
-                    <button type="button" class="tile-action @(_isSelected ? "selected" : string.Empty)"
-                            title="@(_isSelected ? "Deselect" : "Select")" @onclick="ToggleSelected">
-                        <i class="@(_isSelected ? "fa-solid fa-square-check" : "fa-regular fa-square")"></i>
+    @if (_isSelected)
+    {
+        <span class="gallery-tile-selection-cue" title="Selected">
+            <i class="fa-solid fa-check"></i>
+        </span>
+    }
+
+    @if (SelectionFocusedOverlay)
+    {
+        <div class="gallery-tile-selection-overlay @(_isHovered || _isSelected ? "visible" : string.Empty)" @onclick:stopPropagation="true">
+            <button type="button" class="tile-selection-action @(_isSelected ? "selected" : string.Empty)"
+                    title="@(_isSelected ? "Deselect image" : "Select image")" @onclick="ToggleSelected">
+                <i class="@(_isSelected ? "fa-solid fa-square-check" : "fa-regular fa-square")"></i>
+                <span>@(_isSelected ? "Deselect" : "Select")</span>
+            </button>
+            <button type="button" class="tile-selection-action view" title="View image" @onclick="OpenImage">
+                <i class="fa-solid fa-expand"></i>
+                <span>View</span>
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="gallery-tile-chrome @(_isHovered || _isMenuOpen ? "visible" : string.Empty)">
+            <div class="gallery-tile-topbar">
+                <div class="gallery-tile-indicators">
+                    @if (Image.Favorite)
+                    {
+                        <span class="gallery-tile-indicator favorite" title="Favorite">
+                            <i class="fa-solid fa-heart"></i>
+                        </span>
+                    }
+                    @if (Image.Score > 0)
+                    {
+                        <span class="gallery-tile-indicator score" title="Score @Image.Score">
+                            <i class="fa-solid fa-star"></i>
+                            <span>@Image.Score</span>
+                        </span>
+                    }
+                </div>
+
+                <div class="gallery-tile-actions" @onclick:stopPropagation="true">
+                    <button type="button" class="tile-action primary" title="View Fullscreen" @onclick="OpenImage">
+                        <i class="fa-solid fa-expand"></i>
                     </button>
-                }
-                <div class="tile-menu-host" @onclick:stopPropagation="true">
-                    <MudMenu @bind-Open="_isMenuOpen" Icon="@Icons.Material.Filled.MoreVert"
-                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Size="Size.Small"
-                             Dense="true" Class="tile-more-menu">
-                        <ChildContent>
-                            <div class="action-menu">
-                                <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image"
-                                                     RenderAsMenuSection="true" IncludeDivider="true" />
+                    <button type="button" class="tile-action @(Image.Favorite ? "active" : string.Empty)"
+                            title="@(Image.Favorite ? "Remove from Favorites" : "Add to Favorites")" @onclick="ToggleFavorite">
+                        <i class="@(Image.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
+                    </button>
+                    <button type="button" class="tile-action" title="View Info" @onclick="ToggleInfoDrawer">
+                        <i class="fa-solid fa-info"></i>
+                    </button>
+                    @if (ShowSelectionCheckbox)
+                    {
+                        <button type="button" class="tile-action @(_isSelected ? "selected" : string.Empty)"
+                                title="@(_isSelected ? "Deselect" : "Select")" @onclick="ToggleSelected">
+                            <i class="@(_isSelected ? "fa-solid fa-square-check" : "fa-regular fa-square")"></i>
+                        </button>
+                    }
+                    <div class="tile-menu-host" @onclick:stopPropagation="true">
+                        <MudMenu @bind-Open="_isMenuOpen" Icon="@Icons.Material.Filled.MoreVert"
+                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Size="Size.Small"
+                                 Dense="true" Class="tile-more-menu">
+                            <ChildContent>
+                                <div class="action-menu">
+                                    <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image"
+                                                         RenderAsMenuSection="true" IncludeDivider="true" />
 
-                                @if (SendTo.IsLocal(Image.Path))
-                                {
+                                    @if (SendTo.IsLocal(Image.Path))
+                                    {
+                                        <div class="menu-section">
+                                            <div class="menu-section-title">LLM Tools</div>
+                                            <MudMenuItem OnClick="SendToImageToPrompt" Class="menu-item">
+                                                <div class="menu-item-content">
+                                                    <i class="fa-solid fa-magnifying-glass menu-icon tertiary"></i>
+                                                    <span>Generate Prompt</span>
+                                                </div>
+                                            </MudMenuItem>
+                                        </div>
+
+                                        <div class="menu-divider"></div>
+                                    }
+
                                     <div class="menu-section">
-                                        <div class="menu-section-title">LLM Tools</div>
-                                        <MudMenuItem OnClick="SendToImageToPrompt" Class="menu-item">
+                                        <div class="menu-section-title">Organize</div>
+                                        <MudMenuItem OnClick="ShowSwitchProjectDialog" Class="menu-item">
                                             <div class="menu-item-content">
-                                                <i class="fa-solid fa-magnifying-glass menu-icon tertiary"></i>
-                                                <span>Generate Prompt</span>
+                                                <i class="fa-solid fa-layer-group menu-icon tertiary"></i>
+                                                <span>Set Project</span>
+                                            </div>
+                                        </MudMenuItem>
+                                        <MudMenuItem OnClick="SetProjectCover" Class="menu-item">
+                                            <div class="menu-item-content">
+                                                <i class="fa-solid fa-image-portrait menu-icon secondary"></i>
+                                                <span>Project Cover</span>
                                             </div>
                                         </MudMenuItem>
                                     </div>
 
                                     <div class="menu-divider"></div>
-                                }
 
-                                <div class="menu-section">
-                                    <div class="menu-section-title">Organize</div>
-                                    <MudMenuItem OnClick="ShowSwitchProjectDialog" Class="menu-item">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-layer-group menu-icon tertiary"></i>
-                                            <span>Set Project</span>
-                                        </div>
-                                    </MudMenuItem>
-                                    <MudMenuItem OnClick="SetProjectCover" Class="menu-item">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-image-portrait menu-icon secondary"></i>
-                                            <span>Project Cover</span>
-                                        </div>
-                                    </MudMenuItem>
+                                    <div class="menu-section">
+                                        <MudMenuItem OnClick="OpenFileInExplorer" Class="menu-item">
+                                            <div class="menu-item-content">
+                                                <i class="fa-solid fa-folder-open menu-icon primary"></i>
+                                                <span>Open in Explorer</span>
+                                            </div>
+                                        </MudMenuItem>
+                                        <MudMenuItem OnClick="DeleteImage" Class="menu-item danger">
+                                            <div class="menu-item-content">
+                                                <i class="fa-solid fa-trash-can menu-icon error"></i>
+                                                <span>Delete</span>
+                                            </div>
+                                        </MudMenuItem>
+                                    </div>
                                 </div>
-
-                                <div class="menu-divider"></div>
-
-                                <div class="menu-section">
-                                    <MudMenuItem OnClick="OpenFileInExplorer" Class="menu-item">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-folder-open menu-icon primary"></i>
-                                            <span>Open in Explorer</span>
-                                        </div>
-                                    </MudMenuItem>
-                                    <MudMenuItem OnClick="DeleteImage" Class="menu-item danger">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-trash-can menu-icon error"></i>
-                                            <span>Delete</span>
-                                        </div>
-                                    </MudMenuItem>
-                                </div>
-                            </div>
-                        </ChildContent>
-                    </MudMenu>
+                            </ChildContent>
+                        </MudMenu>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    }
 </div>
 
 <AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" Image="Image" IsVideo="false" />
@@ -124,6 +155,7 @@
     [Parameter] public EventCallback<Image> OnDeleteImage { get; set; }
     [Parameter] public EventCallback OnCoverChanged { get; set; }
     [Parameter] public bool ShowSelectionCheckbox { get; set; }
+    [Parameter] public bool SelectionFocusedOverlay { get; set; }
 
     private bool _isSelected;
     private bool _isHovered;
@@ -145,6 +177,7 @@
     private string GetTileClasses()
     {
         var classes = "gallery-image-tile";
+        if (SelectionFocusedOverlay) classes += " selection-focused";
         if (_isSelected) classes += " selected";
         if (_isHovered || _isMenuOpen) classes += " hovered";
         return classes;
@@ -177,6 +210,17 @@
     }
 
     private Task OpenImage() => OnSelectImage.InvokeAsync(Image);
+
+    private Task HandleTileClick()
+    {
+        if (SelectionFocusedOverlay && ShowSelectionCheckbox)
+        {
+            ToggleSelected();
+            return Task.CompletedTask;
+        }
+
+        return OpenImage();
+    }
 
     private async Task ToggleFavorite()
     {

@@ -34,13 +34,23 @@ namespace BlazorWebApp.Services.Cleanup
             CancellationToken cancellationToken = default)
         {
             var batchSize = Math.Clamp(options.BatchSize, 1, 500);
-            var remaining = options.MaxImages ?? int.MaxValue;
             var lastImageId = options.StartAfterImageId;
             var indexed = 0;
             var skipped = 0;
             var missing = 0;
             var failed = 0;
-            var totalCandidates = 0;
+            var totalCandidates = await CountSourcesAsync(options, lastImageId, cancellationToken);
+            var remaining = totalCandidates;
+
+            progress?.Report(new CleanupIndexingProgress
+            {
+                LastImageId = lastImageId,
+                TotalCandidates = totalCandidates,
+                Indexed = indexed,
+                Skipped = skipped,
+                MissingFiles = missing,
+                Failed = failed
+            });
 
             while (remaining > 0)
             {
@@ -52,7 +62,6 @@ namespace BlazorWebApp.Services.Cleanup
                     break;
                 }
 
-                totalCandidates += sources.Count;
                 remaining -= sources.Count;
                 lastImageId = sources[^1].ImageId;
                 var existing = await LoadExistingIndexesAsync(sources.Select(source => source.ImageId).ToArray(), cancellationToken);
@@ -91,13 +100,27 @@ namespace BlazorWebApp.Services.Cleanup
 
             return new CleanupIndexingResult
             {
-                LastImageId = totalCandidates == 0 ? null : lastImageId,
+                LastImageId = indexed + skipped + missing + failed == 0 ? null : lastImageId,
                 TotalCandidates = totalCandidates,
                 Indexed = indexed,
                 Skipped = skipped,
                 MissingFiles = missing,
                 Failed = failed
             };
+        }
+
+        private async Task<int> CountSourcesAsync(
+            CleanupIndexingOptions options,
+            int lastImageId,
+            CancellationToken cancellationToken)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var count = await BuildSourceQuery(context, options, lastImageId)
+                .CountAsync(cancellationToken);
+
+            return options.MaxImages.HasValue
+                ? Math.Min(count, Math.Max(0, options.MaxImages.Value))
+                : count;
         }
 
         private async Task<ImageIndexResult> IndexSourceAsync(
@@ -186,6 +209,25 @@ namespace BlazorWebApp.Services.Cleanup
             CancellationToken cancellationToken)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await BuildSourceQuery(context, options, lastImageId)
+                .OrderBy(image => image.Id)
+                .Take(take)
+                .Select(image => new CleanupImageSource(
+                    image.Id,
+                    image.ProjectId,
+                    image.ModeId,
+                    image.ResourceId,
+                    image.WorkflowId,
+                    image.Path,
+                    image.Prompt))
+                .ToListAsync(cancellationToken);
+        }
+
+        private static IQueryable<Image> BuildSourceQuery(
+            AppDbContext context,
+            CleanupIndexingOptions options,
+            int lastImageId)
+        {
             var query = context.Images
                 .AsNoTracking()
                 .Where(image => image.Id > lastImageId);
@@ -200,18 +242,7 @@ namespace BlazorWebApp.Services.Cleanup
                 query = query.Where(image => !image.IsHidden);
             }
 
-            return await query
-                .OrderBy(image => image.Id)
-                .Take(take)
-                .Select(image => new CleanupImageSource(
-                    image.Id,
-                    image.ProjectId,
-                    image.ModeId,
-                    image.ResourceId,
-                    image.WorkflowId,
-                    image.Path,
-                    image.Prompt))
-                .ToListAsync(cancellationToken);
+            return query;
         }
 
         private async Task<Dictionary<int, CleanupImageIndex>> LoadExistingIndexesAsync(

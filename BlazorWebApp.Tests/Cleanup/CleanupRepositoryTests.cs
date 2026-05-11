@@ -138,6 +138,10 @@ public class CleanupRepositoryTests : IDisposable
         members.Should().HaveCount(2);
         members.Select(member => member.ImageId).Should().Equal(101, 102);
         members[0].Role.Should().Be(CleanupGroupMemberRole.Representative);
+
+        var previewMembers = await _repository.GetGroupMembersAsync(groups[0].Id, 1);
+        previewMembers.Should().ContainSingle();
+        previewMembers[0].ImageId.Should().Be(101);
     }
 
     private sealed class TestDbContextFactory : IDbContextFactory<AppDbContext>, IDisposable

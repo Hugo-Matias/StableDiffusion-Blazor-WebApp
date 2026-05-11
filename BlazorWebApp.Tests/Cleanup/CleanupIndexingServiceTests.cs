@@ -93,11 +93,20 @@ public class CleanupIndexingServiceTests : IDisposable
             Scheduler = "normal"
         });
 
-        var result = await _service.IndexImagesAsync(new CleanupIndexingOptions { BatchSize = 1 });
+        var progress = new List<CleanupIndexingProgress>();
+        var result = await _service.IndexImagesAsync(
+            new CleanupIndexingOptions { BatchSize = 1 },
+            new CapturingProgress<CleanupIndexingProgress>(progress.Add));
 
         result.Indexed.Should().Be(1);
         result.MissingFiles.Should().Be(1);
         result.Failed.Should().Be(0);
+        result.TotalCandidates.Should().Be(2);
+        progress.Should().NotBeEmpty();
+        progress[0].TotalCandidates.Should().Be(2);
+        GetProcessedCount(progress[0]).Should().Be(0);
+        progress[^1].TotalCandidates.Should().Be(2);
+        GetProcessedCount(progress[^1]).Should().Be(2);
 
         var missing = await _repository.GetImageIndexAsync(2);
         missing.Should().NotBeNull();
@@ -118,6 +127,26 @@ public class CleanupIndexingServiceTests : IDisposable
         await using var context = await _factory.CreateDbContextAsync();
         context.Images.Add(image);
         await context.SaveChangesAsync();
+    }
+
+    private static int GetProcessedCount(CleanupIndexingProgress progress)
+    {
+        return progress.Indexed + progress.Skipped + progress.MissingFiles + progress.Failed;
+    }
+
+    private sealed class CapturingProgress<T> : IProgress<T>
+    {
+        private readonly Action<T> _capture;
+
+        public CapturingProgress(Action<T> capture)
+        {
+            _capture = capture;
+        }
+
+        public void Report(T value)
+        {
+            _capture(value);
+        }
     }
 
     private sealed class TestDbContextFactory : IDbContextFactory<AppDbContext>, IDisposable

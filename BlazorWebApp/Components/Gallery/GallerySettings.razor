@@ -5,6 +5,7 @@
 @inject IDatabaseService DB
 @inject IOrchestratorService M
 @inject IDialogService DialogService
+@inject NavigationManager NavManager
 @implements IDisposable
 
 <div class="gallery-settings">
@@ -66,16 +67,13 @@
 
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
                              AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        <MudMenuItem OnClick="OpenCleanupReview" Icon="fa-solid fa-broom">Cleanup Review</MudMenuItem>
                         <MudMenuItem OnClick="RemoveProjectCover" Icon="fa-solid fa-image-portrait">Remove Project Cover
                         </MudMenuItem>
                         @if (State.State.Gallery.FolderId > 0)
                         {
                             <MudMenuItem OnClick="ShowDeleteFolderModal" Icon="fa-solid fa-trash-can">Delete Folder
                             </MudMenuItem>
-                            <MudMenuItem OnClick="MoveCurrentFolderUp" Disabled="!CanMoveCurrentFolderUp()"
-                                         Icon="@Icons.Material.Filled.ChevronLeft">Move Folder Left</MudMenuItem>
-                            <MudMenuItem OnClick="MoveCurrentFolderDown" Disabled="!CanMoveCurrentFolderDown()"
-                                         Icon="@Icons.Material.Filled.ChevronRight">Move Folder Right</MudMenuItem>
                         }
                     </MudMenu>
                 </div>
@@ -180,6 +178,13 @@
                     <MudButton OnClick="CycleTileSize" Variant="Variant.Text" Color="Color.Primary"
                                Class="action-button-uniform">
                         <MudIcon Icon="@GetTileSizeIcon()" />
+                    </MudButton>
+                </MudTooltip>
+
+                <MudTooltip Text="Cleanup Review">
+                    <MudButton OnClick="OpenCleanupReview" Variant="Variant.Text" Color="Color.Success"
+                               Class="action-button-uniform">
+                        <MudIcon Icon="fa-solid fa-broom" />
                     </MudButton>
                 </MudTooltip>
                 
@@ -485,6 +490,8 @@
     private Color GetProjectPanelButtonColor() => IsCompactProjectPanel ? Color.Primary : Color.Default;
 
     private Color GetPresentationButtonColor() => IsPurePresentation ? Color.Info : Color.Default;
+
+    private void OpenCleanupReview() => NavManager.NavigateTo("/cleanup");
 
     private string GetCompactProjectLabel()
     {

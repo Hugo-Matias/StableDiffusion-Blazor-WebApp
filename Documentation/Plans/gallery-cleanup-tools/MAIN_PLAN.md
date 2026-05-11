@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 3 deterministic grouping checkpoint complete and cleanup-test validated
+**Current Phase:** Phase 4 cleanup review UI checkpoint complete and validated
 
 ---
 
@@ -296,17 +296,17 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Add a review-first UI for top-level groups and expandable group members.
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and validated
 
 #### Steps
 
-- [ ] Add cleanup entry point from Gallery.
-- [ ] Add cleanup run controls: scope, strategy, thresholds, minimum group size.
-- [ ] Add virtualized or paged top-level group list.
-- [ ] Add expandable group member grid with lazy loading.
-- [ ] Wire group actions into `IGalleryService.SelectedImageIds`.
-- [ ] Reuse `AssetViewer` for inspection.
-- [ ] Add confirmation language for selected deletion through existing flows.
+- [x] Add cleanup entry point from Gallery.
+- [x] Add cleanup run controls: scope, strategy, thresholds, minimum group size.
+- [x] Add virtualized or paged top-level group list.
+- [x] Add expandable group member grid with lazy loading.
+- [x] Wire group actions into `IGalleryService.SelectedImageIds`.
+- [x] Reuse `AssetViewer` for inspection.
+- [x] Add confirmation language for selected deletion through existing flows.
 
 #### Success Criteria
 
@@ -501,3 +501,4 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 | Phase 1         | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                            |
 | Phase 2         | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.   |
 | Phase 3         | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                     |
+| Phase 4         | Added cleanup review UI with scope indexing, deterministic group generation controls, paged groups, lazy members, selection wiring, AssetViewer reuse, determinate indexing progress, selected-tile cues, and Gallery action placement refinements. |

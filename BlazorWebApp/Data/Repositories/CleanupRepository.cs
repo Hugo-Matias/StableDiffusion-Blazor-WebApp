@@ -113,6 +113,18 @@ namespace BlazorWebApp.Data.Repositories
                 .FirstOrDefaultAsync(run => run.Id == runId, cancellationToken);
         }
 
+        public async Task<List<CleanupGroupRun>> GetGroupRunsAsync(int skip, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupGroupRuns
+                .AsNoTracking()
+                .OrderByDescending(run => run.CreatedAtUtc)
+                .ThenByDescending(run => run.Id)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task AddGroupsAsync(int runId, IReadOnlyList<CleanupGroup> groups, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
@@ -143,14 +155,21 @@ namespace BlazorWebApp.Data.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<List<CleanupGroupMember>> GetGroupMembersAsync(int groupId, CancellationToken cancellationToken = default)
+        public async Task<List<CleanupGroupMember>> GetGroupMembersAsync(int groupId, int? take = null, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-            return await context.CleanupGroupMembers
+            IQueryable<CleanupGroupMember> query = context.CleanupGroupMembers
                 .AsNoTracking()
                 .Where(member => member.GroupId == groupId)
                 .OrderBy(member => member.SortOrder)
-                .ThenBy(member => member.Id)
+                .ThenBy(member => member.Id);
+
+            if (take is > 0)
+            {
+                query = query.Take(take.Value);
+            }
+
+            return await query
                 .ToListAsync(cancellationToken);
         }
     }
