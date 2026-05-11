@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 8 aesthetic and quality scoring triage complete and cleanup-test validated
+**Current Phase:** Phase 9 optional VL captions and explanations complete and cleanup-test validated
 
 ---
 
@@ -431,18 +431,19 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Use Qwen 3 VL or other Ollama vision models only where they add review value.
 **Complexity:** 5 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
-- [ ] Caption group representatives on demand.
-- [ ] Add optional group explanation text.
-- [ ] Cache generated captions to avoid repeated VL calls.
-- [ ] Keep VL features disabled for bulk scans by default.
+- [x] Caption group representatives on demand.
+- [x] Add optional group explanation text.
+- [x] Cache generated captions to avoid repeated VL calls.
+- [x] Keep VL features disabled for bulk scans by default.
 
 #### Success Criteria
 
 - VL output helps explain groups without slowing core indexing.
+- Focused cleanup tests passed: 44 passed, 0 failed.
 - Cleanup still works fully without Ollama available.
 
 ---

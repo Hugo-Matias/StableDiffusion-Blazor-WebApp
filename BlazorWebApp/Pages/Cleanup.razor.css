@@ -157,6 +157,22 @@
   border-top: 1px solid var(--mud-palette-lines-default);
 }
 
+.cleanup-group-explanation {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gutter-inner);
+  margin-top: var(--app-gutter-inner);
+  padding-top: var(--app-gutter-inner);
+  border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.cleanup-group-explanation-copy {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 2);
+  min-width: 0;
+}
+
 .cleanup-group-loading {
   padding: var(--app-surface-padding);
 }

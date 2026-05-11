@@ -71,6 +71,50 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("CleanupGroups");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupExplanation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Caption")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RepresentativeImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Style")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId")
+                        .IsUnique();
+
+                    b.HasIndex("RepresentativeImageId");
+
+                    b.ToTable("CleanupGroupExplanations");
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupMember", b =>
                 {
                     b.Property<int>("Id")
@@ -1247,6 +1291,24 @@ namespace BlazorWebApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Run");
+
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "RepresentativeImage")
+                        .WithMany()
+                        .HasForeignKey("RepresentativeImageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("RepresentativeImage");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupExplanation", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.CleanupGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
 
                     b.HasOne("BlazorWebApp.Data.Entities.Image", "RepresentativeImage")
                         .WithMany()

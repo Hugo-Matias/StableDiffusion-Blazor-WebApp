@@ -348,5 +348,37 @@ namespace BlazorWebApp.Data.Repositories
             return await query
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<CleanupGroupExplanation?> GetGroupExplanationAsync(int groupId, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupGroupExplanations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(explanation => explanation.GroupId == groupId, cancellationToken);
+        }
+
+        public async Task<CleanupGroupExplanation> UpsertGroupExplanationAsync(CleanupGroupExplanation explanation, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await context.CleanupGroupExplanations
+                .FirstOrDefaultAsync(row => row.GroupId == explanation.GroupId, cancellationToken);
+
+            if (existing == null)
+            {
+                explanation.CreatedAtUtc = explanation.CreatedAtUtc == default ? now : explanation.CreatedAtUtc;
+                explanation.UpdatedAtUtc = explanation.UpdatedAtUtc == default ? now : explanation.UpdatedAtUtc;
+                context.CleanupGroupExplanations.Add(explanation);
+                await context.SaveChangesAsync(cancellationToken);
+                return explanation;
+            }
+
+            explanation.Id = existing.Id;
+            explanation.CreatedAtUtc = existing.CreatedAtUtc;
+            explanation.UpdatedAtUtc = now;
+            context.Entry(existing).CurrentValues.SetValues(explanation);
+            await context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
     }
 }

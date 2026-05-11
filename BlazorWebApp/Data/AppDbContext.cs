@@ -249,6 +249,25 @@ namespace BlazorWebApp.Data
                 .Property(member => member.SuggestedAction)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<CleanupGroupExplanation>()
+                .HasOne(explanation => explanation.Group)
+                .WithMany()
+                .HasForeignKey(explanation => explanation.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CleanupGroupExplanation>()
+                .HasOne(explanation => explanation.RepresentativeImage)
+                .WithMany()
+                .HasForeignKey(explanation => explanation.RepresentativeImageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<CleanupGroupExplanation>()
+                .HasIndex(explanation => explanation.GroupId)
+                .IsUnique();
+
+            modelBuilder.Entity<CleanupGroupExplanation>()
+                .HasIndex(explanation => explanation.RepresentativeImageId);
+
             modelBuilder.Entity<Folder>().HasIndex(f => f.Name).IsUnique();
             modelBuilder.Entity<Resource>().HasIndex(t => t.Filename).IsUnique();
             modelBuilder.Entity<ResourceType>().HasIndex(t => t.Name).IsUnique();
@@ -373,6 +392,7 @@ namespace BlazorWebApp.Data
         public DbSet<CleanupGroupRun> CleanupGroupRuns { get; set; }
         public DbSet<CleanupGroup> CleanupGroups { get; set; }
         public DbSet<CleanupGroupMember> CleanupGroupMembers { get; set; }
+        public DbSet<CleanupGroupExplanation> CleanupGroupExplanations { get; set; }
         public DbSet<GenerateStatePreset> GenerateStatePresets { get; set; }
         public DbSet<SavedDanbooruMedia> SavedDanbooruMedia { get; set; }
         public DbSet<Entities.Sampler> Samplers { get; set; }

@@ -117,6 +117,8 @@ builder.Services.Configure<CleanupIndexingQueueOptions>(builder.Configuration.Ge
 builder.Services.AddSingleton<ICleanupIndexingQueue, CleanupIndexingQueue>();
 builder.Services.AddHostedService(sp => (CleanupIndexingQueue)sp.GetRequiredService<ICleanupIndexingQueue>());
 builder.Services.AddSingleton<ICleanupGroupingService, CleanupGroupingService>();
+builder.Services.Configure<CleanupGroupExplanationOptions>(builder.Configuration.GetSection(CleanupGroupExplanationOptions.SectionName));
+builder.Services.AddScoped<ICleanupGroupExplanationService, CleanupGroupExplanationService>();
 
 // Danbooru library service - plain HttpClient for CDN downloads (no auth headers needed)
 builder.Services.AddHttpClient<IDanbooruLibraryService, DanbooruLibraryService>(client =>

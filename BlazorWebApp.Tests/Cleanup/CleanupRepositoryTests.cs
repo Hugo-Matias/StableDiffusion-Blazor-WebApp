@@ -344,6 +344,42 @@ public class CleanupRepositoryTests : IDisposable
         previewMembers[0].ImageId.Should().Be(101);
     }
 
+    [Fact]
+    public async Task UpsertGroupExplanationAsync_CreatesAndUpdates_ByGroupId()
+    {
+        var created = await _repository.UpsertGroupExplanationAsync(new CleanupGroupExplanation
+        {
+            GroupId = 5,
+            RepresentativeImageId = 101,
+            ModelName = "qwen2.5vl",
+            Style = "Simple",
+            Caption = "first caption",
+            Explanation = "first explanation"
+        });
+
+        var updated = await _repository.UpsertGroupExplanationAsync(new CleanupGroupExplanation
+        {
+            GroupId = 5,
+            RepresentativeImageId = 102,
+            ModelName = "qwen2.5vl:7b",
+            Style = "Detailed",
+            Caption = "updated caption",
+            Explanation = "updated explanation"
+        });
+
+        updated.Id.Should().Be(created.Id);
+
+        var loaded = await _repository.GetGroupExplanationAsync(5);
+        loaded.Should().NotBeNull();
+        loaded!.RepresentativeImageId.Should().Be(102);
+        loaded.ModelName.Should().Be("qwen2.5vl:7b");
+        loaded.Style.Should().Be("Detailed");
+        loaded.Caption.Should().Be("updated caption");
+        loaded.Explanation.Should().Be("updated explanation");
+        loaded.CreatedAtUtc.Should().Be(created.CreatedAtUtc);
+        loaded.UpdatedAtUtc.Should().BeOnOrAfter(created.UpdatedAtUtc);
+    }
+
     private sealed class TestDbContextFactory : IDbContextFactory<AppDbContext>, IDisposable
     {
         private readonly DbContextOptions<AppDbContext> _options;
