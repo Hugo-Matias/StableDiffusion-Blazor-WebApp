@@ -31,6 +31,43 @@ namespace BlazorWebApp.Data.Repositories
         public int Take { get; init; } = 100;
     }
 
+    public record CleanupGroupReconciliationResult
+    {
+        public int RequestedGroups { get; init; }
+        public int UpdatedGroups { get; init; }
+        public int RemovedGroups { get; init; }
+        public int UpdatedRuns { get; init; }
+    }
+
+    public record CleanupStorageSummary
+    {
+        public int IndexedImages { get; init; }
+        public int MissingFiles { get; init; }
+        public int ErrorImages { get; init; }
+        public long IndexedBytes { get; init; }
+        public int GroupRuns { get; init; }
+        public int Groups { get; init; }
+        public int GroupMembers { get; init; }
+        public long GroupEstimatedBytes { get; init; }
+    }
+
+    public record CleanupMissingFileReportItem
+    {
+        public int ImageId { get; init; }
+        public int ProjectId { get; init; }
+        public string ImagePath { get; init; } = string.Empty;
+        public long? FileSizeBytes { get; init; }
+        public DateTime UpdatedAtUtc { get; init; }
+    }
+
+    public record CleanupWorkflowStorageSummaryItem
+    {
+        public string WorkflowId { get; init; } = string.Empty;
+        public int IndexedImages { get; init; }
+        public int MissingFiles { get; init; }
+        public long IndexedBytes { get; init; }
+    }
+
     public interface ICleanupRepository
     {
         Task<CleanupImageIndex> UpsertImageIndexAsync(CleanupImageIndex index, CancellationToken cancellationToken = default);
@@ -54,5 +91,9 @@ namespace BlazorWebApp.Data.Repositories
         Task<List<CleanupGroupMember>> GetGroupMembersAsync(int groupId, int? take = null, CancellationToken cancellationToken = default);
         Task<CleanupGroupExplanation?> GetGroupExplanationAsync(int groupId, CancellationToken cancellationToken = default);
         Task<CleanupGroupExplanation> UpsertGroupExplanationAsync(CleanupGroupExplanation explanation, CancellationToken cancellationToken = default);
+        Task<CleanupGroupReconciliationResult> ReconcileGroupsAsync(IReadOnlyCollection<int> groupIds, CancellationToken cancellationToken = default);
+        Task<CleanupStorageSummary> GetStorageSummaryAsync(int? projectId = null, int? runId = null, CancellationToken cancellationToken = default);
+        Task<List<CleanupMissingFileReportItem>> GetMissingFileReportAsync(int? projectId, int skip, int take, CancellationToken cancellationToken = default);
+        Task<List<CleanupWorkflowStorageSummaryItem>> GetWorkflowStorageSummaryAsync(int? projectId, int take, CancellationToken cancellationToken = default);
     }
 }

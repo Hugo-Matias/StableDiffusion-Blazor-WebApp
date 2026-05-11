@@ -380,6 +380,182 @@ public class CleanupRepositoryTests : IDisposable
         loaded.UpdatedAtUtc.Should().BeOnOrAfter(created.UpdatedAtUtc);
     }
 
+    [Fact]
+    public async Task ReconcileGroupsAsync_UpdatesMemberCountsAndRunTotals()
+    {
+        var run = await _repository.CreateGroupRunAsync(new CleanupGroupRun
+        {
+            Name = "Visual run",
+            Strategy = CleanupGroupingStrategy.VisualSimilarity,
+            Status = CleanupGroupRunStatus.Completed,
+            TotalGroups = 1,
+            TotalMembers = 3
+        });
+
+        await _repository.AddGroupsAsync(run.Id, new[]
+        {
+            new CleanupGroup
+            {
+                GroupKey = "visual:1",
+                Strategy = CleanupGroupingStrategy.VisualSimilarity,
+                Reason = "similar images",
+                RepresentativeImageId = 201,
+                MemberCount = 3,
+                EstimatedBytes = 300,
+                Members =
+                {
+                    new CleanupGroupMember { ImageId = 201, Role = CleanupGroupMemberRole.Representative, SortOrder = 0, EstimatedBytes = 100, SimilarityScore = 1 },
+                    new CleanupGroupMember { ImageId = 202, Role = CleanupGroupMemberRole.CleanupCandidate, SortOrder = 1, EstimatedBytes = 200, SimilarityScore = 0.8 },
+                    new CleanupGroupMember { ImageId = 203, Role = CleanupGroupMemberRole.CleanupCandidate, SortOrder = 2, EstimatedBytes = 300, SimilarityScore = 0.7 }
+                }
+            }
+        });
+        var group = (await _repository.GetGroupsAsync(run.Id, 0, 10)).Single();
+
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            var removedMember = await context.CleanupGroupMembers.FirstAsync(member => member.ImageId == 203);
+            context.CleanupGroupMembers.Remove(removedMember);
+            await context.SaveChangesAsync();
+        }
+
+        var result = await _repository.ReconcileGroupsAsync(new[] { group.Id });
+
+        result.UpdatedGroups.Should().Be(1);
+        result.RemovedGroups.Should().Be(0);
+        result.UpdatedRuns.Should().Be(1);
+
+        var reconciledGroup = (await _repository.GetGroupsAsync(run.Id, 0, 10)).Single();
+        reconciledGroup.MemberCount.Should().Be(2);
+        reconciledGroup.EstimatedBytes.Should().Be(300);
+        reconciledGroup.MinSimilarity.Should().Be(0.8);
+        reconciledGroup.MaxSimilarity.Should().Be(1);
+
+        var reconciledRun = await _repository.GetGroupRunAsync(run.Id);
+        reconciledRun!.TotalGroups.Should().Be(1);
+        reconciledRun.TotalMembers.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ReconcileGroupsAsync_RemovesEmptyGroups()
+    {
+        var run = await _repository.CreateGroupRunAsync(new CleanupGroupRun
+        {
+            Name = "Empty run",
+            Strategy = CleanupGroupingStrategy.PromptFingerprint,
+            Status = CleanupGroupRunStatus.Completed,
+            TotalGroups = 1,
+            TotalMembers = 1
+        });
+
+        await _repository.AddGroupsAsync(run.Id, new[]
+        {
+            new CleanupGroup
+            {
+                GroupKey = "prompt:empty",
+                Strategy = CleanupGroupingStrategy.PromptFingerprint,
+                Reason = "same prompt",
+                RepresentativeImageId = 301,
+                MemberCount = 1,
+                Members = { new CleanupGroupMember { ImageId = 301, SortOrder = 0 } }
+            }
+        });
+        var group = (await _repository.GetGroupsAsync(run.Id, 0, 10)).Single();
+
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            var members = await context.CleanupGroupMembers.Where(member => member.GroupId == group.Id).ToListAsync();
+            context.CleanupGroupMembers.RemoveRange(members);
+            await context.SaveChangesAsync();
+        }
+
+        var result = await _repository.ReconcileGroupsAsync(new[] { group.Id });
+
+        result.RemovedGroups.Should().Be(1);
+        (await _repository.GetGroupsAsync(run.Id, 0, 10)).Should().BeEmpty();
+        var reconciledRun = await _repository.GetGroupRunAsync(run.Id);
+        reconciledRun!.TotalGroups.Should().Be(0);
+        reconciledRun.TotalMembers.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task StorageSummaryAndMissingFileReport_ReturnScopedMetrics()
+    {
+        await _repository.UpsertImageIndexAsync(new CleanupImageIndex
+        {
+            ImageId = 1,
+            ProjectId = 7,
+            ModeId = 1,
+            ImagePath = "present.png",
+            FileExists = true,
+            FileSizeBytes = 100,
+            WorkflowId = "txt2img",
+            Status = CleanupIndexStatus.Indexed
+        });
+        await _repository.UpsertImageIndexAsync(new CleanupImageIndex
+        {
+            ImageId = 2,
+            ProjectId = 7,
+            ModeId = 1,
+            ImagePath = "missing.png",
+            FileExists = false,
+            FileSizeBytes = 200,
+            WorkflowId = "txt2img",
+            Status = CleanupIndexStatus.MissingFile
+        });
+        await _repository.UpsertImageIndexAsync(new CleanupImageIndex
+        {
+            ImageId = 3,
+            ProjectId = 8,
+            ModeId = 1,
+            ImagePath = "other.png",
+            FileExists = true,
+            FileSizeBytes = 300,
+            WorkflowId = "img2img",
+            Status = CleanupIndexStatus.Indexed
+        });
+        var run = await _repository.CreateGroupRunAsync(new CleanupGroupRun
+        {
+            Name = "Project run",
+            Strategy = CleanupGroupingStrategy.ExactDuplicate,
+            Status = CleanupGroupRunStatus.Completed,
+            ProjectId = 7
+        });
+        await _repository.AddGroupsAsync(run.Id, new[]
+        {
+            new CleanupGroup
+            {
+                GroupKey = "exact:a",
+                Strategy = CleanupGroupingStrategy.ExactDuplicate,
+                Reason = "same hash",
+                MemberCount = 2,
+                EstimatedBytes = 300,
+                Members =
+                {
+                    new CleanupGroupMember { ImageId = 1, SortOrder = 0, EstimatedBytes = 100 },
+                    new CleanupGroupMember { ImageId = 2, SortOrder = 1, EstimatedBytes = 200 }
+                }
+            }
+        });
+
+        var summary = await _repository.GetStorageSummaryAsync(projectId: 7, runId: run.Id);
+        var missing = await _repository.GetMissingFileReportAsync(projectId: 7, skip: 0, take: 10);
+        var workflows = await _repository.GetWorkflowStorageSummaryAsync(projectId: 7, take: 10);
+
+        summary.IndexedImages.Should().Be(1);
+        summary.MissingFiles.Should().Be(1);
+        summary.IndexedBytes.Should().Be(100);
+        summary.GroupRuns.Should().Be(1);
+        summary.Groups.Should().Be(1);
+        summary.GroupMembers.Should().Be(2);
+        summary.GroupEstimatedBytes.Should().Be(300);
+        missing.Should().ContainSingle(item => item.ImageId == 2 && item.ImagePath == "missing.png");
+        workflows.Should().ContainSingle(item => item.WorkflowId == "txt2img"
+            && item.IndexedImages == 1
+            && item.MissingFiles == 1
+            && item.IndexedBytes == 100);
+    }
+
     private sealed class TestDbContextFactory : IDbContextFactory<AppDbContext>, IDisposable
     {
         private readonly DbContextOptions<AppDbContext> _options;

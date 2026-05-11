@@ -116,6 +116,8 @@ builder.Services.AddSingleton<ICleanupScoreIndexingService, CleanupScoreIndexing
 builder.Services.Configure<CleanupIndexingQueueOptions>(builder.Configuration.GetSection(CleanupIndexingQueueOptions.SectionName));
 builder.Services.AddSingleton<ICleanupIndexingQueue, CleanupIndexingQueue>();
 builder.Services.AddHostedService(sp => (CleanupIndexingQueue)sp.GetRequiredService<ICleanupIndexingQueue>());
+builder.Services.AddSingleton<ICleanupMaintenanceService, CleanupMaintenanceService>();
+builder.Services.AddHostedService(sp => (CleanupMaintenanceService)sp.GetRequiredService<ICleanupMaintenanceService>());
 builder.Services.AddSingleton<ICleanupGroupingService, CleanupGroupingService>();
 builder.Services.Configure<CleanupGroupExplanationOptions>(builder.Configuration.GetSection(CleanupGroupExplanationOptions.SectionName));
 builder.Services.AddScoped<ICleanupGroupExplanationService, CleanupGroupExplanationService>();

@@ -596,14 +596,20 @@ namespace BlazorWebApp.Services
         public async Task<Image> DeleteImage(Image image)
         {
             using var context = await _factory.CreateDbContextAsync();
+            var affectedCleanupGroupIds = await GetAffectedCleanupGroupIdsAsync(context, image.Id);
             var response = context.Remove(image);
             await context.SaveChangesAsync();
 
             // Delete the physical file after the entity is removed so a DB failure does
             // not leave the record orphaned while the file is already gone.
+            var fileDeleted = false;
             if (!string.IsNullOrWhiteSpace(image.Path))
             {
-                try { _io.DeleteFile(image.Path); }
+                try
+                {
+                    _io.DeleteFile(image.Path);
+                    fileDeleted = true;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex,
@@ -612,7 +618,33 @@ namespace BlazorWebApp.Services
                 }
             }
 
+            _events.Publish(new ImageRecordDeletedEventArgs
+            {
+                ImageId = image.Id,
+                ProjectId = image.ProjectId,
+                ImagePath = image.Path,
+                FileDeleted = fileDeleted,
+                CleanupGroupIds = affectedCleanupGroupIds
+            });
+
             return response.Entity;
+        }
+
+        private static async Task<List<int>> GetAffectedCleanupGroupIdsAsync(AppDbContext context, int imageId)
+        {
+            var memberGroupIds = await context.CleanupGroupMembers
+                .AsNoTracking()
+                .Where(member => member.ImageId == imageId)
+                .Select(member => member.GroupId)
+                .ToListAsync();
+
+            var representativeGroupIds = await context.CleanupGroups
+                .AsNoTracking()
+                .Where(group => group.RepresentativeImageId == imageId)
+                .Select(group => group.Id)
+                .ToListAsync();
+
+            return memberGroupIds.Concat(representativeGroupIds).Distinct().ToList();
         }
 
         public async Task<string> GetSampler(int id)

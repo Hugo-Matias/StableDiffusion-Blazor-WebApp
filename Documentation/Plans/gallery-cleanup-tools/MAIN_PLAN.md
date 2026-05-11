@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 9 optional VL captions and explanations complete and cleanup-test validated
+**Current Phase:** Phase 10 safety, maintenance, and storage reporting complete and cleanup-test validated
 
 ---
 
@@ -452,21 +452,31 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Add safety features and storage maintenance tools after core grouping works.
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
-- [ ] Add stale index cleanup when images are deleted.
-- [ ] Add orphan/missing-file reports.
-- [ ] Add optional move-to-staging/trash workflow if desired.
-- [ ] Add storage summary metrics by project, workflow, and cleanup run.
-- [ ] Add documentation for cleanup operations and recovery expectations.
+- [x] Add stale index cleanup when images are deleted.
+- [x] Add orphan/missing-file reports.
+- [x] Add optional move-to-staging/trash workflow if desired. Deferred until explicitly requested; existing deletion remains confirmation-gated.
+- [x] Add storage summary metrics by project, workflow, and cleanup run.
+- [x] Add documentation for cleanup operations and recovery expectations.
 
 #### Success Criteria
 
 - Cleanup data does not accumulate stale rows after image deletion.
 - Users can identify storage-heavy projects and groups.
 - Destructive cleanup remains reversible if staging/trash is enabled.
+- Focused cleanup tests passed: 47 passed, 0 failed.
+
+#### Cleanup Operations Notes
+
+- Image deletion publishes an image-deleted event after the database row is removed and file deletion is attempted.
+- Cleanup maintenance subscribes to deleted-image events and reconciles affected cleanup groups/runs so member counts, estimated bytes, and representative images stay current.
+- Direct cleanup index, embedding, score, group-member, and explanation rows are already protected by EF relationships where applicable; maintenance handles the stale group summaries that remain after member cascades.
+- Missing-file reporting uses indexed rows marked missing by cleanup scans and does not delete files or database rows.
+- Storage summary metrics are advisory review aids scoped by the selected project and selected cleanup run.
+- Move-to-staging/trash is intentionally deferred. Until that workflow is enabled, cleanup still routes deletion through the existing Gallery selected-image confirmation path.
 
 ---
 
@@ -551,3 +561,5 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 | Phase 6         | Added ONNX Runtime GPU package support with CPU/CUDA provider selection, Magick.NET tensor preprocessing, ONNX embedding inference, L2 normalization, embedding persistence, CUDA probing, and focused cleanup tests.                               |
 | Phase 7         | Added visual-similarity cleanup grouping over current-model embeddings, adjustable visual threshold UI, favorite/score-aware representative selection, protected keep candidates, and focused grouping tests.                                       |
 | Phase 8         | Added separate cleanup score persistence, scoring model metadata, ONNX scalar scoring service, score indexing, low-value score grouping, advisory score threshold UI, and focused cleanup tests.                                                    |
+| Phase 9         | Added on-demand cached VL group explanations, group explanation persistence, cleanup UI Explain action, and focused cleanup tests.                                                                                                                  |
+| Phase 10        | Added deleted-image cleanup maintenance, group/run reconciliation, missing-file reports, storage summary metrics, expanded-panel group actions, Save-only group headers, and focused cleanup tests.                                                 |

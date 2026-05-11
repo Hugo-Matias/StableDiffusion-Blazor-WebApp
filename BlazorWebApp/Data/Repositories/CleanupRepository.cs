@@ -380,5 +380,178 @@ namespace BlazorWebApp.Data.Repositories
             await context.SaveChangesAsync(cancellationToken);
             return existing;
         }
+
+        public async Task<CleanupGroupReconciliationResult> ReconcileGroupsAsync(IReadOnlyCollection<int> groupIds, CancellationToken cancellationToken = default)
+        {
+            if (groupIds.Count == 0)
+            {
+                return new CleanupGroupReconciliationResult();
+            }
+
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var distinctGroupIds = groupIds.Where(id => id > 0).Distinct().ToList();
+            var groups = await context.CleanupGroups
+                .Where(group => distinctGroupIds.Contains(group.Id))
+                .ToListAsync(cancellationToken);
+
+            var runIds = groups.Select(group => group.RunId).Distinct().ToHashSet();
+            var updatedGroups = 0;
+            var removedGroups = 0;
+
+            foreach (var group in groups)
+            {
+                var members = await context.CleanupGroupMembers
+                    .Where(member => member.GroupId == group.Id)
+                    .OrderBy(member => member.SortOrder)
+                    .ThenBy(member => member.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (members.Count == 0)
+                {
+                    context.CleanupGroups.Remove(group);
+                    removedGroups++;
+                    continue;
+                }
+
+                var representativeImageId = group.RepresentativeImageId;
+                if (!representativeImageId.HasValue || members.All(member => member.ImageId != representativeImageId.Value))
+                {
+                    representativeImageId = members.FirstOrDefault(member => member.Role == CleanupGroupMemberRole.Representative)?.ImageId
+                        ?? members[0].ImageId;
+                }
+
+                group.RepresentativeImageId = representativeImageId;
+                group.MemberCount = members.Count;
+                group.EstimatedBytes = members.Sum(member => member.EstimatedBytes ?? 0);
+                var similarities = members
+                    .Where(member => member.SimilarityScore.HasValue)
+                    .Select(member => member.SimilarityScore!.Value)
+                    .ToList();
+                group.MinSimilarity = similarities.Count == 0 ? null : similarities.Min();
+                group.MaxSimilarity = similarities.Count == 0 ? null : similarities.Max();
+                updatedGroups++;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            var updatedRuns = 0;
+            foreach (var runId in runIds)
+            {
+                var run = await context.CleanupGroupRuns.FirstOrDefaultAsync(row => row.Id == runId, cancellationToken);
+                if (run == null)
+                {
+                    continue;
+                }
+
+                var runGroups = await context.CleanupGroups
+                    .Where(group => group.RunId == runId)
+                    .ToListAsync(cancellationToken);
+                run.TotalGroups = runGroups.Count;
+                run.TotalMembers = runGroups.Sum(group => group.MemberCount);
+                run.UpdatedAtUtc = DateTime.UtcNow;
+                updatedRuns++;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            return new CleanupGroupReconciliationResult
+            {
+                RequestedGroups = distinctGroupIds.Count,
+                UpdatedGroups = updatedGroups,
+                RemovedGroups = removedGroups,
+                UpdatedRuns = updatedRuns
+            };
+        }
+
+        public async Task<CleanupStorageSummary> GetStorageSummaryAsync(int? projectId = null, int? runId = null, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+            var indexQuery = context.CleanupImageIndexes.AsNoTracking();
+            if (projectId.HasValue)
+            {
+                indexQuery = indexQuery.Where(index => index.ProjectId == projectId.Value);
+            }
+
+            var runQuery = context.CleanupGroupRuns.AsNoTracking();
+            if (projectId.HasValue)
+            {
+                runQuery = runQuery.Where(run => run.ProjectId == projectId.Value);
+            }
+
+            if (runId.HasValue)
+            {
+                runQuery = runQuery.Where(run => run.Id == runId.Value);
+            }
+
+            var runIds = await runQuery.Select(run => run.Id).ToListAsync(cancellationToken);
+            var groupQuery = context.CleanupGroups.AsNoTracking().Where(group => runIds.Contains(group.RunId));
+
+            return new CleanupStorageSummary
+            {
+                IndexedImages = await indexQuery.CountAsync(index => index.Status == CleanupIndexStatus.Indexed && index.FileExists, cancellationToken),
+                MissingFiles = await indexQuery.CountAsync(index => index.Status == CleanupIndexStatus.MissingFile || !index.FileExists, cancellationToken),
+                ErrorImages = await indexQuery.CountAsync(index => index.Status == CleanupIndexStatus.Error, cancellationToken),
+                IndexedBytes = await indexQuery.Where(index => index.FileExists).SumAsync(index => index.FileSizeBytes ?? 0, cancellationToken),
+                GroupRuns = runIds.Count,
+                Groups = await groupQuery.CountAsync(cancellationToken),
+                GroupMembers = await groupQuery.SumAsync(group => group.MemberCount, cancellationToken),
+                GroupEstimatedBytes = await groupQuery.SumAsync(group => group.EstimatedBytes ?? 0, cancellationToken)
+            };
+        }
+
+        public async Task<List<CleanupMissingFileReportItem>> GetMissingFileReportAsync(int? projectId, int skip, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageIndexes
+                .AsNoTracking()
+                .Where(index => index.Status == CleanupIndexStatus.MissingFile || !index.FileExists);
+
+            if (projectId.HasValue)
+            {
+                query = query.Where(index => index.ProjectId == projectId.Value);
+            }
+
+            return await query
+                .OrderByDescending(index => index.UpdatedAtUtc)
+                .Skip(skip)
+                .Take(take)
+                .Select(index => new CleanupMissingFileReportItem
+                {
+                    ImageId = index.ImageId,
+                    ProjectId = index.ProjectId,
+                    ImagePath = index.ImagePath,
+                    FileSizeBytes = index.FileSizeBytes,
+                    UpdatedAtUtc = index.UpdatedAtUtc
+                })
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupWorkflowStorageSummaryItem>> GetWorkflowStorageSummaryAsync(int? projectId, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageIndexes
+                .AsNoTracking()
+                .Where(index => !string.IsNullOrWhiteSpace(index.WorkflowId));
+
+            if (projectId.HasValue)
+            {
+                query = query.Where(index => index.ProjectId == projectId.Value);
+            }
+
+            return await query
+                .GroupBy(index => index.WorkflowId!)
+                .Select(group => new CleanupWorkflowStorageSummaryItem
+                {
+                    WorkflowId = group.Key,
+                    IndexedImages = group.Count(index => index.Status == CleanupIndexStatus.Indexed && index.FileExists),
+                    MissingFiles = group.Count(index => index.Status == CleanupIndexStatus.MissingFile || !index.FileExists),
+                    IndexedBytes = group.Where(index => index.FileExists).Sum(index => index.FileSizeBytes ?? 0)
+                })
+                .OrderByDescending(item => item.IndexedBytes)
+                .ThenByDescending(item => item.IndexedImages)
+                .Take(Math.Max(1, take))
+                .ToListAsync(cancellationToken);
+        }
     }
 }
