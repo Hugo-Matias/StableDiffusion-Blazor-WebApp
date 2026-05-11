@@ -105,6 +105,10 @@ builder.Services.AddSingleton<ICleanupIndexingService, CleanupIndexingService>()
 builder.Services.Configure<CleanupEmbeddingOptions>(builder.Configuration.GetSection(CleanupEmbeddingOptions.SectionName));
 builder.Services.AddSingleton<ICleanupEmbeddingModelMetadataService, CleanupEmbeddingModelMetadataService>();
 builder.Services.AddSingleton<ICleanupEmbeddingVectorCodec, CleanupEmbeddingVectorCodec>();
+builder.Services.AddSingleton<ICleanupEmbeddingImagePreprocessor, CleanupEmbeddingImagePreprocessor>();
+builder.Services.AddSingleton<ICleanupEmbeddingRuntime, CleanupEmbeddingRuntime>();
+builder.Services.AddSingleton<IImageEmbeddingService, OnnxImageEmbeddingService>();
+builder.Services.AddSingleton<ICleanupEmbeddingIndexingService, CleanupEmbeddingIndexingService>();
 builder.Services.Configure<CleanupIndexingQueueOptions>(builder.Configuration.GetSection(CleanupIndexingQueueOptions.SectionName));
 builder.Services.AddSingleton<ICleanupIndexingQueue, CleanupIndexingQueue>();
 builder.Services.AddHostedService(sp => (CleanupIndexingQueue)sp.GetRequiredService<ICleanupIndexingQueue>());

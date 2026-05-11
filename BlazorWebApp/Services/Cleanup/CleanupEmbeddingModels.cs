@@ -15,6 +15,7 @@ namespace BlazorWebApp.Services.Cleanup
         public bool Enabled { get; init; }
         public bool RunForSavedImages { get; init; }
         public CleanupEmbeddingRuntimeProvider RuntimeProvider { get; init; } = CleanupEmbeddingRuntimeProvider.CPU;
+        public int CudaDeviceId { get; init; }
         public CleanupEmbeddingModelOptions Model { get; init; } = new();
     }
 
@@ -44,5 +45,18 @@ namespace BlazorWebApp.Services.Cleanup
     {
         public bool IsValid => Errors.Count == 0;
         public List<string> Errors { get; init; } = new();
+    }
+
+    public record CleanupEmbeddingTensor
+    {
+        public float[] Values { get; init; } = Array.Empty<float>();
+        public int[] Dimensions { get; init; } = Array.Empty<int>();
+    }
+
+    public record CleanupEmbeddingRuntimeProbeResult
+    {
+        public CleanupEmbeddingRuntimeProvider RequestedProvider { get; init; }
+        public bool IsAvailable { get; init; }
+        public string? ErrorMessage { get; init; }
     }
 }

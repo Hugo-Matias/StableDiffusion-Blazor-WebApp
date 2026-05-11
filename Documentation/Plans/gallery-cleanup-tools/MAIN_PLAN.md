@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 6 ONNX embedding infrastructure in progress; storage/config checkpoint cleanup-test validated
+**Current Phase:** Phase 6 ONNX embedding infrastructure complete and cleanup-test validated
 
 ---
 
@@ -356,17 +356,17 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Add configurable ONNX image embeddings and persist vectors.
 **Complexity:** 13 points
-**Status:** [~] In progress - storage/config checkpoint validated
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
-- [ ] Add ONNX Runtime package strategy and isolate provider selection.
+- [x] Add ONNX Runtime package strategy and isolate provider selection.
 - [x] Add simple runtime selector with CPU and CUDA choices from the start.
 - [x] Add embedding model configuration and model hash detection.
-- [ ] Implement Magick.NET preprocessing to tensor input.
-- [ ] Implement embedding inference and L2 normalization.
+- [x] Implement Magick.NET preprocessing to tensor input.
+- [x] Implement embedding inference and L2 normalization.
 - [x] Persist embeddings as float32 BLOBs.
-- [~] Add CPU-focused tests around vector serialization and model config validation, plus CUDA availability probing around provider initialization.
+- [x] Add CPU-focused tests around vector serialization and model config validation, plus CUDA availability probing around provider initialization.
 
 #### Success Criteria
 
@@ -541,4 +541,4 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 | Phase 3         | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                                                                                                                |
 | Phase 4         | Added cleanup review UI with scope indexing, deterministic group generation controls, paged groups, lazy members, selection wiring, AssetViewer reuse, determinate indexing progress, selected-tile cues, and Gallery action placement refinements. |
 | Phase 5         | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests.                                                    |
-| Phase 6         | Started embedding infrastructure with CPU/CUDA runtime options, model metadata validation, model hash detection, float32 vector codec, embedding repository methods, and focused cleanup tests.                                             |
+| Phase 6         | Added ONNX Runtime GPU package support with CPU/CUDA provider selection, Magick.NET tensor preprocessing, ONNX embedding inference, L2 normalization, embedding persistence, CUDA probing, and focused cleanup tests.                               |

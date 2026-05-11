@@ -74,6 +74,11 @@ namespace BlazorWebApp.Services.Cleanup
                 errors.Add("StandardDeviation values must be non-zero.");
             }
 
+            if (options.CudaDeviceId < 0)
+            {
+                errors.Add("CudaDeviceId cannot be negative.");
+            }
+
             return new CleanupEmbeddingModelValidationResult { Errors = errors };
         }
 
