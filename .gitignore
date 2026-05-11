@@ -387,3 +387,6 @@ FodyWeavers.xsd
 /BlazorWebApp/payload_video_generation.json
 /BlazorWebApp/wwwroot/images/artists
 /BlazorWebApp/payload_ollama.json
+/BlazorWebApp/payload_cleanup_batch.json
+/BlazorWebApp/payload_cleanup_embedding.json
+/BlazorWebApp/payload_cleanup_score.json

@@ -4,8 +4,8 @@ namespace BlazorWebApp.Services.Cleanup
     {
         public const string SectionName = "Cleanup:IndexingQueue";
 
-        public bool IndexSavedImages { get; init; } = true;
-        public bool RunEmbeddingsForSavedImages { get; init; }
+        public bool IndexSavedImages { get; set; } = true;
+        public bool RunEmbeddingsForSavedImages { get; set; }
     }
 
     public record CleanupIndexingOptions

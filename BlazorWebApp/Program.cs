@@ -1,10 +1,8 @@
 using BlazorWebApp.Data;
-using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using BlazorWebApp.Services.Cleanup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.StaticFiles;
 using MudBlazor;
 using MudBlazor.Services;
@@ -102,24 +100,30 @@ builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ICleanupRepository,
 builder.Services.AddSingleton<ICleanupPromptIndexService, CleanupPromptIndexService>();
 builder.Services.AddSingleton<ICleanupImageHashService, CleanupImageHashService>();
 builder.Services.AddSingleton<ICleanupIndexingService, CleanupIndexingService>();
-builder.Services.Configure<CleanupEmbeddingOptions>(builder.Configuration.GetSection(CleanupEmbeddingOptions.SectionName));
+builder.Services.AddSingleton<global::Microsoft.Extensions.Options.IOptions<CleanupEmbeddingOptions>>(sp => new SettingsOptions<CleanupEmbeddingOptions>(sp.GetRequiredService<ISettingsService>().Settings.Cleanup.Embeddings));
 builder.Services.AddSingleton<ICleanupEmbeddingModelMetadataService, CleanupEmbeddingModelMetadataService>();
 builder.Services.AddSingleton<ICleanupEmbeddingVectorCodec, CleanupEmbeddingVectorCodec>();
 builder.Services.AddSingleton<ICleanupEmbeddingImagePreprocessor, CleanupEmbeddingImagePreprocessor>();
 builder.Services.AddSingleton<ICleanupEmbeddingRuntime, CleanupEmbeddingRuntime>();
-builder.Services.AddSingleton<IImageEmbeddingService, OnnxImageEmbeddingService>();
+builder.Services.AddSingleton<OnnxImageEmbeddingService>();
+builder.Services.AddSingleton<ComfyImageEmbeddingService>();
+builder.Services.AddSingleton<IImageEmbeddingService, RoutingImageEmbeddingService>();
 builder.Services.AddSingleton<ICleanupEmbeddingIndexingService, CleanupEmbeddingIndexingService>();
-builder.Services.Configure<CleanupScoringOptions>(builder.Configuration.GetSection(CleanupScoringOptions.SectionName));
+builder.Services.AddSingleton<global::Microsoft.Extensions.Options.IOptions<CleanupScoringOptions>>(sp => new SettingsOptions<CleanupScoringOptions>(sp.GetRequiredService<ISettingsService>().Settings.Cleanup.Scoring));
 builder.Services.AddSingleton<ICleanupScoringModelMetadataService, CleanupScoringModelMetadataService>();
-builder.Services.AddSingleton<IImageScoringService, OnnxImageScoringService>();
+builder.Services.AddSingleton<OnnxImageScoringService>();
+builder.Services.AddSingleton<ComfyImageScoringService>();
+builder.Services.AddSingleton<IImageScoringService, RoutingImageScoringService>();
 builder.Services.AddSingleton<ICleanupScoreIndexingService, CleanupScoreIndexingService>();
-builder.Services.Configure<CleanupIndexingQueueOptions>(builder.Configuration.GetSection(CleanupIndexingQueueOptions.SectionName));
+builder.Services.AddSingleton<ICleanupComfyBatchIndexingService, CleanupComfyBatchIndexingService>();
+builder.Services.AddSingleton<ICleanupOnnxIndexingService, CleanupOnnxIndexingService>();
+builder.Services.AddSingleton<global::Microsoft.Extensions.Options.IOptions<CleanupIndexingQueueOptions>>(sp => new SettingsOptions<CleanupIndexingQueueOptions>(sp.GetRequiredService<ISettingsService>().Settings.Cleanup.IndexingQueue));
 builder.Services.AddSingleton<ICleanupIndexingQueue, CleanupIndexingQueue>();
 builder.Services.AddHostedService(sp => (CleanupIndexingQueue)sp.GetRequiredService<ICleanupIndexingQueue>());
 builder.Services.AddSingleton<ICleanupMaintenanceService, CleanupMaintenanceService>();
 builder.Services.AddHostedService(sp => (CleanupMaintenanceService)sp.GetRequiredService<ICleanupMaintenanceService>());
 builder.Services.AddSingleton<ICleanupGroupingService, CleanupGroupingService>();
-builder.Services.Configure<CleanupGroupExplanationOptions>(builder.Configuration.GetSection(CleanupGroupExplanationOptions.SectionName));
+builder.Services.AddSingleton<global::Microsoft.Extensions.Options.IOptions<CleanupGroupExplanationOptions>>(sp => new SettingsOptions<CleanupGroupExplanationOptions>(sp.GetRequiredService<ISettingsService>().Settings.Cleanup.VisionLanguage));
 builder.Services.AddScoped<ICleanupGroupExplanationService, CleanupGroupExplanationService>();
 
 // Danbooru library service - plain HttpClient for CDN downloads (no auth headers needed)
@@ -258,7 +262,7 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/files/resource_previews"
 });
 
-var danbooruOptions = app.Services.GetRequiredService<IOptions<DanbooruOptions>>().Value;
+var danbooruOptions = app.Services.GetRequiredService<global::Microsoft.Extensions.Options.IOptions<BlazorWebApp.Models.DanbooruOptions>>().Value;
 var danbooruLogger = app.Services.GetRequiredService<ILogger<Program>>();
 if (string.IsNullOrWhiteSpace(danbooruOptions.SavedMediaPath))
 {

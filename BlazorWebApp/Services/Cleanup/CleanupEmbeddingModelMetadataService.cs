@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Options;
 
 namespace BlazorWebApp.Services.Cleanup
@@ -27,6 +28,16 @@ namespace BlazorWebApp.Services.Cleanup
             if (string.IsNullOrWhiteSpace(model.ModelKey))
             {
                 errors.Add("ModelKey is required when cleanup embeddings are enabled.");
+            }
+
+            if (options.RuntimeProvider == CleanupEmbeddingRuntimeProvider.ComfyUI)
+            {
+                if (model.Dimensions < 16)
+                {
+                    errors.Add("ComfyUI embedding dimensions must be at least 16.");
+                }
+
+                return new CleanupEmbeddingModelValidationResult { Errors = errors };
             }
 
             if (string.IsNullOrWhiteSpace(model.ModelPath))
@@ -88,10 +99,19 @@ namespace BlazorWebApp.Services.Cleanup
             return new CleanupEmbeddingModelIdentity
             {
                 ModelKey = model.ModelKey,
-                ModelHash = await ComputeModelHashAsync(model.ModelPath, cancellationToken),
+                ModelHash = Options.RuntimeProvider == CleanupEmbeddingRuntimeProvider.ComfyUI
+                    ? ComputeRemoteModelHash("comfyui-embedding", model.ModelKey, model.Dimensions.ToString())
+                    : await ComputeModelHashAsync(model.ModelPath, cancellationToken),
                 Dimensions = model.Dimensions,
                 RuntimeProvider = Options.RuntimeProvider.ToString()
             };
+        }
+
+        private static string ComputeRemoteModelHash(params string[] parts)
+        {
+            var value = string.Join(":", parts.Select(part => part ?? string.Empty));
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+            return Convert.ToHexString(hash).ToLowerInvariant();
         }
 
         private static async Task<string?> ComputeModelHashAsync(string modelPath, CancellationToken cancellationToken)

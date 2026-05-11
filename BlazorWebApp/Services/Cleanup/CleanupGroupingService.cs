@@ -218,26 +218,40 @@ namespace BlazorWebApp.Services.Cleanup
                     && score.ScoreName == identity.ScoreName
                     && index.Status == CleanupIndexStatus.Indexed
                     && index.FileExists
-                select new ScoreRecord(
+                select new
+                {
                     score.ImageId,
                     index.ProjectId,
                     index.FileSizeBytes,
                     image.Favorite,
-                    image.Score,
-                    score.Score,
+                    ImageScore = image.Score,
+                    CleanupScore = score.Score,
                     score.ScoreName,
                     score.MinScore,
-                    score.MaxScore);
+                    score.MaxScore
+                };
 
             if (projectId.HasValue)
             {
                 query = query.Where(record => record.ProjectId == projectId.Value);
             }
 
-            return await query
-                .OrderBy(record => record.Score)
+            var rows = await query
+                .OrderBy(record => record.CleanupScore)
                 .ThenBy(record => record.ImageId)
                 .ToListAsync(cancellationToken);
+
+            return rows.Select(row => new ScoreRecord(
+                    row.ImageId,
+                    row.ProjectId,
+                    row.FileSizeBytes,
+                    row.Favorite,
+                    row.ImageScore,
+                    row.CleanupScore,
+                    row.ScoreName,
+                    row.MinScore,
+                    row.MaxScore))
+                .ToList();
         }
 
         private static List<CleanupGroup> BuildExactDuplicateGroups(IReadOnlyList<CleanupIndexRecord> records, CleanupGroupingOptions options)

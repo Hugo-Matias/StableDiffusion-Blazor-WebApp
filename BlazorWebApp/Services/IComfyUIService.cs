@@ -1,3 +1,4 @@
+using BlazorWebApp.Data.Dtos.ComfyUI;
 using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Models;
 
@@ -57,6 +58,16 @@ namespace BlazorWebApp.Services
         // History & File Operations
         Task<List<string>> GetFilenameFromHistory(Guid promptId);
         Task<List<string>> GetVideoFilenameFromHistory(Guid promptId);
+
+        /// <summary>
+        /// Posts an arbitrary ComfyUI prompt and returns the first text/string output from history.
+        /// </summary>
+        Task<LLMResponse> PostTextPromptAsync(object payload, string payloadLogPath = "llm_payload.json", Guid? uploadedInputTrackingId = null);
+
+        /// <summary>
+        /// Posts an arbitrary ComfyUI prompt and returns every text/string output keyed by output node id.
+        /// </summary>
+        Task<ComfyTextPromptResponse> PostTextPromptOutputsAsync(object payload, string payloadLogPath = "llm_payload.json", Guid? uploadedInputTrackingId = null);
 
         // Image Upload
         Task<string> UploadImageAsync(string base64Data, Guid? promptId = null);

@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -17,6 +18,7 @@ namespace BlazorWebApp.Services
         private readonly ILogger<ComfyUIService> _logger;
         private readonly HttpClient _httpClient;
         private readonly ComfyUIEventBus _bus;
+        private readonly IServiceProvider _services;
         private readonly IConfiguration _configuration;
         private readonly JsonSerializerOptions _jsonIgnoreNull;
         private readonly ConcurrentDictionary<Guid, object> _pendingJobs = new();
@@ -35,10 +37,11 @@ namespace BlazorWebApp.Services
             ".mp4", ".webm", ".gif", ".avi", ".mov", ".mkv"
         };
 
-        public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IConfiguration configuration, IWorkflowService workflow, IIOService io, ILogger<ComfyUIService> logger)
+        public ComfyUIService(HttpClient httpClient, ComfyUIEventBus bus, IServiceProvider services, IConfiguration configuration, IWorkflowService workflow, IIOService io, ILogger<ComfyUIService> logger)
         {
             _httpClient = httpClient;
             _bus = bus;
+            _services = services;
             _configuration = configuration;
             _workflow = workflow;
             _io = io;
@@ -55,23 +58,52 @@ namespace BlazorWebApp.Services
             {
                 if (_pendingJobs.TryRemove(promptId, out var obj))
                 {
+                    var exception = new Exception(error);
+                    await CleanupUploadedImagesAsync(promptId);
+
                     if (obj is TaskCompletionSource<GeneratedImages> imgTcs)
                     {
-                        imgTcs.SetException(new Exception(error));
+                        imgTcs.SetException(exception);
                     }
                     else if (obj is TaskCompletionSource<GeneratedVideos> vidTcs)
                     {
-                        vidTcs.SetException(new Exception(error));
+                        vidTcs.SetException(exception);
                     }
                     else if (obj is TaskCompletionSource<LLMResponse> llmTcs)
                     {
-                        llmTcs.SetException(new Exception(error));
+                        llmTcs.SetException(exception);
                     }
+                    else if (obj is TaskCompletionSource<ComfyTextPromptResponse> textTcs)
+                    {
+                        textTcs.SetException(exception);
+                    }
+                    return;
                 }
 
                 // Cleanup uploaded input images on failure
                 await CleanupUploadedImagesAsync(promptId);
             };
+        }
+
+        private object PreparePromptPayload(object payload)
+        {
+            var backend = _services.GetService(typeof(IBackendService)) as IBackendService;
+            var clientId = backend?.ComfyWSClientId;
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                _logger.LogWarning("ComfyUI websocket client id is not available before prompt submission. Completion may not be delivered over websocket.");
+                return payload;
+            }
+
+            var node = JsonSerializer.SerializeToNode(payload, _jsonIgnoreNull);
+            if (node is JsonObject obj)
+            {
+                obj["client_id"] = clientId;
+                return obj;
+            }
+
+            _logger.LogWarning("Unable to stamp ComfyUI prompt payload with websocket client id because the payload root is not a JSON object.");
+            return payload;
         }
 
         private string ResolveComfyPath(string key)
@@ -110,6 +142,7 @@ namespace BlazorWebApp.Services
                 {
                     var text = await GetTextFromHistory(promptId);
                     _pendingJobs.TryRemove(promptId, out _);
+                    await CleanupUploadedImagesAsync(promptId);
                     llmTcs.SetResult(new LLMResponse
                     {
                         Text = text ?? string.Empty,
@@ -120,7 +153,38 @@ namespace BlazorWebApp.Services
                 {
                     _logger.LogError(ex, "Failed to get LLM text output for prompt {PromptId}", promptId);
                     _pendingJobs.TryRemove(promptId, out _);
+                    await CleanupUploadedImagesAsync(promptId);
                     llmTcs.SetException(ex);
+                }
+                return;
+            }
+
+            var isTextOutputJob = objType.IsGenericType &&
+                                  objType.GetGenericTypeDefinition() == typeof(TaskCompletionSource<>) &&
+                                  objType.GetGenericArguments()[0] == typeof(ComfyTextPromptResponse);
+
+            if (isTextOutputJob)
+            {
+                _logger.LogDebug("Handling text-output job completion for prompt {PromptId}", promptId);
+                var textTcs = (TaskCompletionSource<ComfyTextPromptResponse>)obj;
+
+                try
+                {
+                    var textByNodeId = await WaitForTextByNodeFromHistoryAsync(promptId);
+                    _pendingJobs.TryRemove(promptId, out _);
+                    await CleanupUploadedImagesAsync(promptId);
+                    textTcs.SetResult(new ComfyTextPromptResponse
+                    {
+                        TextByNodeId = textByNodeId,
+                        PromptId = promptId.ToString()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to get text outputs for prompt {PromptId}", promptId);
+                    _pendingJobs.TryRemove(promptId, out _);
+                    await CleanupUploadedImagesAsync(promptId);
+                    textTcs.SetException(ex);
                 }
                 return;
             }
@@ -536,24 +600,56 @@ namespace BlazorWebApp.Services
 
         private async Task<string?> GetTextFromHistory(Guid promptId)
         {
+            var textByNodeId = await WaitForTextByNodeFromHistoryAsync(promptId);
+            return textByNodeId.Values.FirstOrDefault();
+        }
+
+        private async Task<Dictionary<string, string>> WaitForTextByNodeFromHistoryAsync(Guid promptId)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (DateTime.UtcNow < deadline)
+            {
+                var textByNodeId = await GetTextByNodeFromHistory(promptId, logMissingText: false);
+                if (textByNodeId.Count > 0)
+                {
+                    return textByNodeId;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+            }
+
+            return await GetTextByNodeFromHistory(promptId);
+        }
+
+        private async Task<Dictionary<string, string>> GetTextByNodeFromHistory(Guid promptId, bool logMissingText = true)
+        {
             var response = await _httpClient.GetAsync($"/history/{promptId}");
             response.EnsureSuccessStatusCode();
             using var stream = await response.Content.ReadAsStreamAsync();
             using var doc = await JsonDocument.ParseAsync(stream);
+            var textByNodeId = new Dictionary<string, string>();
 
             if (!doc.RootElement.TryGetProperty(promptId.ToString(), out var promptElement))
             {
-                _logger.LogWarning("Prompt ID {PromptId} not found in history response", promptId);
-                return null;
+                if (logMissingText)
+                {
+                    _logger.LogWarning("Prompt ID {PromptId} not found in history response", promptId);
+                }
+
+                return textByNodeId;
             }
 
             if (!promptElement.TryGetProperty("outputs", out var outputsElement))
             {
-                _logger.LogWarning("No outputs found for prompt ID {PromptId}", promptId);
-                return null;
+                if (logMissingText)
+                {
+                    _logger.LogWarning("No outputs found for prompt ID {PromptId}", promptId);
+                }
+
+                return textByNodeId;
             }
 
-            // Find the first node with text output
+            // Find nodes with text output
             foreach (var outputNode in outputsElement.EnumerateObject())
             {
                 var nodeValue = outputNode.Value;
@@ -562,7 +658,13 @@ namespace BlazorWebApp.Services
                     stringElement.ValueKind == JsonValueKind.Array &&
                     stringElement.GetArrayLength() > 0)
                 {
-                    return stringElement[0].GetString();
+                    var text = stringElement[0].GetString();
+                    if (text != null)
+                    {
+                        textByNodeId[outputNode.Name] = text;
+                    }
+
+                    continue;
                 }
 
                 // Some nodes might use "text"
@@ -570,12 +672,20 @@ namespace BlazorWebApp.Services
                     textElement.ValueKind == JsonValueKind.Array &&
                     textElement.GetArrayLength() > 0)
                 {
-                    return textElement[0].GetString();
+                    var text = textElement[0].GetString();
+                    if (text != null)
+                    {
+                        textByNodeId[outputNode.Name] = text;
+                    }
                 }
             }
 
-            _logger.LogWarning("No text output found for prompt ID {PromptId}", promptId);
-            return null;
+            if (textByNodeId.Count == 0 && logMissingText)
+            {
+                _logger.LogWarning("No text output found for prompt ID {PromptId}", promptId);
+            }
+
+            return textByNodeId;
         }
         #endregion
 
@@ -790,10 +900,12 @@ namespace BlazorWebApp.Services
         /// Cleans up uploaded input images for a completed job.
         /// Called after job completion (success or failure).
         /// </summary>
-        private async Task CleanupUploadedImagesAsync(Guid promptId)
+        private Task CleanupUploadedImagesAsync(Guid promptId)
         {
             if (!_uploadedImages.TryRemove(promptId, out var filenames))
-                return;
+            {
+                return Task.CompletedTask;
+            }
 
             foreach (var filename in filenames)
             {
@@ -830,11 +942,14 @@ namespace BlazorWebApp.Services
                     _logger.LogWarning(ex, "Failed to cleanup input image: {Filename}", filename);
                 }
             }
+
+            return Task.CompletedTask;
         }
 
         public async Task<TResponse> PostPromptAsync<TResponse>(object payload, string payloadLogPath = "payload.json")
         {
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            var promptPayload = PreparePromptPayload(payload);
+            var json = JsonSerializer.Serialize(promptPayload, new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 WriteIndented = true
@@ -842,16 +957,119 @@ namespace BlazorWebApp.Services
 
             await File.WriteAllTextAsync(payloadLogPath, json);
 
-            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", promptPayload, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
 
             var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            if (submit?.PromptId == null)
+            {
+                throw new InvalidOperationException("ComfyUI did not return a prompt id.");
+            }
+
             var promptId = Guid.Parse(submit.PromptId);
 
             var tcs = new TaskCompletionSource<TResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
             _pendingJobs[promptId] = tcs;
 
             return await tcs.Task;
+        }
+
+        public async Task<LLMResponse> PostTextPromptAsync(object payload, string payloadLogPath = "llm_payload.json", Guid? uploadedInputTrackingId = null)
+        {
+            var response = await PostTextPromptOutputsAsync(payload, payloadLogPath, uploadedInputTrackingId);
+            return new LLMResponse
+            {
+                PromptId = response.PromptId,
+                Text = response.TextByNodeId.Values.FirstOrDefault() ?? string.Empty
+            };
+        }
+
+        public async Task<ComfyTextPromptResponse> PostTextPromptOutputsAsync(object payload, string payloadLogPath = "llm_payload.json", Guid? uploadedInputTrackingId = null)
+        {
+            var promptPayload = PreparePromptPayload(payload);
+            var json = JsonSerializer.Serialize(promptPayload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync(payloadLogPath, json);
+
+            try
+            {
+                using var response = await _httpClient.PostAsJsonAsync("/prompt", promptPayload, _jsonIgnoreNull);
+                response.EnsureSuccessStatusCode();
+
+                var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+                if (submit?.PromptId == null)
+                {
+                    throw new InvalidOperationException("ComfyUI did not return a prompt id.");
+                }
+
+                var promptId = Guid.Parse(submit.PromptId);
+
+                if (uploadedInputTrackingId.HasValue && _uploadedImages.TryRemove(uploadedInputTrackingId.Value, out var uploadedFiles))
+                {
+                    _uploadedImages[promptId] = uploadedFiles;
+                }
+
+                var tcs = new TaskCompletionSource<ComfyTextPromptResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _pendingJobs[promptId] = tcs;
+
+                return await WaitForTextPromptCompletionAsync(promptId, tcs);
+            }
+            catch
+            {
+                if (uploadedInputTrackingId.HasValue)
+                {
+                    await CleanupUploadedImagesAsync(uploadedInputTrackingId.Value);
+                }
+
+                throw;
+            }
+        }
+
+        private async Task<ComfyTextPromptResponse> WaitForTextPromptCompletionAsync(Guid promptId, TaskCompletionSource<ComfyTextPromptResponse> tcs)
+        {
+            var completedTask = await Task.WhenAny(tcs.Task, PollTextPromptHistoryAsync(promptId, tcs.Task));
+            return await completedTask;
+        }
+
+        private async Task<ComfyTextPromptResponse> PollTextPromptHistoryAsync(Guid promptId, Task<ComfyTextPromptResponse> websocketTask)
+        {
+            while (!websocketTask.IsCompleted)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+
+                if (websocketTask.IsCompleted)
+                {
+                    break;
+                }
+
+                try
+                {
+                    var textByNodeId = await WaitForTextByNodeFromHistoryAsync(promptId);
+                    if (textByNodeId.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    _logger.LogInformation("Resolved ComfyUI text prompt {PromptId} from history polling after websocket completion was not observed yet", promptId);
+                    _pendingJobs.TryRemove(promptId, out _);
+                    await CleanupUploadedImagesAsync(promptId);
+                    return new ComfyTextPromptResponse
+                    {
+                        PromptId = promptId.ToString(),
+                        TextByNodeId = textByNodeId
+                    };
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogDebug(ex, "ComfyUI text prompt {PromptId} is not available in history yet", promptId);
+                }
+            }
+
+            return await websocketTask;
         }
 
 
@@ -968,8 +1186,9 @@ namespace BlazorWebApp.Services
             };
 
             var payload = new { prompt = workflow, client_id = clientId };
+            var promptPayload = PreparePromptPayload(payload);
 
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            var json = JsonSerializer.Serialize(promptPayload, new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 WriteIndented = true
@@ -977,7 +1196,7 @@ namespace BlazorWebApp.Services
 
             await File.WriteAllTextAsync("llm_payload.json", json);
 
-            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", promptPayload, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
 
             var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
@@ -1006,8 +1225,9 @@ namespace BlazorWebApp.Services
             var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
 
             var payload = new { prompt = workflowObject, client_id = clientId };
+            var promptPayload = PreparePromptPayload(payload);
 
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            var json = JsonSerializer.Serialize(promptPayload, new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 WriteIndented = true
@@ -1015,7 +1235,7 @@ namespace BlazorWebApp.Services
 
             await File.WriteAllTextAsync("payload_generation.json", json);
 
-            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", promptPayload, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
 
             var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
@@ -1047,8 +1267,9 @@ namespace BlazorWebApp.Services
             var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
 
             var payload = new { prompt = workflowObject, client_id = clientId };
+            var promptPayload = PreparePromptPayload(payload);
 
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            var json = JsonSerializer.Serialize(promptPayload, new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 WriteIndented = true
@@ -1056,7 +1277,7 @@ namespace BlazorWebApp.Services
 
             await File.WriteAllTextAsync("payload_video_generation.json", json);
 
-            using var response = await _httpClient.PostAsJsonAsync("/prompt", payload, _jsonIgnoreNull);
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", promptPayload, _jsonIgnoreNull);
             response.EnsureSuccessStatusCode();
 
             var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();

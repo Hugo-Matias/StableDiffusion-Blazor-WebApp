@@ -44,7 +44,7 @@ namespace BlazorWebApp.Services.Cleanup
                 case CleanupEmbeddingRuntimeProvider.DirectML:
                     throw new NotSupportedException("DirectML cleanup embeddings are planned but not implemented yet.");
                 case CleanupEmbeddingRuntimeProvider.ComfyUI:
-                    throw new NotSupportedException("ComfyUI-backed cleanup embeddings are planned but not implemented yet.");
+                    break;
                 default:
                     throw new NotSupportedException($"Unsupported cleanup embedding runtime provider: {options.RuntimeProvider}");
             }

@@ -43,6 +43,12 @@
         <MudDivider Class="my-3" />
         <ToolbarLLMSettings />
     }
+
+    @if (CurrentPage.StartsWith("/cleanup"))
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarCleanupSettings />
+    }
 </div>
 
 @code {

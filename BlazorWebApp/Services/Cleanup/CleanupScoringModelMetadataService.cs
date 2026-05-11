@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Options;
 
 namespace BlazorWebApp.Services.Cleanup
@@ -32,6 +33,16 @@ namespace BlazorWebApp.Services.Cleanup
             if (string.IsNullOrWhiteSpace(model.ScoreName))
             {
                 errors.Add("ScoreName is required when cleanup scoring is enabled.");
+            }
+
+            if (options.RuntimeProvider == CleanupEmbeddingRuntimeProvider.ComfyUI)
+            {
+                if (model.MaxScore <= model.MinScore)
+                {
+                    errors.Add("MaxScore must be greater than MinScore.");
+                }
+
+                return new CleanupScoringValidationResult { Errors = errors };
             }
 
             if (string.IsNullOrWhiteSpace(model.ModelPath))
@@ -93,12 +104,21 @@ namespace BlazorWebApp.Services.Cleanup
             return new CleanupScoreModelIdentity
             {
                 ModelKey = model.ModelKey,
-                ModelHash = await ComputeModelHashAsync(model.ModelPath, cancellationToken),
+                ModelHash = Options.RuntimeProvider == CleanupEmbeddingRuntimeProvider.ComfyUI
+                    ? ComputeRemoteModelHash("comfyui-score", model.ModelKey, model.ScoreName, model.MinScore.ToString(), model.MaxScore.ToString())
+                    : await ComputeModelHashAsync(model.ModelPath, cancellationToken),
                 ScoreName = model.ScoreName,
                 MinScore = model.MinScore,
                 MaxScore = model.MaxScore,
                 RuntimeProvider = Options.RuntimeProvider.ToString()
             };
+        }
+
+        private static string ComputeRemoteModelHash(params string[] parts)
+        {
+            var value = string.Join(":", parts.Select(part => part ?? string.Empty));
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+            return Convert.ToHexString(hash).ToLowerInvariant();
         }
 
         private static async Task<string?> ComputeModelHashAsync(string modelPath, CancellationToken cancellationToken)

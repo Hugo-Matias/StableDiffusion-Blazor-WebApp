@@ -5,6 +5,7 @@
 @inject IDatabaseService DB
 @inject IGalleryService Gallery
 @inject ICleanupIndexingService IndexingService
+@inject ICleanupOnnxIndexingService OnnxIndexingService
 @inject ICleanupGroupingService GroupingService
 @inject ICleanupGroupExplanationService GroupExplanationService
 @inject ICleanupRepository CleanupRepository
@@ -95,6 +96,10 @@
                         <MudIcon Icon="@Icons.Material.Filled.DataUsage" Size="Size.Small" />
                         <span>Index scope</span>
                     </button>
+                    <button type="button" class="send-to-btn" disabled="@IsBusy" @onclick="IndexOnnxAsync">
+                        <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" />
+                        <span>Index AI</span>
+                    </button>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
                                StartIcon="@Icons.Material.Filled.AutoAwesomeMosaic" Disabled="@IsBusy"
                                OnClick="GenerateGroupsAsync">
@@ -118,7 +123,7 @@
                     }
                     <div class="cleanup-progress-copy">
                         <MudText Typo="Typo.caption">@GetOperationText()</MudText>
-                        @if (_indexProgress != null)
+                        @if (HasOperationDetail())
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@GetOperationDetailText()</MudText>
                         }
@@ -440,6 +445,7 @@
     private bool _hasMoreGroups;
     private CancellationTokenSource? _operationCts;
     private CleanupIndexingProgress? _indexProgress;
+    private CleanupOnnxIndexingProgress? _onnxProgress;
     private CleanupStorageSummary? _storageSummary;
     private List<CleanupWorkflowStorageSummaryItem> _workflowStorageSummaries = new();
     private List<CleanupMissingFileReportItem> _missingReport = new();
@@ -519,6 +525,7 @@ CleanupRepository.GetGroupRunAsync(runId);
         _operationCts = new CancellationTokenSource();
         _operationLabel = "Indexing cleanup facts";
         _indexProgress = null;
+        _onnxProgress = null;
         try
         {
             var progress = new Progress<CleanupIndexingProgress>(value =>
@@ -549,6 +556,50 @@ CleanupRepository.GetGroupRunAsync(runId);
         }
     }
 
+    private async Task IndexOnnxAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        _operationCts = new CancellationTokenSource();
+        _operationLabel = "Indexing AI signals";
+        _indexProgress = null;
+        _onnxProgress = null;
+        try
+        {
+            var progress = new Progress<CleanupOnnxIndexingProgress>(value =>
+            {
+                _onnxProgress = value;
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            var result = await OnnxIndexingService.IndexAsync(new CleanupOnnxIndexingOptions
+            {
+                ProjectId = SelectedProjectScope(),
+                BatchSize = 50
+            }, progress, _operationCts.Token);
+
+            Snackbar.Add(
+                $"AI indexing processed {result.Processed:N0} images. Embeddings: {result.EmbeddingsIndexed:N0} indexed, {result.EmbeddingsSkipped:N0} skipped, {result.EmbeddingsFailed:N0} failed. Scores: {result.ScoresIndexed:N0} indexed, {result.ScoresSkipped:N0} skipped, {result.ScoresFailed:N0} failed.",
+                Severity.Success);
+            await LoadStorageSummaryAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add("AI cleanup indexing was canceled.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"AI cleanup indexing failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            ClearOperation();
+        }
+    }
+
     private async Task GenerateGroupsAsync()
     {
         if (IsBusy)
@@ -559,6 +610,7 @@ CleanupRepository.GetGroupRunAsync(runId);
         _operationCts = new CancellationTokenSource();
         _operationLabel = "Generating cleanup groups";
         _indexProgress = null;
+        _onnxProgress = null;
         try
         {
             var result = await GroupingService.GenerateGroupsAsync(new CleanupGroupingOptions
@@ -889,6 +941,7 @@ Severity.Info);
         _operationCts = null;
         _operationLabel = null;
         _indexProgress = null;
+        _onnxProgress = null;
     }
 
     private CleanupGroupReviewState GetGroupState(int groupId)
@@ -924,6 +977,16 @@ Severity.Info);
 
     private string GetOperationText()
     {
+        if (_onnxProgress != null)
+        {
+            if (_onnxProgress.TotalCandidates <= 0)
+            {
+                return $"{_operationLabel}: no indexed images matched the current scope.";
+            }
+
+            return $"{_operationLabel}: {_onnxProgress.Processed:N0} of {_onnxProgress.TotalCandidates:N0} images processed ({GetOperationProgressPercent():0.#}%).";
+        }
+
         if (_indexProgress == null)
         {
             return _operationLabel ?? "Working";
@@ -940,6 +1003,11 @@ Severity.Info);
 
     private string GetOperationDetailText()
     {
+        if (_onnxProgress != null)
+        {
+            return $"Embeddings: {_onnxProgress.EmbeddingsIndexed:N0} indexed, {_onnxProgress.EmbeddingsSkipped:N0} skipped, {_onnxProgress.EmbeddingsFailed:N0} failed; scores: {_onnxProgress.ScoresIndexed:N0} indexed, {_onnxProgress.ScoresSkipped:N0} skipped, {_onnxProgress.ScoresFailed:N0} failed";
+        }
+
         if (_indexProgress == null)
         {
             return string.Empty;
@@ -948,10 +1016,17 @@ Severity.Info);
         return $"{_indexProgress.Indexed:N0} indexed, {_indexProgress.Skipped:N0} skipped, {_indexProgress.MissingFiles:N0} missing, {_indexProgress.Failed:N0} failed";
     }
 
-    private bool HasDeterminateIndexProgress() => _indexProgress?.TotalCandidates > 0;
+    private bool HasOperationDetail() => _indexProgress != null || _onnxProgress != null;
+
+    private bool HasDeterminateIndexProgress() => GetOperationTotalCandidates() > 0;
 
     private int GetOperationProcessedCount()
     {
+        if (_onnxProgress != null)
+        {
+            return _onnxProgress.Processed;
+        }
+
         if (_indexProgress == null)
         {
             return 0;
@@ -962,12 +1037,23 @@ Severity.Info);
 
     private double GetOperationProgressPercent()
     {
-        if (_indexProgress == null || _indexProgress.TotalCandidates <= 0)
+        var totalCandidates = GetOperationTotalCandidates();
+        if (totalCandidates <= 0)
         {
             return 0;
         }
 
-        return Math.Min(100, GetOperationProcessedCount() * 100.0 / _indexProgress.TotalCandidates);
+        return Math.Min(100, GetOperationProcessedCount() * 100.0 / totalCandidates);
+    }
+
+    private int GetOperationTotalCandidates()
+    {
+        if (_onnxProgress != null)
+        {
+            return _onnxProgress.TotalCandidates;
+        }
+
+        return _indexProgress?.TotalCandidates ?? 0;
     }
 
     private static string GetRunLabel(CleanupGroupRun run)

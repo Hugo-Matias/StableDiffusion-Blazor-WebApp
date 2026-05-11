@@ -1,3 +1,5 @@
+using BlazorWebApp.Services.Cleanup;
+
 namespace BlazorWebApp.Models
 {
     public class AppSettings
@@ -7,6 +9,15 @@ namespace BlazorWebApp.Models
         public GenerationSettingsModel Generation { get; set; } = new();
         public ResourcesSettingsModel Resources { get; set; } = new();
         public PromptsSettingsModel Prompts { get; set; } = new();
+        public CleanupSettingsModel Cleanup { get; set; } = new();
+    }
+
+    public class CleanupSettingsModel
+    {
+        public CleanupEmbeddingOptions Embeddings { get; set; } = new();
+        public CleanupScoringOptions Scoring { get; set; } = new();
+        public CleanupIndexingQueueOptions IndexingQueue { get; set; } = new();
+        public CleanupGroupExplanationOptions VisionLanguage { get; set; } = new();
     }
 
     #region Generation

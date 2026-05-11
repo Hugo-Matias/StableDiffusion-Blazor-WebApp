@@ -21,6 +21,27 @@ public class CleanupScoringModelMetadataServiceTests
     }
 
     [Fact]
+    public void Validate_AllowsComfyConfigurationWithoutLocalOnnxMetadata()
+    {
+        var service = CreateService(new CleanupScoringOptions
+        {
+            Enabled = true,
+            RuntimeProvider = CleanupEmbeddingRuntimeProvider.ComfyUI,
+            Model = new CleanupScoreModelOptions
+            {
+                ModelKey = "blazor_quality_v1",
+                ScoreName = "quality",
+                MinScore = 0,
+                MaxScore = 1
+            }
+        });
+
+        var result = service.Validate(service.Options);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task GetIdentityAsync_ComputesModelHash()
     {
         var modelPath = Path.GetTempFileName();
@@ -52,6 +73,30 @@ public class CleanupScoringModelMetadataServiceTests
         {
             File.Delete(modelPath);
         }
+    }
+
+    [Fact]
+    public async Task GetIdentityAsync_UsesStableRemoteHashForComfy()
+    {
+        var service = CreateService(new CleanupScoringOptions
+        {
+            Enabled = true,
+            RuntimeProvider = CleanupEmbeddingRuntimeProvider.ComfyUI,
+            Model = new CleanupScoreModelOptions
+            {
+                ModelKey = "blazor_quality_v1",
+                ScoreName = "quality",
+                MinScore = 0,
+                MaxScore = 1
+            }
+        });
+
+        var identity = await service.GetIdentityAsync();
+
+        identity.ModelKey.Should().Be("blazor_quality_v1");
+        identity.ScoreName.Should().Be("quality");
+        identity.ModelHash.Should().NotBeNullOrWhiteSpace();
+        identity.RuntimeProvider.Should().Be("ComfyUI");
     }
 
     private static CleanupScoringModelMetadataService CreateService(CleanupScoringOptions options)

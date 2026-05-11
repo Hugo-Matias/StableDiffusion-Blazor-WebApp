@@ -15,6 +15,15 @@ namespace BlazorWebApp.Data.Dtos.ComfyUI
         public string Text { get; set; } = string.Empty;
 
         [JsonPropertyName("prompt_id")]
-        public string PromptId { get; set; }
+        public string PromptId { get; set; } = string.Empty;
+    }
+
+    public class ComfyTextPromptResponse
+    {
+        [JsonPropertyName("prompt_id")]
+        public string PromptId { get; set; } = string.Empty;
+
+        [JsonPropertyName("text_by_node_id")]
+        public Dictionary<string, string> TextByNodeId { get; set; } = new();
     }
 }

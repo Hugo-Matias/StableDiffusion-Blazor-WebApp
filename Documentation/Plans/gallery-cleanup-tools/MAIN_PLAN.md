@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 10 safety, maintenance, and storage reporting complete and cleanup-test validated
+**Current Phase:** Phase 10 safety, maintenance, storage reporting, ONNX run path, and cleanup toolbar settings complete and validated
 
 ---
 
@@ -98,6 +98,64 @@ The first implementation slices should avoid ONNX inference until the app has a 
 | Vector normalization     | L2-normalize embeddings before storing                                                | Makes cosine similarity equivalent to dot product.                                                                                              |
 | Storage                  | Float32 vector BLOB plus model key/hash/dimension                                     | Recompute when model config or model file changes.                                                                                              |
 | Processing               | Background queue with cancellation and progress                                       | Required for 113k records.                                                                                                                      |
+
+### Running ONNX Cleanup Indexing
+
+ONNX cleanup indexing is a second pass after the normal cleanup fact index.
+
+1. Open `/cleanup` and expand the navbar top toolbar.
+2. Configure the Cleanup Indexing toolbar settings for `Cleanup:Embeddings` and/or `Cleanup:Scoring`.
+3. Set `RuntimeProvider` to `CUDA` and `CudaDeviceId` to `0` for the RTX 4090 path.
+4. Point `ModelPath`, `InputName`, `OutputName`, dimensions, size, layout, mean, and standard deviation at the exact ONNX model export being used.
+5. Use the toolbar `Probe runtime` and `Validate` actions before starting a large ONNX pass.
+6. Restart VS Code/the app after changing CUDA/cuDNN `PATH` so ONNX Runtime can resolve native DLLs.
+7. Open `/cleanup`, choose a scope, click `Index scope` first, then click `Index ONNX`.
+8. Generate `Visual similarity` groups after embeddings complete, or `Low-value candidates` after scoring completes.
+
+`Index scope` records file facts, hashes, prompts, and workflow metadata. `Index ONNX` processes the already-indexed cleanup rows, skips images already indexed for the current model hash, and retries missing/error ONNX rows.
+
+Example local configuration shape:
+
+```json
+{
+  "Cleanup": {
+    "Embeddings": {
+      "Enabled": true,
+      "RuntimeProvider": "CUDA",
+      "CudaDeviceId": 0,
+      "Model": {
+        "ModelKey": "clip-vit-b32-image",
+        "ModelPath": "E:\\Models\\onnx\\clip-image.onnx",
+        "InputName": "input",
+        "OutputName": "image_embeds",
+        "InputWidth": 224,
+        "InputHeight": 224,
+        "InputLayout": "NCHW",
+        "Dimensions": 512,
+        "Mean": [0.48145466, 0.4578275, 0.40821073],
+        "StandardDeviation": [0.26862954, 0.26130258, 0.27577711]
+      }
+    },
+    "Scoring": {
+      "Enabled": false,
+      "RuntimeProvider": "CUDA",
+      "CudaDeviceId": 0,
+      "Model": {
+        "ModelKey": "aesthetic-score",
+        "ModelPath": "E:\\Models\\onnx\\aesthetic.onnx",
+        "ScoreName": "aesthetic",
+        "InputName": "input",
+        "OutputName": "score",
+        "InputWidth": 224,
+        "InputHeight": 224,
+        "InputLayout": "NCHW",
+        "MinScore": 0,
+        "MaxScore": 1
+      }
+    }
+  }
+}
+```
 
 ### Recommended Runtime Decision
 
@@ -548,18 +606,20 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 
 ## Changelog
 
-| Phase           | Changes                                                                                                                                                                                                                                             |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Planning        | Initial cleanup tools plan created with ONNX, grouping, persistence, and review UI direction.                                                                                                                                                       |
-| Planning update | Runtime direction updated for first-class CUDA support, simple CPU/CUDA selector, RTX 4090 target environment, and possible ComfyUI provider discussion.                                                                                            |
-| Planning update | Added separate aesthetic/quality scoring direction for advisory triage distinct from visual similarity embeddings.                                                                                                                                  |
-| Phase 1         | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                                                                                                                       |
-| Phase 2         | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.                                                                                              |
-| Phase 3         | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                                                                                                                |
-| Phase 4         | Added cleanup review UI with scope indexing, deterministic group generation controls, paged groups, lazy members, selection wiring, AssetViewer reuse, determinate indexing progress, selected-tile cues, and Gallery action placement refinements. |
-| Phase 5         | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests.                                                    |
-| Phase 6         | Added ONNX Runtime GPU package support with CPU/CUDA provider selection, Magick.NET tensor preprocessing, ONNX embedding inference, L2 normalization, embedding persistence, CUDA probing, and focused cleanup tests.                               |
-| Phase 7         | Added visual-similarity cleanup grouping over current-model embeddings, adjustable visual threshold UI, favorite/score-aware representative selection, protected keep candidates, and focused grouping tests.                                       |
-| Phase 8         | Added separate cleanup score persistence, scoring model metadata, ONNX scalar scoring service, score indexing, low-value score grouping, advisory score threshold UI, and focused cleanup tests.                                                    |
-| Phase 9         | Added on-demand cached VL group explanations, group explanation persistence, cleanup UI Explain action, and focused cleanup tests.                                                                                                                  |
-| Phase 10        | Added deleted-image cleanup maintenance, group/run reconciliation, missing-file reports, storage summary metrics, expanded-panel group actions, Save-only group headers, and focused cleanup tests.                                                 |
+| Phase            | Changes                                                                                                                                                                                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Planning         | Initial cleanup tools plan created with ONNX, grouping, persistence, and review UI direction.                                                                                                                                                       |
+| Planning update  | Runtime direction updated for first-class CUDA support, simple CPU/CUDA selector, RTX 4090 target environment, and possible ComfyUI provider discussion.                                                                                            |
+| Planning update  | Added separate aesthetic/quality scoring direction for advisory triage distinct from visual similarity embeddings.                                                                                                                                  |
+| Phase 1          | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                                                                                                                       |
+| Phase 2          | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.                                                                                              |
+| Phase 3          | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                                                                                                                |
+| Phase 4          | Added cleanup review UI with scope indexing, deterministic group generation controls, paged groups, lazy members, selection wiring, AssetViewer reuse, determinate indexing progress, selected-tile cues, and Gallery action placement refinements. |
+| Phase 5          | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests.                                                    |
+| Phase 6          | Added ONNX Runtime GPU package support with CPU/CUDA provider selection, Magick.NET tensor preprocessing, ONNX embedding inference, L2 normalization, embedding persistence, CUDA probing, and focused cleanup tests.                               |
+| Phase 7          | Added visual-similarity cleanup grouping over current-model embeddings, adjustable visual threshold UI, favorite/score-aware representative selection, protected keep candidates, and focused grouping tests.                                       |
+| Phase 8          | Added separate cleanup score persistence, scoring model metadata, ONNX scalar scoring service, score indexing, low-value score grouping, advisory score threshold UI, and focused cleanup tests.                                                    |
+| Phase 9          | Added on-demand cached VL group explanations, group explanation persistence, cleanup UI Explain action, and focused cleanup tests.                                                                                                                  |
+| Phase 10         | Added deleted-image cleanup maintenance, group/run reconciliation, missing-file reports, storage summary metrics, expanded-panel group actions, Save-only group headers, and focused cleanup tests.                                                 |
+| ONNX run path    | Added explicit `Index ONNX` cleanup action, bulk ONNX embedding/scoring runner, skip/retry behavior for current model rows, and focused service tests.                                                                                              |
+| Toolbar settings | Added `/cleanup` context-aware navbar toolbar settings for cleanup indexing, embedding/scoring ONNX model metadata, CPU/CUDA runtime selection, persisted settings, runtime probing, validation, and focused validation.                            |

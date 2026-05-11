@@ -4,27 +4,27 @@ namespace BlazorWebApp.Services.Cleanup
     {
         public const string SectionName = "Cleanup:Scoring";
 
-        public bool Enabled { get; init; }
-        public bool RunForSavedImages { get; init; }
-        public CleanupEmbeddingRuntimeProvider RuntimeProvider { get; init; } = CleanupEmbeddingRuntimeProvider.CPU;
-        public int CudaDeviceId { get; init; }
-        public CleanupScoreModelOptions Model { get; init; } = new();
+        public bool Enabled { get; set; }
+        public bool RunForSavedImages { get; set; }
+        public CleanupEmbeddingRuntimeProvider RuntimeProvider { get; set; } = CleanupEmbeddingRuntimeProvider.CPU;
+        public int CudaDeviceId { get; set; }
+        public CleanupScoreModelOptions Model { get; set; } = new();
     }
 
     public record CleanupScoreModelOptions
     {
-        public string ModelKey { get; init; } = string.Empty;
-        public string ModelPath { get; init; } = string.Empty;
-        public string ScoreName { get; init; } = "aesthetic";
-        public string InputName { get; init; } = string.Empty;
-        public string OutputName { get; init; } = string.Empty;
-        public int InputWidth { get; init; } = 224;
-        public int InputHeight { get; init; } = 224;
-        public string InputLayout { get; init; } = "NCHW";
-        public double MinScore { get; init; }
-        public double MaxScore { get; init; } = 1;
-        public List<float> Mean { get; init; } = new() { 0.48145466f, 0.4578275f, 0.40821073f };
-        public List<float> StandardDeviation { get; init; } = new() { 0.26862954f, 0.26130258f, 0.27577711f };
+        public string ModelKey { get; set; } = string.Empty;
+        public string ModelPath { get; set; } = string.Empty;
+        public string ScoreName { get; set; } = "aesthetic";
+        public string InputName { get; set; } = string.Empty;
+        public string OutputName { get; set; } = string.Empty;
+        public int InputWidth { get; set; } = 224;
+        public int InputHeight { get; set; } = 224;
+        public string InputLayout { get; set; } = "NCHW";
+        public double MinScore { get; set; }
+        public double MaxScore { get; set; } = 1;
+        public List<float> Mean { get; set; } = new() { 0.48145466f, 0.4578275f, 0.40821073f };
+        public List<float> StandardDeviation { get; set; } = new() { 0.26862954f, 0.26130258f, 0.27577711f };
     }
 
     public record CleanupScoreModelIdentity

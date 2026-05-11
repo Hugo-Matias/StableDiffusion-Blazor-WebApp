@@ -52,6 +52,45 @@ public class CleanupEmbeddingModelMetadataServiceTests : IDisposable
     }
 
     [Fact]
+    public void Validate_AllowsComfyConfigurationWithoutLocalOnnxMetadata()
+    {
+        var service = CreateService(new CleanupEmbeddingOptions
+        {
+            Enabled = true,
+            RuntimeProvider = CleanupEmbeddingRuntimeProvider.ComfyUI,
+            Model = new CleanupEmbeddingModelOptions
+            {
+                ModelKey = "blazor_stats_v1_512",
+                Dimensions = 512
+            }
+        });
+
+        var result = service.Validate(service.Options);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_RejectsComfyEmbeddingDimensionsBelowNodeMinimum()
+    {
+        var service = CreateService(new CleanupEmbeddingOptions
+        {
+            Enabled = true,
+            RuntimeProvider = CleanupEmbeddingRuntimeProvider.ComfyUI,
+            Model = new CleanupEmbeddingModelOptions
+            {
+                ModelKey = "blazor_stats_v1_512",
+                Dimensions = 1
+            }
+        });
+
+        var result = service.Validate(service.Options);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.Contains("at least 16"));
+    }
+
+    [Fact]
     public async Task GetIdentityAsync_ComputesModelHash()
     {
         var modelPath = Path.Combine(_tempDirectory, "model.onnx");
@@ -78,6 +117,28 @@ public class CleanupEmbeddingModelMetadataServiceTests : IDisposable
         identity.ModelHash.Should().Be(expectedHash);
         identity.Dimensions.Should().Be(512);
         identity.RuntimeProvider.Should().Be("CUDA");
+    }
+
+    [Fact]
+    public async Task GetIdentityAsync_UsesStableRemoteHashForComfy()
+    {
+        var service = CreateService(new CleanupEmbeddingOptions
+        {
+            Enabled = true,
+            RuntimeProvider = CleanupEmbeddingRuntimeProvider.ComfyUI,
+            Model = new CleanupEmbeddingModelOptions
+            {
+                ModelKey = "blazor_stats_v1_512",
+                Dimensions = 512
+            }
+        });
+
+        var identity = await service.GetIdentityAsync();
+
+        identity.ModelKey.Should().Be("blazor_stats_v1_512");
+        identity.ModelHash.Should().NotBeNullOrWhiteSpace();
+        identity.Dimensions.Should().Be(512);
+        identity.RuntimeProvider.Should().Be("ComfyUI");
     }
 
     private static CleanupEmbeddingModelMetadataService CreateService(CleanupEmbeddingOptions options)
