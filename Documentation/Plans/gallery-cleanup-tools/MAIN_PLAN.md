@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 4 cleanup review UI checkpoint complete and validated
+**Current Phase:** Phase 5 generation save hook and incremental indexing complete and cleanup-test validated
 
 ---
 
@@ -59,7 +59,7 @@ The required feature is a cleanup system that discovers redundant or low-value c
 
 Build a staged cleanup system around a persistent cleanup index, deterministic grouping, visual embeddings, and a review-first UI.
 
-The first implementation slices should avoid ONNX inference until the app has a reliable cleanup index and grouped review surface. Once those are in place, add ONNX Runtime image embeddings as an optional indexing provider and use the resulting vectors for visual similarity groups.
+The first implementation slices should avoid ONNX inference until the app has a reliable cleanup index and grouped review surface. Once those are in place, add ONNX Runtime image embeddings as an optional indexing provider and use the resulting vectors for visual similarity groups. Perceived quality and visual appeal should be treated as a separate scoring feature, not as a property of similarity embeddings themselves.
 
 ### Core Flow
 
@@ -71,6 +71,7 @@ The first implementation slices should avoid ONNX inference until the app has a 
 6. Select candidates into the existing `IGalleryService.SelectedImageIds` flow.
 7. Save selected candidates as a `Selection` or delete them through existing confirmation dialogs.
 8. Add ONNX embeddings for visual grouping once the review flow is stable.
+9. Add optional aesthetic/quality scoring for review triage after embedding infrastructure is stable.
 
 ---
 
@@ -133,6 +134,17 @@ The runtime selector should stay deliberately simple in the first embedding phas
 
 Provider selection must be persisted with embedding model metadata so users can understand which runtime produced an index, but similarity comparisons must key on model identity/dimensions rather than provider alone.
 
+### Aesthetic And Quality Scoring Direction
+
+Similarity embeddings answer "what images are visually or semantically close?" They should not be treated as a direct quality or appeal score. For triage, add a separate ONNX scoring path after the embedding pipeline is stable:
+
+- Use an aesthetic predictor, image-quality-assessment model, or small scoring head over CLIP/SigLIP embeddings.
+- Store scores separately from similarity vectors, with model key/hash, provider, score range, and indexed timestamp.
+- Keep scores advisory. They are subjective and model-biased, so they should rank or suggest review candidates rather than drive automatic deletion.
+- Prefer scoring within an existing cleanup group: keep the highest-scoring/favorite/high user-score representative and suggest lower-scoring variants.
+- Allow thresholds such as "suggest below aesthetic score X" or "keep above quality score Y" once enough local calibration exists.
+- CUDA support should batch aesthetic/IQA scoring with the same provider selector used by embeddings.
+
 ---
 
 ## Key Decisions
@@ -185,6 +197,7 @@ Names are provisional and should be refined during implementation.
 | Prompt fuzzy              |              No | Token-set and ordered-token similarity.                                          | Catches reordered or lightly edited prompts. |
 | Same experiment           |              No | Project + workflow + model + date bucket + prompt fingerprint.                   | Useful for seed sweeps and parameter tweaks. |
 | Visual similarity         |             Yes | Embedding cosine similarity.                                                     | Groups images by what they depict.           |
+| Aesthetic/quality triage  |       Optional | Separate ONNX score for perceived appeal, artifacts, blur, or other quality signals. | Ranks variants inside review groups.         |
 | Low-value candidates      |        Optional | Non-favorite, score 0, older variants where group has favorites or higher score. | Practical cleanup assist.                    |
 | Orphans and missing files |              No | DB row missing file, file missing DB row if folder scan is added.                | Keeps storage and DB honest.                 |
 | Large storage offenders   |              No | Videos, upscales, huge files, old non-favorites.                                 | Fast resource recovery.                      |
@@ -321,15 +334,15 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Keep cleanup index current as new images are generated.
 **Complexity:** 5 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
-- [ ] Publish an event when an image record is saved or updated.
-- [ ] Subscribe cleanup indexing queue to the event.
-- [ ] Enqueue cheap metadata/hash indexing by default.
-- [ ] Add settings to control whether embeddings run automatically.
-- [ ] Add tests for enqueue behavior.
+- [x] Publish an event when an image record is saved or updated.
+- [x] Subscribe cleanup indexing queue to the event.
+- [x] Enqueue cheap metadata/hash indexing by default.
+- [x] Add settings to control whether embeddings run automatically.
+- [x] Add tests for enqueue behavior.
 
 #### Success Criteria
 
@@ -385,7 +398,30 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 ---
 
-### Phase 8: Optional VL Captions And Explanations
+### Phase 8: Aesthetic And Quality Scoring Triage
+
+**Objective:** Add optional perceived-quality and visual-appeal scores as review aids.
+**Complexity:** 8 points
+**Status:** [ ] Not Started
+
+#### Steps
+
+- [ ] Add score model configuration and provider metadata.
+- [ ] Add score persistence separate from similarity embeddings.
+- [ ] Add ONNX scoring service for aesthetic/IQA models.
+- [ ] Add group ranking and threshold rules that use scores inside review groups.
+- [ ] Add UI controls for advisory score thresholds.
+- [ ] Add tests for score serialization, stale-score detection, and threshold-based suggestions.
+
+#### Success Criteria
+
+- Cleanup groups can rank variants by advisory aesthetic or quality score.
+- Users can triage above or below a configured score without automatic deletion.
+- Score model changes invalidate stale scores without affecting similarity vectors.
+
+---
+
+### Phase 9: Optional VL Captions And Explanations
 
 **Objective:** Use Qwen 3 VL or other Ollama vision models only where they add review value.
 **Complexity:** 5 points
@@ -405,7 +441,7 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 ---
 
-### Phase 9: Safety, Maintenance, And Advanced Storage Cleanup
+### Phase 10: Safety, Maintenance, And Advanced Storage Cleanup
 
 **Objective:** Add safety features and storage maintenance tools after core grouping works.
 **Complexity:** 8 points
@@ -464,6 +500,7 @@ Use this execution order first:
 4. Phase 4 - review UI.
 5. Phase 5 - save hook.
 6. Phase 6 and 7 - ONNX embeddings with CPU/CUDA selector and visual grouping.
+7. Phase 8 - aesthetic/quality scoring as an advisory triage signal.
 
 This order gives the user a useful cleanup tool before the hardest ML integration lands, and it gives ONNX embeddings a safe UI destination when they are ready.
 
@@ -498,7 +535,9 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Planning        | Initial cleanup tools plan created with ONNX, grouping, persistence, and review UI direction.                                                            |
 | Planning update | Runtime direction updated for first-class CUDA support, simple CPU/CUDA selector, RTX 4090 target environment, and possible ComfyUI provider discussion. |
+| Planning update | Added separate aesthetic/quality scoring direction for advisory triage distinct from visual similarity embeddings. |
 | Phase 1         | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                            |
 | Phase 2         | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.   |
 | Phase 3         | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                     |
 | Phase 4         | Added cleanup review UI with scope indexing, deterministic group generation controls, paged groups, lazy members, selection wiring, AssetViewer reuse, determinate indexing progress, selected-tile cues, and Gallery action placement refinements. |
+| Phase 5         | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests. |

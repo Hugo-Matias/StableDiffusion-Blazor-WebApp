@@ -210,6 +210,14 @@
                                             <MudIcon Icon="@Icons.Material.Filled.AddTask" Size="Size.Small" />
                                             <span>Add</span>
                                         </button>
+                                        <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.InvertAll)">
+                                            <MudIcon Icon="fa-solid fa-arrows-rotate" Size="Size.Small" />
+                                            <span>Invert</span>
+                                        </button>
+                                        <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.DeselectAll)">
+                                            <MudIcon Icon="@Icons.Material.Filled.Deselect" Size="Size.Small" />
+                                            <span>Deselect</span>
+                                        </button>
                                         <button type="button" class="send-to-btn cleanup-group-action" disabled="@state.IsLoading" @onclick="() => SaveGroupSelectionAsync(group)">
                                             <MudIcon Icon="@Icons.Material.Filled.BookmarkAdd" Size="Size.Small" />
                                             <span>Save</span>
@@ -587,17 +595,36 @@
 
         if (mode == CleanupSelectionMode.AddSuggested)
         {
-            foreach (var id in ids)
-            {
-                Gallery.AddSelectedImage(id);
-            }
+            Gallery.AddSelectedImages(ids);
+            Snackbar.Add($"Added {ids.Count} suggested images. Use the Gallery selections toolbar to delete or move them.", Severity.Info);
+        }
+        else if (mode == CleanupSelectionMode.DeselectAll)
+        {
+            var groupIds = ids.ToHashSet();
+            var nextIds = Gallery.SelectedImageIds
+                .Where(id => !groupIds.Contains(id))
+                .ToList();
+            var removedCount = Gallery.SelectedImageIds.Count - nextIds.Count;
+            Gallery.ReplaceSelectedImages(nextIds);
+            Snackbar.Add(removedCount == 0 ? "No images from this group were selected." : $"Deselected {removedCount} images from this group.", Severity.Info);
+        }
+        else if (mode == CleanupSelectionMode.InvertAll)
+        {
+            var groupIds = ids.ToHashSet();
+            var selectedIds = Gallery.SelectedImageIds.ToHashSet();
+            var nextIds = selectedIds
+                .Where(id => !groupIds.Contains(id))
+                .Concat(groupIds.Where(id => !selectedIds.Contains(id)))
+                .ToList();
+
+            Gallery.ReplaceSelectedImages(nextIds);
+            Snackbar.Add($"Inverted selection for {groupIds.Count} images in this group.", Severity.Info);
         }
         else
         {
             Gallery.ReplaceSelectedImages(ids);
+            Snackbar.Add($"Selected {ids.Count} images. Use the Gallery selections toolbar to delete or move them.", Severity.Info);
         }
-
-        Snackbar.Add($"Selected {ids.Count} images. Use the Gallery selections toolbar to delete or move them.", Severity.Info);
     }
 
     private async Task SaveGroupSelectionAsync(CleanupGroup group)
@@ -840,6 +867,8 @@
     {
         ReplaceSuggested,
         AddSuggested,
-        ReplaceAll
+        ReplaceAll,
+        InvertAll,
+        DeselectAll
     }
 }

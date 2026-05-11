@@ -114,6 +114,43 @@ public class CleanupIndexingServiceTests : IDisposable
         missing.FileExists.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task IndexImageAsync_IndexesOnlyRequestedImage()
+    {
+        var firstPath = CreateImage("first.png", MagickColors.Red);
+        var secondPath = CreateImage("second.png", MagickColors.Yellow);
+        await SeedImageAsync(new Image
+        {
+            Id = 1,
+            Path = firstPath,
+            ProjectId = 1,
+            ModeId = 1,
+            Prompt = "first",
+            Scheduler = "normal"
+        });
+        await SeedImageAsync(new Image
+        {
+            Id = 2,
+            Path = secondPath,
+            ProjectId = 1,
+            ModeId = 1,
+            Prompt = "second",
+            Scheduler = "normal"
+        });
+
+        var result = await _service.IndexImageAsync(2);
+
+        result.TotalCandidates.Should().Be(1);
+        result.Indexed.Should().Be(1);
+        result.LastImageId.Should().Be(2);
+
+        var first = await _repository.GetImageIndexAsync(1);
+        var second = await _repository.GetImageIndexAsync(2);
+        first.Should().BeNull();
+        second.Should().NotBeNull();
+        second!.PromptNormalized.Should().Be("second");
+    }
+
     private string CreateImage(string fileName, MagickColor color)
     {
         var path = Path.Combine(_tempDirectory, fileName);

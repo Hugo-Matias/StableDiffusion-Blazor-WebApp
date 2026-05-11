@@ -109,6 +109,36 @@ namespace BlazorWebApp.Services.Cleanup
             };
         }
 
+        public async Task<CleanupIndexingResult> IndexImageAsync(
+            int imageId,
+            bool force = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (imageId <= 0)
+            {
+                return new CleanupIndexingResult();
+            }
+
+            var source = await LoadSourceByIdAsync(imageId, cancellationToken);
+            if (source == null)
+            {
+                return new CleanupIndexingResult();
+            }
+
+            var existing = await LoadExistingIndexesAsync(new[] { imageId }, cancellationToken);
+            var result = await IndexSourceAsync(source, existing.GetValueOrDefault(imageId), force, cancellationToken);
+
+            return new CleanupIndexingResult
+            {
+                LastImageId = imageId,
+                TotalCandidates = 1,
+                Indexed = result == ImageIndexResult.Indexed ? 1 : 0,
+                Skipped = result == ImageIndexResult.Skipped ? 1 : 0,
+                MissingFiles = result == ImageIndexResult.MissingFile ? 1 : 0,
+                Failed = result == ImageIndexResult.Failed ? 1 : 0
+            };
+        }
+
         private async Task<int> CountSourcesAsync(
             CleanupIndexingOptions options,
             int lastImageId,
@@ -221,6 +251,25 @@ namespace BlazorWebApp.Services.Cleanup
                     image.Path,
                     image.Prompt))
                 .ToListAsync(cancellationToken);
+        }
+
+        private async Task<CleanupImageSource?> LoadSourceByIdAsync(
+            int imageId,
+            CancellationToken cancellationToken)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.Images
+                .AsNoTracking()
+                .Where(image => image.Id == imageId)
+                .Select(image => new CleanupImageSource(
+                    image.Id,
+                    image.ProjectId,
+                    image.ModeId,
+                    image.ResourceId,
+                    image.WorkflowId,
+                    image.Path,
+                    image.Prompt))
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
         private static IQueryable<Image> BuildSourceQuery(

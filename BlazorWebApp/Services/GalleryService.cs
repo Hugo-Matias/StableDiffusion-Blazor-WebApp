@@ -16,6 +16,7 @@ namespace BlazorWebApp.Services
         public List<Folder>? Folders { get; private set; }
         public List<Project>? Projects { get; private set; }
         public List<int> SelectedImageIds { get; private set; } = new();
+        private HashSet<int> _selectedImageIdSet = new();
         
         /// <summary>
         /// Indicates whether gallery filters are currently applied.
@@ -104,14 +105,45 @@ namespace BlazorWebApp.Services
         }
 
         /// <summary>
+        /// Returns whether an image is selected using the selection lookup cache.
+        /// </summary>
+        public bool IsImageSelected(int id) => _selectedImageIdSet.Contains(id);
+
+        /// <summary>
         /// Adds an image ID to the selected images list.
         /// </summary>
         public void AddSelectedImage(int id)
         {
-            if (!SelectedImageIds.Contains(id))
+            if (_selectedImageIdSet.Add(id))
             {
                 SelectedImageIds.Add(id);
-                PublishSelectionChanged();
+                PublishSelectionChanged(new HashSet<int> { id }, true);
+            }
+        }
+
+        /// <summary>
+        /// Adds multiple image IDs and publishes a single selection change event.
+        /// </summary>
+        public void AddSelectedImages(IEnumerable<int> ids)
+        {
+            if (ids == null)
+            {
+                return;
+            }
+
+            var addedIds = new HashSet<int>();
+            foreach (var id in ids)
+            {
+                if (_selectedImageIdSet.Add(id))
+                {
+                    SelectedImageIds.Add(id);
+                    addedIds.Add(id);
+                }
+            }
+
+            if (addedIds.Count > 0)
+            {
+                PublishSelectionChanged(addedIds, true);
             }
         }
 
@@ -120,9 +152,10 @@ namespace BlazorWebApp.Services
         /// </summary>
         public void RemoveSelectedImage(int id)
         {
-            if (SelectedImageIds.Remove(id))
+            if (_selectedImageIdSet.Remove(id))
             {
-                PublishSelectionChanged();
+                SelectedImageIds.Remove(id);
+                PublishSelectionChanged(new HashSet<int> { id }, false);
             }
         }
 
@@ -133,8 +166,10 @@ namespace BlazorWebApp.Services
         {
             if (SelectedImageIds.Count > 0)
             {
+                var changedIds = new HashSet<int>(_selectedImageIdSet);
                 SelectedImageIds.Clear();
-                PublishSelectionChanged();
+                _selectedImageIdSet.Clear();
+                PublishSelectionChanged(changedIds, false);
             }
         }
 
@@ -143,16 +178,24 @@ namespace BlazorWebApp.Services
         /// </summary>
         public void ReplaceSelectedImages(List<int> ids)
         {
-            SelectedImageIds = ids ?? new List<int>();
-            PublishSelectionChanged();
+            var nextIds = ids?.Distinct().ToList() ?? new List<int>();
+            var nextSet = new HashSet<int>(nextIds);
+            var changedIds = new HashSet<int>(_selectedImageIdSet);
+            changedIds.SymmetricExceptWith(nextSet);
+
+            SelectedImageIds = nextIds;
+            _selectedImageIdSet = nextSet;
+            PublishSelectionChanged(changedIds, null);
         }
 
-        private void PublishSelectionChanged()
+        private void PublishSelectionChanged(IReadOnlySet<int>? changedImageIds, bool? changedSelectionState)
         {
             _events.Publish(new ImageSelectionChangedEventArgs
             {
                 SelectedCount = SelectedImageIds.Count,
-                SelectedImageIds = new List<int>(SelectedImageIds)
+                SelectedImageIds = new List<int>(SelectedImageIds),
+                ChangedImageIds = changedImageIds,
+                ChangedSelectionState = changedSelectionState
             });
         }
     }

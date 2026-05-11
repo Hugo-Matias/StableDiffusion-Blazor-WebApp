@@ -102,6 +102,9 @@ builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ICleanupRepository,
 builder.Services.AddSingleton<ICleanupPromptIndexService, CleanupPromptIndexService>();
 builder.Services.AddSingleton<ICleanupImageHashService, CleanupImageHashService>();
 builder.Services.AddSingleton<ICleanupIndexingService, CleanupIndexingService>();
+builder.Services.Configure<CleanupIndexingQueueOptions>(builder.Configuration.GetSection(CleanupIndexingQueueOptions.SectionName));
+builder.Services.AddSingleton<ICleanupIndexingQueue, CleanupIndexingQueue>();
+builder.Services.AddHostedService(sp => (CleanupIndexingQueue)sp.GetRequiredService<ICleanupIndexingQueue>());
 builder.Services.AddSingleton<ICleanupGroupingService, CleanupGroupingService>();
 
 // Danbooru library service - plain HttpClient for CDN downloads (no auth headers needed)

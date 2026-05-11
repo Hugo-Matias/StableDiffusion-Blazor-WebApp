@@ -25,5 +25,7 @@ namespace BlazorWebApp.Events
     {
         public int SelectedCount { get; init; }
         public List<int> SelectedImageIds { get; init; } = new();
+        public IReadOnlySet<int>? ChangedImageIds { get; init; }
+        public bool? ChangedSelectionState { get; init; }
     }
 }

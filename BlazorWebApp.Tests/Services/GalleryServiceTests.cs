@@ -54,6 +54,32 @@ namespace BlazorWebApp.Tests.Services
             _mockEvents.Verify(x => x.Publish(It.IsAny<ImageSelectionChangedEventArgs>()), Times.Once);
             capturedEvent.Should().NotBeNull();
             capturedEvent!.SelectedCount.Should().Be(1);
+            capturedEvent.ChangedImageIds.Should().BeEquivalentTo(new[] { 1 });
+            capturedEvent.ChangedSelectionState.Should().BeTrue();
+            _service.IsImageSelected(1).Should().BeTrue();
+        }
+
+        [Fact]
+        public void AddSelectedImages_AddsMultipleIdsAndPublishesOnce()
+        {
+            // Arrange
+            _service.AddSelectedImage(1);
+            _mockEvents.Invocations.Clear();
+
+            ImageSelectionChangedEventArgs? capturedEvent = null;
+            _mockEvents.Setup(x => x.Publish(It.IsAny<ImageSelectionChangedEventArgs>()))
+                .Callback<ImageSelectionChangedEventArgs>(e => capturedEvent = e);
+
+            // Act
+            _service.AddSelectedImages(new[] { 1, 2, 3, 3, 4 });
+
+            // Assert
+            _service.SelectedImageIds.Should().Equal(1, 2, 3, 4);
+            _mockEvents.Verify(x => x.Publish(It.IsAny<ImageSelectionChangedEventArgs>()), Times.Once);
+            capturedEvent.Should().NotBeNull();
+            capturedEvent!.SelectedCount.Should().Be(4);
+            capturedEvent.ChangedImageIds.Should().BeEquivalentTo(new[] { 2, 3, 4 });
+            capturedEvent.ChangedSelectionState.Should().BeTrue();
         }
 
         [Fact]
@@ -103,6 +129,9 @@ namespace BlazorWebApp.Tests.Services
             _mockEvents.Verify(x => x.Publish(It.IsAny<ImageSelectionChangedEventArgs>()), Times.Once);
             capturedEvent.Should().NotBeNull();
             capturedEvent!.SelectedCount.Should().Be(0);
+            capturedEvent.ChangedImageIds.Should().BeEquivalentTo(new[] { 1 });
+            capturedEvent.ChangedSelectionState.Should().BeFalse();
+            _service.IsImageSelected(1).Should().BeFalse();
         }
 
         [Fact]
@@ -154,6 +183,8 @@ namespace BlazorWebApp.Tests.Services
             _mockEvents.Verify(x => x.Publish(It.IsAny<ImageSelectionChangedEventArgs>()), Times.Once);
             capturedEvent.Should().NotBeNull();
             capturedEvent!.SelectedCount.Should().Be(0);
+            capturedEvent.ChangedImageIds.Should().BeEquivalentTo(new[] { 1, 2, 3 });
+            capturedEvent.ChangedSelectionState.Should().BeFalse();
         }
 
         [Fact]
@@ -187,6 +218,8 @@ namespace BlazorWebApp.Tests.Services
             _mockEvents.Verify(x => x.Publish(It.IsAny<ImageSelectionChangedEventArgs>()), Times.Once);
             capturedEvent.Should().NotBeNull();
             capturedEvent!.SelectedCount.Should().Be(3);
+            capturedEvent.ChangedImageIds.Should().BeEquivalentTo(new[] { 1, 2, 5, 6, 7 });
+            capturedEvent.ChangedSelectionState.Should().BeNull();
         }
 
         [Fact]

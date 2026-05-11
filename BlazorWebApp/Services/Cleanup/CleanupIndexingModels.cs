@@ -1,5 +1,13 @@
 namespace BlazorWebApp.Services.Cleanup
 {
+    public record CleanupIndexingQueueOptions
+    {
+        public const string SectionName = "Cleanup:IndexingQueue";
+
+        public bool IndexSavedImages { get; init; } = true;
+        public bool RunEmbeddingsForSavedImages { get; init; }
+    }
+
     public record CleanupIndexingOptions
     {
         public int? ProjectId { get; init; }
@@ -35,5 +43,12 @@ namespace BlazorWebApp.Services.Cleanup
         public string? NormalizedPrompt { get; init; }
         public string? Fingerprint { get; init; }
         public string? TokenSignature { get; init; }
+    }
+
+    public enum CleanupIndexingQueueReason
+    {
+        ImageSaved,
+        ImageUpdated,
+        Manual
     }
 }

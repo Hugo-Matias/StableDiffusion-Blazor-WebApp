@@ -3,7 +3,7 @@
   --gallery-tile-selected-ring: 3px;
   --gallery-tile-selected-badge-offset: 6px;
   --gallery-tile-selected-badge-size: 28px;
-  --gallery-tile-focus-action-min: 5.2rem;
+  --gallery-tile-focus-view-size: 2.75rem;
   position: relative;
   width: 100%;
   min-height: 0;
@@ -124,10 +124,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--app-gutter-inner) / 2);
   padding: var(--app-gutter-inner);
   pointer-events: none;
-  background: color-mix(in srgb, var(--mud-palette-surface) 42%, transparent);
+  background: color-mix(in srgb, var(--mud-palette-surface) 20%, transparent);
   opacity: 0;
   transition: opacity 0.16s ease;
 }
@@ -137,23 +136,21 @@
   opacity: 1;
 }
 
-.tile-selection-action {
-  min-width: var(--gallery-tile-focus-action-min);
-  min-height: calc(var(--app-gutter-inner) * 2.5);
+.tile-selection-view-action {
+  width: var(--gallery-tile-focus-view-size);
+  height: var(--gallery-tile-focus-view-size);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--app-gutter-inner) / 2);
-  padding: calc(var(--app-gutter-inner) / 2) calc(var(--app-gutter-inner) * 0.75);
-  border-radius: var(--mud-default-borderradius);
+  padding: 0;
+  border-radius: 50%;
   border: 1px solid var(--mud-palette-lines-inputs);
-  color: var(--mud-palette-text-primary);
+  color: var(--mud-palette-primary);
   background: color-mix(in srgb, var(--mud-palette-surface) 90%, transparent);
   backdrop-filter: blur(8px);
   cursor: pointer;
   pointer-events: auto;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 1rem;
   line-height: 1;
   transition:
     background 0.14s ease,
@@ -162,23 +159,13 @@
     transform 0.14s ease;
 }
 
-.tile-selection-action:hover,
-.tile-selection-action:focus-visible {
+.tile-selection-view-action:hover,
+.tile-selection-view-action:focus-visible {
   background: var(--mud-palette-primary-hover);
   border-color: var(--mud-palette-primary);
   color: var(--mud-palette-primary);
   transform: translateY(-1px);
   outline: none;
-}
-
-.tile-selection-action.selected {
-  color: var(--mud-palette-success-text);
-  background: var(--mud-palette-success);
-  border-color: var(--mud-palette-success);
-}
-
-.tile-selection-action.view {
-  color: var(--mud-palette-primary);
 }
 
 .gallery-tile-topbar {
@@ -306,12 +293,8 @@
 }
 
 @media (max-width: 600px) {
-  .gallery-tile-selection-overlay {
-    flex-direction: column;
-  }
-
-  .tile-selection-action {
-    width: min(100%, calc(var(--gallery-tile-focus-action-min) * 1.35));
+  .gallery-image-tile {
+    --gallery-tile-focus-view-size: 2.5rem;
   }
 }
 

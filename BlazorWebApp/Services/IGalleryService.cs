@@ -22,7 +22,9 @@ namespace BlazorWebApp.Services
         Task SetCurrentFolder(int id);
         Task SetCurrentProject(int id);
 
+        bool IsImageSelected(int id);
         void AddSelectedImage(int id);
+        void AddSelectedImages(IEnumerable<int> ids);
         void RemoveSelectedImage(int id);
         void ClearSelectedImages();
         void ReplaceSelectedImages(List<int> ids);

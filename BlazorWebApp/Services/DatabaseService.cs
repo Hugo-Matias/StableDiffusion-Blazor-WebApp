@@ -1,6 +1,7 @@
 ﻿using BlazorWebApp.Data;
 using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,10 +15,11 @@ namespace BlazorWebApp.Services
         private readonly ILogger<DatabaseService> _logger;
         private readonly OllamaService _ollamaService;
         private readonly IIOService _io;
+        private readonly IEventService _events;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger, OllamaService ollamaService, IIOService io)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger, OllamaService ollamaService, IIOService io, IEventService events)
         {
             _factory = factory;
             _capi = capi;
@@ -25,6 +27,7 @@ namespace BlazorWebApp.Services
             _logger = logger;
             _ollamaService = ollamaService;
             _io = io;
+            _events = events;
             PageSize = 5;
 
             // Block synchronously so any migration failure surfaces immediately
@@ -290,7 +293,9 @@ namespace BlazorWebApp.Services
                 var result = await context.Images.AddAsync(image);
                 if (result != null) { await context.SaveChangesAsync(); }
             }
-            return await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path);
+            var saved = await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path) ?? image;
+            PublishImageRecordSaved(saved, isUpdate: false);
+            return saved;
         }
 
         public async Task<List<Image>> GetImages(List<int> imageIds)
@@ -525,33 +530,32 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             var imageEntity = context.Images.Include(i => i.Model).FirstOrDefault(i => i.Id == image.Id);
 
-            if (imageEntity != null)
+            if (imageEntity == null)
             {
-                context.Entry(imageEntity).CurrentValues.SetValues(image);
-
-                if (image.Model != null)
-                {
-                    var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
-                    if (resource != null)
-                    {
-                        imageEntity.ResourceId = resource.Id;
-                        imageEntity.Model = resource;
-                    }
-                }
+                return image;
             }
-            else
+
+            context.Entry(imageEntity).CurrentValues.SetValues(image);
+
+            if (image.Model != null)
             {
-                imageEntity.ResourceId = null;
-                imageEntity.Model = null;
+                var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
+                if (resource != null)
+                {
+                    imageEntity.ResourceId = resource.Id;
+                    imageEntity.Model = resource;
+                }
             }
 
             await context.SaveChangesAsync();
+            PublishImageRecordSaved(imageEntity, isUpdate: true);
             return imageEntity;
         }
 
         public async Task UpdateImages(List<Image> images)
         {
             using var context = await _factory.CreateDbContextAsync();
+            var updatedImages = new List<Image>();
             foreach (var image in images)
             {
                 var imageEntity = await context.Images.Include(i => i.Model).FirstOrDefaultAsync(i => i.Id == image.Id);
@@ -567,14 +571,26 @@ namespace BlazorWebApp.Services
                             imageEntity.Model = resource;
                         }
                     }
-                }
-                else
-                {
-                    imageEntity.ResourceId = null;
-                    imageEntity.Model = null;
+                    updatedImages.Add(imageEntity);
                 }
             }
             await context.SaveChangesAsync();
+
+            foreach (var image in updatedImages)
+            {
+                PublishImageRecordSaved(image, isUpdate: true);
+            }
+        }
+
+        private void PublishImageRecordSaved(Image image, bool isUpdate)
+        {
+            _events.Publish(new ImageRecordSavedEventArgs
+            {
+                ImageId = image.Id,
+                ProjectId = image.ProjectId,
+                ImagePath = image.Path,
+                IsUpdate = isUpdate
+            });
         }
 
         public async Task<Image> DeleteImage(Image image)
