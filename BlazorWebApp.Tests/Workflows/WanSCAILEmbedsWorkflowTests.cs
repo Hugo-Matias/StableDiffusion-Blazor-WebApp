@@ -16,6 +16,7 @@ public class WanSCAILEmbedsWorkflowTests
 
         metadata.Description.Should().NotBeNullOrWhiteSpace();
         metadata.CompatibleResourceBaseModels.Should().Equal("Wan Video 14B i2v 480p");
+        metadata.UsesDualModelLoras.Should().BeFalse();
         metadata.Assets.Should().ContainSingle(asset => asset.Parameter == "Model" &&
             asset.DefaultValue == "Wan21-14B-SCAIL-preview_fp8_e4m3fn_scaled_KJ.safetensors");
         metadata.Assets.Should().ContainSingle(asset => asset.Parameter == "TextEncoder" &&
@@ -197,6 +198,44 @@ public class WanSCAILEmbedsWorkflowTests
         renderInputs.GetProperty("render_backend").GetString().Should().Be("taichi");
         InputRef(renderInputs, "dw_poses").Should().Equal("vitpose_detect", "0");
         InputRef(renderInputs, "ref_dw_pose").Should().Equal("ref_vitpose_detect", "0");
+    }
+
+    [Fact]
+    public void Build_WithAdditionalLoras_ShouldChainWanLoraSelectorsAfterSpeedLora()
+    {
+        var parameters = CreateParameters();
+        parameters.Loras.Add(new Lora
+        {
+            Name = "first_wan_lora.safetensors",
+            Path = "Wan/first_wan_lora.safetensors",
+            Strength = 0.75f,
+            IsEnabled = true
+        });
+        parameters.Loras.Add(new Lora
+        {
+            Name = "second_wan_lora.safetensors",
+            Strength = 0.45f,
+            IsEnabled = true
+        });
+
+        using var json = JsonDocument.Parse(_workflow.Build(parameters).Json);
+
+        var speedInputs = Inputs(json, "lora_select");
+        speedInputs.TryGetProperty("prev_lora", out _).Should().BeFalse();
+        speedInputs.GetProperty("lora").GetString().Should().Be("Speed/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors");
+
+        var firstLoraInputs = Inputs(json, "lora_select_0");
+        NodeType(json, "lora_select_0").Should().Be("WanVideoLoraSelect");
+        firstLoraInputs.GetProperty("lora").GetString().Should().Be("Wan/first_wan_lora.safetensors");
+        firstLoraInputs.GetProperty("strength").GetDouble().Should().BeApproximately(0.75, 0.0001);
+        InputRef(firstLoraInputs, "prev_lora").Should().Equal("lora_select", "0");
+
+        var secondLoraInputs = Inputs(json, "lora_select_1");
+        NodeType(json, "lora_select_1").Should().Be("WanVideoLoraSelect");
+        secondLoraInputs.GetProperty("lora").GetString().Should().Be("second_wan_lora.safetensors");
+        secondLoraInputs.GetProperty("strength").GetDouble().Should().BeApproximately(0.45, 0.0001);
+        InputRef(secondLoraInputs, "prev_lora").Should().Equal("lora_select_0", "0");
+        InputRef(Inputs(json, "set_loras"), "lora").Should().Equal("lora_select_1", "0");
     }
 
     [Fact]

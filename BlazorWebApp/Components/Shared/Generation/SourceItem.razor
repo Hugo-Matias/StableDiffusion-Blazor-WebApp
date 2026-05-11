@@ -9,7 +9,7 @@
     {
         @* Video input - drag/drop with browser-side preview. Uploads bypass SignalR
            via fetch() to /api/upload-source so the page stays responsive. *@
-        <VideoInput Filename="@Source.Filename" FilenameChanged="HandleVideoFilenameChanged" Title="@Source.Label"
+        <VideoInput Filename="@Source.Filename" FilenameChanged="HandleVideoFilenameChanged" Title="@DisplayLabel"
                     VideoOptions="@Source.VideoOptions" VideoOptionsChanged="HandleVideoOptionsChanged"
                     DefaultVideoOptions="@SourceDefinition?.DefaultVideoOptions" MaxFileSizeMB="1024" />
     }
@@ -17,7 +17,7 @@
 
     {
         @* Audio input - file upload only *@
-        <MudText Typo="Typo.caption" Class="mb-1">@Source.Label</MudText>
+        <MudText Typo="Typo.caption" Class="mb-1">@DisplayLabel</MudText>
         <MudFileUpload T="IBrowserFile" Accept=".wav,.mp3,.flac,.ogg,.m4a" FilesChanged="HandleAudioUpload" Class="mb-2">
             <ButtonTemplate>
                 <MudButton HtmlTag="label" Variant="Variant.Outlined" Color="Color.Primary"
@@ -42,7 +42,7 @@
     else
     {
         @* Image input - reuse ImageInput component for drag/drop, clipboard, and editor *@
-        <ImageInput ImageData="@Source.Data" ImageDataChanged="HandleImageChanged" Title="@Source.Label"
+        <ImageInput ImageData="@Source.Data" ImageDataChanged="HandleImageChanged" Title="@DisplayLabel"
                     OnImageLoaded="HandleImageLoaded" OnEditClicked="HandleEditClicked"
                     OnBlankCanvasClicked="HandleBlankCanvasClicked" MaxFileSizeMB="50" AutoResize="false" />
     }
@@ -69,6 +69,9 @@
 
     [Parameter]
     public WorkflowSource? SourceDefinition { get; set; }
+
+    private string DisplayLabel => string.IsNullOrWhiteSpace(SourceDefinition?.Label) ? Source.Label :
+SourceDefinition.Label;
 
     /// <summary>
     /// Callback when edit is clicked (for image editor integration).

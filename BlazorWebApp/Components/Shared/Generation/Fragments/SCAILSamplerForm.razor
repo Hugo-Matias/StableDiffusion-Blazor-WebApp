@@ -13,7 +13,7 @@
 <MudGrid Spacing="2">
     <!-- Scheduler Section -->
     <MudItem xs="12">
-        <MudText Typo="Typo.overline" Class="text-primary">Scheduler</MudText>
+        <MudText Typo="Typo.overline">Scheduler</MudText>
     </MudItem>
     <MudItem xs="6">
         <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged"
@@ -46,7 +46,7 @@
 
     <!-- Sampler Section -->
     <MudItem xs="12">
-        <MudText Typo="Typo.overline" Class="text-primary">Sampler</MudText>
+        <MudText Typo="Typo.overline">Sampler</MudText>
     </MudItem>
     <MudItem xs="6">
         <MudSlider T="float" @bind-Value="_localCfg" @bind-Value:after="OnCfgChanged" Min="_cfgMin" Max="_cfgMax"
@@ -60,7 +60,7 @@
 
     <!-- Context Options Section -->
     <MudItem xs="12">
-        <MudText Typo="Typo.overline" Class="text-primary">Context Options</MudText>
+        <MudText Typo="Typo.overline">Context Options</MudText>
     </MudItem>
     <MudItem xs="6">
         <MudSelect T="string" Label="Context Schedule" @bind-Value="_localContextSchedule"

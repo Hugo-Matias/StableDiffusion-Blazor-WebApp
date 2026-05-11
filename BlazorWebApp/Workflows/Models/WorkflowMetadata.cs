@@ -60,6 +60,12 @@ public record WorkflowMetadata
     public List<string> CompatibleResourceBaseModels { get; init; } = [];
 
     /// <summary>
+    /// Whether the workflow expects LoRAs to be assigned separately to high/low model paths.
+    /// Single-loader Wan workflows should leave this false even when they use ModelBase.Wan.
+    /// </summary>
+    public bool UsesDualModelLoras { get; init; }
+
+    /// <summary>
     /// Generates a deterministic GUID from workflow metadata using UUID v5 (RFC 4122).
     /// Same inputs always produce the same GUID, preventing copy-paste collisions.
     /// </summary>

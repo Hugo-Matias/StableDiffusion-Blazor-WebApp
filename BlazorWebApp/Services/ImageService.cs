@@ -590,21 +590,36 @@ namespace BlazorWebApp.Services
                 video.Model = parameters.Assets.GetValueOrDefault(Assets.Model) ??
                               parameters.Assets.GetValueOrDefault(Assets.HighModel) ?? "";
 
-                var latentFragment = parameters.Fragments.Values.FirstOrDefault(f =>
-                    f.FragmentFile.Contains("latent", StringComparison.OrdinalIgnoreCase));
-                video.Width = latentFragment?.GetValueOrDefault(Params.Width, 768) ??
-                              videoFragment?.GetValueOrDefault(Params.Width, 768) ?? 768;
-                video.Height = latentFragment?.GetValueOrDefault(Params.Height, 768) ??
-                               videoFragment?.GetValueOrDefault(Params.Height, 768) ?? 768;
-
-                video.FrameCount = videoFragment?.GetValueOrDefault(Params.VideoLength, 81) ?? 81;
-                video.FrameRate = videoFragment?.GetValueOrDefault(Params.FrameRate, 16) ?? 16;
-                video.Duration = video.FrameRate > 0 ? (double)video.FrameCount / video.FrameRate : 0;
+                ApplyVideoFileMetadata(video, parameters, videoFragment);
 
                 // Persist to database using Image entity
                 await AddVideoToDbFromParams(video, video.Steps, video.CfgScale, video.Sampler,
                     samplerFragment?.GetValue<string>(Params.Scheduler) ?? "simple", parameters);
             }
+        }
+
+        private void ApplyVideoFileMetadata(GeneratedVideo video, GenerationParameters parameters, FragmentParameters? videoFragment)
+        {
+            var latentFragment = parameters.Fragments.Values.FirstOrDefault(f =>
+                f.FragmentFile.Contains("latent", StringComparison.OrdinalIgnoreCase));
+
+            var fileMetadata = VideoFileMetadataReader.Read(video.FilePath, _logger);
+
+            video.Width = fileMetadata.Width > 0
+                ? fileMetadata.Width
+                : latentFragment?.GetValueOrDefault(Params.Width, 768) ?? videoFragment?.GetValueOrDefault(Params.Width, 768) ?? 768;
+            video.Height = fileMetadata.Height > 0
+                ? fileMetadata.Height
+                : latentFragment?.GetValueOrDefault(Params.Height, 768) ?? videoFragment?.GetValueOrDefault(Params.Height, 768) ?? 768;
+            video.FrameRate = fileMetadata.FrameRate > 0
+                ? (int)Math.Round(fileMetadata.FrameRate)
+                : videoFragment?.GetValueOrDefault(Params.FrameRate, 16) ?? 16;
+            video.FrameCount = fileMetadata.FrameCount > 0
+                ? fileMetadata.FrameCount
+                : videoFragment?.GetValueOrDefault(Params.VideoLength, 81) ?? 81;
+            video.Duration = fileMetadata.DurationSeconds > 0
+                ? fileMetadata.DurationSeconds
+                : video.FrameRate > 0 ? (double)video.FrameCount / video.FrameRate : 0;
         }
 
         /// <summary>

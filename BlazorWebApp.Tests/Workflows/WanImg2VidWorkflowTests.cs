@@ -38,6 +38,12 @@ public class WanImg2VidWorkflowTests
     }
 
     [Fact]
+    public void Metadata_ShouldUseDualModelLoras()
+    {
+        _workflow.Metadata.UsesDualModelLoras.Should().BeTrue();
+    }
+
+    [Fact]
     public void Metadata_ShouldHaveFiveAssets()
     {
         _workflow.Metadata.Assets.Should().HaveCount(5);

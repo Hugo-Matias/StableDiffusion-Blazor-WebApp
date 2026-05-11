@@ -38,6 +38,11 @@ namespace BlazorWebApp.Models
         /// Used to filter asset selectors and LoRA lists to only show compatible resources.
         /// </summary>
         public List<string>? CompatibleResourceBaseModels { get; set; }
+
+        /// <summary>
+        /// Whether LoRAs should be assigned to high/low model paths in the Generate UI.
+        /// </summary>
+        public bool UsesDualModelLoras { get; set; }
     }
 
     /// <summary>

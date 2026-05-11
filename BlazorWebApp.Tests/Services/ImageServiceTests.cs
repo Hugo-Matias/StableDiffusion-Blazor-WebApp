@@ -58,17 +58,17 @@ public class ImageServiceTests
 
         // Setup GenerationParameters
         _generationParameters = new GenerationParameters();
-        
+
         var promptsFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
         promptsFragment.SetValue(FragmentKeys.Params.Positive, "test prompt");
         promptsFragment.SetValue(FragmentKeys.Params.Negative, "bad quality");
-        
+
         var samplerFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
         samplerFragment.SetValue(FragmentKeys.Params.Steps, 20);
         samplerFragment.SetValue(FragmentKeys.Params.Cfg, 7.0);
         samplerFragment.SetValue(FragmentKeys.Params.SamplerName, "euler");
         samplerFragment.SetValue(FragmentKeys.Params.Seed, 12345L);
-        
+
         var latentFragment = _generationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
         latentFragment.SetValue(FragmentKeys.Params.Width, 512);
         latentFragment.SetValue(FragmentKeys.Params.Height, 512);
@@ -86,7 +86,7 @@ public class ImageServiceTests
             Gallery = new AppStateGallery { ProjectId = 1 }
         };
         _mockState.Setup(s => s.State).Returns(appState);
-        
+
         // Setup GenerationParameters
         _mockState.Setup(s => s.GenerationParameters).Returns(_generationParameters);
 
@@ -441,7 +441,7 @@ public class ImageServiceTests
     {
         // Arrange
         var service = CreateService();
-        
+
         // We can verify the event service is set up correctly
         // The actual publishing happens internally through NotifyStateChanged
         _mockEvents.Verify(e => e.Publish(It.IsAny<ImagesGeneratedEventArgs>()), Times.Never);
@@ -469,6 +469,57 @@ public class ImageServiceTests
         {
             File.Delete(tempFile);
         }
+    }
+
+    #endregion
+
+    #region Video Metadata Tests
+
+    [Fact]
+    public void VideoFileMetadataReader_ParseFfprobeJson_ShouldReadExactFileValues()
+    {
+        var json = """
+                {
+                    "streams": [
+                        {
+                            "width": 1280,
+                            "height": 720,
+                            "avg_frame_rate": "30000/1001",
+                            "nb_read_frames": "242",
+                            "duration": "8.075"
+                        }
+                    ],
+                    "format": {
+                        "duration": "8.100"
+                    }
+                }
+                """;
+
+        var metadata = VideoFileMetadataReader.ParseFfprobeJson(json);
+
+        Assert.Equal(1280, metadata.Width);
+        Assert.Equal(720, metadata.Height);
+        Assert.Equal(242, metadata.FrameCount);
+        Assert.Equal(30000d / 1001d, metadata.FrameRate, precision: 6);
+        Assert.Equal(8.075, metadata.DurationSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void VideoFileMetadataReader_Read_ShouldReadSampleVideoDimensionsAndDuration()
+    {
+        var samplePath = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory,
+                "..", "..", "..", "..",
+                "Documentation", "Plans", "Workflows", "Wan", "WAN ANIMATE 2.2", "Example.mp4"));
+
+        if (!File.Exists(samplePath))
+            return;
+
+        var metadata = VideoFileMetadataReader.Read(samplePath);
+
+        Assert.Equal(2560, metadata.Width);
+        Assert.Equal(1440, metadata.Height);
+        Assert.True(metadata.DurationSeconds > 15);
     }
 
     #endregion

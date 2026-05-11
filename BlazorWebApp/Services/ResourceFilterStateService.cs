@@ -9,7 +9,6 @@ namespace BlazorWebApp.Services;
 /// </summary>
 public class ResourceFilterStateService : IResourceFilterStateService
 {
-    private readonly IResourceCacheService _cache;
     private readonly IEventService _events;
 
     private List<string> _availableBaseModels = [];
@@ -20,7 +19,6 @@ public class ResourceFilterStateService : IResourceFilterStateService
 
     public ResourceFilterStateService(IResourceCacheService cache, IEventService events)
     {
-        _cache = cache;
         _events = events;
 
         // Self-subscribe to resource changes so the filter state is invalidated
@@ -50,9 +48,11 @@ public class ResourceFilterStateService : IResourceFilterStateService
             return;
         }
 
-        var distinctInCache = await _cache.GetDistinctBaseModelsAsync(workflow.CompatibleResourceBaseModels);
-        _availableBaseModels = distinctInCache;
-        _enabledBaseModels = new HashSet<string>(distinctInCache, StringComparer.OrdinalIgnoreCase);
+        _availableBaseModels = workflow.CompatibleResourceBaseModels
+            .Where(model => !string.IsNullOrWhiteSpace(model))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _enabledBaseModels = new HashSet<string>(_availableBaseModels, StringComparer.OrdinalIgnoreCase);
         _allowAll = false;
         _includeUntracked = true;
     }
@@ -108,7 +108,7 @@ public class ResourceFilterStateService : IResourceFilterStateService
 
     public IReadOnlyList<string>? GetEffectiveBaseModels()
     {
-        if (_allowAll || _currentWorkflowId == null || _availableBaseModels.Count == 0)
+        if (_allowAll || _currentWorkflowId == null)
             return null;
 
         return _enabledBaseModels.ToList();

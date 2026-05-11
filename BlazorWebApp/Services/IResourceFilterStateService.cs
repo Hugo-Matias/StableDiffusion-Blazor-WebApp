@@ -9,8 +9,8 @@ namespace BlazorWebApp.Services;
 public interface IResourceFilterStateService
 {
     /// <summary>
-    /// Base models from the current workflow's CompatibleResourceBaseModels that actually have resources in the cache.
-    /// Only these are shown as chip toggles in the toolbar.
+    /// Base models from the current workflow's CompatibleResourceBaseModels.
+    /// These are shown as chip toggles even when the local resource cache has no matching enabled resources yet.
     /// </summary>
     IReadOnlyList<string> AvailableBaseModels { get; }
 

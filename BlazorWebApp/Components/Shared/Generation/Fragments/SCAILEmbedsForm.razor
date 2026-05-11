@@ -13,7 +13,7 @@
 <MudGrid Spacing="2">
     <!-- Reference Embeds Section -->
     <MudItem xs="12">
-        <MudText Typo="Typo.overline" Class="text-primary">Reference Embeds</MudText>
+        <MudText Typo="Typo.overline">Reference Embeds</MudText>
     </MudItem>
     <MudItem xs="6">
         <MudSlider T="float" @bind-Value="_localRefStrength" @bind-Value:after="OnRefStrengthChanged" Min="0.0f"
@@ -32,7 +32,7 @@
 
     <!-- Pose Embeds Section -->
     <MudItem xs="12">
-        <MudText Typo="Typo.overline" Class="text-primary">Pose Embeds</MudText>
+        <MudText Typo="Typo.overline">Pose Embeds</MudText>
     </MudItem>
     <MudItem xs="6">
         <MudSlider T="float" @bind-Value="_localPoseStrength" @bind-Value:after="OnPoseStrengthChanged" Min="0.0f"

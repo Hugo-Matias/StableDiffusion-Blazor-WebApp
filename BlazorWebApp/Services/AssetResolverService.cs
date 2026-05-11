@@ -313,8 +313,8 @@ namespace BlazorWebApp.Services
                 }
                 else
                 {
-                    // No chips, no untracked - fall back to full workflow compatibility without untracked
-                    filtered = await _resourceFilter.FilterAssetsByWorkflowAsync(options, workflow, includeUntracked: false);
+                    // No chips, no untracked - the user intentionally disabled all tracked workflow bases.
+                    filtered = [];
                 }
             }
             else

@@ -33,11 +33,12 @@
                      PanelClass="pa-3">
                 @foreach (var source in Sources)
                 {
+                    var sourceDefinition = GetSourceDefinition(source.Key);
                     <MudTabPanel BadgeDot="@(!string.IsNullOrEmpty(source.Value.Data))" BadgeColor="Color.Success">
                         <TabContent>
                             <div class="d-flex align-center gap-1">
                                 <MudIcon Icon="@GetSourceIcon(source.Value.Type)" Size="Size.Small" />
-                                <MudText Typo="Typo.body2">@source.Value.Label</MudText>
+                                <MudText Typo="Typo.body2">@GetSourceLabel(source.Value, sourceDefinition)</MudText>
                                 @if (CanRemoveSource(source.Key))
                                 {
                                     <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error"
@@ -47,9 +48,9 @@
                             </div>
                         </TabContent>
                         <ChildContent>
-                            <SourceItem Source="@source.Value" SourceId="@source.Key"
-                                        SourceDefinition="@GetSourceDefinition(source.Key)" OnSourceChanged="HandleSourceChanged"
-                                        OnEditClicked="HandleEditClicked" OnBlankCanvasClicked="HandleBlankCanvasClicked" />
+                            <SourceItem Source="@source.Value" SourceId="@source.Key" SourceDefinition="@sourceDefinition"
+                                        OnSourceChanged="HandleSourceChanged" OnEditClicked="HandleEditClicked"
+                                        OnBlankCanvasClicked="HandleBlankCanvasClicked" />
                         </ChildContent>
                     </MudTabPanel>
                 }
@@ -118,6 +119,11 @@
             "audio" => Icons.Material.Filled.AudioFile,
             _ => Icons.Material.Filled.AttachFile
         };
+    }
+
+    private static string GetSourceLabel(SourceAsset source, WorkflowSource? sourceDefinition)
+    {
+        return string.IsNullOrWhiteSpace(sourceDefinition?.Label) ? source.Label : sourceDefinition.Label;
     }
 
     private bool CanRemoveSource(string sourceId)

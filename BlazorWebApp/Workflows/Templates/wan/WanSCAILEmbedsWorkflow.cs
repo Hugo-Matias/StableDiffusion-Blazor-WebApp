@@ -286,19 +286,16 @@ public class WanSCAILEmbedsWorkflow : IWorkflowBuilder
             .InputFromNode("compile_args", "compile_settings", 0)
             .InputFromNode("block_swap_args", "block_swap", 0));
 
-        builder.AddNode("lora_select", node => node
-            .Type("WanVideoLoraSelect")
-            .Title("Speed LoRA")
-            .Input("lora", parameters.Assets?.GetValueOrDefault("SpeedLora") ?? DefaultSpeedLora)
-            .Input("strength", 1.0)
-            .Input("low_mem_load", false)
-            .Input("merge_loras", false));
+        var finalLoraNodeId = AddWanLoraChain(
+            builder,
+            parameters.Loras,
+            parameters.Assets?.GetValueOrDefault("SpeedLora") ?? DefaultSpeedLora);
 
         builder.AddNode("set_loras", node => node
             .Type("WanVideoSetLoRAs")
-            .Title("Set Speed LoRA")
+            .Title("Set LoRAs")
             .InputFromNode("model", "model_loader", 0)
-            .InputFromNode("lora", "lora_select", 0));
+            .InputFromNode("lora", finalLoraNodeId, 0));
 
         registry.Register("model", "set_loras", 0);
 
@@ -424,5 +421,69 @@ public class WanSCAILEmbedsWorkflow : IWorkflowBuilder
     {
         var value = fragment?.GetString(key, defaultValue);
         return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+    }
+
+    private static string AddWanLoraChain(
+        ComfyWorkflowBuilder builder,
+        IList<BlazorWebApp.Models.Lora>? loras,
+        string speedLora)
+    {
+        var currentLoraNodeId = "lora_select";
+        AddWanLoraSelect(builder, currentLoraNodeId, "Speed LoRA", speedLora, 1.0);
+
+        if (loras == null || loras.Count == 0)
+        {
+            return currentLoraNodeId;
+        }
+
+        for (var i = 0; i < loras.Count; i++)
+        {
+            var lora = loras[i];
+            if (!lora.IsEnabled)
+            {
+                continue;
+            }
+
+            var loraFile = GetLoraFile(lora);
+            if (string.IsNullOrWhiteSpace(loraFile))
+            {
+                continue;
+            }
+
+            var nodeId = $"lora_select_{i}";
+            AddWanLoraSelect(builder, nodeId, $"LoRA {i + 1}", loraFile, lora.Strength, currentLoraNodeId);
+            currentLoraNodeId = nodeId;
+        }
+
+        return currentLoraNodeId;
+    }
+
+    private static void AddWanLoraSelect(
+        ComfyWorkflowBuilder builder,
+        string nodeId,
+        string title,
+        string loraFile,
+        double strength,
+        string? previousLoraNodeId = null)
+    {
+        builder.AddNode(nodeId, node =>
+        {
+            node.Type("WanVideoLoraSelect")
+                .Title(title)
+                .Input("lora", loraFile)
+                .Input("strength", strength)
+                .Input("low_mem_load", false)
+                .Input("merge_loras", false);
+
+            if (!string.IsNullOrWhiteSpace(previousLoraNodeId))
+            {
+                node.InputFromNode("prev_lora", previousLoraNodeId, 0);
+            }
+        });
+    }
+
+    private static string GetLoraFile(BlazorWebApp.Models.Lora lora)
+    {
+        return !string.IsNullOrWhiteSpace(lora.Path) ? lora.Path : lora.Name ?? string.Empty;
     }
 }

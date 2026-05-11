@@ -228,6 +228,8 @@ namespace BlazorWebApp.Services
                         DateCreated = DateTime.Now
                     };
 
+                    ApplyVideoFileMetadata(video, filepath);
+
                     // For smaller videos, we can include base64 data
                     var fileInfo = new FileInfo(filepath);
                     if (fileInfo.Length < 50 * 1024 * 1024) // Less than 50MB
@@ -253,6 +255,17 @@ namespace BlazorWebApp.Services
                 // Cleanup uploaded input images after job completion
                 await CleanupUploadedImagesAsync(promptId);
             }
+        }
+
+        private void ApplyVideoFileMetadata(GeneratedVideo video, string filePath)
+        {
+            var metadata = VideoFileMetadataReader.Read(filePath, _logger);
+
+            video.Width = metadata.Width;
+            video.Height = metadata.Height;
+            video.FrameCount = metadata.FrameCount;
+            video.FrameRate = metadata.FrameRate > 0 ? (int)Math.Round(metadata.FrameRate) : 0;
+            video.Duration = metadata.DurationSeconds;
         }
 
         #region GET

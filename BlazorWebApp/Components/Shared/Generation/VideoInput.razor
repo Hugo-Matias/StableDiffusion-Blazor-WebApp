@@ -95,6 +95,40 @@
             <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@PreviewFrameSummary</MudChip>
         </div>
         <MudGrid Spacing="2">
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Width" Variant="Variant.Text" Dense="true" Min="0" Max="8192" Step="1"
+                                 Value="@_localCustomWidth" ValueChanged="SetCustomWidth" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Height" Variant="Variant.Text" Dense="true" Min="0" Max="8192" Step="1"
+                                 Value="@_localCustomHeight" ValueChanged="SetCustomHeight" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="double" Label="Rate" Variant="Variant.Text" Dense="true" Min="0" Max="60" Step="1"
+                                 Value="@_localForceRate" ValueChanged="SetForceRate" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSlider T="int" Value="@_localSkipFirstFrames" ValueChanged="SetSkipFirstFrames" Min="0"
+                           Max="@SkipFirstFrameMax" Step="1" Variant="Variant.Text" ValueLabel>
+                    <small>Skip First:</small> @_localSkipFirstFrames
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSlider T="int" Value="@_localFrameLoadCap" ValueChanged="SetFrameLoadCap" Min="0"
+                           Max="@FrameLoadCapMax" Step="1" Variant="Variant.Text" ValueLabel>
+                    <small>Frame Cap:</small> @_localFrameLoadCap
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSlider T="int" Value="@_localPreviewFrameOffset" ValueChanged="SetPreviewFrameOffset" Min="0"
+                           Max="@PreviewFrameMax" Step="1" Variant="Variant.Text" ValueLabel>
+                    <small>Preview Frame:</small> @_localPreviewFrameOffset
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int" Label="Every Nth" Variant="Variant.Text" Dense="true" Min="1" Max="10000"
+                                 Step="1" Value="@_localSelectEveryNth" ValueChanged="SetSelectEveryNth" />
+            </MudItem>
             <MudItem xs="12" sm="4">
                 <MudSelect T="string" Label="Format" Variant="Variant.Text" Dense="true" Value="@_localFormat"
                            ValueChanged="SetFormat" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
@@ -103,34 +137,6 @@
                         <MudSelectItem Value="@format" />
                     }
                 </MudSelect>
-            </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudNumericField T="double" Label="Rate" Variant="Variant.Text" Dense="true" Min="0" Max="60" Step="1"
-                                 Value="@_localForceRate" ValueChanged="SetForceRate" />
-            </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudNumericField T="int" Label="Preview Frame" Variant="Variant.Text" Dense="true" Min="0"
-                                 Max="@PreviewFrameMax" Value="@_localPreviewFrameOffset" ValueChanged="SetPreviewFrameOffset" />
-            </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudNumericField T="int" Label="Skip First" Variant="Variant.Text" Dense="true" Min="0" Max="100000"
-                                 Step="1" Value="@_localSkipFirstFrames" ValueChanged="SetSkipFirstFrames" />
-            </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudNumericField T="int" Label="Frame Cap" Variant="Variant.Text" Dense="true" Min="0" Max="100000"
-                                 Step="1" Value="@_localFrameLoadCap" ValueChanged="SetFrameLoadCap" />
-            </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudNumericField T="int" Label="Every Nth" Variant="Variant.Text" Dense="true" Min="1" Max="10000"
-                                 Step="1" Value="@_localSelectEveryNth" ValueChanged="SetSelectEveryNth" />
-            </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudNumericField T="int" Label="Width" Variant="Variant.Text" Dense="true" Min="0" Max="8192" Step="1"
-                                 Value="@_localCustomWidth" ValueChanged="SetCustomWidth" />
-            </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudNumericField T="int" Label="Height" Variant="Variant.Text" Dense="true" Min="0" Max="8192" Step="1"
-                                 Value="@_localCustomHeight" ValueChanged="SetCustomHeight" />
             </MudItem>
         </MudGrid>
     </div>
@@ -157,15 +163,33 @@
     private string? PreviewUrl => !_hasLocalPreview && !string.IsNullOrWhiteSpace(Filename)
         ? $"/api/source-preview?filename={Uri.EscapeDataString(Filename)}"
         : null;
-    private int PreviewFrameMax => _localFrameLoadCap > 0 ? Math.Max(0, _localFrameLoadCap - 1) : 100000;
-    private int PreviewSourceFrame => _localSkipFirstFrames + (_localPreviewFrameOffset * Math.Max(1,
-_localSelectEveryNth));
-    private string CutSummary => _localFrameLoadCap > 0
-        ? $"Frames {PreviewSourceFrameStart}-{PreviewSourceFrameEnd}"
-        : $"From frame {PreviewSourceFrameStart}";
+    private const int UnknownFrameSliderMax = 100000;
+    private int EffectiveEveryNth => Math.Max(1, _localSelectEveryNth);
+    private int EstimatedTotalFrameCount => _durationSeconds > 0 && _localForceRate > 0
+        ? Math.Max(1, (int)Math.Round(_durationSeconds * _localForceRate, MidpointRounding.AwayFromZero))
+        : 0;
+    private int SkipFirstFrameMax => EstimatedTotalFrameCount > 0
+        ? Math.Max(0, EstimatedTotalFrameCount - 1)
+        : UnknownFrameSliderMax;
+    private int RemainingSelectableFrames => EstimatedTotalFrameCount > 0
+        ? Math.Max(0, (int)Math.Ceiling(Math.Max(0, EstimatedTotalFrameCount - _localSkipFirstFrames) / (double)EffectiveEveryNth))
+        : UnknownFrameSliderMax;
+    private int FrameLoadCapMax => RemainingSelectableFrames;
+    private int PreviewFrameMax => _localFrameLoadCap > 0
+        ? Math.Max(0, Math.Min(_localFrameLoadCap, FrameLoadCapMax) - 1)
+        : Math.Max(0, RemainingSelectableFrames - 1);
+    private int PreviewSourceFrame => _localSkipFirstFrames + (_localPreviewFrameOffset * EffectiveEveryNth);
+    private string CutSummary => EstimatedTotalFrameCount > 0
+        ? $"Frames {PreviewSourceFrameStart}-{PreviewSourceFrameEnd} / {EstimatedTotalFrameCount} total"
+        : _localFrameLoadCap > 0
+            ? $"Frames {PreviewSourceFrameStart}-{PreviewSourceFrameEnd}"
+            : $"From frame {PreviewSourceFrameStart}";
     private int PreviewSourceFrameStart => _localSkipFirstFrames;
-    private int PreviewSourceFrameEnd => _localSkipFirstFrames + ((Math.Max(1, _localFrameLoadCap) - 1) * Math.Max(1,
-_localSelectEveryNth));
+    private int PreviewSourceFrameEnd => _localFrameLoadCap > 0
+        ? _localSkipFirstFrames + ((Math.Max(1, _localFrameLoadCap) - 1) * EffectiveEveryNth)
+        : EstimatedTotalFrameCount > 0
+            ? _localSkipFirstFrames + ((Math.Max(0, EstimatedTotalFrameCount - 1 - _localSkipFirstFrames) / EffectiveEveryNth) * EffectiveEveryNth)
+            : _localSkipFirstFrames;
     private string PreviewFrameSummary => _localForceRate > 0
         ? $"Showing frame {PreviewSourceFrame}"
         : "Frame seek needs rate";
@@ -208,6 +232,7 @@ _localSelectEveryNth));
         _localSelectEveryNth = Math.Max(1, options.SelectEveryNth);
         _localFormat = string.IsNullOrWhiteSpace(options.Format) ? "AnimateDiff" : options.Format;
         _localPreviewFrameOffset = Math.Clamp(options.PreviewFrameOffset, 0, PreviewFrameMax);
+        ClampFrameControls();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -274,11 +299,15 @@ _localSelectEveryNth));
     }
 
     [JSInvokable]
-    public Task OnPreviewMetadataChanged(int width, int height, double duration)
+    public async Task OnPreviewMetadataChanged(int width, int height, double duration)
     {
         _dimensions = (width, height);
         _durationSeconds = duration;
-        return InvokeAsync(StateHasChanged);
+        if (ClampFrameControls() && VideoOptionsChanged.HasDelegate)
+        {
+            await VideoOptionsChanged.InvokeAsync(CreateOptionsFromLocal());
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]
@@ -295,12 +324,17 @@ _localSelectEveryNth));
         _progress = -1;
         _dimensions = (width, height);
         _durationSeconds = duration;
+        var controlsChanged = ClampFrameControls();
         Filename = filename;
         _syncedPreviewUrl = null;
         _syncedPreviewSettings = null;
         if (FilenameChanged.HasDelegate)
         {
             await FilenameChanged.InvokeAsync(filename);
+        }
+        if (controlsChanged && VideoOptionsChanged.HasDelegate)
+        {
+            await VideoOptionsChanged.InvokeAsync(CreateOptionsFromLocal());
         }
         await SyncPreviewFrameAsync();
         await InvokeAsync(StateHasChanged);
@@ -367,7 +401,7 @@ _localSelectEveryNth));
 
     private async Task CommitOptionsAsync()
     {
-        _localPreviewFrameOffset = Math.Clamp(_localPreviewFrameOffset, 0, PreviewFrameMax);
+        ClampFrameControls();
         var options = CreateOptionsFromLocal();
         VideoOptions = options;
         if (VideoOptionsChanged.HasDelegate)
@@ -434,6 +468,7 @@ _localSelectEveryNth));
     private async Task SetForceRate(double value)
     {
         _localForceRate = value;
+        ClampFrameControls();
         await CommitOptionsAsync();
     }
 
@@ -452,25 +487,49 @@ _localSelectEveryNth));
     private async Task SetFrameLoadCap(int value)
     {
         _localFrameLoadCap = value;
+        ClampFrameControls();
         await CommitOptionsAsync();
     }
 
     private async Task SetSkipFirstFrames(int value)
     {
         _localSkipFirstFrames = value;
+        ClampFrameControls();
         await CommitOptionsAsync();
     }
 
     private async Task SetSelectEveryNth(int value)
     {
         _localSelectEveryNth = Math.Max(1, value);
+        ClampFrameControls();
         await CommitOptionsAsync();
     }
 
     private async Task SetPreviewFrameOffset(int value)
     {
         _localPreviewFrameOffset = value;
+        ClampFrameControls();
         await CommitOptionsAsync();
+    }
+
+    private bool ClampFrameControls()
+    {
+        var originalSkipFirstFrames = _localSkipFirstFrames;
+        var originalFrameLoadCap = _localFrameLoadCap;
+        var originalPreviewFrameOffset = _localPreviewFrameOffset;
+
+        _localSkipFirstFrames = Math.Clamp(_localSkipFirstFrames, 0, SkipFirstFrameMax);
+
+        if (_localFrameLoadCap > 0)
+        {
+            _localFrameLoadCap = FrameLoadCapMax <= 0 ? 0 : Math.Clamp(_localFrameLoadCap, 1, FrameLoadCapMax);
+        }
+
+        _localPreviewFrameOffset = Math.Clamp(_localPreviewFrameOffset, 0, PreviewFrameMax);
+
+        return originalSkipFirstFrames != _localSkipFirstFrames
+            || originalFrameLoadCap != _localFrameLoadCap
+            || originalPreviewFrameOffset != _localPreviewFrameOffset;
     }
 
     public async ValueTask DisposeAsync()

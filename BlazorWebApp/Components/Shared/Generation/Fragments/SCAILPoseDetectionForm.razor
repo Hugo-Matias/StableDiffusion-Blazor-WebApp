@@ -10,7 +10,7 @@
 
 <MudGrid Spacing="2">
     <MudItem xs="12">
-        <MudText Typo="Typo.overline" Class="text-primary">Target Size</MudText>
+        <MudText Typo="Typo.overline">Target Size</MudText>
     </MudItem>
     <MudItem xs="6">
         <MudNumericField T="int" @bind-Value="_localTargetWidth" @bind-Value:after="OnTargetWidthChanged" Label="Width"
@@ -22,7 +22,7 @@
     </MudItem>
 
     <MudItem xs="12">
-        <MudText Typo="Typo.overline" Class="text-primary">Pose Detection</MudText>
+        <MudText Typo="Typo.overline">Pose Detection</MudText>
     </MudItem>
     <MudItem xs="6">
         <MudCheckBox @bind-Value="_localDetectHand" @bind-Value:after="OnDetectHandChanged" Label="Draw Hands" />

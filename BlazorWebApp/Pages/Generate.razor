@@ -41,7 +41,7 @@
         <MudItem xs="6">
             @* LoRAs *@
             <LoraForm Loras="Parameters.Loras" Backend="Data.Enums.Backend.ComfyUI"
-                      IsDualModel="@(_selectedWorkflow?.Base == Data.Enums.ModelBase.Wan)" OnLorasUpdated="HandleLorasUpdated" />
+                      IsDualModel="@(_selectedWorkflow?.UsesDualModelLoras == true)" OnLorasUpdated="HandleLorasUpdated" />
 
             @* Sources (if workflow has sources) *@
             @if (HasSources)

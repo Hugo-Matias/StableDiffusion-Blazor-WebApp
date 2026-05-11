@@ -550,7 +550,7 @@
         _currentPassEnabled = GetPassEnabled(_currentPass);
 
         var workflow = Orchestrator.GetCurrentWorkflow();
-        _isDualModel = workflow?.Base == ModelBase.Wan;
+        _isDualModel = workflow?.UsesDualModelLoras == true;
     }
 
     private void LoadResolvedOptions()

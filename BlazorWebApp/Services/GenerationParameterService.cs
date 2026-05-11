@@ -381,7 +381,10 @@ namespace BlazorWebApp.Services
                 {
                     if (savedState.Sources.TryGetValue(source.Id, out var savedSource))
                     {
-                        current.Sources[source.Id] = savedSource.Clone();
+                        var restoredSource = savedSource.Clone();
+                        restoredSource.Label = source.Label;
+                        restoredSource.Type = source.Type;
+                        current.Sources[source.Id] = restoredSource;
                     }
                     else
                     {

@@ -92,7 +92,8 @@ public class WanImg2VidWorkflow : IWorkflowBuilder
                 Required = true
             }
         ],
-        CompatibleResourceBaseModels = ["Wan Video 2.2 I2V-A14B"]
+        CompatibleResourceBaseModels = ["Wan Video 2.2 I2V-A14B"],
+        UsesDualModelLoras = true
     };
 
     public IEnumerable<IFragmentBuilder> GetFragments()
