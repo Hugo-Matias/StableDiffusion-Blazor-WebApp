@@ -39,6 +39,8 @@
                         <MudSelectItem Value="CleanupGroupingStrategy.PromptFuzzy">Prompt fuzzy</MudSelectItem>
                         <MudSelectItem Value="CleanupGroupingStrategy.VisualSimilarity">Visual similarity
                         </MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.LowValueCandidates">Low-value candidates
+                        </MudSelectItem>
                     </MudSelect>
 
                     <MudNumericField T="int" Label="Minimum group" @bind-Value="_minimumGroupSize" Min="2" Max="50"
@@ -60,6 +62,12 @@
                     {
                         <MudNumericField T="double" Label="Visual min similarity" @bind-Value="_visualSimilarity" Min="0.1"
                                          Max="1" Step="0.01" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    }
+
+                    @if (_strategy == CleanupGroupingStrategy.LowValueCandidates)
+                    {
+                        <MudNumericField T="double" Label="Score max" @bind-Value="_scoreCleanupThreshold" Min="0" Max="1"
+                                         Step="0.05" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
                     }
 
                     <MudNumericField T="int" Label="Max groups" @bind-Value="_maxGroups" Min="0" Max="1000"
@@ -349,6 +357,7 @@
     private int _perceptualHashDistance = 6;
     private double _promptSimilarity = 0.8;
     private double _visualSimilarity = 0.9;
+    private double _scoreCleanupThreshold = 0.35;
     private int _maxGroups = 100;
     private bool _isLoadingGroups;
     private bool _hasMoreGroups;
@@ -475,6 +484,7 @@ CleanupRepository.GetGroupRunAsync(runId);
                 PerceptualHashMaxDistance = _perceptualHashDistance,
                 PromptFuzzyMinSimilarity = _promptSimilarity,
                 VisualSimilarityMinSimilarity = _visualSimilarity,
+                ScoreCleanupThreshold = _scoreCleanupThreshold,
                 Name = BuildRunName()
             }, _operationCts.Token);
 

@@ -20,6 +20,17 @@ namespace BlazorWebApp.Data.Repositories
         public int Take { get; init; } = 100;
     }
 
+    public record CleanupScoreFilter
+    {
+        public string? ModelKey { get; init; }
+        public string? ModelHash { get; init; }
+        public string? ScoreName { get; init; }
+        public CleanupScoreStatus? Status { get; init; }
+        public double? MaxScore { get; init; }
+        public int Skip { get; init; }
+        public int Take { get; init; } = 100;
+    }
+
     public interface ICleanupRepository
     {
         Task<CleanupImageIndex> UpsertImageIndexAsync(CleanupImageIndex index, CancellationToken cancellationToken = default);
@@ -31,6 +42,10 @@ namespace BlazorWebApp.Data.Repositories
         Task<CleanupImageEmbedding?> GetImageEmbeddingAsync(int imageId, string modelKey, string? modelHash, CancellationToken cancellationToken = default);
         Task<List<CleanupImageEmbedding>> GetImageEmbeddingsAsync(CleanupEmbeddingFilter filter, CancellationToken cancellationToken = default);
         Task<List<CleanupImageEmbedding>> GetStaleImageEmbeddingsAsync(string modelKey, string? modelHash, int dimensions, int take, CancellationToken cancellationToken = default);
+        Task<CleanupImageScore> UpsertImageScoreAsync(CleanupImageScore score, CancellationToken cancellationToken = default);
+        Task<CleanupImageScore?> GetImageScoreAsync(int imageId, string modelKey, string? modelHash, string scoreName, CancellationToken cancellationToken = default);
+        Task<List<CleanupImageScore>> GetImageScoresAsync(CleanupScoreFilter filter, CancellationToken cancellationToken = default);
+        Task<List<CleanupImageScore>> GetStaleImageScoresAsync(string modelKey, string? modelHash, string scoreName, int take, CancellationToken cancellationToken = default);
         Task<CleanupGroupRun> CreateGroupRunAsync(CleanupGroupRun run, CancellationToken cancellationToken = default);
         Task<CleanupGroupRun?> GetGroupRunAsync(int runId, CancellationToken cancellationToken = default);
         Task<List<CleanupGroupRun>> GetGroupRunsAsync(int skip, int take, CancellationToken cancellationToken = default);

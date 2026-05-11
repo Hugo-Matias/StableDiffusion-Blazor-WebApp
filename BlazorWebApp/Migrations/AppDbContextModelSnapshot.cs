@@ -235,6 +235,68 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("CleanupImageEmbeddings");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageScore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IndexedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("MaxScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("MinScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("ModelHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RuntimeProvider")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("ScoreName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("ScoreName");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ImageId", "ModelKey", "ModelHash", "ScoreName")
+                        .IsUnique();
+
+                    b.ToTable("CleanupImageScores");
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageIndex", b =>
                 {
                     b.Property<int>("Id")
@@ -1214,6 +1276,17 @@ namespace BlazorWebApp.Migrations
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageEmbedding", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "Image")
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageScore", b =>
                 {
                     b.HasOne("BlazorWebApp.Data.Entities.Image", "Image")
                         .WithMany()

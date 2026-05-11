@@ -23,6 +23,7 @@ public class CleanupGroupingServiceTests : IDisposable
             _factory,
             _repository,
             new StaticEmbeddingMetadataService(),
+            new StaticScoringMetadataService(),
             _vectorCodec,
             NullLogger<CleanupGroupingService>.Instance);
     }
@@ -158,6 +159,50 @@ public class CleanupGroupingServiceTests : IDisposable
         result.TotalMembers.Should().Be(0);
     }
 
+    [Fact]
+    public async Task GenerateGroupsAsync_BuildsLowValueGroupsFromCurrentScoreModel()
+    {
+        await SeedImagesAsync(
+            Image(1, favorite: false, score: 0),
+            Image(2, favorite: false, score: 0),
+            Image(3, favorite: true, score: 0),
+            Image(4, favorite: false, score: 0));
+        await SeedIndexesAsync(
+            Indexed(1, fileSize: 100),
+            Indexed(2, fileSize: 200),
+            Indexed(3, fileSize: 300),
+            Indexed(4, fileSize: 400));
+        await SeedScoresAsync(
+            Score(1, 0.1),
+            Score(2, 0.12),
+            Score(3, 0.13),
+            Score(4, 0.9));
+
+        var result = await _service.GenerateGroupsAsync(new CleanupGroupingOptions
+        {
+            Strategy = CleanupGroupingStrategy.LowValueCandidates,
+            ScoreCleanupThreshold = 0.35,
+            MinimumGroupSize = 2
+        });
+
+        result.Status.Should().Be(CleanupGroupRunStatus.Completed);
+        result.TotalGroups.Should().Be(1);
+        result.TotalMembers.Should().Be(3);
+
+        var groups = await _repository.GetGroupsAsync(result.RunId, 0, 10);
+        groups.Should().ContainSingle();
+        groups[0].Strategy.Should().Be(CleanupGroupingStrategy.LowValueCandidates);
+        groups[0].RepresentativeImageId.Should().Be(3);
+        groups[0].MinSimilarity.Should().Be(0.1);
+        groups[0].MaxSimilarity.Should().Be(0.13);
+
+        var members = await _repository.GetGroupMembersAsync(groups[0].Id);
+        members.Select(member => member.ImageId).Should().Equal(3, 1, 2);
+        members[0].Role.Should().Be(CleanupGroupMemberRole.Representative);
+        members[1].Role.Should().Be(CleanupGroupMemberRole.CleanupCandidate);
+        members[2].Role.Should().Be(CleanupGroupMemberRole.CleanupCandidate);
+    }
+
     private async Task SeedImagesAsync(params Image[] images)
     {
         await using var context = await _factory.CreateDbContextAsync();
@@ -176,6 +221,13 @@ public class CleanupGroupingServiceTests : IDisposable
     {
         await using var context = await _factory.CreateDbContextAsync();
         context.CleanupImageEmbeddings.AddRange(embeddings);
+        await context.SaveChangesAsync();
+    }
+
+    private async Task SeedScoresAsync(params CleanupImageScore[] scores)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        context.CleanupImageScores.AddRange(scores);
         await context.SaveChangesAsync();
     }
 
@@ -204,6 +256,23 @@ public class CleanupGroupingServiceTests : IDisposable
             Dimensions = vector.Length,
             Vector = _vectorCodec.Serialize(_vectorCodec.Normalize(vector)),
             Status = CleanupEmbeddingStatus.Indexed,
+            IndexedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private static CleanupImageScore Score(int imageId, double score, string modelHash = "score-hash")
+    {
+        return new CleanupImageScore
+        {
+            ImageId = imageId,
+            ModelKey = "aesthetic-test-model",
+            ModelHash = modelHash,
+            ScoreName = "aesthetic",
+            RuntimeProvider = "CPU",
+            Score = score,
+            MinScore = 0,
+            MaxScore = 1,
+            Status = CleanupScoreStatus.Indexed,
             IndexedAtUtc = DateTime.UtcNow
         };
     }
@@ -269,6 +338,35 @@ public class CleanupGroupingServiceTests : IDisposable
                 ModelHash = "model-hash",
                 RuntimeProvider = "CPU",
                 Dimensions = 2
+            });
+    }
+
+    private sealed class StaticScoringMetadataService : ICleanupScoringModelMetadataService
+    {
+        public CleanupScoringOptions Options { get; } = new()
+        {
+            Enabled = true,
+            Model = new CleanupScoreModelOptions
+            {
+                ModelKey = "aesthetic-test-model",
+                ModelPath = "score.onnx",
+                ScoreName = "aesthetic",
+                InputName = "input",
+                OutputName = "score"
+            }
+        };
+
+        public CleanupScoringValidationResult Validate(CleanupScoringOptions options) => new();
+
+        public Task<CleanupScoreModelIdentity> GetIdentityAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(new CleanupScoreModelIdentity
+            {
+                ModelKey = "aesthetic-test-model",
+                ModelHash = "score-hash",
+                ScoreName = "aesthetic",
+                MinScore = 0,
+                MaxScore = 1,
+                RuntimeProvider = "CPU"
             });
     }
 }

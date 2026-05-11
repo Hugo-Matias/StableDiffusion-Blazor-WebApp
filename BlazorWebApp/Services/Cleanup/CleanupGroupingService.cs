@@ -13,6 +13,7 @@ namespace BlazorWebApp.Services.Cleanup
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly ICleanupRepository _cleanupRepository;
         private readonly ICleanupEmbeddingModelMetadataService _embeddingMetadata;
+        private readonly ICleanupScoringModelMetadataService _scoringMetadata;
         private readonly ICleanupEmbeddingVectorCodec _vectorCodec;
         private readonly ILogger<CleanupGroupingService> _logger;
 
@@ -20,12 +21,14 @@ namespace BlazorWebApp.Services.Cleanup
             IDbContextFactory<AppDbContext> contextFactory,
             ICleanupRepository cleanupRepository,
             ICleanupEmbeddingModelMetadataService embeddingMetadata,
+            ICleanupScoringModelMetadataService scoringMetadata,
             ICleanupEmbeddingVectorCodec vectorCodec,
             ILogger<CleanupGroupingService> logger)
         {
             _contextFactory = contextFactory;
             _cleanupRepository = cleanupRepository;
             _embeddingMetadata = embeddingMetadata;
+            _scoringMetadata = scoringMetadata;
             _vectorCodec = vectorCodec;
             _logger = logger;
         }
@@ -54,6 +57,12 @@ namespace BlazorWebApp.Services.Cleanup
                     var visualRecords = await LoadVisualEmbeddingRecordsAsync(options.ProjectId, cancellationToken);
                     sourceRows = visualRecords.Count;
                     groups = BuildVisualSimilarityGroups(visualRecords, options, cancellationToken);
+                }
+                else if (options.Strategy == CleanupGroupingStrategy.LowValueCandidates)
+                {
+                    var scoreRecords = await LoadScoreRecordsAsync(options.ProjectId, cancellationToken);
+                    sourceRows = scoreRecords.Count;
+                    groups = BuildLowValueCandidateGroups(scoreRecords, options);
                 }
                 else
                 {
@@ -184,6 +193,51 @@ namespace BlazorWebApp.Services.Cleanup
             }
 
             return records;
+        }
+
+        private async Task<List<ScoreRecord>> LoadScoreRecordsAsync(int? projectId, CancellationToken cancellationToken)
+        {
+            var validation = _scoringMetadata.Validate(_scoringMetadata.Options);
+            if (!validation.IsValid)
+            {
+                throw new InvalidOperationException("Cleanup scoring configuration is invalid: " + string.Join(" ", validation.Errors));
+            }
+
+            var identity = await _scoringMetadata.GetIdentityAsync(cancellationToken);
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+            var query =
+                from score in context.CleanupImageScores.AsNoTracking()
+                join index in context.CleanupImageIndexes.AsNoTracking()
+                    on score.ImageId equals index.ImageId
+                join image in context.Images.AsNoTracking()
+                    on score.ImageId equals image.Id
+                where score.Status == CleanupScoreStatus.Indexed
+                    && score.ModelKey == identity.ModelKey
+                    && score.ModelHash == identity.ModelHash
+                    && score.ScoreName == identity.ScoreName
+                    && index.Status == CleanupIndexStatus.Indexed
+                    && index.FileExists
+                select new ScoreRecord(
+                    score.ImageId,
+                    index.ProjectId,
+                    index.FileSizeBytes,
+                    image.Favorite,
+                    image.Score,
+                    score.Score,
+                    score.ScoreName,
+                    score.MinScore,
+                    score.MaxScore);
+
+            if (projectId.HasValue)
+            {
+                query = query.Where(record => record.ProjectId == projectId.Value);
+            }
+
+            return await query
+                .OrderBy(record => record.Score)
+                .ThenBy(record => record.ImageId)
+                .ToListAsync(cancellationToken);
         }
 
         private static List<CleanupGroup> BuildExactDuplicateGroups(IReadOnlyList<CleanupIndexRecord> records, CleanupGroupingOptions options)
@@ -445,6 +499,97 @@ namespace BlazorWebApp.Services.Cleanup
             };
         }
 
+        private static List<CleanupGroup> BuildLowValueCandidateGroups(IReadOnlyList<ScoreRecord> records, CleanupGroupingOptions options)
+        {
+            if (records.Count == 0)
+            {
+                return new List<CleanupGroup>();
+            }
+
+            var threshold = options.ScoreCleanupThreshold;
+            var candidates = records
+                .Where(record => record.Score <= threshold)
+                .ToList();
+
+            if (candidates.Count == 0)
+            {
+                return new List<CleanupGroup>();
+            }
+
+            var minimumScore = candidates.Min(record => record.MinScore ?? records.Min(row => row.Score));
+            var maximumScore = candidates.Max(record => record.MaxScore ?? Math.Max(records.Max(row => row.Score), threshold));
+            var bucketSize = Math.Max((maximumScore - minimumScore) / 10.0, 0.01);
+            var minimumGroupSize = Math.Max(2, options.MinimumGroupSize);
+
+            return candidates
+                .GroupBy(record => ScoreBucket(record.Score, minimumScore, bucketSize))
+                .Select(group => group.OrderBy(record => record.Score).ThenBy(record => record.ImageId).ToList())
+                .Where(group => group.Count >= minimumGroupSize)
+                .Select(group => BuildLowValueCandidateGroup(group, threshold, options.ScoreKeepThreshold))
+                .OrderBy(group => group.MinSimilarity ?? double.MaxValue)
+                .ThenByDescending(group => group.MemberCount)
+                .ThenBy(group => group.GroupKey, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        private static CleanupGroup BuildLowValueCandidateGroup(IReadOnlyList<ScoreRecord> records, double cleanupThreshold, double keepThreshold)
+        {
+            var representative = records
+                .OrderByDescending(record => record.Favorite)
+                .ThenByDescending(record => record.Score)
+                .ThenByDescending(record => record.UserScore)
+                .ThenBy(record => record.ImageId)
+                .First();
+            var bucketMin = records.Min(record => record.Score);
+            var bucketMax = records.Max(record => record.Score);
+            var scoreName = records[0].ScoreName;
+            var reason = $"{scoreName} score <= {cleanupThreshold:0.###}";
+
+            var members = records
+                .OrderByDescending(record => record.ImageId == representative.ImageId)
+                .ThenBy(record => record.Score)
+                .ThenBy(record => record.ImageId)
+                .Select((record, index) =>
+                {
+                    var isRepresentative = record.ImageId == representative.ImageId;
+                    var keepProtected = !isRepresentative && (record.Favorite || record.Score >= keepThreshold);
+                    return new CleanupGroupMember
+                    {
+                        ImageId = record.ImageId,
+                        Role = isRepresentative
+                            ? CleanupGroupMemberRole.Representative
+                            : keepProtected ? CleanupGroupMemberRole.KeepCandidate : CleanupGroupMemberRole.CleanupCandidate,
+                        SuggestedAction = isRepresentative || keepProtected ? CleanupSuggestedAction.Keep : CleanupSuggestedAction.Review,
+                        SimilarityScore = record.Score,
+                        Distance = record.MaxScore.HasValue ? record.MaxScore.Value - record.Score : null,
+                        EstimatedBytes = record.FileSizeBytes,
+                        SortOrder = index,
+                        Reason = reason
+                    };
+                })
+                .ToList();
+
+            var scores = members.Select(member => member.SimilarityScore!.Value).ToList();
+            return new CleanupGroup
+            {
+                GroupKey = $"score:{scoreName}:{bucketMin:0.###}:{bucketMax:0.###}",
+                Strategy = CleanupGroupingStrategy.LowValueCandidates,
+                Reason = reason,
+                RepresentativeImageId = representative.ImageId,
+                MemberCount = members.Count,
+                EstimatedBytes = members.Sum(member => member.EstimatedBytes ?? 0),
+                MinSimilarity = scores.Min(),
+                MaxSimilarity = scores.Max(),
+                Confidence = scores.Average(),
+                Members = members
+            };
+        }
+
+        private static int ScoreBucket(double score, double minimumScore, double bucketSize)
+        {
+            return (int)Math.Floor((score - minimumScore) / bucketSize);
+        }
+
         private static CleanupGroup BuildGroup(
             CleanupGroupingStrategy strategy,
             string groupKey,
@@ -585,6 +730,17 @@ namespace BlazorWebApp.Services.Cleanup
             bool Favorite,
             int Score,
             float[] Vector);
+
+        private sealed record ScoreRecord(
+            int ImageId,
+            int ProjectId,
+            long? FileSizeBytes,
+            bool Favorite,
+            int UserScore,
+            double Score,
+            string ScoreName,
+            double? MinScore,
+            double? MaxScore);
 
         private sealed record CleanupGroupingSummary
         {

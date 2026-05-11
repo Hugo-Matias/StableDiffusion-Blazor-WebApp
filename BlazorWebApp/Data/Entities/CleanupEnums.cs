@@ -17,6 +17,14 @@ namespace BlazorWebApp.Data.Entities
         Error
     }
 
+    public enum CleanupScoreStatus
+    {
+        Pending,
+        Indexed,
+        Stale,
+        Error
+    }
+
     public enum CleanupGroupRunStatus
     {
         Pending,

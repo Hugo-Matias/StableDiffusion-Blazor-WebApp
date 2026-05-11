@@ -176,6 +176,100 @@ namespace BlazorWebApp.Data.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<CleanupImageScore> UpsertImageScoreAsync(CleanupImageScore score, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await context.CleanupImageScores
+                .FirstOrDefaultAsync(row => row.ImageId == score.ImageId
+                    && row.ModelKey == score.ModelKey
+                    && row.ModelHash == score.ModelHash
+                    && row.ScoreName == score.ScoreName, cancellationToken);
+
+            if (score.Status == CleanupScoreStatus.Indexed && score.IndexedAtUtc == null)
+            {
+                score.IndexedAtUtc = now;
+            }
+
+            if (existing == null)
+            {
+                score.CreatedAtUtc = score.CreatedAtUtc == default ? now : score.CreatedAtUtc;
+                score.UpdatedAtUtc = score.UpdatedAtUtc == default ? now : score.UpdatedAtUtc;
+                context.CleanupImageScores.Add(score);
+                await context.SaveChangesAsync(cancellationToken);
+                return score;
+            }
+
+            score.Id = existing.Id;
+            score.CreatedAtUtc = existing.CreatedAtUtc;
+            score.UpdatedAtUtc = now;
+            context.Entry(existing).CurrentValues.SetValues(score);
+            await context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        public async Task<CleanupImageScore?> GetImageScoreAsync(int imageId, string modelKey, string? modelHash, string scoreName, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageScores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(score => score.ImageId == imageId
+                    && score.ModelKey == modelKey
+                    && score.ModelHash == modelHash
+                    && score.ScoreName == scoreName, cancellationToken);
+        }
+
+        public async Task<List<CleanupImageScore>> GetImageScoresAsync(CleanupScoreFilter filter, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageScores.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelKey))
+            {
+                query = query.Where(score => score.ModelKey == filter.ModelKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelHash))
+            {
+                query = query.Where(score => score.ModelHash == filter.ModelHash);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.ScoreName))
+            {
+                query = query.Where(score => score.ScoreName == filter.ScoreName);
+            }
+
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(score => score.Status == filter.Status.Value);
+            }
+
+            if (filter.MaxScore.HasValue)
+            {
+                query = query.Where(score => score.Score <= filter.MaxScore.Value);
+            }
+
+            return await query
+                .OrderBy(score => score.Score)
+                .ThenByDescending(score => score.UpdatedAtUtc)
+                .Skip(filter.Skip)
+                .Take(filter.Take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupImageScore>> GetStaleImageScoresAsync(string modelKey, string? modelHash, string scoreName, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageScores
+                .AsNoTracking()
+                .Where(score => score.ModelKey == modelKey
+                    && score.ScoreName == scoreName
+                    && (score.Status == CleanupScoreStatus.Stale || score.ModelHash != modelHash))
+                .OrderBy(score => score.UpdatedAtUtc)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<CleanupGroupRun> CreateGroupRunAsync(CleanupGroupRun run, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);

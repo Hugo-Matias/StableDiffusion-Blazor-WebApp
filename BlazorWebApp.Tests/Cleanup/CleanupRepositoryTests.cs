@@ -171,6 +171,125 @@ public class CleanupRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task UpsertImageScoreAsync_CreatesAndUpdates_ByImageModelAndScoreName()
+    {
+        var created = await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 50,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "hash-a",
+            ScoreName = "aesthetic",
+            RuntimeProvider = "CPU",
+            Score = 0.25,
+            MinScore = 0,
+            MaxScore = 1,
+            Status = CleanupScoreStatus.Indexed
+        });
+
+        var updated = await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 50,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "hash-a",
+            ScoreName = "aesthetic",
+            RuntimeProvider = "CUDA",
+            Score = 0.75,
+            MinScore = 0,
+            MaxScore = 1,
+            Status = CleanupScoreStatus.Stale
+        });
+
+        updated.Id.Should().Be(created.Id);
+
+        var loaded = await _repository.GetImageScoreAsync(50, "aesthetic-v1", "hash-a", "aesthetic");
+        loaded.Should().NotBeNull();
+        loaded!.RuntimeProvider.Should().Be("CUDA");
+        loaded.Score.Should().Be(0.75);
+        loaded.Status.Should().Be(CleanupScoreStatus.Stale);
+        loaded.CreatedAtUtc.Should().Be(created.CreatedAtUtc);
+        loaded.UpdatedAtUtc.Should().BeOnOrAfter(created.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public async Task GetImageScoresAsync_FiltersLowIndexedScores()
+    {
+        await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 1,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "hash-a",
+            ScoreName = "aesthetic",
+            Score = 0.2,
+            Status = CleanupScoreStatus.Indexed
+        });
+        await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 2,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "hash-a",
+            ScoreName = "aesthetic",
+            Score = 0.8,
+            Status = CleanupScoreStatus.Indexed
+        });
+        await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 3,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "hash-a",
+            ScoreName = "quality",
+            Score = 0.1,
+            Status = CleanupScoreStatus.Indexed
+        });
+
+        var scores = await _repository.GetImageScoresAsync(new CleanupScoreFilter
+        {
+            ModelKey = "aesthetic-v1",
+            ModelHash = "hash-a",
+            ScoreName = "aesthetic",
+            Status = CleanupScoreStatus.Indexed,
+            MaxScore = 0.5
+        });
+
+        scores.Should().ContainSingle(score => score.ImageId == 1);
+    }
+
+    [Fact]
+    public async Task GetStaleImageScoresAsync_ReturnsRowsForChangedModel()
+    {
+        await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 1,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "old-hash",
+            ScoreName = "aesthetic",
+            Score = 0.2,
+            Status = CleanupScoreStatus.Indexed
+        });
+        await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 2,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "new-hash",
+            ScoreName = "aesthetic",
+            Score = 0.8,
+            Status = CleanupScoreStatus.Stale
+        });
+        await _repository.UpsertImageScoreAsync(new CleanupImageScore
+        {
+            ImageId = 3,
+            ModelKey = "aesthetic-v1",
+            ModelHash = "new-hash",
+            ScoreName = "aesthetic",
+            Score = 0.6,
+            Status = CleanupScoreStatus.Indexed
+        });
+
+        var stale = await _repository.GetStaleImageScoresAsync("aesthetic-v1", "new-hash", "aesthetic", 10);
+
+        stale.Select(row => row.ImageId).Should().BeEquivalentTo(new[] { 1, 2 });
+    }
+
+    [Fact]
     public async Task AddGroupsAsync_PersistsGroupsAndMembers_ForRun()
     {
         var run = await _repository.CreateGroupRunAsync(new CleanupGroupRun

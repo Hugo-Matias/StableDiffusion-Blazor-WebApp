@@ -153,6 +153,29 @@ namespace BlazorWebApp.Data
                 .Property(embedding => embedding.Status)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<CleanupImageScore>()
+                .HasOne(score => score.Image)
+                .WithMany()
+                .HasForeignKey(score => score.ImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CleanupImageScore>()
+                .HasIndex(score => score.ImageId);
+
+            modelBuilder.Entity<CleanupImageScore>()
+                .HasIndex(score => new { score.ImageId, score.ModelKey, score.ModelHash, score.ScoreName })
+                .IsUnique();
+
+            modelBuilder.Entity<CleanupImageScore>()
+                .HasIndex(score => score.ScoreName);
+
+            modelBuilder.Entity<CleanupImageScore>()
+                .HasIndex(score => score.Status);
+
+            modelBuilder.Entity<CleanupImageScore>()
+                .Property(score => score.Status)
+                .HasConversion<string>();
+
             modelBuilder.Entity<CleanupGroupRun>()
                 .HasIndex(run => run.ProjectId);
 
@@ -346,6 +369,7 @@ namespace BlazorWebApp.Data
         public DbSet<Image> Images { get; set; }
         public DbSet<CleanupImageIndex> CleanupImageIndexes { get; set; }
         public DbSet<CleanupImageEmbedding> CleanupImageEmbeddings { get; set; }
+        public DbSet<CleanupImageScore> CleanupImageScores { get; set; }
         public DbSet<CleanupGroupRun> CleanupGroupRuns { get; set; }
         public DbSet<CleanupGroup> CleanupGroups { get; set; }
         public DbSet<CleanupGroupMember> CleanupGroupMembers { get; set; }

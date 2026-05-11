@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 7 visual similarity grouping complete and cleanup-test validated
+**Current Phase:** Phase 8 aesthetic and quality scoring triage complete and cleanup-test validated
 
 ---
 
@@ -408,16 +408,16 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Add optional perceived-quality and visual-appeal scores as review aids.
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
-- [ ] Add score model configuration and provider metadata.
-- [ ] Add score persistence separate from similarity embeddings.
-- [ ] Add ONNX scoring service for aesthetic/IQA models.
-- [ ] Add group ranking and threshold rules that use scores inside review groups.
-- [ ] Add UI controls for advisory score thresholds.
-- [ ] Add tests for score serialization, stale-score detection, and threshold-based suggestions.
+- [x] Add score model configuration and provider metadata.
+- [x] Add score persistence separate from similarity embeddings.
+- [x] Add ONNX scoring service for aesthetic/IQA models.
+- [x] Add group ranking and threshold rules that use scores inside review groups.
+- [x] Add UI controls for advisory score thresholds.
+- [x] Add tests for score serialization, stale-score detection, and threshold-based suggestions.
 
 #### Success Criteria
 
@@ -549,3 +549,4 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 | Phase 5         | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests.                                                    |
 | Phase 6         | Added ONNX Runtime GPU package support with CPU/CUDA provider selection, Magick.NET tensor preprocessing, ONNX embedding inference, L2 normalization, embedding persistence, CUDA probing, and focused cleanup tests.                               |
 | Phase 7         | Added visual-similarity cleanup grouping over current-model embeddings, adjustable visual threshold UI, favorite/score-aware representative selection, protected keep candidates, and focused grouping tests.                                       |
+| Phase 8         | Added separate cleanup score persistence, scoring model metadata, ONNX scalar scoring service, score indexing, low-value score grouping, advisory score threshold UI, and focused cleanup tests.                                                    |
