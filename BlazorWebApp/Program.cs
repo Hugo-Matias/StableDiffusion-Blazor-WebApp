@@ -96,6 +96,9 @@ builder.Services.AddSingleton<BlazorWebApp.Scheduler.Persistence.IJobRepository,
 // Danbooru library persistence
 builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ISavedDanbooruMediaRepository, BlazorWebApp.Data.Repositories.SavedDanbooruMediaRepository>();
 
+// Gallery cleanup persistence
+builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ICleanupRepository, BlazorWebApp.Data.Repositories.CleanupRepository>();
+
 // Danbooru library service - plain HttpClient for CDN downloads (no auth headers needed)
 builder.Services.AddHttpClient<IDanbooruLibraryService, DanbooruLibraryService>(client =>
 {

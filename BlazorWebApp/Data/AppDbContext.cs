@@ -104,6 +104,128 @@ namespace BlazorWebApp.Data
 
             modelBuilder.Entity<Image>().HasOne(i => i.Model).WithMany().HasForeignKey(nameof(Image.ResourceId));
 
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasOne(index => index.Image)
+                .WithMany()
+                .HasForeignKey(index => index.ImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasIndex(index => index.ImageId)
+                .IsUnique();
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasIndex(index => index.ProjectId);
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasIndex(index => index.Status);
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasIndex(index => index.ExactHash);
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasIndex(index => index.PerceptualHash);
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasIndex(index => index.PromptFingerprint);
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .HasIndex(index => index.WorkflowId);
+
+            modelBuilder.Entity<CleanupImageIndex>()
+                .Property(index => index.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<CleanupImageEmbedding>()
+                .HasOne(embedding => embedding.Image)
+                .WithMany()
+                .HasForeignKey(embedding => embedding.ImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CleanupImageEmbedding>()
+                .HasIndex(embedding => embedding.ImageId);
+
+            modelBuilder.Entity<CleanupImageEmbedding>()
+                .HasIndex(embedding => new { embedding.ImageId, embedding.ModelKey, embedding.ModelHash })
+                .IsUnique();
+
+            modelBuilder.Entity<CleanupImageEmbedding>()
+                .Property(embedding => embedding.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<CleanupGroupRun>()
+                .HasIndex(run => run.ProjectId);
+
+            modelBuilder.Entity<CleanupGroupRun>()
+                .HasIndex(run => run.Strategy);
+
+            modelBuilder.Entity<CleanupGroupRun>()
+                .HasIndex(run => run.Status);
+
+            modelBuilder.Entity<CleanupGroupRun>()
+                .Property(run => run.Strategy)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<CleanupGroupRun>()
+                .Property(run => run.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<CleanupGroup>()
+                .HasOne(group => group.Run)
+                .WithMany(run => run.Groups)
+                .HasForeignKey(group => group.RunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CleanupGroup>()
+                .HasOne(group => group.RepresentativeImage)
+                .WithMany()
+                .HasForeignKey(group => group.RepresentativeImageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<CleanupGroup>()
+                .HasIndex(group => group.RunId);
+
+            modelBuilder.Entity<CleanupGroup>()
+                .HasIndex(group => new { group.RunId, group.GroupKey })
+                .IsUnique();
+
+            modelBuilder.Entity<CleanupGroup>()
+                .HasIndex(group => group.RepresentativeImageId);
+
+            modelBuilder.Entity<CleanupGroup>()
+                .Property(group => group.Strategy)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<CleanupGroupMember>()
+                .HasOne(member => member.Group)
+                .WithMany(group => group.Members)
+                .HasForeignKey(member => member.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CleanupGroupMember>()
+                .HasOne(member => member.Image)
+                .WithMany()
+                .HasForeignKey(member => member.ImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CleanupGroupMember>()
+                .HasIndex(member => member.GroupId);
+
+            modelBuilder.Entity<CleanupGroupMember>()
+                .HasIndex(member => member.ImageId);
+
+            modelBuilder.Entity<CleanupGroupMember>()
+                .HasIndex(member => new { member.GroupId, member.ImageId })
+                .IsUnique();
+
+            modelBuilder.Entity<CleanupGroupMember>()
+                .Property(member => member.Role)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<CleanupGroupMember>()
+                .Property(member => member.SuggestedAction)
+                .HasConversion<string>();
+
             modelBuilder.Entity<Folder>().HasIndex(f => f.Name).IsUnique();
             modelBuilder.Entity<Resource>().HasIndex(t => t.Filename).IsUnique();
             modelBuilder.Entity<ResourceType>().HasIndex(t => t.Name).IsUnique();
@@ -222,6 +344,11 @@ namespace BlazorWebApp.Data
         }
 
         public DbSet<Image> Images { get; set; }
+        public DbSet<CleanupImageIndex> CleanupImageIndexes { get; set; }
+        public DbSet<CleanupImageEmbedding> CleanupImageEmbeddings { get; set; }
+        public DbSet<CleanupGroupRun> CleanupGroupRuns { get; set; }
+        public DbSet<CleanupGroup> CleanupGroups { get; set; }
+        public DbSet<CleanupGroupMember> CleanupGroupMembers { get; set; }
         public DbSet<GenerateStatePreset> GenerateStatePresets { get; set; }
         public DbSet<SavedDanbooruMedia> SavedDanbooruMedia { get; set; }
         public DbSet<Entities.Sampler> Samplers { get; set; }

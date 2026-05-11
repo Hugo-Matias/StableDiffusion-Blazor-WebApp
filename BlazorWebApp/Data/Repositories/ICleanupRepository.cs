@@ -1,0 +1,27 @@
+using BlazorWebApp.Data.Entities;
+
+namespace BlazorWebApp.Data.Repositories
+{
+    public record CleanupIndexFilter
+    {
+        public int? ProjectId { get; init; }
+        public CleanupIndexStatus? Status { get; init; }
+        public string? PromptFingerprint { get; init; }
+        public int Skip { get; init; }
+        public int Take { get; init; } = 100;
+    }
+
+    public interface ICleanupRepository
+    {
+        Task<CleanupImageIndex> UpsertImageIndexAsync(CleanupImageIndex index, CancellationToken cancellationToken = default);
+        Task<CleanupImageIndex?> GetImageIndexAsync(int imageId, CancellationToken cancellationToken = default);
+        Task<List<CleanupImageIndex>> GetImageIndexesAsync(CleanupIndexFilter filter, CancellationToken cancellationToken = default);
+        Task<List<CleanupImageIndex>> GetStaleImageIndexesAsync(DateTime staleBeforeUtc, int take, CancellationToken cancellationToken = default);
+        Task<List<CleanupImageIndex>> GetMissingFileIndexesAsync(int skip, int take, CancellationToken cancellationToken = default);
+        Task<CleanupGroupRun> CreateGroupRunAsync(CleanupGroupRun run, CancellationToken cancellationToken = default);
+        Task<CleanupGroupRun?> GetGroupRunAsync(int runId, CancellationToken cancellationToken = default);
+        Task AddGroupsAsync(int runId, IReadOnlyList<CleanupGroup> groups, CancellationToken cancellationToken = default);
+        Task<List<CleanupGroup>> GetGroupsAsync(int runId, int skip, int take, CancellationToken cancellationToken = default);
+        Task<List<CleanupGroupMember>> GetGroupMembersAsync(int groupId, CancellationToken cancellationToken = default);
+    }
+}
