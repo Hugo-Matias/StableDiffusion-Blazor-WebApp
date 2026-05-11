@@ -453,7 +453,6 @@ namespace BlazorWebApp.Services
         #region Session
 
         public void ResetImageEditorState() => _session.ResetImageEditorState();
-        public void SetImg2ImgInputImage(string imageData, bool resetEditorState) => _session.SetImg2ImgInputImage(imageData, resetEditorState);
         public void AddSessionVideo(GeneratedVideo video) => _session.AddSessionVideo(video);
         public void AddSessionVideos(IEnumerable<GeneratedVideo> videos) => _session.AddSessionVideos(videos);
         public void ClearSessionVideos() => _session.ClearSessionVideos();

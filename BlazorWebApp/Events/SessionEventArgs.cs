@@ -11,22 +11,6 @@ namespace BlazorWebApp.Events
     }
 
     /// <summary>
-    /// Event args for Img2Img input image changes.
-    /// </summary>
-    public class Img2ImgInputImageChangedEventArgs : EventArgs
-    {
-        public string ImageData { get; init; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Event args for Img2Vid input image changes.
-    /// </summary>
-    public class Img2VidInputImageChangedEventArgs : EventArgs
-    {
-        public string ImageData { get; init; } = string.Empty;
-    }
-
-    /// <summary>
     /// Event args for image editor state changes.
     /// </summary>
     public class ImageEditorStateChangedEventArgs : EventArgs
@@ -44,9 +28,9 @@ namespace BlazorWebApp.Events
     }
 
     /// <summary>
-    /// Event args for pending source images changes (Send To).
+    /// Event args for pending source media changes (Send To).
     /// </summary>
-    public class PendingSourceImagesChangedEventArgs : EventArgs
+    public class PendingSourceMediaChangedEventArgs : EventArgs
     {
     }
 

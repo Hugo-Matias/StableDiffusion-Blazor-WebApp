@@ -245,11 +245,6 @@ namespace BlazorWebApp.Services
         void ResetImageEditorState();
 
         /// <summary>
-        /// Sets the Img2Img input image.
-        /// </summary>
-        void SetImg2ImgInputImage(string imageData, bool resetEditorState);
-
-        /// <summary>
         /// Adds a video to the session.
         /// </summary>
         void AddSessionVideo(GeneratedVideo video);

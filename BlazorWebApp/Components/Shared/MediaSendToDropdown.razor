@@ -1,0 +1,135 @@
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject IMediaSendToService SendTo
+
+@if (Asset != null)
+{
+    var targets = SendTo.GetSourceTargets(MediaType);
+    if (targets.Count > 0)
+    {
+        if (RenderAsMenuSection)
+        {
+            <div class="menu-section">
+                <div class="menu-section-title">Send @MediaLabel to</div>
+                <MudMenu AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopLeft" Dense="true">
+                    <ActivatorContent>
+                        <button type="button" class="mud-menu-item menu-item" title="Choose workflow source target">
+                            <div class="menu-item-content">
+                                <i class="@SendTo.GetMediaIcon(MediaType) menu-icon primary"></i>
+                                <span>Choose target</span>
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Class="ms-auto" />
+                            </div>
+                        </button>
+                    </ActivatorContent>
+                    <ChildContent>
+                        @foreach (var group in targets.GroupBy(t => t.Workflow.Id))
+                        {
+                            var workflow = group.First().Workflow;
+                            <div class="menu-section-title">@workflow.Title</div>
+                            @foreach (var target in group)
+                            {
+                                var targetCapture = target;
+                                <MudMenuItem OnClick="@(() => SendTo.SendSourceToTarget(Asset, targetCapture))" Class="menu-item">
+                                    <div class="menu-item-content">
+                                        <i
+                                        class="@SendTo.GetWorkflowIcon(targetCapture.Mode) menu-icon @GetModeIconColor(targetCapture.Mode)"></i>
+                                        <span>@targetCapture.SourceLabel</span>
+                                    </div>
+                                </MudMenuItem>
+                            }
+                        }
+                    </ChildContent>
+                </MudMenu>
+            </div>
+
+            if (IncludeDivider)
+            {
+                <div class="menu-divider"></div>
+            }
+        }
+        else if (RenderAsActionButton)
+        {
+            <MudMenu AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" Dense="true">
+                <ActivatorContent>
+                    <button type="button" class="action-btn" title="Send @MediaLabel to workflow source" @onclick:stopPropagation>
+                        <i class="@SendTo.GetMediaIcon(MediaType)"></i>
+                    </button>
+                </ActivatorContent>
+                <ChildContent>
+                    @foreach (var group in targets.GroupBy(t => t.Workflow.Id))
+                    {
+                        var workflow = group.First().Workflow;
+                        <div class="menu-section-title">@workflow.Title</div>
+                        @foreach (var target in group)
+                        {
+                            var targetCapture = target;
+                            <MudMenuItem OnClick="@(() => SendTo.SendSourceToTarget(Asset, targetCapture))" Class="menu-item">
+                                <div class="menu-item-content">
+                                    <i
+                                    class="@SendTo.GetWorkflowIcon(targetCapture.Mode) menu-icon @GetModeIconColor(targetCapture.Mode)"></i>
+                                    <span>@targetCapture.SourceLabel</span>
+                                </div>
+                            </MudMenuItem>
+                        }
+                    }
+                </ChildContent>
+            </MudMenu>
+        }
+        else
+        {
+            <div class="send-to-section">
+                <span class="send-to-label">Send @MediaLabel to:</span>
+                <div class="send-to-buttons">
+                    <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense="true"
+                             Class="send-to-dropdown">
+                        <ActivatorContent>
+                            <button type="button" class="send-to-btn" title="Choose workflow source target">
+                                <MudIcon Icon="@SendTo.GetMediaIcon(MediaType)" Size="Size.Small" />
+                                <span>Choose target</span>
+                                <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" />
+                            </button>
+                        </ActivatorContent>
+                        <ChildContent>
+                            @foreach (var group in targets.GroupBy(t => t.Workflow.Id))
+                            {
+                                var workflow = group.First().Workflow;
+                                <div class="menu-section-title">@workflow.Title</div>
+                                @foreach (var target in group)
+                                {
+                                    var targetCapture = target;
+                                    <MudMenuItem OnClick="@(() => SendTo.SendSourceToTarget(Asset, targetCapture))" Class="menu-item">
+                                        <div class="menu-item-content">
+                                            <i
+                                            class="@SendTo.GetWorkflowIcon(targetCapture.Mode) menu-icon @GetModeIconColor(targetCapture.Mode)"></i>
+                                            <span>@targetCapture.SourceLabel</span>
+                                        </div>
+                                    </MudMenuItem>
+                                }
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                </div>
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public ImageEntity? Asset { get; set; }
+    [Parameter] public SendToMediaType MediaType { get; set; } = SendToMediaType.Image;
+    [Parameter] public bool RenderAsMenuSection { get; set; }
+    [Parameter] public bool RenderAsActionButton { get; set; }
+    [Parameter] public bool IncludeDivider { get; set; } = true;
+
+    private string MediaLabel => MediaType == SendToMediaType.Video ? "video" : "image";
+
+    private static string GetModeIconColor(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => "primary",
+        ModeType.Img2Img => "secondary",
+        ModeType.Img2Vid => "info",
+        ModeType.Txt2Vid => "info",
+        ModeType.Vid2Vid => "info",
+        ModeType.Extras => "warning",
+        _ => "primary"
+    };
+}

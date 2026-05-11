@@ -11,7 +11,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavManager
-@inject IImageSendToService SendTo
+@inject IMediaSendToService SendTo
 @implements IDisposable
 
 <div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
@@ -90,61 +90,8 @@
                              Dense="true" Class="more-menu">
                         <ChildContent>
                             <div class="action-menu">
-                                @{
-                                    var imageWorkflows = SendTo.GetImageWorkflows();
-                                    var paramWorkflows = SendTo.GetParameterWorkflows();
-                                }
-                                @* Only show "Send image to" section if there are compatible workflows *@
-                                @if (imageWorkflows.Any())
-                                {
-                                    <div class="menu-section">
-                                        <div class="menu-section-title">Send image to</div>
-                                        @foreach (var workflow in imageWorkflows)
-                                        {
-                                            var multiSource = SendTo.GetMultiSourceDefinition(workflow);
-                                            if (multiSource != null)
-                                            {
-                                                @foreach (var slot in SendTo.GetSourceSlots(workflow, multiSource))
-                                                {
-                                                    var slotCapture = slot;
-                                                    var wfRef = workflow;
-                                                    <MudMenuItem
-                                                        OnClick="@(() => SendTo.SendImageToSourceSlot(Image, wfRef, slotCapture.Key))"
-                                                        Class="menu-item">
-                                                        <div class="menu-item-content">
-                                                            <i
-                                                            class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
-                                                            <span>@slotCapture.Label</span>
-                                                        </div>
-                                                    </MudMenuItem>
-                                                }
-                                                var wfAdd = workflow;
-                                                var msAdd = multiSource;
-                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToNewSlot(Image, wfAdd, msAdd))"
-                                                             Class="menu-item">
-                                                    <div class="menu-item-content">
-                                                        <i class="fa-solid fa-plus menu-icon @GetModeIconColor(wfAdd.Mode)"></i>
-                                                        <span>@(wfAdd.Title) Add</span>
-                                                    </div>
-                                                </MudMenuItem>
-                                            }
-                                            else
-                                            {
-                                                var wfRef = workflow;
-                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToWorkflow(Image, wfRef))"
-                                                             Class="menu-item">
-                                                    <div class="menu-item-content">
-                                                        <i
-                                                        class="@SendTo.GetWorkflowIcon(wfRef.Mode) menu-icon @GetModeIconColor(wfRef.Mode)"></i>
-                                                        <span>@wfRef.Title</span>
-                                                    </div>
-                                                </MudMenuItem>
-                                            }
-                                        }
-                                    </div>
-
-                                    <div class="menu-divider"></div>
-                                }
+                                <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image"
+                                                     RenderAsMenuSection="true" IncludeDivider="true" />
 
                                 @* Phase 12 - Image-to-Prompt entry. Only meaningful for files we can read locally. *@
                                 @if (SendTo.IsLocal(Image.Path))
@@ -219,8 +166,8 @@
 <AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" Image="Image" IsVideo="false" />
 
 @code {
-    [Parameter] public Image Image { get; set; }
-    [Parameter] public string Target { get; set; }
+    [Parameter] public Image Image { get; set; } = default!;
+    [Parameter] public string Target { get; set; } = string.Empty;
     [Parameter] public EventCallback<Image> OnSelectImage { get; set; }
     [Parameter] public EventCallback<Image> OnDeleteImage { get; set; }
     [Parameter] public EventCallback OnCoverChanged { get; set; }

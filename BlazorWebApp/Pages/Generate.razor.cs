@@ -63,9 +63,7 @@ public partial class Generate : IDisposable
         // Subscribe to events
         Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
-        Events.Subscribe<PendingSourceImagesChangedEventArgs>(OnPendingSourceImages);
-        Events.Subscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
-        Events.Subscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
+        Events.Subscribe<PendingSourceMediaChangedEventArgs>(OnPendingSourceMedia);
         Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
 
         // Load all workflows that may appear on the Generate page. The WorkflowStrip
@@ -296,60 +294,26 @@ public partial class Generate : IDisposable
     }
 
     /// <summary>
-    /// Returns true if there are any pending session images for the given workflow.
+    /// Returns true if there is pending session media for the given workflow.
     /// </summary>
-    private bool HasPendingSessionImages(Workflow workflow)
+    private bool HasPendingSessionMedia(Workflow workflow)
     {
-        if (Session.PendingSourceImages.Count > 0) return true;
-        if (!string.IsNullOrEmpty(Session.Img2ImgInputImage) && workflow.Mode == ModeType.Img2Img) return true;
-        if (!string.IsNullOrEmpty(Session.Img2VidInputImage) && workflow.Mode == ModeType.Img2Vid) return true;
-        return false;
+        return Session.PendingSourceMedia.Count > 0;
     }
 
     /// <summary>
-    /// Loads session images into workflow sources if available and clears the session afterwards.
+    /// Loads session media into workflow sources if available and clears the session afterwards.
     /// </summary>
     private async Task LoadSessionSourcesAsync(Workflow workflow)
     {
-        // Check for Img2Vid input image
-        if (!string.IsNullOrEmpty(Session.Img2VidInputImage) && workflow.Mode == ModeType.Img2Vid)
+        if (Session.PendingSourceMedia.Count > 0)
         {
-            // Find the first image source
-            var imageSource = workflow.Sources?.FirstOrDefault(s => s.Type?.Equals("image", StringComparison.OrdinalIgnoreCase) == true);
-            if (imageSource != null && Parameters.Sources.TryGetValue(imageSource.Id, out var source))
-            {
-                source.Data = Session.Img2VidInputImage;
-                Logger.LogDebug("Loaded session image into source '{SourceId}'", imageSource.Id);
-            }
-
-            // Clear session after loading
-            Session.Img2VidInputImage = null;
-        }
-
-        // Check for Img2Img input image
-        if (!string.IsNullOrEmpty(Session.Img2ImgInputImage) && workflow.Mode == ModeType.Img2Img)
-        {
-            // Find the first image source
-            var imageSource = workflow.Sources?.FirstOrDefault(s => s.Type?.Equals("image", StringComparison.OrdinalIgnoreCase) == true);
-            if (imageSource != null && Parameters.Sources.TryGetValue(imageSource.Id, out var source))
-            {
-                source.Data = Session.Img2ImgInputImage;
-                Logger.LogDebug("Loaded session image into source '{SourceId}'", imageSource.Id);
-            }
-
-            // Clear session after loading
-            Session.Img2ImgInputImage = null;
-        }
-
-        // Check for pending targeted source images (from multi-source Send To)
-        if (Session.PendingSourceImages.Count > 0)
-        {
-            foreach (var pending in Session.PendingSourceImages)
+            foreach (var pending in Session.PendingSourceMedia)
             {
                 if (pending.IsNewSlot)
                 {
-                    // Create a new multi-source slot
                     var baseId = pending.SourceKey;
+                    var pendingLabel = string.IsNullOrWhiteSpace(pending.Label) ? pending.SourceKey : pending.Label;
                     var existingKeys = Parameters.Sources.Keys
                         .Where(k => k == baseId || k.StartsWith($"{baseId}_"))
                         .ToList();
@@ -368,8 +332,8 @@ public partial class Generate : IDisposable
 
                     Parameters.Sources[newKey] = new SourceAsset
                     {
-                        Label = $"{pending.Label} {nextIndex + 1}",
-                        Type = "image",
+                        Label = $"{pendingLabel} {nextIndex + 1}",
+                        Type = pending.SourceType,
                         Data = pending.Data,
                         FilePath = pending.FilePath
                     };
@@ -377,9 +341,9 @@ public partial class Generate : IDisposable
                 }
                 else
                 {
-                    // Load into existing slot
                     if (Parameters.Sources.TryGetValue(pending.SourceKey, out var existingSource))
                     {
+                        existingSource.Type = pending.SourceType;
                         existingSource.Data = pending.Data;
                         existingSource.FilePath = pending.FilePath;
                     }
@@ -388,15 +352,15 @@ public partial class Generate : IDisposable
                         Parameters.Sources[pending.SourceKey] = new SourceAsset
                         {
                             Label = pending.Label ?? pending.SourceKey,
-                            Type = "image",
+                            Type = pending.SourceType,
                             Data = pending.Data,
                             FilePath = pending.FilePath
                         };
                     }
-                    Logger.LogDebug("Loaded pending image into source '{SourceId}'", pending.SourceKey);
+                    Logger.LogDebug("Loaded pending media into source '{SourceId}'", pending.SourceKey);
                 }
             }
-            Session.PendingSourceImages.Clear();
+            Session.PendingSourceMedia.Clear();
         }
 
         await Task.CompletedTask;
@@ -730,34 +694,10 @@ public partial class Generate : IDisposable
 
     #region Dispose
 
-    private void OnPendingSourceImages(PendingSourceImagesChangedEventArgs args)
+    private void OnPendingSourceMedia(PendingSourceMediaChangedEventArgs args)
     {
         if (_selectedWorkflow == null) return;
-        if (!HasPendingSessionImages(_selectedWorkflow)) return;
-
-        _ = InvokeAsync(async () =>
-        {
-            await LoadSessionSourcesAsync(_selectedWorkflow);
-            StateHasChanged();
-        });
-    }
-
-    private void OnInputImageChanged(Img2ImgInputImageChangedEventArgs args)
-    {
-        if (_selectedWorkflow == null) return;
-        if (!HasPendingSessionImages(_selectedWorkflow)) return;
-
-        _ = InvokeAsync(async () =>
-        {
-            await LoadSessionSourcesAsync(_selectedWorkflow);
-            StateHasChanged();
-        });
-    }
-
-    private void OnInputVideoChanged(Img2VidInputImageChangedEventArgs args)
-    {
-        if (_selectedWorkflow == null) return;
-        if (!HasPendingSessionImages(_selectedWorkflow)) return;
+        if (!HasPendingSessionMedia(_selectedWorkflow)) return;
 
         _ = InvokeAsync(async () =>
         {
@@ -770,9 +710,7 @@ public partial class Generate : IDisposable
     {
         Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
         Events.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
-        Events.Unsubscribe<PendingSourceImagesChangedEventArgs>(OnPendingSourceImages);
-        Events.Unsubscribe<Img2ImgInputImageChangedEventArgs>(OnInputImageChanged);
-        Events.Unsubscribe<Img2VidInputImageChangedEventArgs>(OnInputVideoChanged);
+        Events.Unsubscribe<PendingSourceMediaChangedEventArgs>(OnPendingSourceMedia);
         Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
 
         // Clear any workflow info we pushed to the global Info drawer.

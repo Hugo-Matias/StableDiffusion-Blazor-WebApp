@@ -3,9 +3,9 @@ using BlazorWebApp.Models;
 namespace BlazorWebApp.Services
 {
     /// <summary>
-    /// Represents a source image to be loaded into a specific workflow source slot.
+    /// Represents source media to be loaded into a specific workflow source slot.
     /// </summary>
-    public record PendingSourceImage(string SourceKey, string Data, string? FilePath, string? Label = null, bool IsNewSlot = false);
+    public record PendingSourceMedia(string SourceKey, string SourceType, string? Data, string? FilePath, string? Label = null, bool IsNewSlot = false);
 
     /// <summary>
     /// Service for managing session-scoped UI state (canvas, image editor, videos).
@@ -20,26 +20,21 @@ namespace BlazorWebApp.Services
         string UpscaleImageData { get; set; }
         List<string> CanvasStates { get; }
 
-        // Input Images
-        string Img2ImgInputImage { get; set; }
-        string Img2VidInputImage { get; set; }
-
         /// <summary>
-        /// Pending source images to load into specific workflow source slots.
+        /// Pending source media to load into specific workflow source slots.
         /// Consumed by Generate page on workflow initialization.
         /// </summary>
-        List<PendingSourceImage> PendingSourceImages { get; }
+        List<PendingSourceMedia> PendingSourceMedia { get; }
 
         /// <summary>
-        /// Publishes an event to notify subscribers that pending source images are available.
-        /// Call this after adding images to PendingSourceImages.
+        /// Publishes an event to notify subscribers that pending source media is available.
+        /// Call this after adding media to PendingSourceMedia.
         /// </summary>
-        void NotifyPendingSourceImages();
+        void NotifyPendingSourceMedia();
 
         // Image Editor
         ImageEditorState ImageEditorState { get; set; }
         void ResetImageEditorState();
-        void SetImg2ImgInputImage(string imageData, bool resetEditorState);
 
         // Session Videos
         GeneratedVideos SessionGeneratedVideos { get; }

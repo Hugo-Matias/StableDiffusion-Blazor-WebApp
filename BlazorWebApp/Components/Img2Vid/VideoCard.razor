@@ -11,38 +11,26 @@
 @implements IAsyncDisposable
 @implements IDisposable
 
-<div class="@GetCardClasses()" style="@GetCardStyle()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+<div class="@GetCardClasses()" style="@GetCardStyle()" @onmouseenter="HandleMouseEnter"
+     @onmouseleave="HandleMouseLeave">
     @* Video Container *@
     <div class="video-wrapper">
-        <video id="@_videoId"
-               src="@GetVideoUrl()"
-               class="card-video"
-               muted
-               loop
-               playsinline
-               preload="metadata" />
+        <video id="@_videoId" src="@GetVideoUrl()" class="card-video" muted loop playsinline preload="metadata" />
         
         @* Hover Overlay *@
         <div class="hover-overlay @(_isHovered || _isMenuOpen ? "visible" : "")">
             @* Top Section - Rating & Selection *@
             <div class="overlay-top">
                 <div class="rating-container @(_isHovered || _isMenuOpen || Video.Score > 0 ? "visible" : "")">
-                    <MudRating SelectedValue="Video.Score" 
-                               SelectedValueChanged="SetScore" 
-                               MaxValue="3" 
-                               Size="Size.Small"
-                               Color="Color.Warning" />
+                    <MudRating SelectedValue="Video.Score" SelectedValueChanged="SetScore" MaxValue="3"
+                               Size="Size.Small" Color="Color.Warning" />
                 </div>
                 
                 @if (ShowSelectionCheckbox)
                 {
                     <div class="selection-container @(_isHovered || _isMenuOpen || _isSelected ? "visible" : "")">
-                        <MudCheckBox Checked="_isSelected" 
-                                     T="bool" 
-                                     CheckedChanged="HandleSelected" 
-                                     Color="Color.Success" 
-                                     UncheckedColor="Color.Default"
-                                     Size="Size.Medium" />
+                        <MudCheckBox Checked="_isSelected" T="bool" CheckedChanged="HandleSelected" Color="Color.Success"
+                                     UncheckedColor="Color.Default" Size="Size.Medium" />
                     </div>
                 }
             </div>
@@ -53,7 +41,8 @@
                     <button class="action-btn primary" @onclick="HandleViewFullscreen" title="View Fullscreen">
                         <i class="fa-solid fa-expand"></i>
                     </button>
-                    <button class="action-btn @(Video.Favorite ? "active" : "")" @onclick="ToggleFavorite" title="@(Video.Favorite ? "Remove from Favorites" : "Add to Favorites")">
+                    <button class="action-btn @(Video.Favorite ? "active" : "")" @onclick="ToggleFavorite"
+                            title="@(Video.Favorite ? "Remove from Favorites" : "Add to Favorites")">
                         <i class="@(Video.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
                     </button>
                     <button class="action-btn" @onclick="ToggleInfoDrawer" title="View Info">
@@ -91,15 +80,14 @@
                 </div>
                 
                 <div class="more-actions">
-                    <MudMenu @bind-Open="_isMenuOpen"
-                             Icon="@Icons.Material.Filled.MoreVert" 
-                             AnchorOrigin="Origin.TopCenter" 
-                             TransformOrigin="Origin.BottomCenter"
-                             Size="Size.Small"
-                             Dense="true"
-                             Class="more-menu">
+                    <MudMenu @bind-Open="_isMenuOpen" Icon="@Icons.Material.Filled.MoreVert"
+                             AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Size="Size.Small"
+                             Dense="true" Class="more-menu">
                         <ChildContent>
                             <div class="action-menu">
+                                <MediaSendToDropdown Asset="@BuildVideoAsset()" MediaType="SendToMediaType.Video"
+                                                     RenderAsMenuSection="true" IncludeDivider="true" />
+
                                 <div class="menu-section">
                                     <div class="menu-section-title">Organize</div>
                                     <MudMenuItem OnClick="ShowSwitchProjectDialog" Class="menu-item">
@@ -156,12 +144,10 @@
 </div>
 
 <!-- Info Drawer -->
-<AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" 
-                 Image="_imageEntity" 
-                 IsVideo="true" />
+<AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" Image="_imageEntity" IsVideo="true" />
 
 @code {
-    [Parameter] public GeneratedVideo Video { get; set; }
+    [Parameter] public GeneratedVideo Video { get; set; } = default!;
     [Parameter] public int Index { get; set; }
     [Parameter] public EventCallback<int> OnSelectVideo { get; set; }
     [Parameter] public EventCallback<GeneratedVideo> OnDeleteVideo { get; set; }
@@ -359,6 +345,25 @@
         }
         
         _showInfoDrawer = !_showInfoDrawer;
+    }
+
+    private Data.Entities.Image BuildVideoAsset()
+    {
+        return new Data.Entities.Image
+        {
+            Id = Video.Id,
+            Path = Video.FilePath,
+            Width = Video.Width,
+            Height = Video.Height,
+            Prompt = Video.Prompt,
+            NegativePrompt = Video.NegativePrompt,
+            Seed = Video.Seed,
+            Steps = Video.Steps,
+            CfgScale = Video.CfgScale,
+            DateCreated = Video.DateCreated,
+            Favorite = Video.Favorite,
+            Score = Video.Score
+        };
     }
 
     private void OpenFileInExplorer()

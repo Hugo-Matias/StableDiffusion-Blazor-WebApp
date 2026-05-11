@@ -12,8 +12,6 @@ namespace BlazorWebApp.Services
     {
         private readonly IEventService _events;
         private string _canvasImageData = string.Empty;
-        private string _img2ImgInputImage = string.Empty;
-        private string _img2VidInputImage = string.Empty;
         private ImageEditorState _imageEditorState = new();
 
         public SessionService(IEventService events)
@@ -41,48 +39,13 @@ namespace BlazorWebApp.Services
 
         #endregion
 
-        #region Input Images
+        #region Source Media
 
-        public List<PendingSourceImage> PendingSourceImages { get; } = new();
+        public List<PendingSourceMedia> PendingSourceMedia { get; } = new();
 
-        public void NotifyPendingSourceImages()
+        public void NotifyPendingSourceMedia()
         {
-            _events.Publish(new PendingSourceImagesChangedEventArgs());
-        }
-
-        public string Img2ImgInputImage
-        {
-            get => _img2ImgInputImage;
-            set
-            {
-                _img2ImgInputImage = value;
-                _events.Publish(new Img2ImgInputImageChangedEventArgs { ImageData = value });
-            }
-        }
-
-        public string Img2VidInputImage
-        {
-            get => _img2VidInputImage;
-            set
-            {
-                _img2VidInputImage = value;
-                _events.Publish(new Img2VidInputImageChangedEventArgs { ImageData = value });
-            }
-        }
-
-        /// <summary>
-        /// Sets the Img2Img input image and optionally resets the editor state.
-        /// Use resetEditorState=true when user is loading a new image (not from editor output).
-        /// Use resetEditorState=false when setting from editor output.
-        /// </summary>
-        public void SetImg2ImgInputImage(string imageData, bool resetEditorState)
-        {
-            if (resetEditorState && _img2ImgInputImage != imageData)
-            {
-                _imageEditorState = new ImageEditorState();
-            }
-            _img2ImgInputImage = imageData;
-            _events.Publish(new Img2ImgInputImageChangedEventArgs { ImageData = imageData });
+            _events.Publish(new PendingSourceMediaChangedEventArgs());
         }
 
         #endregion

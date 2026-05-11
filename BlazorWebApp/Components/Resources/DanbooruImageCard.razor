@@ -31,13 +31,8 @@
             @* Center Section - Quick Actions *@
             <div class="overlay-center @(_isHovered ? "visible" : "")">
                 <div class="quick-actions">
-                    <button class="action-btn" @onclick="@(() => SendTags(false))" @onclick:stopPropagation
-                            title="Copy Tags">
+                    <button class="action-btn" @onclick="SendTags" @onclick:stopPropagation title="Copy Tags">
                         <i class="fa-solid fa-file-lines"></i>
-                    </button>
-                    <button class="action-btn" @onclick="@(() => SendTags(true))" @onclick:stopPropagation
-                            title="Send to Img2Img">
-                        <i class="fa-solid fa-file-image"></i>
                     </button>
                     <button class="action-btn primary" @onclick="ShowImage" @onclick:stopPropagation
                             title="View Fullscreen">
@@ -79,8 +74,8 @@
 </div>
 
 @code {
-    [Parameter] public DanbooruPost Post { get; set; }
-    [Parameter] public EventCallback<bool> OnSendTags { get; set; }
+    [Parameter] public DanbooruPost Post { get; set; } = default!;
+    [Parameter] public EventCallback OnSendTags { get; set; }
     [Parameter] public EventCallback OnShowImage { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
 
@@ -130,7 +125,7 @@
         }
     }
 
-    private async Task SendTags(bool isImg2Img) => await OnSendTags.InvokeAsync(isImg2Img);
+    private async Task SendTags() => await OnSendTags.InvokeAsync();
     private async Task ShowImage() => await OnShowImage.InvokeAsync();
     private async Task HandleSave()
     {

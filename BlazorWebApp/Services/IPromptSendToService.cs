@@ -5,7 +5,7 @@ namespace BlazorWebApp.Services;
 
 /// <summary>
 /// Send-to surface for prompts produced by the LLM Workshop. Mirrors the shape of
-/// <see cref="IImageSendToService"/> but the asset is a plain prompt string, so the
+/// <see cref="IMediaSendToService"/> but the asset is a plain prompt string, so the
 /// only target operation is "apply this text to the Positive prompt of a chosen
 /// txt2img / img2img workflow and navigate there".
 /// </summary>
@@ -14,10 +14,10 @@ public interface IPromptSendToService
     /// <summary>Returns Txt2Img + Img2Img workflows for the current base, ordered by mode then title.</summary>
     List<Workflow> GetParameterWorkflows();
 
-    /// <summary>Mode → CSS class for visual grouping (mirrors ImageSendToService).</summary>
+    /// <summary>Mode → CSS class for visual grouping (mirrors MediaSendToService).</summary>
     string GetWorkflowModeClass(ModeType mode);
 
-    /// <summary>Mode → font-awesome icon (mirrors ImageSendToService).</summary>
+    /// <summary>Mode → font-awesome icon (mirrors MediaSendToService).</summary>
     string GetWorkflowIcon(ModeType mode);
 
     /// <summary>

@@ -9,7 +9,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavManager
-@inject IImageSendToService SendTo
+@inject IMediaSendToService SendTo
 @implements IDisposable
 
 <div class="@GetTileClasses()" @onclick="OpenImage" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
@@ -57,62 +57,8 @@
                              Dense="true" Class="tile-more-menu">
                         <ChildContent>
                             <div class="action-menu">
-                                @{
-                                    var imageWorkflows = SendTo.GetImageWorkflows();
-                                }
-                                @if (imageWorkflows.Any())
-                                {
-                                    <div class="menu-section">
-                                        <div class="menu-section-title">Send image to</div>
-                                        @foreach (var workflow in imageWorkflows)
-                                        {
-                                            var multiSource = SendTo.GetMultiSourceDefinition(workflow);
-                                            if (multiSource != null)
-                                            {
-                                                @foreach (var slot in SendTo.GetSourceSlots(workflow, multiSource))
-                                                {
-                                                    var slotCapture = slot;
-                                                    var workflowCapture = workflow;
-                                                    <MudMenuItem
-                                                        OnClick="@(() => SendTo.SendImageToSourceSlot(Image, workflowCapture, slotCapture.Key))"
-                                                        Class="menu-item">
-                                                        <div class="menu-item-content">
-                                                            <i
-                                                            class="@SendTo.GetWorkflowIcon(workflowCapture.Mode) menu-icon @GetModeIconColor(workflowCapture.Mode)"></i>
-                                                            <span>@slotCapture.Label</span>
-                                                        </div>
-                                                    </MudMenuItem>
-                                                }
-
-                                                var addWorkflow = workflow;
-                                                var addSource = multiSource;
-                                                <MudMenuItem
-                                                    OnClick="@(() => SendTo.SendImageToNewSlot(Image, addWorkflow, addSource))"
-                                                    Class="menu-item">
-                                                    <div class="menu-item-content">
-                                                        <i
-                                                        class="fa-solid fa-plus menu-icon @GetModeIconColor(addWorkflow.Mode)"></i>
-                                                        <span>@addWorkflow.Title Add</span>
-                                                    </div>
-                                                </MudMenuItem>
-                                            }
-                                            else
-                                            {
-                                                var workflowCapture = workflow;
-                                                <MudMenuItem OnClick="@(() => SendTo.SendImageToWorkflow(Image, workflowCapture))"
-                                                             Class="menu-item">
-                                                    <div class="menu-item-content">
-                                                        <i
-                                                        class="@SendTo.GetWorkflowIcon(workflowCapture.Mode) menu-icon @GetModeIconColor(workflowCapture.Mode)"></i>
-                                                        <span>@workflowCapture.Title</span>
-                                                    </div>
-                                                </MudMenuItem>
-                                            }
-                                        }
-                                    </div>
-
-                                    <div class="menu-divider"></div>
-                                }
+                                <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image"
+                                                     RenderAsMenuSection="true" IncludeDivider="true" />
 
                                 @if (SendTo.IsLocal(Image.Path))
                                 {

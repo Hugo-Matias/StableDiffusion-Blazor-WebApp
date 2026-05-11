@@ -351,16 +351,12 @@ namespace BlazorWebApp.Services
                 ?? prepared.GetFragment(Fragments.SamplerAdvanced);
             if (samplerFragment != null)
             {
-                var fragmentSeed = samplerFragment.GetValueOrDefault(Params.Seed, -1L);
-                if (fragmentSeed == -1 || fragmentSeed <= 0)
+                var fragmentSeed = MaterializeSeedOnClone(samplerFragment, Params.Seed, -1L, randomizeNonPositive: true);
+                _state.State.Generation.Seed = fragmentSeed;
+
+                if (samplerFragment.HasValue("low_seed"))
                 {
-                    var actualSeed = (long)new Random().Next(0, int.MaxValue);
-                    samplerFragment.SetValue(Params.Seed, actualSeed);
-                    _state.State.Generation.Seed = actualSeed;
-                }
-                else
-                {
-                    _state.State.Generation.Seed = fragmentSeed;
+                    MaterializeSeedOnClone(samplerFragment, "low_seed", 0L, randomizeNonPositive: false);
                 }
             }
 
@@ -378,6 +374,22 @@ namespace BlazorWebApp.Services
             }
 
             return prepared;
+        }
+
+        private static long MaterializeSeedOnClone(
+            FragmentParameters fragment,
+            string key,
+            long defaultValue,
+            bool randomizeNonPositive)
+        {
+            var seed = fragment.GetValueOrDefault(key, defaultValue);
+            if (seed == -1 || (randomizeNonPositive && seed <= 0))
+            {
+                seed = Random.Shared.NextInt64(0, int.MaxValue);
+                fragment.SetValue(key, seed);
+            }
+
+            return seed;
         }
 
         /// <summary>

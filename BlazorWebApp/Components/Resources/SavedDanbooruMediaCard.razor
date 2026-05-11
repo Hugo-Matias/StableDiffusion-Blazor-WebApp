@@ -34,10 +34,9 @@
                     <button class="action-btn" @onclick="HandleCopyTags" @onclick:stopPropagation title="Copy Tags">
                         <i class="fa-solid fa-file-lines"></i>
                     </button>
-                    <button class="action-btn" @onclick="HandleSendImg2Img" @onclick:stopPropagation
-                            title="Send to Img2Img">
-                        <i class="fa-solid fa-file-image"></i>
-                    </button>
+                    <MediaSendToDropdown Asset="@BuildMediaAsset()"
+                                         MediaType="@(Media.IsVideo ? SendToMediaType.Video : SendToMediaType.Image)"
+                                         RenderAsActionButton="true" />
                     <button class="action-btn primary" @onclick="HandleShowImage" @onclick:stopPropagation
                             title="View Fullscreen">
                         <i class="fa-solid fa-expand"></i>
@@ -81,9 +80,8 @@
 </div>
 
 @code {
-    [Parameter] public SavedDanbooruMedia Media { get; set; }
+    [Parameter] public SavedDanbooruMedia Media { get; set; } = default!;
     [Parameter] public EventCallback OnCopyTags { get; set; }
-    [Parameter] public EventCallback OnSendImg2Img { get; set; }
     [Parameter] public EventCallback OnShowImage { get; set; }
     [Parameter] public EventCallback OnOpenSource { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
@@ -134,10 +132,32 @@
     }
 
     private async Task HandleCopyTags() => await OnCopyTags.InvokeAsync();
-    private async Task HandleSendImg2Img() => await OnSendImg2Img.InvokeAsync();
     private async Task HandleShowImage() => await OnShowImage.InvokeAsync();
     private async Task HandleOpenSource() => await OnOpenSource.InvokeAsync();
     private async Task HandleDelete() => await OnDelete.InvokeAsync();
+
+    private BlazorWebApp.Data.Entities.Image BuildMediaAsset()
+    {
+        return new BlazorWebApp.Data.Entities.Image
+        {
+            Id = Media.Id,
+            Path = $"/files/danbooru/{Media.FilePath}",
+            Prompt = BuildPrompt(),
+            Width = Media.Width,
+            Height = Media.Height,
+            DateCreated = Media.DateCreated,
+            Scheduler = string.Empty
+        };
+    }
+
+    private string BuildPrompt()
+    {
+        var tags = new List<string>();
+        tags.AddRange(Media.TagsBundle.Artist);
+        tags.AddRange(Media.TagsBundle.Character);
+        tags.AddRange(Media.TagsBundle.General);
+        return string.Join(", ", tags);
+    }
 
     private string SetBadgeRating()
     {

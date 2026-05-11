@@ -203,6 +203,15 @@ body:has(.image-editor-overlay) .mud-menu-popover {
   min-height: unset !important;
 }
 
+.action-menu button.mud-menu-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .menu-item-content {
   display: flex;
   align-items: center;

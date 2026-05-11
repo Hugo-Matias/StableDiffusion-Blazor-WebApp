@@ -1,6 +1,3 @@
-@inject IDatabaseService DB
-@inject IIOService IO
-@inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
 <div class="@GetCardClasses()" @onmouseenter="OnMouseEnter" @onmouseleave="OnMouseLeave">
@@ -51,12 +48,6 @@
             @* Center Section - Quick Actions *@
             <div class="overlay-center @(_isHovered ? "visible" : "")">
                 <div class="quick-actions">
-                    <button class="action-btn" @onclick="@(() => SendTo(true))" title="Send to Img2Img">
-                        <i class="fa-solid fa-file-image"></i>
-                    </button>
-                    <button class="action-btn" @onclick="@(() => SendTo(false))" title="Send to Upscale">
-                        <i class="fa-solid fa-panorama"></i>
-                    </button>
                     @if (Image.Meta != null)
                     {
                         <button class="action-btn primary" @onclick="RaiseView" title="View Info">
@@ -112,7 +103,7 @@
 </div>
 
 @code {
-    [Parameter] public CivitaiImageDto Image { get; set; }
+    [Parameter] public CivitaiImageDto Image { get; set; } = default!;
     [Parameter] public EventCallback OnSaveImage { get; set; }
     /// <summary>
     /// Raised when the user requests to view this image in the panel-owned AssetViewer.
@@ -174,12 +165,6 @@
         StateHasChanged();
     }
 
-    private void SendTo(bool img2img)
-    {
-        // var data = $"data:image/png;base64,{IO.GetBase64FromFile(Image.Path)}";
-        // if (img2img) M.CanvasImageData = data;
-        // else M.UpscaleImageData = data;
-    }
     private string GetSamplerBadgeStyle()
     {
         var color = GetSamplerColor();

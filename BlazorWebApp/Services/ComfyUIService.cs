@@ -1084,6 +1084,7 @@ namespace BlazorWebApp.Services
             {
                 var typeKey = (source.Type ?? "image").ToLowerInvariant();
                 var isAudio = typeKey == "audio";
+                var isVideo = typeKey == "video";
                 if (source.HasData && !string.IsNullOrEmpty(source.Data))
                 {
                     // Check if it's base64 data (not already an uploaded filename)
@@ -1095,6 +1096,11 @@ namespace BlazorWebApp.Services
                             var ext = source.Filename ?? source.Data; // ResolveExtension sniffs both
                             uploadedFilename = await UploadAudioAsync(source.Data, ext, tempId);
                         }
+                        else if (isVideo)
+                        {
+                            var ext = ResolveExtension(source.Filename ?? source.FilePath ?? source.Data, ".mp4");
+                            uploadedFilename = await UploadInputAsync(source.Data, ResolveInputMediaType(ext), ext, tempId);
+                        }
                         else
                         {
                             uploadedFilename = await UploadImageAsync(source.Data, tempId);
@@ -1104,26 +1110,53 @@ namespace BlazorWebApp.Services
                         _logger.LogDebug("Uploaded source {Type} from data: {Filename}", typeKey, uploadedFilename);
                     }
                 }
-                else if (!string.IsNullOrEmpty(source.FilePath) && File.Exists(source.FilePath))
+                else if (!string.IsNullOrEmpty(source.FilePath))
                 {
+                    var resolvedPath = _io.ResolveFilePath(source.FilePath);
+                    if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                        continue;
+
                     // Source has a local file path but no base64 data — read and upload to ComfyUI
-                    var base64 = _io.GetBase64FromFile(source.FilePath);
+                    var base64 = isVideo ? null : _io.GetBase64FromFile(resolvedPath);
                     if (!string.IsNullOrEmpty(base64))
                     {
                         string uploadedFilename;
                         if (isAudio)
                         {
-                            uploadedFilename = await UploadAudioAsync(base64, source.FilePath, tempId);
+                            uploadedFilename = await UploadAudioAsync(base64, resolvedPath, tempId);
                         }
                         else
                         {
                             uploadedFilename = await UploadImageAsync(base64, tempId);
                         }
                         source.Filename = uploadedFilename;
-                        _logger.LogDebug("Uploaded source {Type} from file path: {FilePath} -> {Filename}", typeKey, source.FilePath, uploadedFilename);
+                        _logger.LogDebug("Uploaded source {Type} from file path: {FilePath} -> {Filename}", typeKey, resolvedPath, uploadedFilename);
+                    }
+                    else if (isVideo)
+                    {
+                        await using var stream = File.OpenRead(resolvedPath);
+                        var uploadedFilename = await UploadStreamAsync(stream, Path.GetFileName(resolvedPath), ResolveInputMediaType(resolvedPath), tempId);
+                        source.Filename = uploadedFilename;
+                        source.Data = uploadedFilename;
+                        _logger.LogDebug("Uploaded source video from file path: {FilePath} -> {Filename}", resolvedPath, uploadedFilename);
                     }
                 }
             }
+        }
+
+        private static string ResolveInputMediaType(string pathOrExtension)
+        {
+            var ext = ResolveExtension(pathOrExtension, ".bin");
+            return ext.ToLowerInvariant() switch
+            {
+                ".mp4" => "video/mp4",
+                ".webm" => "video/webm",
+                ".mov" => "video/quicktime",
+                ".avi" => "video/x-msvideo",
+                ".mkv" => "video/x-matroska",
+                ".gif" => "image/gif",
+                _ => "application/octet-stream"
+            };
         }
 
         #endregion

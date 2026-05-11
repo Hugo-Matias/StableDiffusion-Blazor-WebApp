@@ -21,6 +21,15 @@
   gap: 8px;
 }
 
+.send-to-dropdown {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 120px;
+}
+
+.send-to-dropdown .send-to-btn {
+  width: 100%;
+}
+
 .send-to-btn {
   flex: 1 1 calc(50% - 4px);
   min-width: 120px;

@@ -11,7 +11,7 @@
 @inject ISessionService Session
 @inject ISnackbar Snackbar
 @inject NavigationManager NavManager
-@inject IImageSendToService SendTo
+@inject IMediaSendToService SendTo
 @inject IEventService Events
 @implements IDisposable
 
@@ -37,77 +37,36 @@
     <div class="info-content">
         @if (Asset != null)
         {
-            <!-- Send To Buttons (images only) -->
+            @if (SendTo.IsLocal(Asset.Path))
+            {
+                <MediaSendToDropdown Asset="Asset" MediaType="@(IsVideo? SendToMediaType.Video: SendToMediaType.Image)" />
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-2">
+                    <div class="d-flex align-center gap-2">
+                        <span>@ExternalImageHintText</span>
+                    </div>
+                    @if (OnRequestSaveLocal != null)
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="ms-2"
+                                   StartIcon="@ExternalImageActionIcon" Disabled="_isSavingLocalImage" @onclick="RequestLocalImage">
+                            @(_isSavingLocalImage ? "Saving..." : ExternalImageActionText)
+                        </MudButton>
+                    }
+                    else if (OnRequestBookmark.HasDelegate)
+                    {
+                        var assetCapture = Asset;
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="ms-2"
+                                   StartIcon="fa-solid fa-bookmark" @onclick="() => OnRequestBookmark.InvokeAsync(assetCapture!)">
+                            Bookmark
+                        </MudButton>
+                    }
+                </MudAlert>
+            }
+
             @if (!IsVideo)
             {
-                @* Send image to workflows (local images only) *@
-                @if (SendTo.IsLocal(Asset!.Path) && SendTo.GetImageWorkflows().Any())
-                {
-                    <div class="send-to-section">
-                        <span class="send-to-label">Send image to:</span>
-                        <div class="send-to-buttons">
-                            @foreach (var workflow in SendTo.GetImageWorkflows())
-                            {
-                                var multiSource = SendTo.GetMultiSourceDefinition(workflow);
-                                @if (multiSource != null)
-                                {
-                                    @* Multi-source workflow: show per-slot buttons + Add *@
-                                    @foreach (var slot in SendTo.GetSourceSlots(workflow, multiSource))
-                                    {
-                                        var slotCapture = slot;
-                                        <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode)"
-                                                @onclick="() => SendTo.SendImageToSourceSlot(Asset!, workflow, slotCapture.Key)"
-                                                title="Send to @workflow.Title - @slotCapture.Label">
-                                            <MudIcon Icon="@SendTo.GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
-                                            <span>@slotCapture.Label</span>
-                                        </button>
-                                    }
-                                    var wfCapture = workflow;
-                                    var msCapture = multiSource;
-                                    <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode) send-to-add"
-                                            @onclick="() => SendTo.SendImageToNewSlot(Asset!, wfCapture, msCapture)"
-                                            title="Add new reference and send to @workflow.Title">
-                                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
-                                        <span>@(workflow.Title) Add</span>
-                                    </button>
-                                }
-                                else
-                                {
-                                    @* Single-source workflow: standard button *@
-                                    <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode)"
-                                            @onclick="() => SendTo.SendImageToWorkflow(Asset!, workflow)" title="Send to @workflow.Title">
-                                        <MudIcon Icon="@SendTo.GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
-                                        <span>@workflow.Title</span>
-                                    </button>
-                                }
-                            }
-                        </div>
-                    </div>
-                }
-                else if (!SendTo.IsLocal(Asset!.Path))
-                {
-                    <MudAlert Severity="Severity.Info" Class="mb-2">
-                        <div class="d-flex align-center gap-2">
-                            <span>@ExternalImageHintText</span>
-                        </div>
-                        @if (OnRequestSaveLocal != null)
-                        {
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="ms-2"
-                                       StartIcon="@ExternalImageActionIcon" Disabled="_isSavingLocalImage" @onclick="RequestLocalImage">
-                                @(_isSavingLocalImage ? "Saving..." : ExternalImageActionText)
-                            </MudButton>
-                        }
-                        else if (OnRequestBookmark.HasDelegate)
-                        {
-                            var assetCapture = Asset;
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="ms-2"
-                                       StartIcon="fa-solid fa-bookmark" @onclick="() => OnRequestBookmark.InvokeAsync(assetCapture!)">
-                                Bookmark
-                            </MudButton>
-                        }
-                    </MudAlert>
-                }
-
                 @* Send parameters to workflows *@
                 @if (SendTo.GetParameterWorkflows().Any())
                 {

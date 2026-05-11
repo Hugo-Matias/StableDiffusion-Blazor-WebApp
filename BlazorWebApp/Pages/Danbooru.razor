@@ -45,8 +45,8 @@
                             @foreach (var post in Posts)
                             {
                                 <div class="danbooru-item">
-                                    <DanbooruImageCard Post="post" OnSendTags=@(isImg2Img => WriteDanbooruTags(post, isImg2Img))
-                                                       OnShowImage=@(() => ShowImageViewerDialog(post)) OnSave=@(() => SaveToLibrary(post)) />
+                                    <DanbooruImageCard Post="post" OnSendTags=@(() => WriteDanbooruTags(post)) OnShowImage=@(()
+                                                                                                                                                                                   => ShowImageViewerDialog(post)) OnSave=@(() => SaveToLibrary(post)) />
                                 </div>
                             }
                         </div>
@@ -111,10 +111,9 @@
                             @foreach (var item in _libraryItems)
                             {
                                 <div class="danbooru-item">
-                                    <SavedDanbooruMediaCard Media="item" OnCopyTags=@(() => WriteLibraryTags(item, false))
-                                                            OnSendImg2Img=@(() => WriteLibraryTags(item, true)) OnShowImage=@(() =>
-                                                                                                                                                                                                                                                                                                                                                                    ShowLibraryViewer(item)) OnOpenSource=@(() => OpenSource(item)) OnDelete=@(() =>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                DeleteFromLibrary(item)) />
+                                    <SavedDanbooruMediaCard Media="item" OnCopyTags=@(() => WriteLibraryTags(item))
+                                                            OnShowImage=@(() => ShowLibraryViewer(item)) OnOpenSource=@(() => OpenSource(item))
+                                                            OnDelete=@(() => DeleteFromLibrary(item)) />
                                 </div>
                             }
                         </div>
@@ -139,11 +138,9 @@
 <DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch="WriteSavedSearch" OnAddCurrent="AddCurrentSearchToSaved" />
 
 <ImageViewer @bind-IsVisible="_showViewer" Images="_viewerImages" StartIndex="_viewerStartIndex" IsExternal="true"
-             OnRequestBookmark="HandleBookmarkFromViewer"
-             ShowAiMetadata="false" />
+             OnRequestBookmark="HandleBookmarkFromViewer" ShowAiMetadata="false" />
 
 @code {
-    [Parameter] public EventCallback<(string, bool)> OnSendTags { get; set; }
     [Parameter] public DanbooruSearchesDrawer? SearchDrawer { get; set; }
 
     public List<DanbooruPost> Posts { get; set; } = new();
@@ -394,7 +391,7 @@
         Settings.SaveSettings();
     }
 
-    private void WriteDanbooruTags(DanbooruPost post, bool isImg2Img)
+    private void WriteDanbooruTags(DanbooruPost post)
     {
         var blacklistTags = Settings.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
         var tags = post.TagsArtist;
@@ -495,7 +492,7 @@ FragmentKeys.Fragments.Prompts);
         await InvokeAsync(StateHasChanged);
     }
 
-    private void WriteLibraryTags(SavedDanbooruMedia media, bool isImg2Img)
+    private void WriteLibraryTags(SavedDanbooruMedia media)
     {
         var blacklistTags = Settings.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
         var tags = media.TagsBundle.Artist;
@@ -509,12 +506,6 @@ FragmentKeys.Fragments.Prompts);
         var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
         var extractedLoras = string.Join(" ", Regex.Matches(currentPositive, _loraRegex));
         promptsFragment.SetValue(FragmentKeys.Params.Positive, extractedLoras + " " + tagsString);
-
-        // Raise OnSendTags callback for img2img panel routing
-        if (OnSendTags.HasDelegate)
-        {
-            _ = OnSendTags.InvokeAsync((tagsString, isImg2Img));
-        }
 
         // Persist settings
         Settings.SaveSettings();

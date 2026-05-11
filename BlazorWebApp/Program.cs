@@ -126,8 +126,8 @@ builder.Services.AddSingleton<IComponentRegistry, ComponentRegistry>();
 // Generation parameter service for dynamic parameter management
 builder.Services.AddScoped<IGenerationParameterService, GenerationParameterService>();
 
-// Image "Send To" service - context-aware routing of images/parameters to available workflows
-builder.Services.AddScoped<IImageSendToService, ImageSendToService>();
+// Media "Send To" service - context-aware routing of source media/parameters to available workflows
+builder.Services.AddScoped<IMediaSendToService, MediaSendToService>();
 
 // Prompt "Send To" service - apply Workshop prompts to a target workflow
 builder.Services.AddScoped<IPromptSendToService, PromptSendToService>();
