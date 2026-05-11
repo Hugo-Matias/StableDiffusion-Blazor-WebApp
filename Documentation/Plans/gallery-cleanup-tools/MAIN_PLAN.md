@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 1 implementation checkpoint complete; tests blocked by unrelated test-project compile errors
+**Current Phase:** Phase 2 backend indexing checkpoint complete; tests blocked by unrelated test-project compile errors
 
 ---
 
@@ -78,19 +78,19 @@ The first implementation slices should avoid ONNX inference until the app has a 
 
 ### Required Pieces
 
-| Area | Requirement | Notes |
-|---|---|---|
-| Runtime package | Provider-selected ONNX Runtime package | The embedding service must isolate provider selection behind configuration so CPU/GPU/native package concerns do not leak into indexing logic. |
-| CPU provider | `Microsoft.ML.OnnxRuntime` | Portable fallback and useful for tests, recovery, and machines without matching GPU runtime dependencies. |
-| CUDA GPU | `Microsoft.ML.OnnxRuntime.Gpu` | First-class target from the start. User has an RTX 4090 and wants CUDA support available through a simple runtime selector. |
-| Optional Windows GPU | `Microsoft.ML.OnnxRuntime.DirectML` | Useful future Windows fallback when CUDA is unavailable or native CUDA/cuDNN setup is not desired. |
-| Optional remote provider | ComfyUI-backed embedding provider | Comfy can be considered if it already owns a working ONNX/CUDA environment, but integration concerns should be discussed before implementation. |
-| Image preprocessing | Existing `Magick.NET-Q16-AnyCPU` | Already installed; can decode, resize, crop, and normalize source images. |
-| Model artifact | CLIP/SigLIP/MobileCLIP image encoder exported to ONNX | Prefer image encoder only, not full text/image model unless needed later. |
-| Model metadata | Config for input name, input size, layout, mean/std, embedding dimension, output name | Do not hardcode these into inference logic. |
-| Vector normalization | L2-normalize embeddings before storing | Makes cosine similarity equivalent to dot product. |
-| Storage | Float32 vector BLOB plus model key/hash/dimension | Recompute when model config or model file changes. |
-| Processing | Background queue with cancellation and progress | Required for 113k records. |
+| Area                     | Requirement                                                                           | Notes                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime package          | Provider-selected ONNX Runtime package                                                | The embedding service must isolate provider selection behind configuration so CPU/GPU/native package concerns do not leak into indexing logic.  |
+| CPU provider             | `Microsoft.ML.OnnxRuntime`                                                            | Portable fallback and useful for tests, recovery, and machines without matching GPU runtime dependencies.                                       |
+| CUDA GPU                 | `Microsoft.ML.OnnxRuntime.Gpu`                                                        | First-class target from the start. User has an RTX 4090 and wants CUDA support available through a simple runtime selector.                     |
+| Optional Windows GPU     | `Microsoft.ML.OnnxRuntime.DirectML`                                                   | Useful future Windows fallback when CUDA is unavailable or native CUDA/cuDNN setup is not desired.                                              |
+| Optional remote provider | ComfyUI-backed embedding provider                                                     | Comfy can be considered if it already owns a working ONNX/CUDA environment, but integration concerns should be discussed before implementation. |
+| Image preprocessing      | Existing `Magick.NET-Q16-AnyCPU`                                                      | Already installed; can decode, resize, crop, and normalize source images.                                                                       |
+| Model artifact           | CLIP/SigLIP/MobileCLIP image encoder exported to ONNX                                 | Prefer image encoder only, not full text/image model unless needed later.                                                                       |
+| Model metadata           | Config for input name, input size, layout, mean/std, embedding dimension, output name | Do not hardcode these into inference logic.                                                                                                     |
+| Vector normalization     | L2-normalize embeddings before storing                                                | Makes cosine similarity equivalent to dot product.                                                                                              |
+| Storage                  | Float32 vector BLOB plus model key/hash/dimension                                     | Recompute when model config or model file changes.                                                                                              |
+| Processing               | Background queue with cancellation and progress                                       | Required for 113k records.                                                                                                                      |
 
 ### Recommended Runtime Decision
 
@@ -137,18 +137,18 @@ Provider selection must be persisted with embedding model metadata so users can 
 
 ## Key Decisions
 
-| Decision | Rationale |
-|---|---|
-| Review groups are persisted or reproducible from persisted run data | Users need stable batches while making deletion decisions. |
-| Existing `GalleryService` remains the selected-ID authority | Existing delete, deselect, selected-only filter, and selection manager already depend on it. |
-| Cleanup candidates become selected image IDs before deletion | Keeps destructive action inside known confirmation paths. |
-| Embeddings are indexed in the background | Generation and gallery browsing should not block on model inference. |
-| New generated images enqueue indexing after save | New work stays fresh without requiring full rescans. |
-| ONNX model config is data-driven | Different CLIP/SigLIP exports have different input/output names and preprocessing. |
-| CPU and CUDA are first-class runtime choices | The app should support the user's RTX 4090 from the first embedding implementation while preserving a portable fallback. |
-| Provider selection is isolated behind an embedding runtime boundary | CUDA, DirectML, CPU, and possible Comfy-backed embedding should not change cleanup indexing or grouping code. |
-| Qwen 3 VL is optional for representative captions only | It is too expensive and variable for bulk grouping at this scale. |
-| Brute-force cosine is acceptable for the first embedding implementation | 113k vectors can be scanned in batches if embeddings are cached; vector DB can come later. |
+| Decision                                                                | Rationale                                                                                                                |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Review groups are persisted or reproducible from persisted run data     | Users need stable batches while making deletion decisions.                                                               |
+| Existing `GalleryService` remains the selected-ID authority             | Existing delete, deselect, selected-only filter, and selection manager already depend on it.                             |
+| Cleanup candidates become selected image IDs before deletion            | Keeps destructive action inside known confirmation paths.                                                                |
+| Embeddings are indexed in the background                                | Generation and gallery browsing should not block on model inference.                                                     |
+| New generated images enqueue indexing after save                        | New work stays fresh without requiring full rescans.                                                                     |
+| ONNX model config is data-driven                                        | Different CLIP/SigLIP exports have different input/output names and preprocessing.                                       |
+| CPU and CUDA are first-class runtime choices                            | The app should support the user's RTX 4090 from the first embedding implementation while preserving a portable fallback. |
+| Provider selection is isolated behind an embedding runtime boundary     | CUDA, DirectML, CPU, and possible Comfy-backed embedding should not change cleanup indexing or grouping code.            |
+| Qwen 3 VL is optional for representative captions only                  | It is too expensive and variable for bulk grouping at this scale.                                                        |
+| Brute-force cosine is acceptable for the first embedding implementation | 113k vectors can be scanned in batches if embeddings are cached; vector DB can come later.                               |
 
 ---
 
@@ -156,13 +156,13 @@ Provider selection must be persisted with embedding model metadata so users can 
 
 Names are provisional and should be refined during implementation.
 
-| Entity | Purpose |
-|---|---|
-| `CleanupImageIndex` | One row per gallery image with file facts, scan state, hashes, normalized prompt data, and index version. |
-| `CleanupImageEmbedding` | One row per image per embedding model with vector BLOB, dimensions, model key/hash, and status. |
-| `CleanupGroupRun` | A generated grouping pass with strategy, thresholds, scope, progress, and summary metrics. |
-| `CleanupGroup` | Top-level review group with representative image, strategy, count, estimated bytes, and reason. |
-| `CleanupGroupMember` | Images inside a group with distance/similarity, role, and suggested action. |
+| Entity                  | Purpose                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `CleanupImageIndex`     | One row per gallery image with file facts, scan state, hashes, normalized prompt data, and index version. |
+| `CleanupImageEmbedding` | One row per image per embedding model with vector BLOB, dimensions, model key/hash, and status.           |
+| `CleanupGroupRun`       | A generated grouping pass with strategy, thresholds, scope, progress, and summary metrics.                |
+| `CleanupGroup`          | Top-level review group with representative image, strategy, count, estimated bytes, and reason.           |
+| `CleanupGroupMember`    | Images inside a group with distance/similarity, role, and suggested action.                               |
 
 ### Persistence Notes
 
@@ -177,17 +177,17 @@ Names are provisional and should be refined during implementation.
 
 ## Cleanup Strategies
 
-| Strategy | Uses Embeddings | Description | First-Class Value |
-|---|---:|---|---|
-| Exact duplicate | No | Same file hash. | Safest deletion candidates. |
-| Near duplicate | No | Perceptual hash distance. | Catches resized/compressed duplicates. |
-| Prompt fingerprint | No | Normalized same prompt after tag/weight cleanup. | Groups repeated generation runs. |
-| Prompt fuzzy | No | Token-set and ordered-token similarity. | Catches reordered or lightly edited prompts. |
-| Same experiment | No | Project + workflow + model + date bucket + prompt fingerprint. | Useful for seed sweeps and parameter tweaks. |
-| Visual similarity | Yes | Embedding cosine similarity. | Groups images by what they depict. |
-| Low-value candidates | Optional | Non-favorite, score 0, older variants where group has favorites or higher score. | Practical cleanup assist. |
-| Orphans and missing files | No | DB row missing file, file missing DB row if folder scan is added. | Keeps storage and DB honest. |
-| Large storage offenders | No | Videos, upscales, huge files, old non-favorites. | Fast resource recovery. |
+| Strategy                  | Uses Embeddings | Description                                                                      | First-Class Value                            |
+| ------------------------- | --------------: | -------------------------------------------------------------------------------- | -------------------------------------------- |
+| Exact duplicate           |              No | Same file hash.                                                                  | Safest deletion candidates.                  |
+| Near duplicate            |              No | Perceptual hash distance.                                                        | Catches resized/compressed duplicates.       |
+| Prompt fingerprint        |              No | Normalized same prompt after tag/weight cleanup.                                 | Groups repeated generation runs.             |
+| Prompt fuzzy              |              No | Token-set and ordered-token similarity.                                          | Catches reordered or lightly edited prompts. |
+| Same experiment           |              No | Project + workflow + model + date bucket + prompt fingerprint.                   | Useful for seed sweeps and parameter tweaks. |
+| Visual similarity         |             Yes | Embedding cosine similarity.                                                     | Groups images by what they depict.           |
+| Low-value candidates      |        Optional | Non-favorite, score 0, older variants where group has favorites or higher score. | Practical cleanup assist.                    |
+| Orphans and missing files |              No | DB row missing file, file missing DB row if folder scan is added.                | Keeps storage and DB honest.                 |
+| Large storage offenders   |              No | Videos, upscales, huge files, old non-favorites.                                 | Fast resource recovery.                      |
 
 ---
 
@@ -233,10 +233,10 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 #### Steps
 
-- [ ] Define cleanup index entities and repository interfaces.
-- [ ] Add EF Core mappings and migration.
-- [ ] Add scan status and error models.
-- [ ] Add tests for repository create/update/query flows.
+- [x] Define cleanup index entities and repository interfaces.
+- [x] Add EF Core mappings and migration.
+- [x] Add scan status and error models.
+- [!] Add tests for repository create/update/query flows.
 
 #### Success Criteria
 
@@ -250,16 +250,16 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Build the first resumable scanner with cheap deterministic signals.
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Backend implementation checkpoint complete
 
 #### Steps
 
-- [ ] Implement file resolution, existence, file size, and modified-state indexing.
-- [ ] Implement SHA-256 exact hash.
-- [ ] Implement perceptual hash with Magick.NET preprocessing.
-- [ ] Implement prompt normalization and fingerprinting.
-- [ ] Add batch indexing service with progress, cancellation, and error handling.
-- [ ] Add tests for prompt normalization and perceptual hash behavior.
+- [x] Implement file resolution, existence, file size, and modified-state indexing.
+- [x] Implement SHA-256 exact hash.
+- [x] Implement perceptual hash with Magick.NET preprocessing.
+- [x] Implement prompt normalization and fingerprinting.
+- [x] Add batch indexing service with progress, cancellation, and error handling.
+- [!] Add tests for prompt normalization and perceptual hash behavior.
 
 #### Success Criteria
 
@@ -429,17 +429,17 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 ## Stress Points And Risks
 
-| Risk | Mitigation | Complexity |
-|---|---|---:|
-| 113k records overwhelm memory or UI | Batch DB queries, lazy-load group members, virtualize top-level lists, avoid full entity materialization. | 13 |
-| ONNX native package conflicts | Keep provider selection isolated; support CPU fallback and CUDA probing so native failures are surfaced before a large scan starts. | 8 |
-| Embedding model swaps corrupt similarity comparisons | Store model key, model hash, output dimensions, and embedding version with every vector. | 5 |
-| Generation save becomes slow | Enqueue indexing after save and process in background. Never block generation on embeddings by default. | 5 |
-| Accidental mass deletion | Use review groups, existing selected image flow, confirmation dialogs, and optional saved selections/staging. | 8 |
-| Prompt grouping is too strict or too loose | Provide separate exact, fingerprint, and fuzzy strategies with thresholds. | 5 |
-| Perceptual hash misses semantic similarity | Treat perceptual hash as a cheap duplicate signal, not semantic grouping. Embeddings handle semantic similarity. | 3 |
-| SQLite vector search becomes slow | Start brute force over cached vectors; add approximate vector index only after measuring. | 8 |
-| File paths may be stale | Index existence and errors separately so missing files become a cleanup category instead of scan blockers. | 5 |
+| Risk                                                 | Mitigation                                                                                                                          | Complexity |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------: |
+| 113k records overwhelm memory or UI                  | Batch DB queries, lazy-load group members, virtualize top-level lists, avoid full entity materialization.                           |         13 |
+| ONNX native package conflicts                        | Keep provider selection isolated; support CPU fallback and CUDA probing so native failures are surfaced before a large scan starts. |          8 |
+| Embedding model swaps corrupt similarity comparisons | Store model key, model hash, output dimensions, and embedding version with every vector.                                            |          5 |
+| Generation save becomes slow                         | Enqueue indexing after save and process in background. Never block generation on embeddings by default.                             |          5 |
+| Accidental mass deletion                             | Use review groups, existing selected image flow, confirmation dialogs, and optional saved selections/staging.                       |          8 |
+| Prompt grouping is too strict or too loose           | Provide separate exact, fingerprint, and fuzzy strategies with thresholds.                                                          |          5 |
+| Perceptual hash misses semantic similarity           | Treat perceptual hash as a cheap duplicate signal, not semantic grouping. Embeddings handle semantic similarity.                    |          3 |
+| SQLite vector search becomes slow                    | Start brute force over cached vectors; add approximate vector index only after measuring.                                           |          8 |
+| File paths may be stale                              | Index existence and errors separately so missing files become a cleanup category instead of scan blockers.                          |          5 |
 
 ---
 
@@ -494,7 +494,9 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 
 ## Changelog
 
-| Phase | Changes |
-|---|---|
-| Planning | Initial cleanup tools plan created with ONNX, grouping, persistence, and review UI direction. |
+| Phase           | Changes                                                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Planning        | Initial cleanup tools plan created with ONNX, grouping, persistence, and review UI direction.                                                            |
 | Planning update | Runtime direction updated for first-class CUDA support, simple CPU/CUDA selector, RTX 4090 target environment, and possible ComfyUI provider discussion. |
+| Phase 1         | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                            |
+| Phase 2         | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.   |

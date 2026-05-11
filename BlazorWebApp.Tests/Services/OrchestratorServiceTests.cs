@@ -51,7 +51,7 @@ public class OrchestratorServiceTests
             Gallery = new AppStateGallery { PageSize = 20, DateRange = new MudBlazor.DateRange(DateTime.Now.AddDays(-5), DateTime.Now) }
         };
         _mockState.Setup(s => s.State).Returns(appState);
-        
+
         // Setup GenerationParameters
         _generationParameters = new GenerationParameters();
         _mockState.Setup(s => s.GenerationParameters).Returns(_generationParameters);
@@ -453,16 +453,6 @@ public class OrchestratorServiceTests
 
         // Assert
         _mockSession.Verify(s => s.ResetImageEditorState(), Times.Once);
-    }
-
-    [Fact]
-    public void SetImg2ImgInputImage_ShouldDelegateToSessionService()
-    {
-        // Act
-        _service.SetImg2ImgInputImage("base64data", resetEditorState: true);
-
-        // Assert
-        _mockSession.Verify(s => s.SetImg2ImgInputImage("base64data", true), Times.Once);
     }
 
     [Fact]

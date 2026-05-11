@@ -29,7 +29,7 @@ namespace BlazorWebApp.Tests.Integration
             var mockConfig = new Mock<IConfiguration>();
             var mockEvents = new Mock<IEventService>();
             var mockSettings = new Mock<ISettingsService>();
-            
+
             mockSettings.Setup(s => s.Settings).Returns(new AppSettings());
             mockConfig.Setup(c => c["StateVersion"]).Returns("1");
 
@@ -44,19 +44,19 @@ namespace BlazorWebApp.Tests.Integration
             var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "test prompt for round-trip");
             promptsFragment.SetValue(FragmentKeys.Params.Negative, "test negative prompt");
-            
+
             var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, 42);
             samplerFragment.SetValue(FragmentKeys.Params.Cfg, 8.5);
             samplerFragment.SetValue(FragmentKeys.Params.Seed, 12345L);
-            
+
             var latentFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
             latentFragment.SetValue(FragmentKeys.Params.Width, 768);
             latentFragment.SetValue(FragmentKeys.Params.Height, 1024);
-            
+
             stateService.GenerationParameters.Assets["Model"] = "test_model.safetensors";
             stateService.GenerationParameters.Assets["Vae"] = "test_vae.safetensors";
-            
+
             stateService.State.Generation.WorkflowBase = ModelBase.Flux;
 
             // Act - Save state
@@ -76,16 +76,16 @@ namespace BlazorWebApp.Tests.Integration
             var loadedPrompts = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             loadedPrompts.GetValue<string>(FragmentKeys.Params.Positive).Should().Be("test prompt for round-trip");
             loadedPrompts.GetValue<string>(FragmentKeys.Params.Negative).Should().Be("test negative prompt");
-            
+
             var loadedSampler = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             loadedSampler.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(42);
             loadedSampler.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(8.5);
             loadedSampler.GetValue<long>(FragmentKeys.Params.Seed).Should().Be(12345L);
-            
+
             var loadedLatent = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
             loadedLatent.GetValue<int>(FragmentKeys.Params.Width).Should().Be(768);
             loadedLatent.GetValue<int>(FragmentKeys.Params.Height).Should().Be(1024);
-            
+
             newStateService.GenerationParameters.Assets.Should().ContainKey("Model");
             newStateService.GenerationParameters.Assets["Model"].Should().Be("test_model.safetensors");
             newStateService.GenerationParameters.Assets["Vae"].Should().Be("test_vae.safetensors");
@@ -104,7 +104,7 @@ namespace BlazorWebApp.Tests.Integration
             var mockConfig = new Mock<IConfiguration>();
             var mockEvents = new Mock<IEventService>();
             var mockSettings = new Mock<ISettingsService>();
-            
+
             mockSettings.Setup(s => s.Settings).Returns(new AppSettings());
             mockConfig.Setup(c => c["StateVersion"]).Returns("1");
 
@@ -118,17 +118,17 @@ namespace BlazorWebApp.Tests.Integration
             // Set up video generation parameters using GenerationParameters
             var promptsFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             promptsFragment.SetValue(FragmentKeys.Params.Positive, "video generation prompt");
-            
+
             var videoFragment = stateService.GenerationParameters.GetOrCreateFragment("video_settings");
             videoFragment.SetValue("length", 97);
             videoFragment.SetValue("frame_rate", 24);
             videoFragment.SetValue("motion_amplitude", 1.5f);
-            
+
             var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.SetValue(FragmentKeys.Params.Steps, 12);
             samplerFragment.SetValue(FragmentKeys.Params.Cfg, 2.5);
             samplerFragment.SetValue("shift", 7);
-            
+
             stateService.GenerationParameters.Assets["HighModel"] = "wan_high.safetensors";
             stateService.GenerationParameters.Assets["LowModel"] = "wan_low.safetensors";
             stateService.GenerationParameters.Assets["Clip"] = "clip_model.safetensors";
@@ -136,21 +136,21 @@ namespace BlazorWebApp.Tests.Integration
             // Act - Save and reload
             await stateService.SaveState();
             mockDb.Setup(db => db.GetState(1)).ReturnsAsync(capturedState);
-            
+
             var newStateService = new StateService(mockDb.Object, mockConfig.Object, mockEvents.Object, mockSettings.Object);
             await newStateService.LoadState();
 
             // Assert
             var loadedPrompts = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
             loadedPrompts.GetValue<string>(FragmentKeys.Params.Positive).Should().Be("video generation prompt");
-            
+
             var loadedVideo = newStateService.GenerationParameters.GetOrCreateFragment("video_settings");
             loadedVideo.GetValue<int>("length").Should().Be(97);
             loadedVideo.GetValue<int>("frame_rate").Should().Be(24);
-            
+
             var loadedSampler = newStateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             loadedSampler.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(12);
-            
+
             newStateService.GenerationParameters.Assets["HighModel"].Should().Be("wan_high.safetensors");
             newStateService.GenerationParameters.Assets["LowModel"].Should().Be("wan_low.safetensors");
         }
@@ -329,26 +329,27 @@ namespace BlazorWebApp.Tests.Integration
         }
 
         /// <summary>
-        /// Verifies SessionService correctly publishes events when input image changes.
+        /// Verifies SessionService correctly publishes events when pending source media changes.
         /// </summary>
         [Fact]
-        public void SessionService_WhenInputImageChanges_ShouldPublishEvent()
+        public void SessionService_WhenPendingSourceMediaChanges_ShouldPublishEvent()
         {
             // Arrange
             var eventService = new EventService();
             var sessionService = new SessionService(eventService);
 
-            var receivedEvents = new List<Img2ImgInputImageChangedEventArgs>();
-            eventService.Subscribe<Img2ImgInputImageChangedEventArgs>(e => receivedEvents.Add(e));
+            var receivedEvents = new List<PendingSourceMediaChangedEventArgs>();
+            eventService.Subscribe<PendingSourceMediaChangedEventArgs>(e => receivedEvents.Add(e));
 
             // Act
-            sessionService.SetImg2ImgInputImage("base64data1", resetEditorState: true);
-            sessionService.SetImg2ImgInputImage("base64data2", resetEditorState: false);
+            sessionService.PendingSourceMedia.Add(new PendingSourceMedia("source_image", "image", "base64data1", null));
+            sessionService.NotifyPendingSourceMedia();
+            sessionService.PendingSourceMedia.Add(new PendingSourceMedia("end_image", "image", "base64data2", null));
+            sessionService.NotifyPendingSourceMedia();
 
             // Assert
             receivedEvents.Should().HaveCount(2);
-            receivedEvents[0].ImageData.Should().Be("base64data1");
-            receivedEvents[1].ImageData.Should().Be("base64data2");
+            sessionService.PendingSourceMedia.Should().HaveCount(2);
         }
 
         /// <summary>
@@ -468,16 +469,16 @@ namespace BlazorWebApp.Tests.Integration
             var session2 = new SessionService(eventService2);
 
             // Act
-            session1.Img2ImgInputImage = "data:image/png;base64,abc123";
+            session1.PendingSourceMedia.Add(new PendingSourceMedia("source_image", "image", "data:image/png;base64,abc123", null));
             session1.AddSessionVideo(new GeneratedVideo { FilePath = "/video1.mp4" });
 
-            session2.Img2ImgInputImage = "data:image/png;base64,xyz789";
+            session2.PendingSourceMedia.Add(new PendingSourceMedia("source_image", "image", "data:image/png;base64,xyz789", null));
 
             // Assert
-            session1.Img2ImgInputImage.Should().Be("data:image/png;base64,abc123");
+            session1.PendingSourceMedia.Should().ContainSingle(m => m.Data == "data:image/png;base64,abc123");
             session1.SessionGeneratedVideos.Videos.Should().HaveCount(1);
 
-            session2.Img2ImgInputImage.Should().Be("data:image/png;base64,xyz789");
+            session2.PendingSourceMedia.Should().ContainSingle(m => m.Data == "data:image/png;base64,xyz789");
             session2.SessionGeneratedVideos.Videos.Should().BeEmpty();
         }
 
@@ -520,7 +521,7 @@ namespace BlazorWebApp.Tests.Integration
             var samplerFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.MainSampler);
             samplerFragment.GetValue<int>(FragmentKeys.Params.Steps).Should().Be(100);
             samplerFragment.GetValue<double>(FragmentKeys.Params.Cfg).Should().Be(15.0);
-            
+
             var latentFragment = stateService.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Latent);
             latentFragment.GetValue<int>(FragmentKeys.Params.Width).Should().Be(2048);
             latentFragment.GetValue<int>(FragmentKeys.Params.Height).Should().Be(2048);

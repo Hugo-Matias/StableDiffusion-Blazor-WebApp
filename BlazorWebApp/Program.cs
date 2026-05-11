@@ -1,6 +1,7 @@
 using BlazorWebApp.Data;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
+using BlazorWebApp.Services.Cleanup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -98,6 +99,9 @@ builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ISavedDanbooruMedia
 
 // Gallery cleanup persistence
 builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ICleanupRepository, BlazorWebApp.Data.Repositories.CleanupRepository>();
+builder.Services.AddSingleton<ICleanupPromptIndexService, CleanupPromptIndexService>();
+builder.Services.AddSingleton<ICleanupImageHashService, CleanupImageHashService>();
+builder.Services.AddSingleton<ICleanupIndexingService, CleanupIndexingService>();
 
 // Danbooru library service - plain HttpClient for CDN downloads (no auth headers needed)
 builder.Services.AddHttpClient<IDanbooruLibraryService, DanbooruLibraryService>(client =>

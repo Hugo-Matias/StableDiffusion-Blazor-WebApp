@@ -1,9 +1,13 @@
 @using BlazorWebApp.Models
+@using BlazorWebApp.Events
 @using System.Diagnostics;
 @inject IStateService State
 @inject IOrchestratorService M
 @inject ISnackbar Snackbar
 @inject IConfiguration Configuration
+@inject IIOService IO
+@inject IEventService Events
+@inject NavigationManager NavManager
 
 <div>
     <MudDialog Style="max-width: 85vw; max-height: 85vh;" Class="pa-3">
@@ -13,10 +17,11 @@
                     <MudImage id="image" Class="full-image" Src=@Image.Path ObjectFit="ObjectFit.Contain" Fluid />
                 </MudStack>
                 <MudStack>
-                    <MudChip Text="@Parser.ParseCivitaiImageGenerationProcess(Image.GenerationProcess)" Color="@Parser.ParseCivitaiImageGenerationProcessColor(Image.GenerationProcess)" Label />
+                    <MudChip Text="@Parser.ParseCivitaiImageGenerationProcess(Image.GenerationProcess ?? string.Empty)" Color="@Parser.ParseCivitaiImageGenerationProcessColor(Image.GenerationProcess ?? string.Empty)" Label />
                     <MudButtonGroup Variant="Variant.Filled" OverrideStyles=false>
                         <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-lines" Color=Color.Info OnClick="@(() => LoadSettings(ModeType.Txt2Img))">Txt2Img</MudButton>
                         <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-file-image" Color=Color.Warning OnClick="@(() => LoadSettings(ModeType.Img2Img))">Img2Img</MudButton>
+                        <MudButton Class="w-100 pa-2" StartIcon="@Icons.Material.Filled.ImageSearch" Color=Color.Info OnClick="SendToImageToPrompt">Generate Prompt</MudButton>
                         <MudButton Class="w-100 pa-2" StartIcon="fa-solid fa-download" Color=Color.Secondary OnClick=OpenFileInExplorer>Open File</MudButton>
                     </MudButtonGroup>
                     <MudStack Row>
@@ -45,7 +50,7 @@
                                 }
                                 @if (Image.DenoisingStrength != null)
                                 {
-                                    <MudTextField Label="Denoising Strength" Value=@Image.DenoisingStrength T="string" ReadOnly />
+                                    <MudTextField Label="Denoising Strength" Value="@Image.DenoisingStrength" T="string" ReadOnly />
                                 }
                             }
                         </MudStack>
@@ -92,8 +97,8 @@
 </div>
 
 @code {
-    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-    [Parameter] public ResourceImage Image { get; set; }
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ResourceImage Image { get; set; } = default!;
 
     private void LoadSettings(ModeType mode)
     {
@@ -140,5 +145,63 @@
         }
     }
 
-    private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path.Replace("/image/", Configuration["OutputDir"]).Replace("/", @"\")}");
+    private void OpenFileInExplorer()
+    {
+        if (string.IsNullOrWhiteSpace(Image.Path))
+        {
+            Snackbar.Add("Image file is not available on disk.", Severity.Warning);
+            return;
+        }
+
+        Process.Start("explorer.exe", $"/select, {Image.Path.Replace("/image/", Configuration["OutputDir"]).Replace("/", @"\")}");
+    }
+
+    private async Task SendToImageToPrompt()
+    {
+        if (string.IsNullOrWhiteSpace(Image.Path))
+        {
+            Snackbar.Add("Image file is not available on disk.", Severity.Warning);
+            return;
+        }
+
+        var resolved = IO.ResolveFilePath(Image.Path);
+        if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
+        {
+            Snackbar.Add("Image file is not available on disk.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(resolved);
+            var ext = Path.GetExtension(resolved).TrimStart('.').ToLowerInvariant();
+            var mime = ext switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                "gif" => "image/gif",
+                _ => "image/png"
+            };
+
+            var promptState = State.State.Prompts.LLM.ImageToPrompt;
+            promptState.LastImageDataUri = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            promptState.LastSourceLabel = "Resource image";
+            promptState.LastResultText = null;
+
+            State.State.Prompts.LLM.ActiveViewId = "image-to-prompt";
+            await State.SaveState();
+
+            Events.Publish(new ImageToPromptRequestedEventArgs
+            {
+                ImagePath = resolved,
+                SourceLabel = "Resource image"
+            });
+
+            NavManager.NavigateTo("/prompts");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to send image: {ex.Message}", Severity.Error);
+        }
+    }
 }

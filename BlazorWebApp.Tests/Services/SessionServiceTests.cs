@@ -95,92 +95,47 @@ namespace BlazorWebApp.Tests.Services
 
         #endregion
 
-        #region Input Images Tests
+        #region Source Media Tests
 
         [Fact]
-        public void Img2ImgInputImage_WhenSet_PublishesEvent()
+        public void NotifyPendingSourceMedia_PublishesEvent()
         {
             // Arrange
-            var imageData = "data:image/png;base64,img2img";
-            Img2ImgInputImageChangedEventArgs? capturedEvent = null;
-            _mockEvents.Setup(x => x.Publish(It.IsAny<Img2ImgInputImageChangedEventArgs>()))
-                .Callback<Img2ImgInputImageChangedEventArgs>(e => capturedEvent = e);
+            PendingSourceMediaChangedEventArgs? capturedEvent = null;
+            _mockEvents.Setup(x => x.Publish(It.IsAny<PendingSourceMediaChangedEventArgs>()))
+                .Callback<PendingSourceMediaChangedEventArgs>(e => capturedEvent = e);
 
             // Act
-            _service.Img2ImgInputImage = imageData;
+            _service.PendingSourceMedia.Add(new PendingSourceMedia(
+                SourceKey: "source_image",
+                SourceType: "image",
+                Data: "data:image/png;base64,img2img",
+                FilePath: null,
+                Label: "Source Image"));
+            _service.NotifyPendingSourceMedia();
 
             // Assert
-            _service.Img2ImgInputImage.Should().Be(imageData);
-            _mockEvents.Verify(x => x.Publish(It.IsAny<Img2ImgInputImageChangedEventArgs>()), Times.Once);
+            _service.PendingSourceMedia.Should().ContainSingle();
+            _mockEvents.Verify(x => x.Publish(It.IsAny<PendingSourceMediaChangedEventArgs>()), Times.Once);
             capturedEvent.Should().NotBeNull();
-            capturedEvent!.ImageData.Should().Be(imageData);
         }
 
         [Fact]
-        public void Img2VidInputImage_WhenSet_PublishesEvent()
+        public void PendingSourceMedia_CanStoreTargetedVideoSource()
         {
             // Arrange
-            var imageData = "data:image/png;base64,img2vid";
-            Img2VidInputImageChangedEventArgs? capturedEvent = null;
-            _mockEvents.Setup(x => x.Publish(It.IsAny<Img2VidInputImageChangedEventArgs>()))
-                .Callback<Img2VidInputImageChangedEventArgs>(e => capturedEvent = e);
+            var media = new PendingSourceMedia(
+                SourceKey: "source_video",
+                SourceType: "video",
+                Data: null,
+                FilePath: "C:\\videos\\clip.mp4",
+                Label: "Source Video");
 
             // Act
-            _service.Img2VidInputImage = imageData;
+            _service.PendingSourceMedia.Add(media);
 
             // Assert
-            _service.Img2VidInputImage.Should().Be(imageData);
-            _mockEvents.Verify(x => x.Publish(It.IsAny<Img2VidInputImageChangedEventArgs>()), Times.Once);
-            capturedEvent.Should().NotBeNull();
-            capturedEvent!.ImageData.Should().Be(imageData);
-        }
-
-        [Fact]
-        public void SetImg2ImgInputImage_WithResetFalse_DoesNotResetEditorState()
-        {
-            // Arrange
-            var originalState = new ImageEditorState { /* configure initial state */ };
-            _service.ImageEditorState = originalState;
-            var newImageData = "data:image/png;base64,new";
-
-            // Act
-            _service.SetImg2ImgInputImage(newImageData, resetEditorState: false);
-
-            // Assert
-            _service.Img2ImgInputImage.Should().Be(newImageData);
-            _service.ImageEditorState.Should().BeSameAs(originalState);
-        }
-
-        [Fact]
-        public void SetImg2ImgInputImage_WithResetTrue_ResetsEditorState()
-        {
-            // Arrange
-            var originalState = new ImageEditorState { /* configure initial state */ };
-            _service.ImageEditorState = originalState;
-            var newImageData = "data:image/png;base64,new";
-
-            // Act
-            _service.SetImg2ImgInputImage(newImageData, resetEditorState: true);
-
-            // Assert
-            _service.Img2ImgInputImage.Should().Be(newImageData);
-            _service.ImageEditorState.Should().NotBeSameAs(originalState);
-        }
-
-        [Fact]
-        public void SetImg2ImgInputImage_WithResetTrue_SameImage_DoesNotResetEditorState()
-        {
-            // Arrange
-            var initialImage = "data:image/png;base64,same";
-            _service.SetImg2ImgInputImage(initialImage, resetEditorState: false);
-            var originalState = new ImageEditorState { /* configure state */ };
-            _service.ImageEditorState = originalState;
-
-            // Act
-            _service.SetImg2ImgInputImage(initialImage, resetEditorState: true);
-
-            // Assert - should not reset because image is the same
-            _service.ImageEditorState.Should().BeSameAs(originalState);
+            _service.PendingSourceMedia.Should().ContainSingle().Which.Should().Be(media);
         }
 
         #endregion
@@ -372,8 +327,7 @@ namespace BlazorWebApp.Tests.Services
             _service.CanvasMaskData.Should().BeNull();
             _service.UpscaleImageData.Should().BeEmpty();
             _service.CanvasStates.Should().NotBeNull().And.BeEmpty();
-            _service.Img2ImgInputImage.Should().BeEmpty();
-            _service.Img2VidInputImage.Should().BeEmpty();
+            _service.PendingSourceMedia.Should().NotBeNull().And.BeEmpty();
             _service.ImageEditorState.Should().NotBeNull();
             _service.SessionGeneratedVideos.Should().NotBeNull();
             _service.SessionGeneratedVideos.Videos.Should().BeEmpty();
