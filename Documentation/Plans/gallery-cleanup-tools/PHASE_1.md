@@ -2,7 +2,7 @@
 
 ## Status
 
-[x] Implementation checkpoint complete; focused tests blocked by unrelated test-project compile errors
+[x] Complete and cleanup-test validated
 
 ## Scope
 
@@ -23,7 +23,7 @@ Add the persistence foundation for cleanup indexing and review groups without ru
 - [x] Add repository interface and implementation.
 - [x] Register repository with DI.
 - [x] Add focused repository tests.
-- [!] Run targeted validation.
+- [x] Run targeted validation.
 
 ## Validation Plan
 
@@ -49,5 +49,5 @@ Add the persistence foundation for cleanup indexing and review groups without ru
 ## Validation Result
 
 - File diagnostics found no errors in the new cleanup entities, repository, migration, snapshot, tests, or DI registration.
-- `dotnet test .\BlazorWebApp.Tests\BlazorWebApp.Tests.csproj --filter FullyQualifiedName~BlazorWebApp.Tests.Cleanup.CleanupRepositoryTests --no-restore` did not reach the new tests because the existing test project currently fails to compile in `BlazorWebApp.Tests/Services/ImageSendToServiceTests.cs` due missing `ImageSendToService` type references.
+- `dotnet test .\BlazorWebApp.Tests\BlazorWebApp.Tests.csproj --filter FullyQualifiedName~BlazorWebApp.Tests.Cleanup --no-restore` passed all 12 cleanup tests after the unrelated test-project compile blocker was resolved.
 - `dotnet build .\BlazorWebApp\BlazorWebApp.csproj /p:UseAppHost=false /p:OutputPath=..\Temp\cleanup-build\` succeeded. Existing warnings remain, mostly package vulnerability/RID warnings and repo-wide nullability warnings.

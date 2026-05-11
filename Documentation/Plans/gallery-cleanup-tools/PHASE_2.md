@@ -2,7 +2,7 @@
 
 ## Status
 
-[x] Backend implementation checkpoint complete; focused tests blocked by unrelated test-project compile errors
+[x] Complete and cleanup-test validated
 
 ## Scope
 
@@ -26,7 +26,7 @@ Build the first deterministic cleanup scanner over existing gallery `Image` rows
 - [x] Add batch indexing service with progress, cancellation, skip unchanged reruns, and error handling.
 - [x] Register cleanup indexing services with DI.
 - [x] Add focused tests for prompt normalization, hash behavior, missing-file handling, and unchanged reruns.
-- [!] Run targeted validation.
+- [x] Run targeted validation.
 
 ## Implementation Notes
 
@@ -40,7 +40,7 @@ Build the first deterministic cleanup scanner over existing gallery `Image` rows
 ## Validation Result
 
 - File diagnostics found no errors in the new cleanup services, interfaces, models, tests, or DI registration.
-- `dotnet test .\BlazorWebApp.Tests\BlazorWebApp.Tests.csproj --filter FullyQualifiedName~BlazorWebApp.Tests.Cleanup --no-restore` did not reach the cleanup tests because the existing test project currently fails to compile in `BlazorWebApp.Tests/Services/ImageSendToServiceTests.cs` due missing `ImageSendToService` type references.
+- `dotnet test .\BlazorWebApp.Tests\BlazorWebApp.Tests.csproj --filter FullyQualifiedName~BlazorWebApp.Tests.Cleanup --no-restore` passed all 12 cleanup tests.
 - `dotnet build .\BlazorWebApp\BlazorWebApp.csproj /p:UseAppHost=false /p:OutputPath=..\Temp\cleanup-build\` succeeded. Existing package vulnerability/RID warnings remain unrelated to this slice.
 
 ## Deferred Work

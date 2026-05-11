@@ -2,7 +2,7 @@
 
 ## Status
 
-**Current Phase:** Phase 2 backend indexing checkpoint complete; tests blocked by unrelated test-project compile errors
+**Current Phase:** Phase 3 deterministic grouping checkpoint complete and cleanup-test validated
 
 ---
 
@@ -229,14 +229,14 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Add persistent cleanup index entities, repositories, and migration without ONNX inference.
 **Complexity:** 8 points
-**Status:** [x] Implementation checkpoint complete
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
 - [x] Define cleanup index entities and repository interfaces.
 - [x] Add EF Core mappings and migration.
 - [x] Add scan status and error models.
-- [!] Add tests for repository create/update/query flows.
+- [x] Add tests for repository create/update/query flows.
 
 #### Success Criteria
 
@@ -250,7 +250,7 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Build the first resumable scanner with cheap deterministic signals.
 **Complexity:** 13 points
-**Status:** [x] Backend implementation checkpoint complete
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
@@ -259,7 +259,7 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 - [x] Implement perceptual hash with Magick.NET preprocessing.
 - [x] Implement prompt normalization and fingerprinting.
 - [x] Add batch indexing service with progress, cancellation, and error handling.
-- [!] Add tests for prompt normalization and perceptual hash behavior.
+- [x] Add tests for prompt normalization and perceptual hash behavior.
 
 #### Success Criteria
 
@@ -273,16 +273,16 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Generate reviewable cleanup groups without embeddings.
 **Complexity:** 8 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
-- [ ] Implement exact duplicate groups.
-- [ ] Implement perceptual-near-duplicate groups.
-- [ ] Implement prompt fingerprint groups.
-- [ ] Implement prompt fuzzy groups.
-- [ ] Persist group runs, groups, and members.
-- [ ] Add tests for grouping strategies.
+- [x] Implement exact duplicate groups.
+- [x] Implement perceptual-near-duplicate groups.
+- [x] Implement prompt fingerprint groups.
+- [x] Implement prompt fuzzy groups.
+- [x] Persist group runs, groups, and members.
+- [x] Add tests for grouping strategies.
 
 #### Success Criteria
 
@@ -500,3 +500,4 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 | Planning update | Runtime direction updated for first-class CUDA support, simple CPU/CUDA selector, RTX 4090 target environment, and possible ComfyUI provider discussion. |
 | Phase 1         | Added cleanup persistence entities, EF mappings, manual migration, repository, DI registration, and focused repository tests.                            |
 | Phase 2         | Added deterministic cleanup indexing services for file facts, SHA-256 hash, perceptual hash, prompt fingerprints, batching, progress, and skip reruns.   |
+| Phase 3         | Added deterministic grouping service for exact duplicates, perceptual-near duplicates, prompt fingerprints, and prompt fuzzy groups.                     |
