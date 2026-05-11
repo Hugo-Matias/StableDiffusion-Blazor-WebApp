@@ -22,7 +22,7 @@ public class ModelSamplingSD3Fragment : IFragmentBuilder
     public class Parameters
     {
         public string SamplerId { get; set; } = "model_sampling";
-        public int Shift { get; set; } = 5;
+        public double Shift { get; set; } = 5;
         public string ModelInputName { get; set; } = "model_output";
         public string ModelOutputName { get; set; } = "sampled_model_output";
         public string Title { get; set; } = "ModelSamplingSD3";

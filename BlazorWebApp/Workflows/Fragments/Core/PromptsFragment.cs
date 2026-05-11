@@ -11,6 +11,8 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class PromptsFragment : IFragmentBuilder
 {
+    public Parameters Defaults { get; init; } = new();
+
     public FragmentMetadata Metadata => new()
     {
         Id = "prompts",
@@ -24,13 +26,15 @@ public class PromptsFragment : IFragmentBuilder
             {
                 Name = "positive",
                 Label = "Positive Prompt",
-                Type = ParameterType.TextArea
+                Type = ParameterType.TextArea,
+                DefaultValue = Defaults.Positive
             },
             new FragmentParameter
             {
                 Name = "negative",
                 Label = "Negative Prompt",
-                Type = ParameterType.TextArea
+                Type = ParameterType.TextArea,
+                DefaultValue = Defaults.Negative
             }
         ]
     };
@@ -52,8 +56,8 @@ public class PromptsFragment : IFragmentBuilder
         string scopeTitle = "")
     {
         var fragment = parameters.GetFragment(Metadata.Id);
-        var positive = fragment?.GetString("positive", "") ?? "";
-        var negative = fragment?.GetString("negative", "") ?? "";
+        var positive = fragment?.GetString("positive", Defaults.Positive) ?? Defaults.Positive;
+        var negative = fragment?.GetString("negative", Defaults.Negative) ?? Defaults.Negative;
 
         BuildInternal(builder, registry, positive, negative, scope);
     }

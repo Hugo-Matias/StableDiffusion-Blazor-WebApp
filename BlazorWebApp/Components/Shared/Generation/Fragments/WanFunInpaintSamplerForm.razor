@@ -1,0 +1,234 @@
+@using BlazorWebApp.Attributes
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("WanFunInpaintSamplerForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.overline">@Fragment?.Title</MudText>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="6">
+            <MudSelect T="string" Label="Sampler" Variant="Variant.Text" Dense="true" @bind-Value="_localSamplerName"
+                       @bind-Value:after="OnParametersChanged" AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft">
+                @foreach (var option in _samplerOptions)
+                {
+                    <MudSelectItem Value="@option" />
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="6">
+            <MudSelect T="string" Label="Scheduler" Variant="Variant.Text" Dense="true" @bind-Value="_localScheduler"
+                       @bind-Value:after="OnParametersChanged" AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft">
+                @foreach (var option in _schedulerOptions)
+                {
+                    <MudSelectItem Value="@option" />
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="4">
+            <MudSlider T="int" @bind-Value="_localSteps" @bind-Value:after="OnParametersChanged" Min="_stepsMin"
+                       Max="_stepsMax" Step="_stepsStep" ValueLabel>
+                <small>Steps:</small> @_localSteps
+            </MudSlider>
+        </MudItem>
+
+        <MudItem xs="4">
+            <MudSlider T="double" @bind-Value="_localCfg" @bind-Value:after="OnParametersChanged" Min="_cfgMin"
+                       Max="_cfgMax" Step="_cfgStep" ValueLabel>
+                <small>CFG Scale:</small> @_localCfg.ToString("F1")
+            </MudSlider>
+        </MudItem>
+
+        <MudItem xs="4">
+            <MudCheckBox T="bool" Label="Lock end to steps" Dense="true" @bind-Value="_localLockEndAtSteps"
+                         @bind-Value:after="OnParametersChanged" />
+        </MudItem>
+
+        <MudItem xs="6">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudNumericField T="long" Label="High Seed" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_localHighSeed" @bind-Value:after="OnParametersChanged" Min="-1" Class="flex-grow-1" />
+                <MudIconButton OnClick="SetRandomHighSeed" Icon="fa-solid fa-shuffle" Size="Size.Small"
+                               Title="Random high seed" />
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="6">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudNumericField T="long" Label="Low Seed" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_localLowSeed" @bind-Value:after="OnParametersChanged" Min="-1" Class="flex-grow-1" />
+                <MudIconButton OnClick="SetRandomLowSeed" Icon="fa-solid fa-shuffle" Size="Size.Small"
+                               Title="Random low seed" />
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="4">
+            <MudNumericField T="int" Label="Start Step" Variant="Variant.Text" Dense="true"
+                             @bind-Value="_localStartAtStep" @bind-Value:after="OnParametersChanged" Min="_rangeMin" Max="_rangeMax"
+                             Step="1" />
+        </MudItem>
+
+        <MudItem xs="4">
+            <MudNumericField T="int" Label="Middle Step" Variant="Variant.Text" Dense="true"
+                             @bind-Value="_localSplitAtStep" @bind-Value:after="OnParametersChanged" Min="_rangeMin" Max="_rangeMax"
+                             Step="1" />
+        </MudItem>
+
+        <MudItem xs="4">
+            <MudNumericField T="int" Label="End Step" Variant="Variant.Text" Dense="true" @bind-Value="_localEndAtStep"
+                             @bind-Value:after="OnParametersChanged" Min="_rangeMin" Max="_rangeMax" Step="1"
+                             Disabled="_localLockEndAtSteps" />
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.caption">
+        High noise: @_localStartAtStep to @_localSplitAtStep. Low noise: @_localSplitAtStep to @_localEndAtStep.
+    </MudText>
+</MudStack>
+
+@code {
+    private const long DefaultHighSeed = 221824495232956L;
+    private const string LowSeedKey = "low_seed";
+    private const string SplitAtStepKey = "split_at_step";
+    private const string LockEndAtStepsKey = "lock_end_at_steps";
+
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _localSamplerName = "euler";
+    private string _localScheduler = "simple";
+    private int _localSteps = 4;
+    private double _localCfg = 1.0;
+    private long _localHighSeed = DefaultHighSeed;
+    private long _localLowSeed;
+    private int _localStartAtStep;
+    private int _localSplitAtStep = 2;
+    private int _localEndAtStep;
+    private bool _localLockEndAtSteps = true;
+
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+
+    private int _stepsMin = 1;
+    private int _stepsMax = 100;
+    private int _stepsStep = 1;
+    private double _cfgMin;
+    private double _cfgMax = 20;
+    private double _cfgStep = 0.1;
+    private int _rangeMin;
+    private int _rangeMax = 10000;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+        LoadDynamicOptions();
+        SyncFromService();
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue(Params.Steps, out var stepsConstraints))
+        {
+            _stepsMin = stepsConstraints.GetMin(1);
+            _stepsMax = stepsConstraints.GetMax(100);
+            _stepsStep = stepsConstraints.GetStep(1);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue(Params.Cfg, out var cfgConstraints))
+        {
+            _cfgMin = cfgConstraints.GetMin(0.0);
+            _cfgMax = cfgConstraints.GetMax(20.0);
+            _cfgStep = cfgConstraints.GetStep(0.1);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("start_at_step", out var startConstraints))
+        {
+            _rangeMin = startConstraints.GetMin(0);
+            _rangeMax = startConstraints.GetMax(10000);
+        }
+    }
+
+    private void LoadDynamicOptions()
+    {
+        _samplerOptions = ParameterService.GetResolvedOptions(Fragment!.Id, Params.SamplerName);
+        _schedulerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.Scheduler);
+
+        if (_samplerOptions.Count == 0)
+        {
+            _samplerOptions = new List<string> { "euler", "euler_ancestral", "heun", "heunpp2", "dpm_2", "dpm_2_ancestral", "lms",
+"dpm_fast", "dpm_adaptive", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_2m", "dpmpp_3m_sde", "ddpm", "lcm" };
+        }
+
+        if (_schedulerOptions.Count == 0)
+        {
+            _schedulerOptions = new List<string> { "simple", "sgm_uniform", "karras", "exponential", "ddim_uniform", "beta",
+"normal" };
+        }
+    }
+
+    private void SyncFromService()
+    {
+        _localSamplerName = ParameterService.GetFragmentProperty(Fragment, Params.SamplerName, "euler");
+        _localScheduler = ParameterService.GetFragmentProperty(Fragment, Params.Scheduler, "simple");
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, Params.Steps, 4);
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, Params.Cfg, 1.0);
+        _localHighSeed = ParameterService.GetFragmentProperty(Fragment, Params.Seed, DefaultHighSeed);
+        _localLowSeed = ParameterService.GetFragmentProperty(Fragment, LowSeedKey, 0L);
+        _localStartAtStep = ParameterService.GetFragmentProperty(Fragment, "start_at_step", 0);
+        _localSplitAtStep = ParameterService.GetFragmentProperty(Fragment, SplitAtStepKey, 2);
+        _localLockEndAtSteps = ParameterService.GetFragmentProperty(Fragment, LockEndAtStepsKey, true);
+        _localEndAtStep = ParameterService.GetFragmentProperty(Fragment, "end_at_step", _localSteps);
+        NormalizeLocalStepRange();
+    }
+
+    private async Task OnParametersChanged()
+    {
+        NormalizeLocalStepRange();
+
+        ParameterService.SetFragmentProperty(Fragment, Params.SamplerName, _localSamplerName, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Scheduler, _localScheduler, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Steps, _localSteps, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Cfg, _localCfg, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, _localHighSeed, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, LowSeedKey, _localLowSeed, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "start_at_step", _localStartAtStep, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, SplitAtStepKey, _localSplitAtStep, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "end_at_step", _localEndAtStep, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, LockEndAtStepsKey, _localLockEndAtSteps, notify: false);
+        ParameterService.NotifyChanged();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetRandomHighSeed()
+    {
+        _localHighSeed = -1;
+        await OnParametersChanged();
+    }
+
+    private async Task SetRandomLowSeed()
+    {
+        _localLowSeed = -1;
+        await OnParametersChanged();
+    }
+
+    private void NormalizeLocalStepRange()
+    {
+        _localSteps = Math.Clamp(_localSteps, _stepsMin, _stepsMax);
+        if (_localLockEndAtSteps)
+        {
+            _localEndAtStep = _localSteps;
+        }
+
+        _localStartAtStep = Math.Max(_rangeMin, _localStartAtStep);
+        _localEndAtStep = Math.Max(_localStartAtStep, _localEndAtStep);
+        _localSplitAtStep = Math.Clamp(_localSplitAtStep, _localStartAtStep, _localEndAtStep);
+    }
+}
