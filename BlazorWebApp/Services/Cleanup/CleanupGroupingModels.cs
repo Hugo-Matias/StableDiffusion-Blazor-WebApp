@@ -11,6 +11,7 @@ namespace BlazorWebApp.Services.Cleanup
         public int? MaxGroups { get; init; }
         public int PerceptualHashMaxDistance { get; init; } = 6;
         public double PromptFuzzyMinSimilarity { get; init; } = 0.8;
+        public double VisualSimilarityMinSimilarity { get; init; } = 0.9;
     }
 
     public record CleanupGroupingResult

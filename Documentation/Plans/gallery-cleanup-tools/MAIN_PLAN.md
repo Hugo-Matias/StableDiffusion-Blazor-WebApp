@@ -2,7 +2,13 @@
 
 ## Status
 
-**Current Phase:** Phase 6 ONNX embedding infrastructure complete and cleanup-test validated
+**Current Phase:** Phase 7 visual similarity grouping complete and cleanup-test validated
+
+---
+
+## Deferred Environment Note
+
+CUDA embedding execution currently needs local CUDA 12 runtime setup before GPU inference will work. The app has `Microsoft.ML.OnnxRuntime.Gpu` wired, but the current machine is still pointing at CUDA `v11.7` and the CUDA provider probe reported missing CUDA 12/cuDNN 9 DLLs, including `cublasLt64_12.dll`, `cublas64_12.dll`, `cudart64_12.dll`, and `cudnn64_9.dll`. After the cleanup feature work is complete, install CUDA Toolkit 12.x plus cuDNN 9.x for CUDA 12, add their `bin` folders to `PATH`, restart VS Code/the app, and rerun the cleanup CUDA probe/tests.
 
 ---
 
@@ -380,15 +386,15 @@ The cleanup UI should be a review surface, not a filter bolted onto the existing
 
 **Objective:** Build cleanup groups from image embeddings.
 **Complexity:** 13 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and cleanup-test validated
 
 #### Steps
 
-- [ ] Implement batch cosine similarity search over stored embeddings.
-- [ ] Add visual grouping thresholds and minimum group size.
-- [ ] Add representative selection for visual groups.
-- [ ] Add low-value candidate rules inside visual groups.
-- [ ] Add tests for vector distance/grouping behavior.
+- [x] Implement batch cosine similarity search over stored embeddings.
+- [x] Add visual grouping thresholds and minimum group size.
+- [x] Add representative selection for visual groups.
+- [x] Add low-value candidate rules inside visual groups.
+- [x] Add tests for vector distance/grouping behavior.
 
 #### Success Criteria
 
@@ -542,3 +548,4 @@ This order gives the user a useful cleanup tool before the hardest ML integratio
 | Phase 4         | Added cleanup review UI with scope indexing, deterministic group generation controls, paged groups, lazy members, selection wiring, AssetViewer reuse, determinate indexing progress, selected-tile cues, and Gallery action placement refinements. |
 | Phase 5         | Added image-save/update event publication, hosted cleanup indexing queue, single-image indexing, queue settings for saved-image and future embedding behavior, and focused queue/indexing tests.                                                    |
 | Phase 6         | Added ONNX Runtime GPU package support with CPU/CUDA provider selection, Magick.NET tensor preprocessing, ONNX embedding inference, L2 normalization, embedding persistence, CUDA probing, and focused cleanup tests.                               |
+| Phase 7         | Added visual-similarity cleanup grouping over current-model embeddings, adjustable visual threshold UI, favorite/score-aware representative selection, protected keep candidates, and focused grouping tests.                                       |

@@ -12,15 +12,21 @@ namespace BlazorWebApp.Services.Cleanup
         private const int PersistChunkSize = 100;
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly ICleanupRepository _cleanupRepository;
+        private readonly ICleanupEmbeddingModelMetadataService _embeddingMetadata;
+        private readonly ICleanupEmbeddingVectorCodec _vectorCodec;
         private readonly ILogger<CleanupGroupingService> _logger;
 
         public CleanupGroupingService(
             IDbContextFactory<AppDbContext> contextFactory,
             ICleanupRepository cleanupRepository,
+            ICleanupEmbeddingModelMetadataService embeddingMetadata,
+            ICleanupEmbeddingVectorCodec vectorCodec,
             ILogger<CleanupGroupingService> logger)
         {
             _contextFactory = contextFactory;
             _cleanupRepository = cleanupRepository;
+            _embeddingMetadata = embeddingMetadata;
+            _vectorCodec = vectorCodec;
             _logger = logger;
         }
 
@@ -40,15 +46,28 @@ namespace BlazorWebApp.Services.Cleanup
 
             try
             {
-                var records = await LoadIndexedRecordsAsync(options.ProjectId, cancellationToken);
-                var groups = options.Strategy switch
+                List<CleanupGroup> groups;
+                int sourceRows;
+
+                if (options.Strategy == CleanupGroupingStrategy.VisualSimilarity)
                 {
-                    CleanupGroupingStrategy.ExactDuplicate => BuildExactDuplicateGroups(records, options),
-                    CleanupGroupingStrategy.PromptFingerprint => BuildPromptFingerprintGroups(records, options),
-                    CleanupGroupingStrategy.NearDuplicate => BuildPerceptualHashGroups(records, options),
-                    CleanupGroupingStrategy.PromptFuzzy => BuildPromptFuzzyGroups(records, options),
-                    _ => throw new NotSupportedException($"Cleanup grouping strategy '{options.Strategy}' is not supported by deterministic grouping.")
-                };
+                    var visualRecords = await LoadVisualEmbeddingRecordsAsync(options.ProjectId, cancellationToken);
+                    sourceRows = visualRecords.Count;
+                    groups = BuildVisualSimilarityGroups(visualRecords, options, cancellationToken);
+                }
+                else
+                {
+                    var records = await LoadIndexedRecordsAsync(options.ProjectId, cancellationToken);
+                    sourceRows = records.Count;
+                    groups = options.Strategy switch
+                    {
+                        CleanupGroupingStrategy.ExactDuplicate => BuildExactDuplicateGroups(records, options),
+                        CleanupGroupingStrategy.PromptFingerprint => BuildPromptFingerprintGroups(records, options),
+                        CleanupGroupingStrategy.NearDuplicate => BuildPerceptualHashGroups(records, options),
+                        CleanupGroupingStrategy.PromptFuzzy => BuildPromptFuzzyGroups(records, options),
+                        _ => throw new NotSupportedException($"Cleanup grouping strategy '{options.Strategy}' is not supported by deterministic grouping.")
+                    };
+                }
 
                 groups = ApplyGroupLimit(groups, options.MaxGroups);
                 await PersistGroupsAsync(run.Id, groups, cancellationToken);
@@ -56,7 +75,7 @@ namespace BlazorWebApp.Services.Cleanup
                 var summary = new CleanupGroupingSummary
                 {
                     Strategy = options.Strategy.ToString(),
-                    SourceRows = records.Count,
+                    SourceRows = sourceRows,
                     TotalGroups = groups.Count,
                     TotalMembers = groups.Sum(group => group.MemberCount),
                     ProjectId = options.ProjectId,
@@ -112,6 +131,59 @@ namespace BlazorWebApp.Services.Cleanup
                     index.PromptNormalized,
                     index.FileSizeBytes))
                 .ToListAsync(cancellationToken);
+        }
+
+        private async Task<List<VisualEmbeddingRecord>> LoadVisualEmbeddingRecordsAsync(int? projectId, CancellationToken cancellationToken)
+        {
+            var identity = await _embeddingMetadata.GetIdentityAsync(cancellationToken);
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+            var query =
+                from embedding in context.CleanupImageEmbeddings.AsNoTracking()
+                join index in context.CleanupImageIndexes.AsNoTracking()
+                    on embedding.ImageId equals index.ImageId
+                join image in context.Images.AsNoTracking()
+                    on embedding.ImageId equals image.Id
+                where embedding.Status == CleanupEmbeddingStatus.Indexed
+                    && embedding.ModelKey == identity.ModelKey
+                    && embedding.ModelHash == identity.ModelHash
+                    && embedding.Dimensions == identity.Dimensions
+                    && index.Status == CleanupIndexStatus.Indexed
+                    && index.FileExists
+                select new
+                {
+                    embedding.ImageId,
+                    index.ProjectId,
+                    index.FileSizeBytes,
+                    image.Favorite,
+                    image.Score,
+                    embedding.Vector,
+                    embedding.Dimensions
+                };
+
+            if (projectId.HasValue)
+            {
+                query = query.Where(record => record.ProjectId == projectId.Value);
+            }
+
+            var rows = await query
+                .OrderBy(record => record.ImageId)
+                .ToListAsync(cancellationToken);
+
+            var records = new List<VisualEmbeddingRecord>(rows.Count);
+            foreach (var row in rows)
+            {
+                var vector = _vectorCodec.Deserialize(row.Vector, row.Dimensions);
+                records.Add(new VisualEmbeddingRecord(
+                    row.ImageId,
+                    row.ProjectId,
+                    row.FileSizeBytes,
+                    row.Favorite,
+                    row.Score,
+                    vector));
+            }
+
+            return records;
         }
 
         private static List<CleanupGroup> BuildExactDuplicateGroups(IReadOnlyList<CleanupIndexRecord> records, CleanupGroupingOptions options)
@@ -280,6 +352,99 @@ namespace BlazorWebApp.Services.Cleanup
                 .ToList();
         }
 
+        private List<CleanupGroup> BuildVisualSimilarityGroups(
+            IReadOnlyList<VisualEmbeddingRecord> records,
+            CleanupGroupingOptions options,
+            CancellationToken cancellationToken)
+        {
+            if (records.Count == 0)
+            {
+                return new List<CleanupGroup>();
+            }
+
+            var minimumSimilarity = Math.Clamp(options.VisualSimilarityMinSimilarity, 0.0, 1.0);
+            var union = new UnionFind(records.Count);
+            for (var left = 0; left < records.Count; left++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                for (var right = left + 1; right < records.Count; right++)
+                {
+                    var similarity = _vectorCodec.CosineSimilarity(records[left].Vector, records[right].Vector);
+                    if (similarity >= minimumSimilarity)
+                    {
+                        union.Union(left, right);
+                    }
+                }
+            }
+
+            var minimumGroupSize = Math.Max(2, options.MinimumGroupSize);
+            return Enumerable.Range(0, records.Count)
+                .GroupBy(union.Find)
+                .Select(group => group.Select(index => records[index]).ToList())
+                .Where(group => group.Count >= minimumGroupSize)
+                .Select(group => BuildVisualSimilarityGroup(group, minimumSimilarity))
+                .OrderByDescending(group => group.MemberCount)
+                .ThenByDescending(group => group.Confidence ?? 0)
+                .ThenBy(group => group.GroupKey, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        private CleanupGroup BuildVisualSimilarityGroup(IReadOnlyList<VisualEmbeddingRecord> records, double minimumSimilarity)
+        {
+            var representative = records
+                .OrderByDescending(record => record.Favorite)
+                .ThenByDescending(record => record.Score)
+                .ThenBy(record => record.ImageId)
+                .First();
+            var reason = $"visual embedding similarity >= {minimumSimilarity:0.###}";
+
+            var members = records
+                .Select(record => new
+                {
+                    Record = record,
+                    Similarity = record.ImageId == representative.ImageId
+                        ? 1.0
+                        : _vectorCodec.CosineSimilarity(representative.Vector, record.Vector)
+                })
+                .OrderByDescending(item => item.Record.ImageId == representative.ImageId)
+                .ThenByDescending(item => item.Similarity)
+                .ThenBy(item => item.Record.ImageId)
+                .Select((item, index) =>
+                {
+                    var isRepresentative = item.Record.ImageId == representative.ImageId;
+                    var keepProtected = !isRepresentative && (item.Record.Favorite || item.Record.Score > representative.Score);
+                    return new CleanupGroupMember
+                    {
+                        ImageId = item.Record.ImageId,
+                        Role = isRepresentative
+                            ? CleanupGroupMemberRole.Representative
+                            : keepProtected ? CleanupGroupMemberRole.KeepCandidate : CleanupGroupMemberRole.CleanupCandidate,
+                        SuggestedAction = isRepresentative || keepProtected ? CleanupSuggestedAction.Keep : CleanupSuggestedAction.Review,
+                        SimilarityScore = item.Similarity,
+                        Distance = 1.0 - item.Similarity,
+                        EstimatedBytes = item.Record.FileSizeBytes,
+                        SortOrder = index,
+                        Reason = reason
+                    };
+                })
+                .ToList();
+
+            var similarities = members.Select(member => member.SimilarityScore!.Value).ToList();
+            return new CleanupGroup
+            {
+                GroupKey = $"visual:{representative.ImageId}:{members.Count}:{minimumSimilarity:0.###}",
+                Strategy = CleanupGroupingStrategy.VisualSimilarity,
+                Reason = reason,
+                RepresentativeImageId = representative.ImageId,
+                MemberCount = members.Count,
+                EstimatedBytes = members.Sum(member => member.EstimatedBytes ?? 0),
+                MinSimilarity = similarities.Min(),
+                MaxSimilarity = similarities.Max(),
+                Confidence = similarities.Average(),
+                Members = members
+            };
+        }
+
         private static CleanupGroup BuildGroup(
             CleanupGroupingStrategy strategy,
             string groupKey,
@@ -412,6 +577,14 @@ namespace BlazorWebApp.Services.Cleanup
         private sealed record PerceptualHashRecord(CleanupIndexRecord Record, ulong? Hash);
 
         private sealed record PromptTokenRecord(CleanupIndexRecord Record, HashSet<string> Tokens);
+
+        private sealed record VisualEmbeddingRecord(
+            int ImageId,
+            int ProjectId,
+            long? FileSizeBytes,
+            bool Favorite,
+            int Score,
+            float[] Vector);
 
         private sealed record CleanupGroupingSummary
         {

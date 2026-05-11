@@ -13,12 +13,18 @@ public class CleanupGroupingServiceTests : IDisposable
     private readonly TestDbContextFactory _factory;
     private readonly CleanupRepository _repository;
     private readonly CleanupGroupingService _service;
+    private readonly CleanupEmbeddingVectorCodec _vectorCodec = new();
 
     public CleanupGroupingServiceTests()
     {
         _factory = new TestDbContextFactory();
         _repository = new CleanupRepository(_factory);
-        _service = new CleanupGroupingService(_factory, _repository, NullLogger<CleanupGroupingService>.Instance);
+        _service = new CleanupGroupingService(
+            _factory,
+            _repository,
+            new StaticEmbeddingMetadataService(),
+            _vectorCodec,
+            NullLogger<CleanupGroupingService>.Instance);
     }
 
     public void Dispose() => _factory.Dispose();
@@ -91,11 +97,115 @@ public class CleanupGroupingServiceTests : IDisposable
         groups[0].MinSimilarity.Should().BeApproximately(63.0 / 64.0, 0.0001);
     }
 
+    [Fact]
+    public async Task GenerateGroupsAsync_BuildsVisualSimilarityGroupsFromCurrentModelEmbeddings()
+    {
+        await SeedImagesAsync(
+            Image(1, favorite: false, score: 0),
+            Image(2, favorite: true, score: 0),
+            Image(3, favorite: false, score: 0));
+        await SeedIndexesAsync(
+            Indexed(1, fileSize: 100),
+            Indexed(2, fileSize: 200),
+            Indexed(3, fileSize: 300));
+        await SeedEmbeddingsAsync(
+            Embedding(1, new[] { 1f, 0f }),
+            Embedding(2, new[] { 0.98f, 0.02f }),
+            Embedding(3, new[] { -1f, 0f }));
+
+        var result = await _service.GenerateGroupsAsync(new CleanupGroupingOptions
+        {
+            Strategy = CleanupGroupingStrategy.VisualSimilarity,
+            VisualSimilarityMinSimilarity = 0.95
+        });
+
+        result.Status.Should().Be(CleanupGroupRunStatus.Completed);
+        result.TotalGroups.Should().Be(1);
+        result.TotalMembers.Should().Be(2);
+
+        var groups = await _repository.GetGroupsAsync(result.RunId, 0, 10);
+        groups.Should().ContainSingle();
+        groups[0].Strategy.Should().Be(CleanupGroupingStrategy.VisualSimilarity);
+        groups[0].RepresentativeImageId.Should().Be(2);
+        groups[0].EstimatedBytes.Should().Be(300);
+        groups[0].MinSimilarity.Should().BeGreaterThan(0.95);
+
+        var members = await _repository.GetGroupMembersAsync(groups[0].Id);
+        members.Select(member => member.ImageId).Should().Equal(2, 1);
+        members[0].Role.Should().Be(CleanupGroupMemberRole.Representative);
+        members[0].SuggestedAction.Should().Be(CleanupSuggestedAction.Keep);
+        members[1].Role.Should().Be(CleanupGroupMemberRole.CleanupCandidate);
+        members[1].SuggestedAction.Should().Be(CleanupSuggestedAction.Review);
+    }
+
+    [Fact]
+    public async Task GenerateGroupsAsync_IgnoresEmbeddingsFromDifferentModelIdentity()
+    {
+        await SeedImagesAsync(Image(1), Image(2));
+        await SeedIndexesAsync(Indexed(1), Indexed(2));
+        await SeedEmbeddingsAsync(
+            Embedding(1, new[] { 1f, 0f }),
+            Embedding(2, new[] { 1f, 0f }, modelHash: "old-hash"));
+
+        var result = await _service.GenerateGroupsAsync(new CleanupGroupingOptions
+        {
+            Strategy = CleanupGroupingStrategy.VisualSimilarity,
+            VisualSimilarityMinSimilarity = 0.95
+        });
+
+        result.Status.Should().Be(CleanupGroupRunStatus.Completed);
+        result.TotalGroups.Should().Be(0);
+        result.TotalMembers.Should().Be(0);
+    }
+
+    private async Task SeedImagesAsync(params Image[] images)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        context.Images.AddRange(images);
+        await context.SaveChangesAsync();
+    }
+
     private async Task SeedIndexesAsync(params CleanupImageIndex[] indexes)
     {
         await using var context = await _factory.CreateDbContextAsync();
         context.CleanupImageIndexes.AddRange(indexes);
         await context.SaveChangesAsync();
+    }
+
+    private async Task SeedEmbeddingsAsync(params CleanupImageEmbedding[] embeddings)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        context.CleanupImageEmbeddings.AddRange(embeddings);
+        await context.SaveChangesAsync();
+    }
+
+    private static Image Image(int imageId, bool favorite = false, int score = 0)
+    {
+        return new Image
+        {
+            Id = imageId,
+            Path = $"image-{imageId}.png",
+            ProjectId = 1,
+            ModeId = 1,
+            Favorite = favorite,
+            Score = score,
+            Scheduler = "normal"
+        };
+    }
+
+    private CleanupImageEmbedding Embedding(int imageId, float[] vector, string modelHash = "model-hash")
+    {
+        return new CleanupImageEmbedding
+        {
+            ImageId = imageId,
+            ModelKey = "test-model",
+            ModelHash = modelHash,
+            RuntimeProvider = "CPU",
+            Dimensions = vector.Length,
+            Vector = _vectorCodec.Serialize(_vectorCodec.Normalize(vector)),
+            Status = CleanupEmbeddingStatus.Indexed,
+            IndexedAtUtc = DateTime.UtcNow
+        };
     }
 
     private static CleanupImageIndex Indexed(
@@ -144,5 +254,21 @@ public class CleanupGroupingServiceTests : IDisposable
             using var context = CreateDbContext();
             context.Database.EnsureDeleted();
         }
+    }
+
+    private sealed class StaticEmbeddingMetadataService : ICleanupEmbeddingModelMetadataService
+    {
+        public CleanupEmbeddingOptions Options { get; } = new();
+
+        public CleanupEmbeddingModelValidationResult Validate(CleanupEmbeddingOptions options) => new();
+
+        public Task<CleanupEmbeddingModelIdentity> GetIdentityAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(new CleanupEmbeddingModelIdentity
+            {
+                ModelKey = "test-model",
+                ModelHash = "model-hash",
+                RuntimeProvider = "CPU",
+                Dimensions = 2
+            });
     }
 }

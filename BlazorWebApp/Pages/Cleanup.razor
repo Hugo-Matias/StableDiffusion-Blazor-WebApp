@@ -37,6 +37,8 @@
                         <MudSelectItem Value="CleanupGroupingStrategy.PromptFingerprint">Prompt fingerprint
                         </MudSelectItem>
                         <MudSelectItem Value="CleanupGroupingStrategy.PromptFuzzy">Prompt fuzzy</MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.VisualSimilarity">Visual similarity
+                        </MudSelectItem>
                     </MudSelect>
 
                     <MudNumericField T="int" Label="Minimum group" @bind-Value="_minimumGroupSize" Min="2" Max="50"
@@ -52,6 +54,12 @@
                     {
                         <MudNumericField T="double" Label="Min similarity" @bind-Value="_promptSimilarity" Min="0.1" Max="1"
                                          Step="0.05" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    }
+
+                    @if (_strategy == CleanupGroupingStrategy.VisualSimilarity)
+                    {
+                        <MudNumericField T="double" Label="Visual min similarity" @bind-Value="_visualSimilarity" Min="0.1"
+                                         Max="1" Step="0.01" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
                     }
 
                     <MudNumericField T="int" Label="Max groups" @bind-Value="_maxGroups" Min="0" Max="1000"
@@ -340,6 +348,7 @@
     private int _minimumGroupSize = 2;
     private int _perceptualHashDistance = 6;
     private double _promptSimilarity = 0.8;
+    private double _visualSimilarity = 0.9;
     private int _maxGroups = 100;
     private bool _isLoadingGroups;
     private bool _hasMoreGroups;
@@ -465,6 +474,7 @@ CleanupRepository.GetGroupRunAsync(runId);
                 MaxGroups = _maxGroups > 0 ? _maxGroups : null,
                 PerceptualHashMaxDistance = _perceptualHashDistance,
                 PromptFuzzyMinSimilarity = _promptSimilarity,
+                VisualSimilarityMinSimilarity = _visualSimilarity,
                 Name = BuildRunName()
             }, _operationCts.Token);
 
