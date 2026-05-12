@@ -88,7 +88,7 @@ namespace BlazorWebApp.Services
         public async Task GetSDADetailerModels() => await _models.GetADetailerModels();
         public List<SDModel> GetModelsForAssetType(AssetType assetType) => _models.GetModelsForAssetType(assetType);
         public async Task<List<string>> GetAssetOptions(AssetType assetType) => await _models.GetAssetOptions(assetType);
-        public string GetCurrentModel(ModeType? mode = null) => _models.GetCurrentModel(mode);
+        public string? GetCurrentModel(ModeType? mode = null) => _models.GetCurrentModel(mode);
 
         public async Task SetCurrentModel(string modelTitle, ModeType? mode = null)
         {

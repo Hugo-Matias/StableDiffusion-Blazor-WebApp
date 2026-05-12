@@ -23,7 +23,7 @@ namespace BlazorWebApp.Services
         Task GetADetailerModels();
         Task SetCurrentModel(string modelTitle, ModeType? mode = null);
         Task SetCurrentVae(string vae, ModeType? mode = null);
-        string GetCurrentModel(ModeType? mode = null);
+        string? GetCurrentModel(ModeType? mode = null);
         string? GetCurrentVae(ModeType? mode = null);
 
 

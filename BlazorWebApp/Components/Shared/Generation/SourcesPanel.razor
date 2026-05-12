@@ -34,7 +34,7 @@
                 @foreach (var source in Sources)
                 {
                     var sourceDefinition = GetSourceDefinition(source.Key);
-                    <MudTabPanel BadgeDot="@(!string.IsNullOrEmpty(source.Value.Data))" BadgeColor="Color.Success">
+                    <MudTabPanel BadgeDot="@(source.Value.HasData)" BadgeColor="Color.Success">
                         <TabContent>
                             <div class="d-flex align-center gap-1">
                                 <MudIcon Icon="@GetSourceIcon(source.Value.Type)" Size="Size.Small" />

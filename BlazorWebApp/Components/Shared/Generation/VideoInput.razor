@@ -39,17 +39,17 @@
     <div class="video-input-content @(HasContent ? "has-content" : "is-empty")" @ref="_dropzoneRef">
         <video class="@PreviewClass" @ref="_videoRef" controls playsinline muted preload="metadata"></video>
 
-        @if (!CanShowPreview && !string.IsNullOrWhiteSpace(Filename) && !_isUploading)
+        @if (!CanShowPreview && HasContent && !_isUploading)
         {
             <div class="video-input-stored">
                 <MudIcon Icon="@Icons.Material.Filled.VideoFile" Size="Size.Large" Color="Color.Primary" />
-                <MudText Typo="Typo.body2" Class="stored-filename" title="@Filename">@Filename</MudText>
+                <MudText Typo="Typo.body2" Class="stored-filename" title="@StoredDisplayName">@StoredDisplayName</MudText>
                 <MudText Typo="Typo.caption" Color="Color.Secondary">
                     Replace to preview a new video
                 </MudText>
             </div>
         }
-        else if (string.IsNullOrWhiteSpace(Filename) && !_isUploading)
+        else if (!HasContent && !_isUploading)
         {
             <div class="@OverlayClass">
                 <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="overlay-content">
@@ -110,19 +110,34 @@
             <MudItem xs="12" sm="4">
                 <MudSlider T="int" Value="@_localSkipFirstFrames" ValueChanged="SetSkipFirstFrames" Min="0"
                            Max="@SkipFirstFrameMax" Step="1" Variant="Variant.Text" ValueLabel>
-                    <small>Skip First:</small> @_localSkipFirstFrames
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="slider-label-row">
+                        <small>Skip First:</small>
+                        <MudNumericField T="int" Value="@_localSkipFirstFrames" ValueChanged="SetSkipFirstFrames"
+                                         Variant="Variant.Text" Dense="true" Min="0" Max="@SkipFirstFrameMax"
+                                         HideSpinButtons="true" Style="width:52px;" />
+                    </MudStack>
                 </MudSlider>
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudSlider T="int" Value="@_localFrameLoadCap" ValueChanged="SetFrameLoadCap" Min="0"
                            Max="@FrameLoadCapMax" Step="1" Variant="Variant.Text" ValueLabel>
-                    <small>Frame Cap:</small> @_localFrameLoadCap
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="slider-label-row">
+                        <small>Frame Cap:</small>
+                        <MudNumericField T="int" Value="@_localFrameLoadCap" ValueChanged="SetFrameLoadCap"
+                                         Variant="Variant.Text" Dense="true" Min="0" Max="@FrameLoadCapMax"
+                                         HideSpinButtons="true" Style="width:52px;" />
+                    </MudStack>
                 </MudSlider>
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudSlider T="int" Value="@_localPreviewFrameOffset" ValueChanged="SetPreviewFrameOffset" Min="0"
                            Max="@PreviewFrameMax" Step="1" Variant="Variant.Text" ValueLabel>
-                    <small>Preview Frame:</small> @_localPreviewFrameOffset
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="slider-label-row">
+                        <small>Preview Frame:</small>
+                        <MudNumericField T="int" Value="@_localPreviewFrameOffset" ValueChanged="SetPreviewFrameOffset"
+                                         Variant="Variant.Text" Dense="true" Min="0" Max="@PreviewFrameMax"
+                                         HideSpinButtons="true" Style="width:52px;" />
+                    </MudStack>
                 </MudSlider>
             </MudItem>
             <MudItem xs="6" sm="4">
@@ -144,6 +159,7 @@
 
 @code {
     [Parameter] public string? Filename { get; set; }
+    [Parameter] public string? FilePath { get; set; }
     [Parameter] public EventCallback<string?> FilenameChanged { get; set; }
     [Parameter] public VideoSourceOptions? VideoOptions { get; set; }
     [Parameter] public EventCallback<VideoSourceOptions> VideoOptionsChanged { get; set; }
@@ -158,11 +174,14 @@
     private string PreviewClass => $"video-input-preview {(CanShowPreview ? "" : "hidden")}";
     private string OverlayClass => $"video-input-overlay {(_isDragOver ? "drag-over" : "")}";
     private string FileInputClass => $"video-input-file {(HasContent ? "passthrough" : "")}";
-    private bool HasContent => _hasLocalPreview || !string.IsNullOrWhiteSpace(Filename);
+    private bool HasContent => _hasLocalPreview || !string.IsNullOrWhiteSpace(Filename) || !string.IsNullOrWhiteSpace(FilePath);
     private bool CanShowPreview => _hasLocalPreview || !string.IsNullOrWhiteSpace(PreviewUrl);
     private string? PreviewUrl => !_hasLocalPreview && !string.IsNullOrWhiteSpace(Filename)
         ? $"/api/source-preview?filename={Uri.EscapeDataString(Filename)}"
         : null;
+    private string StoredDisplayName => !string.IsNullOrWhiteSpace(Filename)
+        ? Filename
+        : Path.GetFileName(FilePath) ?? FilePath ?? string.Empty;
     private const int UnknownFrameSliderMax = 100000;
     private int EffectiveEveryNth => Math.Max(1, _localSelectEveryNth);
     private int EstimatedTotalFrameCount => _durationSeconds > 0 && _localForceRate > 0
@@ -451,6 +470,7 @@
         return string.Join(
             "|",
             Filename ?? string.Empty,
+            FilePath ?? string.Empty,
             _hasLocalPreview ? "local" : PreviewUrl ?? string.Empty,
             _localSkipFirstFrames.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Math.Max(1, _localSelectEveryNth).ToString(System.Globalization.CultureInfo.InvariantCulture),

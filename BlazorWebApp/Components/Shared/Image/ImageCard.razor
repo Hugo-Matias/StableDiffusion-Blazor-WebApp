@@ -58,7 +58,7 @@
             @* Bottom Section - Info & More Actions *@
             <div class="overlay-bottom @(_isHovered || _isMenuOpen ? "visible" : "")">
                 <div class="image-info">
-                    @if (Image.ModeId != 3)
+                    @if (!_isMenuOpen && Image.ModeId != 3)
                     {
                         <div class="info-row">
                             <span class="info-item">
@@ -75,7 +75,7 @@
                             </span>
                         </div>
                     }
-                    else
+                    else if (!_isMenuOpen)
                     {
                         <div class="info-row">
                             <span class="info-item">Upscaled</span>
@@ -84,67 +84,37 @@
                     }
                 </div>
                 
-                <div class="more-actions">
-                    <MudMenu @bind-Open="_isMenuOpen" Icon="@Icons.Material.Filled.MoreVert"
-                             AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Size="Size.Small"
-                             Dense="true" Class="more-menu">
-                        <ChildContent>
-                            <div class="action-menu">
-                                <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image"
-                                                     RenderAsMenuSection="true" IncludeDivider="true" />
-
-                                @* Phase 12 - Image-to-Prompt entry. Only meaningful for files we can read locally. *@
+                <div class="media-card-actions">
+                    <div class="more-actions media-action-rail-host">
+                        @if (_isMenuOpen)
+                        {
+                            <div class="media-action-rail">
+                                <button type="button" class="media-action-rail-btn danger" title="Delete" @onclick="@(() => RunActionAsync(() => OnDeleteImage.InvokeAsync(Image)))">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                                <button type="button" class="media-action-rail-btn primary" title="Open in Explorer" @onclick="@(() => RunAction(OpenFileInExplorer))">
+                                    <i class="fa-solid fa-folder-open"></i>
+                                </button>
+                                <button type="button" class="media-action-rail-btn secondary" title="Project Cover" @onclick="@(() => RunActionAsync(SetProjectCover))">
+                                    <i class="fa-solid fa-image-portrait"></i>
+                                </button>
+                                <button type="button" class="media-action-rail-btn tertiary" title="Set Project" @onclick="@(() => RunActionAsync(ShowSwitchProjectDialog))">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                </button>
                                 @if (SendTo.IsLocal(Image.Path))
                                 {
-                                    <div class="menu-section">
-                                        <div class="menu-section-title">LLM Tools</div>
-                                        <MudMenuItem OnClick="SendToImageToPrompt" Class="menu-item">
-                                            <div class="menu-item-content">
-                                                <i class="fa-solid fa-magnifying-glass menu-icon tertiary"></i>
-                                                <span>Generate Prompt</span>
-                                            </div>
-                                        </MudMenuItem>
-                                    </div>
-
-                                    <div class="menu-divider"></div>
+                                    <button type="button" class="media-action-rail-btn tertiary" title="Generate Prompt" @onclick="@(() => RunActionAsync(SendToImageToPrompt))">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                    </button>
                                 }
-
-                                <div class="menu-section">
-                                    <div class="menu-section-title">Organize</div>
-                                    <MudMenuItem OnClick="ShowSwitchProjectDialog" Class="menu-item">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-layer-group menu-icon tertiary"></i>
-                                            <span>Set Project</span>
-                                        </div>
-                                    </MudMenuItem>
-                                    <MudMenuItem OnClick="SetProjectCover" Class="menu-item">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-image-portrait menu-icon secondary"></i>
-                                            <span>Project Cover</span>
-                                        </div>
-                                    </MudMenuItem>
-                                </div>
-                                
-                                <div class="menu-divider"></div>
-                                
-                                <div class="menu-section">
-                                    <MudMenuItem OnClick="OpenFileInExplorer" Class="menu-item">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-folder-open menu-icon primary"></i>
-                                            <span>Open in Explorer</span>
-                                        </div>
-                                    </MudMenuItem>
-                                    <MudMenuItem OnClick="@(() => OnDeleteImage.InvokeAsync(Image))"
-                                                 Class="menu-item danger">
-                                        <div class="menu-item-content">
-                                            <i class="fa-solid fa-trash-can menu-icon error"></i>
-                                            <span>Delete</span>
-                                        </div>
-                                    </MudMenuItem>
-                                </div>
+                                <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image" RenderAsActionButton="true"
+                                                     ActionButtonClass="media-action-rail-btn primary" OnTargetSelected="CloseActionMenu" />
                             </div>
-                        </ChildContent>
-                    </MudMenu>
+                        }
+                        <button type="button" class="media-action-rail-trigger" title="More actions" @onclick="ToggleActionMenu">
+                            <MudIcon Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -226,20 +196,8 @@
 
     private void HandleMouseLeave()
     {
-        if (!_isMenuOpen)
-        {
-            _isHovered = false;
-        }
+        CloseActionMenu();
     }
-
-    private static string GetModeIconColor(ModeType mode) => mode switch
-    {
-        ModeType.Img2Img => "warning",
-        ModeType.Img2Vid => "info",
-        ModeType.Txt2Img => "primary",
-        ModeType.Extras => "warning",
-        _ => "secondary"
-    };
 
     private async Task ToggleFavorite(bool isChecked)
     {
@@ -347,6 +305,30 @@
         if (isChecked) Gallery.AddSelectedImage(Image.Id);
         else Gallery.RemoveSelectedImage(Image.Id);
         _isSelected = isChecked;
+    }
+
+    private void ToggleActionMenu()
+    {
+        _isMenuOpen = !_isMenuOpen;
+        _isHovered = _isMenuOpen;
+    }
+
+    private void CloseActionMenu()
+    {
+        _isMenuOpen = false;
+        _isHovered = false;
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        CloseActionMenu();
+        await action();
+    }
+
+    private void RunAction(Action action)
+    {
+        CloseActionMenu();
+        action();
     }
 
     public void Dispose()

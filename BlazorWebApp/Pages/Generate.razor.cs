@@ -310,6 +310,19 @@ public partial class Generate : IDisposable
         {
             foreach (var pending in Session.PendingSourceMedia)
             {
+                var sourceData = pending.Data;
+                var sourceFilePath = pending.FilePath;
+                string? sourceFilename = null;
+
+                if (IsVideoSource(pending.SourceType) && string.IsNullOrWhiteSpace(sourceData) && !string.IsNullOrWhiteSpace(sourceFilePath))
+                {
+                    sourceFilename = await UploadPendingVideoSourceAsync(sourceFilePath);
+                    if (!string.IsNullOrWhiteSpace(sourceFilename))
+                    {
+                        sourceData = sourceFilename;
+                    }
+                }
+
                 if (pending.IsNewSlot)
                 {
                     var baseId = pending.SourceKey;
@@ -334,8 +347,9 @@ public partial class Generate : IDisposable
                     {
                         Label = $"{pendingLabel} {nextIndex + 1}",
                         Type = pending.SourceType,
-                        Data = pending.Data,
-                        FilePath = pending.FilePath
+                        Data = sourceData,
+                        Filename = sourceFilename,
+                        FilePath = sourceFilePath
                     };
                     Logger.LogDebug("Created new source slot '{SourceId}' from pending", newKey);
                 }
@@ -344,8 +358,9 @@ public partial class Generate : IDisposable
                     if (Parameters.Sources.TryGetValue(pending.SourceKey, out var existingSource))
                     {
                         existingSource.Type = pending.SourceType;
-                        existingSource.Data = pending.Data;
-                        existingSource.FilePath = pending.FilePath;
+                        existingSource.Data = sourceData;
+                        existingSource.Filename = sourceFilename;
+                        existingSource.FilePath = sourceFilePath;
                     }
                     else
                     {
@@ -353,8 +368,9 @@ public partial class Generate : IDisposable
                         {
                             Label = pending.Label ?? pending.SourceKey,
                             Type = pending.SourceType,
-                            Data = pending.Data,
-                            FilePath = pending.FilePath
+                            Data = sourceData,
+                            Filename = sourceFilename,
+                            FilePath = sourceFilePath
                         };
                     }
                     Logger.LogDebug("Loaded pending media into source '{SourceId}'", pending.SourceKey);
@@ -364,6 +380,46 @@ public partial class Generate : IDisposable
         }
 
         await Task.CompletedTask;
+    }
+
+    private async Task<string?> UploadPendingVideoSourceAsync(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            Logger.LogWarning("Pending video source path is unavailable: {FilePath}", filePath);
+            return null;
+        }
+
+        try
+        {
+            await using var stream = File.OpenRead(filePath);
+            var uploadedFilename = await API.UploadStreamAsync(
+                stream,
+                Path.GetFileName(filePath),
+                ResolvePendingVideoContentType(filePath));
+            Logger.LogDebug("Uploaded pending video source for preview: {FilePath} -> {Filename}", filePath, uploadedFilename);
+            return uploadedFilename;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to upload pending video source for preview: {FilePath}", filePath);
+            return null;
+        }
+    }
+
+    private static bool IsVideoSource(string? sourceType) => string.Equals(sourceType, "video", StringComparison.OrdinalIgnoreCase);
+
+    private static string ResolvePendingVideoContentType(string path)
+    {
+        return Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".webm" => "video/webm",
+            ".mov" => "video/quicktime",
+            ".mkv" => "video/x-matroska",
+            ".avi" => "video/x-msvideo",
+            ".m4v" => "video/x-m4v",
+            _ => "video/mp4"
+        };
     }
 
     #endregion

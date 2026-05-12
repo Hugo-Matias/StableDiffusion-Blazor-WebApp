@@ -167,12 +167,13 @@ namespace BlazorWebApp.Services
         /// Gets the current model name based on mode using WorkflowAssets.
         /// For Txt2Img/Img2Img: returns "Model" asset
         /// For Img2Vid: returns "HighModel" asset
+        /// Returns null when no model has been selected yet.
         /// </summary>
-        public string GetCurrentModel(ModeType? mode = null)
+        public string? GetCurrentModel(ModeType? mode = null)
         {
             var modelKey = mode == ModeType.Img2Vid ? "HighModel" : "Model";
             var value = GetWorkflowAsset(modelKey);
-            return !string.IsNullOrWhiteSpace(value) ? value : "Loading...";
+            return !string.IsNullOrWhiteSpace(value) ? value : null;
         }
 
         /// <summary>
@@ -264,7 +265,7 @@ namespace BlazorWebApp.Services
             _events.Publish(new ModelChangedEventArgs
             {
                 PreviousModel = string.Empty, // TODO: Track previous model if needed
-                NewModel = GetCurrentModel(),
+                NewModel = GetCurrentModel() ?? string.Empty,
                 Mode = ModeType.Txt2Img // TODO: Track actual mode if needed
             });
         }

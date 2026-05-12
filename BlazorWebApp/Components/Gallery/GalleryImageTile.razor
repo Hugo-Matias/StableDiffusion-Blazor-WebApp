@@ -78,64 +78,36 @@
                         </button>
                     }
                     <div class="tile-menu-host" @onclick:stopPropagation="true">
-                        <MudMenu @bind-Open="_isMenuOpen" Icon="@Icons.Material.Filled.MoreVert"
-                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Size="Size.Small"
-                                 Dense="true" Class="tile-more-menu">
-                            <ChildContent>
-                                <div class="action-menu">
-                                    <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image"
-                                                         RenderAsMenuSection="true" IncludeDivider="true" />
-
+                        <div class="media-action-rail-host">
+                            @if (_isMenuOpen)
+                            {
+                                <div class="media-action-rail">
+                                    <button type="button" class="media-action-rail-btn danger" title="Delete" @onclick="@(() => RunActionAsync(DeleteImage))">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                    <button type="button" class="media-action-rail-btn primary" title="Open in Explorer" @onclick="@(() => RunAction(OpenFileInExplorer))">
+                                        <i class="fa-solid fa-folder-open"></i>
+                                    </button>
+                                    <button type="button" class="media-action-rail-btn secondary" title="Project Cover" @onclick="@(() => RunActionAsync(SetProjectCover))">
+                                        <i class="fa-solid fa-image-portrait"></i>
+                                    </button>
+                                    <button type="button" class="media-action-rail-btn tertiary" title="Set Project" @onclick="@(() => RunActionAsync(ShowSwitchProjectDialog))">
+                                        <i class="fa-solid fa-layer-group"></i>
+                                    </button>
                                     @if (SendTo.IsLocal(Image.Path))
                                     {
-                                        <div class="menu-section">
-                                            <div class="menu-section-title">LLM Tools</div>
-                                            <MudMenuItem OnClick="SendToImageToPrompt" Class="menu-item">
-                                                <div class="menu-item-content">
-                                                    <i class="fa-solid fa-magnifying-glass menu-icon tertiary"></i>
-                                                    <span>Generate Prompt</span>
-                                                </div>
-                                            </MudMenuItem>
-                                        </div>
-
-                                        <div class="menu-divider"></div>
+                                        <button type="button" class="media-action-rail-btn tertiary" title="Generate Prompt" @onclick="@(() => RunActionAsync(SendToImageToPrompt))">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                        </button>
                                     }
-
-                                    <div class="menu-section">
-                                        <div class="menu-section-title">Organize</div>
-                                        <MudMenuItem OnClick="ShowSwitchProjectDialog" Class="menu-item">
-                                            <div class="menu-item-content">
-                                                <i class="fa-solid fa-layer-group menu-icon tertiary"></i>
-                                                <span>Set Project</span>
-                                            </div>
-                                        </MudMenuItem>
-                                        <MudMenuItem OnClick="SetProjectCover" Class="menu-item">
-                                            <div class="menu-item-content">
-                                                <i class="fa-solid fa-image-portrait menu-icon secondary"></i>
-                                                <span>Project Cover</span>
-                                            </div>
-                                        </MudMenuItem>
-                                    </div>
-
-                                    <div class="menu-divider"></div>
-
-                                    <div class="menu-section">
-                                        <MudMenuItem OnClick="OpenFileInExplorer" Class="menu-item">
-                                            <div class="menu-item-content">
-                                                <i class="fa-solid fa-folder-open menu-icon primary"></i>
-                                                <span>Open in Explorer</span>
-                                            </div>
-                                        </MudMenuItem>
-                                        <MudMenuItem OnClick="DeleteImage" Class="menu-item danger">
-                                            <div class="menu-item-content">
-                                                <i class="fa-solid fa-trash-can menu-icon error"></i>
-                                                <span>Delete</span>
-                                            </div>
-                                        </MudMenuItem>
-                                    </div>
+                                    <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image" RenderAsActionButton="true"
+                                                         ActionButtonClass="media-action-rail-btn primary" OnTargetSelected="CloseActionMenu" />
                                 </div>
-                            </ChildContent>
-                        </MudMenu>
+                            }
+                            <button type="button" class="media-action-rail-trigger tile-action" title="More actions" @onclick="ToggleActionMenu">
+                                <MudIcon Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -183,10 +155,7 @@
 
     private void HandleMouseLeave()
     {
-        if (!_isMenuOpen)
-        {
-            _isHovered = false;
-        }
+        CloseActionMenu();
     }
 
     private void UpdateSelectionState()
@@ -255,15 +224,6 @@
         }
     }
 
-    private static string GetModeIconColor(ModeType mode) => mode switch
-    {
-        ModeType.Img2Img => "warning",
-        ModeType.Img2Vid => "info",
-        ModeType.Txt2Img => "primary",
-        ModeType.Extras => "warning",
-        _ => "secondary"
-    };
-
     private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path}");
 
     private async Task SetProjectCover()
@@ -292,6 +252,30 @@
     }
 
     private Task DeleteImage() => OnDeleteImage.InvokeAsync(Image);
+
+    private void ToggleActionMenu()
+    {
+        _isMenuOpen = !_isMenuOpen;
+        _isHovered = _isMenuOpen;
+    }
+
+    private void CloseActionMenu()
+    {
+        _isMenuOpen = false;
+        _isHovered = false;
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        CloseActionMenu();
+        await action();
+    }
+
+    private void RunAction(Action action)
+    {
+        CloseActionMenu();
+        action();
+    }
 
     private async Task SendToImageToPrompt()
     {

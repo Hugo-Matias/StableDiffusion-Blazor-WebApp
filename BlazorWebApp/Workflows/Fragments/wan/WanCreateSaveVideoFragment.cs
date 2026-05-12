@@ -19,6 +19,7 @@ public class WanCreateSaveVideoFragment : IFragmentBuilder
         public string CreateVideoNodeId { get; set; } = "create_video";
         public string SaveVideoNodeId { get; set; } = "save_video";
         public string ImageInputName { get; set; } = "image_output";
+        public string FpsInputName { get; set; } = "";
         public double Fps { get; set; } = 16;
         public string FilenamePrefix { get; set; } = "video/ComfyUI";
         public string Format { get; set; } = "auto";
@@ -45,11 +46,21 @@ public class WanCreateSaveVideoFragment : IFragmentBuilder
         var createVideoId = $"{scope}{fragmentParams.CreateVideoNodeId}";
         var saveVideoId = $"{scope}{fragmentParams.SaveVideoNodeId}";
 
-        builder.AddNode(createVideoId, node => node
-            .Type("CreateVideo")
-            .Title($"{scopeTitle}Create Video")
-            .InputRef("images", registry.GetRef(fragmentParams.ImageInputName))
-            .Input("fps", fragmentParams.Fps));
+        builder.AddNode(createVideoId, node =>
+        {
+            node.Type("CreateVideo")
+                .Title($"{scopeTitle}Create Video")
+                .InputRef("images", registry.GetRef(fragmentParams.ImageInputName));
+
+            if (string.IsNullOrWhiteSpace(fragmentParams.FpsInputName))
+            {
+                node.Input("fps", fragmentParams.Fps);
+            }
+            else
+            {
+                node.InputRef("fps", registry.GetRef(fragmentParams.FpsInputName));
+            }
+        });
 
         builder.AddNode(saveVideoId, node => node
             .Type("SaveVideo")

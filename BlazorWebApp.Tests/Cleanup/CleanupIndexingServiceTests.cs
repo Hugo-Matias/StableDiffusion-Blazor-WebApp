@@ -93,62 +93,16 @@ public class CleanupIndexingServiceTests : IDisposable
             Scheduler = "normal"
         });
 
-        var progress = new List<CleanupIndexingProgress>();
-        var result = await _service.IndexImagesAsync(
-            new CleanupIndexingOptions { BatchSize = 1 },
-            new CapturingProgress<CleanupIndexingProgress>(progress.Add));
+        var result = await _service.IndexImagesAsync(new CleanupIndexingOptions { BatchSize = 1 });
 
         result.Indexed.Should().Be(1);
         result.MissingFiles.Should().Be(1);
         result.Failed.Should().Be(0);
-        result.TotalCandidates.Should().Be(2);
-        progress.Should().NotBeEmpty();
-        progress[0].TotalCandidates.Should().Be(2);
-        GetProcessedCount(progress[0]).Should().Be(0);
-        progress[^1].TotalCandidates.Should().Be(2);
-        GetProcessedCount(progress[^1]).Should().Be(2);
 
         var missing = await _repository.GetImageIndexAsync(2);
         missing.Should().NotBeNull();
         missing!.Status.Should().Be(CleanupIndexStatus.MissingFile);
         missing.FileExists.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task IndexImageAsync_IndexesOnlyRequestedImage()
-    {
-        var firstPath = CreateImage("first.png", MagickColors.Red);
-        var secondPath = CreateImage("second.png", MagickColors.Yellow);
-        await SeedImageAsync(new Image
-        {
-            Id = 1,
-            Path = firstPath,
-            ProjectId = 1,
-            ModeId = 1,
-            Prompt = "first",
-            Scheduler = "normal"
-        });
-        await SeedImageAsync(new Image
-        {
-            Id = 2,
-            Path = secondPath,
-            ProjectId = 1,
-            ModeId = 1,
-            Prompt = "second",
-            Scheduler = "normal"
-        });
-
-        var result = await _service.IndexImageAsync(2);
-
-        result.TotalCandidates.Should().Be(1);
-        result.Indexed.Should().Be(1);
-        result.LastImageId.Should().Be(2);
-
-        var first = await _repository.GetImageIndexAsync(1);
-        var second = await _repository.GetImageIndexAsync(2);
-        first.Should().BeNull();
-        second.Should().NotBeNull();
-        second!.PromptNormalized.Should().Be("second");
     }
 
     private string CreateImage(string fileName, MagickColor color)
@@ -164,26 +118,6 @@ public class CleanupIndexingServiceTests : IDisposable
         await using var context = await _factory.CreateDbContextAsync();
         context.Images.Add(image);
         await context.SaveChangesAsync();
-    }
-
-    private static int GetProcessedCount(CleanupIndexingProgress progress)
-    {
-        return progress.Indexed + progress.Skipped + progress.MissingFiles + progress.Failed;
-    }
-
-    private sealed class CapturingProgress<T> : IProgress<T>
-    {
-        private readonly Action<T> _capture;
-
-        public CapturingProgress(Action<T> capture)
-        {
-            _capture = capture;
-        }
-
-        public void Report(T value)
-        {
-            _capture(value);
-        }
     }
 
     private sealed class TestDbContextFactory : IDbContextFactory<AppDbContext>, IDisposable

@@ -1,0 +1,122 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Workflows.Fragments.Wan
+@attribute [FragmentComponent("WanVaceClipJoinerSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="4">
+        <MudNumericField T="int" Label="Context Frames" Variant="Variant.Text" Dense="true"
+                         @bind-Value="_localContextFrames" @bind-Value:after="OnParametersChanged" Min="_frameMin" Max="_frameMax"
+                         Step="1" />
+    </MudItem>
+
+    <MudItem xs="4">
+        <MudNumericField T="int" Label="Replace Frames" Variant="Variant.Text" Dense="true"
+                         @bind-Value="_localReplaceFrames" @bind-Value:after="OnParametersChanged" Min="_replaceMin" Max="_frameMax"
+                         Step="1" />
+    </MudItem>
+
+    <MudItem xs="4">
+        <MudNumericField T="int" Label="New Frames" Variant="Variant.Text" Dense="true" @bind-Value="_localNewFrames"
+                         @bind-Value:after="OnParametersChanged" Min="_newFramesMin" Max="_frameMax" Step="1" />
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localHighSpeedLoraStrength" @bind-Value:after="OnParametersChanged"
+                   Min="_loraStrengthMin" Max="_loraStrengthMax" Step="_loraStrengthStep" ValueLabel>
+            <small>High Speed LoRA:</small> @_localHighSpeedLoraStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localLowSpeedLoraStrength" @bind-Value:after="OnParametersChanged"
+                   Min="_loraStrengthMin" Max="_loraStrengthMax" Step="_loraStrengthStep" ValueLabel>
+            <small>Low Speed LoRA:</small> @_localLowSpeedLoraStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _localContextFrames = 8;
+    private int _localReplaceFrames = 8;
+    private int _localNewFrames;
+    private double _localHighSpeedLoraStrength = 1;
+    private double _localLowSpeedLoraStrength = 1;
+
+    private int _frameMin = 1;
+    private int _replaceMin;
+    private int _newFramesMin;
+    private int _frameMax = 128;
+    private double _loraStrengthMin;
+    private double _loraStrengthMax = 2;
+    private double _loraStrengthStep = 0.05;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localContextFrames = ParameterService.GetFragmentProperty(Fragment,
+WanVaceClipJoinerSettingsFragment.ContextFramesParameter, 8);
+        _localReplaceFrames = ParameterService.GetFragmentProperty(Fragment,
+WanVaceClipJoinerSettingsFragment.ReplaceFramesParameter, 8);
+        _localNewFrames = ParameterService.GetFragmentProperty(Fragment, WanVaceClipJoinerSettingsFragment.NewFramesParameter,
+0);
+        _localHighSpeedLoraStrength = ParameterService.GetFragmentProperty(Fragment,
+WanVaceClipJoinerSettingsFragment.HighSpeedLoraStrengthParameter, 1.0);
+        _localLowSpeedLoraStrength = ParameterService.GetFragmentProperty(Fragment,
+WanVaceClipJoinerSettingsFragment.LowSpeedLoraStrengthParameter, 1.0);
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue(WanVaceClipJoinerSettingsFragment.ContextFramesParameter, out var
+contextConstraints))
+        {
+            _frameMin = contextConstraints.GetMin(1);
+            _frameMax = contextConstraints.GetMax(128);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue(WanVaceClipJoinerSettingsFragment.ReplaceFramesParameter, out var
+replaceConstraints))
+        {
+            _replaceMin = replaceConstraints.GetMin(0);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue(WanVaceClipJoinerSettingsFragment.NewFramesParameter, out var
+newFramesConstraints))
+        {
+            _newFramesMin = newFramesConstraints.GetMin(0);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue(WanVaceClipJoinerSettingsFragment.HighSpeedLoraStrengthParameter, out var
+loraConstraints))
+        {
+            _loraStrengthMin = loraConstraints.GetMin(0.0);
+            _loraStrengthMax = loraConstraints.GetMax(2.0);
+            _loraStrengthStep = loraConstraints.GetStep(0.05);
+        }
+    }
+
+    private async Task OnParametersChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, WanVaceClipJoinerSettingsFragment.ContextFramesParameter,
+_localContextFrames, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, WanVaceClipJoinerSettingsFragment.ReplaceFramesParameter,
+_localReplaceFrames, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, WanVaceClipJoinerSettingsFragment.NewFramesParameter, _localNewFrames,
+notify: false);
+        ParameterService.SetFragmentProperty(Fragment, WanVaceClipJoinerSettingsFragment.HighSpeedLoraStrengthParameter,
+_localHighSpeedLoraStrength, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, WanVaceClipJoinerSettingsFragment.LowSpeedLoraStrengthParameter,
+_localLowSpeedLoraStrength, notify: false);
+        ParameterService.NotifyChanged();
+        await OnChanged.InvokeAsync();
+    }
+}

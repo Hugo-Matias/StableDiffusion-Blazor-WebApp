@@ -57,9 +57,9 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetAssetOptions(AssetType assetType);
 
         /// <summary>
-        /// Gets the current model for the specified mode.
+        /// Gets the current model for the specified mode. Returns null when no model has been selected.
         /// </summary>
-        string GetCurrentModel(ModeType? mode = null);
+        string? GetCurrentModel(ModeType? mode = null);
 
         /// <summary>
         /// Sets the current model and saves state.

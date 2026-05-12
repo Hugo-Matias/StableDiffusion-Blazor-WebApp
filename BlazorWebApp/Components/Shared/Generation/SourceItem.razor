@@ -9,8 +9,8 @@
     {
         @* Video input - drag/drop with browser-side preview. Uploads bypass SignalR
            via fetch() to /api/upload-source so the page stays responsive. *@
-        <VideoInput Filename="@Source.Filename" FilenameChanged="HandleVideoFilenameChanged" Title="@DisplayLabel"
-                    VideoOptions="@Source.VideoOptions" VideoOptionsChanged="HandleVideoOptionsChanged"
+        <VideoInput Filename="@Source.Filename" FilePath="@Source.FilePath" FilenameChanged="HandleVideoFilenameChanged"
+                    Title="@DisplayLabel" VideoOptions="@Source.VideoOptions" VideoOptionsChanged="HandleVideoOptionsChanged"
                     DefaultVideoOptions="@SourceDefinition?.DefaultVideoOptions" MaxFileSizeMB="1024" />
     }
     else if (Source.Type?.ToLowerInvariant() == "audio")
