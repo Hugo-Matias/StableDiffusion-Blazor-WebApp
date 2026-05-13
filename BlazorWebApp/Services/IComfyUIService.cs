@@ -1,6 +1,7 @@
 using BlazorWebApp.Data.Dtos.ComfyUI;
 using BlazorWebApp.Data.Dtos.ComfyUI.Workflow;
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 
 namespace BlazorWebApp.Services
 {
@@ -57,6 +58,7 @@ namespace BlazorWebApp.Services
 
         // History & File Operations
         Task<List<string>> GetFilenameFromHistory(Guid promptId);
+        Task<Dictionary<string, List<ComfyImageOutputFile>>> GetImageOutputsFromHistory(Guid promptId, IReadOnlyCollection<string>? outputNodeIds = null);
         Task<List<string>> GetVideoFilenameFromHistory(Guid promptId);
 
         /// <summary>
@@ -68,6 +70,15 @@ namespace BlazorWebApp.Services
         /// Posts an arbitrary ComfyUI prompt and returns every text/string output keyed by output node id.
         /// </summary>
         Task<ComfyTextPromptResponse> PostTextPromptOutputsAsync(object payload, string payloadLogPath = "llm_payload.json", Guid? uploadedInputTrackingId = null);
+
+        /// <summary>
+        /// Posts a built ComfyUI workflow and returns image outputs keyed by expected output node id.
+        /// </summary>
+        Task<ComfyImageOutputResponse> PostWorkflowForImageOutputsAsync(
+            ComfyWorkflow workflow,
+            string clientId,
+            IReadOnlyCollection<string> outputNodeIds,
+            Guid? uploadedInputTrackingId = null);
 
         // Image Upload
         Task<string> UploadImageAsync(string base64Data, Guid? promptId = null);

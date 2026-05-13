@@ -1,0 +1,92 @@
+@namespace BlazorWebApp.Components.Character
+@inject IAssetResolverService AssetResolver
+
+@if (_isLoading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="character-asset-loading">
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+        <MudText Typo="Typo.caption">Loading @Label options...</MudText>
+    </MudStack>
+}
+else if (_options.Count > 0)
+{
+    <MudSelect T="string" Value="@Value"
+               ValueChanged="HandleValueChanged"
+               Label="@Label"
+               Dense="true"
+               Variant="Variant.Text"
+               AnchorOrigin="Origin.BottomLeft"
+               TransformOrigin="Origin.TopLeft"
+               MaxHeight="400">
+        @if (AllowEmpty)
+        {
+            <MudSelectItem Value="@string.Empty">Select @Label</MudSelectItem>
+        }
+        @foreach (var option in _options)
+        {
+            <MudSelectItem Value="@option">@GetDisplayName(option)</MudSelectItem>
+        }
+    </MudSelect>
+}
+else
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+        No @Label options are available from ComfyUI.
+    </MudAlert>
+}
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public AssetType AssetType { get; set; }
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? DefaultValue { get; set; }
+    [Parameter] public bool AllowEmpty { get; set; }
+
+    private readonly List<string> _options = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOptionsAsync();
+    }
+
+    private async Task LoadOptionsAsync()
+    {
+        _isLoading = true;
+        _options.Clear();
+        _options.AddRange(await AssetResolver.GetCachedAssetOptions(AssetType));
+
+        if (string.IsNullOrWhiteSpace(Value) && !string.IsNullOrWhiteSpace(DefaultValue))
+        {
+            var match = _options.FirstOrDefault(option =>
+                option.Equals(DefaultValue, StringComparison.OrdinalIgnoreCase) ||
+                Path.GetFileName(option).Equals(DefaultValue, StringComparison.OrdinalIgnoreCase) ||
+                option.EndsWith(DefaultValue, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrWhiteSpace(match))
+            {
+                await HandleValueChanged(match);
+            }
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task HandleValueChanged(string value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private static string GetDisplayName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var fileName = Path.GetFileName(value);
+        return string.IsNullOrWhiteSpace(fileName) ? value : fileName;
+    }
+}

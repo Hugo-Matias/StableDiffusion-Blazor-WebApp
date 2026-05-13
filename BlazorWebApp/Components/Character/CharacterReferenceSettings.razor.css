@@ -1,0 +1,15 @@
+.character-settings {
+  min-width: 0;
+}
+
+.character-source-input {
+  --character-source-height: 16rem;
+}
+
+::deep .character-source-input .image-input-content {
+  height: var(--character-source-height, 16rem);
+}
+
+.character-advanced-settings {
+  min-width: 0;
+}

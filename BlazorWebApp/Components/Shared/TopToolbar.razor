@@ -44,6 +44,12 @@
         <ToolbarLLMSettings />
     }
 
+    @if (CurrentPage.StartsWith("/characters"))
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarLLMSettings />
+    }
+
     @if (CurrentPage.StartsWith("/cleanup"))
     {
         <MudDivider Class="my-3" />

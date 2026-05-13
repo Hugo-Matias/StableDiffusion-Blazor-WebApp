@@ -1,0 +1,36 @@
+@namespace BlazorWebApp.Components.Character
+
+<article class="character-add-shot-card">
+    <div class="character-add-shot-header">
+        <MudIcon Icon="fa-solid fa-plus" Size="Size.Large" />
+        <MudText Typo="Typo.subtitle2">Add Slot</MudText>
+    </div>
+    <div class="send-to-buttons character-add-shot-actions">
+        @foreach (var preset in CharacterReferenceSlotCatalog.GetAddablePresets())
+        {
+            <button type="button" class="send-to-btn" disabled="@Disabled" @onclick="() => Add(preset.PresetKey)">
+                <MudIcon Icon="@GetPresetIcon(preset.PresetKey)" Size="Size.Small" />
+                <span>@preset.Label</span>
+            </button>
+        }
+    </div>
+</article>
+
+@code {
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<CharacterReferenceSlotPresetKey> OnAddSlot { get; set; }
+
+    private Task Add(CharacterReferenceSlotPresetKey presetKey) => OnAddSlot.InvokeAsync(presetKey);
+
+    private static string GetPresetIcon(CharacterReferenceSlotPresetKey presetKey)
+    {
+        return presetKey switch
+        {
+            CharacterReferenceSlotPresetKey.CustomExpression => "fa-solid fa-face-smile",
+            CharacterReferenceSlotPresetKey.CustomPose => "fa-solid fa-person-running",
+            CharacterReferenceSlotPresetKey.CustomCamera => "fa-solid fa-camera-retro",
+            CharacterReferenceSlotPresetKey.CustomLandscape => "fa-solid fa-panorama",
+            _ => "fa-solid fa-square-plus"
+        };
+    }
+}

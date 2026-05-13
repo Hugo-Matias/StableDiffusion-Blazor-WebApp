@@ -9,6 +9,15 @@ namespace BlazorWebApp.Services;
 
 public class MediaSendToService : IMediaSendToService
 {
+    private const string CharacterSourceKey = "character-source-image";
+
+    private static readonly Workflow CharacterWorkflowTarget = new()
+    {
+        Id = Guid.Parse("5bcf352d-6e4b-4d9f-979c-51e07b5a4da7"),
+        Title = "Characters",
+        Mode = ModeType.Img2Img
+    };
+
     private readonly IBackendService _backend;
     private readonly IStateService _state;
     private readonly ISessionService _session;
@@ -46,19 +55,32 @@ public class MediaSendToService : IMediaSendToService
 
     public IReadOnlyList<MediaSendToTarget> GetSourceTargets(SendToMediaType mediaType)
     {
+        var targets = new List<MediaSendToTarget>();
+
+        if (mediaType == SendToMediaType.Image)
+        {
+            targets.Add(new MediaSendToTarget(
+                CharacterWorkflowTarget,
+                CharacterSourceKey,
+                "Source Image",
+                "image",
+                IsNewSlot: false));
+        }
+
         if (!_backend.IsBackendAvailable || _state.State.Generation.Workflows == null)
-            return Array.Empty<MediaSendToTarget>();
+            return targets;
 
         var sourceType = ToSourceType(mediaType);
         var currentBase = _state.State.Generation.WorkflowBase;
 
-        return _state.State.Generation.Workflows
+        targets.AddRange(_state.State.Generation.Workflows
             .Where(w => IsEnabledForCurrentBase(w, currentBase))
             .SelectMany(w => GetTargetsForWorkflow(w, sourceType))
             .OrderBy(t => t.Workflow.Mode)
             .ThenBy(t => t.Workflow.Title)
-            .ThenBy(t => t.SourceLabel)
-            .ToList();
+            .ThenBy(t => t.SourceLabel));
+
+        return targets;
     }
 
     public List<Workflow> GetParameterWorkflows()
@@ -196,6 +218,18 @@ public class MediaSendToService : IMediaSendToService
             }
 
             data = $"data:image/png;base64,{base64}";
+        }
+
+        if (target.SourceKey == CharacterSourceKey)
+        {
+            _state.State.Character.SourceImage.ImageDataUri = data;
+            _state.State.Character.SourceImage.ImagePath = null;
+            _state.State.Character.SourceImage.SourceLabel = Path.GetFileName(asset.Path);
+            _ = _state.SaveState();
+
+            _navManager.NavigateTo("/characters");
+            _snackbar.Add("Sent image to Characters source image", Severity.Success);
+            return;
         }
 
         _session.PendingSourceMedia.Clear();

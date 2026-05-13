@@ -82,6 +82,8 @@ builder.Services.AddSingleton<IRouterService, RouterService>();
 
 // Workflow service - uses C# IWorkflowBuilder implementations only
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
+builder.Services.AddSingleton<BlazorWebApp.Workflows.Templates.Qwen.QwenCharacterReferenceWorkflowComposer>();
+builder.Services.AddSingleton<ICharacterReferenceRunService, CharacterReferenceRunService>();
 
 // Workflow state persistence service (per-workflow saved parameters)
 builder.Services.AddSingleton<IWorkflowStateService, WorkflowStateService>();
@@ -174,6 +176,7 @@ builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddSingleton<OllamaService>();
+builder.Services.AddScoped<CharacterPromptSuggestionService>();
 
 // Tag prompt builder service (two-pass Danbooru tag resolution)
 builder.Services.AddScoped<TagPromptService>();

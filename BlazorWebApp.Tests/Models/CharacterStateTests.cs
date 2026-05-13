@@ -1,0 +1,232 @@
+using BlazorWebApp.Models;
+using FluentAssertions;
+using System.Text.Json;
+
+namespace BlazorWebApp.Tests.Models;
+
+public class CharacterStateTests
+{
+    [Fact]
+    public void AppState_ShouldInitializeCharacterStateWithDefaults()
+    {
+        var appState = new AppState();
+
+        appState.Character.Should().NotBeNull();
+        appState.Character.LoaderMode.Should().Be(CharacterLoaderMode.AioCheckpoint);
+        appState.Character.UseRtxUpscale.Should().BeTrue();
+        appState.Character.UseCleanGpu.Should().BeFalse();
+        appState.Character.Assets.Aio.Checkpoint.Should().Be(CharacterReferenceDefaults.AioCheckpoint);
+        appState.Character.Slots.Should().HaveCount(15);
+    }
+
+    [Fact]
+    public void CreateDefaultSlots_ShouldUseRenamedExpressionLabels()
+    {
+        var slots = CharacterReferenceSlotCatalog.CreateDefaultSlots();
+
+        slots.Should().HaveCount(15);
+        slots.Select(slot => slot.Label).Should().Contain([
+            "Neutral",
+            "Happy",
+            "Scared",
+            "Angry",
+            "Sad",
+            "Crying",
+            "Smug"
+        ]);
+        slots.Should().NotContain(slot => slot.Label.StartsWith("Close ", StringComparison.OrdinalIgnoreCase));
+        var customPresetKeys = new[]
+        {
+            CharacterReferenceSlotPresetKey.CustomExpression,
+            CharacterReferenceSlotPresetKey.CustomPose,
+            CharacterReferenceSlotPresetKey.CustomCamera,
+            CharacterReferenceSlotPresetKey.CustomBody,
+            CharacterReferenceSlotPresetKey.CustomOutfit,
+            CharacterReferenceSlotPresetKey.CustomLandscape,
+            CharacterReferenceSlotPresetKey.Blank
+        };
+        slots.Where(slot => slot.PresetKey.HasValue && customPresetKeys.Contains(slot.PresetKey.Value))
+            .Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CreateDefaultSlots_ShouldPreserveSourceDimensionsAndDependencies()
+    {
+        var slots = CharacterReferenceSlotCatalog.CreateDefaultSlots();
+
+        slots.Single(slot => slot.PresetKey == CharacterReferenceSlotPresetKey.FrontView).Should().BeEquivalentTo(new
+        {
+            Id = "front-view",
+            Label = "Front view",
+            Width = 1088,
+            Height = 1920,
+            Cfg = 1.6,
+            DependencyPolicy = CharacterReferenceDependencyPolicy.SourceImage,
+            IsBuiltIn = true
+        });
+        slots.Single(slot => slot.PresetKey == CharacterReferenceSlotPresetKey.NeutralExpression).Should().BeEquivalentTo(new
+        {
+            Id = "neutral",
+            Label = "Neutral",
+            Width = 1088,
+            Height = 1088,
+            Cfg = 1.6,
+            DependencyPolicy = CharacterReferenceDependencyPolicy.SourceImage,
+            IsBuiltIn = true
+        });
+        slots.Single(slot => slot.PresetKey == CharacterReferenceSlotPresetKey.HappyExpression)
+            .DependencyPolicy.Should().Be(CharacterReferenceDependencyPolicy.NeutralOutput);
+        slots.Single(slot => slot.PresetKey == CharacterReferenceSlotPresetKey.ActionPose)
+            .DependencyPolicy.Should().Be(CharacterReferenceDependencyPolicy.FrontViewOutput);
+    }
+
+    [Fact]
+    public void CreateDefaultSlots_ShouldGroupBodyAnglesBeforeExpressions()
+    {
+        var slots = CharacterReferenceSlotCatalog.CreateDefaultSlots();
+
+        slots.Select(slot => slot.PresetKey).Take(6).Should().Equal([
+            CharacterReferenceSlotPresetKey.FrontView,
+            CharacterReferenceSlotPresetKey.LeftProfile,
+            CharacterReferenceSlotPresetKey.RightProfile,
+            CharacterReferenceSlotPresetKey.BackView,
+            CharacterReferenceSlotPresetKey.FrontThreeQuarter,
+            CharacterReferenceSlotPresetKey.BackThreeQuarter
+        ]);
+    }
+
+    [Fact]
+    public void GetAddablePresets_ShouldExposeCustomPresetChoicesOnly()
+    {
+        var presets = CharacterReferenceSlotCatalog.GetAddablePresets();
+
+        presets.Select(preset => preset.PresetKey).Should().BeEquivalentTo([
+            CharacterReferenceSlotPresetKey.CustomExpression,
+            CharacterReferenceSlotPresetKey.CustomPose,
+            CharacterReferenceSlotPresetKey.CustomCamera,
+            CharacterReferenceSlotPresetKey.CustomBody,
+            CharacterReferenceSlotPresetKey.CustomOutfit,
+            CharacterReferenceSlotPresetKey.CustomLandscape,
+            CharacterReferenceSlotPresetKey.Blank
+        ], options => options.WithStrictOrdering());
+    }
+
+    [Fact]
+    public void AddSlot_ShouldAppendCustomSlotWithNormalizedLabel()
+    {
+        var state = new AppStateCharacter();
+
+        var slot = state.AddSlot(CharacterReferenceSlotPresetKey.CustomExpression, "Close Mischievous");
+
+        state.Slots.Should().HaveCount(16);
+        slot.IsBuiltIn.Should().BeFalse();
+        slot.Label.Should().Be("Mischievous");
+        slot.Kind.Should().Be(CharacterReferenceSlotKind.Expression);
+        slot.Width.Should().Be(1088);
+        slot.Height.Should().Be(1088);
+        slot.DependencyPolicy.Should().Be(CharacterReferenceDependencyPolicy.NeutralOutput);
+        slot.Id.Should().StartWith("custom-customexpression-");
+    }
+
+    [Fact]
+    public void AddSlot_ShouldCreateCameraBodyAnglePreset()
+    {
+        var state = new AppStateCharacter();
+
+        var slot = state.AddSlot(CharacterReferenceSlotPresetKey.CustomCamera);
+
+        slot.Label.Should().Be("Camera");
+        slot.Kind.Should().Be(CharacterReferenceSlotKind.BodyAngle);
+        slot.Width.Should().Be(1088);
+        slot.Height.Should().Be(1920);
+        slot.DependencyPolicy.Should().Be(CharacterReferenceDependencyPolicy.FrontViewOutput);
+        slot.PromptTemplate.Should().Be("Same exact anime woman and body proportions, same exact detailed anime artstyle, same exact hairstyle, and outfit. Same exact facial expression and pose.");
+        slot.PromptExtension.Should().BeEmpty();
+        slot.Id.Should().StartWith("custom-customcamera-");
+    }
+
+    [Fact]
+    public void AddSlot_ShouldCreateBodyAndOutfitPresetTypes()
+    {
+        var state = new AppStateCharacter();
+
+        var body = state.AddSlot(CharacterReferenceSlotPresetKey.CustomBody);
+        var outfit = state.AddSlot(CharacterReferenceSlotPresetKey.CustomOutfit);
+
+        body.Label.Should().Be("Body");
+        body.Kind.Should().Be(CharacterReferenceSlotKind.Body);
+        body.Width.Should().Be(1088);
+        body.Height.Should().Be(1920);
+        body.PromptTemplate.Should().NotBeNullOrWhiteSpace();
+        body.PromptExtension.Should().BeEmpty();
+
+        outfit.Label.Should().Be("Outfit");
+        outfit.Kind.Should().Be(CharacterReferenceSlotKind.Outfit);
+        outfit.Width.Should().Be(1088);
+        outfit.Height.Should().Be(1920);
+        outfit.PromptTemplate.Should().NotBeNullOrWhiteSpace();
+        outfit.PromptExtension.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ComposePrompt_ShouldAppendExtensionAfterHiddenTemplate()
+    {
+        var state = new AppStateCharacter();
+        var slot = state.AddSlot(CharacterReferenceSlotPresetKey.CustomCamera);
+
+        slot.PromptExtension = "low-angle camera, dramatic lighting";
+
+        CharacterReferenceSlotCatalog.ComposePrompt(slot).Should()
+            .Be("Same exact anime woman and body proportions, same exact detailed anime artstyle, same exact hairstyle, and outfit. Same exact facial expression and pose. low-angle camera, dramatic lighting");
+    }
+
+    [Fact]
+    public void ActiveAssets_ShouldExposeOnlySelectedLoaderModeAssets()
+    {
+        var state = new AppStateCharacter();
+
+        state.LoaderMode = CharacterLoaderMode.AioCheckpoint;
+        state.ActiveAssets.Keys.Should().BeEquivalentTo([CharacterAssetKeys.Checkpoint]);
+        state.ActiveAssets[CharacterAssetKeys.Checkpoint].Should().Be(CharacterReferenceDefaults.AioCheckpoint);
+
+        state.LoaderMode = CharacterLoaderMode.SplitStack;
+        state.ActiveAssets.Keys.Should().BeEquivalentTo([
+            CharacterAssetKeys.DiffusionModel,
+            CharacterAssetKeys.Clip,
+            CharacterAssetKeys.Vae
+        ]);
+        state.ActiveAssets.Keys.Should().NotContain(CharacterAssetKeys.Checkpoint);
+        state.ActiveAssets[CharacterAssetKeys.Clip].Should().Be(CharacterReferenceDefaults.SplitClip);
+        state.ActiveAssets[CharacterAssetKeys.Vae].Should().Be(CharacterReferenceDefaults.SplitVae);
+    }
+
+    [Fact]
+    public void AppStateCharacter_ShouldRoundTripThroughJson()
+    {
+        var state = new AppStateCharacter
+        {
+            LoaderMode = CharacterLoaderMode.SplitStack,
+            UseCleanGpu = true
+        };
+        state.AddSlot(CharacterReferenceSlotPresetKey.CustomPose, "Close Leap");
+
+        var json = JsonSerializer.Serialize(state);
+        var restored = JsonSerializer.Deserialize<AppStateCharacter>(json);
+
+        restored.Should().NotBeNull();
+        restored!.LoaderMode.Should().Be(CharacterLoaderMode.SplitStack);
+        restored.UseRtxUpscale.Should().BeTrue();
+        restored.UseCleanGpu.Should().BeTrue();
+        restored.Assets.Aio.Checkpoint.Should().Be(CharacterReferenceDefaults.AioCheckpoint);
+        restored.Slots.Should().HaveCount(16);
+        restored.Slots.Last().Should().BeEquivalentTo(new
+        {
+            Label = "Leap",
+            IsBuiltIn = false,
+            Kind = CharacterReferenceSlotKind.Pose,
+            Width = 1088,
+            Height = 1920,
+            DependencyPolicy = CharacterReferenceDependencyPolicy.FrontViewOutput
+        });
+    }
+}

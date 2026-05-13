@@ -1,0 +1,136 @@
+@page "/characters"
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject IStateService State
+@inject ICharacterReferenceRunService CharacterRuns
+@inject IDatabaseService Database
+@inject ISnackbar Snackbar
+
+<TabbedPageShell ActivePanelIndex="@Character.ActiveTabIndex" ActivePanelIndexChanged="HandleTabChanged">
+    <MudTabPanel Text="Reference Sheet">
+        <TwoColumnLayout>
+            <Sidebar>
+                <CharacterReferenceSettings Character="Character"
+                                            IsRunning="_isRunning"
+                                            OnChanged="SaveCharacterState"
+                                            OnRunEnabled="RunEnabledSlots" />
+            </Sidebar>
+            <Content>
+                <CharacterShotGrid Slots="Character.Slots"
+                                   IsRunning="_isRunning"
+                                   OnSlotChanged="SaveCharacterState"
+                                   OnAddSlot="AddSlot"
+                                   OnRemoveSlot="RemoveSlot"
+                                   OnRunSlot="RunSingleSlot"
+                                   OnViewSlot="OpenSlotViewer" />
+            </Content>
+        </TwoColumnLayout>
+    </MudTabPanel>
+</TabbedPageShell>
+
+<AssetViewer @bind-IsVisible="_showViewer"
+             Assets="_viewerAssets"
+             StartIndex="_viewerStartIndex"
+             ShowFavorite="true"
+             ShowScore="true"
+             ShowOpenInExplorer="true" />
+
+@code {
+    private bool _isRunning;
+    private bool _showViewer;
+    private int _viewerStartIndex;
+    private List<ImageEntity> _viewerAssets = new();
+
+    private AppStateCharacter Character => State.State.Character;
+
+    private async Task HandleTabChanged(int activeIndex)
+    {
+        Character.ActiveTabIndex = activeIndex;
+        await SaveCharacterState();
+    }
+
+    private async Task SaveCharacterState()
+    {
+        await State.SaveState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddSlot(CharacterReferenceSlotPresetKey presetKey)
+    {
+        Character.AddSlot(presetKey);
+        await SaveCharacterState();
+    }
+
+    private async Task RemoveSlot(string slotId)
+    {
+        var slot = Character.Slots.FirstOrDefault(slot => slot.Id == slotId);
+        if (slot is null || slot.IsBuiltIn)
+        {
+            return;
+        }
+
+        Character.Slots.Remove(slot);
+        await SaveCharacterState();
+    }
+
+    private async Task RunEnabledSlots()
+    {
+        await RunSlots(null);
+    }
+
+    private async Task RunSingleSlot(string slotId)
+    {
+        await RunSlots(new[] { slotId });
+    }
+
+    private async Task RunSlots(IReadOnlyCollection<string>? slotIds)
+    {
+        if (_isRunning)
+        {
+            return;
+        }
+
+        _isRunning = true;
+        try
+        {
+            var result = await CharacterRuns.RunAsync(new CharacterReferenceRunRequest(slotIds));
+            var succeeded = result.Slots.Count(slot => slot.Status == CharacterReferenceSlotStatus.Succeeded);
+            var failed = result.Slots.Count(slot => slot.Status == CharacterReferenceSlotStatus.Failed);
+
+            if (result.Success)
+            {
+                var message = result.ErrorMessage ?? $"Generated {succeeded} character reference slot{(succeeded == 1 ? string.Empty : "s")}";
+                Snackbar.Add(message, result.ErrorMessage is null ? Severity.Success : Severity.Warning);
+            }
+            else
+            {
+                var message = result.ErrorMessage ?? $"Generated {succeeded} slot{(succeeded == 1 ? string.Empty : "s")}; {failed} failed.";
+                Snackbar.Add(message, failed > 0 || succeeded == 0 ? Severity.Warning : Severity.Info);
+            }
+        }
+        finally
+        {
+            _isRunning = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OpenSlotViewer(string slotId)
+    {
+        var slot = Character.Slots.FirstOrDefault(slot => slot.Id == slotId);
+        if (slot?.LastOutputImageId is null)
+        {
+            return;
+        }
+
+        var image = await Database.GetImageById(slot.LastOutputImageId.Value);
+        if (image is null)
+        {
+            Snackbar.Add("The saved image record for this slot could not be found.", Severity.Warning);
+            return;
+        }
+
+        _viewerAssets = new List<ImageEntity> { image };
+        _viewerStartIndex = 0;
+        _showViewer = true;
+    }
+}

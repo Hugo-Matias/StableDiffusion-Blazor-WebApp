@@ -21,6 +21,7 @@ namespace BlazorWebApp.Models
         public AppStateResources Resources { get; set; } = new();
         public AppStateCivitai Civitai { get; set; } = new();
         public AppStateDanbooru Danbooru { get; set; } = new();
+        public AppStateCharacter Character { get; set; } = new();
         public AppStateScripts Scripts { get; set; } = new();
 
         public AppState() { }

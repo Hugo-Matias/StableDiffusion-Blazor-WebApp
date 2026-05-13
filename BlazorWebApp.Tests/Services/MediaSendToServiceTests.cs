@@ -51,10 +51,26 @@ public class MediaSendToServiceTests
 
         var service = CreateServiceWithState(new[] { enabledImg2Img, disabledImg2Vid, otherBase, videoOnly }, disabledImg2Vid.Id);
 
-        var target = service.GetSourceTargets(SendToMediaType.Image).Should().ContainSingle().Subject;
+        var target = service.GetSourceTargets(SendToMediaType.Image)
+            .Should().Contain(target => target.Workflow.Id == enabledImg2Img.Id)
+            .Which;
         target.Workflow.Id.Should().Be(enabledImg2Img.Id);
         target.SourceKey.Should().Be("source_image");
         target.SourceLabel.Should().Be("Source Image");
+    }
+
+    [Fact]
+    public void GetSourceTargets_ForImages_IncludesCharactersSourceTarget()
+    {
+        var service = CreateServiceWithState(Array.Empty<Workflow>(), disabledId: Guid.NewGuid());
+
+        var target = service.GetSourceTargets(SendToMediaType.Image)
+            .Should().Contain(target => target.Workflow.Title == "Characters")
+            .Which;
+
+        target.SourceKey.Should().Be("character-source-image");
+        target.SourceLabel.Should().Be("Source Image");
+        target.SourceType.Should().Be("image");
     }
 
     [Fact]

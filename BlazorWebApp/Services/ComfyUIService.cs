@@ -1,6 +1,7 @@
 ﻿using BlazorWebApp.Data.Dtos.ComfyUI;
 using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Models;
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -76,6 +77,10 @@ namespace BlazorWebApp.Services
                     else if (obj is TaskCompletionSource<ComfyTextPromptResponse> textTcs)
                     {
                         textTcs.SetException(exception);
+                    }
+                    else if (obj is PendingImageOutputJob outputJob)
+                    {
+                        outputJob.Completion.SetException(exception);
                     }
                     return;
                 }
@@ -201,9 +206,40 @@ namespace BlazorWebApp.Services
                 return;
             }
 
+            if (obj is PendingImageOutputJob outputJob)
+            {
+                _logger.LogDebug("Handling expected image output job completion for prompt {PromptId}", promptId);
+                await HandleImageOutputJobCompletionAsync(promptId, outputJob);
+                return;
+            }
+
             // Default: Image job
             _logger.LogDebug("Handling image job completion for prompt {PromptId}", promptId);
             await HandleImageJobCompletionAsync(promptId, obj);
+        }
+
+        private async Task HandleImageOutputJobCompletionAsync(Guid promptId, PendingImageOutputJob job)
+        {
+            try
+            {
+                var outputs = await GetImageOutputsFromHistory(promptId, job.ExpectedNodeIds);
+                _pendingJobs.TryRemove(promptId, out _);
+                job.Completion.SetResult(new ComfyImageOutputResponse
+                {
+                    PromptId = promptId.ToString(),
+                    ImagesByNodeId = outputs
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to collect expected image outputs for prompt {PromptId}", promptId);
+                _pendingJobs.TryRemove(promptId, out _);
+                job.Completion.SetException(ex);
+            }
+            finally
+            {
+                await CleanupUploadedImagesAsync(promptId);
+            }
         }
 
         private async Task HandleImageJobCompletionAsync(Guid promptId, object obj)
@@ -528,6 +564,24 @@ namespace BlazorWebApp.Services
             return files;
         }
 
+        public async Task<Dictionary<string, List<ComfyImageOutputFile>>> GetImageOutputsFromHistory(
+            Guid promptId,
+            IReadOnlyCollection<string>? outputNodeIds = null)
+        {
+            var response = await _httpClient.GetAsync($"/history/{promptId}");
+            response.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+
+            var outputs = ComfyUIHistoryImageOutputCollector.Collect(doc.RootElement, promptId, outputNodeIds, _comfyOutputsPath);
+            if (outputs.Count == 0)
+            {
+                _logger.LogWarning("No image outputs found for prompt ID {PromptId}", promptId);
+            }
+
+            return outputs;
+        }
+
         /// <summary>
         /// Gets video filenames from ComfyUI history. Video outputs are typically in "gifs" or "videos" property.
         /// </summary>
@@ -739,7 +793,7 @@ namespace BlazorWebApp.Services
 
             var hash = ComputeHash(bytes);
 
-            if (_imageHashCache.TryGetValue(hash, out var existingFilename))
+            if (TryGetCachedInputFilename(hash, out var existingFilename))
             {
                 _logger.LogDebug("Stream upload hit cache for {OriginalFilename} -> {Filename}", originalFilename, existingFilename);
                 if (promptId.HasValue)
@@ -831,7 +885,7 @@ namespace BlazorWebApp.Services
             var hash = ComputeHash(bytes);
 
             // Check if we already uploaded this exact payload
-            if (_imageHashCache.TryGetValue(hash, out var existingFilename))
+            if (TryGetCachedInputFilename(hash, out var existingFilename))
             {
                 _logger.LogDebug("Input already uploaded with hash {Hash}, reusing {Filename}", hash, existingFilename);
 
@@ -894,6 +948,37 @@ namespace BlazorWebApp.Services
         {
             var hashBytes = SHA256.HashData(bytes);
             return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
+        private bool TryGetCachedInputFilename(string hash, out string filename)
+        {
+            if (!_imageHashCache.TryGetValue(hash, out var cachedFilename))
+            {
+                filename = string.Empty;
+                return false;
+            }
+
+            if (CachedInputFileIsAvailable(cachedFilename))
+            {
+                filename = cachedFilename;
+                return true;
+            }
+
+            _imageHashCache.TryRemove(hash, out _);
+            _logger.LogDebug("Cached ComfyUI input {Filename} for hash {Hash} was not found on disk; re-uploading.", cachedFilename, hash);
+            filename = string.Empty;
+            return false;
+        }
+
+        private bool CachedInputFileIsAvailable(string filename)
+        {
+            if (string.IsNullOrWhiteSpace(_comfyInputsPath))
+            {
+                return true;
+            }
+
+            var inputPath = Path.Combine(_comfyInputsPath, "input", filename);
+            return File.Exists(inputPath);
         }
 
         /// <summary>
@@ -1017,6 +1102,56 @@ namespace BlazorWebApp.Services
                 _pendingJobs[promptId] = tcs;
 
                 return await WaitForTextPromptCompletionAsync(promptId, tcs);
+            }
+            catch
+            {
+                if (uploadedInputTrackingId.HasValue)
+                {
+                    await CleanupUploadedImagesAsync(uploadedInputTrackingId.Value);
+                }
+
+                throw;
+            }
+        }
+
+        public async Task<ComfyImageOutputResponse> PostWorkflowForImageOutputsAsync(
+            ComfyWorkflow workflow,
+            string clientId,
+            IReadOnlyCollection<string> outputNodeIds,
+            Guid? uploadedInputTrackingId = null)
+        {
+            var workflowObject = JsonSerializer.Deserialize<object>(workflow.Json);
+            var payload = new { prompt = workflowObject, client_id = clientId };
+            var promptPayload = PreparePromptPayload(payload);
+            var json = JsonSerializer.Serialize(promptPayload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync("payload_character_reference.json", json);
+
+            try
+            {
+                using var response = await _httpClient.PostAsJsonAsync("/prompt", promptPayload, _jsonIgnoreNull);
+                response.EnsureSuccessStatusCode();
+
+                var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+                if (submit?.PromptId == null)
+                {
+                    throw new InvalidOperationException("ComfyUI did not return a prompt id.");
+                }
+
+                var promptId = Guid.Parse(submit.PromptId);
+                if (uploadedInputTrackingId.HasValue && _uploadedImages.TryRemove(uploadedInputTrackingId.Value, out var uploadedFiles))
+                {
+                    _uploadedImages[promptId] = uploadedFiles;
+                }
+
+                var job = new PendingImageOutputJob(
+                    outputNodeIds.Where(nodeId => !string.IsNullOrWhiteSpace(nodeId)).Distinct(StringComparer.Ordinal).ToArray());
+                _pendingJobs[promptId] = job;
+                return await job.Completion.Task;
             }
             catch
             {
@@ -1378,6 +1513,17 @@ namespace BlazorWebApp.Services
                 ".gif" => "image/gif",
                 _ => "application/octet-stream"
             };
+        }
+
+        private sealed class PendingImageOutputJob
+        {
+            public PendingImageOutputJob(IReadOnlyCollection<string> expectedNodeIds)
+            {
+                ExpectedNodeIds = expectedNodeIds;
+            }
+
+            public IReadOnlyCollection<string> ExpectedNodeIds { get; }
+            public TaskCompletionSource<ComfyImageOutputResponse> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
 
         #endregion
