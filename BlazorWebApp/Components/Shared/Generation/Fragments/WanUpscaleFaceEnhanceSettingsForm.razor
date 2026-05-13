@@ -1,0 +1,342 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("WanUpscaleFaceEnhanceSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudExpansionPanels MultiExpansion="true" Elevation="0">
+    <MudExpansionPanel Text="Video" IsInitiallyExpanded="true">
+        <MudGrid Spacing="2">
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Frame Load Cap" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_frameLoadCap" @bind-Value:after="OnParametersChanged" Min="0" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Skip First Frames" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_skipFirstFrames" @bind-Value:after="OnParametersChanged" Min="0" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Select Every Nth" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_selectEveryNth" @bind-Value:after="OnParametersChanged" Min="1" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="int" @bind-Value="_frameRate" @bind-Value:after="OnParametersChanged" Min="1" Max="120"
+                           Step="1" ValueLabel><small>Output FPS:</small> @_frameRate</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="int" @bind-Value="_crf" @bind-Value:after="OnParametersChanged" Min="0" Max="51" Step="1"
+                           ValueLabel><small>CRF:</small> @_crf</MudSlider>
+            </MudItem>
+        </MudGrid>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="Memory" IsInitiallyExpanded="true">
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudSelect T="string" Label="Attention Mode" Variant="Variant.Text" Dense="true"
+                           @bind-Value="_attentionMode" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                    _attentionOptions) {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSelect T="string" Label="Quantization" Variant="Variant.Text" Dense="true"
+                           @bind-Value="_quantization" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                    _quantizationOptions) {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSelect T="string" Label="Base Precision" Variant="Variant.Text" Dense="true"
+                           @bind-Value="_basePrecision" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                    _basePrecisionOptions) {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSelect T="string" Label="Load Device" Variant="Variant.Text" Dense="true" @bind-Value="_loadDevice"
+                           @bind-Value:after="OnParametersChanged">@foreach (var option in _loadDeviceOptions) {
+                    <MudSelectItem Value="@option" />
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="4">
+            <MudSelect T="string" Label="VAE Precision" Variant="Variant.Text" Dense="true"
+                       @bind-Value="_vaePrecision" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                _vaePrecisionOptions) {
+                    <MudSelectItem Value="@option" />
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="4">
+            <MudNumericField T="int" Label="Blocks To Swap" Variant="Variant.Text" Dense="true"
+                             @bind-Value="_blocksToSwap" @bind-Value:after="OnParametersChanged" Min="0" Max="64" />
+        </MudItem>
+        <MudItem xs="4">
+            <MudCheckBox T="bool" Label="Use Non-blocking" Dense="true" @bind-Value="_useNonBlocking"
+                         @bind-Value:after="OnParametersChanged" />
+        </MudItem>
+        <MudItem xs="4">
+            <MudCheckBox T="bool" Label="Force Offload" Dense="true" @bind-Value="_forceOffload"
+                         @bind-Value:after="OnParametersChanged" />
+        </MudItem>
+    </MudGrid>
+</MudExpansionPanel>
+
+<MudExpansionPanel Text="Upscale" IsInitiallyExpanded="true">
+    <MudGrid Spacing="2">
+        <MudItem xs="6">
+            <MudSlider T="double" @bind-Value="_speedLoraStrength" @bind-Value:after="OnParametersChanged" Min="0"
+                       Max="2" Step="0.01" ValueLabel><small>Speed LoRA:</small> @_speedLoraStrength.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="6">
+            <MudSlider T="int" @bind-Value="_upscaleMaxSideLength" @bind-Value:after="OnParametersChanged" Min="256"
+                       Max="8192" Step="64" ValueLabel><small>Video Max Side:</small> @_upscaleMaxSideLength</MudSlider>
+        </MudItem>
+        <MudItem xs="4">
+            <MudCheckBox T="bool" Label="Fixed Resolution" Dense="true" @bind-Value="_upscaleUseFixedResolution"
+                         @bind-Value:after="OnParametersChanged" />
+        </MudItem>
+        <MudItem xs="4">
+            <MudNumericField T="int" Label="Fixed Width" Variant="Variant.Text" Dense="true"
+                             @bind-Value="_upscaleFixedWidth" @bind-Value:after="OnParametersChanged" Min="64" />
+        </MudItem>
+        <MudItem xs="4">
+            <MudNumericField T="int" Label="Fixed Height" Variant="Variant.Text" Dense="true"
+                             @bind-Value="_upscaleFixedHeight" @bind-Value:after="OnParametersChanged" Min="64" />
+        </MudItem>
+        <MudItem xs="4">
+            <MudSlider T="double" @bind-Value="_upscaleOutputMultiplier" @bind-Value:after="OnParametersChanged"
+                       Min="0.25" Max="8" Step="0.25" ValueLabel><small>Multiplier:</small>
+                @_upscaleOutputMultiplier.ToString("F2")</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSelect T="string" Label="Tile Count" Variant="Variant.Text" Dense="true"
+                           @bind-Value="_upscaleTileCount" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                    _tileCountOptions) {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSelect T="string" Label="Upscale Precision" Variant="Variant.Text" Dense="true"
+                           @bind-Value="_upscalePrecision" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                    _upscalePrecisionOptions) {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Batch Size" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_upscaleBatchSize" @bind-Value:after="OnParametersChanged" Min="1" Max="16" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudCheckBox T="bool" Label="Offload Upscale Model" Dense="true" @bind-Value="_upscaleOffloadModel"
+                             @bind-Value:after="OnParametersChanged" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudCheckBox T="bool" Label="Disable Cache" Dense="true" @bind-Value="_upscaleDisableCache"
+                             @bind-Value:after="OnParametersChanged" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Desired Steps" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_upscaleDesiredSteps" @bind-Value:after="OnParametersChanged" Min="1" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_upscaleStrengthPercent" @bind-Value:after="OnParametersChanged"
+                           Min="1" Max="100" Step="1" ValueLabel><small>Strength:</small>
+                    @_upscaleStrengthPercent.ToString("F0")%</MudSlider>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="long" Label="Seed" Variant="Variant.Text" Dense="true" @bind-Value="_upscaleSeed"
+                                     @bind-Value:after="OnParametersChanged" Min="-1" />
+                </MudItem>
+            </MudGrid>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="Sampler And Prompt">
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudSelect T="string" Label="Scheduler" Variant="Variant.Text" Dense="true"
+                               @bind-Value="_samplerScheduler" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                        _schedulerOptions) {
+                            <MudSelectItem Value="@option" />
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSlider T="double" @bind-Value="_samplerCfg" @bind-Value:after="OnParametersChanged" Min="0" Max="20"
+                               Step="0.1" ValueLabel><small>CFG:</small> @_samplerCfg.ToString("F1")</MudSlider>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSlider T="double" @bind-Value="_samplerShift" @bind-Value:after="OnParametersChanged" Min="0"
+                               Max="20" Step="0.1" ValueLabel><small>Shift:</small> @_samplerShift.ToString("F1")</MudSlider>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSlider T="double" @bind-Value="_fetaWeight" @bind-Value:after="OnParametersChanged" Min="0" Max="10"
+                               Step="0.001" ValueLabel><small>Enhance Weight:</small> @_fetaWeight.ToString("F3")</MudSlider>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSlider T="double" @bind-Value="_fetaStartPercent" @bind-Value:after="OnParametersChanged" Min="0"
+                               Max="1" Step="0.01" ValueLabel><small>Enhance Start:</small> @_fetaStartPercent.ToString("F2")
+                    </MudSlider>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSlider T="double" @bind-Value="_fetaEndPercent" @bind-Value:after="OnParametersChanged" Min="0"
+                               Max="1" Step="0.01" ValueLabel><small>Enhance End:</small> @_fetaEndPercent.ToString("F2")
+                    </MudSlider>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect T="string" Label="Text Precision" Variant="Variant.Text" Dense="true"
+                               @bind-Value="_textPrecision" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                        _textPrecisionOptions) {
+                            <MudSelectItem Value="@option" />
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect T="string" Label="Text Quantization" Variant="Variant.Text" Dense="true"
+                               @bind-Value="_textQuantization" @bind-Value:after="OnParametersChanged">@foreach (var option in
+                        _textQuantizationOptions) {
+                            <MudSelectItem Value="@option" />
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4">
+                    <MudSelect T="string" Label="Text Device" Variant="Variant.Text" Dense="true" @bind-Value="_textDevice"
+                               @bind-Value:after="OnParametersChanged">@foreach (var option in _textDeviceOptions) {
+                        <MudSelectItem Value="@option" />
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Prompt Prefix" Variant="Variant.Text" Dense="true" Lines="2"
+                              AutoGrow="true" @bind-Value="_promptPrefix" @bind-Value:after="OnParametersChanged" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Negative Prompt" Variant="Variant.Text" Dense="true" Lines="2"
+                              AutoGrow="true" @bind-Value="_negativePrompt" @bind-Value:after="OnParametersChanged" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_nagScale" @bind-Value:after="OnParametersChanged" Min="0" Max="30"
+                           Step="0.1" ValueLabel><small>NAG Scale:</small> @_nagScale.ToString("F1")</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_nagTau" @bind-Value:after="OnParametersChanged" Min="0" Max="10"
+                           Step="0.1" ValueLabel><small>NAG Tau:</small> @_nagTau.ToString("F1")</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_nagAlpha" @bind-Value:after="OnParametersChanged" Min="0" Max="1"
+                           Step="0.01" ValueLabel><small>NAG Alpha:</small> @_nagAlpha.ToString("F2")</MudSlider>
+            </MudItem>
+        </MudGrid>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _frameLoadCap = 81, _skipFirstFrames, _selectEveryNth = 1, _frameRate = 16, _crf = 8, _blocksToSwap = 27;
+    private int _upscaleMaxSideLength = 1344, _upscaleFixedWidth = 1024, _upscaleFixedHeight = 1024, _upscaleBatchSize = 9,
+_upscaleDesiredSteps = 5;
+    private long _upscaleSeed;
+    private double _speedLoraStrength = 0.7, _upscaleOutputMultiplier = 2, _upscaleStrengthPercent = 35, _samplerCfg = 1,
+_samplerShift = 5, _fetaWeight = 2, _fetaStartPercent, _fetaEndPercent = 1, _nagScale = 11, _nagTau = 2.5, _nagAlpha =
+0.25;
+    private bool _useNonBlocking, _forceOffload, _upscaleUseFixedResolution, _upscaleOffloadModel = true,
+_upscaleDisableCache;
+    private string _basePrecision = "fp16_fast", _quantization = "fp8_e4m3fn_scaled", _loadDevice = "offload_device",
+_attentionMode = "sageattn", _vaePrecision = "bf16", _upscaleTileCount = "1", _upscalePrecision = "fp16",
+_samplerScheduler = "lcm", _textPrecision = "bf16", _textQuantization = "disabled", _textDevice = "gpu";
+    private string _promptPrefix = "High resolution, sharp details, soft, low contrast, natural, RAW, ";
+    private string _negativePrompt = "bright, high contrast, glossy plastic skin, blurry, oversaturated";
+
+    private List<string> _attentionOptions = new();
+    private List<string> _schedulerOptions = new();
+    private readonly List<string> _basePrecisionOptions = ["fp32", "bf16", "fp16", "fp16_fast"];
+    private readonly List<string> _quantizationOptions = ["disabled", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e4m3fn_scaled",
+"fp8_e4m3fn_scaled_fast", "fp8_e5m2", "fp8_e5m2_fast", "fp8_e5m2_scaled", "fp8_e5m2_scaled_fast"];
+    private readonly List<string> _loadDeviceOptions = ["main_device", "offload_device"];
+    private readonly List<string> _vaePrecisionOptions = ["fp16", "fp32", "bf16"];
+    private readonly List<string> _tileCountOptions = ["1", "4", "8", "16"];
+    private readonly List<string> _upscalePrecisionOptions = ["auto", "fp32", "fp16", "bf16"];
+    private readonly List<string> _textPrecisionOptions = ["fp32", "bf16"];
+    private readonly List<string> _textQuantizationOptions = ["disabled", "fp8_e4m3fn"];
+    private readonly List<string> _textDeviceOptions = ["gpu", "cpu"];
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        LoadOptions();
+        SyncFromService();
+    }
+
+    private void LoadOptions()
+    {
+        _attentionOptions = ParameterService.GetResolvedOptions(Fragment!.Id, "attention_mode");
+        if (_attentionOptions.Count == 0) _attentionOptions = ["sdpa", "flash_attn_2", "flash_attn_3", "sageattn", "sageattn_3",
+"radial_sage_attention", "sageattn_compiled", "sageattn_ultravico"];
+        _schedulerOptions = ParameterService.GetResolvedOptions(Fragment.Id, "sampler_scheduler");
+        if (_schedulerOptions.Count == 0) _schedulerOptions = ["unipc", "unipc/beta", "dpm++", "dpm++/beta", "dpm++_sde",
+"dpm++_sde/beta", "euler", "euler/beta", "lcm"];
+    }
+
+    private void SyncFromService()
+    {
+        _frameLoadCap = Get("frame_load_cap", _frameLoadCap); _skipFirstFrames = Get("skip_first_frames", _skipFirstFrames);
+        _selectEveryNth = Get("select_every_nth", _selectEveryNth); _frameRate = Get("frame_rate", _frameRate); _crf =
+        Get("crf", _crf);
+        _blocksToSwap = Get("blocks_to_swap", _blocksToSwap); _useNonBlocking = Get("use_non_blocking", _useNonBlocking);
+        _basePrecision = Get("base_precision", _basePrecision); _quantization = Get("quantization", _quantization); _loadDevice
+        = Get("load_device", _loadDevice); _attentionMode = Get("attention_mode", _attentionMode); _vaePrecision =
+        Get("vae_precision", _vaePrecision); _speedLoraStrength = Get("speed_lora_strength", _speedLoraStrength); _forceOffload
+        = Get("force_offload", _forceOffload);
+        _upscaleMaxSideLength = Get("upscale_max_side_length", _upscaleMaxSideLength); _upscaleUseFixedResolution =
+Get("upscale_use_fixed_resolution", _upscaleUseFixedResolution); _upscaleOutputMultiplier =
+Get("upscale_output_multiplier", _upscaleOutputMultiplier); _upscaleFixedWidth = Get("upscale_fixed_width",
+_upscaleFixedWidth); _upscaleFixedHeight = Get("upscale_fixed_height", _upscaleFixedHeight); _upscaleTileCount =
+Get("upscale_tile_count", _upscaleTileCount); _upscalePrecision = Get("upscale_precision", _upscalePrecision);
+        _upscaleBatchSize = Get("upscale_batch_size", _upscaleBatchSize); _upscaleOffloadModel = Get("upscale_offload_model",
+        _upscaleOffloadModel); _upscaleDisableCache = Get("upscale_disable_cache", _upscaleDisableCache); _upscaleDesiredSteps =
+        Get("upscale_desired_steps", _upscaleDesiredSteps); _upscaleStrengthPercent = Get("upscale_strength_percent",
+        _upscaleStrengthPercent); _upscaleSeed = Get("upscale_seed", _upscaleSeed);
+        _samplerScheduler = Get("sampler_scheduler", _samplerScheduler); _samplerCfg = Get("sampler_cfg", _samplerCfg);
+        _samplerShift = Get("sampler_shift", _samplerShift); _fetaWeight = Get("feta_weight", _fetaWeight); _fetaStartPercent =
+        Get("feta_start_percent", _fetaStartPercent); _fetaEndPercent = Get("feta_end_percent", _fetaEndPercent); _textPrecision
+        = Get("text_precision", _textPrecision); _textQuantization = Get("text_quantization", _textQuantization); _textDevice =
+        Get("text_device", _textDevice); _promptPrefix = Get("prompt_prefix", _promptPrefix); _negativePrompt =
+        Get("negative_prompt", _negativePrompt); _nagScale = Get("nag_scale", _nagScale); _nagTau = Get("nag_tau", _nagTau);
+        _nagAlpha = Get("nag_alpha", _nagAlpha);
+    }
+
+    private T Get<T>(string key, T fallback) => ParameterService.GetFragmentProperty(Fragment, key, fallback);
+
+    private async Task OnParametersChanged()
+    {
+        Set("frame_load_cap", _frameLoadCap); Set("skip_first_frames", _skipFirstFrames); Set("select_every_nth",
+_selectEveryNth); Set("frame_rate", _frameRate); Set("crf", _crf);
+        Set("blocks_to_swap", _blocksToSwap); Set("use_non_blocking", _useNonBlocking); Set("base_precision", _basePrecision);
+        Set("quantization", _quantization); Set("load_device", _loadDevice); Set("attention_mode", _attentionMode);
+        Set("vae_precision", _vaePrecision); Set("speed_lora_strength", _speedLoraStrength); Set("force_offload",
+        _forceOffload);
+        Set("upscale_max_side_length", _upscaleMaxSideLength); Set("upscale_use_fixed_resolution", _upscaleUseFixedResolution);
+        Set("upscale_output_multiplier", _upscaleOutputMultiplier); Set("upscale_fixed_width", _upscaleFixedWidth);
+        Set("upscale_fixed_height", _upscaleFixedHeight); Set("upscale_tile_count", _upscaleTileCount); Set("upscale_precision",
+        _upscalePrecision); Set("upscale_batch_size", _upscaleBatchSize); Set("upscale_offload_model", _upscaleOffloadModel);
+        Set("upscale_disable_cache", _upscaleDisableCache); Set("upscale_desired_steps", _upscaleDesiredSteps);
+        Set("upscale_strength_percent", _upscaleStrengthPercent); Set("upscale_seed", _upscaleSeed);
+        Set("sampler_scheduler", _samplerScheduler); Set("sampler_cfg", _samplerCfg); Set("sampler_shift", _samplerShift);
+        Set("feta_weight", _fetaWeight); Set("feta_start_percent", _fetaStartPercent); Set("feta_end_percent", _fetaEndPercent);
+        Set("text_precision", _textPrecision); Set("text_quantization", _textQuantization); Set("text_device", _textDevice);
+        Set("prompt_prefix", _promptPrefix); Set("negative_prompt", _negativePrompt); Set("nag_scale", _nagScale);
+        Set("nag_tau", _nagTau); Set("nag_alpha", _nagAlpha);
+        ParameterService.NotifyChanged();
+        await OnChanged.InvokeAsync();
+    }
+
+    private void Set<T>(string key, T value) => ParameterService.SetFragmentProperty(Fragment, key, value, notify: false);
+}
